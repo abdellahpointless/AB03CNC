@@ -1,0 +1,42 @@
+{
+  "name": "cnc-process-pro",
+  "private": true,
+  "version": "6.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev:api": "wrangler dev --port 8787",
+    "build": "vite build",
+    "preview": "npm run build && wrangler dev --port 8787",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p worker/tsconfig.json",
+    "lint": "npm run typecheck",
+    "test": "vitest run",
+    "cf-typegen": "wrangler types worker/worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "idb-keyval": "^6.2.4",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.40.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.4.2",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.151.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,641 @@
+@import "tailwindcss";
+
+/* The app is dark-only (<html class="dark">). Without this, Tailwind v4 follows the
+   Windows/OS theme, which made the tool-resolution dialog show white cards on PCs set to light mode. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg-page:        #05070c;   /* page background, near-black navy */
+  --bg-page-2:      #0a0e16;   /* secondary page tone for gradient */
+  --bg-panel:       #0f141e;   /* header / floating panel surface */
+  --bg-card:        #10151f;   /* card surface, slightly lighter than page */
+  --bg-card-hover:  #141a26;   /* card hover surface */
+  --bg-input:       #0d121b;   /* inputs, search bars */
+  --border-subtle:  rgba(255, 255, 255, 0.07);
+  --border-strong:  rgba(255, 255, 255, 0.14);
+
+  --text-primary:   #f5f7fa;   /* headings, big numbers */
+  --text-secondary: #9aa4b6;   /* subtitles, muted labels */
+  --text-tertiary:  #667085;   /* micro-labels, timestamps */
+
+  --blue-500:  #3b6fd4;
+  --blue-600:  #2f5fd0;
+  --blue-glow: rgba(59, 111, 212, 0.45);
+
+  --green-500: #16a34a;
+  --green-600: #0f9d63;
+  --green-glow: rgba(22, 163, 74, 0.40);
+
+  --orange-500: #e08a4d;
+  --orange-600: #c27f5e;
+  --orange-glow: rgba(224, 138, 77, 0.35);
+
+  --rose-500:  #ff6679;   /* accent for deltas/highlights only */
+
+  --accent-primary: var(--blue-500);
+  --accent-glow: var(--blue-glow);
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-card:  0 4px 20px rgba(0, 0, 0, 0.35);
+  --glow-button: 0 6px 18px var(--accent-glow);
+}
+
+/* Global Aurora Background */
+html, body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  color-scheme: dark;
+  overflow-x: hidden;
+}
+
+body {
+  background: 
+    radial-gradient(ellipse 90% 40% at 50% -5%, rgba(59, 111, 212, 0.07), transparent 60%),
+    radial-gradient(circle 500px at 90% 15%, rgba(22, 163, 74, 0.04), transparent 60%),
+    radial-gradient(circle 500px at 10% 85%, rgba(224, 138, 77, 0.03), transparent 60%),
+    linear-gradient(150deg, var(--bg-page) 0%, var(--bg-page-2) 100%);
+  /* Note: no background-attachment: fixed - it forces a full repaint on every scroll (laggy on shop PCs). */
+  min-height: 100vh;
+}
+
+/* Section 3: Liquid Glass Layer */
+.glass-panel {
+  background: rgba(15, 20, 30, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  border-radius: var(--radius-lg);
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 35%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Interactive sheen sliding effect */
+.glass-interactive {
+  position: relative;
+  overflow: hidden;
+}
+.glass-interactive::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  pointer-events: none;
+  transition: transform 600ms ease;
+  z-index: 1;
+}
+.glass-interactive:hover::before {
+  transform: translateX(200%);
+}
+
+/* Modal Backdrops & Overlays */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-modal {
+  background: rgba(15, 20, 30, 0.75);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+/* Default positioning lives in a cascade layer so Tailwind's fixed/absolute utilities can
+   override it (unlayered, it pinned the export toast and popovers into the page flow). */
+@layer components {
+  .glass-modal {
+    position: relative;
+  }
+}
+.glass-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 35%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Section 5: Buttons with Premium Glassy / Glossy Tactile Finish */
+button {
+  position: relative;
+  transition: box-shadow 150ms ease, filter 150ms ease, background 150ms ease, border-color 150ms ease, transform 100ms ease;
+}
+
+/* Glassy top-half reflection highlight on all buttons */
+.btn-primary,
+.btn-success,
+.btn-warning,
+.btn-secondary,
+.btn-icon,
+button:not(.no-glass) {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before,
+.btn-success::before,
+.btn-warning::before,
+.btn-secondary::before,
+.btn-icon::before,
+button:not(.no-glass)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  pointer-events: none;
+  opacity: 0.85;
+  z-index: 1;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled)::before,
+.btn-success:hover:not(:disabled)::before,
+.btn-warning:hover:not(:disabled)::before,
+.btn-secondary:hover:not(:disabled)::before,
+.btn-icon:hover:not(:disabled)::before,
+button:not(.no-glass):hover:not(:disabled)::before {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 100%);
+}
+
+.btn-primary > *,
+.btn-success > *,
+.btn-warning > *,
+.btn-secondary > *,
+.btn-icon > *,
+button > * {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-primary {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #4880ed 0%, var(--blue-500) 50%, var(--blue-600) 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 
+    0 4px 16px var(--blue-glow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 
+    0 8px 24px var(--blue-glow),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 
+    0 2px 8px var(--blue-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.btn-primary:disabled {
+  filter: grayscale(0.5);
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #22c55e 0%, var(--green-500) 50%, var(--green-600) 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 
+    0 4px 16px var(--green-glow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn-success:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 
+    0 8px 24px var(--green-glow),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+}
+.btn-success:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 
+    0 2px 8px var(--green-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.btn-success:disabled {
+  filter: grayscale(0.5);
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-warning {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ea9a60 0%, var(--orange-500) 50%, var(--orange-600) 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 
+    0 4px 16px var(--orange-glow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn-warning:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 
+    0 8px 24px var(--orange-glow),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+}
+.btn-warning:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 
+    0 2px 8px var(--orange-glow),
+    inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.btn-warning:disabled {
+  filter: grayscale(0.5);
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
+  border-color: rgba(255, 255, 255, 0.24);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+}
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ff7f8f 0%, var(--rose-500) 55%, #e2445a 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 4px 16px rgba(255, 102, 121, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-icon:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 100%);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.42);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+.btn-icon-danger:hover {
+  background: linear-gradient(180deg, rgba(255, 102, 121, 0.25) 0%, rgba(255, 102, 121, 0.12) 100%);
+  color: var(--rose-500);
+  border-color: rgba(255, 102, 121, 0.35);
+  border-top-color: rgba(255, 102, 121, 0.55);
+}
+
+/* Section 6: Cards */
+.aurora-card {
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+}
+/* Cards used to lift 3px on hover. On the big editor panes that made the text jump while
+   selecting or typing, so the hover is now a calm border highlight only. */
+.aurora-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.aurora-card-static:hover {
+  border-color: var(--border-subtle);
+}
+
+/* Signature 2px glowing accent line on card's bottom inner edge */
+.aurora-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Section 7: Badges & Pills */
+.badge-neutral {
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge-positive {
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(22, 163, 74, 0.18);
+  color: var(--green-500);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge-danger {
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 102, 121, 0.15);
+  color: var(--rose-500);
+  border: 1px solid rgba(255, 102, 121, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge-warning {
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(224, 138, 77, 0.18);
+  color: var(--orange-500);
+  border: 1px solid rgba(224, 138, 77, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Section 10: Forms & Inputs */
+.aurora-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 8px 14px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.aurora-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(59, 111, 212, 0.3);
+}
+.aurora-input::placeholder {
+  color: var(--text-tertiary);
+}
+/* .aurora-input's own padding beats Tailwind's pl-* utilities, which drew the typed text
+   on top of the search/user/lock icons. Restore the room the icons need. */
+.aurora-input.pl-9 {
+  padding-left: 2.25rem;
+}
+.aurora-input.pl-10 {
+  padding-left: 2.5rem;
+}
+
+/* Section 12: Stat Blocks */
+.stat-metric-number {
+  font-weight: 800;
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  font-size: 34px;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.section-label {
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+/* Section 13: Shimmer skeleton */
+.skeleton-shimmer {
+  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Section 14: Dissolve through glass motion */
+@keyframes viewEnter {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.view-enter {
+  animation: viewEnter 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Custom Scrollbar for Aurora Dark */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(5, 7, 12, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
