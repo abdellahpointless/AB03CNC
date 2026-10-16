@@ -1,0 +1,15 @@
+{
+  "name": "cnc-process-pro-training",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "slidev --open=false",
+    "build": "slidev build --base ./",
+    "export": "slidev export --executable-path /opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+  },
+  "dependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "^0.25.0",
+    "playwright-chromium": "^1.64.1"
+  }
+}
