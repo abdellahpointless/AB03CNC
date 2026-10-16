@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { KeyRound, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
-import { EXIT_FAST, FADE, SPRING_MODAL } from '../lib/motion';
+import { EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, iosBackdrop, iosSurface } from '../lib/motion';
 
 export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const { changePassword } = useAuth();
@@ -36,17 +36,11 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     <motion.div
       className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-[99999]"
       onMouseDown={e => e.target === e.currentTarget && onClose()}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: EXIT_FAST }}
-      transition={FADE}
+      {...iosBackdrop}
     >
       <motion.div
         className="glass-modal max-w-sm w-full p-6"
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: 8, transition: EXIT_FAST }}
-        transition={SPRING_MODAL}
+        {...iosSurface}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">

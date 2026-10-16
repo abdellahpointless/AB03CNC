@@ -4,6 +4,7 @@ import { useSync } from '../contexts/SyncContext';
 import { api } from '../lib/api';
 import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
+import { waveItem } from '../lib/motion';
 
 interface AccountRow {
   id: string;
@@ -196,9 +197,7 @@ export default function UserManagement() {
               <tbody>
                 {users.map((u, idx) => (
                   <motion.tr
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(idx, 10) * 0.03 }}
+                    {...waveItem(idx)}
                     key={u.id}
                     className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[rgba(var(--ov),0.02)] transition-colors"
                   >

@@ -102,7 +102,7 @@ export default function CodeEditorPair({
         const insertion = processedLines.join('\n');
         const nextVal = val.substring(0, start) + insertion + val.substring(end);
         setSourceCode(nextVal);
-        setConversionNotification(`Detected G52 on paste: Automatically placed ${addedCount} G53 Y0 before G52`);
+        setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
         setTimeout(() => setConversionNotification(null), 6000);
         setTimeout(() => {
           target.selectionStart = target.selectionEnd = start + insertion.length;
@@ -117,7 +117,7 @@ export default function CodeEditorPair({
     const { lines: processedLines, addedCount } = applyG53BeforeG52(lines);
     if (addedCount > 0) {
       setSourceCode(processedLines.join('\n'));
-      setConversionNotification(`Detected G52: Automatically placed ${addedCount} G53 Y0 before G52`);
+      setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
       setTimeout(() => setConversionNotification(null), 6000);
     }
   };
@@ -147,7 +147,7 @@ export default function CodeEditorPair({
         setSourceCode(processedLines.join('\n'));
         setHasImported(true);
         if (addedCount > 0) {
-          setConversionNotification(`Detected G52: Automatically placed ${addedCount} G53 Y0 before G52`);
+          setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
           setTimeout(() => setConversionNotification(null), 6000);
         } else {
           setConversionNotification(null);
@@ -182,7 +182,7 @@ export default function CodeEditorPair({
     if (result.stats.trailingZFixed > 0) details.push(`${result.stats.trailingZFixed} trailing Z. added`);
     if (result.stats.m98LinesDeleted > 0) details.push(`${result.stats.m98LinesDeleted} M98 P7999 removed`);
     if (result.stats.g43Converted > 0) details.push(`${result.stats.g43Converted} G43 converted`);
-    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 before G52 added`);
+    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 added (part flip / end of program)`);
 
     const summaryText = details.length > 0 
       ? `Switched to HAAS: ${details.join(', ')}`
@@ -217,7 +217,7 @@ export default function CodeEditorPair({
     if (result.stats.feedRatesFixed > 0) details.push(`${result.stats.feedRatesFixed} feedrates fixed`);
     if (result.stats.trailingZFixed > 0) details.push(`${result.stats.trailingZFixed} trailing Z fixed`);
     if (result.stats.m98LinesDeleted > 0) details.push(`${result.stats.m98LinesDeleted} M98 P7999 removed`);
-    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 before G52 added`);
+    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 added (part flip / end of program)`);
     if (result.stats.percentWrapped) details.push('% wrapped');
 
     const summaryText = details.length > 0 

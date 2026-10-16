@@ -55,6 +55,9 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --dur-press: 140ms;
+  /* iOS-like springs as CSS easing (damped oscillation sampled into linear()). */
+  --spring-bouncy: linear(0, 0.084, 0.281, 0.520, 0.749, 0.935, 1.064, 1.137, 1.163, 1.153, 1.123, 1.085, 1.047, 1.015, 0.992, 0.979, 0.974, 0.974, 0.979, 0.985, 0.991, 0.997, 1.001, 1.003, 1.004, 1.004, 1.004, 1.003, 1);
+  --spring-soft: linear(0, 0.041, 0.140, 0.269, 0.408, 0.542, 0.662, 0.766, 0.850, 0.915, 0.963, 0.997, 1.019, 1.032, 1.037, 1.038, 1.036, 1.032, 1.026, 1.021, 1.016, 1.012, 1.008, 1.005, 1.003, 1.001, 1, 0.999, 1);
   --dur-fast: 160ms;
   --dur-base: 220ms;
 }
@@ -215,11 +218,51 @@ button {
     background var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
-    transform var(--dur-press) var(--ease-out);
+    transform 520ms var(--spring-bouncy);
 }
-/* Press feedback on every button: respond on pointer-down, not on release. */
+/* iOS-style press: dips instantly on pointer-down, springs back (with a little overshoot)
+   on release. */
 button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform 110ms var(--ease-out);
+}
+/* Light flare that blooms from the exact point you touched (position set by pressFeedback.ts). */
+button:not(.no-glass)::after {
+  content: '';
+  position: absolute;
+  left: var(--press-x, 50%);
+  top: var(--press-y, 50%);
+  width: var(--press-size, 120px);
+  height: var(--press-size, 120px);
+  margin: calc(var(--press-size, 120px) / -2) 0 0 calc(var(--press-size, 120px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.12) 45%, transparent 70%);
+  opacity: 0;
+  transform: scale(0.2);
+  pointer-events: none;
+  z-index: 1;
+}
+button.is-pressed:not(.no-glass)::after {
+  animation: pressBloom 620ms var(--ease-out) forwards;
+}
+@keyframes pressBloom {
+  0%   { opacity: 0.9; transform: scale(0.2); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+html.light button:not(.no-glass)::after {
+  background: radial-gradient(circle, rgba(47, 98, 214, 0.18) 0%, rgba(47, 98, 214, 0.06) 45%, transparent 70%);
+}
+.btn-primary.is-pressed::after,
+.btn-success.is-pressed::after,
+.btn-warning.is-pressed::after,
+.btn-danger.is-pressed::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 70%) !important;
 }
 
 /* Glassy top-half reflection highlight on all buttons */
@@ -303,7 +346,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-primary:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
   box-shadow: 
     0 2px 8px var(--blue-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -343,7 +386,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-success:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
   box-shadow: 
     0 2px 8px var(--green-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -383,7 +426,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-warning:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
   box-shadow: 
     0 2px 8px var(--orange-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -426,7 +469,7 @@ button > * {
     inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
 }
 .btn-secondary:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .btn-secondary:disabled {
@@ -457,7 +500,7 @@ button > * {
   filter: brightness(1.08);
 }
 .btn-danger:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 .btn-danger:disabled {
   opacity: 0.45;
@@ -503,7 +546,7 @@ button > * {
   }
 }
 .btn-icon:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: scale(0.9);
 }
 .btn-icon-danger:hover {
   background: linear-gradient(180deg, rgba(255, 102, 121, 0.25) 0%, rgba(255, 102, 121, 0.12) 100%);
@@ -693,7 +736,8 @@ button > * {
     transform: none;
   }
   .glass-interactive::before,
-  .skeleton-shimmer::after {
+  .skeleton-shimmer::after,
+  button::after {
     display: none;
   }
   .animate-in {
@@ -717,10 +761,11 @@ button > * {
   }
 }
 .animate-in {
-  animation: enter var(--tw-duration, var(--dur-base)) var(--ease-out) both;
+  /* Inline panels (add-tool form, expanded rows, banners) spring open like iOS sheets. */
+  animation: enter 480ms var(--spring-soft) both;
 }
 .fade-in { --enter-opacity: 0; }
-.zoom-in-95 { --enter-scale: 0.95; }
+.zoom-in-95 { --enter-scale: 0.92; --enter-y: 8px; }
 .zoom-in-97 { --enter-scale: 0.97; }
 .slide-in-from-top-2 { --enter-y: -8px; }
 .slide-in-from-bottom-2 { --enter-y: 8px; }
@@ -829,4 +874,53 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 ::view-transition-new(root) {
   animation-duration: 260ms;
   animation-timing-function: var(--ease-in-out);
+}
+
+/* ---------------------------------------------------------------------------
+   iOS-style entrances
+   --------------------------------------------------------------------------- */
+@keyframes iosRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.97);
+  }
+}
+
+/* List rows ripple in one after another (set --i on each row). Capped so long lists never
+   keep the user waiting. */
+.wave-in {
+  animation: iosRise 560ms var(--spring-soft) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 32ms);
+}
+
+/* When a tab opens, its cards rise in as a short wave instead of popping in at once. */
+.tab-view > :is(.aurora-card, .glass-panel, div) > :is(.aurora-card, .glass-panel),
+.tab-view > :is(.aurora-card, .glass-panel) {
+  animation: iosRise 560ms var(--spring-soft) both;
+}
+.tab-view > * > :is(.aurora-card, .glass-panel):nth-child(2),
+.tab-view > :is(.aurora-card, .glass-panel):nth-child(2) { animation-delay: 45ms; }
+.tab-view > * > :is(.aurora-card, .glass-panel):nth-child(3),
+.tab-view > :is(.aurora-card, .glass-panel):nth-child(3) { animation-delay: 90ms; }
+.tab-view > * > :is(.aurora-card, .glass-panel):nth-child(4),
+.tab-view > :is(.aurora-card, .glass-panel):nth-child(4) { animation-delay: 135ms; }
+.tab-view > * > :is(.aurora-card, .glass-panel):nth-child(n+5),
+.tab-view > :is(.aurora-card, .glass-panel):nth-child(n+5) { animation-delay: 180ms; }
+
+/* Liquid tab pill (App.tsx): the selected tab's glass capsule. */
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-in,
+  .tab-view > * > :is(.aurora-card, .glass-panel),
+  .tab-view > :is(.aurora-card, .glass-panel) {
+    animation-name: fadeOnly;
+    animation-delay: 0ms;
+  }
 }

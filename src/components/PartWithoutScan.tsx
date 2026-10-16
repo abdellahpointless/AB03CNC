@@ -469,14 +469,15 @@ export default function PartWithoutScan() {
 
         {/* List of Months */}
         <div className="space-y-3">
-          {summaryRows.map(row => {
+          {summaryRows.map((row, rowIdx) => {
             const isExpanded = expandedMonth === row.month_key;
             const monthData = monthEntries[row.month_key];
 
             return (
               <div
                 key={row.month_key}
-                className="border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-input)] overflow-hidden transition"
+                style={{ '--i': rowIdx } as React.CSSProperties}
+                className="wave-in border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-input)] overflow-hidden transition"
               >
                 {/* Accordion Row Header */}
                 <button

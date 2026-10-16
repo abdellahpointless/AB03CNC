@@ -2,6 +2,9 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App';
 import { MotionConfig } from 'motion/react';
+import { installPressFeedback } from './lib/pressFeedback';
+
+installPressFeedback();
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
 

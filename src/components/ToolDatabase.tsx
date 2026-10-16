@@ -364,14 +364,15 @@ export default function ToolDatabase({
 
           {/* List of Tools */}
           <div className="flex flex-col gap-2.5">
-            {toolsForMachine.map(tool => {
+            {toolsForMachine.map((tool, toolIdx) => {
               const isChanged = tool.changed;
               const isExpanded = expandedId === tool.id;
 
               return (
                 <div 
                   key={tool.id} 
-                  className={`flex flex-col rounded-[var(--radius-md)] border transition ${
+                  style={{ '--i': toolIdx } as React.CSSProperties}
+                  className={`wave-in flex flex-col rounded-[var(--radius-md)] border transition ${
                     isChanged 
                       ? 'border-[var(--orange-500)]/50 bg-[rgba(224,138,77,0.08)]' 
                       : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)]'

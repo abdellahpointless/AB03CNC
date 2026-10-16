@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Cloud, CloudOff, RefreshCw, UploadCloud } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { AnimatePresence, motion } from 'motion/react';
-import { EASE_OUT } from '../lib/motion';
+import { iosMenu } from '../lib/motion';
 
 function ago(ts: number | null): string {
   if (!ts) return 'never';
@@ -66,10 +66,7 @@ export function SyncStatus() {
         <motion.div
           className="absolute right-0 top-full mt-2 w-72 glass-modal p-4 z-[1000] text-xs space-y-2.5 shadow-2xl"
           style={{ background: 'var(--bg-panel)', transformOrigin: 'top right' }}
-          initial={{ opacity: 0, scale: 0.96, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12, ease: EASE_OUT } }}
-          transition={{ duration: 0.18, ease: EASE_OUT }}
+          {...iosMenu}
         >
           <div className="font-bold text-[var(--text-primary)] text-sm">Cloudflare sync</div>
           <div className="flex justify-between text-[var(--text-secondary)]">

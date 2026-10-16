@@ -276,12 +276,12 @@ export default function PartReview() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
-                {entries.map(entry => {
+                {entries.map((entry, entryIdx) => {
                   const lineValue = Number(entry.qty || 0) * Number(entry.unit_value || 0);
                   const isBusy = actionInProgressId === entry.id || isBulkApproving;
 
                   return (
-                    <tr key={entry.id} className="hover:bg-[rgba(var(--ov),0.02)] transition-colors">
+                    <tr key={entry.id} style={{ '--i': entryIdx } as React.CSSProperties} className="wave-in hover:bg-[rgba(var(--ov),0.02)] transition-colors">
                       {/* Operator */}
                       <td className="py-3 font-sans">
                         <span className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">

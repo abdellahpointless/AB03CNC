@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, User as UserIcon, ArrowRight, ShieldCheck } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useAnimate } from 'motion/react';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -10,6 +10,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, setup, needsSetup } = useAuth();
+  const [cardRef, animateCard] = useAnimate();
+  // iPhone-style "wrong passcode" shake.
+  const shake = () => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !cardRef.current) return;
+    animateCard(cardRef.current, { x: [0, -14, 12, -9, 6, -3, 0] }, { duration: 0.5, ease: 'easeOut' });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +23,7 @@ export default function Login() {
     setError('');
     if (needsSetup && password !== confirmPassword) {
       setError('The two passwords do not match');
+      shake();
       return;
     }
     setIsLoading(true);
@@ -24,6 +31,7 @@ export default function Login() {
     setIsLoading(false);
     if (!res.success) {
       setError(res.error || 'Login failed');
+      shake();
     }
   };
 
@@ -34,9 +42,10 @@ export default function Login() {
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-[var(--green-500)] opacity-5 blur-[100px] rounded-full pointer-events-none" />
 
       <motion.div 
-        initial={{ opacity: 0, scale: 0.96 }} 
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+        ref={cardRef}
+        initial={{ opacity: 0, scale: 0.9, y: 16, filter: 'blur(10px)' }} 
+        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+        transition={{ type: 'spring', duration: 0.6, bounce: 0.2 }}
         className="max-w-md w-full glass-panel relative z-10 p-8 sm:p-10"
       >
         <div className="flex flex-col items-center mb-8">
@@ -67,8 +76,9 @@ export default function Login() {
         <form onSubmit={handleLogin} className="space-y-5">
           {error && (
             <motion.div 
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', duration: 0.4, bounce: 0.3 }}
               className="badge-danger w-full justify-center py-2 text-xs"
             >
               <span>{error}</span>

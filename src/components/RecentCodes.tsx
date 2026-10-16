@@ -105,10 +105,11 @@ export default function RecentCodes() {
            </div>
         ) : (
            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
-             {filteredHistory.map(record => (
+             {filteredHistory.map((record, recordIdx) => (
                <div 
                  key={record.id} 
-                 className="p-4 border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition flex items-center justify-between gap-4 group"
+                 style={{ '--i': recordIdx } as React.CSSProperties}
+                 className="wave-in p-4 border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition flex items-center justify-between gap-4 group"
                >
                  <div className="flex flex-col space-y-1.5 flex-1 min-w-0">
                    <div className="flex items-center gap-2">

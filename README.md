@@ -82,6 +82,12 @@ Optional: **Settings → Domains & Routes** lets you add your own domain.
 - Adding FANUC `H#513 D#513` could corrupt a comment on the same line.
 - HAAS → FANUC dropped X/Y/S/M3 words that were on the G43 line.
 - FANUC → HAAS now also recognises `M06` and `M8`.
+- **G53 Y0 (table to the operator)** is added only where the operator needs the table:
+  before each part flip (a `G52` that shifts the offset; it goes after the tool's comment
+  lines and before the `M0` stops) and right before the end of the program (`M30`/`M02`) to
+  unload the parts. It is not added at ordinary tool changes, and `G52 X0 Y0 Z0` (cancel) is
+  ignored. If a G53 Y0 is already there, nothing is added. Inserted lines get the next N number
+  and the following numbers shift so none are duplicated.
 
 **UI fixes:**
 

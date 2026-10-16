@@ -5,7 +5,7 @@ import CodeEditorPair from './CodeEditorPair';
 import { analyzeGCode, generateRemappedCode, applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { Settings, Info, AlertTriangle, CheckCircle, Plus, AlertCircle, Trash2, Clock, Sparkles, Database, ArrowUpRight, Wrench } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { EXIT_FAST, FADE, SPRING_MODAL, SPRING_TOAST } from '../lib/motion';
+import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, SPRING_TOAST, iosBackdrop, iosSurface } from '../lib/motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { submitExport } from '../lib/historyApi';
@@ -629,10 +629,10 @@ N190 M30`;
       {typeof document !== 'undefined' && createPortal(<AnimatePresence>
         {extractionToast && (
           <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.96, transition: EXIT_FAST }}
-            transition={SPRING_TOAST}
+            initial={{ opacity: 0, y: 40, scale: 0.8, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+            exit={{ opacity: 0, y: 24, scale: 0.9, filter: 'blur(6px)', transition: { duration: 0.2, ease: EASE_OUT } }}
+            transition={{ type: 'spring', duration: 0.55, bounce: 0.3 }}
             style={{ transformOrigin: 'bottom right' }}
             className="fixed bottom-6 right-6 z-[100] max-w-md flex items-center gap-3 glass-modal text-[var(--text-primary)] px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-[var(--green-500)]/40 bg-[rgba(var(--surface),0.95)] rounded-[var(--radius-lg)]"
           >
@@ -765,17 +765,11 @@ N190 M30`;
           <AnimatePresence>
             {showModal && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: EXIT_FAST }}
-                transition={FADE}
+                {...iosBackdrop}
                 className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-5 z-[99999] overflow-hidden"
               >
                 <motion.div 
-                  initial={{ scale: 0.96, opacity: 0, y: 8 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.97, opacity: 0, y: 8, transition: EXIT_FAST }}
-                  transition={SPRING_MODAL}
+                  {...iosSurface}
                   className="glass-modal max-w-4xl w-full flex flex-col max-h-[82vh] overflow-hidden my-auto shadow-2xl border border-[var(--border-strong)]"
                 >
                 <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-panel)]">
@@ -807,7 +801,7 @@ N190 M30`;
                   if (block.skipOperation || (resolutions[block.blockId] && resolutions[block.blockId].description === 'Skip Operation')) {
                     return (
                        <motion.div 
-                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                         {...waveItem(i)}
                          key={block.blockId} 
                          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm opacity-70 hover:opacity-100 transition"
                        >
@@ -851,9 +845,7 @@ N190 M30`;
                       const machineTarauds = mergedAvailableTools.filter(t => t.category === 'taraud');
                       return (
                         <motion.div 
-                          initial={{ opacity: 0, x: -10 }} 
-                          animate={{ opacity: 1, x: 0 }} 
-                          transition={{ delay: Math.min(i, 8) * 0.04 }}
+                          {...waveItem(i)}
                           key={block.blockId} 
                           className="bg-white dark:bg-slate-800 border-2 border-purple-400 dark:border-purple-600/70 p-5 rounded-xl shadow-md space-y-4 relative overflow-hidden"
                         >
@@ -981,7 +973,7 @@ N190 M30`;
                   if (block.pendingSkipConfirmation && (!resolutions[block.blockId] || resolutions[block.blockId].description !== 'Skip Operation')) {
                     return (
                        <motion.div 
-                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                         {...waveItem(i)}
                          key={block.blockId} 
                          className="bg-white dark:bg-slate-800 border-2 border-orange-300 dark:border-orange-800/50 p-5 rounded-xl shadow-md space-y-4 relative overflow-hidden"
                        >
@@ -1033,7 +1025,7 @@ N190 M30`;
                   if (hasCrash) {
                     return (
                        <motion.div 
-                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                         {...waveItem(i)}
                          key={block.blockId} 
                          className="bg-white dark:bg-slate-800 border-2 border-rose-400 dark:border-rose-900/50 p-5 rounded-xl shadow-md space-y-5 relative overflow-hidden"
                        >
@@ -1066,7 +1058,7 @@ N190 M30`;
                     const blockResolutionId = resolutions[block.blockId]?.id || '';
                     return (
                        <motion.div 
-                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                         {...waveItem(i)}
                          key={block.blockId} 
                          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 rounded-xl shadow-sm hover:shadow transition"
                        >
@@ -1134,7 +1126,7 @@ N190 M30`;
                   if (isApproximate) {
                     return (
                        <motion.div 
-                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                         {...waveItem(i)}
                          key={block.blockId} 
                          className="flex flex-col p-5 bg-gradient-to-r from-amber-50 to-white dark:from-amber-950/20 dark:to-slate-900 border border-amber-300 dark:border-amber-700/50 rounded-xl shadow-md space-y-4 relative overflow-hidden"
                        >
@@ -1224,7 +1216,7 @@ N190 M30`;
                   // Needs resolution
                   return (
                     <motion.div 
-                      initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                      {...waveItem(i)}
                       key={block.blockId} 
                       className="bg-white dark:bg-slate-800 border-2 border-red-200 dark:border-red-900/30 p-5 rounded-xl shadow-md space-y-5 relative overflow-hidden"
                     >
@@ -1290,17 +1282,11 @@ N190 M30`;
       <AnimatePresence>
         {showCrashAlert && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: EXIT_FAST }}
-            transition={FADE}
+            {...iosBackdrop}
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
              <motion.div 
-              initial={{ scale: 0.96, opacity: 0, y: 8 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.97, opacity: 0, y: 8, transition: EXIT_FAST }}
-              transition={SPRING_MODAL}
+              {...iosSurface}
               className="glass-modal p-8 max-w-lg w-full border-2 border-[var(--rose-500)]"
             >
               <div className="flex items-center gap-4 mb-6">
@@ -1343,15 +1329,11 @@ N190 M30`;
       <AnimatePresence>
         {showChecklist && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...iosBackdrop}
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
+              {...iosSurface}
               className="glass-modal p-8 max-w-lg w-full"
             >
               <div className="flex items-center gap-4 mb-6">
@@ -1395,15 +1377,11 @@ N190 M30`;
       <AnimatePresence>
         {showSpecialChecklist && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...iosBackdrop}
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
+              {...iosSurface}
               className="glass-modal overflow-hidden max-w-lg w-full"
             >
               <div className="p-6 border-b border-[var(--border-subtle)] bg-[rgba(255,102,121,0.08)]">
@@ -1478,15 +1456,11 @@ N190 M30`;
       <AnimatePresence>
         {showConfirm && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...iosBackdrop}
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              {...iosSurface}
               className="glass-modal max-w-md w-full overflow-hidden"
             >
               <div className="p-6 text-center space-y-4">

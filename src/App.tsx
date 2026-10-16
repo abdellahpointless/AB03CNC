@@ -19,7 +19,7 @@ import { MachineId, ToolChangeBlock, Tool } from './types';
 import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, KeyRound, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
-import { EASE_OUT, SPRING_INDICATOR } from './lib/motion';
+import { EASE_OUT, SPRING_PILL } from './lib/motion';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
@@ -220,14 +220,17 @@ function Workspace() {
             onClick={() => setActiveTab('DATABASE')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'DATABASE'
-                ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
+                ? 'text-[var(--accent-primary)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <Database size={15} />
             <span>Tool Inventory</span>
             {activeTab === 'DATABASE' && (
-              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              <>
+              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              </>
             )}
           </button>
 
@@ -236,14 +239,17 @@ function Workspace() {
             onClick={() => setActiveTab('REMAP')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'REMAP'
-                ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
+                ? 'text-[var(--accent-primary)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <Wrench size={15} />
             <span>Tool Remapper</span>
             {activeTab === 'REMAP' && (
-              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              <>
+              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              </>
             )}
           </button>
 
@@ -253,14 +259,17 @@ function Workspace() {
               onClick={() => setActiveTab('HISTORY')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'HISTORY'
-                  ? 'text-[var(--orange-500)] bg-[rgba(224,138,77,0.12)]'
+                  ? 'text-[var(--orange-500)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <History size={15} />
               <span>History</span>
               {activeTab === 'HISTORY' && (
-                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--orange-500)] shadow-[0_0_10px_var(--orange-glow)] rounded-full pointer-events-none" />
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(224,138,77,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--orange-500)] shadow-[0_0_10px_var(--orange-glow)] rounded-full pointer-events-none" />
+                </>
               )}
             </button>
           )}
@@ -271,14 +280,17 @@ function Workspace() {
               onClick={() => setActiveTab('RECENT_CODES')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'RECENT_CODES'
-                  ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
+                  ? 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <History size={15} />
               <span>Recent Codes</span>
               {activeTab === 'RECENT_CODES' && (
-                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)] rounded-full pointer-events-none" />
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)] rounded-full pointer-events-none" />
+                </>
               )}
             </button>
           )}
@@ -288,14 +300,17 @@ function Workspace() {
             onClick={() => setActiveTab('PART_ENTRY')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'PART_ENTRY'
-                ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
+                ? 'text-[var(--accent-primary)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <PackagePlus size={15} />
             <span>Part without scan</span>
             {activeTab === 'PART_ENTRY' && (
-              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              <>
+              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              </>
             )}
           </button>
 
@@ -305,14 +320,17 @@ function Workspace() {
               onClick={() => setActiveTab('PART_REVIEW')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'PART_REVIEW'
-                  ? 'text-[var(--green-500)] bg-[rgba(22,163,74,0.12)]'
+                  ? 'text-[var(--green-500)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <ClipboardCheck size={15} />
               <span>Part review</span>
               {activeTab === 'PART_REVIEW' && (
-                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
+                </>
               )}
             </button>
           )}
@@ -323,14 +341,17 @@ function Workspace() {
               onClick={() => setActiveTab('ADMIN')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'ADMIN'
-                  ? 'text-[var(--green-500)] bg-[rgba(22,163,74,0.12)]'
+                  ? 'text-[var(--green-500)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <Shield size={15} />
               <span>Admin: Analytics, Users &amp; Data</span>
               {activeTab === 'ADMIN' && (
-                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
+                </>
               )}
             </button>
           )}
@@ -343,10 +364,10 @@ function Workspace() {
             briefly (no exit wait, which used to add ~180 ms before every tab change). */}
           <motion.div 
             key={activeTab}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.16, ease: EASE_OUT }}
-            className="flex-1 flex flex-col"
+            initial={{ opacity: 0, y: 10, scale: 0.99, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+            transition={{ type: 'spring', duration: 0.4, bounce: 0.12 }}
+            className="tab-view flex-1 flex flex-col"
           >
             {activeTab === 'DATABASE' && (
               <ToolDatabase 

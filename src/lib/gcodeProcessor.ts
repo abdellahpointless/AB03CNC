@@ -620,11 +620,8 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     });
   }
 
-  // Bring the table to the operator at every tool change:
-  // insert "G53 Y0" right after the tool-name comment that follows the T.. M6 line.
-  outputLines = insertG53Y0AfterToolChange(outputLines, blocks, resolutions);
-
-  // Ensure G53 Y0 is ALWAYS written before G52 on all machines
+  // Bring the table to the operator only where they need it: before each part flip (G52)
+  // and before the end of the program (to unload the parts). Not at every tool change.
   const { lines: linesWithG53 } = applyG53BeforeG52(outputLines);
   outputLines = linesWithG53;
 
@@ -650,6 +647,9 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
 //   N6186 M0 (36 MM UNTERLAGE/IN 10.5 MM)
 //   N6187 G52 X-50.000 Y50.000 Z-10.500
 //
+// It is also placed right before the end of the program (M30 / M02) so the operator can take the
+// parts out. It is NOT added at other tool changes.
+//
 // When a line is inserted it gets the next N number, and the following N numbers are shifted
 // by one where they would otherwise collide, so every N stays unique and in order.
 
@@ -663,6 +663,13 @@ interface Entry { text: string; inserted: boolean }
 const isRemoved = (l: string) => l === REMOVED_LINE;
 const hasG53Y0 = (l: string) => !isRemoved(l) && G53_Y0_RE.test(codeOnly(l));
 const hasG52 = (l: string) => !isRemoved(l) && G52_RE.test(codeOnly(l));
+/** A G52 that moves the work offset (part flip / new face). "G52 X0 Y0 Z0" only cancels it. */
+const isG52Shift = (l: string) => {
+  if (!hasG52(l)) return false;
+  const words = bareCode(l).match(/(?<![A-Z])[XYZABC]\s*[-+]?(?:\d+\.?\d*|\.\d+)/gi) || ([] as string[]);
+  return words.some(w => Math.abs(parseFloat(w.slice(1).replace(/\s+/g, ''))) > 1e-9);
+};
+const isProgramEnd = (l: string) => !isRemoved(l) && /(?<![A-Z])M0*(?:30|2)(?![0-9.])/i.test(bareCode(l));
 /** The code of a line without comments and without its N number. */
 const bareCode = (l: string) => codeOnly(l).replace(N_RE, '').trim();
 const isCommentOrBlank = (l: string) => isRemoved(l) || bareCode(l) === '';
@@ -745,43 +752,8 @@ function insertBefore(lines: string[], positions: number[]): string[] {
 }
 
 /**
- * For every kept tool change (T.. M6), makes sure "G53 Y0" is present between the tool change
- * and the first axis move. If it's missing, it is inserted right after the tool's comment block
- * (all comment lines that follow the M6 line), i.e. before any M0 operator stop.
- */
-export function insertG53Y0AfterToolChange(
-  lines: string[],
-  blocks: ToolChangeBlock[],
-  resolutions: Record<string, Tool>
-): string[] {
-  const positions: number[] = [];
-
-  for (const block of blocks) {
-    const skipped = block.skipOperation ||
-      (resolutions[block.blockId]?.category === 'empty' && resolutions[block.blockId]?.description === 'Skip Operation');
-    if (skipped) continue;
-    if (!(resolutions[block.blockId] || block.matchedTool)) continue;
-
-    const m6Idx = block.lineIndex;
-    if (isRemoved(lines[m6Idx])) continue;
-
-    // Already present between the tool change and the first move (or the next tool change)?
-    let present = false;
-    for (let k = m6Idx; k < lines.length; k++) {
-      if (k > m6Idx && isToolChangeLine(lines[k])) break;
-      if (hasG53Y0(lines[k])) { present = true; break; }
-      if (isMotionLine(lines[k])) break;
-    }
-    if (present) continue;
-
-    positions.push(afterToolCommentBlock(lines, m6Idx));
-  }
-
-  return positions.length ? insertBefore(lines, positions) : lines;
-}
-
-/**
- * Makes sure a "G53 Y0" comes before every G52. For each G52 the program is scanned upwards to
+ * Makes sure a "G53 Y0" comes before every G52 that shifts the work offset (part flip), and
+ * right before the end of the program (M30 / M02) so the parts can be unloaded. For each G52 the program is scanned upwards to
  * the tool change it belongs to (or to the start of the program). If no G53 Y0 is found on the
  * way, one is added:
  *  - after the tool change and its comment block (before the M0 stops), or
@@ -789,11 +761,10 @@ export function insertG53Y0AfterToolChange(
  * Running it again changes nothing.
  */
 export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCount: number } {
-  if (!lines.some(hasG52)) return { lines, addedCount: 0 };
-
   const positions: number[] = [];
+
   for (let g = 0; g < lines.length; g++) {
-    if (!hasG52(lines[g])) continue;
+    if (!isG52Shift(lines[g])) continue;
 
     let toolChange = -1;
     let found = false;
@@ -816,6 +787,18 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
     }
     // One insertion covers every G52 after it in the same tool section.
     if (!positions.some(p => p <= g && p >= (toolChange === -1 ? 0 : toolChange))) positions.push(pos);
+  }
+
+  // End of program: the table must come to the operator to unload the parts.
+  let end = -1;
+  for (let k = lines.length - 1; k >= 0; k--) if (isProgramEnd(lines[k])) { end = k; break; }
+  if (end !== -1 && !hasG53Y0(lines[end])) {
+    let present = false;
+    for (let k = end - 1; k >= 0; k--) {
+      if (hasG53Y0(lines[k])) { present = true; break; }
+      if (isMotionLine(lines[k]) || (!isRemoved(lines[k]) && isToolChangeLine(lines[k]))) break;
+    }
+    if (!present && !positions.includes(end)) positions.push(end);
   }
 
   if (!positions.length) return { lines, addedCount: 0 };

@@ -8,7 +8,7 @@ import { api } from '../lib/api';
 import { fetchAllHistory, fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadJson, downloadText, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
-import { EXIT_FAST, FADE, SPRING_MODAL } from '../lib/motion';
+import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, iosBackdrop, iosSurface } from '../lib/motion';
 
 const PAGE_SIZE = 10;
 
@@ -421,13 +421,12 @@ export default function HistoryView() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-          {paginatedRecords.map((record) => {
+          {paginatedRecords.map((record, recordIdx) => {
             const isExpanded = expandedIds.has(record.id);
 
             return (
               <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                {...waveItem(recordIdx)}
                 key={record.id} 
                 className="aurora-card p-0 flex flex-col overflow-hidden transition duration-200"
               >
@@ -643,10 +642,7 @@ export default function HistoryView() {
         {inspectingRecord && (
           <motion.div 
             key="inspector"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: EXIT_FAST }}
-            transition={FADE}
+            {...iosBackdrop}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -657,10 +653,7 @@ export default function HistoryView() {
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8, transition: EXIT_FAST }}
-              transition={SPRING_MODAL}
+              {...iosSurface}
               className="glass-modal w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
