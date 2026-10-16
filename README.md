@@ -22,12 +22,12 @@ is in `wrangler.jsonc`. The Worker creates its own tables on first start.
 1. Open the Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository**.
 2. Connect GitHub, then choose the repository **`abdellahpointless/AB03CNC`**.
 3. Settings:
-   - **Project / Worker name:** `cnc-process-pro` (it must match `name` in `wrangler.jsonc`)
+   - **Project / Worker name:** `cnckomax` (it must match `name` in `wrangler.jsonc`)
    - **Production branch:** whichever branch you merge this work into (for example `main`)
    - **Build command:** `npm run build`
    - **Deploy command:** `npx wrangler deploy` (the default)
 4. Click **Deploy**. When it finishes you get a URL like
-   `https://cnc-process-pro.<your-subdomain>.workers.dev`.
+   `https://cnckomax.<your-subdomain>.workers.dev`.
 
 After that, every push to the production branch redeploys automatically.
 

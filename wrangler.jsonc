@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   // Must match the Worker name in the Cloudflare dashboard when using Git deploys.
-  "name": "cnc-process-pro",
+  "name": "cnckomax",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
