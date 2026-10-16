@@ -175,7 +175,7 @@ export default function UserManagement() {
 
       {/* User Accounts List Table */}
       <div className="aurora-card p-0 overflow-hidden">
-        <div className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(15,20,30,0.5)] flex items-center justify-between">
+        <div className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.5)] flex items-center justify-between">
           <span className="section-label">Registered Accounts</span>
           <span className="badge-neutral text-[10px] py-0 px-2 font-mono">{users.length} users</span>
         </div>
@@ -187,7 +187,7 @@ export default function UserManagement() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[rgba(255,255,255,0.02)]">
+                <tr className="border-b border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
                   <th className="p-3.5 section-label">User</th>
                   <th className="p-3.5 section-label">Role</th>
                   <th className="p-3.5 section-label text-right">Actions</th>
@@ -200,7 +200,7 @@ export default function UserManagement() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: Math.min(idx, 10) * 0.03 }}
                     key={u.id}
-                    className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+                    className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[rgba(var(--ov),0.02)] transition-colors"
                   >
                     <td className="p-3.5">
                       <div className="flex items-center gap-3">

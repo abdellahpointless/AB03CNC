@@ -5,6 +5,7 @@ import CodeEditorPair from './CodeEditorPair';
 import { analyzeGCode, generateRemappedCode, applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { Settings, Info, AlertTriangle, CheckCircle, Plus, AlertCircle, Trash2, Clock, Sparkles, Database, ArrowUpRight, Wrench } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { EXIT_FAST, FADE, SPRING_MODAL, SPRING_TOAST } from '../lib/motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { submitExport } from '../lib/historyApi';
@@ -628,11 +629,12 @@ N190 M30`;
       {typeof document !== 'undefined' && createPortal(<AnimatePresence>
         {extractionToast && (
           <motion.div
-            initial={{ opacity: 0, y: 25, scale: 0.95 }}
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="fixed bottom-6 right-6 z-[100] max-w-md flex items-center gap-3 glass-modal text-[var(--text-primary)] px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-[var(--green-500)]/40 bg-[rgba(15,20,30,0.95)] rounded-[var(--radius-lg)]"
+            exit={{ opacity: 0, y: 24, scale: 0.96, transition: EXIT_FAST }}
+            transition={SPRING_TOAST}
+            style={{ transformOrigin: 'bottom right' }}
+            className="fixed bottom-6 right-6 z-[100] max-w-md flex items-center gap-3 glass-modal text-[var(--text-primary)] px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-[var(--green-500)]/40 bg-[rgba(var(--surface),0.95)] rounded-[var(--radius-lg)]"
           >
             <div className="w-8 h-8 rounded-full bg-[var(--green-500)]/20 border border-[var(--green-500)]/40 flex items-center justify-center text-[var(--green-500)] shrink-0 shadow-[0_0_10px_var(--green-glow)]">
               <CheckCircle size={16} />
@@ -657,14 +659,14 @@ N190 M30`;
       </AnimatePresence>, document.body)}
       
       {/* Control Bar (Aurora Glass Floating Panel - Focused Elements 1 to 5) */}
-      <div className="glass-panel px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[rgba(255,255,255,0.12)] bg-[rgba(15,20,30,0.65)] shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-xl">
+      <div className="glass-panel px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[rgba(var(--ov),0.12)] bg-[rgba(var(--surface),0.65)] shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-xl">
         {/* Selector 5: Machine Selector & Tool Inventory block */}
         <div className="flex-1 min-w-[280px] max-w-md flex flex-col justify-center gap-1.5">
           <label className="section-label flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-[var(--text-secondary)]">
               <Settings size={13} className="text-[var(--accent-primary)]"/> Target Machine
             </span>
-            <span className="text-[10px] font-mono text-[var(--text-tertiary)] bg-[rgba(255,255,255,0.03)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+            <span className="text-[10px] font-mono text-[var(--text-tertiary)] bg-[rgba(var(--ov),0.03)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
               {(toolbox[selectedMachine] || []).length} Tools Loaded
             </span>
           </label>
@@ -684,7 +686,7 @@ N190 M30`;
             <button
               type="button"
               onClick={() => onNavigateToDatabase && onNavigateToDatabase(selectedMachine)}
-              className="btn-secondary h-10 px-3.5 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold shrink-0 rounded-[var(--radius-md)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)] active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+              className="btn-secondary h-10 px-3.5 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold shrink-0 rounded-[var(--radius-md)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[rgba(var(--ov),0.06)] active:scale-[0.98] transition cursor-pointer shadow-xs"
               title={`Open ${selectedMachine} Tool Inventory`}
             >
               <Database size={14} className="text-[var(--accent-primary)]" />
@@ -699,7 +701,7 @@ N190 M30`;
           {/* Selector 3: Analyze & Remap primary button */}
           <button 
             onClick={handleProcess}
-            className="btn-primary h-10 px-5 sm:px-6 flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide rounded-[var(--radius-md)] shadow-[0_4px_18px_rgba(59,111,212,0.4)] hover:shadow-[0_6px_24px_rgba(59,111,212,0.6)] active:scale-[0.98] transition-all cursor-pointer"
+            className="btn-primary h-10 px-5 sm:px-6 flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide rounded-[var(--radius-md)] shadow-[0_4px_18px_rgba(59,111,212,0.4)] hover:shadow-[0_6px_24px_rgba(59,111,212,0.6)] active:scale-[0.98] transition cursor-pointer"
             title="Analyze G-Code and remap tools to the selected machine"
           >
             <Sparkles size={15} />
@@ -717,8 +719,8 @@ N190 M30`;
             }}
             className={
               blocks.length > 0
-                ? "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-500)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition-all whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
-                : "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.02)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-all whitespace-nowrap cursor-pointer opacity-70"
+                ? "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-500)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
+                : "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition whitespace-nowrap cursor-pointer opacity-70"
             }
             title={blocks.length > 0 ? "Inspect and customize tool match resolutions" : "Analyze code first to modify tool resolutions"}
           >
@@ -765,14 +767,15 @@ N190 M30`;
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: EXIT_FAST }}
+                transition={FADE}
                 className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-5 z-[99999] overflow-hidden"
               >
                 <motion.div 
-                  initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                  initial={{ scale: 0.96, opacity: 0, y: 8 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.95, opacity: 0, y: 15 }}
-                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 8, transition: EXIT_FAST }}
+                  transition={SPRING_MODAL}
                   className="glass-modal max-w-4xl w-full flex flex-col max-h-[82vh] overflow-hidden my-auto shadow-2xl border border-[var(--border-strong)]"
                 >
                 <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-panel)]">
@@ -806,7 +809,7 @@ N190 M30`;
                        <motion.div 
                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
                          key={block.blockId} 
-                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm opacity-70 hover:opacity-100 transition-all"
+                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm opacity-70 hover:opacity-100 transition"
                        >
                          <div className="flex items-start gap-3 overflow-hidden">
                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md mt-0.5">
@@ -916,7 +919,7 @@ N190 M30`;
                                         [block.blockId]: machineTarauds[0]
                                       }));
                                     }}
-                                    className="w-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition-all flex items-center justify-center gap-2"
+                                    className="w-full bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition flex items-center justify-center gap-2"
                                   >
                                     <CheckCircle size={16}/> Choose Taraud T{machineTarauds[0].number} (D{machineTarauds[0].diameter} L{machineTarauds[0].length})
                                   </button>
@@ -928,7 +931,7 @@ N190 M30`;
                                         onClick={() => {
                                           setResolutions(prev => ({ ...prev, [block.blockId]: t }));
                                         }}
-                                        className="w-full bg-white dark:bg-slate-900 hover:bg-purple-50 dark:hover:bg-purple-950/50 border border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200 px-3 py-2 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-between"
+                                        className="w-full bg-white dark:bg-slate-900 hover:bg-purple-50 dark:hover:bg-purple-950/50 border border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200 px-3 py-2 rounded-lg text-xs font-bold shadow-sm transition flex items-center justify-between"
                                       >
                                         <span>T{t.number} - {t.description || 'Taraud'}</span>
                                         <span>D{t.diameter} L{t.length}</span>
@@ -960,7 +963,7 @@ N190 M30`;
                                     [block.blockId]: { id: `dummy-remove-${block.blockId}`, number: 0, category: 'empty', diameter: 0, length: 0, description: 'Skip Operation' }
                                   }));
                                 }}
-                                className="w-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow transition flex items-center justify-center gap-2"
                               >
                                 <Trash2 size={16}/> Delete Section (Till Next Tool Change)
                               </button>
@@ -1065,7 +1068,7 @@ N190 M30`;
                        <motion.div 
                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
                          key={block.blockId} 
-                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 rounded-xl shadow-sm hover:shadow transition-all"
+                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 rounded-xl shadow-sm hover:shadow transition"
                        >
                          <div className="flex items-start gap-3 overflow-hidden">
                            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-md mt-0.5">
@@ -1289,13 +1292,15 @@ N190 M30`;
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, transition: EXIT_FAST }}
+            transition={FADE}
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
              <motion.div 
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
+              initial={{ scale: 0.96, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.97, opacity: 0, y: 8, transition: EXIT_FAST }}
+              transition={SPRING_MODAL}
               className="glass-modal p-8 max-w-lg w-full border-2 border-[var(--rose-500)]"
             >
               <div className="flex items-center gap-4 mb-6">
@@ -1414,7 +1419,7 @@ N190 M30`;
               </div>
               <div className="p-6 space-y-3 max-h-80 overflow-y-auto">
                  {specialToolsToCheck.map(t => (
-                    <label key={t.number} className={`flex items-center gap-4 p-4 rounded-[var(--radius-md)] border transition-all cursor-pointer ${
+                    <label key={t.number} className={`flex items-center gap-4 p-4 rounded-[var(--radius-md)] border transition cursor-pointer ${
                       checkedSpecialTools.has(t.number) 
                         ? 'border-[var(--green-500)] bg-[rgba(22,163,74,0.12)]' 
                         : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)]'

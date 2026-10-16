@@ -108,7 +108,7 @@ export default function RecentCodes() {
              {filteredHistory.map(record => (
                <div 
                  key={record.id} 
-                 className="p-4 border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-all flex items-center justify-between gap-4 group"
+                 className="p-4 border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition flex items-center justify-between gap-4 group"
                >
                  <div className="flex flex-col space-y-1.5 flex-1 min-w-0">
                    <div className="flex items-center gap-2">

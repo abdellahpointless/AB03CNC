@@ -207,7 +207,7 @@ export default function AdminExtractionAnalytics() {
                   cx="90"
                   cy="90"
                   r={donutRadius}
-                  stroke="rgba(255, 255, 255, 0.08)"
+                  stroke="rgba(var(--ov),0.08)"
                   strokeWidth="20"
                   fill="transparent"
                 />
@@ -339,7 +339,7 @@ export default function AdminExtractionAnalytics() {
                 </span>
               </div>
             ) : (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(255,255,255,0.02)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] flex items-center gap-2">
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.02)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-[var(--accent-primary)] shrink-0" />
                 <span>
                   High app selection rates demonstrate optimal toolbox coverage and reduced setup time.
@@ -409,7 +409,7 @@ export default function AdminExtractionAnalytics() {
                 <button
                   key={preset.secs}
                   onClick={() => setSavedSeconds(preset.secs)}
-                  className={`px-3 py-1 text-xs font-medium rounded-[var(--radius-sm)] border transition-all cursor-pointer ${
+                  className={`px-3 py-1 text-xs font-medium rounded-[var(--radius-sm)] border transition cursor-pointer ${
                     savedSeconds === preset.secs
                       ? 'btn-primary py-1'
                       : 'badge-neutral hover:border-[var(--border-strong)]'
@@ -444,14 +444,14 @@ export default function AdminExtractionAnalytics() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="rgba(255,255,255,0.06)"
+                  stroke="rgba(var(--ov),0.06)"
                 />
                 <XAxis
                   dataKey="username"
                   stroke="var(--text-tertiary)"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  axisLine={{ stroke: 'rgba(var(--ov),0.1)' }}
                   interval={0}
                   tick={{ fill: 'var(--text-secondary)', fontWeight: 500 }}
                 />
@@ -460,7 +460,7 @@ export default function AdminExtractionAnalytics() {
                   stroke="var(--text-tertiary)"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  axisLine={{ stroke: 'rgba(var(--ov),0.1)' }}
                   tick={{ fill: 'var(--text-secondary)' }}
                 />
                 <Tooltip content={<CustomTooltip />} />

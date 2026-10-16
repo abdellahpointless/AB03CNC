@@ -44,6 +44,56 @@
   --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.45);
   --shadow-card:  0 4px 20px rgba(0, 0, 0, 0.35);
   --glow-button: 0 6px 18px var(--accent-glow);
+
+  /* RGB triplets used as rgba(var(--ov), a) so tints flip with the colour mode. */
+  --ov: 255, 255, 255;          /* overlay ink: white tints on dark */
+  --surface: 15, 20, 30;        /* translucent surface base */
+  --surface-deep: 10, 14, 22;
+
+  /* Motion vocabulary (shared by CSS and the Motion components). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 140ms;
+  --dur-fast: 160ms;
+  --dur-base: 220ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Light colour mode (html.light). Same layout and components, light tokens.
+   --------------------------------------------------------------------------- */
+html.light {
+  color-scheme: light;
+  --bg-page:        #eef1f6;
+  --bg-page-2:      #e4e9f1;
+  --bg-panel:       #ffffff;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f6f8fb;
+  --bg-input:       #f3f5f9;
+  --border-subtle:  rgba(15, 23, 42, 0.09);
+  --border-strong:  rgba(15, 23, 42, 0.18);
+
+  --text-primary:   #0f172a;
+  --text-secondary: #475467;
+  --text-tertiary:  #667085;
+
+  --blue-500:  #2f62d6;
+  --blue-600:  #2552bd;
+  --blue-glow: rgba(47, 98, 214, 0.25);
+  --green-500: #15803d;
+  --green-600: #116a32;
+  --green-glow: rgba(21, 128, 61, 0.2);
+  --orange-500: #c2620f;
+  --orange-600: #a4520c;
+  --orange-glow: rgba(194, 98, 15, 0.2);
+  --rose-500:  #e11d48;
+
+  --shadow-panel: 0 8px 30px rgba(15, 23, 42, 0.08);
+  --shadow-card:  0 2px 12px rgba(15, 23, 42, 0.06);
+
+  --ov: 15, 23, 42;
+  --surface: 255, 255, 255;
+  --surface-deep: 248, 250, 252;
 }
 
 /* Global Aurora Background */
@@ -109,11 +159,13 @@ body {
   height: 100%;
   background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.12), transparent);
   pointer-events: none;
-  transition: transform 600ms ease;
+  transition: transform 600ms var(--ease-out);
   z-index: 1;
 }
-.glass-interactive:hover::before {
-  transform: translateX(200%);
+@media (hover: hover) and (pointer: fine) {
+  .glass-interactive:hover::before {
+    transform: translateX(200%);
+  }
 }
 
 /* Modal Backdrops & Overlays */
@@ -157,7 +209,17 @@ body {
 /* Section 5: Buttons with Premium Glassy / Glossy Tactile Finish */
 button {
   position: relative;
-  transition: box-shadow 150ms ease, filter 150ms ease, background 150ms ease, border-color 150ms ease, transform 100ms ease;
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-press) var(--ease-out);
+}
+/* Press feedback on every button: respond on pointer-down, not on release. */
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 /* Glassy top-half reflection highlight on all buttons */
@@ -241,7 +303,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-primary:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
   box-shadow: 
     0 2px 8px var(--blue-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -281,7 +343,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-success:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
   box-shadow: 
     0 2px 8px var(--green-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -321,7 +383,7 @@ button > * {
     inset 0 -1px 1px rgba(0, 0, 0, 0.28);
 }
 .btn-warning:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
   box-shadow: 
     0 2px 8px var(--orange-glow),
     inset 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -364,7 +426,7 @@ button > * {
     inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
 }
 .btn-secondary:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .btn-secondary:disabled {
@@ -395,7 +457,7 @@ button > * {
   filter: brightness(1.08);
 }
 .btn-danger:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn-danger:disabled {
   opacity: 0.45;
@@ -434,7 +496,14 @@ button > * {
   box-shadow: 
     0 4px 12px rgba(0, 0, 0, 0.35),
     inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
-  transform: translateY(-1px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+.btn-icon:active:not(:disabled) {
+  transform: scale(0.94);
 }
 .btn-icon-danger:hover {
   background: linear-gradient(180deg, rgba(255, 102, 121, 0.25) 0%, rgba(255, 102, 121, 0.12) 100%);
@@ -452,7 +521,7 @@ button > * {
   padding: 20px;
   position: relative;
   overflow: hidden;
-  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+  transition: box-shadow var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
 }
 /* Cards used to lift 3px on hover. On the big editor panes that made the text jump while
    selecting or typing, so the hover is now a calm border highlight only. */
@@ -536,7 +605,7 @@ button > * {
   font-size: 14px;
   padding: 8px 14px;
   outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 .aurora-input:focus {
   border-color: var(--accent-primary);
@@ -588,7 +657,7 @@ button > * {
   bottom: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
   transform: translateX(-100%);
-  animation: shimmer 1.4s infinite;
+  animation: shimmer 1.4s var(--ease-in-out) infinite;
 }
 @keyframes shimmer {
   100% {
@@ -598,31 +667,63 @@ button > * {
 
 /* Section 14: Dissolve through glass motion */
 @keyframes viewEnter {
-  0% {
+  from {
     opacity: 0;
-    filter: blur(6px);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
+    transform: translateY(4px);
   }
 }
 
 .view-enter {
-  animation: viewEnter 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: viewEnter var(--dur-base) var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Gentler, not zero: keep colour/opacity fades, drop movement. */
   .view-enter {
-    animation: none;
-    opacity: 1;
-    filter: none;
+    animation-name: fadeOnly;
   }
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  button:active:not(:disabled),
+  .btn-primary:active:not(:disabled),
+  .btn-success:active:not(:disabled),
+  .btn-warning:active:not(:disabled),
+  .btn-secondary:active:not(:disabled),
+  .btn-danger:active:not(:disabled),
+  .btn-icon:active:not(:disabled),
+  .btn-icon:hover:not(:disabled) {
+    transform: none;
+  }
+  .glass-interactive::before,
+  .skeleton-shimmer::after {
+    display: none;
+  }
+  .animate-in {
+    animation-name: fadeOnly !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }
+@keyframes fadeOnly {
+  from { opacity: 0; }
+}
+
+/* Enter animations used by the components (animate-in fade-in zoom-in-95 slide-in-from-top-2 ...).
+   Durations come from Tailwind's duration-* utilities (--tw-duration). */
+@keyframes enter {
+  from {
+    opacity: var(--enter-opacity, 1);
+    transform: translate3d(0, var(--enter-y, 0), 0) scale(var(--enter-scale, 1));
+  }
+}
+.animate-in {
+  animation: enter var(--tw-duration, var(--dur-base)) var(--ease-out) both;
+}
+.fade-in { --enter-opacity: 0; }
+.zoom-in-95 { --enter-scale: 0.95; }
+.zoom-in-97 { --enter-scale: 0.97; }
+.slide-in-from-top-2 { --enter-y: -8px; }
+.slide-in-from-bottom-2 { --enter-y: 8px; }
 
 /* Custom Scrollbar for Aurora Dark */
 ::-webkit-scrollbar {
@@ -638,4 +739,94 @@ button > * {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.22);
+}
+
+
+/* ---------------------------------------------------------------------------
+   Light mode component overrides (dark mode is untouched above).
+   --------------------------------------------------------------------------- */
+html.light body {
+  background:
+    radial-gradient(ellipse 90% 40% at 50% -5%, rgba(47, 98, 214, 0.07), transparent 60%),
+    radial-gradient(circle 500px at 90% 15%, rgba(21, 128, 61, 0.04), transparent 60%),
+    linear-gradient(150deg, var(--bg-page) 0%, var(--bg-page-2) 100%);
+}
+html.light ::selection { background: rgba(47, 98, 214, 0.2); }
+
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+html.light .glass-panel::before,
+html.light .glass-modal::before {
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 35%);
+}
+html.light .glass-modal {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+html.light .modal-backdrop { background: rgba(15, 23, 42, 0.28); }
+
+html.light .btn-secondary {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f4f8 100%);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-bottom-color: rgba(15, 23, 42, 0.18);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+html.light .btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #e9edf3 100%);
+  border-color: rgba(15, 23, 42, 0.18);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+html.light .btn-icon {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f4f8 100%);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+html.light .btn-icon:hover {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.2);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+}
+html.light .btn-icon-danger:hover {
+  background: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.3);
+}
+
+html.light .aurora-card {
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-card);
+}
+html.light .aurora-card:hover { border-color: rgba(15, 23, 42, 0.14); }
+html.light .aurora-card-static:hover { border-color: rgba(15, 23, 42, 0.08); }
+
+html.light .badge-neutral { background: rgba(15, 23, 42, 0.05); }
+html.light .badge-positive { background: rgba(21, 128, 61, 0.1); border-color: rgba(21, 128, 61, 0.25); }
+html.light .badge-danger { background: rgba(225, 29, 72, 0.08); border-color: rgba(225, 29, 72, 0.25); }
+html.light .badge-warning { background: rgba(194, 98, 15, 0.1); border-color: rgba(194, 98, 15, 0.25); }
+
+html.light .aurora-input {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+html.light .aurora-input:focus { box-shadow: 0 0 0 3px rgba(47, 98, 214, 0.18); }
+
+html.light .skeleton-shimmer { background: rgba(15, 23, 42, 0.05); }
+html.light .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+html.light ::-webkit-scrollbar-track { background: transparent; }
+html.light ::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.18); }
+html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); }
+
+/* Switching colour mode: a short cross-fade instead of an abrupt brightness jump. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+  animation-timing-function: var(--ease-in-out);
 }

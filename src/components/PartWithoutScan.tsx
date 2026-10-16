@@ -330,9 +330,9 @@ export default function PartWithoutScan() {
                       type="button"
                       onClick={() => setKind('PRODUCED')}
                       disabled={isSubmitting}
-                      className={`py-2 px-2.5 rounded-[var(--radius-md)] text-xs font-semibold border transition-all text-center cursor-pointer ${
+                      className={`py-2 px-2.5 rounded-[var(--radius-md)] text-xs font-semibold border transition text-center cursor-pointer ${
                         kind === 'PRODUCED'
-                          ? 'bg-[var(--blue-500)]/20 border-[var(--blue-500)] text-white shadow-xs'
+                          ? 'bg-[var(--blue-500)]/20 border-[var(--blue-500)] text-[var(--text-primary)] shadow-xs'
                           : 'bg-[var(--bg-input)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
@@ -344,9 +344,9 @@ export default function PartWithoutScan() {
                       type="button"
                       onClick={() => setKind('MODIFICATION')}
                       disabled={isSubmitting}
-                      className={`py-2 px-2.5 rounded-[var(--radius-md)] text-xs font-semibold border transition-all text-center cursor-pointer ${
+                      className={`py-2 px-2.5 rounded-[var(--radius-md)] text-xs font-semibold border transition text-center cursor-pointer ${
                         kind === 'MODIFICATION'
-                          ? 'bg-[var(--orange-500)]/20 border-[var(--orange-500)] text-white shadow-xs'
+                          ? 'bg-[var(--orange-500)]/20 border-[var(--orange-500)] text-[var(--text-primary)] shadow-xs'
                           : 'bg-[var(--bg-input)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
@@ -434,7 +434,7 @@ export default function PartWithoutScan() {
             </div>
           </div>
 
-          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(255,255,255,0.03)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed mt-4">
+          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed mt-4">
             Counter automatically resets to 0 at the start of each calendar month. Previous months remain archived below.
           </div>
         </div>
@@ -476,13 +476,13 @@ export default function PartWithoutScan() {
             return (
               <div
                 key={row.month_key}
-                className="border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-input)] overflow-hidden transition-all"
+                className="border border-[var(--border-subtle)] rounded-[var(--radius-md)] bg-[var(--bg-input)] overflow-hidden transition"
               >
                 {/* Accordion Row Header */}
                 <button
                   type="button"
                   onClick={() => handleToggleMonth(row.month_key)}
-                  className="w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(255,255,255,0.02)] transition-colors cursor-pointer"
+                  className="w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(var(--ov),0.02)] transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
@@ -536,7 +536,7 @@ export default function PartWithoutScan() {
                               {monthData.entries.map((entry: any) => {
                                 const lineVal = Number(entry.qty || 0) * Number(entry.unit_value || 0);
                                 return (
-                                  <tr key={entry.id} className="hover:bg-[rgba(255,255,255,0.02)]">
+                                  <tr key={entry.id} className="hover:bg-[rgba(var(--ov),0.02)]">
                                     <td className="py-2.5 text-[var(--text-secondary)]">
                                       {new Date(entry.created_at).toLocaleString()}
                                     </td>

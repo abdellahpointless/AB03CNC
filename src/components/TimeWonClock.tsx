@@ -152,7 +152,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
                 }}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                className="w-72 sm:w-80 p-4 glass-modal shadow-2xl pointer-events-auto rounded-[var(--radius-lg)] border border-[rgba(255,255,255,0.18)] will-change-transform transform-gpu"
+                className="w-72 sm:w-80 p-4 glass-modal shadow-2xl pointer-events-auto rounded-[var(--radius-lg)] border border-[rgba(var(--ov),0.18)] will-change-transform transform-gpu"
               >
                 <div className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-1 text-xs">
                   <Clock size={14} className="text-[var(--green-500)]" />

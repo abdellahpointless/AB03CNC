@@ -281,7 +281,7 @@ export default function PartReview() {
                   const isBusy = actionInProgressId === entry.id || isBulkApproving;
 
                   return (
-                    <tr key={entry.id} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                    <tr key={entry.id} className="hover:bg-[rgba(var(--ov),0.02)] transition-colors">
                       {/* Operator */}
                       <td className="py-3 font-sans">
                         <span className="flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">

@@ -16,8 +16,10 @@ import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, KeyRound, AlertTriangle, X } from 'lucide-react';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, KeyRound, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTheme, type ThemeMode } from './hooks/useTheme';
+import { EASE_OUT, SPRING_INDICATOR } from './lib/motion';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
@@ -89,7 +91,9 @@ function Workspace() {
     <div className="min-h-screen flex flex-col relative pb-8">
       {/* Automatic 10-minute folder backup on the admin PC */}
       <BackupScheduler />
-      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
+      <AnimatePresence>
+        {showPasswordModal && <ChangePasswordModal key="password" onClose={() => setShowPasswordModal(false)} />}
+      </AnimatePresence>
 
       {weakPassword && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
@@ -164,7 +168,7 @@ function Workspace() {
             />
 
             {/* User / Role Chip: circular avatar + stacked two-line name/role inside bordered pill */}
-            <div className="flex items-center gap-2 py-1 px-2.5 sm:px-3 rounded-full border border-[var(--border-subtle)] bg-[rgba(255,255,255,0.04)] shrink-0">
+            <div className="flex items-center gap-2 py-1 px-2.5 sm:px-3 rounded-full border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.04)] shrink-0">
               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-[var(--blue-500)] to-[var(--blue-600)] flex items-center justify-center text-white font-bold text-xs uppercase shadow-xs">
                 {user.username.slice(0, 2)}
               </div>
@@ -186,6 +190,8 @@ function Workspace() {
             >
               <KeyRound size={15} />
             </button>
+
+            <ThemeToggle />
 
             <button 
               onClick={handleGlobalRefresh} 
@@ -215,15 +221,13 @@ function Workspace() {
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'DATABASE'
                 ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <Database size={15} />
             <span>Tool Inventory</span>
             {activeTab === 'DATABASE' && (
-              <span 
-                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none transition-all duration-200"
-              />
+              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
             )}
           </button>
 
@@ -233,15 +237,13 @@ function Workspace() {
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'REMAP'
                 ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <Wrench size={15} />
             <span>Tool Remapper</span>
             {activeTab === 'REMAP' && (
-              <span 
-                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none transition-all duration-200"
-              />
+              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
             )}
           </button>
 
@@ -252,15 +254,13 @@ function Workspace() {
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'HISTORY'
                   ? 'text-[var(--orange-500)] bg-[rgba(224,138,77,0.12)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <History size={15} />
               <span>History</span>
               {activeTab === 'HISTORY' && (
-                <span 
-                  className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--orange-500)] shadow-[0_0_10px_var(--orange-glow)] rounded-full pointer-events-none transition-all duration-200"
-                />
+                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--orange-500)] shadow-[0_0_10px_var(--orange-glow)] rounded-full pointer-events-none" />
               )}
             </button>
           )}
@@ -272,15 +272,13 @@ function Workspace() {
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'RECENT_CODES'
                   ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <History size={15} />
               <span>Recent Codes</span>
               {activeTab === 'RECENT_CODES' && (
-                <span 
-                  className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)] rounded-full pointer-events-none transition-all duration-200"
-                />
+                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)] rounded-full pointer-events-none" />
               )}
             </button>
           )}
@@ -291,15 +289,13 @@ function Workspace() {
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'PART_ENTRY'
                 ? 'text-[var(--accent-primary)] bg-[rgba(59,111,212,0.12)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
             }`}
           >
             <PackagePlus size={15} />
             <span>Part without scan</span>
             {activeTab === 'PART_ENTRY' && (
-              <span 
-                className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none transition-all duration-200"
-              />
+              <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
             )}
           </button>
 
@@ -310,15 +306,13 @@ function Workspace() {
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'PART_REVIEW'
                   ? 'text-[var(--green-500)] bg-[rgba(22,163,74,0.12)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <ClipboardCheck size={15} />
               <span>Part review</span>
               {activeTab === 'PART_REVIEW' && (
-                <span 
-                  className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none transition-all duration-200"
-                />
+                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
               )}
             </button>
           )}
@@ -330,15 +324,13 @@ function Workspace() {
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'ADMIN'
                   ? 'text-[var(--green-500)] bg-[rgba(22,163,74,0.12)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(255,255,255,0.04)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <Shield size={15} />
               <span>Admin: Analytics, Users &amp; Data</span>
               {activeTab === 'ADMIN' && (
-                <span 
-                  className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none transition-all duration-200"
-                />
+                <motion.span layoutId="tab-underline" transition={SPRING_INDICATOR} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
               )}
             </button>
           )}
@@ -347,16 +339,13 @@ function Workspace() {
 
       {/* Main Content Area with Smooth AnimatePresence Dissolve Transition */}
       <main className="flex-1 px-4 sm:px-6 pt-3 flex flex-col">
-        <AnimatePresence mode="wait" initial={false}>
+        {/* Tabs are switched many times a day: the new view appears at once and only fades in
+            briefly (no exit wait, which used to add ~180 ms before every tab change). */}
           <motion.div 
             key={activeTab}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ 
-              duration: 0.18, 
-              ease: "easeOut" 
-            }}
+            transition={{ duration: 0.16, ease: EASE_OUT }}
             className="flex-1 flex flex-col"
           >
             {activeTab === 'DATABASE' && (
@@ -415,8 +404,37 @@ function Workspace() {
               <PartReview />
             )}
           </motion.div>
-        </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+const THEME_ORDER: ThemeMode[] = ['dark', 'light', 'system'];
+const THEME_LABEL: Record<ThemeMode, string> = { dark: 'Dark mode', light: 'Light mode', system: 'Follow Windows setting' };
+
+function ThemeToggle() {
+  const { mode, setMode } = useTheme();
+  const next = THEME_ORDER[(THEME_ORDER.indexOf(mode) + 1) % THEME_ORDER.length];
+  const Icon = mode === 'light' ? Sun : mode === 'dark' ? Moon : Monitor;
+  return (
+    <button
+      onClick={() => setMode(next)}
+      className="btn-icon"
+      title={`${THEME_LABEL[mode]} (click for ${THEME_LABEL[next].toLowerCase()})`}
+      aria-label={`Colour mode: ${THEME_LABEL[mode]}`}
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={mode}
+          className="flex"
+          initial={{ opacity: 0, rotate: -45, scale: 0.8 }}
+          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+          exit={{ opacity: 0, rotate: 45, scale: 0.8 }}
+          transition={{ duration: 0.2, ease: EASE_OUT }}
+        >
+          <Icon size={15} />
+        </motion.span>
+      </AnimatePresence>
+    </button>
   );
 }

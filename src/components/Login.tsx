@@ -36,7 +36,7 @@ export default function Login() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.96 }} 
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className="max-w-md w-full glass-panel relative z-10 p-8 sm:p-10"
       >
         <div className="flex flex-col items-center mb-8">

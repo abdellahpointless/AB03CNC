@@ -67,7 +67,7 @@ describe('code generation', () => {
     const { code } = remap(src, haas2, 'HAAS-2');
     expect(code).toContain('N14 T7 (PRESTAGE)\n');
     expect(code).toMatch(/N15 T27 M6 \(AUTO-REMAP: T27 fraise\)/);
-    expect(code).toContain('N17 G43 H27 Z50. (AI-MOD: OFFSET H27)');
+    expect(code).toContain('N18 G43 H27 Z50. (AI-MOD: OFFSET H27)'); // shifted by the inserted N12 G53 Y0
   });
 
   it('adds FANUC offsets without damaging comments', () => {
@@ -83,6 +83,59 @@ describe('code generation', () => {
     const g52 = lines.findIndex((l) => l.includes('G52'));
     expect(lines[g52 - 1]).toMatch(/G53 Y0/);
     expect(lines.filter((l) => /G53 Y0/.test(l)).length).toBe(1);
+  });
+
+  // The program from the shop-floor screenshot (tool 13, part turned 180 degrees).
+  const SHOT = [
+    'N6179 G00 Z50.',
+    'N6180 (TOOLPATH PLAN-MK-93-SCHR)',
+    'N6181 T13 M6',
+    'N6182 (MESSERKOPF D93 / MK_93.00_030_000_KS)',
+    'N6183 (DIAMETER 93.00 MM/LENGTH 30.00 MM)',
+    'N6184 G53 Y0',
+    'N6185 M0 (TEIL 180 GRAD UM X DREHEN/)',
+    'N6186 M0 (36 MM UNTERLAGE/IN 10.5 MM)',
+    'N6187 G52 X-50.000 Y50.000 Z-10.500',
+    'N6188 M01 (CHECK TOOL)',
+    'N6189 G00 G43 H13 Z58. M08',
+    'N6190 G01 Z-5. F500',
+    'N6191 M30',
+  ];
+  // Same program as the CAM writes it when G53 Y0 is missing (numbers consecutive, no gap).
+  const SHOT_MISSING = SHOT.filter((l) => !/G53 Y0/.test(l)).map((l, i) => l.replace(/^N\d+/, `N${6179 + i}`));
+
+  it('does not add a second G53 Y0 when one already exists above the G52', () => {
+    const res = applyG53BeforeG52(SHOT);
+    expect(res.addedCount).toBe(0);
+    expect(res.lines).toEqual(SHOT);
+    const { code } = remap(SHOT.join('\n'), haas2, 'HAAS-2');
+    expect(code.split('\n').filter((l) => /G53 Y0/.test(l))).toEqual(['N6184 G53 Y0']);
+  });
+
+  it('adds a missing G53 Y0 after the tool comments, before the M0 stops, with its own N number', () => {
+    const res = applyG53BeforeG52(SHOT_MISSING);
+    expect(res.addedCount).toBe(1);
+    expect(res.lines).toEqual(SHOT); // identical to the correct program, numbering included
+    const { code } = remap(SHOT_MISSING.join('\n'), haas2, 'HAAS-2');
+    const lines = code.split('\n');
+    expect(lines.filter((l) => /G53 Y0/.test(l))).toEqual(['N6184 G53 Y0']);
+    expect(lines[lines.indexOf('N6184 G53 Y0') + 1]).toMatch(/^N6185 M0 \(TEIL 180/);
+    const ns = lines.map((l) => l.match(/^N(\d+)/)?.[1]).filter(Boolean);
+    expect(new Set(ns).size).toBe(ns.length); // no duplicate N numbers
+  });
+
+  it('keeps N numbers when there is a free number, and does not renumber programs that jump to labels', () => {
+    const spaced = applyG53BeforeG52(['N10 T1 M6', 'N20 (TOOL)', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']).lines;
+    expect(spaced).toEqual(['N10 T1 M6', 'N20 (TOOL)', 'N21 G53 Y0', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']);
+    const labels = applyG53BeforeG52(['N1 T1 M6', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']).lines;
+    expect(labels).toEqual(['N1 T1 M6', 'G53 Y0', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']);
+  });
+
+  it('only scans up to the tool change: an earlier tool\'s G53 Y0 does not count', () => {
+    const src = ['N1 T1 M6', 'N2 G53 Y0', 'N3 G0 X0 Y0', 'N4 T2 M6', 'N5 (FRAISE)', 'N6 M0', 'N7 G52 X5', 'N8 G52 X0 Y0'];
+    const res = applyG53BeforeG52(src);
+    expect(res.addedCount).toBe(1); // one for both G52s of tool 2
+    expect(res.lines).toEqual(['N1 T1 M6', 'N2 G53 Y0', 'N3 G0 X0 Y0', 'N4 T2 M6', 'N5 (FRAISE)', 'N6 G53 Y0', 'N7 M0', 'N8 G52 X5', 'N9 G52 X0 Y0']);
   });
 
   it('applyG53BeforeG52 is idempotent', () => {

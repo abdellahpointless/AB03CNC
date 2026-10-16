@@ -634,35 +634,127 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// G53 Y0: bring the table to the operator
+// ---------------------------------------------------------------------------------------------
+//
+// "G53 Y0" moves the table to the machine Y0 position (close to the door). It belongs right
+// after the tool change, under the tool's comment block and BEFORE the operator stops (M0) and
+// the work-offset shift (G52) that tells the operator to turn the part, e.g.:
+//
+//   N6181 T13 M6
+//   N6182 (MESSERKOPF D93 / MK_93.00_030_000_KS)
+//   N6183 (DIAMETER 93.00 MM/LENGTH 30.00 MM)
+//   N6184 G53 Y0                                  <-- here
+//   N6185 M0 (TEIL 180 GRAD UM X DREHEN/)
+//   N6186 M0 (36 MM UNTERLAGE/IN 10.5 MM)
+//   N6187 G52 X-50.000 Y50.000 Z-10.500
+//
+// When a line is inserted it gets the next N number, and the following N numbers are shifted
+// by one where they would otherwise collide, so every N stays unique and in order.
+
+const REMOVED_LINE = '__REMOVE_ME__';
+const G53_Y0_RE = /(?<![A-Z_])G53(?![0-9])\s*Y\s*0(?:\.0*)?(?![0-9.])/i;
+const G52_RE = /(?<![A-Z_])G52(?![0-9])/i;
+const N_RE = /^(\s*)N(\d+)/i;
+
+interface Entry { text: string; inserted: boolean }
+
+const isRemoved = (l: string) => l === REMOVED_LINE;
+const hasG53Y0 = (l: string) => !isRemoved(l) && G53_Y0_RE.test(codeOnly(l));
+const hasG52 = (l: string) => !isRemoved(l) && G52_RE.test(codeOnly(l));
+/** The code of a line without comments and without its N number. */
+const bareCode = (l: string) => codeOnly(l).replace(N_RE, '').trim();
+const isCommentOrBlank = (l: string) => isRemoved(l) || bareCode(l) === '';
+/** M0 / M00 / M01 operator stops (alone on their line). */
+const isOperatorStop = (l: string) => /^(?:M0*[01](?![0-9])\s*)+$/i.test(bareCode(l));
+/** True when the line moves an axis (G52/G53/G10/G92 lines only set coordinates or are G53 itself). */
+const isMotionLine = (l: string) => {
+  if (isRemoved(l)) return false;
+  const code = bareCode(l);
+  if (!/(?<![A-Z])[XYZABC]\s*[-+.#\d]/i.test(code)) return false;
+  return !/(?<![A-Z_])G(?:52|53|10|92)(?![0-9])/i.test(code);
+};
+
+/** Index of the first line after the tool change line and the comment block that follows it. */
+function afterToolCommentBlock(lines: string[], m6Idx: number): number {
+  let k = m6Idx + 1;
+  while (k < lines.length && isCommentOrBlank(lines[k])) k++;
+  // Don't place it behind trailing removed lines; put it right after the last real comment.
+  while (k - 1 > m6Idx && isRemoved(lines[k - 1])) k--;
+  return k;
+}
+
 /**
- * For every kept tool change (T.. M6), inserts "G53 Y0" so the table comes close to the operator.
- * Position: right AFTER the tool-name comment line that directly follows the M6 line, e.g.
- *   N6181 T13 M6 (...)
- *   N6182 (MESSERKOPF D93 / MK_93.00_030_000_KS)
- *   G53 Y0                      <-- inserted here
- *   N6183 (DIAMETER 93.00 MM/LENGTH 30.00 MM)
- * If the line after M6 is not a pure comment, it is inserted directly after the M6 line.
- * It is skipped when a G53 Y0 is already on the M6 line or directly adjacent (idempotent).
- * Lines are only inserted (never removed), and original line indexes are not shifted while scanning.
+ * Writes the final lines. Inserted lines get "N<previous + 1>" (when the program uses N numbers)
+ * and following N numbers are shifted while they would collide. When the program jumps to N
+ * labels (M97 / M99 P / GOTO), existing numbers are never changed.
+ */
+function renumberWithInsertions(entries: Entry[]): string[] {
+  const real = entries.filter(e => !e.inserted && !isRemoved(e.text)).map(e => e.text);
+  const usesN = real.some(l => N_RE.test(l));
+  const jumpsToLabels = real.some(l => /(?<![A-Z])(?:M97|M99\s*P|GOTO)/i.test(codeOnly(l)));
+  const usedNumbers = new Set(real.map(l => l.match(N_RE)?.[2]).filter(Boolean).map(Number));
+
+  const format = (orig: string, value: number) => orig.startsWith('0') ? String(value).padStart(orig.length, '0') : String(value);
+
+  const out: string[] = [];
+  let lastOut: number | null = null; // last N written
+  let lastIn: number | null = null;  // last N that was in the original program
+  let lastDigits = '';
+
+  for (const e of entries) {
+    if (isRemoved(e.text)) { out.push(e.text); continue; }
+    if (e.inserted) {
+      let text = e.text;
+      if (usesN) {
+        const candidate = (lastOut ?? 0) + 1;
+        if (!jumpsToLabels || !usedNumbers.has(candidate)) {
+          text = `N${format(lastDigits, candidate)} ${e.text}`;
+          lastOut = candidate;
+          usedNumbers.add(candidate);
+        }
+      }
+      out.push(text);
+      continue;
+    }
+    const m = e.text.match(N_RE);
+    if (!m) { out.push(e.text); continue; }
+    const value = parseInt(m[2], 10);
+    let emitted = value;
+    if (!jumpsToLabels && lastOut !== null && value <= lastOut && (lastIn === null || value > lastIn)) {
+      emitted = lastOut + 1; // was in order, but now collides with an inserted number
+    }
+    out.push(emitted === value ? e.text : e.text.replace(N_RE, `$1N${format(m[2], emitted)}`));
+    lastIn = value;
+    lastOut = emitted;
+    lastDigits = m[2];
+  }
+  return out;
+}
+
+function insertBefore(lines: string[], positions: number[]): string[] {
+  const at = new Map<number, number>();
+  for (const p of positions) at.set(p, (at.get(p) || 0) + 1);
+  const entries: Entry[] = [];
+  for (let i = 0; i <= lines.length; i++) {
+    for (let c = at.get(i) || 0; c > 0; c--) entries.push({ text: 'G53 Y0', inserted: true });
+    if (i < lines.length) entries.push({ text: lines[i], inserted: false });
+  }
+  return renumberWithInsertions(entries);
+}
+
+/**
+ * For every kept tool change (T.. M6), makes sure "G53 Y0" is present between the tool change
+ * and the first axis move. If it's missing, it is inserted right after the tool's comment block
+ * (all comment lines that follow the M6 line), i.e. before any M0 operator stop.
  */
 export function insertG53Y0AfterToolChange(
   lines: string[],
   blocks: ToolChangeBlock[],
   resolutions: Record<string, Tool>
 ): string[] {
-  const isG53Y0 = /(?<![A-Z_])G53(?![0-9])\s*Y\s*0(?:\.0*)?(?![0-9]|\.)/i;
-  const isPureComment = (l: string) => /^\s*(N\d+\s*)?\(.*\)\s*$/i.test(l);
-  const isRemoved = (l: string) => l === '__REMOVE_ME__';
-  const getN = (l: string | undefined): number | null => {
-    const m = l?.match(/^\s*N(\d+)/i);
-    return m ? parseInt(m[1], 10) : null;
-  };
-  const nextKept = (from: number): number => {
-    for (let k = from; k < lines.length; k++) if (!isRemoved(lines[k])) return k;
-    return -1;
-  };
-
-  const insertions = new Map<number, string>(); // anchor line index -> text inserted after it
+  const positions: number[] = [];
 
   for (const block of blocks) {
     const skipped = block.skipOperation ||
@@ -673,126 +765,59 @@ export function insertG53Y0AfterToolChange(
     const m6Idx = block.lineIndex;
     if (isRemoved(lines[m6Idx])) continue;
 
-    // The M6 line already carries G53 Y0
-    if (isG53Y0.test(lines[m6Idx].split('(')[0])) continue;
-
-    // Anchor = tool-name comment line directly after M6 (if any), otherwise the M6 line
-    let anchor = m6Idx;
-    const nIdx = nextKept(m6Idx + 1);
-    if (nIdx !== -1 && isPureComment(lines[nIdx]) && !isG53Y0.test(lines[nIdx].split('(')[0])) {
-      anchor = nIdx;
+    // Already present between the tool change and the first move (or the next tool change)?
+    let present = false;
+    for (let k = m6Idx; k < lines.length; k++) {
+      if (k > m6Idx && isToolChangeLine(lines[k])) break;
+      if (hasG53Y0(lines[k])) { present = true; break; }
+      if (isMotionLine(lines[k])) break;
     }
+    if (present) continue;
 
-    // Already there (the line right after the anchor is a G53 Y0)
-    const afterIdx = nextKept(anchor + 1);
-    if (afterIdx !== -1 && isG53Y0.test(lines[afterIdx].split('(')[0])) continue;
-
-    // N-number: use a free number between anchor and next line if there is a gap, else no N.
-    const a = getN(lines[anchor]);
-    const b = afterIdx !== -1 ? getN(lines[afterIdx]) : null;
-    let text = 'G53 Y0';
-    if (a !== null && b !== null && b - a > 1) text = `N${a + Math.floor((b - a) / 2)} G53 Y0`;
-    else if (a !== null && b === null) text = `N${a + 1} G53 Y0`;
-
-    insertions.set(anchor, text);
+    positions.push(afterToolCommentBlock(lines, m6Idx));
   }
 
-  if (insertions.size === 0) return lines;
-
-  const out: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    out.push(lines[i]);
-    const ins = insertions.get(i);
-    if (ins) out.push(ins);
-  }
-  return out;
+  return positions.length ? insertBefore(lines, positions) : lines;
 }
 
 /**
- * Ensures that G53 Y0 is ALWAYS written before any occurrence of G52 on all machines.
- * If G52 is detected in the program, it verifies that each G52 command has a G53 Y0
- * safely preceding it, inserting G53 Y0 (with appropriate N-block numbering if used)
- * where missing, while avoiding redundant duplicate insertions.
+ * Makes sure a "G53 Y0" comes before every G52. For each G52 the program is scanned upwards to
+ * the tool change it belongs to (or to the start of the program). If no G53 Y0 is found on the
+ * way, one is added:
+ *  - after the tool change and its comment block (before the M0 stops), or
+ *  - when there is no tool change above, just before the M0 stops / comments that precede the G52.
+ * Running it again changes nothing.
  */
 export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCount: number } {
-  const isG52Regex = /(?<![A-Z_])G52(?![0-9])/i;
-  const isG53Y0Regex = /(?<![A-Z_])G53(?![0-9])\s*Y\s*0(?:\.0*)?(?![0-9]|\.)/i;
+  if (!lines.some(hasG52)) return { lines, addedCount: 0 };
 
-  const hasG52 = lines.some(l => {
-    if (l === '__REMOVE_ME__') return false;
-    const codePart = l.split('(')[0];
-    return isG52Regex.test(codePart);
-  });
+  const positions: number[] = [];
+  for (let g = 0; g < lines.length; g++) {
+    if (!hasG52(lines[g])) continue;
 
-  if (!hasG52) {
-    return { lines, addedCount: 0 };
-  }
-
-  const result: string[] = [];
-  let addedCount = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line === '__REMOVE_ME__') {
-      result.push(line);
-      continue;
+    let toolChange = -1;
+    let found = false;
+    for (let k = g; k >= 0; k--) {
+      if (hasG53Y0(lines[k])) { found = true; break; }
+      if (k < g && !isRemoved(lines[k]) && isToolChangeLine(lines[k])) { toolChange = k; break; }
     }
+    if (found) continue;
 
-    const codePart = line.split('(')[0];
-    if (isG52Regex.test(codePart)) {
-      // Check if G53 Y0 is already part of this line
-      if (isG53Y0Regex.test(codePart)) {
-        result.push(line);
-        continue;
-      }
-
-      // Check if preceding executable line already has G53 Y0
-      let alreadyHasG53 = false;
-      let lastExecutableIdx = -1;
-
-      for (let k = result.length - 1; k >= 0; k--) {
-        if (result[k] === '__REMOVE_ME__') continue;
-        const prevCode = result[k].split('(')[0].trim();
-        if (!prevCode) continue; // Skip comments and blank lines
-
-        if (isG53Y0Regex.test(prevCode)) {
-          alreadyHasG53 = true;
-        }
-        lastExecutableIdx = k;
-        break; // Only check the immediate preceding executable line
-      }
-
-      if (!alreadyHasG53) {
-        let prevN: number | null = null;
-        if (lastExecutableIdx !== -1) {
-          const m = result[lastExecutableIdx].match(/^N(\d+)/i);
-          if (m) prevN = parseInt(m[1], 10);
-        }
-        const currNMatch = line.match(/^N(\d+)/i);
-        const currN = currNMatch ? parseInt(currNMatch[1], 10) : null;
-
-        let g53Line = 'G53 Y0';
-        if (prevN !== null && currN !== null) {
-          if (prevN < currN) {
-            const midN = prevN + 1 < currN ? Math.floor((prevN + currN) / 2) : prevN + 1;
-            g53Line = `N${midN} G53 Y0`;
-          } else {
-            g53Line = `N${currN} G53 Y0`;
-          }
-        } else if (currN !== null) {
-          g53Line = `N${Math.max(1, currN - 1)} G53 Y0`;
-        } else if (prevN !== null) {
-          g53Line = `N${prevN + 1} G53 Y0`;
-        }
-
-        result.push(g53Line);
-        addedCount++;
+    let pos: number;
+    if (toolChange !== -1) {
+      pos = Math.min(afterToolCommentBlock(lines, toolChange), g);
+    } else {
+      pos = g;
+      while (pos > 0 && (isCommentOrBlank(lines[pos - 1]) || isOperatorStop(lines[pos - 1]))) {
+        const t = lines[pos - 1].trim();
+        if (t === '%' || /^O\d+/i.test(t)) break;
+        pos--;
       }
     }
-
-    result.push(line);
+    // One insertion covers every G52 after it in the same tool section.
+    if (!positions.some(p => p <= g && p >= (toolChange === -1 ? 0 : toolChange))) positions.push(pos);
   }
 
-  return { lines: result, addedCount };
+  if (!positions.length) return { lines, addedCount: 0 };
+  return { lines: insertBefore(lines, positions), addedCount: positions.length };
 }
-

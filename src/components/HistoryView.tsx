@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import { fetchAllHistory, fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadJson, downloadText, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
+import { EXIT_FAST, FADE, SPRING_MODAL } from '../lib/motion';
 
 const PAGE_SIZE = 10;
 
@@ -372,10 +373,10 @@ export default function HistoryView() {
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`min-w-6 h-6 px-1.5 text-[11px] rounded-[var(--radius-sm)] font-mono transition-all cursor-pointer ${
+                          className={`min-w-6 h-6 px-1.5 text-[11px] rounded-[var(--radius-sm)] font-mono transition cursor-pointer ${
                             isCur
                               ? 'bg-[var(--accent-primary)] text-white font-bold shadow-xs'
-                              : 'text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.06)]'
+                              : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'
                           }`}
                           title={`Page ${page} (records ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalRecords)})`}
                         >
@@ -428,12 +429,12 @@ export default function HistoryView() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 key={record.id} 
-                className="aurora-card p-0 flex flex-col overflow-hidden transition-all duration-200"
+                className="aurora-card p-0 flex flex-col overflow-hidden transition duration-200"
               >
                 {/* Pressable Card Header */}
                 <div 
                   onClick={() => toggleExpand(record.id)}
-                  className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(15,20,30,0.5)] hover:bg-[rgba(255,255,255,0.03)] cursor-pointer transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 select-none"
+                  className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.5)] hover:bg-[rgba(var(--ov),0.03)] cursor-pointer transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 select-none"
                   title={isExpanded ? 'Click to collapse record' : 'Click to expand record details'}
                 >
                   <div className="flex items-start gap-3 min-w-0">
@@ -464,7 +465,7 @@ export default function HistoryView() {
                     <span className="badge-neutral text-[10px] py-0.5 px-2 font-mono">
                       {record.changes.length} {record.changes.length === 1 ? 'tool' : 'tools'}
                     </span>
-                    <div className="w-6 h-6 rounded-full bg-[rgba(255,255,255,0.06)] flex items-center justify-center text-[var(--text-secondary)] ml-1">
+                    <div className="w-6 h-6 rounded-full bg-[rgba(var(--ov),0.06)] flex items-center justify-center text-[var(--text-secondary)] ml-1">
                       <ChevronDown 
                         size={14} 
                         className={`transition-transform duration-200 ${isExpanded ? 'rotate-180 text-[var(--accent-primary)]' : ''}`} 
@@ -474,7 +475,7 @@ export default function HistoryView() {
                 </div>
 
                 {/* Timestamp & Actions Bar */}
-                <div className="px-4 py-2 bg-[rgba(255,255,255,0.02)] border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-tertiary)]">
+                <div className="px-4 py-2 bg-[rgba(var(--ov),0.02)] border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-tertiary)]">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="flex items-center gap-1 text-[11px]">
                       <Clock size={12} /> {record.date}
@@ -525,7 +526,7 @@ export default function HistoryView() {
                       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="p-4 space-y-3 bg-[rgba(10,14,22,0.4)]">
+                      <div className="p-4 space-y-3 bg-[rgba(var(--surface-deep),0.4)]">
                         <div className="flex items-center justify-between">
                           <span className="section-label">Tool Modifications</span>
                           <span className="text-[11px] text-[var(--text-tertiary)]">{record.changes.length} tool(s) mapped</span>
@@ -539,7 +540,7 @@ export default function HistoryView() {
                                 <span className="text-[var(--text-tertiary)] font-normal">→</span>
                                 <span className="badge-positive font-mono text-[11px] py-0.5 px-1.5">T{change.chosenT}</span>
                               </div>
-                              <div className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-full)] bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] flex items-center gap-1.5 text-[var(--text-secondary)]">
+                              <div className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-full)] bg-[rgba(var(--ov),0.04)] border border-[var(--border-subtle)] flex items-center gap-1.5 text-[var(--text-secondary)]">
                                 {change.appChose ? (
                                   <><Bot size={11} className="text-[var(--blue-500)]"/> Auto Selection</>
                                 ) : (
@@ -611,10 +612,10 @@ export default function HistoryView() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`text-xs px-2.5 py-1 rounded-full font-mono transition-all cursor-pointer whitespace-nowrap ${
+                    className={`text-xs px-2.5 py-1 rounded-full font-mono transition cursor-pointer whitespace-nowrap ${
                       isCur
                         ? 'btn-primary font-bold shadow-xs'
-                        : 'badge-neutral hover:bg-[rgba(255,255,255,0.08)] text-[var(--text-secondary)]'
+                        : 'badge-neutral hover:bg-[rgba(var(--ov),0.08)] text-[var(--text-secondary)]'
                     }`}
                     title={`Show records ${startNum} to ${endNum}`}
                   >
@@ -640,7 +641,12 @@ export default function HistoryView() {
       {/* Code Inspector Modal */}
       <AnimatePresence>
         {inspectingRecord && (
-          <div 
+          <motion.div 
+            key="inspector"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: EXIT_FAST }}
+            transition={FADE}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -651,9 +657,10 @@ export default function HistoryView() {
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 8, transition: EXIT_FAST }}
+              transition={SPRING_MODAL}
               className="glass-modal w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
@@ -725,7 +732,7 @@ export default function HistoryView() {
                 )}
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

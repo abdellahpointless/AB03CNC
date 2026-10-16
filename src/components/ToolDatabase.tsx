@@ -223,7 +223,7 @@ export default function ToolDatabase({
       {/* Main Database Container */}
       <div className="aurora-card p-0 flex flex-col overflow-hidden">
         {/* Table Top Header */}
-        <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(15,20,30,0.6)] flex justify-between items-center">
+        <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="section-label text-[var(--text-primary)]">
               {selectedMachine} Slots
@@ -322,7 +322,7 @@ export default function ToolDatabase({
                           key={mat} 
                           type="button" 
                           onClick={() => toggleMaterial(mat)}
-                          className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                          className={`px-2.5 py-1 text-xs font-medium rounded-full border transition cursor-pointer ${
                             isSelected 
                               ? 'badge-positive border-[var(--green-500)] text-[var(--green-500)]' 
                               : 'badge-neutral'
@@ -371,7 +371,7 @@ export default function ToolDatabase({
               return (
                 <div 
                   key={tool.id} 
-                  className={`flex flex-col rounded-[var(--radius-md)] border transition-all ${
+                  className={`flex flex-col rounded-[var(--radius-md)] border transition ${
                     isChanged 
                       ? 'border-[var(--orange-500)]/50 bg-[rgba(224,138,77,0.08)]' 
                       : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)]'
@@ -383,8 +383,8 @@ export default function ToolDatabase({
                     className="flex flex-col sm:flex-row items-start sm:items-center p-3.5 sm:p-4 gap-4 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-4 min-w-[200px]">
-                      <div className={`relative flex items-center justify-center p-2 rounded-[var(--radius-sm)] font-bold text-white w-full max-w-[100px] shrink-0 gap-2 ${
-                        isChanged ? 'bg-[var(--orange-500)] shadow-[0_0_8px_var(--orange-glow)]' : 'bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
+                      <div className={`relative flex items-center justify-center p-2 rounded-[var(--radius-sm)] font-bold w-full max-w-[100px] shrink-0 gap-2 ${
+                        isChanged ? 'bg-[var(--orange-500)] text-white shadow-[0_0_8px_var(--orange-glow)]' : 'bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
                       }`}>
                         {tool.pocket !== undefined && (
                           <div className="absolute -top-2 -left-2 w-5 h-5 bg-[var(--rose-500)] rounded-full text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
@@ -518,7 +518,7 @@ export default function ToolDatabase({
                                   key={mat} 
                                   type="button" 
                                   onClick={() => toggleMaterial(mat)}
-                                  className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                                  className={`px-2.5 py-1 text-xs font-medium rounded-full border transition cursor-pointer ${
                                     isSelected 
                                       ? 'badge-positive border-[var(--green-500)] text-[var(--green-500)]' 
                                       : 'badge-neutral'

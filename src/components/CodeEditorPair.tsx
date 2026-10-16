@@ -26,9 +26,13 @@ interface CodeEditorPairProps {
  * following line green.
  */
 function computeChangedLines(sourceLines: string[], outputLines: string[]): boolean[] {
+  // Compare without the N number: a line that was only renumbered (because a G53 Y0 was
+  // inserted above it) is not a real change and should not be highlighted.
+  const key = (l: string) => l.replace(/^\s*N\d+\s*/i, '').trim();
   const available = new Map<string, number>();
-  for (const l of sourceLines) available.set(l, (available.get(l) ?? 0) + 1);
-  return outputLines.map(l => {
+  for (const l of sourceLines) available.set(key(l), (available.get(key(l)) ?? 0) + 1);
+  return outputLines.map(raw => {
+    const l = key(raw);
     const n = available.get(l) ?? 0;
     if (n > 0) {
       available.set(l, n - 1);
@@ -289,7 +293,7 @@ export default function CodeEditorPair({
         {/* Source Code Pane (Aurora Card) */}
         <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px]">
           {/* Pane Header */}
-          <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(15,20,30,0.6)] flex items-center justify-between flex-wrap gap-2">
+          <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
               <span className="section-label text-[var(--text-primary)]">
                 {inputLabel}
@@ -384,7 +388,7 @@ export default function CodeEditorPair({
         {/* Processed Code Pane (Aurora Card) */}
         <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px]">
           {/* Pane Header */}
-          <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(15,20,30,0.6)] flex items-center justify-between flex-wrap gap-2">
+          <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span className="section-label text-[var(--text-primary)]">
                 {outputLabel}
@@ -438,7 +442,7 @@ export default function CodeEditorPair({
             {!outputCode ? (
               <div className="h-full flex items-center justify-center text-center p-6">
                 <div className="max-w-xs space-y-2">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-[rgba(255,255,255,0.04)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-tertiary)]">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-[rgba(var(--ov),0.04)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-tertiary)]">
                     <Sparkles size={20} />
                   </div>
                   <p className="text-sm font-semibold text-[var(--text-primary)]">
