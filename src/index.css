@@ -1078,25 +1078,6 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 }
 
 /* --- Preventive actions: 3D tilt, locks, people ------------------------------------------ */
-.machine-card { transform-style: preserve-3d; will-change: transform; }
-.machine-stage, .machine-label, .machine-owners {
-  transform: translateZ(0);
-  transition: transform 600ms var(--spring-soft);
-}
-.machine-card:hover .machine-stage { transform: translateZ(42px); }
-.machine-card:hover .machine-label { transform: translateZ(22px); }
-.machine-card:hover .machine-owners { transform: translateZ(16px); }
-.machine-glare {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.16), transparent 55%);
-  transition: opacity 300ms var(--ease-out);
-}
-.machine-card:hover .machine-glare { opacity: 1; }
-html.light .machine-glare { background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.7), transparent 55%); }
 
 .machine-lock {
   position: absolute;
@@ -1166,7 +1147,6 @@ html.light .machine-glare { background: radial-gradient(circle at var(--gx, 50%)
   align-items: center;
   justify-content: center;
 }
-.machine-viewer-3d { position: absolute; inset: 0; touch-action: none; }
 .machine-viewer-photo {
   max-height: 300px;
   max-width: 100%;
@@ -1174,48 +1154,6 @@ html.light .machine-glare { background: radial-gradient(circle at var(--gx, 50%)
   object-fit: contain;
   filter: drop-shadow(0 24px 30px rgba(0, 0, 0, 0.45));
 }
-.machine-viewer-switch {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  border-radius: 999px;
-  background: rgba(var(--ov), 0.07);
-  border: 1px solid var(--border-subtle);
-  z-index: 2;
-}
-.machine-viewer-switch button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-}
-.machine-viewer-switch button.on { background: rgba(59, 111, 212, 0.18); color: var(--accent-primary); }
-.machine-viewer-hint {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  pointer-events: none;
-}
 @media (min-width: 768px) {
   .machine-viewer { min-height: 340px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .machine-card:hover .machine-stage,
-  .machine-card:hover .machine-label,
-  .machine-card:hover .machine-owners { transform: none; }
 }

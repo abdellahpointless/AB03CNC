@@ -1,13 +1,11 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion, useMotionValue, useSpring } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Activity,
   AlertTriangle,
   CheckCircle2,
-  Box,
   Clock,
-  Image as ImageIcon,
   Lock,
   History as HistoryIcon,
   Pencil,
@@ -42,9 +40,6 @@ import {
   updateCheck,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
-
-// three.js is only downloaded when someone opens a machine.
-const Machine3D = lazy(() => import('./Machine3D'));
 
 type Summary = ReturnType<typeof machineSummary>;
 
@@ -238,25 +233,6 @@ function MachineCard({
   const ref = useRef<HTMLDivElement>(null);
   const state = loading ? 'loading' : summary.state;
 
-  // 3D tilt: the card leans toward the pointer and the machine comes forward.
-  const rx = useSpring(useMotionValue(0), { stiffness: 260, damping: 22 });
-  const ry = useSpring(useMotionValue(0), { stiffness: 260, damping: 22 });
-  const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const tilt = (e: React.MouseEvent) => {
-    const el = ref.current;
-    if (!el || reduceMotion) return;
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    ry.set((px - 0.5) * 14);
-    rx.set((0.5 - py) * 10);
-    el.style.setProperty('--gx', `${px * 100}%`);
-    el.style.setProperty('--gy', `${py * 100}%`);
-  };
-  const untilt = () => {
-    rx.set(0);
-    ry.set(0);
-  };
 
   const enter = () => {
     const r = ref.current?.getBoundingClientRect();
@@ -278,11 +254,7 @@ function MachineCard({
       {...waveItem(index)}
       className="relative machine-slot"
       onMouseEnter={enter}
-      onMouseMove={tilt}
-      onMouseLeave={() => {
-        onHover(null);
-        untilt();
-      }}
+      onMouseLeave={() => onHover(null)}
     >
       <motion.div
         ref={ref}
@@ -292,7 +264,7 @@ function MachineCard({
         data-state={state}
         data-locked={locked ? 'true' : undefined}
         className="machine-card"
-        style={{ '--accent': machine.accent, rotateX: rx, rotateY: ry, transformPerspective: 900 } as any}
+        style={{ '--accent': machine.accent } as React.CSSProperties}
         whileHover={{ y: -10, scale: 1.035 }}
         whileTap={{ scale: 0.985 }}
         transition={SPRING_POP}
@@ -320,7 +292,6 @@ function MachineCard({
             </span>
           )}
         </div>
-        <span className="machine-glare" aria-hidden />
         <div className="flex items-end justify-between gap-2 px-4 pb-4 pt-1 machine-label">
           <div className="min-w-0">
             <div className="text-[15px] font-bold text-[var(--text-primary)] leading-tight">{machine.id}</div>
@@ -476,7 +447,6 @@ function MachineSheet({
   const [editFreq, setEditFreq] = useState<Frequency>('DAILY');
   const [newTitle, setNewTitle] = useState('');
   const [newFreq, setNewFreq] = useState<Frequency>('DAILY');
-  const [view, setView] = useState<'3d' | 'photo'>('3d');
   const [picking, setPicking] = useState(false);
   const [allUsers, setAllUsers] = useState<{ id: string; username: string; role: string }[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -595,32 +565,14 @@ function MachineSheet({
             </div>
           </div>
           <div className="machine-viewer self-stretch">
-            {view === '3d' ? (
-              <Suspense
-                fallback={<img src={machine.image} alt="" className="machine-viewer-photo opacity-60" />}
-              >
-                <Machine3D kind={machine.kind} state={summary.state} className="machine-viewer-3d" onFail={() => setView('photo')} />
-              </Suspense>
-            ) : (
-              <motion.img
-                key="photo"
-                src={machine.image}
-                alt={`${machine.brand} ${machine.model}`}
-                className="machine-viewer-photo"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
-              />
-            )}
-            <div className="machine-viewer-switch" role="group" aria-label="View">
-              <button className={`no-glass ${view === '3d' ? 'on' : ''}`} onClick={() => setView('3d')}>
-                <Box size={12} /> 3D
-              </button>
-              <button className={`no-glass ${view === 'photo' ? 'on' : ''}`} onClick={() => setView('photo')}>
-                <ImageIcon size={12} /> Photo
-              </button>
-            </div>
-            {view === '3d' && <div className="machine-viewer-hint">Drag to turn</div>}
+            <motion.img
+              src={machine.image}
+              alt={`${machine.brand} ${machine.model}`}
+              className="machine-viewer-photo"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
+            />
           </div>
           <div className="self-stretch space-y-2">
             <div

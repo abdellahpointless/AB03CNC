@@ -7,22 +7,20 @@ export interface FleetMachine {
   brand: 'HAAS' | 'FANUC' | 'DMG MORI';
   model: string;
   image: string;
-  /** Which procedural 3D model to show (see Machine3D). */
-  kind: 'haas-vf3' | 'haas-vf2' | 'fanuc-robodrill' | 'dmg-cmx600v';
   /** Brand colour used for the glow when the card is selected. */
   accent: string;
 }
 
 /** The machines shown in Preventive actions, in floor order. */
 export const FLEET: FleetMachine[] = [
-  { id: 'HAAS-1', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
-  { id: 'HAAS-2', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
-  { id: 'HAAS-3', brand: 'HAAS', model: 'VF-2', image: '/machines/haas-vf2.webp', kind: 'haas-vf2', accent: '#d32f2f' },
-  { id: 'HAAS-4', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
-  { id: 'HAAS-5', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
-  { id: 'FANUC-1', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', kind: 'fanuc-robodrill', accent: '#f5c400' },
-  { id: 'FANUC-2', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', kind: 'fanuc-robodrill', accent: '#f5c400' },
-  { id: 'DMG-1', brand: 'DMG MORI', model: 'CMX 600 V', image: '/machines/dmg-cmx600v.webp', kind: 'dmg-cmx600v', accent: '#9aa4b6' },
+  { id: 'HAAS-1', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
+  { id: 'HAAS-2', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
+  { id: 'HAAS-3', brand: 'HAAS', model: 'VF-2', image: '/machines/haas-vf2.webp', accent: '#d32f2f' },
+  { id: 'HAAS-4', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
+  { id: 'HAAS-5', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
+  { id: 'FANUC-1', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
+  { id: 'FANUC-2', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
+  { id: 'DMG-1', brand: 'DMG MORI', model: 'CMX 600 V', image: '/machines/dmg-cmx600v.webp', accent: '#9aa4b6' },
 ];
 
 export interface MachineCheck {
