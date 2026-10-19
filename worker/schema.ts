@@ -1,3 +1,5 @@
+import { DEFAULT_CHECKS, FLEET_IDS } from './fleet';
+
 /**
  * Database schema, applied automatically by the Worker on its first request
  * after a deploy. Each migration runs once, inside a single D1 batch (transaction).
@@ -107,6 +109,47 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `INSERT OR IGNORE INTO counters (name, value) VALUES
         ('v_tools', 1), ('v_history', 1), ('v_users', 1), ('v_settings', 1), ('v_parts', 1),
         ('history_total', 0), ('tools_app_selected', 0), ('tools_manual', 0)`,
+    ],
+  },
+  {
+    // Preventive actions: per-machine checklists, open problems and a log of who did what.
+    version: 2,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS machine_checks (
+        id TEXT PRIMARY KEY,
+        machine_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'CHECK' CHECK (kind IN ('CHECK', 'ISSUE')),
+        title TEXT NOT NULL,
+        frequency TEXT CHECK (frequency IN ('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY')),
+        status TEXT NOT NULL DEFAULT 'OK' CHECK (status IN ('OK', 'PROBLEM')),
+        note TEXT,
+        last_done_at INTEGER,
+        last_done_by TEXT,
+        status_at INTEGER,
+        status_by TEXT,
+        sort INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS machine_checks_machine ON machine_checks(machine_id, sort)`,
+      `CREATE TABLE IF NOT EXISTS machine_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        machine_id TEXT NOT NULL,
+        check_id TEXT,
+        check_title TEXT,
+        action TEXT NOT NULL,
+        note TEXT,
+        username TEXT NOT NULL,
+        at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS machine_events_at ON machine_events(at DESC)`,
+      `INSERT OR IGNORE INTO counters (name, value) VALUES ('v_machines', 1)`,
+      ...FLEET_IDS.flatMap((m) =>
+        DEFAULT_CHECKS.map(
+          (c, i) =>
+            `INSERT OR IGNORE INTO machine_checks (id, machine_id, kind, title, frequency, sort, created_at)
+             VALUES ('${m.toLowerCase()}-default-${i + 1}', '${m}', 'CHECK', '${c.title.replace(/'/g, "''")}', '${c.frequency}', ${(i + 1) * 10}, 0)`,
+        ),
+      ),
     ],
   },
 ];

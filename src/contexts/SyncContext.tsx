@@ -16,6 +16,7 @@ export interface Versions {
   users: number;
   settings: number;
   parts: number;
+  machines: number;
 }
 
 export interface Analytics {
@@ -53,7 +54,7 @@ const POLL_ACTIVE_MS = 15_000;
 const POLL_IDLE_MS = 60_000;
 const IDLE_AFTER_MS = 5 * 60_000;
 const TOOLBOX_CACHE_KEY = 'cnc-toolbox-cache-v1';
-const EMPTY_VERSIONS: Versions = { tools: 0, history: 0, users: 0, settings: 0, parts: 0 };
+const EMPTY_VERSIONS: Versions = { tools: 0, history: 0, users: 0, settings: 0, parts: 0, machines: 0 };
 
 function readCachedToolbox(): MachineToolbox {
   try {

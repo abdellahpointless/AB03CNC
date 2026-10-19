@@ -32,6 +32,14 @@ import {
   handleSubmitPart,
 } from './routes/parts';
 import {
+  handleCheckAction,
+  handleCreateCheck,
+  handleDeleteCheck,
+  handleListMachines,
+  handleReportIssue,
+  handleUpdateCheck,
+} from './routes/machines';
+import {
   handleImportCode,
   handleImportHistory,
   handleImportParts,
@@ -92,6 +100,14 @@ route('GET', '/parts/pending', 'admin', handlePending);
 route('POST', '/parts/review', 'admin', handleReview);
 route('GET', '/parts/admin-summary', 'admin', handleAdminSummary);
 route('GET', '/parts/admin-export', 'admin', handleAdminExport);
+
+// Preventive actions (machines)
+route('GET', '/machines', 'user', handleListMachines);
+route('POST', '/machines/:machine/issues', 'user', handleReportIssue);
+route('POST', '/machines/:machine/checks/:id/action', 'user', handleCheckAction);
+route('POST', '/machines/:machine/checks', 'admin', handleCreateCheck);
+route('PATCH', '/machines/:machine/checks/:id', 'admin', handleUpdateCheck);
+route('DELETE', '/machines/:machine/checks/:id', 'admin', handleDeleteCheck);
 
 // Data migration / restore
 route('POST', '/admin/import/users', 'admin', handleImportUsers);

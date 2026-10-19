@@ -66,6 +66,7 @@ export async function handleSync(ctx: Ctx): Promise<Response> {
       users: counters.v_users ?? 0,
       settings: counters.v_settings ?? 0,
       parts: counters.v_parts ?? 0,
+      machines: counters.v_machines ?? 0,
     },
   });
 }

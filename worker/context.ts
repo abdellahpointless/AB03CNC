@@ -19,7 +19,7 @@ export interface Ctx {
   user: AuthedUser | null;
 }
 
-export type SyncScope = 'tools' | 'history' | 'users' | 'settings' | 'parts';
+export type SyncScope = 'tools' | 'history' | 'users' | 'settings' | 'parts' | 'machines';
 
 /** Statement that bumps a sync version so other PCs know to refetch that data. */
 export function bumpStmt(env: Env, scope: SyncScope): D1PreparedStatement {

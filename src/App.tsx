@@ -8,6 +8,7 @@ import UserManagement from './components/UserManagement';
 import BackupManager, { BackupScheduler } from './components/BackupManager';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
+import PreventiveActions from './components/PreventiveActions';
 import DataManagement from './components/DataManagement';
 import { TimeWonClock } from './components/TimeWonClock';
 import { SyncStatus } from './components/SyncStatus';
@@ -16,7 +17,7 @@ import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, KeyRound, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
@@ -24,7 +25,7 @@ import { EASE_OUT, SPRING_PILL } from './lib/motion';
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'HISTORY' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW';
+type Tab = 'DATABASE' | 'REMAP' | 'HISTORY' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE';
 
 const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (DIAMETER 10.00 MM / LENGTH 50.00 MM)\nN20 G90 G54 G0 X0. Y0.\nN21 T3 M6\nN22 (MK_40.00_040_000_ALHS)\nN23 G0 Z50.\nN24 T5 M6\nN25 (SF_12.00_075_000_ALHS)\nN30 M30\n%';
 
@@ -314,6 +315,25 @@ function Workspace() {
             )}
           </button>
 
+          {/* Tab: Preventive actions (Both Roles) */}
+          <button
+            onClick={() => setActiveTab('PREVENTIVE')}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+              activeTab === 'PREVENTIVE'
+                ? 'text-[var(--accent-primary)]'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
+            }`}
+          >
+            <Activity size={15} />
+            <span>Preventive actions</span>
+            {activeTab === 'PREVENTIVE' && (
+              <>
+              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+              </>
+            )}
+          </button>
+
           {/* Tab: Part Review (ADMIN) */}
           {user.role === 'ADMIN' && (
             <button
@@ -420,6 +440,9 @@ function Workspace() {
             )}
             {activeTab === 'PART_ENTRY' && (
               <PartWithoutScan />
+            )}
+            {activeTab === 'PREVENTIVE' && (
+              <PreventiveActions />
             )}
             {activeTab === 'PART_REVIEW' && user.role === 'ADMIN' && (
               <PartReview />
