@@ -142,6 +142,14 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
         at INTEGER NOT NULL
       )`,
       `CREATE INDEX IF NOT EXISTS machine_events_at ON machine_events(at DESC)`,
+      // Who is responsible for which machine. A user listed here can only update their own machines.
+      `CREATE TABLE IF NOT EXISTS machine_owners (
+        machine_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        assigned_at INTEGER NOT NULL,
+        PRIMARY KEY (machine_id, user_id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS machine_owners_user ON machine_owners(user_id)`,
       `INSERT OR IGNORE INTO counters (name, value) VALUES ('v_machines', 1)`,
       ...FLEET_IDS.flatMap((m) =>
         DEFAULT_CHECKS.map(

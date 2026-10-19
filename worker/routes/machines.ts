@@ -30,6 +30,22 @@ function machineParam(ctx: Ctx): string {
   return id;
 }
 
+/**
+ * A user who is responsible for one or more machines may only update those machines;
+ * users with no machine assigned (and admins) may update every machine.
+ */
+async function assertMayUpdate(ctx: Ctx, machine: string): Promise<void> {
+  if (ctx.user!.role === 'ADMIN') return;
+  const row = await ctx.env.DB.prepare(
+    'SELECT COUNT(*) AS total, SUM(CASE WHEN machine_id = ? THEN 1 ELSE 0 END) AS mine FROM machine_owners WHERE user_id = ?',
+  )
+    .bind(machine, ctx.user!.id)
+    .first<{ total: number; mine: number | null }>();
+  if (row && row.total > 0 && !row.mine) {
+    throw new HttpError(403, `${machine} is locked for you: you are responsible for other machines.`);
+  }
+}
+
 function frequency(v: unknown): Frequency {
   if (typeof v === 'string' && (FREQUENCIES as string[]).includes(v)) return v as Frequency;
   throw new HttpError(400, 'Frequency must be DAILY, WEEKLY, MONTHLY or QUARTERLY');
@@ -51,16 +67,21 @@ function eventStmt(ctx: Ctx, machine: string, check: { id: string; title: string
 
 // GET /api/machines -> every check of every machine + the latest events
 export async function handleListMachines(ctx: Ctx): Promise<Response> {
-  const [checks, events] = await ctx.env.DB.batch([
+  const [checks, events, owners] = await ctx.env.DB.batch([
     ctx.env.DB.prepare('SELECT * FROM machine_checks ORDER BY machine_id, sort, created_at'),
     ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC LIMIT 300'),
+    ctx.env.DB.prepare(
+      `SELECT o.machine_id, o.user_id, u.username FROM machine_owners o JOIN users u ON u.id = o.user_id
+       ORDER BY o.machine_id, u.username COLLATE NOCASE`,
+    ),
   ]);
-  return json({ checks: checks.results, events: events.results, serverTime: Date.now() });
+  return json({ checks: checks.results, events: events.results, owners: owners.results, serverTime: Date.now() });
 }
 
 // POST /api/machines/:machine/checks/:id/action { action: DONE | PROBLEM | RESOLVE, note? }
 export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   const machine = machineParam(ctx);
+  await assertMayUpdate(ctx, machine);
   const check = await loadCheck(ctx, machine);
   const body = await readJson<{ action?: unknown; note?: unknown }>(ctx.request, 5000);
   const now = Date.now();
@@ -100,6 +121,7 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
 // POST /api/machines/:machine/issues { note } -> a problem with the machine that isn't on the checklist
 export async function handleReportIssue(ctx: Ctx): Promise<Response> {
   const machine = machineParam(ctx);
+  await assertMayUpdate(ctx, machine);
   const body = await readJson<{ note?: unknown }>(ctx.request, 5000);
   const note = str(body.note, 'Problem description', { min: 3, max: 300 });
   const id = newId();
@@ -156,6 +178,34 @@ export async function handleDeleteCheck(ctx: Ctx): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM machine_checks WHERE id = ?').bind(check.id),
     eventStmt(ctx, machine, { id: check.id, title: check.title }, 'CHECK_REMOVED', null),
+    bumpStmt(ctx.env, 'machines'),
+  ]);
+  return json({ ok: true });
+}
+
+// Admin: PUT /api/machines/:machine/owners { userIds: string[] } -> replaces who is responsible
+export async function handleSetOwners(ctx: Ctx): Promise<Response> {
+  const machine = machineParam(ctx);
+  const body = await readJson<{ userIds?: unknown }>(ctx.request, 20_000);
+  if (!Array.isArray(body.userIds) || body.userIds.length > 100 || !body.userIds.every((x) => typeof x === 'string' && x.length <= 64)) {
+    throw new HttpError(400, 'userIds must be a list of user ids');
+  }
+  const ids = [...new Set(body.userIds as string[])];
+  let names: string[] = [];
+  if (ids.length) {
+    const { results } = await ctx.env.DB.prepare(
+      `SELECT id, username FROM users WHERE id IN (${ids.map(() => '?').join(',')})`,
+    )
+      .bind(...ids)
+      .all<{ id: string; username: string }>();
+    if (results.length !== ids.length) throw new HttpError(400, 'Unknown user in the list');
+    names = results.map((r) => r.username).sort();
+  }
+  const now = Date.now();
+  await ctx.env.DB.batch([
+    ctx.env.DB.prepare('DELETE FROM machine_owners WHERE machine_id = ?').bind(machine),
+    ...ids.map((id) => ctx.env.DB.prepare('INSERT INTO machine_owners (machine_id, user_id, assigned_at) VALUES (?, ?, ?)').bind(machine, id, now)),
+    eventStmt(ctx, machine, null, 'OWNERS_SET', names.length ? names.join(', ') : 'nobody'),
     bumpStmt(ctx.env, 'machines'),
   ]);
   return json({ ok: true });

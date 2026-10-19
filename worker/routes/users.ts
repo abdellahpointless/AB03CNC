@@ -80,7 +80,9 @@ export async function handleDeleteUser(ctx: Ctx): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
     ctx.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id),
+    ctx.env.DB.prepare('DELETE FROM machine_owners WHERE user_id = ?').bind(id),
     bumpStmt(ctx.env, 'users'),
+    bumpStmt(ctx.env, 'machines'),
   ]);
   return json({ ok: true });
 }

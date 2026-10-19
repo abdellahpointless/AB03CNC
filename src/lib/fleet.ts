@@ -7,20 +7,22 @@ export interface FleetMachine {
   brand: 'HAAS' | 'FANUC' | 'DMG MORI';
   model: string;
   image: string;
+  /** Which procedural 3D model to show (see Machine3D). */
+  kind: 'haas-vf3' | 'haas-vf2' | 'fanuc-robodrill' | 'dmg-cmx600v';
   /** Brand colour used for the glow when the card is selected. */
   accent: string;
 }
 
 /** The machines shown in Preventive actions, in floor order. */
 export const FLEET: FleetMachine[] = [
-  { id: 'HAAS-1', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-2', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-3', brand: 'HAAS', model: 'VF-2', image: '/machines/haas-vf2.webp', accent: '#d32f2f' },
-  { id: 'HAAS-4', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-5', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'FANUC-1', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
-  { id: 'FANUC-2', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
-  { id: 'DMG-1', brand: 'DMG MORI', model: 'CMX 600 V', image: '/machines/dmg-cmx600v.webp', accent: '#9aa4b6' },
+  { id: 'HAAS-1', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
+  { id: 'HAAS-2', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
+  { id: 'HAAS-3', brand: 'HAAS', model: 'VF-2', image: '/machines/haas-vf2.webp', kind: 'haas-vf2', accent: '#d32f2f' },
+  { id: 'HAAS-4', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
+  { id: 'HAAS-5', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', kind: 'haas-vf3', accent: '#d32f2f' },
+  { id: 'FANUC-1', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', kind: 'fanuc-robodrill', accent: '#f5c400' },
+  { id: 'FANUC-2', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', kind: 'fanuc-robodrill', accent: '#f5c400' },
+  { id: 'DMG-1', brand: 'DMG MORI', model: 'CMX 600 V', image: '/machines/dmg-cmx600v.webp', kind: 'dmg-cmx600v', accent: '#9aa4b6' },
 ];
 
 export interface MachineCheck {
@@ -44,7 +46,7 @@ export interface MachineEvent {
   machine_id: string;
   check_id: string | null;
   check_title: string | null;
-  action: 'DONE' | 'PROBLEM' | 'RESOLVE' | 'CHECK_ADDED' | 'CHECK_EDITED' | 'CHECK_REMOVED';
+  action: 'DONE' | 'PROBLEM' | 'RESOLVE' | 'CHECK_ADDED' | 'CHECK_EDITED' | 'CHECK_REMOVED' | 'OWNERS_SET';
   note: string | null;
   username: string;
   at: number;
@@ -81,7 +83,29 @@ export function machineSummary(checks: MachineCheck[], now = Date.now()) {
   return { state, problems, due, total: checks.filter((c) => c.kind === 'CHECK').length };
 }
 
-export const fetchMachines = () => api<{ checks: MachineCheck[]; events: MachineEvent[]; serverTime: number }>('/machines');
+export interface MachineOwner {
+  machine_id: string;
+  user_id: string;
+  username: string;
+}
+
+export const fetchMachines = () =>
+  api<{ checks: MachineCheck[]; events: MachineEvent[]; owners?: MachineOwner[]; serverTime: number }>('/machines');
+
+export const setOwners = (machine: string, userIds: string[]) =>
+  api(`/machines/${encodeURIComponent(machine)}/owners`, { method: 'PUT', body: { userIds } });
+
+export const fetchUsers = () => api<{ users: { id: string; username: string; role: 'ADMIN' | 'MACHINIST' }[] }>('/users');
+
+/**
+ * Machines locked for a user: anyone responsible for at least one machine can only update
+ * their own machines. Admins and people with no machine assigned can update every machine.
+ */
+export function isLockedFor(machineId: string, user: { id: string; role: string } | null | undefined, owners: MachineOwner[]): boolean {
+  if (!user || user.role === 'ADMIN') return false;
+  const mine = owners.filter((o) => o.user_id === user.id);
+  return mine.length > 0 && !mine.some((o) => o.machine_id === machineId);
+}
 
 export const checkAction = (machine: string, id: string, action: 'DONE' | 'PROBLEM' | 'RESOLVE', note?: string) =>
   api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/action`, { method: 'POST', body: { action, note } });

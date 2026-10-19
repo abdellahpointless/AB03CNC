@@ -1,16 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'motion/react';
 import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Box,
   Clock,
+  Image as ImageIcon,
+  Lock,
   History as HistoryIcon,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
+  Users,
   Wrench,
   X,
 } from 'lucide-react';
@@ -23,17 +27,24 @@ import {
   type Frequency,
   type MachineCheck,
   type MachineEvent,
+  type MachineOwner,
   checkAction,
   createCheck,
   deleteCheck,
   fetchMachines,
+  fetchUsers,
+  isLockedFor,
   isDue,
   machineSummary,
   reportIssue,
+  setOwners,
   timeAgo,
   updateCheck,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
+
+// three.js is only downloaded when someone opens a machine.
+const Machine3D = lazy(() => import('./Machine3D'));
 
 type Summary = ReturnType<typeof machineSummary>;
 
@@ -44,6 +55,7 @@ const ACTION_TEXT: Record<MachineEvent['action'], string> = {
   CHECK_ADDED: 'added check',
   CHECK_EDITED: 'edited check',
   CHECK_REMOVED: 'removed check',
+  OWNERS_SET: 'set the responsible people',
 };
 
 export default function PreventiveActions() {
@@ -52,6 +64,7 @@ export default function PreventiveActions() {
   const { versions } = useSync();
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
+  const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<{ id: string; above: boolean } | null>(null);
@@ -62,6 +75,7 @@ export default function PreventiveActions() {
       const res = await fetchMachines();
       setChecks(res.checks);
       setEvents(res.events);
+      setOwnerRows(res.owners || []);
       setLoadError('');
     } catch (err: any) {
       setLoadError(err?.message || 'Could not load the machines');
@@ -98,6 +112,8 @@ export default function PreventiveActions() {
     return { problem, due, ok };
   }, [summaries]);
 
+  const ownersOf = useCallback((id: string) => owners.filter((o) => o.machine_id === id), [owners]);
+  const myMachines = useMemo(() => (user ? owners.filter((o) => o.user_id === user.id).map((o) => o.machine_id) : []), [owners, user]);
   const lastEvent = useCallback((id: string) => events.find((e) => e.machine_id === id), [events]);
   const selectedMachine = FLEET.find((m) => m.id === selected) || null;
 
@@ -117,6 +133,11 @@ export default function PreventiveActions() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {myMachines.length > 0 && !isAdmin && (
+            <span className="badge-neutral" title="You can only update the machines you look after">
+              <Wrench size={13} /> You look after {myMachines.join(', ')}
+            </span>
+          )}
           <span className={counts.problem ? 'badge-danger' : 'badge-neutral'}>
             <AlertTriangle size={13} /> {counts.problem} with a problem
           </span>
@@ -145,6 +166,9 @@ export default function PreventiveActions() {
             loading={!checks}
             last={lastEvent(m.id)}
             now={now}
+            owners={ownersOf(m.id)}
+            mine={myMachines.includes(m.id)}
+            locked={isLockedFor(m.id, user, owners)}
             hovered={hover?.id === m.id ? hover : null}
             onHover={setHover}
             onOpen={() => {
@@ -166,6 +190,8 @@ export default function PreventiveActions() {
                 events={events.filter((e) => e.machine_id === selectedMachine.id).slice(0, 15)}
                 summary={summaries.get(selectedMachine.id)!}
                 isAdmin={isAdmin}
+                owners={ownersOf(selectedMachine.id)}
+                locked={isLockedFor(selectedMachine.id, user, owners)}
                 now={now}
                 onChanged={load}
                 onClose={() => setSelected(null)}
@@ -189,6 +215,9 @@ function MachineCard({
   loading,
   last,
   now,
+  owners,
+  mine,
+  locked,
   hovered,
   onHover,
   onOpen,
@@ -199,12 +228,35 @@ function MachineCard({
   loading: boolean;
   last?: MachineEvent;
   now: number;
+  owners: MachineOwner[];
+  mine: boolean;
+  locked: boolean;
   hovered: { id: string; above: boolean } | null;
   onHover: (h: { id: string; above: boolean } | null) => void;
   onOpen: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const state = loading ? 'loading' : summary.state;
+
+  // 3D tilt: the card leans toward the pointer and the machine comes forward.
+  const rx = useSpring(useMotionValue(0), { stiffness: 260, damping: 22 });
+  const ry = useSpring(useMotionValue(0), { stiffness: 260, damping: 22 });
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const tilt = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (!el || reduceMotion) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    ry.set((px - 0.5) * 14);
+    rx.set((0.5 - py) * 10);
+    el.style.setProperty('--gx', `${px * 100}%`);
+    el.style.setProperty('--gy', `${py * 100}%`);
+  };
+  const untilt = () => {
+    rx.set(0);
+    ry.set(0);
+  };
 
   const enter = () => {
     const r = ref.current?.getBoundingClientRect();
@@ -222,15 +274,25 @@ function MachineCard({
           : '...';
 
   return (
-    <motion.div {...waveItem(index)} className="relative" onMouseEnter={enter} onMouseLeave={() => onHover(null)}>
+    <motion.div
+      {...waveItem(index)}
+      className="relative machine-slot"
+      onMouseEnter={enter}
+      onMouseMove={tilt}
+      onMouseLeave={() => {
+        onHover(null);
+        untilt();
+      }}
+    >
       <motion.div
         ref={ref}
         role="button"
         tabIndex={0}
         aria-label={`${machine.id}, ${machine.brand} ${machine.model}: ${label}. Open checklist`}
         data-state={state}
+        data-locked={locked ? 'true' : undefined}
         className="machine-card"
-        style={{ '--accent': machine.accent } as React.CSSProperties}
+        style={{ '--accent': machine.accent, rotateX: rx, rotateY: ry, transformPerspective: 900 } as any}
         whileHover={{ y: -10, scale: 1.035 }}
         whileTap={{ scale: 0.985 }}
         transition={SPRING_POP}
@@ -247,13 +309,19 @@ function MachineCard({
         <div className="machine-stage">
           <div className="machine-floor-shadow" />
           <img src={machine.image} alt="" className="machine-img" draggable={false} loading="lazy" />
+          {locked && (
+            <span className="machine-lock" title="Locked for you" aria-hidden>
+              <Lock size={12} />
+            </span>
+          )}
           {state === 'problem' && (
             <span className="machine-alert" aria-hidden>
               <AlertTriangle size={14} />
             </span>
           )}
         </div>
-        <div className="flex items-end justify-between gap-2 px-4 pb-4 pt-1">
+        <span className="machine-glare" aria-hidden />
+        <div className="flex items-end justify-between gap-2 px-4 pb-4 pt-1 machine-label">
           <div className="min-w-0">
             <div className="text-[15px] font-bold text-[var(--text-primary)] leading-tight">{machine.id}</div>
             <div className="text-[11px] text-[var(--text-tertiary)] truncate">
@@ -268,6 +336,14 @@ function MachineCard({
             {label}
           </span>
         </div>
+        {(owners.length > 0 || locked) && (
+          <div className="machine-owners">
+            {locked ? <Lock size={11} className="shrink-0" /> : <Users size={11} className="shrink-0" />}
+            <span className="truncate">
+              {mine ? 'You' + (owners.length > 1 ? ` + ${owners.length - 1}` : '') : owners.map((o) => o.username).join(', ') || 'Nobody assigned'}
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* "What's going on" pop-up */}
@@ -282,7 +358,7 @@ function MachineCard({
             style={{ transformOrigin: hovered.above ? 'bottom center' : 'top center' }}
             className={`machine-pop glass-modal ${hovered.above ? 'bottom-full mb-3' : 'top-full mt-3'}`}
           >
-            <MachinePopContent machine={machine} summary={summary} last={last} now={now} />
+            <MachinePopContent machine={machine} summary={summary} last={last} now={now} owners={owners} locked={locked} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -290,7 +366,21 @@ function MachineCard({
   );
 }
 
-function MachinePopContent({ machine, summary, last, now }: { machine: FleetMachine; summary: Summary; last?: MachineEvent; now: number }) {
+function MachinePopContent({
+  machine,
+  summary,
+  last,
+  now,
+  owners,
+  locked,
+}: {
+  machine: FleetMachine;
+  summary: Summary;
+  last?: MachineEvent;
+  now: number;
+  owners: MachineOwner[];
+  locked: boolean;
+}) {
   return (
     <div className="p-4 space-y-3 text-xs relative z-10">
       <div className="flex items-center justify-between">
@@ -330,11 +420,21 @@ function MachinePopContent({ machine, summary, last, now }: { machine: FleetMach
 
       {summary.state === 'ok' && <div className="text-[var(--text-secondary)]">All {summary.total} checks are up to date.</div>}
 
+      {(owners.length > 0 || locked) && (
+        <div className={`flex items-start gap-1.5 ${locked ? 'text-[var(--orange-500)]' : 'text-[var(--text-secondary)]'}`}>
+          {locked ? <Lock size={12} className="mt-0.5 shrink-0" /> : <Users size={12} className="mt-0.5 shrink-0" />}
+          <span>
+            {locked ? 'Locked for you. ' : ''}
+            Responsible: {owners.length ? owners.map((o) => o.username).join(', ') : 'nobody yet'}
+          </span>
+        </div>
+      )}
+
       <div className="pt-2 border-t border-[var(--border-subtle)] text-[var(--text-tertiary)] flex items-center justify-between gap-2">
         <span className="truncate">
           {last ? `${last.username} ${ACTION_TEXT[last.action]} · ${timeAgo(last.at, now)}` : 'No actions yet'}
         </span>
-        <span className="text-[var(--blue-500)] font-semibold shrink-0">Click to open</span>
+        <span className="text-[var(--blue-500)] font-semibold shrink-0">{locked ? 'Click to view' : 'Click to open'}</span>
       </div>
     </div>
   );
@@ -350,6 +450,8 @@ function MachineSheet({
   events,
   summary,
   isAdmin,
+  owners,
+  locked,
   now,
   onChanged,
   onClose,
@@ -359,6 +461,8 @@ function MachineSheet({
   events: MachineEvent[];
   summary: Summary;
   isAdmin: boolean;
+  owners: MachineOwner[];
+  locked: boolean;
   now: number;
   onChanged: () => Promise<void>;
   onClose: () => void;
@@ -372,6 +476,23 @@ function MachineSheet({
   const [editFreq, setEditFreq] = useState<Frequency>('DAILY');
   const [newTitle, setNewTitle] = useState('');
   const [newFreq, setNewFreq] = useState<Frequency>('DAILY');
+  const [view, setView] = useState<'3d' | 'photo'>('3d');
+  const [picking, setPicking] = useState(false);
+  const [allUsers, setAllUsers] = useState<{ id: string; username: string; role: string }[] | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const canAct = !locked;
+
+  const openPicker = async () => {
+    setPicked(new Set(owners.map((o) => o.user_id)));
+    setPicking(true);
+    if (!allUsers) {
+      try {
+        setAllUsers((await fetchUsers()).users);
+      } catch (err: any) {
+        setError(err?.message || 'Could not load the user list');
+      }
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -473,14 +594,34 @@ function MachineSheet({
               </button>
             </div>
           </div>
-          <motion.img
-            src={machine.image}
-            alt={`${machine.brand} ${machine.model}`}
-            className="max-h-[230px] md:max-h-[300px] w-auto object-contain drop-shadow-[0_24px_30px_rgba(0,0,0,0.45)]"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', duration: 0.6, bounce: 0.25, delay: 0.05 }}
-          />
+          <div className="machine-viewer self-stretch">
+            {view === '3d' ? (
+              <Suspense
+                fallback={<img src={machine.image} alt="" className="machine-viewer-photo opacity-60" />}
+              >
+                <Machine3D kind={machine.kind} state={summary.state} className="machine-viewer-3d" onFail={() => setView('photo')} />
+              </Suspense>
+            ) : (
+              <motion.img
+                key="photo"
+                src={machine.image}
+                alt={`${machine.brand} ${machine.model}`}
+                className="machine-viewer-photo"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
+              />
+            )}
+            <div className="machine-viewer-switch" role="group" aria-label="View">
+              <button className={`no-glass ${view === '3d' ? 'on' : ''}`} onClick={() => setView('3d')}>
+                <Box size={12} /> 3D
+              </button>
+              <button className={`no-glass ${view === 'photo' ? 'on' : ''}`} onClick={() => setView('photo')}>
+                <ImageIcon size={12} /> Photo
+              </button>
+            </div>
+            {view === '3d' && <div className="machine-viewer-hint">Drag to turn</div>}
+          </div>
           <div className="self-stretch space-y-2">
             <div
               className={`w-full justify-center py-2 text-xs ${
@@ -501,29 +642,131 @@ function MachineSheet({
                 </>
               )}
             </div>
-            <button
-              className="btn-warning w-full text-xs py-2"
-              onClick={() => {
-                setProblemFor('__machine');
-                setProblemText('');
-              }}
-            >
-              <AlertTriangle size={14} />
-              <span>Report a problem</span>
-            </button>
+            {canAct ? (
+              <button
+                className="btn-warning w-full text-xs py-2"
+                onClick={() => {
+                  setProblemFor('__machine');
+                  setProblemText('');
+                }}
+              >
+                <AlertTriangle size={14} />
+                <span>Report a problem</span>
+              </button>
+            ) : (
+              <div className="badge-warning w-full justify-center py-2 text-xs">
+                <Lock size={13} /> View only
+              </div>
+            )}
             <AnimatePresence>{problemFor === '__machine' && problemForm}</AnimatePresence>
           </div>
         </div>
 
         {/* Right: problems, checklist, history */}
         <div className="flex-1 min-w-0 overflow-y-auto p-5 space-y-5 bg-[var(--bg-panel)]">
-          <div className="hidden md:flex justify-end -mb-3">
+          <div className="hidden md:flex justify-end -mt-1">
             <button onClick={onClose} className="btn-icon" aria-label="Close">
               <X size={15} />
             </button>
           </div>
 
           {error && <div className="badge-danger w-full justify-center py-2 text-xs">{error}</div>}
+
+          {locked && (
+            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 flex items-start gap-2.5 text-xs">
+              <Lock size={16} className="text-[var(--orange-500)] shrink-0 mt-0.5" />
+              <div className="text-[var(--text-secondary)]">
+                <b className="text-[var(--text-primary)]">{machine.id} is locked for you.</b> You are responsible for other machines.{' '}
+                {owners.length ? `${owners.map((o) => o.username).join(', ')} look${owners.length === 1 ? 's' : ''} after this one.` : ''} You can see
+                its status, but only they or an admin can update it.
+              </div>
+            </div>
+          )}
+
+          <section className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="section-label flex items-center gap-1.5">
+                <Users size={12} /> Responsible
+              </div>
+              {isAdmin && !picking && (
+                <button className="btn-secondary text-xs py-1 px-2.5" onClick={openPicker}>
+                  <Pencil size={12} />
+                  <span>Choose people</span>
+                </button>
+              )}
+            </div>
+            {!picking ? (
+              <div className="flex flex-wrap gap-1.5">
+                {owners.length === 0 ? (
+                  <span className="text-xs text-[var(--text-tertiary)]">
+                    Nobody yet{isAdmin ? '. Choose who looks after this machine.' : '.'}
+                  </span>
+                ) : (
+                  owners.map((o) => (
+                    <span key={o.user_id} className="owner-chip">
+                      <span className="owner-avatar">{o.username.slice(0, 2)}</span>
+                      {o.username}
+                    </span>
+                  ))
+                )}
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={SPRING_POP}
+                className="p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] space-y-3"
+              >
+                <p className="text-[11px] text-[var(--text-tertiary)]">
+                  People you choose here can only update the machines they are responsible for. Every other machine is locked for them.
+                </p>
+                {!allUsers ? (
+                  <div className="text-xs text-[var(--text-tertiary)]">Loading people...</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {allUsers
+                      .filter((u) => u.role !== 'ADMIN')
+                      .map((u) => {
+                        const on = picked.has(u.id);
+                        return (
+                          <button
+                            key={u.id}
+                            className={`owner-pick no-glass ${on ? 'on' : ''}`}
+                            aria-pressed={on}
+                            onClick={() =>
+                              setPicked((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(u.id)) next.delete(u.id);
+                                else next.add(u.id);
+                                return next;
+                              })
+                            }
+                          >
+                            <span className="owner-avatar">{u.username.slice(0, 2)}</span>
+                            {u.username}
+                            {on && <CheckCircle2 size={12} />}
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setPicking(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary text-xs py-1.5 px-3"
+                    disabled={!!busy || !allUsers}
+                    onClick={async () => {
+                      if (await run('owners', () => setOwners(machine.id, [...picked]))) setPicking(false);
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </section>
 
           {issues.length > 0 && (
             <section className="space-y-2">
@@ -541,10 +784,12 @@ function MachineSheet({
                       Reported by {p.status_by} · {timeAgo(p.status_at, now)}
                     </div>
                   </div>
-                  <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
-                    <CheckCircle2 size={13} />
-                    <span>Fixed</span>
-                  </button>
+                  {canAct && (
+                    <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
+                      <CheckCircle2 size={13} />
+                      <span>Fixed</span>
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </section>
@@ -608,7 +853,7 @@ function MachineSheet({
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {st === 'problem' ? (
+                          {!canAct ? null : st === 'problem' ? (
                             <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${c.id}`, () => checkAction(machine.id, c.id, 'RESOLVE'))}>
                               <CheckCircle2 size={13} />
                               <span>Fixed</span>

@@ -37,6 +37,7 @@ import {
   handleDeleteCheck,
   handleListMachines,
   handleReportIssue,
+  handleSetOwners,
   handleUpdateCheck,
 } from './routes/machines';
 import {
@@ -106,6 +107,7 @@ route('GET', '/machines', 'user', handleListMachines);
 route('POST', '/machines/:machine/issues', 'user', handleReportIssue);
 route('POST', '/machines/:machine/checks/:id/action', 'user', handleCheckAction);
 route('POST', '/machines/:machine/checks', 'admin', handleCreateCheck);
+route('PUT', '/machines/:machine/owners', 'admin', handleSetOwners);
 route('PATCH', '/machines/:machine/checks/:id', 'admin', handleUpdateCheck);
 route('DELETE', '/machines/:machine/checks/:id', 'admin', handleDeleteCheck);
 

@@ -1076,3 +1076,146 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   }
   .machine-img, .machine-floor-shadow { transition-duration: 0.01ms; }
 }
+
+/* --- Preventive actions: 3D tilt, locks, people ------------------------------------------ */
+.machine-card { transform-style: preserve-3d; will-change: transform; }
+.machine-stage, .machine-label, .machine-owners {
+  transform: translateZ(0);
+  transition: transform 600ms var(--spring-soft);
+}
+.machine-card:hover .machine-stage { transform: translateZ(42px); }
+.machine-card:hover .machine-label { transform: translateZ(22px); }
+.machine-card:hover .machine-owners { transform: translateZ(16px); }
+.machine-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.16), transparent 55%);
+  transition: opacity 300ms var(--ease-out);
+}
+.machine-card:hover .machine-glare { opacity: 1; }
+html.light .machine-glare { background: radial-gradient(circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.7), transparent 55%); }
+
+.machine-lock {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: rgba(var(--ov), 0.1);
+  border: 1px solid var(--border-subtle);
+}
+.machine-card[data-locked='true'] .machine-img { opacity: 0.7; }
+.machine-card[data-locked='true']:hover .machine-img { opacity: 1; }
+.machine-owners {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 14px;
+  margin-top: -6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-width: 0;
+}
+.machine-card[data-locked='true'] .machine-owners { color: var(--orange-500); }
+
+.owner-chip, .owner-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(var(--ov), 0.06);
+  border: 1px solid var(--border-subtle);
+}
+.owner-pick { cursor: pointer; color: var(--text-secondary); }
+.owner-pick.on {
+  color: var(--text-primary);
+  background: rgba(59, 111, 212, 0.16);
+  border-color: rgba(59, 111, 212, 0.45);
+}
+.owner-pick:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.owner-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+}
+
+/* 3D / photo viewer in the machine sheet */
+.machine-viewer {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.machine-viewer-3d { position: absolute; inset: 0; touch-action: none; }
+.machine-viewer-photo {
+  max-height: 300px;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 30px rgba(0, 0, 0, 0.45));
+}
+.machine-viewer-switch {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background: rgba(var(--ov), 0.07);
+  border: 1px solid var(--border-subtle);
+  z-index: 2;
+}
+.machine-viewer-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.machine-viewer-switch button.on { background: rgba(59, 111, 212, 0.18); color: var(--accent-primary); }
+.machine-viewer-hint {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+@media (min-width: 768px) {
+  .machine-viewer { min-height: 340px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .machine-card:hover .machine-stage,
+  .machine-card:hover .machine-label,
+  .machine-card:hover .machine-owners { transform: none; }
+}
