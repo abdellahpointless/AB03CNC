@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isToolChangeLine, replaceInCode } from '../src/lib/gcodeProcessor';
+import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isToolChangeLine, replaceInCode } from '../src/lib/gcodeProcessor';
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
 import { defaultToolbox } from '../src/lib/defaultTools';
@@ -150,6 +150,25 @@ describe('code generation', () => {
     const res = applyG53BeforeG52(src);
     expect(res.addedCount).toBe(1); // one for both G52s of tool 2
     expect(res.lines).toEqual(['N1 T1 M6', 'N2 G53 Y0', 'N3 G0 X0 Y0', 'N4 T2 M6', 'N5 (FRAISE)', 'N6 G53 Y0', 'N7 M0', 'N8 G52 X5', 'N9 G52 X-5 Y2']);
+  });
+
+  it('adds G49 right after M6 on FANUC-2 only', () => {
+    const src = 'O1\nN15 (TOOLPATH PLAN-MESSERKOPF)\nN16 T3 M6\nN17 (MESSERKOPF D93 / MK_93.00_030_000_FH)\nN18 G43 H3 Z50.\nN19 M30';
+    const f2 = remap(src, fanuc1, 'FANUC-2').code;
+    expect(f2).toMatch(/^N16 T\d+ M6 G49 \(/m);
+    expect(f2.match(/G49/g)?.length).toBe(1);
+    expect(f2).toContain('N15 (TOOLPATH PLAN-MESSERKOPF)'); // comments untouched
+    expect(remap(src, fanuc1, 'FANUC-1').code).not.toMatch(/G49/);
+    expect(remap(src, haas2, 'HAAS-2').code).not.toMatch(/G49/);
+  });
+
+  it('addG49AfterM6 skips comments and lines that already have G49', () => {
+    expect(addG49AfterM6(['N16 T3 M6 (APPROX-REMAP: T3 tourteau)', 'N17 (TARAUD M6)', 'N20 T4 M06 G49', 'T5 M6'])).toEqual([
+      'N16 T3 M6 G49 (APPROX-REMAP: T3 tourteau)',
+      'N17 (TARAUD M6)',
+      'N20 T4 M06 G49',
+      'T5 M6 G49',
+    ]);
   });
 
   it('applyG53BeforeG52 is idempotent', () => {

@@ -607,6 +607,11 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     }
   }
 
+  // FANUC-2 only: cancel the tool length offset right on the tool change line ("T3 M6 G49").
+  if (machineId === 'FANUC-2') {
+    outputLines = addG49AfterM6(outputLines);
+  }
+
   // In FANUC, if the app detects M98 P7999 then it should be deleted
   const isFanuc = (machineId && machineId.toUpperCase().includes('FANUC')) || 
                   outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(l));
@@ -803,4 +808,17 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
 
   if (!positions.length) return { lines, addedCount: 0 };
   return { lines: insertBefore(lines, positions), addedCount: positions.length };
+}
+
+/**
+ * FANUC-2 needs G49 (cancel tool length offset) on every tool change line, written right
+ * after M6 and before any comment:  "N16 T3 M6 (...)"  ->  "N16 T3 M6 G49 (...)".
+ * Lines that already have G49 are left as they are.
+ */
+export function addG49AfterM6(lines: string[]): string[] {
+  return lines.map(l => {
+    if (l === '__REMOVE_ME__' || !isToolChangeLine(l)) return l;
+    if (/(?<![A-Z])G49(?![0-9])/i.test(codeOnly(l))) return l;
+    return replaceInCode(l, /(?<![A-Z])(M0*6)(?![0-9.])/i, '$1 G49');
+  });
 }
