@@ -3,12 +3,18 @@ import { ensureSchema } from './schema';
 import type { Ctx, Env } from './context';
 import {
   getSessionUser,
+  handleAuditLog,
   handleChangeOwnPassword,
   handleLogin,
   handleLogout,
   handleMe,
+  handleMfaDisable,
+  handleMfaEnable,
+  handleMfaSetup,
+  handleMfaVerify,
   handleSetup,
 } from './auth';
+import { audit } from './security';
 import { handleAckTool, handleBatchTools, handleDeleteTool, handleGetTools, handlePutTool } from './routes/tools';
 import {
   handleClearHistory,
@@ -64,6 +70,11 @@ route('POST', '/auth/login', 'public', handleLogin);
 route('POST', '/auth/logout', 'public', handleLogout);
 route('POST', '/auth/setup', 'public', handleSetup);
 route('POST', '/auth/password', 'user', handleChangeOwnPassword);
+route('POST', '/auth/mfa/verify', 'public', handleMfaVerify);
+route('POST', '/auth/mfa/setup', 'user', handleMfaSetup);
+route('POST', '/auth/mfa/enable', 'user', handleMfaEnable);
+route('POST', '/auth/mfa/disable', 'user', handleMfaDisable);
+route('GET', '/admin/audit', 'admin', handleAuditLog);
 
 // Sync + analytics
 route('GET', '/sync', 'user', handleSync);
@@ -119,11 +130,38 @@ route('POST', '/admin/import/code', 'admin', handleImportCode);
 route('POST', '/admin/import/parts', 'admin', handleImportParts);
 route('POST', '/admin/import/settings', 'admin', handleImportSettings);
 
-async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+/** Headers added to every API response. The API only returns JSON, so it may do nothing else. */
+const API_SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'X-Robots-Tag': 'noindex, nofollow',
+};
+
+function withSecurityHeaders(response: Response): Response {
+  const res = new Response(response.body, response);
+  for (const [k, v] of Object.entries(API_SECURITY_HEADERS)) res.headers.set(k, v);
+  if (!res.headers.has('Cache-Control')) res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+/** Write requests must come from this site's own pages (defence in depth next to SameSite + the client header). */
+function assertSameOrigin(request: Request, url: URL): void {
   // CSRF guard: browsers cannot add custom headers to cross-site form posts.
-  if (request.method !== 'GET' && request.headers.get('X-CNC-Client') !== '1') {
-    throw new HttpError(403, 'Missing client header');
-  }
+  if (request.headers.get('X-CNC-Client') !== '1') throw new HttpError(403, 'Missing client header');
+  const origin = request.headers.get('Origin');
+  if (origin && origin !== url.origin) throw new HttpError(403, 'Cross-site request refused');
+  const site = request.headers.get('Sec-Fetch-Site');
+  if (site && site !== 'same-origin' && site !== 'none') throw new HttpError(403, 'Cross-site request refused');
+}
+
+async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+  const write = request.method !== 'GET' && request.method !== 'HEAD';
+  if (write) assertSameOrigin(request, url);
 
   let pathMatched = false;
   for (const r of routes) {
@@ -136,32 +174,48 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     const session = r.access === 'public' ? null : await getSessionUser(env, request);
     const user = session?.user ?? null;
     if ((r.access === 'user' || r.access === 'admin') && !user) throw new HttpError(401, 'Not signed in');
-    if (r.access === 'admin' && user!.role !== 'ADMIN') throw new HttpError(403, 'Admin access required');
+    if (r.access === 'admin' && user!.role !== 'ADMIN') {
+      await audit(env, request, 'admin_denied', user, `${request.method} ${url.pathname}`);
+      throw new HttpError(403, 'Admin access required');
+    }
 
     const params: Record<string, string> = {};
-    for (const [k, v] of Object.entries(m.pathname.groups)) if (v !== undefined) params[k] = decodeURIComponent(v);
+    try {
+      for (const [k, v] of Object.entries(m.pathname.groups)) if (v !== undefined) params[k] = decodeURIComponent(v);
+    } catch {
+      throw new HttpError(400, 'Invalid URL');
+    }
 
     const response = await r.handler({ env, request, url, params, user });
-    if (session?.renewCookie) response.headers.append('Set-Cookie', session.renewCookie);
+    for (const c of session?.setCookies ?? []) response.headers.append('Set-Cookie', c);
+    // Every admin change is written to the security log (user changes log their own, more precise, entry).
+    if (r.access === 'admin' && write && response.ok && !url.pathname.startsWith('/api/users')) {
+      await audit(env, request, 'admin_action', user, `${request.method} ${url.pathname}`);
+    }
     return response;
   }
   throw new HttpError(pathMatched ? 405 : 404, pathMatched ? 'Method not allowed' : 'Not found');
+}
+
+async function respond(request: Request, env: Env, url: URL): Promise<Response> {
+  try {
+    return await handleApi(request, env, url);
+  } catch (err) {
+    if (err instanceof HttpError) return json({ error: err.message, ...err.extra }, err.status);
+    // Log only the message: never request bodies, cookies or stack traces with user data.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Unhandled API error', request.method, url.pathname, message);
+    if (/daily row (read|write) limit/i.test(message)) {
+      return json({ error: 'The free Cloudflare database quota for today is used up. It resets at midnight UTC.' }, 503);
+    }
+    return json({ error: 'Server error. Please try again.' }, 500);
+  }
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
-    try {
-      return await handleApi(request, env, url);
-    } catch (err) {
-      if (err instanceof HttpError) return json({ error: err.message, ...err.extra }, err.status);
-      console.error('Unhandled API error', err);
-      const message = err instanceof Error ? err.message : String(err);
-      if (/daily row (read|write) limit/i.test(message)) {
-        return json({ error: 'The free Cloudflare database quota for today is used up. It resets at midnight UTC.' }, 503);
-      }
-      return json({ error: 'Server error. Please try again.' }, 500);
-    }
+    return withSecurityHeaders(await respond(request, env, url));
   },
 } satisfies ExportedHandler<Env>;

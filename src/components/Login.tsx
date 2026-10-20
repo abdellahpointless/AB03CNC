@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, User as UserIcon, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone } from 'lucide-react';
 import { motion, useAnimate } from 'motion/react';
 
 export default function Login() {
@@ -9,7 +9,9 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, setup, needsSetup } = useAuth();
+  const { login, setup, needsSetup, mfaPending, verifyMfa, cancelMfa } = useAuth();
+  const [code, setCode] = useState('');
+  const [useRecovery, setUseRecovery] = useState(false);
   const [cardRef, animateCard] = useAnimate();
   // iPhone-style "wrong passcode" shake.
   const shake = () => {
@@ -33,6 +35,27 @@ export default function Login() {
       setError(res.error || 'Login failed');
       shake();
     }
+  };
+
+  const handleCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+    setError('');
+    setIsLoading(true);
+    const res = await verifyMfa(code);
+    setIsLoading(false);
+    if (!res.success) {
+      setError(res.error || 'Wrong code');
+      setCode('');
+      shake();
+    }
+  };
+
+  const backToPassword = () => {
+    cancelMfa();
+    setCode('');
+    setPassword('');
+    setError('');
   };
 
   return (
@@ -73,6 +96,72 @@ export default function Login() {
           </div>
         )}
 
+        {mfaPending ? (
+          <form onSubmit={handleCode} className="space-y-5">
+            <div className="flex items-start gap-3 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
+              <Smartphone size={18} className="shrink-0 text-[var(--blue-500)] mt-0.5" />
+              <span>
+                {useRecovery
+                  ? 'Enter one of the recovery codes you saved when you turned on two-step sign-in. Each code works once.'
+                  : 'Open your authenticator app and enter the 6-digit code for CNC Process Pro.'}
+              </span>
+            </div>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: 'spring', duration: 0.4, bounce: 0.3 }}
+                className="badge-danger w-full justify-center py-2 text-xs"
+              >
+                <span>{error}</span>
+              </motion.div>
+            )}
+            <div className="space-y-1.5">
+              <label className="section-label">{useRecovery ? 'Recovery code' : 'Authenticator code'}</label>
+              <input
+                key={useRecovery ? 'rec' : 'otp'}
+                type="text"
+                value={code}
+                onChange={(e) => setCode(useRecovery ? e.target.value.toUpperCase().slice(0, 12) : e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="aurora-input w-full text-center font-mono text-lg tracking-[0.35em]"
+                placeholder={useRecovery ? 'XXXX-XXXX' : '000000'}
+                inputMode={useRecovery ? 'text' : 'numeric'}
+                autoComplete="one-time-code"
+                required
+                autoFocus
+              />
+            </div>
+            <button type="submit" disabled={isLoading || code.length < (useRecovery ? 8 : 6)} className="btn-primary w-full py-3 text-sm font-semibold">
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Checking...
+                </span>
+              ) : (
+                <>
+                  <span>Verify and sign in</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+            <div className="flex items-center justify-between text-xs">
+              <button type="button" onClick={backToPassword} className="no-glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                &larr; Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRecovery((v) => !v);
+                  setCode('');
+                  setError('');
+                }}
+                className="no-glass text-[var(--blue-500)] hover:underline"
+              >
+                {useRecovery ? 'Use the authenticator app' : 'Lost your phone? Use a recovery code'}
+              </button>
+            </div>
+          </form>
+        ) : (
         <form onSubmit={handleLogin} className="space-y-5">
           {error && (
             <motion.div 
@@ -107,7 +196,7 @@ export default function Login() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="section-label">Password</label>
-              <span className="text-[11px] text-[var(--text-tertiary)]">{needsSetup ? 'At least 8 characters recommended' : 'Secure Access'}</span>
+              <span className="text-[11px] text-[var(--text-tertiary)]">{needsSetup ? 'At least 10 characters' : 'Secure Access'}</span>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
@@ -120,7 +209,7 @@ export default function Login() {
                 className="aurora-input w-full pl-10"
                 placeholder="••••••••"
                 autoComplete={needsSetup ? 'new-password' : 'current-password'}
-                minLength={needsSetup ? 4 : undefined}
+                minLength={needsSetup ? 10 : undefined}
                 required
               />
             </div>
@@ -164,6 +253,7 @@ export default function Login() {
             )}
           </button>
         </form>
+        )}
 
         <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-tertiary)]">
           <div className="flex items-center gap-1.5">

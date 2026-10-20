@@ -17,7 +17,7 @@ import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
@@ -53,11 +53,26 @@ export default function App() {
 }
 
 function Workspace() {
-  const { user: authUser, logout, weakPassword, dismissWeakPassword } = useAuth();
+  const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
   const { refreshNow, connection } = useSync();
   const [activeTab, setActiveTab] = useState<Tab>('REMAP');
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
+  const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
+    try {
+      return sessionStorage.getItem('cnc-mfa-nudge-hidden') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const hideMfaNudge = () => {
+    setMfaNudgeHidden(true);
+    try {
+      sessionStorage.setItem('cnc-mfa-nudge-hidden', '1');
+    } catch {
+      /* storage unavailable */
+    }
+  };
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Machine selection is strictly isolated per user session - changes never affect other users
@@ -93,7 +108,7 @@ function Workspace() {
       {/* Automatic 10-minute folder backup on the admin PC */}
       <BackupScheduler />
       <AnimatePresence>
-        {showPasswordModal && <ChangePasswordModal key="password" onClose={() => setShowPasswordModal(false)} />}
+        {showPasswordModal && <ChangePasswordModal key="password" initialTab={showPasswordModal} onClose={() => setShowPasswordModal(false)} />}
       </AnimatePresence>
 
       {weakPassword && (
@@ -101,14 +116,36 @@ function Workspace() {
           <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-[var(--orange-500)] font-semibold">
               <AlertTriangle size={16} className="shrink-0" />
-              <span>Your admin password is short. The app is reachable from the internet, so please choose a longer one (8+ characters).</span>
+              <span>
+                Your password no longer meets the security rules (at least {user.role === 'ADMIN' ? 10 : 8} characters, not a common password). The app is
+                reachable from the internet, so please choose a stronger one.
+              </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => setShowPasswordModal(true)} className="btn-warning text-xs py-1 px-3">
+              <button onClick={() => setShowPasswordModal('password')} className="btn-warning text-xs py-1 px-3">
                 <KeyRound size={13} />
                 <span>Change password</span>
               </button>
               <button onClick={dismissWeakPassword} className="btn-icon w-7 h-7" title="Dismiss">
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {user.role === 'ADMIN' && !mfaEnabled && !weakPassword && !mfaNudgeHidden && (
+        <div className="px-4 sm:px-6 pt-3 relative z-30">
+          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
+              <ShieldCheck size={16} className="shrink-0 text-[var(--blue-500)]" />
+              <span>Protect your admin account with two-step sign-in: a code from your phone is asked after the password.</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => setShowPasswordModal('mfa')} className="btn-primary text-xs py-1 px-3">
+                <span>Turn on</span>
+              </button>
+              <button onClick={hideMfaNudge} className="btn-icon w-7 h-7" title="Later">
                 <X size={13} />
               </button>
             </div>
@@ -185,9 +222,9 @@ function Workspace() {
 
             {/* Circular Icon Buttons: Change Password, Refresh Sync, Sign Out */}
             <button 
-              onClick={() => setShowPasswordModal(true)} 
+              onClick={() => setShowPasswordModal('password')} 
               className="btn-icon" 
-              title="Change my password"
+              title="Account security (password, two-step sign-in)"
             >
               <KeyRound size={15} />
             </button>

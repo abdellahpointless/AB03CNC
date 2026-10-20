@@ -19,6 +19,7 @@
     "idb-keyval": "^6.2.4",
     "lucide-react": "^0.546.0",
     "motion": "^12.40.0",
+    "qrcode-generator": "^1.4.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^3.10.1"
@@ -38,5 +39,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

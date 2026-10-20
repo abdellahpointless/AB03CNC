@@ -1,6 +1,11 @@
 import { HttpError, json, num, optNum, readJson, str } from '../http';
 import { bumpStmt, type Ctx, type Env } from '../context';
-import { MATERIALS, TOOL_CATEGORIES, type Tool } from '../../src/types';
+import { MACHINES, MATERIALS, TOOL_CATEGORIES, type Tool } from '../../src/types';
+import { FLEET_IDS } from '../fleet';
+
+/** Machines that may hold a tool inventory (the shop floor). Anything else is refused. */
+const KNOWN_MACHINES = new Set<string>([...MACHINES, ...FLEET_IDS]);
+export const MAX_TOOLS_PER_MACHINE = 400;
 import { defaultToolbox } from '../../src/lib/defaultTools';
 
 interface ToolRow {
@@ -40,8 +45,22 @@ export function rowToTool(r: ToolRow): Tool {
 }
 
 export function validateMachine(machine: string): string {
-  if (!/^[A-Z0-9][A-Z0-9_-]{0,23}$/i.test(machine)) throw new HttpError(400, 'Invalid machine id');
-  return machine.toUpperCase();
+  const id = typeof machine === 'string' ? machine.toUpperCase() : '';
+  if (!KNOWN_MACHINES.has(id)) throw new HttpError(400, 'Unknown machine');
+  return id;
+}
+
+async function assertRoom(env: Env, machine: string, adding: number): Promise<void> {
+  if (adding <= 0) return;
+  const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM tools WHERE machine = ?').bind(machine).first<{ n: number }>();
+  if ((row?.n ?? 0) + adding > MAX_TOOLS_PER_MACHINE) {
+    throw new HttpError(400, `A machine can hold at most ${MAX_TOOLS_PER_MACHINE} tools`);
+  }
+}
+
+function finiteIn(v: unknown, min: number, max: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= min && n <= max ? n : 0;
 }
 
 /** Strict validation for tools coming from the UI. */
@@ -73,18 +92,21 @@ export function normalizeImportedTool(raw: any, index: number): Tool | null {
   if (!raw || typeof raw !== 'object') return null;
   const number = Number(raw.number);
   if (!Number.isFinite(number)) return null;
-  const category = typeof raw.category === 'string' && raw.category ? raw.category : 'empty';
+  const category = typeof raw.category === 'string' && (TOOL_CATEGORIES as string[]).includes(raw.category) ? raw.category : 'empty';
   const pocketNum = raw.pocket === undefined || raw.pocket === null || raw.pocket === '' ? null : Number(raw.pocket);
   const t: Tool = {
     id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 64) : `imported-${index}-${number}`,
-    number: Math.round(number),
-    category: category.slice(0, 40) as Tool['category'],
+    number: Math.round(finiteIn(number, 0, 999_999_999)),
+    category: category as Tool['category'],
     description: typeof raw.description === 'string' ? raw.description.slice(0, 200) : '',
-    diameter: Number(raw.diameter) || 0,
-    length: Number(raw.length) || 0,
+    diameter: finiteIn(raw.diameter, 0, 10_000),
+    length: finiteIn(raw.length, 0, 10_000),
   };
-  if (pocketNum !== null && Number.isFinite(pocketNum)) t.pocket = Math.round(pocketNum);
-  if (Array.isArray(raw.materials) && raw.materials.length) t.materials = raw.materials.filter((m: unknown) => typeof m === 'string');
+  if (pocketNum !== null && Number.isFinite(pocketNum) && pocketNum >= 0 && pocketNum <= 9999) t.pocket = Math.round(pocketNum);
+  if (Array.isArray(raw.materials) && raw.materials.length) {
+    const mats = raw.materials.filter((m: unknown) => typeof m === 'string' && (MATERIALS as string[]).includes(m));
+    if (mats.length) t.materials = mats;
+  }
   if (raw.changed) t.changed = true;
   return t;
 }
@@ -164,6 +186,8 @@ export async function handlePutTool(ctx: Ctx): Promise<Response> {
     .first();
   if (conflict) throw new HttpError(409, `T-number ${tool.number} is already used by another tool!`);
 
+  const isNew = !(await ctx.env.DB.prepare('SELECT 1 AS x FROM tools WHERE machine = ? AND id = ?').bind(machine, tool.id).first());
+  if (isNew) await assertRoom(ctx.env, machine, 1);
   const order = await nextSortOrder(ctx.env, machine, tool.id);
   await ctx.env.DB.batch([
     // An empty slot carrying the same T-number is replaced by this tool.
@@ -183,18 +207,24 @@ export async function handleBatchTools(ctx: Ctx): Promise<Response> {
   }
   const tools = body.tools.map((t) => parseTool(t));
   const stmts: D1PreparedStatement[] = [];
-  let maxOrder = (
-    await ctx.env.DB.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM tools WHERE machine = ?').bind(machine).first<{ m: number }>()
-  )?.m ?? -1;
+  // One query for every existing row of this machine (instead of one query per tool).
+  const { results: rows } = await ctx.env.DB.prepare('SELECT id, number, sort_order FROM tools WHERE machine = ?')
+    .bind(machine)
+    .all<{ id: string; number: number; sort_order: number }>();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const byNumber = new Map<number, { id: string; number: number; sort_order: number }>();
+  for (const r of rows) if (!byNumber.has(r.number)) byNumber.set(r.number, r);
+  let maxOrder = rows.reduce((m, r) => Math.max(m, r.sort_order), -1);
+  const added = tools.filter((t) => !byId.has(t.id) && !byNumber.has(t.number)).length;
+  if (rows.length + added > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `A machine can hold at most ${MAX_TOOLS_PER_MACHINE} tools`);
 
   for (const tool of tools) {
     // Same behaviour as before: the new tool takes the place of a tool with the same id or T-number.
-    const existing = await ctx.env.DB.prepare(
-      'SELECT id, sort_order FROM tools WHERE machine = ? AND (id = ? OR number = ?) ORDER BY (id = ?) DESC LIMIT 1',
-    )
-      .bind(machine, tool.id, tool.number, tool.id)
-      .first<{ id: string; sort_order: number }>();
+    const existing = byId.get(tool.id) ?? byNumber.get(tool.number);
     const order = existing ? existing.sort_order : ++maxOrder;
+    const placed = { id: tool.id, number: tool.number, sort_order: order };
+    byId.set(tool.id, placed);
+    byNumber.set(tool.number, placed);
     stmts.push(ctx.env.DB.prepare('DELETE FROM tools WHERE machine = ? AND number = ? AND id != ?').bind(machine, tool.number, tool.id));
     stmts.push(bulkInsertToolsStmt(ctx.env, machine, [{ ...tool, changed: true }], ctx.user!.username, order));
   }

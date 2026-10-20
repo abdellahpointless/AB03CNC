@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { csvCell } from '../lib/csv';
 import { get, set } from 'idb-keyval';
 import { useAuth } from '../contexts/AuthContext';
 import { Folder, Save, CheckCircle } from 'lucide-react';
@@ -36,7 +37,7 @@ function writeCursor(c: Cursor) {
   localStorage.setItem(CURSOR_KEY, JSON.stringify(c));
 }
 
-const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+const q = csvCell;
 
 async function appendRecords(dirHandle: FileSystemDirectoryHandle, records: HistoryRecord[]): Promise<void> {
   if (!records.length) return;

@@ -10,17 +10,43 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
       ...headers,
     },
   });
 }
 
+/**
+ * Reads a JSON body. Requires `Content-Type: application/json` and enforces `maxBytes`
+ * while streaming, so a body sent without (or with a false) Content-Length is still capped.
+ */
 export async function readJson<T = any>(request: Request, maxBytes = 25 * 1024 * 1024): Promise<T> {
+  const type = (request.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json') throw new HttpError(415, 'Content-Type must be application/json');
   const len = Number(request.headers.get('Content-Length') || 0);
   if (len > maxBytes) throw new HttpError(413, 'Request body too large');
+  if (!request.body) throw new HttpError(400, 'Invalid JSON body');
+
+  const reader = request.body.getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      throw new HttpError(413, 'Request body too large');
+    }
+    parts.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const p of parts) {
+    bytes.set(p, offset);
+    offset += p.byteLength;
+  }
   try {
-    return (await request.json()) as T;
+    return JSON.parse(new TextDecoder().decode(bytes)) as T;
   } catch {
     throw new HttpError(400, 'Invalid JSON body');
   }

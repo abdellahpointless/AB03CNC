@@ -16,10 +16,17 @@ interface AuthContextType {
   status: Status;
   /** True when the database has no accounts yet (first deploy). */
   needsSetup: boolean;
-  /** Signed-in admin is using a short password; shown as a reminder banner. */
+  /** The password used to sign in does not meet the current rules; shown as a reminder banner. */
   weakPassword: boolean;
   dismissWeakPassword: () => void;
+  /** Two-step sign-in is on for the signed-in account. */
+  mfaEnabled: boolean;
+  setMfaEnabled: (on: boolean) => void;
+  /** Password accepted; waiting for the authenticator code. */
+  mfaPending: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  verifyMfa: (code: string) => Promise<{ success: boolean; error?: string; expired?: boolean }>;
+  cancelMfa: () => void;
   setup: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -55,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [needsSetup, setNeedsSetup] = useState(false);
   const [weakPassword, setWeakPassword] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [challenge, setChallenge] = useState<{ token: string; weak: boolean } | null>(null);
 
   const setUser = useCallback((u: User | null) => {
     setUserState(u);
@@ -63,10 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    api<{ user: User | null; needsSetup?: boolean }>('/auth/me')
+    api<{ user: User | null; needsSetup?: boolean; mfaEnabled?: boolean }>('/auth/me')
       .then((res) => {
         if (cancelled) return;
         setUser(res.user);
+        setMfaEnabled(!!res.mfaEnabled);
         setNeedsSetup(!res.user && !!res.needsSetup);
       })
       .catch((err) => {
@@ -94,16 +104,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      const res = await api<{ user: User; weakPassword?: boolean }>('/auth/login', {
-        method: 'POST',
-        body: { username: username.trim(), password },
-      });
+      const res = await api<{ user?: User; weakPassword?: boolean; mfaRequired?: boolean; challenge?: string; mfaEnabled?: boolean }>(
+        '/auth/login',
+        { method: 'POST', body: { username: username.trim(), password } },
+      );
       setNeedsSetup(false);
+      if (res.mfaRequired && res.challenge) {
+        setChallenge({ token: res.challenge, weak: !!res.weakPassword });
+        return { success: true };
+      }
       setWeakPassword(!!res.weakPassword);
-      setUser(res.user);
+      setMfaEnabled(!!res.mfaEnabled);
+      setUser(res.user ?? null);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Login failed' };
+    }
+  };
+
+  const verifyMfa = async (code: string) => {
+    if (!challenge) return { success: false, expired: true, error: 'Sign-in expired. Please enter your password again.' };
+    try {
+      const res = await api<{ user: User; weakPassword?: boolean }>('/auth/mfa/verify', {
+        method: 'POST',
+        body: { challenge: challenge.token, code: code.trim(), weakPassword: challenge.weak },
+      });
+      setChallenge(null);
+      setWeakPassword(!!res.weakPassword);
+      setMfaEnabled(true);
+      setUser(res.user);
+      return { success: true };
+    } catch (err: any) {
+      const expired = err instanceof ApiError && err.status === 401 && /expired/i.test(err.message);
+      if (expired) setChallenge(null);
+      return { success: false, expired, error: err?.message || 'Wrong code' };
     }
   };
 
@@ -126,12 +160,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       /* sign out locally even if the server is unreachable */
     }
     setWeakPassword(false);
+    setMfaEnabled(false);
     setUser(null);
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     await api('/auth/password', { method: 'POST', body: { currentPassword, newPassword } });
-    setWeakPassword(newPassword.length < 8 && user?.role === 'ADMIN');
+    setWeakPassword(false);
   };
 
   return (
@@ -142,7 +177,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         needsSetup,
         weakPassword,
         dismissWeakPassword: () => setWeakPassword(false),
+        mfaEnabled,
+        setMfaEnabled,
+        mfaPending: !!challenge,
         login,
+        verifyMfa,
+        cancelMfa: () => setChallenge(null),
         setup,
         logout,
         changePassword,

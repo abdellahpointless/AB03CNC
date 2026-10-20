@@ -1,7 +1,7 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
-import { hashPassword } from '../auth';
-import { bulkInsertToolsStmt, normalizeImportedTool, validateMachine } from './tools';
+import { hashPassword, validateUsername } from '../auth';
+import { MAX_TOOLS_PER_MACHINE, bulkInsertToolsStmt, normalizeImportedTool, validateMachine } from './tools';
 import { codeStatements, historyInsertStatements, normalizeHistory, parseCode } from './history';
 import { validateSap } from './parts';
 import { DEFAULT_SAVED_SECONDS } from './analytics';
@@ -22,26 +22,34 @@ export async function handleImportUsers(ctx: Ctx): Promise<Response> {
   const created: string[] = [];
   const skipped: string[] = [];
   for (const u of body.users) {
-    const username = typeof u?.username === 'string' ? u.username.trim().slice(0, 40) : '';
-    const oldId = u?.id !== undefined && u?.id !== null ? String(u.id) : '';
-    if (!username) continue;
-    const existing = await ctx.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first<{ id: string }>();
+    let username: string;
+    try {
+      username = validateUsername(typeof u?.username === 'string' ? u.username.trim() : '');
+    } catch {
+      if (typeof u?.username === 'string' && u.username.trim()) skipped.push(`${u.username.slice(0, 40)} (invalid username)`);
+      continue;
+    }
+    const oldId = u?.id !== undefined && u?.id !== null ? String(u.id).slice(0, 64) : '';
+    const existing = await ctx.env.DB.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').bind(username).first<{ id: string }>();
     if (existing) {
       if (oldId) idMap[oldId] = existing.id;
       skipped.push(username);
       continue;
     }
-    const password = typeof u.password === 'string' && u.password.length > 0 ? u.password : null;
+    // Old accounts keep their password so people can still sign in; they are asked to pick a
+    // stronger one afterwards. Only empty or absurd values are refused.
+    const password = typeof u.password === 'string' && u.password.length >= 4 && u.password.length <= 200 ? u.password : null;
     if (!password) {
-      skipped.push(`${username} (no password)`);
+      skipped.push(`${username} (no usable password)`);
       continue;
     }
-    const idTaken = oldId ? await ctx.env.DB.prepare('SELECT 1 AS x FROM users WHERE id = ?').bind(oldId).first() : true;
-    const id = oldId && !idTaken && oldId.length <= 64 ? oldId : newId();
+    // Always a fresh id: a re-used id could inherit a deleted user's data.
+    const id = newId();
     const role = u.role === 'ADMIN' ? 'ADMIN' : 'MACHINIST';
-    const createdAt = Date.parse(u.created_at) || Date.now();
+    const parsed = Date.parse(u.created_at);
+    const createdAt = Number.isFinite(parsed) && parsed > 0 && parsed <= Date.now() ? parsed : Date.now();
     await ctx.env.DB.prepare('INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')
-      .bind(id, username, await hashPassword(password), role, createdAt)
+      .bind(id, username, await hashPassword(ctx.env, password), role, createdAt)
       .run();
     if (oldId) idMap[oldId] = id;
     created.push(username);
@@ -59,6 +67,7 @@ export async function handleImportTools(ctx: Ctx): Promise<Response> {
   let count = 0;
   for (const [machineRaw, list] of Object.entries(body.toolbox)) {
     if (!Array.isArray(list)) continue;
+    if (list.length > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `${machineRaw}: at most ${MAX_TOOLS_PER_MACHINE} tools per machine`);
     const machine = validateMachine(machineRaw);
     const seen = new Set<string>();
     const tools = list
@@ -146,17 +155,25 @@ export async function handleImportParts(ctx: Ctx): Promise<Response> {
         sap_number: validateSap(e.sap_number),
         qty: Math.min(qty, 9999),
         kind,
-        unit_value: Number.isFinite(Number(e.unit_value)) ? Number(e.unit_value) : kind === 'PRODUCED' ? 1 : 0.5,
+        unit_value: [0, 0.5, 1].includes(Number(e.unit_value)) ? Number(e.unit_value) : kind === 'PRODUCED' ? 1 : 0.5,
         status,
         month_key: /^\d{4}-\d{2}$/.test(e.month_key) ? e.month_key : createdAt.slice(0, 7),
         created_at: createdAt,
-        reviewed_at: e.reviewed_at ?? null,
-        reviewed_by: e.reviewed_by ?? null,
+        reviewed_at: typeof e.reviewed_at === 'string' && !Number.isNaN(Date.parse(e.reviewed_at)) ? e.reviewed_at.slice(0, 40) : null,
+        reviewed_by: typeof e.reviewed_by === 'string' ? e.reviewed_by.slice(0, 60) : null,
       });
     } catch {
       /* skip invalid row */
     }
   }
+  // Entries must belong to a real account; the stored username always comes from that account.
+  const { results: users } = await ctx.env.DB.prepare('SELECT id, username FROM users WHERE id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify([...new Set(rows.map((r) => r.user_id))]))
+    .all<{ id: string; username: string }>();
+  const names = new Map(users.map((u) => [u.id, u.username]));
+  const valid = rows.filter((r) => names.has(r.user_id)).map((r) => ({ ...r, username: names.get(r.user_id) }));
+  rows.length = 0;
+  rows.push(...valid);
   if (!rows.length) return json({ inserted: 0 });
   const [res] = await ctx.env.DB.batch([
     ctx.env.DB.prepare(

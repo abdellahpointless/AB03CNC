@@ -8,13 +8,11 @@ import { api } from '../lib/api';
 import { fetchAllHistory, fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadJson, downloadText, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
+import { csvCell } from '../lib/csv';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, iosBackdrop, iosSurface } from '../lib/motion';
 
 const PAGE_SIZE = 10;
 
-function csvCell(v: unknown): string {
-  return `"${String(v ?? '').replace(/"/g, '""')}"`;
-}
 
 export function historyToCsv(records: HistoryRecord[]): string {
   const headers = [

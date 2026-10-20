@@ -1,9 +1,16 @@
 import { HttpError, intParam, json, num, optStr, readJson, str } from '../http';
 import { bumpStmt, type Ctx, type Env } from '../context';
+import { consumeQuota } from '../security';
 
 // Stay well under D1's 2 MB per-value limit.
 const CODE_CHUNK_CHARS = 900_000;
-const MAX_CODE_CHARS = 40_000_000;
+// Imports (admin) may carry big old files; a program saved from the app is far smaller
+// (the largest so far is ~330 KB before compression).
+const MAX_IMPORT_CODE_CHARS = 40_000_000;
+const MAX_UPLOAD_CODE_CHARS = 8_000_000;
+const MAX_CHANGES = 300;
+const HISTORY_PER_DAY = 500;
+const SEARCHES_PER_HOUR = 600;
 
 interface HistoryRow {
   id: string;
@@ -67,12 +74,17 @@ export function normalizeHistory(raw: any, fallbackUser: string, strict: boolean
       createdAt = Number.isFinite(fromIso) ? fromIso : Number.isFinite(fromLabel) ? fromLabel : Date.now();
     }
     if (createdAt > Date.now() + 86_400_000) createdAt = Date.now();
+    // Records saved from the app are recent (the offline queue holds them a few days at most).
+    if (strict && createdAt < Date.now() - 14 * 86_400_000) createdAt = Date.now();
+    if (strict && Array.isArray(raw.changes) && raw.changes.length > MAX_CHANGES) {
+      throw new HttpError(400, `A program can record at most ${MAX_CHANGES} tool changes`);
+    }
     const changesRaw = Array.isArray(raw.changes) ? raw.changes.slice(0, 1000) : [];
     const changes = changesRaw
       .filter((c: any) => c && typeof c === 'object')
       .map((c: any) => ({
         originalT: String(c.originalT ?? 'M6').slice(0, 40),
-        originalContext: String(c.originalContext ?? '').slice(0, 1000),
+        originalContext: String(c.originalContext ?? '').slice(0, strict ? 300 : 1000),
         reqDiameter: c.reqDiameter === null || c.reqDiameter === undefined ? null : Number(c.reqDiameter) || 0,
         reqLength: c.reqLength === null || c.reqLength === undefined ? null : Number(c.reqLength) || 0,
         appChose: !!c.appChose,
@@ -106,13 +118,13 @@ export interface CodePayload {
   size: number;
 }
 
-export function parseCode(raw: any): CodePayload | null {
+export function parseCode(raw: any, maxChars = MAX_IMPORT_CODE_CHARS): CodePayload | null {
   if (!raw) return null;
   const encoding = raw.encoding === 'plain' ? 'plain' : raw.encoding === 'gzip-base64' ? 'gzip-base64' : null;
   if (!encoding) throw new HttpError(400, 'Unsupported code encoding');
   const data = typeof raw.data === 'string' ? raw.data : '';
   if (!data) return null;
-  if (data.length > MAX_CODE_CHARS) throw new HttpError(413, 'Program file is too large to store');
+  if (data.length > maxChars) throw new HttpError(413, 'Program file is too large to store');
   return { encoding, data, size: num(raw.size ?? data.length, 'size', { min: 0, max: 1e9, integer: true }) };
 }
 
@@ -161,13 +173,14 @@ export function historyInsertStatements(env: Env, h: NormalizedHistory, hasCode:
 
 // POST /api/history  { record, code? }
 export async function handleCreateHistory(ctx: Ctx): Promise<Response> {
-  const body = await readJson<{ record?: unknown; code?: unknown }>(ctx.request, 60 * 1024 * 1024);
+  const body = await readJson<{ record?: unknown; code?: unknown }>(ctx.request, 10 * 1024 * 1024);
   // The operator is always the signed-in user, never what the client claims.
   const h = normalizeHistory({ ...(body.record as object), user: ctx.user!.username }, ctx.user!.username, true)!;
-  const code = parseCode(body.code);
+  const code = parseCode(body.code, MAX_UPLOAD_CODE_CHARS);
 
   const exists = await ctx.env.DB.prepare('SELECT 1 AS x FROM history WHERE id = ?').bind(h.id).first();
   if (exists) return json({ ok: true, duplicate: true }); // safe retry from the offline queue
+  await consumeQuota(ctx.env, `hist:${ctx.user!.id}`, HISTORY_PER_DAY, 86_400_000, 'Daily upload limit reached. Try again tomorrow.');
 
   await ctx.env.DB.batch([
     ...historyInsertStatements(ctx.env, h, !!code),
@@ -184,9 +197,12 @@ function escapeLike(s: string): string {
 // GET /api/history?limit=&offset=&user=&q=
 export async function handleListHistory(ctx: Ctx): Promise<Response> {
   const limit = intParam(ctx.url, 'limit', 10, 1, 100);
-  const offset = intParam(ctx.url, 'offset', 0, 0, 1_000_000);
-  const user = ctx.url.searchParams.get('user')?.trim() || '';
+  const offset = intParam(ctx.url, 'offset', 0, 0, 10_000);
+  const user = ctx.url.searchParams.get('user')?.trim().slice(0, 60) || '';
   const q = ctx.url.searchParams.get('q')?.trim().slice(0, 100) || '';
+  if (q || user) {
+    await consumeQuota(ctx.env, `search:${ctx.user!.id}`, SEARCHES_PER_HOUR, 3_600_000, 'Too many searches. Wait a few minutes.');
+  }
 
   const where: string[] = [];
   const binds: unknown[] = [];

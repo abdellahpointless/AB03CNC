@@ -1,16 +1,20 @@
 import { HttpError, json, readJson } from '../http';
-import { bumpStmt, newId, type Ctx } from '../context';
+import { bumpStmt, newId, type Ctx, type Role } from '../context';
 import { hashPassword, validateNewPassword, validateUsername } from '../auth';
+import { auditCtx } from '../security';
 
-function parseRole(v: unknown): 'ADMIN' | 'MACHINIST' {
+function parseRole(v: unknown): Role {
   if (v === 'ADMIN' || v === 'MACHINIST') return v;
   throw new HttpError(400, 'Role must be ADMIN or MACHINIST');
 }
 
+// Guard used inside UPDATE/DELETE so "at least one admin" holds even when two admins act at once.
+const KEEPS_AN_ADMIN = "(role != 'ADMIN' OR (SELECT COUNT(*) FROM users WHERE role = 'ADMIN') > 1)";
+
 // GET /api/users  (admin)
 export async function handleListUsers(ctx: Ctx): Promise<Response> {
   const { results } = await ctx.env.DB.prepare(
-    'SELECT id, username, role, created_at FROM users ORDER BY role, username COLLATE NOCASE',
+    'SELECT id, username, role, created_at, mfa_enabled FROM users ORDER BY role, username COLLATE NOCASE',
   ).all();
   return json({ users: results });
 }
@@ -19,54 +23,73 @@ export async function handleListUsers(ctx: Ctx): Promise<Response> {
 export async function handleCreateUser(ctx: Ctx): Promise<Response> {
   const body = await readJson<{ username?: unknown; password?: unknown; role?: unknown }>(ctx.request, 10_000);
   const username = validateUsername(body.username);
-  const password = validateNewPassword(body.password);
   const role = parseRole(body.role ?? 'MACHINIST');
+  const password = validateNewPassword(body.password, username, role);
 
-  const exists = await ctx.env.DB.prepare('SELECT 1 AS x FROM users WHERE username = ?').bind(username).first();
+  const exists = await ctx.env.DB.prepare('SELECT 1 AS x FROM users WHERE username = ? COLLATE NOCASE').bind(username).first();
   if (exists) throw new HttpError(409, 'User already exists');
 
   const id = newId();
+  const now = Date.now();
   await ctx.env.DB.batch([
-    ctx.env.DB.prepare('INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)').bind(
-      id,
-      username,
-      await hashPassword(password),
-      role,
-      Date.now(),
-    ),
+    ctx.env.DB.prepare(
+      'INSERT INTO users (id, username, password_hash, role, created_at, password_changed_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).bind(id, username, await hashPassword(ctx.env, password), role, now, now),
     bumpStmt(ctx.env, 'users'),
   ]);
+  await auditCtx(ctx, 'user_created', `${username} (${role})`);
   return json({ user: { id, username, role } });
 }
 
-async function adminCount(ctx: Ctx): Promise<number> {
-  return (await ctx.env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'ADMIN'").first<{ n: number }>())?.n ?? 0;
-}
-
-// PATCH /api/users/:id { password?, role? }  (admin)
+// PATCH /api/users/:id { password?, role?, resetMfa? }  (admin)
 export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   const id = ctx.params.id;
-  const body = await readJson<{ password?: unknown; role?: unknown }>(ctx.request, 10_000);
-  const target = await ctx.env.DB.prepare('SELECT id, role FROM users WHERE id = ?').bind(id).first<{ id: string; role: string }>();
+  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown }>(ctx.request, 10_000);
+  const target = await ctx.env.DB.prepare('SELECT id, username, role FROM users WHERE id = ?')
+    .bind(id)
+    .first<{ id: string; username: string; role: Role }>();
   if (!target) throw new HttpError(404, 'User not found');
+  const self = id === ctx.user!.id;
+  const db = ctx.env.DB;
+  const notes: string[] = [];
+  let signOut = false;
 
-  const stmts: D1PreparedStatement[] = [];
   if (body.role !== undefined) {
     const role = parseRole(body.role);
-    if (target.role === 'ADMIN' && role !== 'ADMIN' && (await adminCount(ctx)) <= 1) {
-      throw new HttpError(400, 'At least one admin account must remain');
+    if (role !== target.role) {
+      if (self) throw new HttpError(400, 'You cannot change your own role');
+      const res = await db.prepare(`UPDATE users SET role = ? WHERE id = ? AND ${KEEPS_AN_ADMIN}`).bind(role, id).run();
+      if (!res.meta.changes) throw new HttpError(400, 'At least one admin account must remain');
+      target.role = role;
+      notes.push(`role -> ${role}`);
+      signOut = true;
     }
-    stmts.push(ctx.env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, id));
   }
   if (body.password !== undefined) {
-    const password = validateNewPassword(body.password);
-    stmts.push(ctx.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), id));
-    // A reset password signs that user out everywhere (except the admin's own session when resetting themselves).
-    if (id !== ctx.user!.id) stmts.push(ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id));
+    // Own password goes through /auth/password, which asks for the current one.
+    if (self) throw new HttpError(400, 'Change your own password from the Security menu');
+    const password = validateNewPassword(body.password, target.username, target.role);
+    await db
+      .prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?')
+      .bind(await hashPassword(ctx.env, password), Date.now(), id)
+      .run();
+    notes.push('password reset');
+    signOut = true;
   }
-  if (!stmts.length) throw new HttpError(400, 'Nothing to update');
-  stmts.push(bumpStmt(ctx.env, 'users'));
-  await ctx.env.DB.batch(stmts);
+  if (body.resetMfa === true) {
+    if (self) throw new HttpError(400, 'Turn off your own two-step sign-in from the Security menu');
+    await db
+      .prepare('UPDATE users SET mfa_secret = NULL, mfa_pending_secret = NULL, mfa_enabled = 0, mfa_recovery = NULL WHERE id = ?')
+      .bind(id)
+      .run();
+    notes.push('two-step sign-in reset');
+    signOut = true;
+  }
+  if (!notes.length) throw new HttpError(400, 'Nothing to update');
+  const stmts: D1PreparedStatement[] = [bumpStmt(ctx.env, 'users')];
+  if (signOut) stmts.push(db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id));
+  await db.batch(stmts);
+  await auditCtx(ctx, 'user_updated', `${target.username}: ${notes.join(', ')}`);
   return json({ ok: true });
 }
 
@@ -74,15 +97,17 @@ export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
 export async function handleDeleteUser(ctx: Ctx): Promise<Response> {
   const id = ctx.params.id;
   if (id === ctx.user!.id) throw new HttpError(400, 'You cannot delete your own account');
-  const target = await ctx.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(id).first<{ role: string }>();
+  const target = await ctx.env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(id).first<{ username: string }>();
   if (!target) throw new HttpError(404, 'User not found');
-  if (target.role === 'ADMIN' && (await adminCount(ctx)) <= 1) throw new HttpError(400, 'At least one admin account must remain');
+  const res = await ctx.env.DB.prepare(`DELETE FROM users WHERE id = ? AND ${KEEPS_AN_ADMIN}`).bind(id).run();
+  if (!res.meta.changes) throw new HttpError(400, 'At least one admin account must remain');
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
-    ctx.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id),
     ctx.env.DB.prepare('DELETE FROM machine_owners WHERE user_id = ?').bind(id),
+    ctx.env.DB.prepare('DELETE FROM login_challenges WHERE user_id = ?').bind(id),
     bumpStmt(ctx.env, 'users'),
     bumpStmt(ctx.env, 'machines'),
   ]);
+  await auditCtx(ctx, 'user_deleted', target.username);
   return json({ ok: true });
 }

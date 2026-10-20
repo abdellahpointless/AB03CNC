@@ -10,17 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      // Apply the saved colour mode before the first paint (no dark/light flash).
-      (function () {
-        var mode = 'dark';
-        try { mode = localStorage.getItem('cnc-theme') || 'dark'; } catch (e) {}
-        var light = mode === 'light' || (mode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
-        var el = document.documentElement;
-        el.classList.toggle('dark', !light);
-        el.classList.toggle('light', light);
-      })();
-    </script>
+    <script src="/theme-boot.js"></script>
   </head>
   <body class="antialiased">
     <div id="root"></div>

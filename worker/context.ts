@@ -1,6 +1,12 @@
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /**
+   * Optional secret (set in Cloudflare: Settings -> Variables and Secrets).
+   * When present, passwords are hashed as PBKDF2(HMAC(pepper, password)), so a copy of the
+   * database alone is not enough to crack them. Never change or remove it once set.
+   */
+  AUTH_PEPPER?: string;
 }
 
 export type Role = 'ADMIN' | 'MACHINIST';

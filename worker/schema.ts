@@ -160,6 +160,41 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       ),
     ],
   },
+  {
+    // Security hardening: two-step sign-in (TOTP), sign-in challenges and a security event log.
+    version: 3,
+    statements: [
+      `ALTER TABLE users ADD COLUMN mfa_secret TEXT`,
+      `ALTER TABLE users ADD COLUMN mfa_pending_secret TEXT`,
+      `ALTER TABLE users ADD COLUMN mfa_enabled INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE users ADD COLUMN mfa_recovery TEXT`,
+      `ALTER TABLE users ADD COLUMN mfa_last_step INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE users ADD COLUMN password_changed_at INTEGER`,
+      `ALTER TABLE sessions ADD COLUMN role TEXT`,
+      `CREATE TABLE IF NOT EXISTS login_challenges (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0
+      )`,
+      `CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at INTEGER NOT NULL,
+        user_id TEXT,
+        username TEXT,
+        ip TEXT,
+        action TEXT NOT NULL,
+        detail TEXT
+      )`,
+      `CREATE INDEX IF NOT EXISTS audit_log_at ON audit_log(at DESC)`,
+      // Generic per-user quotas (history uploads, searches).
+      `CREATE TABLE IF NOT EXISTS rate_limits (
+        key TEXT PRIMARY KEY,
+        count INTEGER NOT NULL,
+        window_start INTEGER NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
