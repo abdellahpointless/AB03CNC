@@ -76,10 +76,7 @@ export function normalizeHistory(raw: any, fallbackUser: string, strict: boolean
     if (createdAt > Date.now() + 86_400_000) createdAt = Date.now();
     // Records saved from the app are recent (the offline queue holds them a few days at most).
     if (strict && createdAt < Date.now() - 14 * 86_400_000) createdAt = Date.now();
-    if (strict && Array.isArray(raw.changes) && raw.changes.length > MAX_CHANGES) {
-      throw new HttpError(400, `A program can record at most ${MAX_CHANGES} tool changes`);
-    }
-    const changesRaw = Array.isArray(raw.changes) ? raw.changes.slice(0, 1000) : [];
+    const changesRaw = Array.isArray(raw.changes) ? raw.changes.slice(0, strict ? MAX_CHANGES : 1000) : [];
     const changes = changesRaw
       .filter((c: any) => c && typeof c === 'object')
       .map((c: any) => ({

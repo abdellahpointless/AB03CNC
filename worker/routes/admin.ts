@@ -68,7 +68,12 @@ export async function handleImportTools(ctx: Ctx): Promise<Response> {
   for (const [machineRaw, list] of Object.entries(body.toolbox)) {
     if (!Array.isArray(list)) continue;
     if (list.length > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `${machineRaw}: at most ${MAX_TOOLS_PER_MACHINE} tools per machine`);
-    const machine = validateMachine(machineRaw);
+    let machine: string;
+    try {
+      machine = validateMachine(machineRaw);
+    } catch {
+      continue; // a machine that no longer exists on the floor is skipped, not fatal
+    }
     const seen = new Set<string>();
     const tools = list
       .map((t, i) => normalizeImportedTool(t, i))

@@ -51,44 +51,58 @@ export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   if (!target) throw new HttpError(404, 'User not found');
   const self = id === ctx.user!.id;
   const db = ctx.env.DB;
-  const notes: string[] = [];
-  let signOut = false;
 
+  // 1. Validate every requested change first, so a bad field never leaves a half-applied update.
+  let newRole: Role | null = null;
   if (body.role !== undefined) {
     const role = parseRole(body.role);
     if (role !== target.role) {
       if (self) throw new HttpError(400, 'You cannot change your own role');
-      const res = await db.prepare(`UPDATE users SET role = ? WHERE id = ? AND ${KEEPS_AN_ADMIN}`).bind(role, id).run();
-      if (!res.meta.changes) throw new HttpError(400, 'At least one admin account must remain');
-      target.role = role;
-      notes.push(`role -> ${role}`);
-      signOut = true;
+      newRole = role;
     }
   }
+  let newPassword: string | null = null;
   if (body.password !== undefined) {
     // Own password goes through /auth/password, which asks for the current one.
     if (self) throw new HttpError(400, 'Change your own password from the Security menu');
-    const password = validateNewPassword(body.password, target.username, target.role);
-    await db
-      .prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?')
-      .bind(await hashPassword(ctx.env, password), Date.now(), id)
-      .run();
+    newPassword = validateNewPassword(body.password, target.username, newRole ?? target.role);
+  }
+  const resetMfa = body.resetMfa === true;
+  if (resetMfa && self) throw new HttpError(400, 'Turn off your own two-step sign-in from the Security menu');
+  if (newRole === null && newPassword === null && !resetMfa) throw new HttpError(400, 'Nothing to update');
+
+  // 2. Apply everything in one atomic batch. The role change carries the last-admin guard; if it
+  //    matches nothing, the other statements are conditioned on it too.
+  const stmts: D1PreparedStatement[] = [];
+  const notes: string[] = [];
+  if (newRole) {
+    stmts.push(db.prepare(`UPDATE users SET role = ? WHERE id = ? AND ${KEEPS_AN_ADMIN}`).bind(newRole, id));
+    notes.push(`role -> ${newRole}`);
+  }
+  const roleOk = newRole ? `AND role = '${newRole}'` : '';
+  if (newPassword !== null) {
+    stmts.push(
+      db
+        .prepare(`UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ? ${roleOk}`)
+        .bind(await hashPassword(ctx.env, newPassword), Date.now(), id),
+    );
     notes.push('password reset');
-    signOut = true;
   }
-  if (body.resetMfa === true) {
-    if (self) throw new HttpError(400, 'Turn off your own two-step sign-in from the Security menu');
-    await db
-      .prepare('UPDATE users SET mfa_secret = NULL, mfa_pending_secret = NULL, mfa_enabled = 0, mfa_recovery = NULL WHERE id = ?')
-      .bind(id)
-      .run();
+  if (resetMfa) {
+    stmts.push(
+      db
+        .prepare(`UPDATE users SET mfa_secret = NULL, mfa_pending_secret = NULL, mfa_enabled = 0, mfa_recovery = NULL WHERE id = ? ${roleOk}`)
+        .bind(id),
+    );
     notes.push('two-step sign-in reset');
-    signOut = true;
   }
-  if (!notes.length) throw new HttpError(400, 'Nothing to update');
-  const stmts: D1PreparedStatement[] = [bumpStmt(ctx.env, 'users')];
-  if (signOut) stmts.push(db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id));
-  await db.batch(stmts);
+  stmts.push(
+    db.prepare(`DELETE FROM sessions WHERE user_id = ? AND EXISTS (SELECT 1 FROM users WHERE id = ? ${roleOk})`).bind(id, id),
+    db.prepare(`DELETE FROM login_challenges WHERE user_id = ? AND EXISTS (SELECT 1 FROM users WHERE id = ? ${roleOk})`).bind(id, id),
+    bumpStmt(ctx.env, 'users'),
+  );
+  const results = await db.batch(stmts);
+  if (newRole && !results[0].meta.changes) throw new HttpError(400, 'At least one admin account must remain');
   await auditCtx(ctx, 'user_updated', `${target.username}: ${notes.join(', ')}`);
   return json({ ok: true });
 }

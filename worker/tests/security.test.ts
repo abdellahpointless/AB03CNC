@@ -82,5 +82,6 @@ describe('CSV export', () => {
     expect(csvCell('O1234.nc')).toBe('"O1234.nc"');
     expect(csvCell(-12.5)).toBe('"-12.5"');
     expect(csvCell(null)).toBe('""');
+    expect(csvCell('-')).toBe('"-"');
   });
 });

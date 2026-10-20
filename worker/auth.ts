@@ -25,16 +25,19 @@ export const SESSION_COOKIE = '__Host-cnc_sid';
 const LEGACY_SESSION_COOKIE = 'cnc_sid';
 
 // Session lifetimes. Machinists stay signed in on shop-floor PCs (sliding 30 days, at most
-// 60 days in total). Admin sessions are short and never extended.
+// 60 days in total). Admin sessions end after 12 hours without activity and after 7 days in
+// any case (the admin PC's 10-minute backup keeps an attended session alive).
 const DAY = 24 * 60 * 60 * 1000;
-const SESSION_TTL_MS = 30 * DAY;
-const SESSION_RENEW_AFTER_MS = 15 * DAY;
-const SESSION_MAX_AGE_MS = 60 * DAY;
-const ADMIN_SESSION_MS = 12 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const LIFETIME = {
+  MACHINIST: { idle: 30 * DAY, renewBelow: 15 * DAY, max: 60 * DAY },
+  ADMIN: { idle: 12 * HOUR, renewBelow: 6 * HOUR, max: 7 * DAY },
+} as const;
 
 // Login throttling. Per account: 10 failures in an hour lock it for 15 minutes.
-// Per IP: 40 failures in an hour lock that address for 15 minutes (the shop floor shares one IP,
-// so this is deliberately looser than the per-account limit).
+// Per IP: 40 attempts on usernames that do not exist (guessing / spraying) lock that address.
+// Wrong passwords for real accounts only count against that account, so one person on the
+// shared shop-floor IP cannot lock everybody else out.
 const FAILURE_WINDOW_MS = 60 * 60 * 1000;
 const LIMITS = {
   user: { max: 10, lockMs: 15 * 60 * 1000 },
@@ -66,7 +69,12 @@ async function pbkdf2(input: Uint8Array, salt: Uint8Array, iterations: number): 
 }
 
 function hasPepper(env: Env): boolean {
-  return typeof env.AUTH_PEPPER === 'string' && env.AUTH_PEPPER.length >= 16;
+  if (typeof env.AUTH_PEPPER !== 'string' || !env.AUTH_PEPPER) return false;
+  if (env.AUTH_PEPPER.length < 16) {
+    console.error('AUTH_PEPPER is set but shorter than 16 characters; it is ignored');
+    return false;
+  }
+  return true;
 }
 
 export async function hashPassword(env: Env, password: string, iterations = PBKDF2_ITERATIONS): Promise<string> {
@@ -124,7 +132,13 @@ export function validateUsername(username: unknown): string {
 }
 
 async function recoveryHash(env: Env, code: string): Promise<string> {
-  return sha256Hex(`${env.AUTH_PEPPER ?? ''}|recovery|${normalizeRecoveryCode(code)}`);
+  return sha256Hex(`${hasPepper(env) ? env.AUTH_PEPPER : ''}|recovery|${normalizeRecoveryCode(code)}`);
+}
+
+/** Both forms a stored recovery code may have (before and after a pepper was configured). */
+async function recoveryHashCandidates(env: Env, code: string): Promise<string[]> {
+  const plain = await sha256Hex(`|recovery|${normalizeRecoveryCode(code)}`);
+  return hasPepper(env) ? [await recoveryHash(env, code), plain] : [plain];
 }
 
 // ---- Sessions ------------------------------------------------------------------
@@ -144,18 +158,16 @@ function readToken(request: Request): { token: string; legacy: boolean } | null 
   return legacy ? { token: legacy, legacy: true } : null;
 }
 
-function sessionLength(role: Role): number {
-  return role === 'ADMIN' ? ADMIN_SESSION_MS : SESSION_TTL_MS;
-}
 
 async function createSession(env: Env, userId: string, role: Role): Promise<{ token: string; cookie: string }> {
   const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const now = Date.now();
-  const ttl = sessionLength(role);
+  const ttl = LIFETIME[role].idle;
   await env.DB.batch([
     env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
     env.DB.prepare('DELETE FROM login_challenges WHERE expires_at < ?').bind(now),
     env.DB.prepare('DELETE FROM login_attempts WHERE locked_until < ? AND window_start < ?').bind(now, now - FAILURE_WINDOW_MS),
+    env.DB.prepare('DELETE FROM rate_limits WHERE window_start < ?').bind(now - 2 * DAY),
     env.DB.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at, role) VALUES (?, ?, ?, ?, ?)').bind(
       await sha256Hex(token),
       userId,
@@ -176,25 +188,37 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
   if (!found || found.token.length > 100) return null;
   const tokenHash = await sha256Hex(found.token);
   const row = await env.DB.prepare(
-    `SELECT s.created_at, s.expires_at, s.role AS session_role, u.id, u.username, u.role
+    `SELECT s.created_at, s.expires_at, s.role AS session_role, u.id, u.username, u.role,
+            (SELECT applied_at FROM schema_migrations WHERE version = 3) AS hardened_at
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
   )
     .bind(tokenHash)
-    .first<{ created_at: number; expires_at: number; session_role: Role | null; id: string; username: string; role: Role }>();
+    .first<{
+      created_at: number;
+      expires_at: number;
+      session_role: Role | null;
+      id: string;
+      username: string;
+      role: Role;
+      hardened_at: number | null;
+    }>();
   const now = Date.now();
   if (!row) return null;
-  const maxAge = row.role === 'ADMIN' ? ADMIN_SESSION_MS : SESSION_MAX_AGE_MS;
+  // The old cookie name is only honoured for sessions that existed before this version went
+  // live; anything newer must arrive in the __Host- cookie.
+  if (found.legacy && row.hardened_at !== null && row.created_at >= row.hardened_at) return null;
+  const life = LIFETIME[row.role];
   const roleChanged = row.session_role !== null && row.session_role !== row.role;
-  if (row.expires_at < now || now - row.created_at > maxAge || roleChanged) {
+  if (row.expires_at < now || now - row.created_at > life.max || roleChanged) {
     await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
     return null;
   }
 
   const user: AuthedUser = { id: row.id, username: row.username, role: row.role };
   const setCookies: string[] = [];
-  let expiresAt = row.expires_at;
-  if (row.role !== 'ADMIN' && row.expires_at - now < SESSION_TTL_MS - SESSION_RENEW_AFTER_MS) {
-    expiresAt = Math.min(now + SESSION_TTL_MS, row.created_at + SESSION_MAX_AGE_MS);
+  let expiresAt = Math.min(row.expires_at, row.created_at + life.max);
+  if (expiresAt - now < life.renewBelow && row.created_at + life.max > now + life.renewBelow) {
+    expiresAt = Math.min(now + life.idle, row.created_at + life.max);
     await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?').bind(expiresAt, tokenHash).run();
     setCookies.push(sessionCookie(found.token, Math.floor((expiresAt - now) / 1000)));
   } else if (found.legacy) {
@@ -208,6 +232,11 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
 
 type LimitKind = keyof typeof LIMITS;
 
+async function isLocked(env: Env, key: string): Promise<boolean> {
+  const row = await env.DB.prepare('SELECT locked_until FROM login_attempts WHERE key = ?').bind(key).first<{ locked_until: number }>();
+  return !!row && row.locked_until > Date.now();
+}
+
 async function checkLock(env: Env, key: string): Promise<void> {
   const row = await env.DB.prepare('SELECT locked_until FROM login_attempts WHERE key = ?').bind(key).first<{ locked_until: number }>();
   if (row && row.locked_until > Date.now()) {
@@ -216,35 +245,39 @@ async function checkLock(env: Env, key: string): Promise<void> {
   }
 }
 
-/** Records one failure; returns true when this failure triggered a lock. */
+/**
+ * Records one failure in a single atomic statement (parallel requests cannot all read the same
+ * count) and returns true when this failure triggered a lock.
+ */
 async function recordFailure(env: Env, key: string, kind: LimitKind): Promise<boolean> {
   const { max, lockMs } = LIMITS[kind];
   const now = Date.now();
-  const row = await env.DB.prepare('SELECT failures, window_start FROM login_attempts WHERE key = ?')
-    .bind(key)
-    .first<{ failures: number; window_start: number }>();
-  let failures = 1;
-  let windowStart = now;
-  if (row && now - row.window_start < FAILURE_WINDOW_MS) {
-    failures = row.failures + 1;
-    windowStart = row.window_start;
-  }
-  const lockedUntil = failures >= max ? now + lockMs : 0;
-  if (lockedUntil) {
-    failures = 0;
-    windowStart = now;
-  }
-  await env.DB.prepare(
-    `INSERT INTO login_attempts (key, failures, window_start, locked_until) VALUES (?, ?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET failures = excluded.failures, window_start = excluded.window_start, locked_until = excluded.locked_until`,
+  const row = await env.DB.prepare(
+    `INSERT INTO login_attempts (key, failures, window_start, locked_until) VALUES (?1, 1, ?2, 0)
+     ON CONFLICT(key) DO UPDATE SET
+       failures = CASE WHEN window_start < ?3 THEN 1 ELSE failures + 1 END,
+       window_start = CASE WHEN window_start < ?3 THEN ?2 ELSE window_start END
+     RETURNING failures`,
   )
-    .bind(key, failures, windowStart, lockedUntil)
+    .bind(key, now, now - FAILURE_WINDOW_MS)
+    .first<{ failures: number }>();
+  if ((row?.failures ?? 0) < max) return false;
+  await env.DB.prepare('UPDATE login_attempts SET failures = 0, window_start = ?, locked_until = ? WHERE key = ?')
+    .bind(now, now + lockMs, key)
     .run();
-  return lockedUntil > 0;
+  return true;
 }
 
 const userKey = (username: string) => `u:${username.toLowerCase()}`;
-const ipKey = (request: Request) => `ip:${clientIp(request)}`;
+/** IPv6 clients usually own a whole /64, so they are limited per /64 rather than per address. */
+function ipKey(request: Request): string {
+  const ip = clientIp(request);
+  if (ip.includes(':')) {
+    const parts = ip.split('::')[0].split(':');
+    return `ip:${parts.slice(0, 4).join(':')}::/64`;
+  }
+  return `ip:${ip}`;
+}
 
 /** Lets a signed-in user prove they know their password (for sensitive actions), with throttling. */
 async function requirePassword(ctx: Ctx, password: unknown): Promise<void> {
@@ -303,7 +336,9 @@ export async function handleLogin(ctx: Ctx): Promise<Response> {
   const uKey = userKey(username);
   const iKey = ipKey(ctx.request);
 
-  await checkLock(ctx.env, iKey);
+  // A locked IP is not refused outright (the whole shop shares one IP); it only stops being
+  // recorded, so a flood of made-up usernames cannot burn the database's daily write quota.
+  const ipLocked = await isLocked(ctx.env, iKey);
   await checkLock(ctx.env, uKey);
 
   const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled FROM users WHERE username = ?')
@@ -313,10 +348,18 @@ export async function handleLogin(ctx: Ctx): Promise<Response> {
   // Always run one hash so response time does not reveal whether the user exists.
   const ok = await verifyPassword(ctx.env, password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !ok) {
-    const ipLocked = await recordFailure(ctx.env, iKey, 'ip');
-    // Only real accounts get a per-account row, so random usernames cannot fill the table.
-    const userLocked = row ? await recordFailure(ctx.env, uKey, 'user') : false;
-    await audit(ctx.env, ctx.request, 'login_failed', row ?? { username }, ipLocked ? 'IP locked' : userLocked ? 'account locked' : undefined);
+    // Real accounts: counted per account. Unknown names: counted per IP (guessing/spraying), and
+    // the typed name is not stored (people sometimes type their password in the username box).
+    if (row || !ipLocked) {
+      const locked = row ? await recordFailure(ctx.env, uKey, 'user') : await recordFailure(ctx.env, iKey, 'ip');
+      await audit(
+        ctx.env,
+        ctx.request,
+        'login_failed',
+        row ?? { username: '(unknown user)' },
+        locked ? (row ? 'account locked' : 'IP throttled (unknown usernames)') : undefined,
+      );
+    }
     throw new HttpError(401, 'Invalid username or password');
   }
 
@@ -340,14 +383,17 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
   const body = await readJson<{ challenge?: unknown; code?: unknown; weakPassword?: unknown }>(ctx.request, 5_000);
   const challenge = str(body.challenge, 'Challenge', { min: 10, max: 100 });
   const code = str(body.code, 'Code', { min: 6, max: 20 });
-  const iKey = ipKey(ctx.request);
-  await checkLock(ctx.env, iKey);
 
   const challengeHash = await sha256Hex(challenge);
-  const ch = await ctx.env.DB.prepare('SELECT user_id, expires_at, attempts FROM login_challenges WHERE token_hash = ?')
-    .bind(challengeHash)
-    .first<{ user_id: string; expires_at: number; attempts: number }>();
-  if (!ch || ch.expires_at < Date.now() || ch.attempts >= CHALLENGE_MAX_ATTEMPTS) {
+  // Take one attempt atomically *before* checking the code, so parallel guesses cannot all slip
+  // under the limit.
+  const ch = await ctx.env.DB.prepare(
+    `UPDATE login_challenges SET attempts = attempts + 1
+     WHERE token_hash = ? AND attempts < ? AND expires_at > ? RETURNING user_id`,
+  )
+    .bind(challengeHash, CHALLENGE_MAX_ATTEMPTS, Date.now())
+    .first<{ user_id: string }>();
+  if (!ch) {
     throw new HttpError(401, 'Sign-in expired. Please enter your password again.');
   }
   const row = await ctx.env.DB.prepare(
@@ -355,13 +401,13 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
   )
     .bind(ch.user_id)
     .first<LoginRow & { mfa_secret: string | null; mfa_last_step: number; mfa_recovery: string | null }>();
-  if (!row || !row.mfa_enabled || !row.mfa_secret) throw new HttpError(401, 'Sign-in expired. Please enter your password again.');
+  if (!row || !row.mfa_enabled) throw new HttpError(401, 'Sign-in expired. Please enter your password again.');
   await checkLock(ctx.env, userKey(row.username));
 
   let method = 'totp';
   let accepted = false;
   if (/^\d{6}$/.test(code.replace(/\s/g, ''))) {
-    const step = await verifyTotp(row.mfa_secret, code.replace(/\s/g, ''), row.mfa_last_step);
+    const step = row.mfa_secret ? await verifyTotp(row.mfa_secret, code.replace(/\s/g, ''), row.mfa_last_step) : null;
     if (step !== null) {
       // Conditional update: the same code can never be used twice, even by two parallel requests.
       const res = await ctx.env.DB.prepare('UPDATE users SET mfa_last_step = ? WHERE id = ? AND mfa_last_step < ?').bind(step, row.id, step).run();
@@ -370,8 +416,8 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
   } else {
     method = 'recovery code';
     const hashes: string[] = row.mfa_recovery ? JSON.parse(row.mfa_recovery) : [];
-    const h = await recoveryHash(ctx.env, code);
-    if (hashes.includes(h)) {
+    const h = (await recoveryHashCandidates(ctx.env, code)).find((x) => hashes.includes(x));
+    if (h) {
       const remaining = JSON.stringify(hashes.filter((x) => x !== h));
       const res = await ctx.env.DB.prepare('UPDATE users SET mfa_recovery = ? WHERE id = ? AND mfa_recovery = ?')
         .bind(remaining, row.id, row.mfa_recovery)
@@ -381,8 +427,6 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
   }
 
   if (!accepted) {
-    await ctx.env.DB.prepare('UPDATE login_challenges SET attempts = attempts + 1 WHERE token_hash = ?').bind(challengeHash).run();
-    await recordFailure(ctx.env, iKey, 'ip');
     const locked = await recordFailure(ctx.env, userKey(row.username), 'user');
     await audit(ctx.env, ctx.request, 'mfa_failed', row, locked ? 'account locked' : undefined);
     throw new HttpError(401, 'Wrong code. Check the time on your phone and try again.');
@@ -438,6 +482,7 @@ export async function handleChangeOwnPassword(ctx: Ctx): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').bind(hash, Date.now(), user.id),
     ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, await sha256Hex(currentToken)),
+    ctx.env.DB.prepare('DELETE FROM login_challenges WHERE user_id = ?').bind(user.id),
   ]);
   await auditCtx(ctx, 'password_changed');
   return json({ ok: true });
@@ -472,15 +517,16 @@ export async function handleMfaEnable(ctx: Ctx): Promise<Response> {
   const codes = newRecoveryCodes();
   const hashes = await Promise.all(codes.map((c) => recoveryHash(ctx.env, c)));
   const currentToken = readToken(ctx.request)?.token ?? '';
-  await ctx.env.DB.batch([
+  const [updated] = await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      `UPDATE users SET mfa_secret = mfa_pending_secret, mfa_pending_secret = NULL, mfa_enabled = 1, mfa_recovery = ?, mfa_last_step = ?
-       WHERE id = ?`,
-    ).bind(JSON.stringify(hashes), step, user.id),
+      `UPDATE users SET mfa_secret = ?1, mfa_pending_secret = NULL, mfa_enabled = 1, mfa_recovery = ?2, mfa_last_step = ?3
+       WHERE id = ?4 AND mfa_enabled = 0 AND mfa_pending_secret = ?1`,
+    ).bind(row.mfa_pending_secret, JSON.stringify(hashes), step, user.id),
     // Other devices must sign in again with the second step.
     ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').bind(user.id, await sha256Hex(currentToken)),
     ctx.env.DB.prepare("UPDATE counters SET value = value + 1 WHERE name = 'v_users'"),
   ]);
+  if (updated.meta.changes !== 1) throw new HttpError(409, 'The setup changed in another window. Start again.');
   await auditCtx(ctx, 'mfa_enabled');
   return json({ ok: true, recoveryCodes: codes });
 }
@@ -498,7 +544,7 @@ export async function handleMfaDisable(ctx: Ctx): Promise<Response> {
   let ok = (await verifyTotp(row.mfa_secret, code, row.mfa_last_step)) !== null;
   if (!ok) {
     const hashes: string[] = row.mfa_recovery ? JSON.parse(row.mfa_recovery) : [];
-    ok = hashes.includes(await recoveryHash(ctx.env, code));
+    ok = (await recoveryHashCandidates(ctx.env, code)).some((h) => hashes.includes(h));
   }
   if (!ok) {
     await recordFailure(ctx.env, `pw:${user.id}`, 'pw');
