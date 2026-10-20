@@ -33,6 +33,8 @@ import { SPRING_POP } from '../lib/motion';
 
 interface CountryMetrics {
   configured: boolean;
+  /** Optional parts of the app switched on for this country. */
+  features: RegionFeatures;
   users: { admins: number; machinists: number; adminsWithMfa: number };
   programs: { total: number; last30Days: number; appSelected: number; manual: number; savedSecondsPerProgram: number; timeSavedSeconds: number; lastAt: number | null };
   monthly: { month: string; programs: number; partsQty: number; partsValue: number }[];
@@ -56,7 +58,8 @@ interface Overview {
 type ActiveCountry = Extract<Country, { available: true }>;
 const isActive = (c: Country): c is ActiveCountry => c.available && (c as ActiveCountry).configured;
 /** Whether a country uses an optional part of the app (Türkiye has no part tracking or preventive actions). */
-const uses = (c: { id: RegionId }, feature: keyof RegionFeatures) => regionById(c.id)?.features[feature] ?? false;
+const uses = (c: { id: RegionId; features?: RegionFeatures }, feature: keyof RegionFeatures) =>
+  c.features?.[feature] ?? regionById(c.id)?.features[feature] ?? false;
 const SERIES: Record<RegionId, string> = { ma: 'var(--series-ma)', tr: 'var(--series-tr)' };
 
 /** /master/: the master admin's sign-in, then the dashboard. */
@@ -210,7 +213,7 @@ function MasterDashboard() {
             {/* One card per country */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {data.countries.map((c, i) => (
-                <CountryCard key={c.id} country={c} index={i} onCreateAdmin={() => setAdminFor(c.id)} />
+                <CountryCard key={c.id} country={c} index={i} onCreateAdmin={() => setAdminFor(c.id)} onChanged={() => load()} />
               ))}
             </div>
 
@@ -258,7 +261,7 @@ function Stat({ icon, label, value, detail, tone }: { icon: React.ReactNode; lab
   );
 }
 
-function CountryCard({ country, index, onCreateAdmin }: { country: Country; index: number; onCreateAdmin: () => void }) {
+function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Country; index: number; onCreateAdmin: () => void; onChanged: () => void }) {
   const { t } = useT('master');
   const active = isActive(country);
   const status = !country.available ? 'notConnected' : active ? 'active' : 'notSetUp';
@@ -330,6 +333,7 @@ function CountryCard({ country, index, onCreateAdmin }: { country: Country; inde
               detail={t('card.peopleDetail', { admins: country.users.admins, machinists: country.users.machinists })}
             />
           </div>
+          <FeatureSwitches country={country} onChanged={onChanged} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-tertiary)]">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-500)]' : 'text-[var(--green-500)]'} />
@@ -341,6 +345,74 @@ function CountryCard({ country, index, onCreateAdmin }: { country: Country; inde
         </>
       )}
     </motion.section>
+  );
+}
+
+// ---- Feature switches ---------------------------------------------------------------------
+
+/**
+ * The optional parts of a country's app. Switching one off hides it in that country (every open
+ * screen follows within a few seconds) and closes its API; its data is kept.
+ */
+function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onChanged: () => void }) {
+  const { t } = useT('master');
+  const [busy, setBusy] = useState<keyof RegionFeatures | null>(null);
+  const [error, setError] = useState('');
+  const [local, setLocal] = useState<RegionFeatures>(() => ({ ...regionById(country.id)!.features, ...country.features }));
+  useEffect(() => setLocal({ ...regionById(country.id)!.features, ...country.features }), [country]);
+
+  const toggle = async (key: keyof RegionFeatures) => {
+    const next = !local[key];
+    setBusy(key);
+    setError('');
+    try {
+      const res = await api<{ features: RegionFeatures }>(`/countries/${country.id}/features`, { method: 'PUT', body: { [key]: next } });
+      setLocal(res.features);
+      onChanged();
+    } catch (e) {
+      setError(errorMessage(e, t('common:errors.generic')));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const items: { key: keyof RegionFeatures; label: string; hint: string }[] = [
+    { key: 'partTracking', label: t('features.partTracking'), hint: t('features.partTrackingHint') },
+    { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
+  ];
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="section-label">{t('features.title')}</span>
+        <span className="text-[10px] text-[var(--text-tertiary)]">{t('features.dataKept')}</span>
+      </div>
+      {items.map((it) => (
+        <div key={it.key} className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold text-[var(--text-primary)]">{it.label}</div>
+            <div className="text-[11px] text-[var(--text-tertiary)] truncate">{it.hint}</div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={local[it.key]}
+            aria-label={`${it.label} (${t(`common:country.${country.id}`)})`}
+            disabled={busy !== null}
+            onClick={() => toggle(it.key)}
+            className={`relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 disabled:opacity-60 ${
+              local[it.key] ? 'bg-[var(--green-500)]' : 'bg-[rgba(var(--ov),0.18)]'
+            }`}
+          >
+            <motion.span
+              className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow"
+              animate={{ x: local[it.key] ? 20 : 0 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+            />
+          </button>
+        </div>
+      ))}
+      {error && <div className="badge-danger text-xs py-1 px-2">{error}</div>}
+    </div>
   );
 }
 

@@ -17,10 +17,12 @@ import {
 import { audit } from './security';
 import { translateMessage } from './i18n';
 import './i18n-tr';
+import { readFeatures } from './features';
 import { REGIONS, featureOfApiPath, regionById, type RegionId } from '../src/regions';
-import { handleCreateMachine, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
+import { handleCreateMachine, handleGetFeatures, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
 import {
   handleCountryAdmins,
+  handleSetCountryFeatures,
   handleCreateCountryAdmin,
   handleCreateFirstMaster,
   handleCreateMaster,
@@ -156,6 +158,7 @@ route('POST', '/admin/import/settings', 'admin', handleImportSettings);
 
 
 // Machines of this country
+route('GET', '/features', 'user', handleGetFeatures);
 route('GET', '/fleet', 'user', handleListFleet);
 route('POST', '/fleet', 'admin', handleCreateMachine);
 route('PATCH', '/fleet/:machine', 'admin', handleUpdateMachine);
@@ -176,6 +179,7 @@ masterRoute('POST', '/auth/mfa/enable', 'admin', handleMfaEnable);
 masterRoute('POST', '/auth/mfa/disable', 'admin', handleMfaDisable);
 masterRoute('GET', '/overview', 'admin', handleMasterOverview);
 masterRoute('GET', '/countries/:region/admins', 'admin', handleCountryAdmins);
+masterRoute('PUT', '/countries/:region/features', 'admin', handleSetCountryFeatures);
 masterRoute('POST', '/countries/:region/admins', 'admin', handleCreateCountryAdmin);
 masterRoute('GET', '/masters', 'admin', handleListMasters);
 masterRoute('POST', '/masters', 'admin', handleCreateMaster);
@@ -251,11 +255,6 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
 
   const env = instanceEnv(rawEnv, instance);
   if (!env) throw new HttpError(503, 'This country is not available yet.');
-  // Parts of the app a country does not use do not exist there.
-  if (instance !== 'master') {
-    const feature = featureOfApiPath(rest);
-    if (feature && !regionById(instance)!.features[feature]) throw new HttpError(404, 'Not found');
-  }
   const table = instance === 'master' ? masterRoutes : routes;
   const routeUrl = new URL(`/api${rest}${url.search}`, url.origin);
 
@@ -267,6 +266,11 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
     if (r.method !== request.method) continue;
 
     await ensureSchema(env.DB, instance);
+    // A feature switched off for this country (by a master admin) does not exist there.
+    if (instance !== 'master') {
+      const feature = featureOfApiPath(rest);
+      if (feature && !(await readFeatures(env.DB, instance))[feature]) throw new HttpError(404, 'Not found');
+    }
     const session = r.access === 'public' ? null : await getSessionUser(env, request);
     const user = session?.user ?? null;
     if ((r.access === 'user' || r.access === 'admin') && !user) throw new HttpError(401, 'Not signed in');

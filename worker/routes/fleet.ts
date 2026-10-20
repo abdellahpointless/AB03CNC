@@ -1,6 +1,8 @@
 import { HttpError, json, optNum, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx, type Env } from '../context';
 import { DEFAULT_CHECKS, DEFAULT_CHECKS_TR } from '../fleet';
+import { readFeatures } from '../features';
+import { regionById } from '../../src/regions';
 import { MACHINE_BRANDS, MACHINE_IMAGES, type MachineBrand } from '../../src/regions';
 
 /*
@@ -168,4 +170,11 @@ export async function handleRemoveMachine(ctx: Ctx): Promise<Response> {
     bumpStmt(ctx.env, 'tools'),
   ]);
   return json({ ok: true });
+}
+
+// GET /api/features -> which optional parts of the app this country uses (set by a master admin)
+export async function handleGetFeatures(ctx: Ctx): Promise<Response> {
+  const region = regionById(ctx.env.REGION);
+  if (!region) throw new HttpError(404, 'Not found');
+  return json({ features: await readFeatures(ctx.env.DB, region.id) });
 }

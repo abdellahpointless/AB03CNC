@@ -39,6 +39,14 @@ const master: Translation<typeof en> = {
     autoShare: 'Otomatik seçilen takımlar',
     autoShareDetail: 'değiştirilen takımlar içindeki pay',
   },
+  features: {
+    title: 'Bu ülkedeki özellikler',
+    dataKept: 'Kapatmak verileri silmez',
+    partTracking: 'Parça takibi ve onayı',
+    partTrackingHint: 'Taramasız parça girişi, Parça onayı',
+    preventive: 'Önleyici bakım',
+    preventiveHint: 'Tezgah kontrol listeleri, arıza bildirimleri, tezgah sorumluluğu',
+  },
   compare: {
     title: 'Karşılaştırma',
     metric: 'Ölçüt',

@@ -36,6 +36,14 @@ const master = {
     autoShare: 'Tools picked automatically',
     autoShareDetail: 'share of remapped tools',
   },
+  features: {
+    title: 'Features in this country',
+    dataKept: 'Switching off keeps the data',
+    partTracking: 'Part tracking & review',
+    partTrackingHint: 'Part without scan, Part review',
+    preventive: 'Preventive actions',
+    preventiveHint: 'Machine checklists, problem reports, machine responsibility',
+  },
   compare: {
     title: 'Comparison',
     metric: 'Metric',

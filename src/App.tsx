@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { CHOOSE_COUNTRY_PATH, currentRegion, scopedKey } from './lib/instance';
 import { Flag } from './components/Flag';
 import MachineManager from './components/MachineManager';
@@ -61,9 +61,14 @@ function Workspace() {
   const { t } = useT('app');
   const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
-  const { refreshNow, connection } = useSync();
-  const { features } = currentRegion();
+  const { refreshNow, connection, features } = useSync();
   const [activeTab, setActiveTab] = useState<Tab>('REMAP');
+  // A master admin switched off the feature that is open on this screen: back to the remapper.
+  useEffect(() => {
+    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && activeTab === 'PREVENTIVE')) {
+      setActiveTab('REMAP');
+    }
+  }, [features, activeTab]);
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
     try {

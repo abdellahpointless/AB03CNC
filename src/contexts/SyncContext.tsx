@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { currentRegion, scopedKey } from '../lib/instance';
-import type { MachineInfo } from '../regions';
+import type { MachineInfo, RegionFeatures } from '../regions';
+import { currentFeatures, rememberFeatures } from '../lib/features';
 import { MOROCCO_DEFAULT_MACHINES } from '../lib/machines';
 import { api, ApiError } from '../lib/api';
 import { flushOutbox, getOutboxCount, OUTBOX_EVENT } from '../lib/historyApi';
@@ -47,6 +48,8 @@ interface SyncContextType {
   toolMachines: MachineInfo[];
   machinesLoaded: boolean;
   reloadMachines: () => Promise<void>;
+  /** Optional parts of the app switched on for this country (a master admin decides). */
+  features: RegionFeatures;
   analytics: Analytics | null;
   refreshNow: () => Promise<void>;
   saveTool: (machine: string, tool: Tool) => Promise<void>;
@@ -100,6 +103,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [machines, setMachines] = useState<MachineInfo[]>(readCachedMachines);
   const [machinesLoaded, setMachinesLoaded] = useState(false);
   const machinesVersionLoaded = useRef(-1);
+  const [features, setFeatures] = useState<RegionFeatures>(currentFeatures);
+  const settingsVersionLoaded = useRef(-1);
 
   const toolsVersionLoaded = useRef(-1);
   const analyticsKeyLoaded = useRef('');
@@ -129,6 +134,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadFeatures = useCallback(async (version: number) => {
+    const res = await api<{ features: RegionFeatures }>('/features');
+    settingsVersionLoaded.current = version;
+    rememberFeatures(res.features);
+    setFeatures(res.features);
+  }, []);
+
   const loadAnalytics = useCallback(async (key: string) => {
     const res = await api<Analytics>('/analytics');
     analyticsKeyLoaded.current = key;
@@ -145,6 +157,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       const jobs: Promise<unknown>[] = [];
       if (res.versions.tools !== toolsVersionLoaded.current) jobs.push(loadTools());
       if (res.versions.machines !== machinesVersionLoaded.current) jobs.push(loadMachines(res.versions.machines));
+      if (res.versions.settings !== settingsVersionLoaded.current) jobs.push(loadFeatures(res.versions.settings));
       const aKey = `${res.versions.history}:${res.versions.settings}`;
       if (aKey !== analyticsKeyLoaded.current) jobs.push(loadAnalytics(aKey));
       jobs.push(flushOutbox());
@@ -153,7 +166,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof ApiError && err.offline) setConnection('offline');
       else if (err instanceof ApiError && err.status >= 500) setConnection('offline');
     }
-  }, [user, loadTools, loadMachines, loadAnalytics]);
+  }, [user, loadTools, loadMachines, loadFeatures, loadAnalytics]);
 
   const refreshNow = useCallback(async () => {
     if (!syncing.current) {
@@ -169,6 +182,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     toolsVersionLoaded.current = -1;
     machinesVersionLoaded.current = -1;
+    settingsVersionLoaded.current = -1;
     analyticsKeyLoaded.current = '';
     refreshNow();
     let lastActivity = Date.now();
@@ -273,6 +287,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         toolMachines: machines.filter((m) => m.hasTools),
         machinesLoaded,
         reloadMachines: () => loadMachines(),
+        features,
         analytics,
         refreshNow,
         saveTool,

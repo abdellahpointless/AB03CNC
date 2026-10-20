@@ -1,6 +1,6 @@
 import i18n from '../i18n';
 import { api } from './api';
-import { currentRegion } from './instance';
+import { currentFeatures } from './features';
 import { compressCode, type StoredCode } from './codeStorage';
 import { fetchAllHistory } from './historyApi';
 import type { HistoryRecord, MachineToolbox } from '../types';
@@ -107,8 +107,8 @@ export async function buildFullBackup(includePrograms: boolean, log: Logger) {
   log(i18n.t('data:log.downloadingHistory'));
   const history = await fetchAllHistory(n => log(i18n.t('data:log.historyCount', { count: n })));
   const partEntries: any[] = [];
-  if (currentRegion().features.partTracking) log(i18n.t('data:log.downloadingParts'));
-  for (let offset = 0; currentRegion().features.partTracking; offset += 500) {
+  if (currentFeatures().partTracking) log(i18n.t('data:log.downloadingParts'));
+  for (let offset = 0; currentFeatures().partTracking; offset += 500) {
     const res = await api<{ entries: any[]; hasMore: boolean }>(`/parts/admin-export?offset=${offset}`);
     partEntries.push(...res.entries);
     if (!res.hasMore) break;
@@ -174,7 +174,7 @@ export async function restoreBackup(data: any, opts: { replaceTools: boolean }, 
     log(i18n.t('data:log.historyRestored', { added: summary.history, present: history.length - summary.history }), 'ok');
   }
 
-  if (isNew && Array.isArray(data.partEntries) && data.partEntries.length && currentRegion().features.partTracking) {
+  if (isNew && Array.isArray(data.partEntries) && data.partEntries.length && currentFeatures().partTracking) {
     const { users } = await api<{ users: { id: string; username: string }[] }>('/users');
     // Map entries to current accounts by username when the ids differ.
     const byName = new Map(users.map(u => [u.username.toLowerCase(), u.id]));

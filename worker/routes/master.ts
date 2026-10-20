@@ -4,6 +4,7 @@ import { ensureSchema } from '../schema';
 import { auditCtx, audit } from '../security';
 import { hashPassword, masterEnvFrom, requirePassword, validateNewPassword, validateUsername } from '../auth';
 import { DEFAULT_SAVED_SECONDS } from './analytics';
+import { FEATURE_KEYS, readFeatures, writeFeatures } from '../features';
 import { REGIONS, regionById, type RegionId } from '../../src/regions';
 
 /*
@@ -172,7 +173,7 @@ async function computeOverview(env: Env, now: number): Promise<string> {
       if (!db) return { ...base, available: false as const };
       try {
         await ensureSchema(db, r.id);
-        return { ...base, available: true as const, ...(await countryMetrics(db, now)) };
+        return { ...base, available: true as const, features: await readFeatures(db, r.id), ...(await countryMetrics(db, now)) };
       } catch (err) {
         console.error('master overview failed for', r.id, err instanceof Error ? err.message : err);
         return { ...base, available: false as const, error: 'This country could not be read right now.' };
@@ -233,6 +234,29 @@ export async function handleCreateCountryAdmin(ctx: Ctx): Promise<Response> {
   await auditCtx(ctx, 'master_created_admin', `${regionById(region)!.name}: ${username}`);
   await audit({ ...ctx.env, DB: db }, ctx.request, 'user_created', { id: null, username: `master:${ctx.user!.username}` }, `${username} (ADMIN)`);
   return json({ ok: true, user: { id, username, role: 'ADMIN' } });
+}
+
+// PUT /master/api/countries/:region/features { partTracking?: boolean, preventive?: boolean }
+export async function handleSetCountryFeatures(ctx: Ctx): Promise<Response> {
+  const region = regionParam(ctx);
+  const db = await openCountry(ctx.env, region);
+  const body = await readJson<Record<string, unknown>>(ctx.request, 2_000);
+  const features = await readFeatures(db, region);
+  const changes: string[] = [];
+  for (const k of FEATURE_KEYS) {
+    if (body[k] === undefined) continue;
+    if (typeof body[k] !== 'boolean') throw new HttpError(400, 'Invalid value');
+    if (features[k] !== body[k]) changes.push(`${k} ${body[k] ? 'on' : 'off'}`);
+    features[k] = body[k] as boolean;
+  }
+  if (changes.length) {
+    await writeFeatures(db, features);
+    await dropOverviewCache(ctx.env);
+    const summary = `${regionById(region)!.name}: ${changes.join(', ')}`;
+    await auditCtx(ctx, 'master_features', summary);
+    await audit({ ...ctx.env, DB: db }, ctx.request, 'features_changed', { id: null, username: `master:${ctx.user!.username}` }, changes.join(', '));
+  }
+  return json({ ok: true, features });
 }
 
 // GET /master/api/masters
