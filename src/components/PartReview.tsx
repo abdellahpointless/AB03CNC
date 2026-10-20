@@ -9,6 +9,8 @@ import {
   fetchAdminEntriesForExport
 } from '../lib/partsApi';
 import { exportAdminPartEntriesExcel } from '../lib/partExportExcel';
+import { useT } from '../i18n';
+import { fmtDateTime, locale } from '../i18n/format';
 import {
   ClipboardCheck,
   Check,
@@ -23,7 +25,13 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+/** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
+function fmtValue(n: number): string {
+  return n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+}
+
 export default function PartReview() {
+  const { t } = useT('parts');
   useAuth();
   const { versions } = useSync();
 
@@ -55,7 +63,7 @@ export default function PartReview() {
           setHasMore(!!res.hasMore);
           if (res.entries!.length === 0 && page > 0) setPage(p => Math.max(0, p - 1));
         } else {
-          setErrorMsg(res.error || 'Failed to fetch pending entries');
+          setErrorMsg(res.error || t('review.errors.fetchFailed'));
         }
         setIsLoading(false);
       }
@@ -85,7 +93,7 @@ export default function PartReview() {
       // Remove row immediately from local state without refetching everything
       setEntries(prev => prev.filter(e => e.id !== entry.id));
     } else {
-      setErrorMsg(res.error || `Failed to approve entry ${entry.sap_number}`);
+      setErrorMsg(res.error || t('review.errors.approveFailed', { sap: entry.sap_number }));
     }
   };
 
@@ -101,7 +109,7 @@ export default function PartReview() {
       // Remove row immediately from local state without refetching everything
       setEntries(prev => prev.filter(e => e.id !== entry.id));
     } else {
-      setErrorMsg(res.error || `Failed to reject entry ${entry.sap_number}`);
+      setErrorMsg(res.error || t('review.errors.rejectFailed', { sap: entry.sap_number }));
     }
   };
 
@@ -120,7 +128,7 @@ export default function PartReview() {
       setEntries([]);
       setReloadKey(k => k + 1);
     } else {
-      setErrorMsg(res.error || 'Failed to approve all entries on this page');
+      setErrorMsg(res.error || t('review.errors.approveAllFailed'));
     }
   };
 
@@ -139,7 +147,7 @@ export default function PartReview() {
       });
     } catch (err: any) {
       console.error('Admin export error:', err);
-      alert('Failed to generate Admin Excel report: ' + (err?.message || 'Unknown error'));
+      alert(t('review.errors.exportFailed', { message: err?.message || t('errors.unknown') }));
     } finally {
       setIsExporting(false);
     }
@@ -156,14 +164,14 @@ export default function PartReview() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                Part Review
+                {t('review.title')}
               </h2>
               <span className="badge-warning text-[10px] py-0.5 px-2 font-mono">
-                Admin Panel
+                {t('review.adminBadge')}
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Review, approve or reject manual production entries logged by operators
+              {t('review.subtitle')}
             </p>
           </div>
         </div>
@@ -174,13 +182,13 @@ export default function PartReview() {
             <Filter size={13} className="text-[var(--text-tertiary)]" />
             <input
               type="month"
-              title="Only export this month (leave empty for all months)"
+              title={t('review.monthFilterTitle')}
               value={exportMonthFilter}
               onChange={e => setExportMonthFilter(e.target.value.trim())}
               className="bg-transparent border-none outline-none font-mono text-xs text-[var(--text-primary)] w-36"
             />
             {exportMonthFilter && (
-              <button type="button" onClick={() => setExportMonthFilter('')} className="no-glass text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" title="Clear month filter">✕</button>
+              <button type="button" onClick={() => setExportMonthFilter('')} className="no-glass text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" title={t('review.clearMonthFilter')}>✕</button>
             )}
           </div>
 
@@ -188,21 +196,21 @@ export default function PartReview() {
             onClick={handleExportAdminExcel}
             disabled={isExporting}
             className="btn-secondary text-xs py-2 px-3 flex items-center gap-2"
-            title="Export all operator records with audit status to Excel"
+            title={t('review.exportTitle')}
           >
             {isExporting ? (
               <RefreshCw size={14} className="animate-spin text-[var(--accent-primary)]" />
             ) : (
               <FileSpreadsheet size={15} className="text-[var(--green-500)]" />
             )}
-            <span>{isExporting ? 'Exporting...' : 'Export All Excel'}</span>
+            <span>{isExporting ? t('review.exporting') : t('review.exportAll')}</span>
           </button>
 
           <button
             onClick={handleRefresh}
             disabled={isLoading}
             className="btn-icon"
-            title="Refresh pending entries"
+            title={t('review.refreshTitle')}
           >
             <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
           </button>
@@ -222,9 +230,9 @@ export default function PartReview() {
         {/* Table Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
           <div className="flex items-center gap-2">
-            <span className="section-label">Pending Verification Queue</span>
+            <span className="section-label">{t('review.queueTitle')}</span>
             <span className="badge-neutral text-[10px] py-0 px-2 font-mono">
-              Page {page + 1} ({entries.length} items)
+              {t('review.pageItems', { page: page + 1, items: entries.length })}
             </span>
           </div>
 
@@ -233,10 +241,10 @@ export default function PartReview() {
               onClick={handleApproveAllOnPage}
               disabled={isBulkApproving || actionInProgressId !== null || entries.length === 0}
               className="btn-success text-xs py-1.5 px-3 flex items-center gap-1.5"
-              title="Approve all pending rows currently displayed on this page"
+              title={t('review.approveAllTitle')}
             >
               <CheckCheck size={14} />
-              <span>{isBulkApproving ? 'Approving Page...' : 'Approve All On This Page'}</span>
+              <span>{isBulkApproving ? t('review.approvingPage') : t('review.approveAll')}</span>
             </button>
           </div>
         </div>
@@ -245,7 +253,7 @@ export default function PartReview() {
         {isLoading && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--text-tertiary)] flex flex-col items-center gap-2">
             <RefreshCw size={18} className="animate-spin text-[var(--accent-primary)]" />
-            <span>Fetching pending production logs...</span>
+            <span>{t('review.loading')}</span>
           </div>
         )}
 
@@ -253,9 +261,9 @@ export default function PartReview() {
         {!isLoading && entries.length === 0 && (
           <div className="text-center py-16 text-[var(--text-tertiary)] bg-[var(--bg-input)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)]">
             <ClipboardCheck size={36} className="mx-auto mb-2 opacity-30 text-[var(--green-500)]" />
-            <p className="text-sm font-semibold text-[var(--text-secondary)]">All entries verified!</p>
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">{t('review.emptyTitle')}</p>
             <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-              There are no pending submissions awaiting review on this page.
+              {t('review.emptyText')}
             </p>
           </div>
         )}
@@ -266,13 +274,13 @@ export default function PartReview() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
-                  <th className="pb-2.5 font-semibold">Operator</th>
-                  <th className="pb-2.5 font-semibold">SAP Number</th>
-                  <th className="pb-2.5 font-semibold text-right">Qty</th>
-                  <th className="pb-2.5 font-semibold">Kind</th>
-                  <th className="pb-2.5 font-semibold text-right">Value</th>
-                  <th className="pb-2.5 font-semibold">Submitted Date</th>
-                  <th className="pb-2.5 font-semibold text-right">Action</th>
+                  <th className="pb-2.5 font-semibold">{t('review.columns.operator')}</th>
+                  <th className="pb-2.5 font-semibold">{t('review.columns.sapNumber')}</th>
+                  <th className="pb-2.5 font-semibold text-right">{t('review.columns.qty')}</th>
+                  <th className="pb-2.5 font-semibold">{t('review.columns.kind')}</th>
+                  <th className="pb-2.5 font-semibold text-right">{t('review.columns.value')}</th>
+                  <th className="pb-2.5 font-semibold">{t('review.columns.submittedDate')}</th>
+                  <th className="pb-2.5 font-semibold text-right">{t('review.columns.action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
@@ -303,18 +311,18 @@ export default function PartReview() {
                       {/* Kind */}
                       <td className="py-3 font-sans">
                         <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-[10px]' : 'badge-warning text-[10px]'}>
-                          {entry.kind === 'PRODUCED' ? 'Produced' : 'Modification'}
+                          {entry.kind === 'PRODUCED' ? t('kind.PRODUCED') : t('kind.MODIFICATION')}
                         </span>
                       </td>
 
                       {/* Value */}
                       <td className="py-3 text-right text-[var(--green-500)] font-bold">
-                        {lineValue.toFixed(1)}
+                        {fmtValue(lineValue)}
                       </td>
 
                       {/* Date */}
                       <td className="py-3 text-[var(--text-secondary)] font-sans text-[11px]">
-                        {new Date(entry.created_at).toLocaleString()}
+                        {fmtDateTime(entry.created_at)}
                       </td>
 
                       {/* Actions */}
@@ -325,10 +333,10 @@ export default function PartReview() {
                             onClick={() => handleApprove(entry)}
                             disabled={isBusy}
                             className="btn-success text-xs py-1 px-2.5 flex items-center gap-1"
-                            title="Approve this entry"
+                            title={t('review.approveTitle')}
                           >
                             <Check size={13} />
-                            <span>Approve</span>
+                            <span>{t('review.approve')}</span>
                           </button>
 
                           <button
@@ -336,10 +344,10 @@ export default function PartReview() {
                             onClick={() => handleReject(entry)}
                             disabled={isBusy}
                             className="btn-secondary text-xs py-1 px-2 flex items-center gap-1 hover:border-[var(--rose-500)] hover:text-[var(--rose-500)]"
-                            title="Reject this entry (kept in audit)"
+                            title={t('review.rejectTitle')}
                           >
                             <X size={13} />
-                            <span>Reject</span>
+                            <span>{t('review.reject')}</span>
                           </button>
                         </div>
                       </td>
@@ -354,7 +362,7 @@ export default function PartReview() {
         {/* Pagination Footer */}
         <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-xs">
           <span className="text-[var(--text-tertiary)]">
-            25 entries per page &middot; new submissions appear automatically
+            {t('review.footer')}
           </span>
 
           <div className="flex items-center gap-2">
@@ -364,11 +372,11 @@ export default function PartReview() {
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
             >
               <ChevronLeft size={14} />
-              <span>Previous</span>
+              <span>{t('review.previous')}</span>
             </button>
 
             <span className="font-mono text-xs text-[var(--text-secondary)] px-2">
-              Page {page + 1}
+              {t('review.page', { page: page + 1 })}
             </span>
 
             <button
@@ -376,7 +384,7 @@ export default function PartReview() {
               disabled={!hasMore || isLoading}
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
             >
-              <span>Next</span>
+              <span>{t('review.next')}</span>
               <ChevronRight size={14} />
             </button>
           </div>

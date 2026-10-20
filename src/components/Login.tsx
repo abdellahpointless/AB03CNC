@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone } from 'lucide-react';
+import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone, Crown, Globe2 } from 'lucide-react';
+import { Flag } from './Flag';
+import { HUB_PATH, INSTANCE } from '../lib/instance';
 import { motion, useAnimate } from 'motion/react';
+import { useT } from '../i18n';
 
 export default function Login() {
+  const { t } = useT('app');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, setup, needsSetup, mfaPending, verifyMfa, cancelMfa } = useAuth();
+  const { login, setup, needsSetup, notConfigured, mfaPending, verifyMfa, cancelMfa } = useAuth();
+  const isMasterPage = INSTANCE.kind === 'master';
+  const region = INSTANCE.kind === 'country' ? INSTANCE.region : null;
   const [code, setCode] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
   const [cardRef, animateCard] = useAnimate();
@@ -24,7 +30,7 @@ export default function Login() {
     if (isLoading) return;
     setError('');
     if (needsSetup && password !== confirmPassword) {
-      setError('The two passwords do not match');
+      setError(t('login.passwordsMismatch'));
       shake();
       return;
     }
@@ -32,7 +38,7 @@ export default function Login() {
     const res = needsSetup ? await setup(username, password) : await login(username, password);
     setIsLoading(false);
     if (!res.success) {
-      setError(res.error || 'Login failed');
+      setError(res.error || t('auth.loginFailed'));
       shake();
     }
   };
@@ -45,7 +51,7 @@ export default function Login() {
     const res = await verifyMfa(code);
     setIsLoading(false);
     if (!res.success) {
-      setError(res.error || 'Wrong code');
+      setError(res.error || t('auth.wrongCode'));
       setCode('');
       shake();
     }
@@ -85,14 +91,44 @@ export default function Login() {
           </h1>
           <div className="flex items-center gap-2 mt-1">
             <span className="badge-neutral text-[11px] py-0.5 px-2">v6.0 Aurora</span>
-            <span className="text-xs text-[var(--text-secondary)]">Industrial Dialect & Tool Engine</span>
+            <span className="text-xs text-[var(--text-secondary)]">{t('login.tagline')}</span>
+          </div>
+          {/* Which instance this is: a country (flag) or the master dashboard; and the way back to the country picker. */}
+          <div className="flex items-center gap-2 mt-4">
+            {region ? (
+              <span className="badge-neutral text-xs py-1 px-2.5 inline-flex items-center gap-2">
+                <Flag country={region.id} className="w-5 h-[14px] rounded-[3px] shadow-sm" />
+                <span className="font-semibold text-[var(--text-primary)]">{t(`common:country.${region.id}`)}</span>
+              </span>
+            ) : (
+              <span className="badge-neutral text-xs py-1 px-2.5 inline-flex items-center gap-1.5">
+                <Crown size={13} className="text-amber-500" />
+                <span className="font-semibold text-[var(--text-primary)]">{t('common:role.MASTER')}</span>
+              </span>
+            )}
+            <a href={HUB_PATH} className="text-[11px] text-[var(--blue-500)] hover:underline inline-flex items-center gap-1">
+              <Globe2 size={12} /> {t('common:actions.changeCountry')}
+            </a>
           </div>
         </div>
 
+        {notConfigured && !mfaPending && (
+          <div className="mb-5 p-3 rounded-[var(--radius-md)] bg-[rgba(224,138,77,0.1)] border border-[var(--orange-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
+            {isMasterPage ? (
+              <>
+                <strong className="text-[var(--text-primary)]">{t('login.noMasterTitle')}</strong> {t('login.noMasterBody')}
+              </>
+            ) : (
+              <>
+                <strong className="text-[var(--text-primary)]">{t('login.notSetUpTitle')}</strong> {t('login.notSetUpBody')}
+              </>
+            )}
+          </div>
+        )}
+
         {needsSetup && (
           <div className="mb-5 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
-            <strong className="text-[var(--text-primary)]">First-time setup.</strong> Create the administrator account for this
-            installation. You can then import your old data (Admin &rarr; Data &amp; Migration) and add operators.
+            <strong className="text-[var(--text-primary)]">{t('login.setupTitle')}</strong> {t('login.setupBody')}
           </div>
         )}
 
@@ -101,9 +137,7 @@ export default function Login() {
             <div className="flex items-start gap-3 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
               <Smartphone size={18} className="shrink-0 text-[var(--blue-500)] mt-0.5" />
               <span>
-                {useRecovery
-                  ? 'Enter one of the recovery codes you saved when you turned on two-step sign-in. Each code works once.'
-                  : 'Open your authenticator app and enter the 6-digit code for CNC Process Pro.'}
+                {useRecovery ? t('login.recoveryHint') : t('login.appHint')}
               </span>
             </div>
             {error && (
@@ -117,7 +151,7 @@ export default function Login() {
               </motion.div>
             )}
             <div className="space-y-1.5">
-              <label className="section-label">{useRecovery ? 'Recovery code' : 'Authenticator code'}</label>
+              <label className="section-label">{useRecovery ? t('login.recoveryCode') : t('login.authenticatorCode')}</label>
               <input
                 key={useRecovery ? 'rec' : 'otp'}
                 type="text"
@@ -135,18 +169,18 @@ export default function Login() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Checking...
+                  {t('login.checking')}
                 </span>
               ) : (
                 <>
-                  <span>Verify and sign in</span>
+                  <span>{t('login.verifyAndSignIn')}</span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
             <div className="flex items-center justify-between text-xs">
               <button type="button" onClick={backToPassword} className="no-glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                &larr; Back
+                &larr; {t('common:actions.back')}
               </button>
               <button
                 type="button"
@@ -157,7 +191,7 @@ export default function Login() {
                 }}
                 className="no-glass text-[var(--blue-500)] hover:underline"
               >
-                {useRecovery ? 'Use the authenticator app' : 'Lost your phone? Use a recovery code'}
+                {useRecovery ? t('login.useApp') : t('login.useRecovery')}
               </button>
             </div>
           </form>
@@ -175,7 +209,7 @@ export default function Login() {
           )}
 
           <div className="space-y-1.5">
-            <label className="section-label">Username</label>
+            <label className="section-label">{t('login.username')}</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
                 <UserIcon size={16} />
@@ -185,7 +219,7 @@ export default function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="aurora-input w-full pl-10"
-                placeholder={needsSetup ? 'Choose an admin username' : 'Enter username'}
+                placeholder={needsSetup ? t('login.usernameSetupPlaceholder') : t('login.usernamePlaceholder')}
                 autoComplete="username"
                 required
                 autoFocus
@@ -195,8 +229,8 @@ export default function Login() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="section-label">Password</label>
-              <span className="text-[11px] text-[var(--text-tertiary)]">{needsSetup ? 'At least 10 characters' : 'Secure Access'}</span>
+              <label className="section-label">{t('login.password')}</label>
+              <span className="text-[11px] text-[var(--text-tertiary)]">{needsSetup ? t('login.minTenChars') : t('login.secureAccess')}</span>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
@@ -217,7 +251,7 @@ export default function Login() {
 
           {needsSetup && (
             <div className="space-y-1.5">
-              <label className="section-label">Confirm Password</label>
+              <label className="section-label">{t('login.confirmPassword')}</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
                   <Lock size={16} />
@@ -243,11 +277,11 @@ export default function Login() {
             {isLoading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {needsSetup ? 'Creating account...' : 'Signing in...'}
+                {needsSetup ? t('login.creatingAccount') : t('login.signingIn')}
               </span>
             ) : (
               <>
-                <span>{needsSetup ? 'Create Admin Account' : 'Sign In to System'}</span>
+                <span>{needsSetup ? t('login.createAdmin') : t('login.signInToSystem')}</span>
                 <ArrowRight size={16} />
               </>
             )}
@@ -258,7 +292,7 @@ export default function Login() {
         <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-tertiary)]">
           <div className="flex items-center gap-1.5">
             <ShieldCheck size={14} className="text-[var(--green-500)]" />
-            <span>Role-Based Security</span>
+            <span>{t('login.roleBasedSecurity')}</span>
           </div>
           <span>CNC Studio v6.0</span>
         </div>

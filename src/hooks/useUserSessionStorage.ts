@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { scopedKey as regionScopedKey } from '../lib/instance';
 
 /**
  * Working state that belongs to one operator on one PC (the program they are
@@ -7,7 +8,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * program stays smooth.
  */
 export function useUserSessionStorage<T>(userIdentifier: string, key: string, initialValue: T) {
-  const scopedKey = `cnc-session-${userIdentifier || 'guest'}-${key}`;
+  // Per country too: the same username can exist in two countries on one PC.
+  const scopedKey = regionScopedKey(`cnc-session-${userIdentifier || 'guest'}-${key}`);
   const initialRef = useRef(initialValue);
 
   const read = useCallback((k: string): T => {

@@ -1,3 +1,6 @@
+import { apiBase } from './instance';
+import i18n from '../i18n';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -19,6 +22,8 @@ interface ApiOptions {
   body?: unknown;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** Another API base (e.g. the master hub from a country page). */
+  base?: string;
 }
 
 export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise<T> {
@@ -29,7 +34,7 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
 
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${opts.base ?? apiBase()}${path}`, {
       method,
       credentials: 'same-origin',
       headers: {
@@ -42,7 +47,7 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
     });
   } catch (err) {
     if (opts.signal?.aborted) throw err;
-    throw new ApiError('Cannot reach the server. Check the network connection.', 0);
+    throw new ApiError(i18n.t('common:errors.offline'), 0);
   } finally {
     clearTimeout(timeout);
   }
@@ -60,12 +65,12 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
     if (res.status === 401 && !path.startsWith('/auth/')) {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
-    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data);
+    throw new ApiError(data?.error || i18n.t('common:errors.requestFailed', { status: res.status }), res.status, data);
   }
   return data as T;
 }
 
-export function errorMessage(err: unknown, fallback = 'Something went wrong'): string {
+export function errorMessage(err: unknown, fallback = i18n.t('common:errors.generic')): string {
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }

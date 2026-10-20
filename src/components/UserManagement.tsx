@@ -5,6 +5,8 @@ import { api } from '../lib/api';
 import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText } from 'lucide-react';
 import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
+import { useT } from '../i18n';
+import { fmtDateTime } from '../i18n/format';
 
 interface AccountRow {
   id: string;
@@ -23,25 +25,32 @@ interface AuditEvent {
   detail: string | null;
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  login: 'Signed in',
-  login_failed: 'Wrong password',
-  mfa_failed: 'Wrong 2-step code',
-  password_check_failed: 'Wrong current password',
-  password_changed: 'Changed own password',
-  mfa_enabled: 'Turned on 2-step sign-in',
-  mfa_disabled: 'Turned off 2-step sign-in',
-  user_created: 'Created account',
-  user_updated: 'Changed account',
-  user_deleted: 'Deleted account',
-  admin_action: 'Admin change',
-  admin_denied: 'Blocked admin request',
-  setup: 'First setup',
-};
+/** Security log action (as recorded by the server) -> its label under `users.log.actions`. */
+const ACTION_LABELS = {
+  login: 'login',
+  login_failed: 'loginFailed',
+  mfa_failed: 'mfaFailed',
+  password_check_failed: 'passwordCheckFailed',
+  password_changed: 'passwordChanged',
+  mfa_enabled: 'mfaEnabled',
+  mfa_disabled: 'mfaDisabled',
+  user_created: 'userCreated',
+  user_updated: 'userUpdated',
+  user_deleted: 'userDeleted',
+  admin_action: 'adminAction',
+  admin_denied: 'adminDenied',
+  setup: 'setup',
+} as const;
+type ActionLabel = (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS];
 const ALERT_ACTIONS = new Set(['login_failed', 'mfa_failed', 'password_check_failed', 'admin_denied']);
 
 /** Latest security events (sign-ins, failures, account changes). Admin only. */
 function SecurityLog() {
+  const { t } = useT('app');
+  const actionLabel = (action: string) => {
+    const key = (ACTION_LABELS as Record<string, ActionLabel | undefined>)[action];
+    return key ? t(`users.log.actions.${key}`) : action;
+  };
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<AuditEvent[] | null>(null);
   const [error, setError] = useState('');
@@ -49,7 +58,7 @@ function SecurityLog() {
     setError('');
     api<{ events: AuditEvent[] }>('/admin/audit')
       .then((r) => setEvents(r.events))
-      .catch((e) => setError(e?.message || 'Could not load the security log'));
+      .catch((e) => setError(e?.message || t('users.log.loadFailed')));
   };
   useEffect(() => {
     if (open && !events) load();
@@ -61,15 +70,15 @@ function SecurityLog() {
         onClick={() => setOpen((v) => !v)}
         className="no-glass w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(var(--ov),0.03)] transition-colors"
       >
-        <span className="section-label flex items-center gap-2"><ScrollText size={14} /> Security log</span>
-        <span className="text-[11px] text-[var(--text-tertiary)]">{open ? 'Hide' : 'Show sign-ins and account changes'}</span>
+        <span className="section-label flex items-center gap-2"><ScrollText size={14} /> {t('users.log.title')}</span>
+        <span className="text-[11px] text-[var(--text-tertiary)]">{open ? t('users.log.hide') : t('users.log.show')}</span>
       </button>
       {open && (
         <div className="border-t border-[var(--border-subtle)]">
           {error && <div className="badge-danger text-xs py-1.5 px-3 m-3">{error}</div>}
           {!events && !error && (
             <div className="p-6 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2">
-              <RefreshCw size={14} className="animate-spin" /> Loading...
+              <RefreshCw size={14} className="animate-spin" /> {t('common:status.loading')}
             </div>
           )}
           {events && (
@@ -77,22 +86,22 @@ function SecurityLog() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 bg-[var(--bg-panel)]">
                   <tr className="border-b border-[var(--border-subtle)]">
-                    <th className="p-2.5 section-label">When</th>
-                    <th className="p-2.5 section-label">Who</th>
-                    <th className="p-2.5 section-label">What</th>
-                    <th className="p-2.5 section-label">IP address</th>
+                    <th className="p-2.5 section-label">{t('users.log.colWhen')}</th>
+                    <th className="p-2.5 section-label">{t('users.log.colWho')}</th>
+                    <th className="p-2.5 section-label">{t('users.log.colWhat')}</th>
+                    <th className="p-2.5 section-label">{t('users.log.colIp')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {events.length === 0 && (
-                    <tr><td colSpan={4} className="p-4 text-center text-[var(--text-tertiary)]">No events yet.</td></tr>
+                    <tr><td colSpan={4} className="p-4 text-center text-[var(--text-tertiary)]">{t('users.log.empty')}</td></tr>
                   )}
                   {events.map((e) => (
                     <tr key={e.id} className="border-b border-[var(--border-subtle)] last:border-0">
-                      <td className="p-2.5 whitespace-nowrap font-mono text-[11px] text-[var(--text-secondary)]">{new Date(e.at).toLocaleString('en-GB')}</td>
+                      <td className="p-2.5 whitespace-nowrap font-mono text-[11px] text-[var(--text-secondary)]">{fmtDateTime(e.at)}</td>
                       <td className="p-2.5 font-semibold text-[var(--text-primary)]">{e.username ?? '-'}</td>
                       <td className={`p-2.5 ${ALERT_ACTIONS.has(e.action) ? 'text-[var(--rose-500)]' : 'text-[var(--text-primary)]'}`}>
-                        {ACTION_LABELS[e.action] ?? e.action}
+                        {actionLabel(e.action)}
                         {e.detail && <span className="text-[var(--text-tertiary)]"> &middot; {e.detail}</span>}
                       </td>
                       <td className="p-2.5 font-mono text-[11px] text-[var(--text-tertiary)]">{e.ip ?? '-'}</td>
@@ -103,7 +112,7 @@ function SecurityLog() {
             </div>
           )}
           <div className="p-3 border-t border-[var(--border-subtle)] flex justify-end">
-            <button type="button" onClick={load} className="btn-secondary text-xs py-1 px-3"><RefreshCw size={12} /> <span>Refresh</span></button>
+            <button type="button" onClick={load} className="btn-secondary text-xs py-1 px-3"><RefreshCw size={12} /> <span>{t('common:actions.refresh')}</span></button>
           </div>
         </div>
       )}
@@ -112,6 +121,7 @@ function SecurityLog() {
 }
 
 export default function UserManagement() {
+  const { t } = useT('app');
   const { user } = useAuth();
   const { versions } = useSync();
   const [users, setUsers] = useState<AccountRow[]>([]);
@@ -132,7 +142,7 @@ export default function UserManagement() {
         if (!cancelled) setUsers(res.users);
       })
       .catch(err => {
-        if (!cancelled) setError(err?.message || 'Could not load accounts');
+        if (!cancelled) setError(err?.message || t('users.loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -146,8 +156,8 @@ export default function UserManagement() {
     return (
       <div className="p-12 text-center text-[var(--text-tertiary)] glass-panel max-w-md mx-auto my-12">
         <Shield size={36} className="mx-auto mb-2 text-[var(--rose-500)] opacity-60" />
-        <p className="text-sm font-semibold text-[var(--text-primary)]">Access Restricted</p>
-        <p className="text-xs text-[var(--text-secondary)] mt-1">You do not have permission to view operator account administration.</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">{t('users.accessRestricted')}</p>
+        <p className="text-xs text-[var(--text-secondary)] mt-1">{t('users.noPermission')}</p>
       </div>
     );
   }
@@ -162,7 +172,7 @@ export default function UserManagement() {
       setReloadKey(k => k + 1);
       return true;
     } catch (err: any) {
-      setError(err?.message || 'Request failed');
+      setError(err?.message || t('users.requestFailed'));
       return false;
     } finally {
       setBusyId(null);
@@ -175,7 +185,7 @@ export default function UserManagement() {
     const ok = await run(
       null,
       () => api('/users', { method: 'POST', body: { username, password: newPassword, role: newRole } }),
-      `Account "${username}" created.`,
+      t('users.created', { name: username }),
     );
     if (ok) {
       setNewUsername('');
@@ -185,24 +195,24 @@ export default function UserManagement() {
   };
 
   const handleDelete = (u: AccountRow) => {
-    if (!confirm(`Delete the account "${u.username}"? Their history and part entries are kept.`)) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'DELETE' }), `Account "${u.username}" deleted.`);
+    if (!confirm(t('users.confirmDelete', { name: u.username }))) return;
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'DELETE' }), t('users.deleted', { name: u.username }));
   };
 
   const handleResetPassword = (u: AccountRow) => {
-    const pw = prompt(`New password for "${u.username}" (at least ${u.role === 'ADMIN' ? 10 : 8} characters):`);
+    const pw = prompt(t('users.promptPassword', { name: u.username, min: u.role === 'ADMIN' ? 10 : 8 }));
     if (pw === null) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { password: pw } }), `Password for "${u.username}" changed. They are signed out on other PCs.`);
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { password: pw } }), t('users.passwordReset', { name: u.username }));
   };
 
   const handleResetMfa = (u: AccountRow) => {
-    if (!confirm(`Turn off two-step sign-in for "${u.username}"? Use this when they lost their phone. They can turn it on again after signing in.`)) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { resetMfa: true } }), `Two-step sign-in reset for "${u.username}".`);
+    if (!confirm(t('users.confirmResetMfa', { name: u.username }))) return;
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { resetMfa: true } }), t('users.mfaReset', { name: u.username }));
   };
 
   const handleRoleChange = (u: AccountRow, role: Role) => {
     if (role === u.role) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { role } }), `"${u.username}" is now ${role}.`);
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { role } }), role === 'ADMIN' ? t('users.nowAdmin', { name: u.username }) : t('users.nowMachinist', { name: u.username }));
   };
 
   return (
@@ -215,39 +225,39 @@ export default function UserManagement() {
               <Shield size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              User &amp; Operator Management
+              {t('users.title')}
             </h2>
           </div>
           <p className="text-xs text-[var(--text-secondary)] mt-1.5 pl-1">
-            Provision machinist and administrator accounts across the shop floor. Passwords are stored as salted hashes; every sign-in and account change is logged below.
+            {t('users.subtitle')}
           </p>
         </div>
       </div>
 
       {/* Add New User Card */}
       <div className="aurora-card p-5">
-        <h3 className="section-label mb-4 text-[var(--text-primary)]">Add New Account</h3>
+        <h3 className="section-label mb-4 text-[var(--text-primary)]">{t('users.addTitle')}</h3>
         <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
           <div className="flex-1 space-y-1 w-full sm:w-auto">
-            <label className="section-label block">Username</label>
+            <label className="section-label block">{t('users.username')}</label>
             <input
               type="text"
               value={newUsername}
               onChange={e => setNewUsername(e.target.value)}
               className="aurora-input w-full text-xs"
-              placeholder="e.g. machinist_1"
+              placeholder={t('users.usernamePlaceholder')}
               autoComplete="off"
               required
             />
           </div>
           <div className="flex-1 space-y-1 w-full sm:w-auto">
-            <label className="section-label block">Password</label>
+            <label className="section-label block">{t('users.password')}</label>
             <input
               type="text"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               className="aurora-input w-full text-xs"
-              placeholder={newRole === 'ADMIN' ? 'at least 10 characters' : 'at least 8 characters'}
+              placeholder={t('users.passwordPlaceholder', { min: newRole === 'ADMIN' ? 10 : 8 })}
               autoComplete="off"
               minLength={newRole === 'ADMIN' ? 10 : 8}
               maxLength={200}
@@ -255,14 +265,14 @@ export default function UserManagement() {
             />
           </div>
           <div className="w-full sm:w-36 space-y-1">
-            <label className="section-label block">Role</label>
+            <label className="section-label block">{t('users.role')}</label>
             <select
               value={newRole}
               onChange={e => setNewRole(e.target.value as Role)}
               className="aurora-input w-full text-xs cursor-pointer"
             >
-              <option value="MACHINIST" className="bg-[var(--bg-panel)]">Machinist</option>
-              <option value="ADMIN" className="bg-[var(--bg-panel)]">Admin</option>
+              <option value="MACHINIST" className="bg-[var(--bg-panel)]">{t('common:role.MACHINIST')}</option>
+              <option value="ADMIN" className="bg-[var(--bg-panel)]">{t('common:role.ADMIN')}</option>
             </select>
           </div>
           <button
@@ -271,7 +281,7 @@ export default function UserManagement() {
             className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5 whitespace-nowrap self-stretch sm:self-end"
           >
             <UserPlus size={15} />
-            <span>Add Account</span>
+            <span>{t('users.addAccount')}</span>
           </button>
         </form>
         {error && <div className="badge-danger text-xs py-1.5 px-3 mt-3 font-semibold">{error}</div>}
@@ -281,21 +291,21 @@ export default function UserManagement() {
       {/* User Accounts List Table */}
       <div className="aurora-card p-0 overflow-hidden">
         <div className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.5)] flex items-center justify-between">
-          <span className="section-label">Registered Accounts</span>
-          <span className="badge-neutral text-[10px] py-0 px-2 font-mono">{users.length} users</span>
+          <span className="section-label">{t('users.registered')}</span>
+          <span className="badge-neutral text-[10px] py-0 px-2 font-mono">{t('users.userCount', { n: users.length })}</span>
         </div>
         {loading && users.length === 0 ? (
           <div className="p-8 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2">
-            <RefreshCw size={14} className="animate-spin" /> Loading accounts...
+            <RefreshCw size={14} className="animate-spin" /> {t('users.loadingAccounts')}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
-                  <th className="p-3.5 section-label">User</th>
-                  <th className="p-3.5 section-label">Role</th>
-                  <th className="p-3.5 section-label text-right">Actions</th>
+                  <th className="p-3.5 section-label">{t('users.colUser')}</th>
+                  <th className="p-3.5 section-label">{t('users.colRole')}</th>
+                  <th className="p-3.5 section-label text-right">{t('users.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,10 +321,10 @@ export default function UserManagement() {
                           <UserIcon size={14} />
                         </div>
                         <span className="font-semibold text-xs text-[var(--text-primary)]">{u.username}</span>
-                        {u.id === user?.id && <span className="badge-neutral text-[9px] py-0 px-1.5">you</span>}
+                        {u.id === user?.id && <span className="badge-neutral text-[9px] py-0 px-1.5">{t('users.you')}</span>}
                         {!!u.mfa_enabled && (
-                          <span className="badge-positive text-[9px] py-0 px-1.5 inline-flex items-center gap-1" title="Two-step sign-in is on">
-                            <ShieldCheck size={10} /> 2-step
+                          <span className="badge-positive text-[9px] py-0 px-1.5 inline-flex items-center gap-1" title={t('users.mfaOnTitle')}>
+                            <ShieldCheck size={10} /> {t('users.twoStep')}
                           </span>
                         )}
                       </div>
@@ -327,10 +337,10 @@ export default function UserManagement() {
                         className={`text-[10px] px-2.5 py-1 rounded-[var(--radius-full)] font-mono font-bold cursor-pointer ${
                           u.role === 'ADMIN' ? 'badge-warning' : 'badge-positive'
                         }`}
-                        title={u.id === user?.id ? 'You cannot change your own role' : 'Change role'}
+                        title={u.id === user?.id ? t('users.ownRoleTitle') : t('users.changeRoleTitle')}
                       >
-                        <option value="MACHINIST" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">MACHINIST</option>
-                        <option value="ADMIN" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">ADMIN</option>
+                        <option value="MACHINIST" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">{t('users.roleUpper.MACHINIST')}</option>
+                        <option value="ADMIN" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">{t('users.roleUpper.ADMIN')}</option>
                       </select>
                     </td>
                     <td className="p-3.5 text-right">
@@ -340,7 +350,7 @@ export default function UserManagement() {
                             onClick={() => handleResetMfa(u)}
                             disabled={busyId !== null}
                             className="btn-icon w-8 h-8 inline-flex"
-                            title="Reset two-step sign-in (lost phone)"
+                            title={t('users.resetMfaTitle')}
                           >
                             <ShieldOff size={14} />
                           </button>
@@ -350,7 +360,7 @@ export default function UserManagement() {
                             onClick={() => handleResetPassword(u)}
                             disabled={busyId !== null}
                             className="btn-icon w-8 h-8 inline-flex"
-                            title="Set a new password"
+                            title={t('users.setPasswordTitle')}
                           >
                             <KeyRound size={14} />
                           </button>
@@ -360,7 +370,7 @@ export default function UserManagement() {
                             onClick={() => handleDelete(u)}
                             disabled={busyId !== null}
                             className="btn-icon w-8 h-8 hover:text-[var(--rose-500)] hover:bg-[rgba(255,102,121,0.1)] inline-flex"
-                            title="Delete User"
+                            title={t('users.deleteTitle')}
                           >
                             <Trash2 size={14} />
                           </button>

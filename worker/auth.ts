@@ -1,6 +1,8 @@
 import { HttpError, getCookie, json, readJson, str } from './http';
 import { bumpVersion, type Ctx, type AuthedUser, type Env, type Role } from './context';
 import { seedDefaultToolsIfEmpty } from './routes/tools';
+import { ensureSchema } from './schema';
+import { MASTER, regionById } from '../src/regions';
 import {
   audit,
   auditCtx,
@@ -19,10 +21,18 @@ import {
 } from './security';
 
 // `__Host-` cookies must be Secure, Path=/ and have no Domain: they cannot be set or
-// overwritten by a sub-domain or a plain-HTTP page. The old name is still read once so
-// people already signed in are moved over silently.
-export const SESSION_COOKIE = '__Host-cnc_sid';
-const LEGACY_SESSION_COOKIE = 'cnc_sid';
+// overwritten by a sub-domain or a plain-HTTP page. Each country (and the master hub) has its own
+// cookie, so signing in to one never signs you out of another. Morocco still reads its pre-2026
+// cookie name once so people already signed in are moved over silently.
+function cookieSpec(env: Env): { name: string; legacy?: string } {
+  if (env.REGION === 'master') return { name: MASTER.sessionCookie };
+  const r = regionById(env.REGION ?? 'ma')!;
+  return { name: r.sessionCookie, legacy: r.legacyCookie };
+}
+
+function totpIssuer(env: Env): string {
+  return env.REGION === 'master' ? MASTER.totpIssuer : regionById(env.REGION ?? 'ma')!.totpIssuer;
+}
 
 // Session lifetimes. Machinists stay signed in on shop-floor PCs (sliding 30 days, at most
 // 60 days in total). Admin sessions end after 12 hours without activity and after 7 days in
@@ -143,18 +153,25 @@ async function recoveryHashCandidates(env: Env, code: string): Promise<string[]>
 
 // ---- Sessions ------------------------------------------------------------------
 
-function sessionCookie(token: string, maxAgeSeconds: number): string {
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
+function sessionCookie(env: Env, token: string, maxAgeSeconds: number): string {
+  return `${cookieSpec(env).name}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
 }
 
-function clearCookies(): string[] {
-  return [sessionCookie('', 0), `${LEGACY_SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`];
+function clearLegacyCookie(env: Env): string | null {
+  const legacy = cookieSpec(env).legacy;
+  return legacy ? `${legacy}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0` : null;
 }
 
-function readToken(request: Request): { token: string; legacy: boolean } | null {
-  const t = getCookie(request, SESSION_COOKIE);
+function clearCookies(env: Env): string[] {
+  const legacy = clearLegacyCookie(env);
+  return legacy ? [sessionCookie(env, '', 0), legacy] : [sessionCookie(env, '', 0)];
+}
+
+function readToken(env: Env, request: Request): { token: string; legacy: boolean } | null {
+  const spec = cookieSpec(env);
+  const t = getCookie(request, spec.name);
   if (t) return { token: t, legacy: false };
-  const legacy = getCookie(request, LEGACY_SESSION_COOKIE);
+  const legacy = spec.legacy ? getCookie(request, spec.legacy) : null;
   return legacy ? { token: legacy, legacy: true } : null;
 }
 
@@ -176,7 +193,7 @@ async function createSession(env: Env, userId: string, role: Role): Promise<{ to
       role,
     ),
   ]);
-  return { token, cookie: sessionCookie(token, Math.floor(ttl / 1000)) };
+  return { token, cookie: sessionCookie(env, token, Math.floor(ttl / 1000)) };
 }
 
 /**
@@ -184,7 +201,7 @@ async function createSession(env: Env, userId: string, role: Role): Promise<{ to
  * they expired, passed their absolute limit, or were created for a different role.
  */
 export async function getSessionUser(env: Env, request: Request): Promise<{ user: AuthedUser; setCookies: string[] } | null> {
-  const found = readToken(request);
+  const found = readToken(env, request);
   if (!found || found.token.length > 100) return null;
   const tokenHash = await sha256Hex(found.token);
   const row = await env.DB.prepare(
@@ -220,11 +237,11 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
   if (expiresAt - now < life.renewBelow && row.created_at + life.max > now + life.renewBelow) {
     expiresAt = Math.min(now + life.idle, row.created_at + life.max);
     await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?').bind(expiresAt, tokenHash).run();
-    setCookies.push(sessionCookie(found.token, Math.floor((expiresAt - now) / 1000)));
+    setCookies.push(sessionCookie(env, found.token, Math.floor((expiresAt - now) / 1000)));
   } else if (found.legacy) {
-    setCookies.push(sessionCookie(found.token, Math.max(0, Math.floor((expiresAt - now) / 1000))));
+    setCookies.push(sessionCookie(env, found.token, Math.max(0, Math.floor((expiresAt - now) / 1000))));
   }
-  if (found.legacy) setCookies.push(clearCookies()[1]);
+  if (found.legacy) setCookies.push(clearLegacyCookie(env)!);
   return { user, setCookies };
 }
 
@@ -280,7 +297,7 @@ function ipKey(request: Request): string {
 }
 
 /** Lets a signed-in user prove they know their password (for sensitive actions), with throttling. */
-async function requirePassword(ctx: Ctx, password: unknown): Promise<void> {
+export async function requirePassword(ctx: Ctx, password: unknown): Promise<void> {
   const user = ctx.user!;
   const key = `pw:${user.id}`;
   await checkLock(ctx.env, key);
@@ -305,7 +322,11 @@ export async function handleMe(ctx: Ctx): Promise<Response> {
     const row = await ctx.env.DB.prepare('SELECT mfa_enabled FROM users WHERE id = ?').bind(ctx.user.id).first<{ mfa_enabled: number }>();
     return json({ user: ctx.user, mfaEnabled: !!row?.mfa_enabled });
   }
-  return json({ user: null, needsSetup: !(await hasAnyUser(ctx.env)) });
+  const empty = !(await hasAnyUser(ctx.env));
+  const publicSetup = ctx.env.REGION !== 'master' && !!regionById(ctx.env.REGION ?? 'ma')?.publicSetup;
+  // A new country (or the hub) without accounts is "not configured": its first account is created
+  // by the master (or, for the master, by a Moroccan admin), never from the public login page.
+  return json({ user: null, needsSetup: publicSetup && empty, notConfigured: !publicSetup && empty });
 }
 
 interface LoginRow {
@@ -316,23 +337,53 @@ interface LoginRow {
   mfa_enabled: number;
 }
 
-async function finishLogin(ctx: Ctx, row: LoginRow, weakPassword: boolean, method: string): Promise<Response> {
+async function finishLogin(ctx: Ctx, row: LoginRow, weakPassword: boolean, method: string, extra: Record<string, unknown> = {}): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(userKey(row.username)),
   ]);
   const { cookie } = await createSession(ctx.env, row.id, row.role);
   await audit(ctx.env, ctx.request, 'login', row, method);
   const user: AuthedUser = { id: row.id, username: row.username, role: row.role };
-  const res = json({ user, weakPassword, mfaEnabled: !!row.mfa_enabled });
+  const res = json({ user, weakPassword, mfaEnabled: !!row.mfa_enabled, ...extra });
   res.headers.append('Set-Cookie', cookie);
-  if (getCookie(ctx.request, LEGACY_SESSION_COOKIE)) res.headers.append('Set-Cookie', clearCookies()[1]);
+  const legacy = cookieSpec(ctx.env).legacy;
+  if (legacy && getCookie(ctx.request, legacy)) res.headers.append('Set-Cookie', clearLegacyCookie(ctx.env)!);
   return res;
+}
+
+/** The environment of the master hub, derived from a country request (for master sign-ins). */
+export function masterEnvFrom(env: Env): Env | null {
+  if (!env.HUB) return null;
+  return { ...env, DB: env.HUB, HUB: undefined, REGION: 'master' };
 }
 
 export async function handleLogin(ctx: Ctx): Promise<Response> {
   const body = await readJson<{ username?: unknown; password?: unknown }>(ctx.request, 10_000);
   const username = str(body.username, 'Username', { min: 1, max: 100 });
   const password = str(body.password, 'Password', { min: 1, max: 200, trim: false });
+
+  // The master admin can sign in from any country's login page: master usernames are reserved
+  // (no country may use them), so the hub is checked first and takes over.
+  if (ctx.env.REGION !== 'master') {
+    const hubEnv = masterEnvFrom(ctx.env);
+    if (hubEnv) {
+      // A hub problem must never block a country's own sign-ins (master names are reserved in
+      // every country, so falling back to the country login cannot sign in the wrong account).
+      let isMaster = false;
+      try {
+        await ensureSchema(hubEnv.DB, 'master');
+        isMaster = !!(await hubEnv.DB.prepare('SELECT 1 AS x FROM users WHERE username = ?').bind(username).first());
+      } catch (err) {
+        console.error('hub lookup failed during sign-in', err instanceof Error ? err.message : err);
+      }
+      if (isMaster) return loginWith({ ...ctx, env: hubEnv }, username, password, { master: true });
+    }
+    return loginWith(ctx, username, password, {});
+  }
+  return loginWith(ctx, username, password, { master: true });
+}
+
+async function loginWith(ctx: Ctx, username: string, password: string, extra: Record<string, unknown>): Promise<Response> {
   const uKey = userKey(username);
   const iKey = ipKey(ctx.request);
 
@@ -373,9 +424,9 @@ export async function handleLogin(ctx: Ctx): Promise<Response> {
     await ctx.env.DB.prepare('INSERT INTO login_challenges (token_hash, user_id, expires_at, attempts) VALUES (?, ?, ?, 0)')
       .bind(await sha256Hex(challenge), row.id, Date.now() + CHALLENGE_TTL_MS)
       .run();
-    return json({ mfaRequired: true, challenge, weakPassword });
+    return json({ mfaRequired: true, challenge, weakPassword, ...extra });
   }
-  return finishLogin(ctx, row, weakPassword, 'password');
+  return finishLogin(ctx, row, weakPassword, 'password', extra);
 }
 
 /** Second sign-in step: a 6-digit authenticator code or a one-time recovery code. */
@@ -394,14 +445,14 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     .bind(challengeHash, CHALLENGE_MAX_ATTEMPTS, Date.now())
     .first<{ user_id: string }>();
   if (!ch) {
-    throw new HttpError(401, 'Sign-in expired. Please enter your password again.');
+    throw new HttpError(401, 'Sign-in expired. Please enter your password again.', { code: 'challenge_expired' });
   }
   const row = await ctx.env.DB.prepare(
     'SELECT id, username, role, password_hash, mfa_enabled, mfa_secret, mfa_last_step, mfa_recovery FROM users WHERE id = ?',
   )
     .bind(ch.user_id)
     .first<LoginRow & { mfa_secret: string | null; mfa_last_step: number; mfa_recovery: string | null }>();
-  if (!row || !row.mfa_enabled) throw new HttpError(401, 'Sign-in expired. Please enter your password again.');
+  if (!row || !row.mfa_enabled) throw new HttpError(401, 'Sign-in expired. Please enter your password again.', { code: 'challenge_expired' });
   await checkLock(ctx.env, userKey(row.username));
 
   let method = 'totp';
@@ -432,24 +483,28 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     throw new HttpError(401, 'Wrong code. Check the time on your phone and try again.');
   }
   await ctx.env.DB.prepare('DELETE FROM login_challenges WHERE token_hash = ?').bind(challengeHash).run();
-  return finishLogin(ctx, row, body.weakPassword === true, method);
+  return finishLogin(ctx, row, body.weakPassword === true, method, ctx.env.REGION === 'master' ? { master: true } : {});
 }
 
 export async function handleLogout(ctx: Ctx): Promise<Response> {
-  const found = readToken(ctx.request);
+  const found = readToken(ctx.env, ctx.request);
   if (found) {
     await ctx.env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256Hex(found.token)).run();
   }
   const res = json({ ok: true });
-  for (const c of clearCookies()) res.headers.append('Set-Cookie', c);
+  for (const c of clearCookies(ctx.env)) res.headers.append('Set-Cookie', c);
   return res;
 }
 
 /** First-run only: creates the initial admin account when the database has no users. */
 export async function handleSetup(ctx: Ctx): Promise<Response> {
+  if (ctx.env.REGION === 'master' || !regionById(ctx.env.REGION ?? 'ma')?.publicSetup) {
+    throw new HttpError(403, 'The first admin of this country is created by the master admin.');
+  }
   const body = await readJson<{ username?: unknown; password?: unknown }>(ctx.request, 10_000);
   const username = validateUsername(body.username);
   const password = validateNewPassword(body.password, username, 'ADMIN');
+  await assertNotMasterUsername(ctx.env, username);
   if (await hasAnyUser(ctx.env)) throw new HttpError(409, 'Setup has already been completed. Please sign in.');
 
   const id = crypto.randomUUID();
@@ -463,7 +518,7 @@ export async function handleSetup(ctx: Ctx): Promise<Response> {
     .run();
   if (!res.meta.changes) throw new HttpError(409, 'Setup has already been completed. Please sign in.');
 
-  await seedDefaultToolsIfEmpty(ctx.env, username);
+  if (ctx.env.REGION === 'ma' || !ctx.env.REGION) await seedDefaultToolsIfEmpty(ctx.env, username);
   await bumpVersion(ctx.env, 'users');
   const { cookie } = await createSession(ctx.env, id, 'ADMIN');
   await audit(ctx.env, ctx.request, 'setup', { id, username });
@@ -477,7 +532,7 @@ export async function handleChangeOwnPassword(ctx: Ctx): Promise<Response> {
   const next = validateNewPassword(body.newPassword, user.username, user.role);
   if (next === body.currentPassword) throw new HttpError(400, 'The new password must be different from the current one.');
   const hash = await hashPassword(ctx.env, next);
-  const currentToken = readToken(ctx.request)?.token ?? '';
+  const currentToken = readToken(ctx.env, ctx.request)?.token ?? '';
   // Sign out every other device that was using the old password.
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?').bind(hash, Date.now(), user.id),
@@ -497,7 +552,7 @@ export async function handleMfaSetup(ctx: Ctx): Promise<Response> {
   if (row?.mfa_enabled) throw new HttpError(409, 'Two-step sign-in is already on.');
   const secret = newTotpSecret();
   await ctx.env.DB.prepare('UPDATE users SET mfa_pending_secret = ? WHERE id = ?').bind(secret, user.id).run();
-  return json({ secret, otpauth: otpauthUrl(secret, user.username) });
+  return json({ secret, otpauth: otpauthUrl(secret, user.username, totpIssuer(ctx.env)) });
 }
 
 // POST /auth/mfa/enable { password, code } -> turns it on and returns 10 recovery codes (shown once).
@@ -516,7 +571,7 @@ export async function handleMfaEnable(ctx: Ctx): Promise<Response> {
 
   const codes = newRecoveryCodes();
   const hashes = await Promise.all(codes.map((c) => recoveryHash(ctx.env, c)));
-  const currentToken = readToken(ctx.request)?.token ?? '';
+  const currentToken = readToken(ctx.env, ctx.request)?.token ?? '';
   const [updated] = await ctx.env.DB.batch([
     ctx.env.DB.prepare(
       `UPDATE users SET mfa_secret = ?1, mfa_pending_secret = NULL, mfa_enabled = 1, mfa_recovery = ?2, mfa_last_step = ?3
@@ -566,4 +621,13 @@ export async function handleAuditLog(ctx: Ctx): Promise<Response> {
     'SELECT id, at, username, ip, action, detail FROM audit_log ORDER BY at DESC, id DESC LIMIT 300',
   ).all();
   return json({ events: results });
+}
+
+/** Master usernames are reserved in every country, so a master sign-in is never ambiguous. */
+export async function assertNotMasterUsername(env: Env, username: string): Promise<void> {
+  const hubEnv = masterEnvFrom(env);
+  if (!hubEnv) return;
+  await ensureSchema(hubEnv.DB, 'master');
+  const taken = await hubEnv.DB.prepare('SELECT 1 AS x FROM users WHERE username = ?').bind(username).first();
+  if (taken) throw new HttpError(409, 'This username is reserved. Choose another one.');
 }

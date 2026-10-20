@@ -3,6 +3,7 @@ import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, 
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
+import { useT } from '../i18n';
 
 interface CodeEditorPairProps {
   inputLabel: string;
@@ -56,6 +57,7 @@ export default function CodeEditorPair({
   isOutputStale = false,
   onReanalyze
 }: CodeEditorPairProps) {
+  const { t } = useT('remapper');
   const [isCopied, setIsCopied] = useState(false);
   const [hasImported, setHasImported] = useState(false);
   const [conversionNotification, setConversionNotification] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export default function CodeEditorPair({
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
-      alert('Copy failed: the browser blocked clipboard access. Use "Extract Code" instead.');
+      alert(t('editor.copyFailed'));
     }
   };
 
@@ -102,7 +104,7 @@ export default function CodeEditorPair({
         const insertion = processedLines.join('\n');
         const nextVal = val.substring(0, start) + insertion + val.substring(end);
         setSourceCode(nextVal);
-        setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
+        setConversionNotification(t('editor.g53Placed', { count: addedCount }));
         setTimeout(() => setConversionNotification(null), 6000);
         setTimeout(() => {
           target.selectionStart = target.selectionEnd = start + insertion.length;
@@ -117,7 +119,7 @@ export default function CodeEditorPair({
     const { lines: processedLines, addedCount } = applyG53BeforeG52(lines);
     if (addedCount > 0) {
       setSourceCode(processedLines.join('\n'));
-      setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
+      setConversionNotification(t('editor.g53Placed', { count: addedCount }));
       setTimeout(() => setConversionNotification(null), 6000);
     }
   };
@@ -147,7 +149,7 @@ export default function CodeEditorPair({
         setSourceCode(processedLines.join('\n'));
         setHasImported(true);
         if (addedCount > 0) {
-          setConversionNotification(`Table to operator: automatically placed ${addedCount} G53 Y0 (part flip / end of program)`);
+          setConversionNotification(t('editor.g53Placed', { count: addedCount }));
           setTimeout(() => setConversionNotification(null), 6000);
         } else {
           setConversionNotification(null);
@@ -177,16 +179,16 @@ export default function CodeEditorPair({
     setHasImported(false);
     
     const details: string[] = [];
-    if (result.stats.n100n110Deleted > 0) details.push('N100/N110 deleted');
-    if (result.stats.securityLinesReplaced > 0) details.push('Security line updated');
-    if (result.stats.trailingZFixed > 0) details.push(`${result.stats.trailingZFixed} trailing Z. added`);
-    if (result.stats.m98LinesDeleted > 0) details.push(`${result.stats.m98LinesDeleted} M98 P7999 removed`);
-    if (result.stats.g43Converted > 0) details.push(`${result.stats.g43Converted} G43 converted`);
-    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 added (part flip / end of program)`);
+    if (result.stats.n100n110Deleted > 0) details.push(t('convert.n100Deleted'));
+    if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLineUpdated'));
+    if (result.stats.trailingZFixed > 0) details.push(t('convert.trailingZAdded', { count: result.stats.trailingZFixed }));
+    if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98Removed', { count: result.stats.m98LinesDeleted }));
+    if (result.stats.g43Converted > 0) details.push(t('convert.g43Converted', { count: result.stats.g43Converted }));
+    if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
 
-    const summaryText = details.length > 0 
-      ? `Switched to HAAS: ${details.join(', ')}`
-      : 'Switched code to HAAS dialect';
+    const summaryText = details.length > 0
+      ? t('convert.toHaas', { details: details.join(', ') })
+      : t('convert.toHaasPlain');
 
     setConversionNotification(summaryText);
     setTimeout(() => setConversionNotification(null), 6000);
@@ -211,18 +213,18 @@ export default function CodeEditorPair({
     setHasImported(false);
     
     const details: string[] = [];
-    if (result.stats.securityLinesReplaced > 0) details.push('Security lines -> G0 G53 G49 Z0 G94 M95');
-    if (result.stats.g43Converted > 0) details.push(`${result.stats.g43Converted} G43 -> H#513 D#513 M254`);
-    if (result.stats.coolantMerged > 0) details.push(`${result.stats.coolantMerged} M08 merged`);
-    if (result.stats.feedRatesFixed > 0) details.push(`${result.stats.feedRatesFixed} feedrates fixed`);
-    if (result.stats.trailingZFixed > 0) details.push(`${result.stats.trailingZFixed} trailing Z fixed`);
-    if (result.stats.m98LinesDeleted > 0) details.push(`${result.stats.m98LinesDeleted} M98 P7999 removed`);
-    if (result.stats.g53Y0Added > 0) details.push(`${result.stats.g53Y0Added} G53 Y0 added (part flip / end of program)`);
-    if (result.stats.percentWrapped) details.push('% wrapped');
+    if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLines'));
+    if (result.stats.g43Converted > 0) details.push(t('convert.g43ToFanuc', { count: result.stats.g43Converted }));
+    if (result.stats.coolantMerged > 0) details.push(t('convert.coolantMerged', { count: result.stats.coolantMerged }));
+    if (result.stats.feedRatesFixed > 0) details.push(t('convert.feedRatesFixed', { count: result.stats.feedRatesFixed }));
+    if (result.stats.trailingZFixed > 0) details.push(t('convert.trailingZFixed', { count: result.stats.trailingZFixed }));
+    if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98Removed', { count: result.stats.m98LinesDeleted }));
+    if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
+    if (result.stats.percentWrapped) details.push(t('convert.percentWrapped'));
 
-    const summaryText = details.length > 0 
-      ? `Switched to FANUC: ${details.join(', ')}`
-      : 'Switched code from HAAS to FANUC dialect';
+    const summaryText = details.length > 0
+      ? t('convert.toFanuc', { details: details.join(', ') })
+      : t('convert.toFanucPlain');
 
     setConversionNotification(summaryText);
     setTimeout(() => setConversionNotification(null), 6000);
@@ -247,10 +249,10 @@ export default function CodeEditorPair({
             </div>
             <div>
               <span className="text-xs font-semibold text-[var(--text-primary)]">
-                File <code className="font-mono text-[var(--blue-500)] font-bold">{fileName}</code> imported.
+                {t('editor.importedPrefix')} <code className="font-mono text-[var(--blue-500)] font-bold">{fileName}</code> {t('editor.importedSuffix')}
               </span>
               <p className="text-[11px] text-[var(--text-secondary)]">
-                Select your target machine dialect or switch between standards:
+                {t('editor.importedHint')}
               </p>
             </div>
           </div>
@@ -260,14 +262,14 @@ export default function CodeEditorPair({
               className="btn-primary text-xs py-1.5 px-3"
             >
               <Sparkles size={13} />
-              <span>from FANUC to HAAS</span>
+              <span>{t('editor.fromFanucToHaas')}</span>
             </button>
             <button
               onClick={handleSwitchHaasToFanuc}
               className="btn-warning text-xs py-1.5 px-3"
             >
               <ArrowLeftRight size={13} />
-              <span>from HAAS to FANUC</span>
+              <span>{t('editor.fromHaasToFanuc')}</span>
             </button>
           </div>
         </div>
@@ -310,7 +312,7 @@ export default function CodeEditorPair({
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     onClick={handleSwitchFanucToHaas}
-                    title="Convert source code from FANUC dialect to HAAS dialect"
+                    title={t('editor.fanucToHaasTitle')}
                     className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <Sparkles size={12} className="text-[var(--blue-500)]" />
@@ -318,7 +320,7 @@ export default function CodeEditorPair({
                   </button>
                   <button
                     onClick={handleSwitchHaasToFanuc}
-                    title="Convert source code from HAAS dialect to FANUC dialect"
+                    title={t('editor.haasToFanucTitle')}
                     className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <ArrowLeftRight size={12} className="text-[var(--orange-500)]" />
@@ -333,18 +335,18 @@ export default function CodeEditorPair({
                     <button
                       onClick={onLoadSample}
                       className="btn-secondary text-xs py-1 px-2.5"
-                      title="Load sample FANUC program"
+                      title={t('editor.sampleFanucTitle')}
                     >
-                      Sample FANUC
+                      {t('editor.sampleFanuc')}
                     </button>
                   )}
                   {onLoadHaasSample && (
                     <button
                       onClick={onLoadHaasSample}
                       className="btn-secondary text-xs py-1 px-2.5"
-                      title="Load sample HAAS program"
+                      title={t('editor.sampleHaasTitle')}
                     >
-                      Sample HAAS
+                      {t('editor.sampleHaas')}
                     </button>
                   )}
                 </div>
@@ -363,7 +365,7 @@ export default function CodeEditorPair({
                     className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <Upload size={13} />
-                    <span>Import</span>
+                    <span>{t('common:actions.import')}</span>
                   </button>
                 </>
               )}
@@ -381,7 +383,7 @@ export default function CodeEditorPair({
             onBlur={handleBlur}
             spellCheck={false}
             className="flex-1 w-full resize-none p-5 font-mono text-[13px] leading-relaxed text-[var(--text-primary)] bg-[var(--bg-input)] focus:outline-none overflow-auto border-none selection:bg-[var(--blue-500)]/30"
-            placeholder="Paste or import raw CNC G-code program here..."
+            placeholder={t('editor.sourcePlaceholder')}
           />
         </div>
 
@@ -403,20 +405,20 @@ export default function CodeEditorPair({
                 onClick={copyToClipboard}
                 disabled={!outputCode || isOutputStale}
                 className="btn-secondary text-xs py-1 px-2.5"
-                title="Copy remapped G-code to clipboard"
+                title={t('editor.copyTitle')}
               >
                 {isCopied ? <Check size={13} className="text-[var(--green-500)]" /> : <Copy size={13} />}
-                <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                <span>{isCopied ? t('editor.copied') : t('editor.copy')}</span>
               </button>
               {onExport && (
                 <button 
                   onClick={handleExportClick}
                   disabled={!outputCode || isOutputStale}
-                  title="Extract and download the processed G-code file"
+                  title={t('editor.extractTitle')}
                   className="btn-warning text-xs py-1.5 px-3 font-semibold"
                 >
                   <Download size={13} />
-                  <span>Extract Code</span>
+                  <span>{t('editor.extract')}</span>
                 </button>
               )}
             </div>
@@ -426,12 +428,12 @@ export default function CodeEditorPair({
             <div className="px-4 py-2.5 border-b border-[var(--orange-500)]/30 bg-[rgba(224,138,77,0.12)] flex items-center justify-between gap-3 text-xs">
               <span className="flex items-center gap-2 text-[var(--orange-500)] font-semibold">
                 <AlertTriangle size={14} className="shrink-0" />
-                The program or machine changed after this code was generated.
+                {t('editor.stale')}
               </span>
               {onReanalyze && (
                 <button onClick={onReanalyze} className="btn-warning text-xs py-1 px-2.5 shrink-0">
                   <RefreshCw size={12} />
-                  <span>Re-analyze</span>
+                  <span>{t('editor.reanalyze')}</span>
                 </button>
               )}
             </div>
@@ -446,10 +448,10 @@ export default function CodeEditorPair({
                     <Sparkles size={20} />
                   </div>
                   <p className="text-sm font-semibold text-[var(--text-primary)]">
-                    No remapped code generated yet
+                    {t('editor.emptyTitle')}
                   </p>
                   <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
-                    Click &quot;Analyze &amp; Remap&quot; above to resolve tools against the target machine toolbox.
+                    {t('editor.emptyText')}
                   </p>
                 </div>
               </div>

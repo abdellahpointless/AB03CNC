@@ -9,3 +9,14 @@ export function csvCell(v: unknown): string {
   if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?\d+(\.\d+)?$/.test(s) && !/^-+$/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
+
+/**
+ * CSV dialect of a language. Excel in Türkiye (like most of Europe) expects ";" between columns
+ * and a decimal comma; with "," it shows everything in one column and may read 4.2 as a date.
+ */
+export function csvDialect(language: string): { sep: string; num: (v: unknown) => unknown } {
+  if (language === 'tr') {
+    return { sep: ';', num: (v) => (typeof v === 'number' ? String(v).replace('.', ',') : v) };
+  }
+  return { sep: ',', num: (v) => v };
+}

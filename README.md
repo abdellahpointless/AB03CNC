@@ -7,10 +7,33 @@ Everything runs on **Cloudflare's free plan**: one Worker serves the app and its
 D1 database stores the data. Netlify and Supabase are no longer needed.
 
 ```
-Browser (each PC) ──► Cloudflare Worker ──► D1 database (cnc-process-pro-db)
-                       ├─ /            the React app (static files)
-                       └─ /api/*       sign-in, tools, history, parts, users, sync
+Browser (each PC) ──► Cloudflare Worker
+                       ├─ /               country picker (Morocco · Türkiye)
+                       ├─ /ma/  + /ma/api/*      Morocco app   ──► D1 cnc-process-pro-db  (English)
+                       ├─ /tr/  + /tr/api/*      Türkiye app   ──► D1 cnc-process-tr-db   (Turkish)
+                       ├─ /master/ + /master/api/*  master dashboard ──► D1 cnc-process-hub-db
+                       └─ /api/*          old address of the Morocco API (kept for PCs on the old version)
 ```
+
+### Countries and the master dashboard
+
+- **One link, separate countries.** The root page lets people choose their country. Each
+  country is a separate instance with its **own database**: its own accounts, machines,
+  tools, history, parts and language (Morocco: English, Türkiye: Turkish). The Worker
+  gives every request only the database of its country, and each database remembers which
+  country it belongs to (it refuses to serve another one if the bindings are ever swapped).
+- **Machines are per country** and managed in Admin → Machines (or created by the Excel
+  import with a Brand column). The G-code rules written for specific Moroccan machines
+  (HAAS-1, HAAS-2/4/5, FANUC-2) only apply to those machines in Morocco; every other machine
+  follows its brand's dialect (HAAS / FANUC).
+- **Master admin.** Master accounts live in the hub database. A master can sign in from any
+  country's login page (or /master/) and lands on the master dashboard: every country's
+  numbers side by side. Masters cannot open a country app as a user.
+- **Setting up a new country:** a Moroccan admin creates the first master account
+  (Admin → Master admin account). The master then creates the first admin of the new
+  country from the dashboard. New countries have no public "first-time setup".
+- **Adding a third country later:** create a D1 database, add its binding to
+  `wrangler.jsonc`, add an entry to `src/regions.ts` and a `src/i18n/locales/<lang>/` folder.
 
 ---
 
@@ -135,9 +158,15 @@ src/                 React app
   contexts/          AuthContext (sign-in), SyncContext (shared data + polling)
   lib/historyApi.ts  history, offline export queue, compressed program files
   lib/migration.ts   Supabase import, backup / restore
+  regions.ts         the countries (database binding, language, cookie)
+  lib/instance.ts    which page this is (picker / country / master), per-country storage keys
+  i18n/              translations: locales/en/*.ts and locales/tr/*.ts (same keys, type-checked)
+  components/HubPage.tsx, MasterApp.tsx   country picker, master dashboard
 worker/              Cloudflare Worker API
-  schema.ts          database tables (applied automatically)
-  auth.ts            password hashing, sessions, throttling
-  routes/            tools, history, users, parts, analytics, admin import
+  index.ts           router: /ma, /tr, /master -> the right database
+  schema.ts          database tables (applied automatically, per database)
+  auth.ts            password hashing, sessions, throttling, master sign-in
+  i18n.ts, i18n-tr.ts  server messages in Turkish
+  routes/            tools, history, users, parts, analytics, machines (fleet), master, admin import
 wrangler.jsonc       Worker + D1 configuration
 ```

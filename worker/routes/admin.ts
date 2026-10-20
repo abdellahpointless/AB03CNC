@@ -1,6 +1,6 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
-import { hashPassword, validateUsername } from '../auth';
+import { assertNotMasterUsername, hashPassword, validateUsername } from '../auth';
 import { MAX_TOOLS_PER_MACHINE, bulkInsertToolsStmt, normalizeImportedTool, parseTool, validateMachine } from './tools';
 import { codeStatements, historyInsertStatements, normalizeHistory, parseCode } from './history';
 import { validateSap } from './parts';
@@ -34,6 +34,12 @@ export async function handleImportUsers(ctx: Ctx): Promise<Response> {
     if (existing) {
       if (oldId) idMap[oldId] = existing.id;
       skipped.push(username);
+      continue;
+    }
+    try {
+      await assertNotMasterUsername(ctx.env, username);
+    } catch {
+      skipped.push(`${username} (reserved name)`);
       continue;
     }
     // Old accounts keep their password so people can still sign in; they are asked to pick a
@@ -70,7 +76,7 @@ export async function handleImportTools(ctx: Ctx): Promise<Response> {
     if (list.length > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `${machineRaw}: at most ${MAX_TOOLS_PER_MACHINE} tools per machine`);
     let machine: string;
     try {
-      machine = validateMachine(machineRaw);
+      machine = await validateMachine(ctx.env, machineRaw);
     } catch {
       continue; // a machine that no longer exists on the floor is skipped, not fatal
     }
@@ -107,7 +113,7 @@ export async function handleImportToolsExcel(ctx: Ctx): Promise<Response> {
   const stmts: D1PreparedStatement[] = [];
   const summary: { machine: string; added: number; updated: number; total: number }[] = [];
   for (const [machineRaw, list] of entries) {
-    const machine = validateMachine(machineRaw);
+    const machine = await validateMachine(ctx.env, machineRaw);
     if (!Array.isArray(list) || !list.length) throw new HttpError(400, `${machineRaw}: no tools`);
     if (list.length > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `${machine}: at most ${MAX_TOOLS_PER_MACHINE} tools per machine`);
 

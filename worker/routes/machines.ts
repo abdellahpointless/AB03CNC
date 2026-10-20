@@ -1,6 +1,7 @@
 import { HttpError, json, optStr, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
-import { FLEET_IDS, FREQUENCIES, type Frequency } from '../fleet';
+import { FREQUENCIES, type Frequency } from '../fleet';
+import { requireMachine } from './fleet';
 
 /*
  * Preventive actions. Every user can mark a check as done, report a problem (on a check or on
@@ -24,10 +25,8 @@ interface CheckRow {
   created_at: number;
 }
 
-function machineParam(ctx: Ctx): string {
-  const id = ctx.params.machine;
-  if (!(FLEET_IDS as readonly string[]).includes(id)) throw new HttpError(404, 'Unknown machine');
-  return id;
+async function machineParam(ctx: Ctx): Promise<string> {
+  return (await requireMachine(ctx.env, ctx.params.machine)).id;
 }
 
 /**
@@ -68,7 +67,7 @@ function eventStmt(ctx: Ctx, machine: string, check: { id: string; title: string
 // GET /api/machines -> every check of every machine + the latest events
 export async function handleListMachines(ctx: Ctx): Promise<Response> {
   const [checks, events, owners] = await ctx.env.DB.batch([
-    ctx.env.DB.prepare('SELECT * FROM machine_checks ORDER BY machine_id, sort, created_at'),
+    ctx.env.DB.prepare('SELECT c.* FROM machine_checks c JOIN machines m ON m.id = c.machine_id AND m.active = 1 ORDER BY c.machine_id, c.sort, c.created_at'),
     ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC LIMIT 300'),
     ctx.env.DB.prepare(
       `SELECT o.machine_id, o.user_id, u.username FROM machine_owners o JOIN users u ON u.id = o.user_id
@@ -80,7 +79,7 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
 
 // POST /api/machines/:machine/checks/:id/action { action: DONE | PROBLEM | RESOLVE, note? }
 export async function handleCheckAction(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   await assertMayUpdate(ctx, machine);
   const check = await loadCheck(ctx, machine);
   const body = await readJson<{ action?: unknown; note?: unknown }>(ctx.request, 5000);
@@ -120,7 +119,7 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
 
 // POST /api/machines/:machine/issues { note } -> a problem with the machine that isn't on the checklist
 export async function handleReportIssue(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   await assertMayUpdate(ctx, machine);
   const body = await readJson<{ note?: unknown }>(ctx.request, 5000);
   const note = str(body.note, 'Problem description', { min: 3, max: 300 });
@@ -139,7 +138,7 @@ export async function handleReportIssue(ctx: Ctx): Promise<Response> {
 
 // Admin: POST /api/machines/:machine/checks { title, frequency }
 export async function handleCreateCheck(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   const body = await readJson<{ title?: unknown; frequency?: unknown }>(ctx.request, 5000);
   const title = str(body.title, 'Title', { min: 3, max: 160 });
   const freq = frequency(body.frequency);
@@ -157,7 +156,7 @@ export async function handleCreateCheck(ctx: Ctx): Promise<Response> {
 
 // Admin: PATCH /api/machines/:machine/checks/:id { title?, frequency? }
 export async function handleUpdateCheck(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   const check = await loadCheck(ctx, machine);
   if (check.kind !== 'CHECK') throw new HttpError(400, 'Only checklist items can be edited');
   const body = await readJson<{ title?: unknown; frequency?: unknown }>(ctx.request, 5000);
@@ -173,7 +172,7 @@ export async function handleUpdateCheck(ctx: Ctx): Promise<Response> {
 
 // Admin: DELETE /api/machines/:machine/checks/:id
 export async function handleDeleteCheck(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   const check = await loadCheck(ctx, machine);
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM machine_checks WHERE id = ?').bind(check.id),
@@ -185,7 +184,7 @@ export async function handleDeleteCheck(ctx: Ctx): Promise<Response> {
 
 // Admin: PUT /api/machines/:machine/owners { userIds: string[] } -> replaces who is responsible
 export async function handleSetOwners(ctx: Ctx): Promise<Response> {
-  const machine = machineParam(ctx);
+  const machine = await machineParam(ctx);
   const body = await readJson<{ userIds?: unknown }>(ctx.request, 20_000);
   if (!Array.isArray(body.userIds) || body.userIds.length > 100 || !body.userIds.every((x) => typeof x === 'string' && x.length <= 64)) {
     throw new HttpError(400, 'userIds must be a list of user ids');

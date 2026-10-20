@@ -3,18 +3,20 @@ import { Cloud, CloudOff, RefreshCw, UploadCloud } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { AnimatePresence, motion } from 'motion/react';
 import { iosMenu } from '../lib/motion';
+import i18n, { useT } from '../i18n';
 
 function ago(ts: number | null): string {
-  if (!ts) return 'never';
+  if (!ts) return i18n.t('common:time.never');
   const s = Math.round((Date.now() - ts) / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return `${s}s ago`;
+  if (s < 5) return i18n.t('common:time.justNow');
+  if (s < 60) return i18n.t('history:sync.secondsAgo', { count: s });
   const m = Math.round(s / 60);
-  return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
+  return m < 60 ? i18n.t('common:time.minutesAgo', { count: m }) : i18n.t('common:time.hoursAgo', { count: Math.round(m / 60) });
 }
 
 /** Header pill: shows whether this PC is in sync with the server and whether exports are waiting to upload. */
 export function SyncStatus() {
+  const { t } = useT('history');
   const { connection, lastSyncAt, pendingUploads, refreshNow } = useSync();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -42,19 +44,19 @@ export function SyncStatus() {
 
   const state =
     connection === 'offline'
-      ? { cls: 'badge-warning', dot: 'bg-[var(--orange-500)]', icon: <CloudOff size={14} className="shrink-0" />, label: 'Offline' }
+      ? { cls: 'badge-warning', dot: 'bg-[var(--orange-500)]', icon: <CloudOff size={14} className="shrink-0" />, label: t('common:status.offline') }
       : connection === 'connecting'
-        ? { cls: 'badge-neutral', dot: '', icon: <RefreshCw size={14} className="animate-spin shrink-0" />, label: 'Connecting...' }
+        ? { cls: 'badge-neutral', dot: '', icon: <RefreshCw size={14} className="animate-spin shrink-0" />, label: t('sync.connectingEllipsis') }
         : pendingUploads > 0
-          ? { cls: 'badge-warning', dot: 'bg-[var(--orange-500)]', icon: <UploadCloud size={14} className="shrink-0" />, label: `${pendingUploads} to upload` }
-          : { cls: 'badge-positive', dot: 'bg-[var(--green-500)] shadow-[0_0_6px_var(--green-glow)]', icon: <Cloud size={14} className="shrink-0" />, label: 'Synced' };
+          ? { cls: 'badge-warning', dot: 'bg-[var(--orange-500)]', icon: <UploadCloud size={14} className="shrink-0" />, label: t('sync.toUpload', { count: pendingUploads }) }
+          : { cls: 'badge-positive', dot: 'bg-[var(--green-500)] shadow-[0_0_6px_var(--green-glow)]', icon: <Cloud size={14} className="shrink-0" />, label: t('sync.synced') };
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
         className={`${state.cls} py-1 px-3 cursor-pointer select-none shrink-0 min-w-[96px] justify-center`}
-        title="Server connection status"
+        title={t('sync.buttonTitle')}
       >
         {state.dot && <span className={`w-2 h-2 rounded-full shrink-0 ${state.dot}`} />}
         {state.icon}
@@ -68,26 +70,25 @@ export function SyncStatus() {
           style={{ background: 'var(--bg-panel)', transformOrigin: 'top right' }}
           {...iosMenu}
         >
-          <div className="font-bold text-[var(--text-primary)] text-sm">Cloudflare sync</div>
+          <div className="font-bold text-[var(--text-primary)] text-sm">{t('sync.panelTitle')}</div>
           <div className="flex justify-between text-[var(--text-secondary)]">
-            <span>Status</span>
-            <span className="font-semibold text-[var(--text-primary)]">{connection === 'online' ? 'Connected' : connection === 'offline' ? 'Cannot reach server' : 'Connecting'}</span>
+            <span>{t('sync.status')}</span>
+            <span className="font-semibold text-[var(--text-primary)]">{connection === 'online' ? t('sync.connected') : connection === 'offline' ? t('sync.unreachable') : t('sync.connecting')}</span>
           </div>
           <div className="flex justify-between text-[var(--text-secondary)]">
-            <span>Last checked</span>
+            <span>{t('sync.lastChecked')}</span>
             <span className="font-mono text-[var(--text-primary)]">{ago(lastSyncAt)}</span>
           </div>
           <div className="flex justify-between text-[var(--text-secondary)]">
-            <span>Exports waiting to upload</span>
+            <span>{t('sync.waitingUploads')}</span>
             <span className="font-mono text-[var(--text-primary)]">{pendingUploads}</span>
           </div>
           <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-            Tool changes made on other PCs appear here within ~15 seconds. If the connection drops, extracted programs still
-            download and their history entries upload automatically when it comes back.
+            {t('sync.help')}
           </p>
           <button onClick={retry} disabled={busy} className="btn-secondary w-full text-xs py-1.5">
             <RefreshCw size={13} className={busy ? 'animate-spin' : ''} />
-            <span>Sync now</span>
+            <span>{t('sync.syncNow')}</span>
           </button>
         </motion.div>
       )}

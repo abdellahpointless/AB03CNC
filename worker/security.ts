@@ -143,8 +143,7 @@ export async function verifyTotp(secretB32: string, code: string, lastUsedStep: 
   return null;
 }
 
-export function otpauthUrl(secret: string, username: string): string {
-  const issuer = 'CNC Process Pro';
+export function otpauthUrl(secret: string, username: string, issuer = 'CNC Process Pro'): string {
   return `otpauth://totp/${encodeURIComponent(`${issuer}:${username}`)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 }
 

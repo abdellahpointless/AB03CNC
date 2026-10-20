@@ -1,4 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { currentRegion, scopedKey } from '../lib/instance';
+import type { MachineInfo } from '../regions';
+import { MOROCCO_DEFAULT_MACHINES } from '../lib/machines';
 import { api, ApiError } from '../lib/api';
 import { flushOutbox, getOutboxCount, OUTBOX_EVENT } from '../lib/historyApi';
 import type { MachineToolbox, Tool } from '../types';
@@ -38,6 +41,12 @@ interface SyncContextType {
   pendingUploads: number;
   toolbox: MachineToolbox;
   toolboxLoaded: boolean;
+  /** This country's machines (all of them: preventive actions, admin). */
+  machines: MachineInfo[];
+  /** Machines that have a tool inventory (tool database, remapper). */
+  toolMachines: MachineInfo[];
+  machinesLoaded: boolean;
+  reloadMachines: () => Promise<void>;
   analytics: Analytics | null;
   refreshNow: () => Promise<void>;
   saveTool: (machine: string, tool: Tool) => Promise<void>;
@@ -53,7 +62,20 @@ const SyncContext = createContext<SyncContextType | undefined>(undefined);
 const POLL_ACTIVE_MS = 15_000;
 const POLL_IDLE_MS = 60_000;
 const IDLE_AFTER_MS = 5 * 60_000;
-const TOOLBOX_CACHE_KEY = 'cnc-toolbox-cache-v1';
+const TOOLBOX_CACHE_KEY = scopedKey('cnc-toolbox-cache-v1');
+const MACHINES_CACHE_KEY = scopedKey('cnc-machines-cache-v1');
+
+function readCachedMachines(): MachineInfo[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MACHINES_CACHE_KEY) || 'null');
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    /* ignore */
+  }
+  // First start after the update, before the list is downloaded: Morocco's known machines,
+  // so the remapper keeps working even offline. Other countries wait for their list.
+  return currentRegion().id === 'ma' ? MOROCCO_DEFAULT_MACHINES : [];
+}
 const EMPTY_VERSIONS: Versions = { tools: 0, history: 0, users: 0, settings: 0, parts: 0, machines: 0 };
 
 function readCachedToolbox(): MachineToolbox {
@@ -75,6 +97,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [toolbox, setToolbox] = useState<MachineToolbox>(readCachedToolbox);
   const [toolboxLoaded, setToolboxLoaded] = useState(false);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [machines, setMachines] = useState<MachineInfo[]>(readCachedMachines);
+  const [machinesLoaded, setMachinesLoaded] = useState(false);
+  const machinesVersionLoaded = useRef(-1);
 
   const toolsVersionLoaded = useRef(-1);
   const analyticsKeyLoaded = useRef('');
@@ -87,6 +112,18 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setToolboxLoaded(true);
     try {
       localStorage.setItem(TOOLBOX_CACHE_KEY, JSON.stringify(res.toolbox));
+    } catch {
+      /* cache is optional */
+    }
+  }, []);
+
+  const loadMachines = useCallback(async (version?: number) => {
+    const res = await api<{ machines: MachineInfo[] }>('/fleet');
+    if (version !== undefined) machinesVersionLoaded.current = version;
+    setMachines(res.machines);
+    setMachinesLoaded(true);
+    try {
+      localStorage.setItem(MACHINES_CACHE_KEY, JSON.stringify(res.machines));
     } catch {
       /* cache is optional */
     }
@@ -107,6 +144,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       setLastSyncAt(Date.now());
       const jobs: Promise<unknown>[] = [];
       if (res.versions.tools !== toolsVersionLoaded.current) jobs.push(loadTools());
+      if (res.versions.machines !== machinesVersionLoaded.current) jobs.push(loadMachines(res.versions.machines));
       const aKey = `${res.versions.history}:${res.versions.settings}`;
       if (aKey !== analyticsKeyLoaded.current) jobs.push(loadAnalytics(aKey));
       jobs.push(flushOutbox());
@@ -115,7 +153,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof ApiError && err.offline) setConnection('offline');
       else if (err instanceof ApiError && err.status >= 500) setConnection('offline');
     }
-  }, [user, loadTools, loadAnalytics]);
+  }, [user, loadTools, loadMachines, loadAnalytics]);
 
   const refreshNow = useCallback(async () => {
     if (!syncing.current) {
@@ -130,6 +168,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     toolsVersionLoaded.current = -1;
+    machinesVersionLoaded.current = -1;
     analyticsKeyLoaded.current = '';
     refreshNow();
     let lastActivity = Date.now();
@@ -230,6 +269,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         pendingUploads,
         toolbox,
         toolboxLoaded,
+        machines,
+        toolMachines: machines.filter((m) => m.hasTools),
+        machinesLoaded,
+        reloadMachines: () => loadMachines(),
         analytics,
         refreshNow,
         saveTool,

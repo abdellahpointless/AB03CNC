@@ -1,0 +1,157 @@
+import type { Translation } from '../../types';
+import type en from '../en/parts';
+
+/* Türkçe metinler: parts ("Taramasız parça girişi" operatör ekranı, "Parça onayı" yönetici ekranı, Excel dosyaları). */
+const parts: Translation<typeof en> = {
+  kind: {
+    PRODUCED: 'Üretim',
+    MODIFICATION: 'Modifikasyon',
+    producedPart: 'Üretilen parça',
+  },
+  status: {
+    PENDING: 'Onay bekliyor',
+    APPROVED: 'Onaylandı',
+    REJECTED: 'Reddedildi',
+  },
+
+  /* ---------- Taramasız parça girişi (operatör ekranı) ---------- */
+  scan: {
+    title: 'Taramasız parça girişi',
+    subtitle: 'Elle üretim kaydı girin ve onaylanan aylık miktarlarınızı takip edin',
+    exportExcel: "Excel'e aktar",
+    exportingExcel: 'Excel hazırlanıyor...',
+    exportTitle: 'Onaylanan kişisel kayıtlarınızı Excel (.xlsx) olarak indirin',
+    refreshTitle: 'Özet verilerini yenile',
+    exportFailed: 'Excel dosyası oluşturulamadı: {{message}}',
+  },
+  form: {
+    title: 'Yeni üretim kaydı',
+    month: 'Ay: {{month}}',
+    sapNumber: 'SAP numarası',
+    sapPlaceholder: 'örn. 10245-A, P98302_REV2',
+    sapHint: 'Harf, rakam, tire, alt çizgi ve nokta; Türkçe karakter kullanmayın (en fazla 40 karakter)',
+    quantity: 'Adet',
+    quantityHint: '1 ile 9999 arasında olmalıdır',
+    kind: 'Üretim türü',
+    producedPart: 'Üretilen parça',
+    modification: 'Modifikasyon',
+    kindValue: 'Değer: {{value}}',
+    calculatedValue: 'Hesaplanan değer:',
+    submit: 'Parça kaydını gönder',
+    submitting: 'Gönderiliyor...',
+    submitted: 'Kayıt gönderildi',
+    submitFailed: 'Kayıt gönderilemedi. Lütfen tekrar deneyin.',
+    invalidSap: 'Geçersiz SAP numarası',
+    invalidQty: 'Geçersiz adet',
+  },
+  counter: {
+    title: 'Bu ayın sayacı',
+    totalValue: 'Onaylanan toplam değer',
+    partsProduced: 'Üretilen parça:',
+    resetNote: "Sayaç her takvim ayının başında otomatik olarak 0'a döner. Önceki aylar aşağıdaki arşivde saklanır.",
+  },
+  archive: {
+    title: 'Aylık üretim arşivi',
+    monthsTracked_one: '{{count}} ay kayıtlı',
+    monthsTracked_other: '{{count}} ay kayıtlı',
+    empty: 'Hesabınız için henüz onaylanmış kayıt yok. Gönderdiğiniz parçalar onaylandıktan sonra burada görünür.',
+    currentMonth: 'Bu ay',
+    parts: 'Parça:',
+    value: 'Değer:',
+    loading: 'Ayın kayıtları yükleniyor...',
+    loadMore: 'Daha fazla kayıt yükle',
+    emptyMonth: 'Bu ay için onaylanmış kayıt yok.',
+    loadFailed: 'Aylık özet yüklenemedi',
+    refreshFailed: 'Aylık özet yenilenemedi',
+    columns: {
+      dateTime: 'Tarih ve saat',
+      sapNumber: 'SAP numarası',
+      type: 'Tür',
+      quantity: 'Adet',
+      unitValue: 'Birim değer',
+      lineValue: 'Satır değeri',
+    },
+  },
+
+  /* ---------- Parça onayı (yönetici ekranı) ---------- */
+  review: {
+    title: 'Parça onayı',
+    adminBadge: 'Yönetici paneli',
+    subtitle: 'Operatörlerin elle girdiği üretim kayıtlarını inceleyin, onaylayın veya reddedin',
+    monthFilterTitle: 'Yalnızca bu ayı dışa aktar (tüm aylar için boş bırakın)',
+    clearMonthFilter: 'Ay filtresini temizle',
+    exportTitle: "Tüm operatör kayıtlarını onay durumlarıyla birlikte Excel'e aktar",
+    exporting: 'Dışa aktarılıyor...',
+    exportAll: "Tümünü Excel'e aktar",
+    refreshTitle: 'Onay bekleyen kayıtları yenile',
+    queueTitle: 'Onay bekleyen kayıtlar',
+    pageItems: 'Sayfa {{page}} ({{items}} kayıt)',
+    approveAllTitle: 'Bu sayfada görüntülenen tüm bekleyen kayıtları onayla',
+    approvingPage: 'Sayfa onaylanıyor...',
+    approveAll: 'Sayfadakilerin tümünü onayla',
+    loading: 'Onay bekleyen üretim kayıtları getiriliyor...',
+    emptyTitle: 'Tüm kayıtlar incelendi!',
+    emptyText: 'Bu sayfada inceleme bekleyen kayıt yok.',
+    columns: {
+      operator: 'Operatör',
+      sapNumber: 'SAP numarası',
+      qty: 'Adet',
+      kind: 'Tür',
+      value: 'Değer',
+      submittedDate: 'Gönderim tarihi',
+      action: 'İşlem',
+    },
+    approve: 'Onayla',
+    approveTitle: 'Bu kaydı onayla',
+    reject: 'Reddet',
+    rejectTitle: 'Bu kaydı reddet (denetim kaydında saklanır)',
+    footer: 'Sayfa başına 25 kayıt · yeni kayıtlar otomatik olarak görünür',
+    previous: 'Önceki',
+    next: 'Sonraki',
+    page: 'Sayfa {{page}}',
+    errors: {
+      fetchFailed: 'Onay bekleyen kayıtlar alınamadı',
+      approveFailed: '{{sap}} kaydı onaylanamadı',
+      rejectFailed: '{{sap}} kaydı reddedilemedi',
+      approveAllFailed: 'Bu sayfadaki kayıtlar onaylanamadı',
+      exportFailed: 'Yönetici Excel raporu oluşturulamadı: {{message}}',
+    },
+  },
+
+  /* ---------- Gönderim öncesi kontroller (lib/partsApi) ---------- */
+  validation: {
+    sapEmpty: 'SAP numarası boş olamaz.',
+    sapTooLong: 'SAP numarası en fazla 40 karakter olabilir.',
+    sapChars: 'SAP numarası yalnızca harf (Türkçe karakter olmadan), rakam, tire (-), alt çizgi (_) ve nokta (.) içerebilir.',
+    qtyNotInteger: 'Adet geçerli bir tam sayı olmalıdır.',
+    qtyRange: 'Adet 1 ile 9999 arasında olmalıdır.',
+  },
+
+  /* ---------- Excel dosyaları (lib/partExportExcel) ---------- */
+  excel: {
+    creatorAdmin: 'CNC Process Pro Yönetici',
+    sheetSummary: 'Özet',
+    sheetEntries: 'Kayıtlar',
+    columns: {
+      month: 'Ay',
+      operator: 'Operatör',
+      totalParts: 'Toplam parça',
+      totalValue: 'Toplam değer',
+      date: 'Tarih',
+      sapNumber: 'SAP numarası',
+      quantity: 'Adet',
+      type: 'Tür',
+      unitValue: 'Birim değer',
+      lineValue: 'Satır değeri',
+      status: 'Durum',
+      reviewedDate: 'İnceleme tarihi',
+      reviewedBy: 'İnceleyen',
+    },
+  },
+
+  errors: {
+    requestFailed: 'İstek başarısız oldu',
+    unknown: 'Bilinmeyen hata',
+  },
+};
+export default parts;

@@ -4,6 +4,9 @@ import { useSync } from '../contexts/SyncContext';
 import { formatTimeWon, DEFAULT_SAVED_SECONDS_PER_EXTRACTION } from '../lib/extractionAnalytics';
 import { api } from '../lib/api';
 import { TimeWonClock } from './TimeWonClock';
+import { Trans } from 'react-i18next';
+import { useT } from '../i18n';
+import { fmtNumber } from '../i18n/format';
 import {
   BarChart,
   Bar,
@@ -38,7 +41,19 @@ const BAR_COLORS = [
   '#10b981'  // emerald
 ];
 
+/** Baseline presets for the time saved per extraction (seconds). */
+const SAVED_SECONDS_PRESETS = [
+  { key: 'p270', secs: 270 },
+  { key: 'p285', secs: 285 },
+  { key: 'p300', secs: 300 },
+  { key: 'p330', secs: 330 },
+] as const;
+
+const KNOWN_ROLES = ['ADMIN', 'MACHINIST', 'MASTER'] as const;
+type KnownRole = (typeof KNOWN_ROLES)[number];
+
 export default function AdminExtractionAnalytics() {
+  const { t } = useT('history');
   const { user } = useAuth();
   const { analytics: liveAnalytics, versions, refreshNow } = useSync();
   const [showSettings, setShowSettings] = useState(false);
@@ -69,7 +84,7 @@ export default function AdminExtractionAnalytics() {
       await api('/settings/saved-seconds', { method: 'PUT', body: { seconds: secs } });
       await refreshNow();
     } catch (err: any) {
-      setSettingsError(err?.message || 'Could not save the setting');
+      setSettingsError(err?.message || t('analytics.errors.saveFailed'));
     }
   };
 
@@ -124,6 +139,13 @@ export default function AdminExtractionAnalytics() {
 
   const chartData = Object.values(chartDataMap).sort((a, b) => b.extractions - a.extractions);
 
+  // Role names are shown as stored (ADMIN, MACHINIST) in English; translated for display only.
+  const roleLabel = (role?: string): string => {
+    if (!role) return t('analytics.roleFallback');
+    return (KNOWN_ROLES as readonly string[]).includes(role) ? t(`analytics.role.${role as KnownRole}`) : role;
+  };
+  const pct = (value: number) => t('analytics.percent', { value });
+
   // Custom tooltip for Recharts Bar Chart in Aurora Glass
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -140,22 +162,22 @@ export default function AdminExtractionAnalytics() {
             <span>{data.username}</span>
             {data.role && (
               <span className="badge-neutral text-[9px] py-0 px-1.5 font-mono ml-auto">
-                {data.role}
+                {roleLabel(data.role)}
               </span>
             )}
           </div>
           <div className="space-y-1.5 font-mono text-[11px]">
             <div className="flex justify-between gap-4">
-              <span className="text-[var(--text-secondary)]">Codes Extracted:</span>
+              <span className="text-[var(--text-secondary)]">{t('analytics.tooltip.codesExtracted')}</span>
               <span className="font-bold text-[var(--accent-primary)]">{data.extractions}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-[var(--text-secondary)]">Time Saved:</span>
+              <span className="text-[var(--text-secondary)]">{t('analytics.tooltip.timeSaved')}</span>
               <span className="font-bold text-[var(--green-500)]">{userTimeWon.formatted}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-[var(--text-secondary)]">Team Share:</span>
-              <span className="font-bold text-[var(--text-primary)]">{percent}%</span>
+              <span className="text-[var(--text-secondary)]">{t('analytics.tooltip.teamShare')}</span>
+              <span className="font-bold text-[var(--text-primary)]">{pct(percent)}</span>
             </div>
           </div>
         </div>
@@ -178,21 +200,21 @@ export default function AdminExtractionAnalytics() {
             </span>
             <div>
               <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-                Tool Selection Distribution
+                {t('analytics.distribution.title')}
                 <span className={hasLiveData ? "badge-positive text-[10px] py-0.5 px-2" : "badge-neutral text-[10px] py-0.5 px-2"}>
-                  {hasLiveData ? "Live Telemetry" : "Benchmark Preview"}
+                  {hasLiveData ? t('analytics.distribution.live') : t('analytics.distribution.preview')}
                 </span>
               </h3>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                Ratio of tools automatically matched by the app versus modified manually by operators.
+                {t('analytics.distribution.subtitle')}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="badge-neutral text-[11px] py-1 px-2.5">
-              {hasLiveData ? 'Total Evaluated: ' : 'Sample Total: '}
-              <strong className="text-[var(--text-primary)] ml-1">{totalEvaluatedTools} tools</strong>
+              {hasLiveData ? t('analytics.distribution.totalEvaluated') : t('analytics.distribution.sampleTotal')}{' '}
+              <strong className="text-[var(--text-primary)] ml-1">{t('analytics.toolCount', { count: totalEvaluatedTools })}</strong>
             </span>
           </div>
         </div>
@@ -242,13 +264,13 @@ export default function AdminExtractionAnalytics() {
               {/* Center Donut Hole & Percentage Display */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                 <span className="text-3xl font-extrabold font-mono text-[var(--green-500)] tracking-tight">
-                  {appSelectedPercentage}%
+                  {pct(appSelectedPercentage)}
                 </span>
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
-                  App Selected
+                  {t('analytics.distribution.appSelected')}
                 </span>
                 <span className="text-[9px] font-mono text-[var(--orange-500)] font-medium">
-                  {manualChangedPercentage}% Manual
+                  {t('analytics.distribution.manualPercent', { percent: manualChangedPercentage })}
                 </span>
               </div>
             </div>
@@ -257,11 +279,11 @@ export default function AdminExtractionAnalytics() {
             <div className="flex items-center gap-5 mt-4 text-xs font-mono">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#16a34a] shadow-xs" />
-                <span className="text-[var(--text-secondary)]">App Selected ({appSelectedPercentage}%)</span>
+                <span className="text-[var(--text-secondary)]">{t('analytics.distribution.legendApp', { percent: appSelectedPercentage })}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#ea580c] shadow-xs" />
-                <span className="text-[var(--text-secondary)]">Manual ({manualChangedPercentage}%)</span>
+                <span className="text-[var(--text-secondary)]">{t('analytics.distribution.legendManual', { percent: manualChangedPercentage })}</span>
               </div>
             </div>
           </div>
@@ -277,24 +299,24 @@ export default function AdminExtractionAnalytics() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-[var(--text-primary)]">
-                      Selected by the App
+                      {t('analytics.distribution.byAppTitle')}
                     </span>
                     <span className="badge-positive text-[10px] py-0 px-2 font-mono">
-                      Automated
+                      {t('analytics.distribution.byAppBadge')}
                     </span>
                   </div>
                   <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
-                    Matched directly from machine toolbox
+                    {t('analytics.distribution.byAppText')}
                   </span>
                 </div>
               </div>
 
               <div className="text-right">
                 <div className="font-mono text-2xl font-bold text-[var(--green-500)] leading-none">
-                  {appSelectedPercentage}%
+                  {pct(appSelectedPercentage)}
                 </div>
                 <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1 block">
-                  {appSelectedToolsCount} {appSelectedToolsCount === 1 ? 'tool' : 'tools'}
+                  {t('analytics.toolCount', { count: appSelectedToolsCount })}
                 </span>
               </div>
             </div>
@@ -308,24 +330,24 @@ export default function AdminExtractionAnalytics() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-[var(--text-primary)]">
-                      Changed Manually
+                      {t('analytics.distribution.manualTitle')}
                     </span>
                     <span className="badge-warning text-[10px] py-0 px-2 font-mono">
-                      Manual Choice
+                      {t('analytics.distribution.manualBadge')}
                     </span>
                   </div>
                   <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
-                    Resolved or overridden by machinist
+                    {t('analytics.distribution.manualText')}
                   </span>
                 </div>
               </div>
 
               <div className="text-right">
                 <div className="font-mono text-2xl font-bold text-[var(--orange-500)] leading-none">
-                  {manualChangedPercentage}%
+                  {pct(manualChangedPercentage)}
                 </div>
                 <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1 block">
-                  {manualChangedToolsCount} {manualChangedToolsCount === 1 ? 'tool' : 'tools'}
+                  {t('analytics.toolCount', { count: manualChangedToolsCount })}
                 </span>
               </div>
             </div>
@@ -335,14 +357,14 @@ export default function AdminExtractionAnalytics() {
               <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(59,111,212,0.08)] border border-[var(--blue-500)]/30 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
                 <Info size={14} className="text-[var(--accent-primary)] shrink-0" />
                 <span>
-                  Showing baseline benchmark preview. As programs are remapped and extracted in Tool Remapper, live tool selection telemetry will automatically update this pie chart.
+                  {t('analytics.distribution.previewNote')}
                 </span>
               </div>
             ) : (
               <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.02)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-[var(--accent-primary)] shrink-0" />
                 <span>
-                  High app selection rates demonstrate optimal toolbox coverage and reduced setup time.
+                  {t('analytics.distribution.liveNote')}
                 </span>
               </div>
             )}
@@ -360,13 +382,13 @@ export default function AdminExtractionAnalytics() {
               </span>
               <div>
                 <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
-                  Code Extractions by User
+                  {t('analytics.byUser.title')}
                   <span className="badge-warning text-[10px] py-0.5 px-2">
-                    Admin Only
+                    {t('analytics.byUser.adminOnly')}
                   </span>
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                  Frequency of G-code extractions and time saved by each team member.
+                  {t('analytics.byUser.subtitle')}
                 </p>
               </div>
             </div>
@@ -376,10 +398,10 @@ export default function AdminExtractionAnalytics() {
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
-              title="Configure time saved calculation baseline"
+              title={t('analytics.byUser.settingsTitle')}
             >
               <Sliders size={13} />
-              <span>Calculation Settings</span>
+              <span>{t('analytics.byUser.settings')}</span>
             </button>
           </div>
         </div>
@@ -389,23 +411,18 @@ export default function AdminExtractionAnalytics() {
           <div className="mb-6 p-4 glass-panel space-y-3 animate-in fade-in duration-200">
             <div className="flex items-center justify-between">
               <span className="section-label">
-                Time Won Calculation Formula
+                {t('analytics.byUser.formulaTitle')}
               </span>
               <span className="text-xs font-mono text-[var(--green-500)] font-bold">
-                Current: {Math.round(savedSeconds / 60 * 10) / 10} min saved / extraction
+                {t('analytics.byUser.current', { minutes: fmtNumber(Math.round(savedSeconds / 60 * 10) / 10, 1) })}
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Standard manual code modifications take <strong>5 to 6 minutes</strong> on average (e.g. 5.5 min). CNC Process Pro completes the remapping in <strong>30s to 1 min</strong> (e.g. 45s). Each extraction adds this saved duration to the total timer.
+              <Trans t={t} i18nKey="analytics.byUser.formulaText" components={{ b: <strong /> }} />
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs font-medium text-[var(--text-tertiary)]">Baseline Presets:</span>
-              {[
-                { label: '4m 30s (5.0m manual - 30s app)', secs: 270 },
-                { label: '4m 45s (5.5m manual - 45s app)', secs: 285 },
-                { label: '5m 00s (6.0m manual - 60s app)', secs: 300 },
-                { label: '5m 30s (6.0m manual - 30s app)', secs: 330 }
-              ].map(preset => (
+              <span className="text-xs font-medium text-[var(--text-tertiary)]">{t('analytics.byUser.presets')}</span>
+              {SAVED_SECONDS_PRESETS.map(preset => (
                 <button
                   key={preset.secs}
                   onClick={() => setSavedSeconds(preset.secs)}
@@ -415,7 +432,7 @@ export default function AdminExtractionAnalytics() {
                       : 'badge-neutral hover:border-[var(--border-strong)]'
                   }`}
                 >
-                  {preset.label}
+                  {t(`analytics.presets.${preset.key}`)}
                 </button>
               ))}
             </div>
@@ -429,10 +446,10 @@ export default function AdminExtractionAnalytics() {
             <div className="h-full flex flex-col items-center justify-center text-[var(--text-tertiary)] border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-md)] p-6 text-center">
               <BarChart3 size={36} className="mb-2 opacity-30" />
               <p className="text-sm font-semibold text-[var(--text-secondary)]">
-                No extractions recorded yet
+                {t('analytics.byUser.emptyTitle')}
               </p>
               <p className="text-xs text-[var(--text-tertiary)] max-w-sm mt-1">
-                Whenever any user (Machinist or Admin) presses &quot;Extract Code&quot; in the Tool Remapper, their count and time won will appear on this graph in real time.
+                {t('analytics.byUser.emptyText')}
               </p>
             </div>
           ) : (
@@ -486,7 +503,7 @@ export default function AdminExtractionAnalytics() {
           <div className="mt-8 border-t border-[var(--border-subtle)] pt-6">
             <h4 className="section-label mb-4 flex items-center gap-1.5 text-[var(--orange-500)]">
               <Award size={14} />
-              Operator Productivity Breakdown
+              {t('analytics.leaderboard.title')}
             </h4>
 
             <div className="divide-y divide-[var(--border-subtle)] overflow-hidden">
@@ -507,7 +524,7 @@ export default function AdminExtractionAnalytics() {
                           {item.username}
                         </span>
                         <span className="text-[10px] text-[var(--text-tertiary)]">
-                          {item.role || 'Operator'}
+                          {roleLabel(item.role)}
                         </span>
                       </div>
                     </div>
@@ -515,8 +532,8 @@ export default function AdminExtractionAnalytics() {
                     {/* Progress Bar Representation */}
                     <div className="flex-1 max-w-xs hidden md:block">
                       <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
-                        <span>Extractions share</span>
-                        <span className="font-mono font-semibold text-[var(--text-secondary)]">{percent}%</span>
+                        <span>{t('analytics.leaderboard.share')}</span>
+                        <span className="font-mono font-semibold text-[var(--text-secondary)]">{pct(percent)}</span>
                       </div>
                       <div className="w-full h-1.5 bg-[var(--bg-input)] rounded-full overflow-hidden border border-[var(--border-subtle)]">
                         <div
@@ -532,14 +549,14 @@ export default function AdminExtractionAnalytics() {
                     {/* Stats */}
                     <div className="flex items-center gap-6 text-right">
                       <div>
-                        <span className="text-[10px] text-[var(--text-tertiary)] block">Extractions</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] block">{t('analytics.leaderboard.extractions')}</span>
                         <span className="font-bold text-xs text-[var(--text-primary)] font-mono">
                           {item.extractions}
                         </span>
                       </div>
 
                       <div className="min-w-[90px]">
-                        <span className="text-[10px] text-[var(--text-tertiary)] block">Time Won</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] block">{t('analytics.leaderboard.timeWon')}</span>
                         <span className="font-bold text-xs text-[var(--green-500)] font-mono">
                           {userWon.formatted}
                         </span>

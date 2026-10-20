@@ -1,6 +1,23 @@
+import type { RegionId } from '../src/regions';
+
 export interface Env {
+  /**
+   * The database of the request's country (or of the master hub). The router sets it per request,
+   * so every handler only ever sees the one database it is allowed to use.
+   * In the raw Worker environment this is Morocco's database (the original installation).
+   */
   DB: D1Database;
+  /** Türkiye's database (raw environment only; handlers see it as DB). */
+  DB_TR?: D1Database;
+  /** Master hub database: master accounts and their sessions. */
+  DB_HUB?: D1Database;
   ASSETS: Fetcher;
+  /** Set by the router: which instance this request belongs to. */
+  REGION?: RegionId | 'master';
+  /** Set by the router for country requests: the hub database, only to recognise master sign-ins. */
+  HUB?: D1Database;
+  /** Set by the router for master requests only: every country's database, for the dashboard. */
+  COUNTRIES?: Partial<Record<RegionId, D1Database>>;
   /**
    * Optional secret (set in Cloudflare: Settings -> Variables and Secrets).
    * When present, passwords are hashed as PBKDF2(HMAC(pepper, password)), so a copy of the

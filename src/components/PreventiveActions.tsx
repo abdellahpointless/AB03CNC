@@ -19,7 +19,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import {
-  FLEET,
+  toFleet,
+  machineSubtitle,
   FREQUENCY_LABEL,
   type FleetMachine,
   type Frequency,
@@ -40,23 +41,18 @@ import {
   updateCheck,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
+import i18n, { useT } from '../i18n';
 
 type Summary = ReturnType<typeof machineSummary>;
 
-const ACTION_TEXT: Record<MachineEvent['action'], string> = {
-  DONE: 'marked done',
-  PROBLEM: 'reported a problem',
-  RESOLVE: 'marked fixed',
-  CHECK_ADDED: 'added check',
-  CHECK_EDITED: 'edited check',
-  CHECK_REMOVED: 'removed check',
-  OWNERS_SET: 'set the responsible people',
-};
+/** Translation key of what a person did ("marked done", "reported a problem", ...). */
+const actionKey = (action: MachineEvent['action']) => `events.${action}` as const;
 
 export default function PreventiveActions() {
+  const { t } = useT('preventive');
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const { versions } = useSync();
+  const { versions, machines, machinesLoaded } = useSync();
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
@@ -73,7 +69,7 @@ export default function PreventiveActions() {
       setOwnerRows(res.owners || []);
       setLoadError('');
     } catch (err: any) {
-      setLoadError(err?.message || 'Could not load the machines');
+      setLoadError(err?.message || i18n.t('preventive:errors.loadMachines'));
     }
   }, []);
 
@@ -88,18 +84,20 @@ export default function PreventiveActions() {
     return () => clearInterval(t);
   }, []);
 
+  const fleet = useMemo(() => toFleet(machines), [machines]);
+
   const byMachine = useMemo(() => {
     const map = new Map<string, MachineCheck[]>();
-    for (const m of FLEET) map.set(m.id, []);
+    for (const m of fleet) map.set(m.id, []);
     for (const c of checks || []) map.get(c.machine_id)?.push(c);
     return map;
-  }, [checks]);
+  }, [checks, fleet]);
 
   const summaries = useMemo(() => {
     const out = new Map<string, Summary>();
-    for (const m of FLEET) out.set(m.id, machineSummary(byMachine.get(m.id) || [], now));
+    for (const m of fleet) out.set(m.id, machineSummary(byMachine.get(m.id) || [], now));
     return out;
-  }, [byMachine, now]);
+  }, [byMachine, now, fleet]);
 
   const counts = useMemo(() => {
     let problem = 0, due = 0, ok = 0;
@@ -110,7 +108,8 @@ export default function PreventiveActions() {
   const ownersOf = useCallback((id: string) => owners.filter((o) => o.machine_id === id), [owners]);
   const myMachines = useMemo(() => (user ? owners.filter((o) => o.user_id === user.id).map((o) => o.machine_id) : []), [owners, user]);
   const lastEvent = useCallback((id: string) => events.find((e) => e.machine_id === id), [events]);
-  const selectedMachine = FLEET.find((m) => m.id === selected) || null;
+  const selectedMachine = fleet.find((m) => m.id === selected) || null;
+  const nameOf = (id: string) => fleet.find((m) => m.id === id)?.name ?? id;
 
   return (
     <div className="flex flex-col space-y-5 max-w-7xl mx-auto w-full pb-20">
@@ -121,28 +120,28 @@ export default function PreventiveActions() {
             <Activity size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-primary)]">Preventive actions</h2>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">{t('header.title')}</h2>
             <p className="text-xs text-[var(--text-secondary)]">
-              Point at a machine to see how it is doing. Click it to open its checklist.
+              {t('header.subtitle')}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {myMachines.length > 0 && !isAdmin && (
-            <span className="badge-neutral" title="You can only update the machines you look after">
-              <Wrench size={13} /> You look after {myMachines.join(', ')}
+            <span className="badge-neutral" title={t('header.myMachinesTitle')}>
+              <Wrench size={13} /> {t('header.myMachines', { names: myMachines.map(nameOf).join(', ') })}
             </span>
           )}
           <span className={counts.problem ? 'badge-danger' : 'badge-neutral'}>
-            <AlertTriangle size={13} /> {counts.problem} with a problem
+            <AlertTriangle size={13} /> {t('header.withProblem', { count: counts.problem })}
           </span>
           <span className={counts.due ? 'badge-warning' : 'badge-neutral'}>
-            <Clock size={13} /> {counts.due} checks to do
+            <Clock size={13} /> {t('header.checksToDo', { count: counts.due })}
           </span>
           <span className="badge-positive">
-            <CheckCircle2 size={13} /> {counts.ok} all good
+            <CheckCircle2 size={13} /> {t('header.allGood', { count: counts.ok })}
           </span>
-          <button onClick={load} className="btn-icon" title="Refresh" aria-label="Refresh">
+          <button onClick={load} className="btn-icon" title={t('common:actions.refresh')} aria-label={t('common:actions.refresh')}>
             <RefreshCw size={14} />
           </button>
         </div>
@@ -152,7 +151,12 @@ export default function PreventiveActions() {
 
       {/* Machine floor */}
       <div className="machine-floor grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 pt-2">
-        {FLEET.map((m, i) => (
+        {machinesLoaded && fleet.length === 0 && (
+          <div className="col-span-full aurora-card aurora-card-static p-8 text-center text-sm text-[var(--text-secondary)]">
+            {t('empty.none')} {isAdmin ? t('empty.adminHint') : t('empty.userHint')}
+          </div>
+        )}
+        {fleet.map((m, i) => (
           <MachineCard
             key={m.id}
             index={i}
@@ -230,6 +234,7 @@ function MachineCard({
   onHover: (h: { id: string; above: boolean } | null) => void;
   onOpen: () => void;
 }) {
+  const { t } = useT('preventive');
   const ref = useRef<HTMLDivElement>(null);
   const state = loading ? 'loading' : summary.state;
 
@@ -242,11 +247,11 @@ function MachineCard({
 
   const label =
     state === 'problem'
-      ? `${summary.problems.length} problem${summary.problems.length > 1 ? 's' : ''}`
+      ? t('status.problems', { count: summary.problems.length })
       : state === 'due'
-        ? `${summary.due.length} check${summary.due.length > 1 ? 's' : ''} to do`
+        ? t('status.checksToDo', { count: summary.due.length })
         : state === 'ok'
-          ? 'All good'
+          ? t('status.allGood')
           : '...';
 
   return (
@@ -260,7 +265,7 @@ function MachineCard({
         ref={ref}
         role="button"
         tabIndex={0}
-        aria-label={`${machine.id}, ${machine.brand} ${machine.model}: ${label}. Open checklist`}
+        aria-label={t('card.ariaLabel', { name: machine.name, subtitle: machineSubtitle(machine), status: label })}
         data-state={state}
         data-locked={locked ? 'true' : undefined}
         className="machine-card"
@@ -282,7 +287,7 @@ function MachineCard({
           <div className="machine-floor-shadow" />
           <img src={machine.image} alt="" className="machine-img" draggable={false} loading="lazy" />
           {locked && (
-            <span className="machine-lock" title="Locked for you" aria-hidden>
+            <span className="machine-lock" title={t('card.lockedTitle')} aria-hidden>
               <Lock size={12} />
             </span>
           )}
@@ -294,9 +299,9 @@ function MachineCard({
         </div>
         <div className="flex items-end justify-between gap-2 px-4 pb-4 pt-1 machine-label">
           <div className="min-w-0">
-            <div className="text-[15px] font-bold text-[var(--text-primary)] leading-tight">{machine.id}</div>
+            <div className="text-[15px] font-bold text-[var(--text-primary)] leading-tight">{machine.name}</div>
             <div className="text-[11px] text-[var(--text-tertiary)] truncate">
-              {machine.brand} {machine.model}
+              {machineSubtitle(machine)}
             </div>
           </div>
           <span
@@ -311,7 +316,7 @@ function MachineCard({
           <div className="machine-owners">
             {locked ? <Lock size={11} className="shrink-0" /> : <Users size={11} className="shrink-0" />}
             <span className="truncate">
-              {mine ? 'You' + (owners.length > 1 ? ` + ${owners.length - 1}` : '') : owners.map((o) => o.username).join(', ') || 'Nobody assigned'}
+              {mine ? t('card.you') + (owners.length > 1 ? ` + ${owners.length - 1}` : '') : owners.map((o) => o.username).join(', ') || t('card.nobodyAssigned')}
             </span>
           </div>
         )}
@@ -352,18 +357,19 @@ function MachinePopContent({
   owners: MachineOwner[];
   locked: boolean;
 }) {
+  const { t } = useT('preventive');
   return (
     <div className="p-4 space-y-3 text-xs relative z-10">
       <div className="flex items-center justify-between">
         <span className="font-bold text-sm text-[var(--text-primary)]">
-          {machine.id} <span className="text-[var(--text-tertiary)] font-normal">· {machine.model}</span>
+          {machine.name} <span className="text-[var(--text-tertiary)] font-normal">· {machine.model}</span>
         </span>
         {summary.state === 'ok' && <CheckCircle2 size={16} className="text-[var(--green-500)]" />}
       </div>
 
       {summary.problems.length > 0 && (
         <div className="space-y-1.5">
-          <div className="section-label !text-[var(--rose-500)]">What's wrong</div>
+          <div className="section-label !text-[var(--rose-500)]">{t('pop.whatsWrong')}</div>
           {summary.problems.slice(0, 3).map((p) => (
             <div key={p.id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/25">
               <div className="font-semibold text-[var(--text-primary)]">{p.kind === 'ISSUE' ? p.note : p.title}</div>
@@ -378,34 +384,34 @@ function MachinePopContent({
 
       {summary.due.length > 0 && (
         <div className="space-y-1">
-          <div className="section-label !text-[var(--orange-500)]">To do</div>
+          <div className="section-label !text-[var(--orange-500)]">{t('pop.toDo')}</div>
           {summary.due.slice(0, 4).map((c) => (
             <div key={c.id} className="flex items-start gap-1.5 text-[var(--text-secondary)]">
               <Clock size={12} className="text-[var(--orange-500)] mt-0.5 shrink-0" />
               <span>{c.title}</span>
             </div>
           ))}
-          {summary.due.length > 4 && <div className="text-[var(--text-tertiary)]">+ {summary.due.length - 4} more</div>}
+          {summary.due.length > 4 && <div className="text-[var(--text-tertiary)]">{t('pop.more', { count: summary.due.length - 4 })}</div>}
         </div>
       )}
 
-      {summary.state === 'ok' && <div className="text-[var(--text-secondary)]">All {summary.total} checks are up to date.</div>}
+      {summary.state === 'ok' && <div className="text-[var(--text-secondary)]">{t('pop.allChecksUpToDate', { total: summary.total })}</div>}
 
       {(owners.length > 0 || locked) && (
         <div className={`flex items-start gap-1.5 ${locked ? 'text-[var(--orange-500)]' : 'text-[var(--text-secondary)]'}`}>
           {locked ? <Lock size={12} className="mt-0.5 shrink-0" /> : <Users size={12} className="mt-0.5 shrink-0" />}
           <span>
-            {locked ? 'Locked for you. ' : ''}
-            Responsible: {owners.length ? owners.map((o) => o.username).join(', ') : 'nobody yet'}
+            {locked ? `${t('pop.lockedForYou')} ` : ''}
+            {t('pop.responsible', { names: owners.length ? owners.map((o) => o.username).join(', ') : t('pop.nobodyYet') })}
           </span>
         </div>
       )}
 
       <div className="pt-2 border-t border-[var(--border-subtle)] text-[var(--text-tertiary)] flex items-center justify-between gap-2">
         <span className="truncate">
-          {last ? `${last.username} ${ACTION_TEXT[last.action]} · ${timeAgo(last.at, now)}` : 'No actions yet'}
+          {last ? `${last.username} ${t(actionKey(last.action))} · ${timeAgo(last.at, now)}` : t('pop.noActions')}
         </span>
-        <span className="text-[var(--blue-500)] font-semibold shrink-0">{locked ? 'Click to view' : 'Click to open'}</span>
+        <span className="text-[var(--blue-500)] font-semibold shrink-0">{locked ? t('pop.clickToView') : t('pop.clickToOpen')}</span>
       </div>
     </div>
   );
@@ -438,6 +444,7 @@ function MachineSheet({
   onChanged: () => Promise<void>;
   onClose: () => void;
 }) {
+  const { t } = useT('preventive');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [problemFor, setProblemFor] = useState<string | null>(null); // check id, or '__machine'
@@ -459,7 +466,7 @@ function MachineSheet({
       try {
         setAllUsers((await fetchUsers()).users);
       } catch (err: any) {
-        setError(err?.message || 'Could not load the user list');
+        setError(err?.message || t('errors.loadUsers'));
       }
     }
   };
@@ -478,7 +485,7 @@ function MachineSheet({
       await onChanged();
       return true;
     } catch (err: any) {
-      setError(err?.message || 'Something went wrong');
+      setError(err?.message || t('common:errors.generic'));
       return false;
     } finally {
       setBusy(null);
@@ -487,7 +494,7 @@ function MachineSheet({
 
   const sendProblem = async () => {
     const text = problemText.trim();
-    if (text.length < 3) return setError('Describe the problem in a few words.');
+    if (text.length < 3) return setError(t('errors.describeProblem'));
     const ok = await run(`problem:${problemFor}`, () =>
       problemFor === '__machine' ? reportIssue(machine.id, text) : checkAction(machine.id, problemFor!, 'PROBLEM', text),
     );
@@ -515,17 +522,17 @@ function MachineSheet({
         <input
           autoFocus
           className="aurora-input flex-1 text-xs"
-          placeholder="What is wrong? e.g. coolant pump makes noise"
+          placeholder={t('problem.placeholder')}
           value={problemText}
           maxLength={300}
           onChange={(e) => setProblemText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendProblem()}
         />
         <button className="btn-danger text-xs py-1.5 px-3" disabled={!!busy} onClick={sendProblem}>
-          Send
+          {t('problem.send')}
         </button>
         <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setProblemFor(null)}>
-          Cancel
+          {t('common:actions.cancel')}
         </button>
       </div>
     </motion.div>
@@ -541,7 +548,7 @@ function MachineSheet({
         {...iosSurface}
         role="dialog"
         aria-modal="true"
-        aria-label={`${machine.id} preventive actions`}
+        aria-label={t('sheet.ariaLabel', { name: machine.name })}
         className="glass-modal w-full max-w-5xl max-h-[90vh] flex flex-col md:flex-row overflow-hidden"
       >
         {/* Left: the machine */}
@@ -553,13 +560,13 @@ function MachineSheet({
         >
           <div className="self-stretch flex items-start justify-between">
             <div>
-              <div className="text-2xl font-bold text-[var(--text-primary)]">{machine.id}</div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{machine.name}</div>
               <div className="text-xs text-[var(--text-tertiary)]">
-                {machine.brand} {machine.model}
+                {machineSubtitle(machine)}
               </div>
             </div>
             <div className="md:hidden">
-              <button onClick={onClose} className="btn-icon" aria-label="Close">
+              <button onClick={onClose} className="btn-icon" aria-label={t('common:actions.close')}>
                 <X size={15} />
               </button>
             </div>
@@ -567,7 +574,7 @@ function MachineSheet({
           <div className="machine-viewer self-stretch">
             <motion.img
               src={machine.image}
-              alt={`${machine.brand} ${machine.model}`}
+              alt={machineSubtitle(machine)}
               className="machine-viewer-photo"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -582,15 +589,15 @@ function MachineSheet({
             >
               {summary.state === 'problem' ? (
                 <>
-                  <AlertTriangle size={14} /> {summary.problems.length} open problem{summary.problems.length > 1 ? 's' : ''}
+                  <AlertTriangle size={14} /> {t('status.openProblems', { count: summary.problems.length })}
                 </>
               ) : summary.state === 'due' ? (
                 <>
-                  <Clock size={14} /> {summary.due.length} check{summary.due.length > 1 ? 's' : ''} to do
+                  <Clock size={14} /> {t('status.checksToDo', { count: summary.due.length })}
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={14} /> All checks up to date
+                  <CheckCircle2 size={14} /> {t('status.allUpToDate')}
                 </>
               )}
             </div>
@@ -603,11 +610,11 @@ function MachineSheet({
                 }}
               >
                 <AlertTriangle size={14} />
-                <span>Report a problem</span>
+                <span>{t('sheet.reportProblem')}</span>
               </button>
             ) : (
               <div className="badge-warning w-full justify-center py-2 text-xs">
-                <Lock size={13} /> View only
+                <Lock size={13} /> {t('sheet.viewOnly')}
               </div>
             )}
             <AnimatePresence>{problemFor === '__machine' && problemForm}</AnimatePresence>
@@ -617,7 +624,7 @@ function MachineSheet({
         {/* Right: problems, checklist, history */}
         <div className="flex-1 min-w-0 overflow-y-auto p-5 space-y-5 bg-[var(--bg-panel)]">
           <div className="hidden md:flex justify-end -mt-1">
-            <button onClick={onClose} className="btn-icon" aria-label="Close">
+            <button onClick={onClose} className="btn-icon" aria-label={t('common:actions.close')}>
               <X size={15} />
             </button>
           </div>
@@ -628,9 +635,8 @@ function MachineSheet({
             <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 flex items-start gap-2.5 text-xs">
               <Lock size={16} className="text-[var(--orange-500)] shrink-0 mt-0.5" />
               <div className="text-[var(--text-secondary)]">
-                <b className="text-[var(--text-primary)]">{machine.id} is locked for you.</b> You are responsible for other machines.{' '}
-                {owners.length ? `${owners.map((o) => o.username).join(', ')} look${owners.length === 1 ? 's' : ''} after this one.` : ''} You can see
-                its status, but only they or an admin can update it.
+                <b className="text-[var(--text-primary)]">{t('locked.title', { name: machine.name })}</b> {t('locked.otherMachines')}{' '}
+                {owners.length ? t('locked.owners', { count: owners.length, names: owners.map((o) => o.username).join(', ') }) : ''} {t('locked.canSee')}
               </div>
             </div>
           )}
@@ -638,12 +644,12 @@ function MachineSheet({
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="section-label flex items-center gap-1.5">
-                <Users size={12} /> Responsible
+                <Users size={12} /> {t('owners.title')}
               </div>
               {isAdmin && !picking && (
                 <button className="btn-secondary text-xs py-1 px-2.5" onClick={openPicker}>
                   <Pencil size={12} />
-                  <span>Choose people</span>
+                  <span>{t('owners.choose')}</span>
                 </button>
               )}
             </div>
@@ -651,7 +657,7 @@ function MachineSheet({
               <div className="flex flex-wrap gap-1.5">
                 {owners.length === 0 ? (
                   <span className="text-xs text-[var(--text-tertiary)]">
-                    Nobody yet{isAdmin ? '. Choose who looks after this machine.' : '.'}
+                    {isAdmin ? t('owners.nobodyYetAdmin') : t('owners.nobodyYet')}
                   </span>
                 ) : (
                   owners.map((o) => (
@@ -670,10 +676,10 @@ function MachineSheet({
                 className="p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] space-y-3"
               >
                 <p className="text-[11px] text-[var(--text-tertiary)]">
-                  People you choose here can only update the machines they are responsible for. Every other machine is locked for them.
+                  {t('owners.pickerHelp')}
                 </p>
                 {!allUsers ? (
-                  <div className="text-xs text-[var(--text-tertiary)]">Loading people...</div>
+                  <div className="text-xs text-[var(--text-tertiary)]">{t('owners.loading')}</div>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {allUsers
@@ -704,7 +710,7 @@ function MachineSheet({
                 )}
                 <div className="flex gap-2 justify-end">
                   <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setPicking(false)}>
-                    Cancel
+                    {t('common:actions.cancel')}
                   </button>
                   <button
                     className="btn-primary text-xs py-1.5 px-3"
@@ -713,7 +719,7 @@ function MachineSheet({
                       if (await run('owners', () => setOwners(machine.id, [...picked]))) setPicking(false);
                     }}
                   >
-                    Save
+                    {t('common:actions.save')}
                   </button>
                 </div>
               </motion.div>
@@ -722,7 +728,7 @@ function MachineSheet({
 
           {issues.length > 0 && (
             <section className="space-y-2">
-              <div className="section-label !text-[var(--rose-500)]">Open problems</div>
+              <div className="section-label !text-[var(--rose-500)]">{t('problem.openTitle')}</div>
               {issues.map((p, i) => (
                 <motion.div
                   key={p.id}
@@ -733,13 +739,13 @@ function MachineSheet({
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-[var(--text-primary)]">{p.note}</div>
                     <div className="text-[11px] text-[var(--text-tertiary)]">
-                      Reported by {p.status_by} · {timeAgo(p.status_at, now)}
+                      {t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}
                     </div>
                   </div>
                   {canAct && (
                     <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
                       <CheckCircle2 size={13} />
-                      <span>Fixed</span>
+                      <span>{t('problem.fixed')}</span>
                     </button>
                   )}
                 </motion.div>
@@ -782,10 +788,10 @@ function MachineSheet({
                             if (await run(`edit:${c.id}`, () => updateCheck(machine.id, c.id, { title: editTitle, frequency: editFreq }))) setEditing(null);
                           }}
                         >
-                          Save
+                          {t('common:actions.save')}
                         </button>
                         <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setEditing(null)}>
-                          Cancel
+                          {t('common:actions.cancel')}
                         </button>
                       </div>
                     ) : (
@@ -799,8 +805,8 @@ function MachineSheet({
                             </div>
                           ) : (
                             <div className={`text-[11px] ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
-                              {c.last_done_at ? `Done ${timeAgo(c.last_done_at, now)} by ${c.last_done_by}` : 'Not done yet'}
-                              {st === 'due' && c.last_done_at ? ' · due again' : ''}
+                              {c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
+                              {st === 'due' && c.last_done_at ? ` · ${t('check.dueAgain')}` : ''}
                             </div>
                           )}
                         </div>
@@ -808,7 +814,7 @@ function MachineSheet({
                           {!canAct ? null : st === 'problem' ? (
                             <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${c.id}`, () => checkAction(machine.id, c.id, 'RESOLVE'))}>
                               <CheckCircle2 size={13} />
-                              <span>Fixed</span>
+                              <span>{t('problem.fixed')}</span>
                             </button>
                           ) : (
                             <>
@@ -816,15 +822,15 @@ function MachineSheet({
                                 className={`text-xs py-1.5 px-3 ${due ? 'btn-success' : 'btn-secondary'}`}
                                 disabled={!!busy}
                                 onClick={() => run(`done:${c.id}`, () => checkAction(machine.id, c.id, 'DONE'))}
-                                title="I did this check"
+                                title={t('check.doneTitle')}
                               >
                                 <CheckCircle2 size={13} />
-                                <span>{busy === `done:${c.id}` ? '...' : 'Done'}</span>
+                                <span>{busy === `done:${c.id}` ? '...' : t('check.done')}</span>
                               </button>
                               <button
                                 className="btn-icon btn-icon-danger w-8 h-8"
-                                title="Report a problem with this check"
-                                aria-label="Report a problem"
+                                title={t('check.reportTitle')}
+                                aria-label={t('sheet.reportProblem')}
                                 onClick={() => {
                                   setProblemFor(c.id);
                                   setProblemText('');
@@ -838,8 +844,8 @@ function MachineSheet({
                             <>
                               <button
                                 className="btn-icon w-8 h-8"
-                                title="Edit check"
-                                aria-label="Edit check"
+                                title={t('check.edit')}
+                                aria-label={t('check.edit')}
                                 onClick={() => {
                                   setEditing(c.id);
                                   setEditTitle(c.title);
@@ -850,10 +856,10 @@ function MachineSheet({
                               </button>
                               <button
                                 className="btn-icon btn-icon-danger w-8 h-8"
-                                title="Remove check"
-                                aria-label="Remove check"
+                                title={t('check.remove')}
+                                aria-label={t('check.remove')}
                                 onClick={() => {
-                                  if (confirm(`Remove "${c.title}" from ${machine.id}?`)) run(`del:${c.id}`, () => deleteCheck(machine.id, c.id));
+                                  if (confirm(t('check.confirmRemove', { title: c.title, machine: machine.name }))) run(`del:${c.id}`, () => deleteCheck(machine.id, c.id));
                                 }}
                               >
                                 <Trash2 size={13} />
@@ -872,11 +878,11 @@ function MachineSheet({
 
           {isAdmin && (
             <section className="space-y-2">
-              <div className="section-label">Add a check (admin)</div>
+              <div className="section-label">{t('add.title')}</div>
               <div className="flex flex-wrap gap-2">
                 <input
                   className="aurora-input flex-1 min-w-[200px] text-xs"
-                  placeholder="e.g. Check spindle chiller level"
+                  placeholder={t('add.placeholder')}
                   value={newTitle}
                   maxLength={160}
                   onChange={(e) => setNewTitle(e.target.value)}
@@ -896,7 +902,7 @@ function MachineSheet({
                   }}
                 >
                   <Plus size={13} />
-                  <span>Add</span>
+                  <span>{t('common:actions.add')}</span>
                 </button>
               </div>
             </section>
@@ -904,10 +910,10 @@ function MachineSheet({
 
           <section className="space-y-2">
             <div className="section-label flex items-center gap-1.5">
-              <HistoryIcon size={12} /> History
+              <HistoryIcon size={12} /> {t('history.title')}
             </div>
             {events.length === 0 ? (
-              <div className="text-xs text-[var(--text-tertiary)]">Nothing recorded yet.</div>
+              <div className="text-xs text-[var(--text-tertiary)]">{t('history.empty')}</div>
             ) : (
               <div className="space-y-1">
                 {events.map((e) => (
@@ -918,7 +924,7 @@ function MachineSheet({
                       }`}
                     />
                     <span className="text-[var(--text-secondary)] flex-1">
-                      <b className="text-[var(--text-primary)]">{e.username}</b> {ACTION_TEXT[e.action]}
+                      <b className="text-[var(--text-primary)]">{e.username}</b> {t(actionKey(e.action))}
                       {e.check_title && e.action !== 'PROBLEM' ? ` "${e.check_title}"` : ''}
                       {e.note ? `: ${e.note}` : ''}
                     </span>
@@ -930,7 +936,7 @@ function MachineSheet({
           </section>
 
           <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <Wrench size={12} /> Everyone can mark checks done and report or fix problems. Changes appear on every PC within seconds.
+            <Wrench size={12} /> {t('sheet.footer')}
           </div>
         </div>
       </motion.div>

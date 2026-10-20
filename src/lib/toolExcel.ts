@@ -1,11 +1,23 @@
 import { MATERIALS, TOOL_CATEGORIES } from '../types';
 import { downloadBlob } from './download';
-import { CATEGORY_HELP, EXAMPLE_ROWS, IMPORT_MACHINES, TEMPLATE_HEADERS, parseToolRows, type ParseResult } from './toolExcelParse';
+import { MACHINE_BRANDS } from '../regions';
+import i18n from '../i18n';
+import { CATEGORY_HELP, categoryName, exampleRows, norm, parseToolRows, templateHeaders, type ImportMachine, type ParseResult } from './toolExcelParse';
 
 /*
  * Excel side of the tool import: builds the downloadable template (with example rows, drop-down
- * lists and an instructions sheet) and reads an uploaded workbook. exceljs is loaded on demand.
+ * lists and an instructions sheet) in the page language and reads an uploaded workbook (English
+ * or Turkish template). exceljs is loaded on demand.
  */
+
+/** A sheet name in every language ("Tools", "Takımlar"), so either template can be read back. */
+function sheetNames(key: 'sheetTools' | 'sheetInstructions'): string[] {
+  return Array.from(new Set((['en', 'tr'] as const).map((lng) => i18n.t(`tools:excel.${key}`, { lng }))));
+}
+
+function fileError(message: string): ParseResult {
+  return { tools: [], byMachine: {}, newMachines: [], errors: [{ row: 0, message }] };
+}
 
 function cellText(v: unknown): string {
   if (v === null || v === undefined) return '';
@@ -20,65 +32,82 @@ function cellText(v: unknown): string {
   return String(v);
 }
 
-export async function downloadToolTemplate(): Promise<void> {
+export async function downloadToolTemplate(machines: ImportMachine[]): Promise<void> {
+  const t = i18n.t.bind(i18n);
+  const machineNames = machines.map((m) => m.name);
+  const examples = exampleRows(machines);
+  const headers = templateHeaders();
+  const sheetTools = t('tools:excel.sheetTools');
+  const sheetInstructions = t('tools:excel.sheetInstructions');
   const ExcelJS = await import('exceljs');
   const wb = new ExcelJS.Workbook();
   wb.creator = 'CNC Process Pro';
 
-  const ws = wb.addWorksheet('Tools', { views: [{ state: 'frozen', ySplit: 1 }] });
+  const ws = wb.addWorksheet(sheetTools, { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.columns = [
-    { header: TEMPLATE_HEADERS[0], key: 'machine', width: 14 },
-    { header: TEMPLATE_HEADERS[1], key: 'number', width: 11 },
-    { header: TEMPLATE_HEADERS[2], key: 'pocket', width: 10 },
-    { header: TEMPLATE_HEADERS[3], key: 'category', width: 18 },
-    { header: TEMPLATE_HEADERS[4], key: 'description', width: 26 },
-    { header: TEMPLATE_HEADERS[5], key: 'diameter', width: 14 },
-    { header: TEMPLATE_HEADERS[6], key: 'length', width: 13 },
-    { header: TEMPLATE_HEADERS[7], key: 'materials', width: 22 },
+    { header: headers[0], key: 'machine', width: 14 },
+    { header: headers[1], key: 'number', width: 11 },
+    { header: headers[2], key: 'pocket', width: 10 },
+    { header: headers[3], key: 'category', width: 18 },
+    { header: headers[4], key: 'description', width: 26 },
+    { header: headers[5], key: 'diameter', width: 14 },
+    { header: headers[6], key: 'length', width: 13 },
+    { header: headers[7], key: 'materials', width: 22 },
+    { header: headers[8], key: 'brand', width: 20 },
+    { header: headers[9], key: 'model', width: 20 },
   ];
   const head = ws.getRow(1);
   head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F62D6' } };
   head.alignment = { vertical: 'middle' };
   head.height = 22;
-  EXAMPLE_ROWS.forEach((r) => ws.addRow(r));
+  examples.forEach((r) => ws.addRow(r));
 
   // Drop-down lists so nobody has to type a machine or category by hand.
+  // Categories are listed by their name in the page language (the import accepts both).
+  const categoryList = TOOL_CATEGORIES.map(categoryName).join(',');
   for (let row = 2; row <= 500; row++) {
-    ws.getCell(`A${row}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${IMPORT_MACHINES.join(',')}"`], showErrorMessage: true, errorTitle: 'Machine', error: 'Pick a machine from the list.' };
-    ws.getCell(`D${row}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${TOOL_CATEGORIES.join(',')}"`], showErrorMessage: true, errorTitle: 'Category', error: 'Pick a category from the list.' };
+    // Existing machines in a drop-down; a new name is allowed too (its Brand column creates it).
+    if (machineNames.length) {
+      ws.getCell(`A${row}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${machineNames.join(',').replace(/"/g, '')}"`], showErrorMessage: false };
+    }
+    ws.getCell(`I${row}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${MACHINE_BRANDS.join(',')}"`], showErrorMessage: true, errorTitle: t('tools:excel.validation.brandTitle'), error: t('tools:excel.validation.brandError') };
+    ws.getCell(`D${row}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${categoryList}"`], showErrorMessage: true, errorTitle: t('tools:excel.validation.categoryTitle'), error: t('tools:excel.validation.categoryError') };
   }
-  ws.getCell('J1').value = 'The 5 grey example rows are only a guide: delete or overwrite them. See the "Instructions" sheet.';
-  ws.getCell('J1').font = { italic: true, color: { argb: 'FF888888' } };
-  for (let r = 2; r <= 1 + EXAMPLE_ROWS.length; r++) ws.getRow(r).font = { color: { argb: 'FF777777' } };
+  ws.getCell('L1').value = t('tools:excel.note', { sheet: sheetInstructions });
+  ws.getCell('L1').font = { italic: true, color: { argb: 'FF888888' } };
+  for (let r = 2; r <= 1 + examples.length; r++) ws.getRow(r).font = { color: { argb: 'FF777777' } };
 
-  const info = wb.addWorksheet('Instructions');
+  const info = wb.addWorksheet(sheetInstructions);
   info.columns = [{ width: 20 }, { width: 70 }, { width: 28 }];
   const line = (a?: string, b?: string, c?: string, bold = false) => {
     const row = info.addRow([a ?? '', b ?? '', c ?? '']);
     if (bold) row.font = { bold: true };
     return row;
   };
-  line('How to fill the "Tools" sheet', undefined, undefined, true).font = { bold: true, size: 14 };
-  line('One row = one tool in one machine. Keep the header row as it is.');
+  const g = (key: string, options?: Record<string, unknown>) => t(`tools:excel.guide.${key}` as 'tools:excel.guide.intro', options as never) as string;
+  line(g('title', { sheet: sheetTools }), undefined, undefined, true).font = { bold: true, size: 14 };
+  line(g('intro'));
   line();
-  line('Column', 'What to write', 'Example', true);
-  line('Machine', `The machine name. One of: ${IMPORT_MACHINES.join(', ')}.`, 'HAAS-1');
-  line('T-Number', 'The tool number used in the G-code (T12 -> 12). Whole number, unique per machine.', '12');
-  line('Pocket', 'Optional. The magazine pocket if it differs from the T-number.', '5');
-  line('Category', 'The tool type, picked from the list below.', 'fraise');
-  line('Description', 'Optional. A readable name. If empty, one is made from the category and diameter.', 'Fraise D6');
-  line('Diameter (mm)', 'Optional. Decimal point or comma both work.', '6.5');
-  line('Length (mm)', 'Optional. Cutting length.', '33');
-  line('Materials', `Optional. Materials this tool is meant for, separated by commas. Leave empty for a general tool. Allowed: ${MATERIALS.join(', ')}.`, 'ALU, POM');
+  line(g('column'), g('whatToWrite'), g('example'), true);
+  line(headers[0], machineNames.length ? g('machine', { list: machineNames.join(', ') }) : g('machineNone'), machineNames[0] ?? 'HAAS-1');
+  line(headers[1], g('number'), '12');
+  line(headers[2], g('pocket'), '5');
+  line(headers[3], g('category'), categoryName('fraise'));
+  line(headers[4], g('description'), t('tools:excel.examples.endMill'));
+  line(headers[5], g('diameter'), t('tools:excel.examples.diameter'));
+  line(headers[6], g('length'), '33');
+  line(headers[8], g('brand', { list: MACHINE_BRANDS.join(', ') }), 'HAAS');
+  line(headers[9], g('model'), 'VF-3');
+  line(headers[7], g('materials', { list: MATERIALS.join(', ') }), 'ALU, POM');
   line();
-  line('Category', 'Meaning', undefined, true);
-  for (const c of TOOL_CATEGORIES) line(c, CATEGORY_HELP[c] ?? '');
+  line(g('categoryHead'), g('meaningHead'), undefined, true);
+  for (const c of TOOL_CATEGORIES) line(categoryName(c), CATEGORY_HELP[c] ?? '');
   line();
-  line('When you import', undefined, undefined, true);
-  line('Add / update', 'A T-number that already exists on the machine is replaced; all other tools stay.');
-  line('Replace', 'Each machine in the file gets exactly the tools in the file (its old tools are removed).');
-  line('Check', 'Before anything is saved you see a preview with every problem listed by row number.');
+  line(g('whenImport'), undefined, undefined, true);
+  line(g('update'), g('updateText'));
+  line(g('replace'), g('replaceText'));
+  line(g('check'), g('checkText'));
 
   const buf = await wb.xlsx.writeBuffer();
   downloadBlob('tool-inventory-template.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
@@ -86,29 +115,34 @@ export async function downloadToolTemplate(): Promise<void> {
 
 export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 
-export async function readToolWorkbook(file: File): Promise<ParseResult> {
+export async function readToolWorkbook(file: File, machines: ImportMachine[]): Promise<ParseResult> {
   if (file.size > MAX_IMPORT_BYTES) {
-    return { tools: [], byMachine: {}, errors: [{ row: 0, message: 'The file is too large (2 MB max).' }] };
+    return fileError(i18n.t('tools:excel.errors.tooLarge'));
   }
   if (!/\.xlsx$/i.test(file.name)) {
-    return { tools: [], byMachine: {}, errors: [{ row: 0, message: 'Please choose an .xlsx Excel file (use the template).' }] };
+    return fileError(i18n.t('tools:excel.errors.notXlsx'));
   }
   const ExcelJS = await import('exceljs');
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(await file.arrayBuffer());
   } catch {
-    return { tools: [], byMachine: {}, errors: [{ row: 0, message: 'This file could not be read as an Excel workbook.' }] };
+    return fileError(i18n.t('tools:excel.errors.unreadable'));
   }
-  const ws = wb.getWorksheet('Tools') ?? wb.worksheets.find((s) => s.name.toLowerCase() !== 'instructions') ?? wb.worksheets[0];
-  if (!ws) return { tools: [], byMachine: {}, errors: [{ row: 0, message: 'The workbook has no sheets.' }] };
+  // The "Tools" sheet of the English or Turkish template, else the first sheet that is not the instructions.
+  const instructions = sheetNames('sheetInstructions').map(norm);
+  const ws =
+    sheetNames('sheetTools').map((n) => wb.getWorksheet(n)).find(Boolean) ??
+    wb.worksheets.find((s) => !instructions.includes(norm(s.name))) ??
+    wb.worksheets[0];
+  if (!ws) return fileError(i18n.t('tools:excel.errors.noSheets'));
   const rows: string[][] = [];
   const last = Math.min(ws.rowCount, 2000);
   for (let r = 1; r <= last; r++) {
     const row = ws.getRow(r);
     const cells: string[] = [];
-    for (let c = 1; c <= 8; c++) cells.push(cellText(row.getCell(c).value));
+    for (let c = 1; c <= 10; c++) cells.push(cellText(row.getCell(c).value));
     rows.push(cells);
   }
-  return parseToolRows(rows);
+  return parseToolRows(rows, machines);
 }

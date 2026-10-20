@@ -1,6 +1,6 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx, type Role } from '../context';
-import { hashPassword, validateNewPassword, validateUsername } from '../auth';
+import { assertNotMasterUsername, hashPassword, validateNewPassword, validateUsername } from '../auth';
 import { auditCtx } from '../security';
 
 function parseRole(v: unknown): Role {
@@ -28,6 +28,7 @@ export async function handleCreateUser(ctx: Ctx): Promise<Response> {
 
   const exists = await ctx.env.DB.prepare('SELECT 1 AS x FROM users WHERE username = ? COLLATE NOCASE').bind(username).first();
   if (exists) throw new HttpError(409, 'User already exists');
+  await assertNotMasterUsername(ctx.env, username);
 
   const id = newId();
   const now = Date.now();

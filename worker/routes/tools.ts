@@ -1,10 +1,7 @@
 import { HttpError, json, num, optNum, readJson, str } from '../http';
 import { bumpStmt, type Ctx, type Env } from '../context';
-import { MACHINES, MATERIALS, TOOL_CATEGORIES, type Tool } from '../../src/types';
-import { FLEET_IDS } from '../fleet';
-
-/** Machines that may hold a tool inventory (the shop floor). Anything else is refused. */
-const KNOWN_MACHINES = new Set<string>([...MACHINES, ...FLEET_IDS]);
+import { MATERIALS, TOOL_CATEGORIES, type Tool } from '../../src/types';
+import { requireMachine } from './fleet';
 export const MAX_TOOLS_PER_MACHINE = 400;
 import { defaultToolbox } from '../../src/lib/defaultTools';
 
@@ -44,10 +41,9 @@ export function rowToTool(r: ToolRow): Tool {
   return t;
 }
 
-export function validateMachine(machine: string): string {
-  const id = typeof machine === 'string' ? machine.toUpperCase() : '';
-  if (!KNOWN_MACHINES.has(id)) throw new HttpError(400, 'Unknown machine');
-  return id;
+/** A machine of this country that has a tool inventory; anything else is refused. */
+export async function validateMachine(env: Env, machine: string): Promise<string> {
+  return (await requireMachine(env, machine, { forTools: true })).id;
 }
 
 async function assertRoom(env: Env, machine: string, adding: number): Promise<void> {
@@ -176,7 +172,7 @@ async function nextSortOrder(env: Env, machine: string, id: string): Promise<num
 
 // PUT /api/tools/:machine/:id  (create or update one tool)
 export async function handlePutTool(ctx: Ctx): Promise<Response> {
-  const machine = validateMachine(ctx.params.machine);
+  const machine = await validateMachine(ctx.env, ctx.params.machine);
   const tool = parseTool(await readJson(ctx.request, 50_000), ctx.params.id);
 
   const conflict = await ctx.env.DB.prepare(
@@ -200,7 +196,7 @@ export async function handlePutTool(ctx: Ctx): Promise<Response> {
 
 // POST /api/tools/:machine/batch  { tools: Tool[] }  (tools approved from the remapper)
 export async function handleBatchTools(ctx: Ctx): Promise<Response> {
-  const machine = validateMachine(ctx.params.machine);
+  const machine = await validateMachine(ctx.env, ctx.params.machine);
   const body = await readJson<{ tools?: unknown[] }>(ctx.request, 200_000);
   if (!Array.isArray(body.tools) || body.tools.length === 0 || body.tools.length > 100) {
     throw new HttpError(400, 'tools must be a non-empty array (max 100)');
@@ -235,7 +231,7 @@ export async function handleBatchTools(ctx: Ctx): Promise<Response> {
 
 // DELETE /api/tools/:machine/:id
 export async function handleDeleteTool(ctx: Ctx): Promise<Response> {
-  const machine = validateMachine(ctx.params.machine);
+  const machine = await validateMachine(ctx.env, ctx.params.machine);
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM tools WHERE machine = ? AND id = ?').bind(machine, ctx.params.id),
     bumpStmt(ctx.env, 'tools'),
@@ -245,7 +241,7 @@ export async function handleDeleteTool(ctx: Ctx): Promise<Response> {
 
 // POST /api/tools/:machine/:id/ack  (clear the orange "modified" marker)
 export async function handleAckTool(ctx: Ctx): Promise<Response> {
-  const machine = validateMachine(ctx.params.machine);
+  const machine = await validateMachine(ctx.env, ctx.params.machine);
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('UPDATE tools SET changed = 0 WHERE machine = ? AND id = ?').bind(machine, ctx.params.id),
     bumpStmt(ctx.env, 'tools'),

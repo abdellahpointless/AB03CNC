@@ -1,10 +1,13 @@
 import React, { useRef, useState } from 'react';
+import { currentRegion } from '../lib/instance';
 import { Database, DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { api } from '../lib/api';
 import { buildFullBackup, migrateFromSupabase, restoreBackup, type LogKind, type MigrationOptions } from '../lib/migration';
 import { fetchAllHistory } from '../lib/historyApi';
 import { downloadJson, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
+import { useT } from '../i18n';
+import { locale } from '../i18n/format';
 
 interface LogLine {
   t: number;
@@ -26,7 +29,7 @@ function LogView({ lines }: { lines: LogLine[] }) {
     <div className="mt-3 max-h-56 overflow-y-auto rounded-[var(--radius-md)] bg-[var(--bg-input)] border border-[var(--border-subtle)] p-3 font-mono text-[11px] space-y-0.5">
       {lines.map((l, i) => (
         <div key={i} className={color[l.kind]}>
-          <span className="text-[var(--text-tertiary)]">{new Date(l.t).toLocaleTimeString()} </span>
+          <span className="text-[var(--text-tertiary)]">{new Date(l.t).toLocaleTimeString(locale())} </span>
           {l.text}
         </div>
       ))}
@@ -42,6 +45,7 @@ function useLog() {
 }
 
 export default function DataManagement() {
+  const { t } = useT('data');
   const { refreshNow } = useSync();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -62,13 +66,13 @@ export default function DataManagement() {
   const retentionLog = useLog();
 
   const runMigration = async () => {
-    if (!confirm('Copy all data from Supabase into this Cloudflare installation?\n\nExisting records are kept; nothing is deleted except that the tool inventory is replaced by the one from Supabase.')) return;
+    if (!confirm(t('migration.confirm'))) return;
     migrationLog.clear();
     setBusy('migrate');
     try {
       const s = await migrateFromSupabase({ url: sbUrl, anonKey: sbKey }, opts, migrationLog.log);
       migrationLog.log(
-        `Done: ${s.users} new account(s), ${s.tools} tools, ${s.history} history records, ${s.programs} program files, ${s.parts} part entries.`,
+        t('migration.done', { users: s.users, tools: s.tools, history: s.history, programs: s.programs, parts: s.parts }),
         'ok',
       );
       await refreshNow();
@@ -99,12 +103,12 @@ export default function DataManagement() {
     backupLog.clear();
     setBusy('restore');
     try {
-      backupLog.log(`Reading ${file.name} (${Math.round(file.size / 1024)} KB)...`);
+      backupLog.log(t('backup.reading', { name: file.name, size: Math.round(file.size / 1024) }));
       const data = JSON.parse(await file.text());
       await restoreBackup(data, { replaceTools }, backupLog.log);
       await refreshNow();
     } catch (err: any) {
-      backupLog.log(err instanceof SyntaxError ? 'This file is not valid JSON.' : err?.message || String(err), 'error');
+      backupLog.log(err instanceof SyntaxError ? t('backup.invalidJson') : err?.message || String(err), 'error');
     } finally {
       setBusy(null);
     }
@@ -113,19 +117,19 @@ export default function DataManagement() {
   const pruneHistory = async () => {
     const days = Math.round(pruneDays);
     if (!(days >= 1)) return;
-    if (!confirm(`Delete history records (and their stored G-code files) older than ${days} days?\n\nA JSON archive of the deleted records is downloaded first.`)) return;
+    if (!confirm(t('retention.confirmPrune', { days }))) return;
     retentionLog.clear();
     setBusy('prune');
     try {
       const cutoff = Date.now() - days * 86_400_000;
       const old = (await fetchAllHistory()).filter(r => (r.timestamp ?? 0) < cutoff);
       if (!old.length) {
-        retentionLog.log(`No records older than ${days} days.`, 'info');
+        retentionLog.log(t('retention.noneOlder', { days }), 'info');
         return;
       }
       downloadJson(`CNC_History_Archive_${todayStamp()}.json`, { archivedAt: new Date().toISOString(), history: [...old].reverse() });
       const res = await api<{ deleted: number }>('/history/prune', { method: 'POST', body: { olderThanDays: days } });
-      retentionLog.log(`Archive downloaded, ${res.deleted} record(s) removed.`, 'ok');
+      retentionLog.log(t('retention.removed', { count: res.deleted }), 'ok');
     } catch (err: any) {
       retentionLog.log(err?.message || String(err), 'error');
     } finally {
@@ -134,15 +138,16 @@ export default function DataManagement() {
   };
 
   const clearAllHistory = async () => {
-    if (!confirm('Delete ALL history records and stored G-code files?\n\nA full JSON archive is downloaded first. The "time won" counter is not reset.')) return;
-    if (prompt('Type DELETE to confirm') !== 'DELETE') return;
+    if (!confirm(t('retention.confirmClearAll'))) return;
+    const word = t('retention.deleteWord');
+    if (prompt(t('retention.typeToConfirm', { word })) !== word) return;
     retentionLog.clear();
     setBusy('clear');
     try {
       const all = await fetchAllHistory();
       downloadJson(`CNC_History_Archive_Full_${todayStamp()}.json`, { archivedAt: new Date().toISOString(), history: [...all].reverse() });
       const res = await api<{ deleted: number }>('/history', { method: 'DELETE' });
-      retentionLog.log(`Archive downloaded, ${res.deleted} record(s) removed.`, 'ok');
+      retentionLog.log(t('retention.removed', { count: res.deleted }), 'ok');
     } catch (err: any) {
       retentionLog.log(err?.message || String(err), 'error');
     } finally {
@@ -159,50 +164,51 @@ export default function DataManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Supabase migration */}
+      {/* Supabase migration: only the original (Moroccan) installation came from Supabase. */}
+      {currentRegion().id === 'ma' && (<>
       <div>
         <div className="flex items-center gap-2.5 mb-3">
           <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
             <Database size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">Import from Supabase (one-time migration)</h3>
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('migration.title')}</h3>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Copies accounts, tool inventory, history, generated programs and part entries from the old Supabase project.
-              Safe to run more than once - records that already exist are skipped.
+              {t('migration.description')}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="section-label block mb-1">Supabase project URL</label>
+            <label className="section-label block mb-1">{t('migration.urlLabel')}</label>
             <input className="aurora-input w-full text-xs font-mono" placeholder="https://xxxxxxxx.supabase.co" value={sbUrl} onChange={e => setSbUrl(e.target.value)} disabled={busy !== null} />
           </div>
           <div>
-            <label className="section-label block mb-1">Supabase anon key</label>
+            <label className="section-label block mb-1">{t('migration.keyLabel')}</label>
             <input type="password" className="aurora-input w-full text-xs font-mono" placeholder="eyJhbGciOi..." value={sbKey} onChange={e => setSbKey(e.target.value)} disabled={busy !== null} autoComplete="off" />
           </div>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
-          {check('users', 'Accounts')}
-          {check('tools', 'Tool inventory (replaces current)')}
-          {check('history', 'History')}
-          {check('programs', 'Generated G-code files')}
-          {check('parts', 'Part entries')}
+          {check('users', t('migration.options.users'))}
+          {check('tools', t('migration.options.tools'))}
+          {check('history', t('migration.options.history'))}
+          {check('programs', t('migration.options.programs'))}
+          {check('parts', t('migration.options.parts'))}
         </div>
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <button onClick={runMigration} disabled={busy !== null || !sbUrl || !sbKey} className="btn-primary text-xs py-2 px-4">
             {busy === 'migrate' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
-            <span>{busy === 'migrate' ? 'Importing...' : 'Start import'}</span>
+            <span>{busy === 'migrate' ? t('migration.importing') : t('migration.start')}</span>
           </button>
           <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
-            <Info size={12} /> Keep this tab open until it says "Migration finished".
+            <Info size={12} /> {t('migration.keepOpen')}
           </span>
         </div>
         <LogView lines={migrationLog.lines} />
       </div>
 
       <div className="border-t border-[var(--border-subtle)]" />
+      </>)}
 
       {/* Backup & restore */}
       <div>
@@ -211,32 +217,32 @@ export default function DataManagement() {
             <Archive size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">Backup &amp; restore</h3>
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('backup.title')}</h3>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Download everything as one JSON file, or restore one. Old-version files (<code className="font-mono">CNC_Studio_Backup_*.json</code>,{' '}
-              <code className="font-mono">CNC_History_Archive_*.json</code>) can be imported too, to bring back archived history.
+              {t('backup.descBefore')}<code className="font-mono">CNC_Studio_Backup_*.json</code>,{' '}
+              <code className="font-mono">CNC_History_Archive_*.json</code>{t('backup.descAfter')}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={downloadBackup} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4">
             {busy === 'backup' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
-            <span>Download full backup</span>
+            <span>{t('backup.download')}</span>
           </button>
           <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
             <input type="checkbox" checked={includePrograms} onChange={e => setIncludePrograms(e.target.checked)} disabled={busy !== null} />
-            Include G-code files (bigger file)
+            {t('backup.includePrograms')}
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={onRestoreFile} />
           <button onClick={() => fileRef.current?.click()} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4">
             {busy === 'restore' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}
-            <span>Restore / import a backup file...</span>
+            <span>{t('backup.restore')}</span>
           </button>
           <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
             <input type="checkbox" checked={replaceTools} onChange={e => setReplaceTools(e.target.checked)} disabled={busy !== null} />
-            Replace tool inventory with the one in the file
+            {t('backup.replaceTools')}
           </label>
         </div>
         <LogView lines={backupLog.lines} />
@@ -251,14 +257,14 @@ export default function DataManagement() {
             <AlertTriangle size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">History clean-up (optional)</h3>
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('retention.title')}</h3>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              History no longer blocks operators after 30 days. The free database holds years of records, so cleaning up is only needed if you want to.
+              {t('retention.description')}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-[var(--text-secondary)]">Delete records older than</span>
+          <span className="text-xs text-[var(--text-secondary)]">{t('retention.olderThan')}</span>
           <input
             type="number"
             min={1}
@@ -268,20 +274,20 @@ export default function DataManagement() {
             className="aurora-input w-20 text-xs py-1.5"
             disabled={busy !== null}
           />
-          <span className="text-xs text-[var(--text-secondary)]">days</span>
+          <span className="text-xs text-[var(--text-secondary)]">{t('retention.days')}</span>
           <button onClick={pruneHistory} disabled={busy !== null || !(pruneDays >= 1)} className="btn-secondary text-xs py-1.5 px-3">
             <Archive size={13} />
-            <span>Archive &amp; delete</span>
+            <span>{t('retention.archiveDelete')}</span>
           </button>
           <button onClick={clearAllHistory} disabled={busy !== null} className="btn-danger text-xs py-1.5 px-3">
             <Trash2 size={13} />
-            <span>Clear all history</span>
+            <span>{t('retention.clearAll')}</span>
           </button>
         </div>
         <LogView lines={retentionLog.lines} />
         {retentionLog.lines.some(l => l.kind === 'ok') && (
           <div className="mt-2 text-[11px] text-[var(--green-500)] flex items-center gap-1">
-            <CheckCircle2 size={12} /> Done
+            <CheckCircle2 size={12} /> {t('retention.done')}
           </div>
         )}
       </div>

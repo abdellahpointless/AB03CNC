@@ -1,4 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
+import { HUB_PATH, currentRegion, scopedKey } from './lib/instance';
+import { Flag } from './components/Flag';
+import MachineManager from './components/MachineManager';
+import MasterAccountCard from './components/MasterAccountCard';
 import ToolDatabase from './components/ToolDatabase';
 import ToolRemapper from './components/ToolRemapper';
 import HistoryView from './components/HistoryView';
@@ -21,6 +25,7 @@ import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, Clip
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
+import { useT } from './i18n';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
@@ -31,12 +36,13 @@ const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (
 
 export default function App() {
   const { user, status } = useAuth();
+  const { t } = useT('app');
 
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center text-[var(--text-tertiary)] gap-2 text-sm">
         <RefreshCw size={16} className="animate-spin text-[var(--accent-primary)]" />
-        <span>Loading CNC Process Pro...</span>
+        <span>{t('loading')}</span>
       </div>
     );
   }
@@ -53,6 +59,7 @@ export default function App() {
 }
 
 function Workspace() {
+  const { t } = useT('app');
   const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
   const { refreshNow, connection } = useSync();
@@ -60,7 +67,7 @@ function Workspace() {
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
     try {
-      return sessionStorage.getItem('cnc-mfa-nudge-hidden') === '1';
+      return sessionStorage.getItem(scopedKey('cnc-mfa-nudge-hidden')) === '1';
     } catch {
       return false;
     }
@@ -68,7 +75,7 @@ function Workspace() {
   const hideMfaNudge = () => {
     setMfaNudgeHidden(true);
     try {
-      sessionStorage.setItem('cnc-mfa-nudge-hidden', '1');
+      sessionStorage.setItem(scopedKey('cnc-mfa-nudge-hidden'), '1');
     } catch {
       /* storage unavailable */
     }
@@ -117,16 +124,15 @@ function Workspace() {
             <div className="flex items-center gap-2 text-[var(--orange-500)] font-semibold">
               <AlertTriangle size={16} className="shrink-0" />
               <span>
-                Your password no longer meets the security rules (at least {user.role === 'ADMIN' ? 10 : 8} characters, not a common password). The app is
-                reachable from the internet, so please choose a stronger one.
+                {t('banners.weakPassword', { min: user.role === 'ADMIN' ? 10 : 8 })}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowPasswordModal('password')} className="btn-warning text-xs py-1 px-3">
                 <KeyRound size={13} />
-                <span>Change password</span>
+                <span>{t('security.changePassword')}</span>
               </button>
-              <button onClick={dismissWeakPassword} className="btn-icon w-7 h-7" title="Dismiss">
+              <button onClick={dismissWeakPassword} className="btn-icon w-7 h-7" title={t('common:actions.dismiss')}>
                 <X size={13} />
               </button>
             </div>
@@ -139,13 +145,13 @@ function Workspace() {
           <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
               <ShieldCheck size={16} className="shrink-0 text-[var(--blue-500)]" />
-              <span>Protect your admin account with two-step sign-in: a code from your phone is asked after the password.</span>
+              <span>{t('banners.mfaNudge')}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowPasswordModal('mfa')} className="btn-primary text-xs py-1 px-3">
-                <span>Turn on</span>
+                <span>{t('banners.turnOn')}</span>
               </button>
-              <button onClick={hideMfaNudge} className="btn-icon w-7 h-7" title="Later">
+              <button onClick={hideMfaNudge} className="btn-icon w-7 h-7" title={t('common:actions.later')}>
                 <X size={13} />
               </button>
             </div>
@@ -157,7 +163,7 @@ function Workspace() {
         <div className="px-4 sm:px-6 pt-3 relative z-30">
           <div className="p-2.5 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 text-xs text-[var(--orange-500)] flex items-center gap-2">
             <AlertTriangle size={14} className="shrink-0" />
-            <span>No connection to the server. You can keep remapping with the last saved tool inventory; history uploads automatically when the connection returns.</span>
+            <span>{t('banners.offline')}</span>
           </div>
         </div>
       )}
@@ -170,7 +176,7 @@ function Workspace() {
             <div className="relative shrink-0">
               <div 
                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--blue-500)] to-violet-700 flex items-center justify-center text-white font-mono font-bold text-sm sm:text-base shadow-[0_4px_16px_rgba(59,111,212,0.4)] cursor-pointer select-none"
-                title="CNC Process Pro - Click to sync now"
+                title={t('header.syncTitle')}
                 onClick={handleGlobalRefresh}
               >
                 //
@@ -187,9 +193,18 @@ function Workspace() {
                 <span className="badge-neutral text-[10px] py-0.5 px-2 tracking-wide font-mono shrink-0">
                   v6.0 AURORA
                 </span>
+                {/* Country of this instance; click to go back to the country picker. */}
+                <a
+                  href={HUB_PATH}
+                  className="shrink-0 inline-flex items-center rounded-[3px] ring-1 ring-[var(--border-subtle)] hover:ring-[var(--blue-500)] transition"
+                  title={`${t(`common:country.${currentRegion().id}`)} · ${t('common:actions.changeCountry')}`}
+                  aria-label={t('common:actions.changeCountry')}
+                >
+                  <Flag country={currentRegion().id} className="w-6 h-4 rounded-[3px] block" />
+                </a>
               </div>
               <span className="text-[11px] sm:text-[12px] text-[var(--text-secondary)] font-normal hidden sm:block truncate">
-                Industrial G-Code Dialect &amp; Tool Remapper
+                {t('header.subtitle')}
               </span>
             </div>
           </div>
@@ -215,7 +230,7 @@ function Workspace() {
                   {user.username}
                 </span>
                 <span className="text-[9px] sm:text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
-                  {user.role}
+                  {t(`common:role.${user.role}`)}
                 </span>
               </div>
             </div>
@@ -224,7 +239,7 @@ function Workspace() {
             <button 
               onClick={() => setShowPasswordModal('password')} 
               className="btn-icon" 
-              title="Account security (password, two-step sign-in)"
+              title={t('header.securityTitle')}
             >
               <KeyRound size={15} />
             </button>
@@ -234,7 +249,7 @@ function Workspace() {
             <button 
               onClick={handleGlobalRefresh} 
               className="btn-icon" 
-              title="Sync now"
+              title={t('header.syncNow')}
             >
               <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
@@ -242,7 +257,7 @@ function Workspace() {
             <button 
               onClick={logout} 
               className="btn-icon btn-icon-danger" 
-              title="Sign Out"
+              title={t('header.signOut')}
             >
               <LogOut size={15} />
             </button>
@@ -263,7 +278,7 @@ function Workspace() {
             }`}
           >
             <Database size={15} />
-            <span>Tool Inventory</span>
+            <span>{t('tabs.toolInventory')}</span>
             {activeTab === 'DATABASE' && (
               <>
               <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -282,7 +297,7 @@ function Workspace() {
             }`}
           >
             <Wrench size={15} />
-            <span>Tool Remapper</span>
+            <span>{t('tabs.remapper')}</span>
             {activeTab === 'REMAP' && (
               <>
               <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -302,7 +317,7 @@ function Workspace() {
               }`}
             >
               <History size={15} />
-              <span>History</span>
+              <span>{t('tabs.history')}</span>
               {activeTab === 'HISTORY' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(224,138,77,0.12)' }} transition={SPRING_PILL} />
@@ -323,7 +338,7 @@ function Workspace() {
               }`}
             >
               <History size={15} />
-              <span>Recent Codes</span>
+              <span>{t('tabs.recentCodes')}</span>
               {activeTab === 'RECENT_CODES' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -343,7 +358,7 @@ function Workspace() {
             }`}
           >
             <PackagePlus size={15} />
-            <span>Part without scan</span>
+            <span>{t('tabs.partEntry')}</span>
             {activeTab === 'PART_ENTRY' && (
               <>
               <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -362,7 +377,7 @@ function Workspace() {
             }`}
           >
             <Activity size={15} />
-            <span>Preventive actions</span>
+            <span>{t('tabs.preventive')}</span>
             {activeTab === 'PREVENTIVE' && (
               <>
               <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -382,7 +397,7 @@ function Workspace() {
               }`}
             >
               <ClipboardCheck size={15} />
-              <span>Part review</span>
+              <span>{t('tabs.partReview')}</span>
               {activeTab === 'PART_REVIEW' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
@@ -403,7 +418,7 @@ function Workspace() {
               }`}
             >
               <Shield size={15} />
-              <span>Admin: Analytics, Users &amp; Data</span>
+              <span>{t('tabs.admin')}</span>
               {activeTab === 'ADMIN' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
@@ -463,10 +478,18 @@ function Workspace() {
             )}
             {activeTab === 'ADMIN' && user.role === 'ADMIN' && (
               <div className="flex flex-col space-y-6 max-w-6xl mx-auto w-full pb-16">
-                <Suspense fallback={<div className="aurora-card p-10 text-center text-xs text-[var(--text-tertiary)]">Loading analytics...</div>}>
+                <Suspense fallback={<div className="aurora-card p-10 text-center text-xs text-[var(--text-tertiary)]">{t('loadingAnalytics')}</div>}>
                   <AdminExtractionAnalytics />
                 </Suspense>
                 <UserManagement />
+                <div className="max-w-4xl mx-auto w-full">
+                  <MachineManager />
+                </div>
+                {currentRegion().id === 'ma' && (
+                  <div className="max-w-4xl mx-auto w-full">
+                    <MasterAccountCard />
+                  </div>
+                )}
                 <div className="aurora-card aurora-card-static p-6">
                   <DataManagement />
                 </div>
@@ -491,9 +514,9 @@ function Workspace() {
 }
 
 const THEME_ORDER: ThemeMode[] = ['dark', 'light', 'system'];
-const THEME_LABEL: Record<ThemeMode, string> = { dark: 'Dark mode', light: 'Light mode', system: 'Follow Windows setting' };
 
 function ThemeToggle() {
+  const { t } = useT('app');
   const { mode, setMode } = useTheme();
   const next = THEME_ORDER[(THEME_ORDER.indexOf(mode) + 1) % THEME_ORDER.length];
   const Icon = mode === 'light' ? Sun : mode === 'dark' ? Moon : Monitor;
@@ -501,8 +524,8 @@ function ThemeToggle() {
     <button
       onClick={() => setMode(next)}
       className="btn-icon"
-      title={`${THEME_LABEL[mode]} (click for ${THEME_LABEL[next].toLowerCase()})`}
-      aria-label={`Colour mode: ${THEME_LABEL[mode]}`}
+      title={t('theme.title', { current: t(`theme.label.${mode}`), next: t(`theme.nextLabel.${next}`) })}
+      aria-label={t('theme.aria', { mode: t(`theme.label.${mode}`) })}
     >
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span

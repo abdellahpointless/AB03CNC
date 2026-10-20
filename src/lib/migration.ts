@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { api } from './api';
 import { compressCode, type StoredCode } from './codeStorage';
 import { fetchAllHistory } from './historyApi';
@@ -55,8 +56,8 @@ async function importUsers(users: any[], log: Logger): Promise<{ idMap: Record<s
     });
     Object.assign(idMap, res.idMap);
     created += res.created.length;
-    if (res.created.length) log(`Created account(s): ${res.created.join(', ')}`, 'ok');
-    if (res.skipped.length) log(`Already present, kept as is: ${res.skipped.join(', ')}`, 'info');
+    if (res.created.length) log(i18n.t('data:log.createdAccounts', { names: res.created.join(', ') }), 'ok');
+    if (res.skipped.length) log(i18n.t('data:log.keptAccounts', { names: res.skipped.join(', ') }), 'info');
   }
   return { idMap, created };
 }
@@ -83,7 +84,7 @@ async function importHistory(
       timeoutMs: 120_000,
     });
     inserted += res.inserted;
-    log(`History: ${Math.min((b + 1) * HISTORY_BATCH, records.length)}/${records.length} processed`, 'info');
+    log(i18n.t('data:log.historyProgress', { done: Math.min((b + 1) * HISTORY_BATCH, records.length), total: records.length }), 'info');
   }
   return inserted;
 }
@@ -94,7 +95,7 @@ async function importParts(entries: any[], idMap: Record<string, string>, log: L
     const res = await api<{ inserted: number }>('/admin/import/parts', { method: 'POST', body: { entries: batch, idMap } });
     inserted += res.inserted;
   }
-  if (entries.length) log(`Part entries: ${inserted} new of ${entries.length}`, 'ok');
+  if (entries.length) log(i18n.t('data:log.partsImported', { inserted, total: entries.length }), 'ok');
   return inserted;
 }
 
@@ -122,7 +123,7 @@ export interface MigrationOptions {
 function normalizeSupabaseUrl(raw: string): string {
   const url = raw.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url)) {
-    throw new Error('The Supabase URL should look like https://xxxxxxxx.supabase.co');
+    throw new Error(i18n.t('data:errors.badUrl'));
   }
   return url;
 }
@@ -134,11 +135,11 @@ async function sbGet<T = any>(src: SupabaseSource, path: string): Promise<T> {
       headers: { apikey: src.anonKey, Authorization: `Bearer ${src.anonKey}`, Accept: 'application/json' },
     });
   } catch {
-    throw new Error('Could not reach Supabase from this browser (network blocked or project paused).');
+    throw new Error(i18n.t('data:errors.unreachable'));
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`Supabase ${res.status} on ${path.split('?')[0]}: ${text.slice(0, 200)}`);
+    throw new Error(i18n.t('data:errors.supabaseStatus', { status: res.status, path: path.split('?')[0], text: text.slice(0, 200) }));
   }
   return res.json();
 }
@@ -157,19 +158,19 @@ async function sbOptional<T>(fn: () => Promise<T>, fallback: T, log: Logger, wha
   try {
     return await fn();
   } catch (err: any) {
-    log(`${what}: ${err?.message || err} (skipped)`, 'warn');
+    log(i18n.t('data:log.skipped', { what, error: String(err?.message || err) }), 'warn');
     return fallback;
   }
 }
 
 export async function migrateFromSupabase(rawSrc: SupabaseSource, options: MigrationOptions, log: Logger): Promise<ImportSummary> {
   const src = { url: normalizeSupabaseUrl(rawSrc.url), anonKey: rawSrc.anonKey.trim() };
-  if (!src.anonKey) throw new Error('Paste the Supabase anon key');
+  if (!src.anonKey) throw new Error(i18n.t('data:errors.noKey'));
   const summary: ImportSummary = { users: 0, tools: 0, history: 0, programs: 0, parts: 0 };
 
-  log('Connecting to Supabase...');
+  log(i18n.t('data:log.connecting'));
   const stateKeys = await sbGet<{ key: string }[]>(src, 'cnc_app_state?select=key&limit=10000');
-  log(`Connected. Found ${stateKeys.length} saved app-state entries.`, 'ok');
+  log(i18n.t('data:log.connected', { count: stateKeys.length }), 'ok');
   const keySet = new Set(stateKeys.map(k => k.key));
   const stateValue = async (key: string): Promise<any> => {
     if (!keySet.has(key)) return null;
@@ -180,9 +181,9 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
   // 1. Accounts
   let idMap: Record<string, string> = {};
   if (options.users) {
-    log('Reading user accounts...');
+    log(i18n.t('data:log.readingUsers'));
     const dbUsers = await sbOptional(() => sbAll<any>(src, 'app_users', '*', 'username.asc'), [], log, 'app_users');
-    const localUsers = (await sbOptional(() => stateValue('cnc-mock-users'), null, log, 'local user list')) as any[] | null;
+    const localUsers = (await sbOptional(() => stateValue('cnc-mock-users'), null, log, i18n.t('data:sources.localUsers'))) as any[] | null;
     const byName = new Map<string, any>();
     for (const u of dbUsers) if (u?.username) byName.set(String(u.username).toLowerCase(), u);
     for (const u of Array.isArray(localUsers) ? localUsers : []) {
@@ -195,7 +196,7 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
       role: u.role,
       created_at: u.created_at,
     }));
-    log(`Found ${users.length} account(s).`);
+    log(i18n.t('data:log.foundAccounts', { count: users.length }));
     const res = await importUsers(users, log);
     idMap = res.idMap;
     summary.users = res.created;
@@ -203,32 +204,32 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
 
   // 2. Tool inventory
   if (options.tools) {
-    log('Reading tool inventory...');
-    const toolbox = await sbOptional(() => stateValue('cnc-toolbox-v5'), null, log, 'tool inventory');
+    log(i18n.t('data:log.readingTools'));
+    const toolbox = await sbOptional(() => stateValue('cnc-toolbox-v5'), null, log, i18n.t('data:sources.tools'));
     if (toolbox && typeof toolbox === 'object') {
       summary.tools = await importToolbox(toolbox as MachineToolbox, 'replace');
-      log(`Tool inventory imported: ${summary.tools} tools on ${Object.keys(toolbox).length} machines.`, 'ok');
+      log(i18n.t('data:log.toolsImported', { tools: summary.tools, machines: Object.keys(toolbox).length }), 'ok');
     } else {
-      log('No saved tool inventory found in Supabase - keeping the default inventory.', 'warn');
+      log(i18n.t('data:log.noTools'), 'warn');
     }
   }
 
   // 3. History
   let history: HistoryRecord[] = [];
   if (options.history || options.programs) {
-    log('Reading program history...');
-    const h = await sbOptional(() => stateValue('cnc-history-v1'), null, log, 'history');
+    log(i18n.t('data:log.readingHistory'));
+    const h = await sbOptional(() => stateValue('cnc-history-v1'), null, log, i18n.t('data:sources.history'));
     history = Array.isArray(h) ? h : [];
   }
   if (options.history) {
-    log(`Found ${history.length} history record(s).`);
+    log(i18n.t('data:log.foundHistory', { count: history.length }));
     summary.history = await importHistory(history, log);
-    log(`History imported: ${summary.history} new record(s).`, 'ok');
+    log(i18n.t('data:log.historyImported', { count: summary.history }), 'ok');
   }
 
   // 4. Generated program files
   if (options.programs) {
-    log('Copying generated G-code files (this can take a minute)...');
+    log(i18n.t('data:log.copyingPrograms'));
     let done = 0;
     let missing = 0;
     const handle = async (recordId: string, value: unknown) => {
@@ -238,7 +239,7 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
         if (await attachProgram(recordId, text)) done++;
         else missing++;
       } catch (err: any) {
-        log(`Program ${recordId}: ${err?.message || err}`, 'warn');
+        log(i18n.t('data:log.programError', { id: recordId, error: String(err?.message || err) }), 'warn');
       }
     };
     const files = await sbOptional(
@@ -252,26 +253,26 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
     );
     for (const group of chunk(files, 20)) {
       const filter = `id=in.(${group.map(id => `"${id.replace(/"/g, '')}"`).join(',')})`;
-      const rows = await sbOptional(() => sbGet<{ id: string; value: any }[]>(src, `cnc_code_files?select=id,value&${filter}`), [], log, 'program files');
+      const rows = await sbOptional(() => sbGet<{ id: string; value: any }[]>(src, `cnc_code_files?select=id,value&${filter}`), [], log, i18n.t('data:sources.programFiles'));
       await mapLimit(rows, 3, r => handle(r.id.replace(/^code-/, ''), r.value));
-      log(`Programs: ${done} copied so far...`, 'info');
+      log(i18n.t('data:log.programsProgress', { done }), 'info');
     }
     // Very old versions stored programs inside cnc_app_state as "code-<id>"
     const legacy = [...keySet].filter(k => k.startsWith('code-'));
     await mapLimit(legacy, 3, async key => handle(key.slice(5), await stateValue(key)));
     summary.programs = done;
-    log(`Program files copied: ${done}${missing ? ` (${missing} had no matching history record)` : ''}.`, 'ok');
+    log(missing ? i18n.t('data:log.programsCopiedMissing', { done, missing }) : i18n.t('data:log.programsCopied', { done }), 'ok');
   }
 
   // 5. Part entries
   if (options.parts) {
-    log('Reading part entries...');
+    log(i18n.t('data:log.readingParts'));
     const entries = await sbOptional(() => sbAll<any>(src, 'part_entries', '*', 'created_at.asc'), [], log, 'part_entries');
-    log(`Found ${entries.length} part entr${entries.length === 1 ? 'y' : 'ies'}.`);
+    log(i18n.t('data:log.foundParts', { count: entries.length }));
     summary.parts = await importParts(entries, idMap, log);
   }
 
-  log('Migration finished.', 'ok');
+  log(i18n.t('data:log.migrationFinished'), 'ok');
   return summary;
 }
 
@@ -280,13 +281,13 @@ export async function migrateFromSupabase(rawSrc: SupabaseSource, options: Migra
 export const BACKUP_FORMAT = 'cnc-process-pro-backup';
 
 export async function buildFullBackup(includePrograms: boolean, log: Logger) {
-  log('Downloading tool inventory...');
+  log(i18n.t('data:log.downloadingTools'));
   const { toolbox } = await api<{ toolbox: MachineToolbox }>('/tools');
-  log('Downloading accounts...');
+  log(i18n.t('data:log.downloadingAccounts'));
   const { users } = await api<{ users: any[] }>('/users');
-  log('Downloading history...');
-  const history = await fetchAllHistory(n => log(`History: ${n} records...`));
-  log('Downloading part entries...');
+  log(i18n.t('data:log.downloadingHistory'));
+  const history = await fetchAllHistory(n => log(i18n.t('data:log.historyCount', { count: n })));
+  log(i18n.t('data:log.downloadingParts'));
   const partEntries: any[] = [];
   for (let offset = 0; ; offset += 500) {
     const res = await api<{ entries: any[]; hasMore: boolean }>(`/parts/admin-export?offset=${offset}`);
@@ -305,11 +306,11 @@ export async function buildFullBackup(includePrograms: boolean, log: Logger) {
       } catch {
         /* missing file - skip */
       }
-      if (++n % 25 === 0) log(`Programs: ${n}/${withCode.length}...`);
+      if (++n % 25 === 0) log(i18n.t('data:log.programsCount', { done: n, total: withCode.length }));
     });
   }
 
-  log('Backup ready.', 'ok');
+  log(i18n.t('data:log.backupReady'), 'ok');
   return {
     format: BACKUP_FORMAT,
     version: 1,
@@ -330,28 +331,28 @@ export async function buildFullBackup(includePrograms: boolean, log: Logger) {
  * History and part entries are merged (nothing is duplicated or deleted).
  */
 export async function restoreBackup(data: any, opts: { replaceTools: boolean }, log: Logger): Promise<ImportSummary> {
-  if (!data || typeof data !== 'object') throw new Error('This file is not a CNC Process Pro backup');
+  if (!data || typeof data !== 'object') throw new Error(i18n.t('data:errors.notBackup'));
   const summary: ImportSummary = { users: 0, tools: 0, history: 0, programs: 0, parts: 0 };
   const isNew = data.format === BACKUP_FORMAT;
   const history: any[] = Array.isArray(data.history) ? data.history : [];
   if (!history.length && !data.toolbox && !Array.isArray(data.partEntries)) {
-    throw new Error('No history, tools or part entries found in this file');
+    throw new Error(i18n.t('data:errors.emptyBackup'));
   }
 
   if (data.toolbox && typeof data.toolbox === 'object') {
     if (opts.replaceTools) {
       summary.tools = await importToolbox(data.toolbox, 'replace');
-      log(`Tool inventory replaced: ${summary.tools} tools.`, 'ok');
+      log(i18n.t('data:log.toolsReplaced', { count: summary.tools }), 'ok');
     } else {
-      log('Tool inventory in the file was skipped (tick "Replace tool inventory" to restore it).', 'info');
+      log(i18n.t('data:log.toolsSkipped'), 'info');
     }
   }
 
   if (history.length) {
-    log(`Importing ${history.length} history record(s)...`);
+    log(i18n.t('data:log.importingHistory', { count: history.length }));
     summary.history = await importHistory(history, log, isNew ? data.programs : undefined);
     if (isNew && data.programs) summary.programs = Object.keys(data.programs).length;
-    log(`History: ${summary.history} new record(s) added, ${history.length - summary.history} already present.`, 'ok');
+    log(i18n.t('data:log.historyRestored', { added: summary.history, present: history.length - summary.history }), 'ok');
   }
 
   if (isNew && Array.isArray(data.partEntries) && data.partEntries.length) {
@@ -370,6 +371,6 @@ export async function restoreBackup(data: any, opts: { replaceTools: boolean }, 
     await api('/admin/import/settings', { method: 'POST', body: { savedSecondsPerExtraction: data.settings.savedSecondsPerExtraction } });
   }
 
-  log('Restore finished.', 'ok');
+  log(i18n.t('data:log.restoreFinished'), 'ok');
   return summary;
 }

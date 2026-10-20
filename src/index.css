@@ -5,6 +5,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Country series colours for charts (validated: CVD and contrast checks pass on both surfaces). */
+  --series-ma:      #3987e5;
+  --series-tr:      #d95926;
   --bg-page:        #05070c;   /* page background, near-black navy */
   --bg-page-2:      #0a0e16;   /* secondary page tone for gradient */
   --bg-panel:       #0f141e;   /* header / floating panel surface */
@@ -67,6 +70,8 @@
    --------------------------------------------------------------------------- */
 html.light {
   color-scheme: light;
+  --series-ma:      #2a78d6;
+  --series-tr:      #eb6834;
   --bg-page:        #eef1f6;
   --bg-page-2:      #e4e9f1;
   --bg-panel:       #ffffff;

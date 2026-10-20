@@ -12,6 +12,8 @@ import {
   validateQuantity
 } from '../lib/partsApi';
 import { exportUserPartEntriesExcel } from '../lib/partExportExcel';
+import { useT } from '../i18n';
+import { fmtDateTime, fmtNumber, locale } from '../i18n/format';
 import {
   PackagePlus,
   Calendar,
@@ -25,7 +27,13 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
+/** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
+function fmtValue(n: number, useGrouping = true): string {
+  return n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping });
+}
+
 export default function PartWithoutScan() {
+  const { t } = useT('parts');
   const { user } = useAuth();
   const { versions } = useSync();
   const userId = user?.id || '';
@@ -80,7 +88,7 @@ export default function PartWithoutScan() {
           setMonthEntries({});
           setExpandedMonth(null);
         } else {
-          setSummaryError(res.error || 'Failed to load monthly summary');
+          setSummaryError(res.error || t('archive.loadFailed'));
         }
         setIsLoadingSummary(false);
       }
@@ -100,7 +108,7 @@ export default function PartWithoutScan() {
     if (res.success) {
       setSummaryRows(res.rows!);
     } else {
-      setSummaryError(res.error || 'Failed to refresh monthly summary');
+      setSummaryError(res.error || t('archive.refreshFailed'));
     }
     setIsLoadingSummary(false);
   };
@@ -114,13 +122,13 @@ export default function PartWithoutScan() {
 
     const sapVal = validateSapNumber(sapNumber);
     if (!sapVal.isValid) {
-      setSubmitError(sapVal.error || 'Invalid SAP number');
+      setSubmitError(sapVal.error || t('form.invalidSap'));
       return;
     }
 
     const qtyVal = validateQuantity(qty);
     if (!qtyVal.isValid) {
-      setSubmitError(qtyVal.error || 'Invalid quantity');
+      setSubmitError(qtyVal.error || t('form.invalidQty'));
       return;
     }
 
@@ -135,13 +143,13 @@ export default function PartWithoutScan() {
 
     if (res.success) {
       // Neutral message only - never disclose approval/rejection state
-      setSubmitMessage('Entry submitted');
+      setSubmitMessage(t('form.submitted'));
       setSapNumber('');
       setQty(1);
       setKind('PRODUCED');
       setTimeout(() => setSubmitMessage(null), 4000);
     } else {
-      setSubmitError(res.error || 'Submission failed. Please try again.');
+      setSubmitError(res.error || t('form.submitFailed'));
     }
   };
 
@@ -207,7 +215,7 @@ export default function PartWithoutScan() {
       });
     } catch (err: any) {
       console.error('Export error:', err);
-      alert('Failed to generate Excel file: ' + (err?.message || 'Unknown error'));
+      alert(t('scan.exportFailed', { message: err?.message || t('errors.unknown') }));
     } finally {
       setIsExporting(false);
     }
@@ -223,10 +231,10 @@ export default function PartWithoutScan() {
           </div>
           <div>
             <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-              Part without scan
+              {t('scan.title')}
             </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Submit manual production logs and track your approved monthly quantities
+              {t('scan.subtitle')}
             </p>
           </div>
         </div>
@@ -237,21 +245,21 @@ export default function PartWithoutScan() {
             onClick={handleExportExcel}
             disabled={isExporting || summaryRows.length === 0}
             className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2"
-            title="Download personal approved records as Excel (.xlsx)"
+            title={t('scan.exportTitle')}
           >
             {isExporting ? (
               <RefreshCw size={14} className="animate-spin text-[var(--accent-primary)]" />
             ) : (
               <FileSpreadsheet size={15} className="text-[var(--green-500)]" />
             )}
-            <span>{isExporting ? 'Generating Excel...' : 'Export Excel'}</span>
+            <span>{isExporting ? t('scan.exportingExcel') : t('scan.exportExcel')}</span>
           </button>
 
           <button
             onClick={handleRefreshSummary}
             disabled={isLoadingSummary}
             className="btn-icon"
-            title="Refresh summary data"
+            title={t('scan.refreshTitle')}
           >
             <RefreshCw size={15} className={isLoadingSummary ? 'animate-spin' : ''} />
           </button>
@@ -266,10 +274,10 @@ export default function PartWithoutScan() {
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-5">
               <span className="section-label flex items-center gap-2">
                 <Layers size={14} className="text-[var(--accent-primary)]" />
-                New Production Entry
+                {t('form.title')}
               </span>
               <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-                Month: {currentMonthKey}
+                {t('form.month', { month: currentMonthKey })}
               </span>
             </div>
 
@@ -277,21 +285,21 @@ export default function PartWithoutScan() {
               {/* SAP Number */}
               <div>
                 <label htmlFor={sapInputId} className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                  SAP Number <span className="text-[var(--rose-500)]">*</span>
+                  {t('form.sapNumber')} <span className="text-[var(--rose-500)]">*</span>
                 </label>
                 <input
                   id={sapInputId}
                   type="text"
                   value={sapNumber}
                   onChange={e => setSapNumber(e.target.value.toUpperCase())}
-                  placeholder="e.g. 10245-A, P98302_REV2"
+                  placeholder={t('form.sapPlaceholder')}
                   maxLength={40}
                   disabled={isSubmitting}
                   className="aurora-input w-full font-mono text-xs sm:text-sm tracking-wide uppercase"
                   autoComplete="off"
                 />
                 <span className="text-[10px] text-[var(--text-tertiary)] mt-1 block">
-                  Letters, numbers, hyphens, underscores and dots (max 40 chars)
+                  {t('form.sapHint')}
                 </span>
               </div>
 
@@ -299,7 +307,7 @@ export default function PartWithoutScan() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor={qtyInputId} className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                    Quantity <span className="text-[var(--rose-500)]">*</span>
+                    {t('form.quantity')} <span className="text-[var(--rose-500)]">*</span>
                   </label>
                   <input
                     id={qtyInputId}
@@ -317,13 +325,13 @@ export default function PartWithoutScan() {
                     placeholder="1"
                   />
                   <span className="text-[10px] text-[var(--text-tertiary)] mt-1 block">
-                    Must be between 1 and 9999
+                    {t('form.quantityHint')}
                   </span>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
-                    Production Kind
+                    {t('form.kind')}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -336,8 +344,8 @@ export default function PartWithoutScan() {
                           : 'bg-[var(--bg-input)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <div>Produced part</div>
-                      <div className="text-[10px] opacity-75 font-mono">Value: 1.0</div>
+                      <div>{t('form.producedPart')}</div>
+                      <div className="text-[10px] opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(1) })}</div>
                     </button>
 
                     <button
@@ -350,8 +358,8 @@ export default function PartWithoutScan() {
                           : 'bg-[var(--bg-input)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <div>Modification</div>
-                      <div className="text-[10px] opacity-75 font-mono">Value: 0.5</div>
+                      <div>{t('form.modification')}</div>
+                      <div className="text-[10px] opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(0.5) })}</div>
                     </button>
                   </div>
                 </div>
@@ -359,9 +367,9 @@ export default function PartWithoutScan() {
 
               {/* Live Preview Strip */}
               <div className="bg-[var(--bg-input)] p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] flex items-center justify-between">
-                <span className="text-xs text-[var(--text-secondary)]">Calculated Value:</span>
+                <span className="text-xs text-[var(--text-secondary)]">{t('form.calculatedValue')}</span>
                 <span className="font-mono text-sm font-bold text-[var(--green-500)]">
-                  {numQty} × {unitVal} = <span className="text-base text-[var(--text-primary)]">{previewValue.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                  {numQty} × {fmtNumber(unitVal)} = <span className="text-base text-[var(--text-primary)]">{fmtValue(previewValue)}</span>
                 </span>
               </div>
 
@@ -389,12 +397,12 @@ export default function PartWithoutScan() {
                 {isSubmitting ? (
                   <>
                     <RefreshCw size={15} className="animate-spin" />
-                    <span>Submitting Entry...</span>
+                    <span>{t('form.submitting')}</span>
                   </>
                 ) : (
                   <>
                     <PackagePlus size={16} />
-                    <span>Submit Part Entry</span>
+                    <span>{t('form.submit')}</span>
                   </>
                 )}
               </button>
@@ -408,7 +416,7 @@ export default function PartWithoutScan() {
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
               <span className="section-label flex items-center gap-2">
                 <Calendar size={14} className="text-[var(--green-500)]" />
-                This Month's Counter
+                {t('counter.title')}
               </span>
               <span className="badge-neutral text-[10px] font-mono">
                 {currentMonthKey}
@@ -418,24 +426,24 @@ export default function PartWithoutScan() {
             <div className="space-y-4 my-4">
               <div>
                 <span className="text-xs text-[var(--text-secondary)] block">
-                  Total Approved Value
+                  {t('counter.totalValue')}
                 </span>
                 <div className="stat-metric-number text-[var(--green-500)] mt-1">
-                  {currentMonthValue.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  {fmtValue(currentMonthValue)}
                 </div>
               </div>
 
               <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
-                <span className="text-[var(--text-tertiary)]">Parts Produced:</span>
+                <span className="text-[var(--text-tertiary)]">{t('counter.partsProduced')}</span>
                 <span className="font-mono font-bold text-[var(--text-primary)]">
-                  {currentMonthQty.toLocaleString()}
+                  {fmtNumber(currentMonthQty)}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed mt-4">
-            Counter automatically resets to 0 at the start of each calendar month. Previous months remain archived below.
+            {t('counter.resetNote')}
           </div>
         </div>
       </div>
@@ -446,11 +454,11 @@ export default function PartWithoutScan() {
           <div className="flex items-center gap-2">
             <Calendar size={16} className="text-[var(--accent-primary)]" />
             <h3 className="font-bold text-sm text-[var(--text-primary)]">
-              Monthly Production Archive
+              {t('archive.title')}
             </h3>
           </div>
           <span className="text-xs text-[var(--text-tertiary)]">
-            {summaryRows.length} {summaryRows.length === 1 ? 'month' : 'months'} tracked
+            {t('archive.monthsTracked', { count: summaryRows.length })}
           </span>
         </div>
 
@@ -463,7 +471,7 @@ export default function PartWithoutScan() {
 
         {summaryRows.length === 0 && !isLoadingSummary && (
           <div className="text-center py-10 text-[var(--text-tertiary)] text-xs bg-[var(--bg-input)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)]">
-            No approved entries found for your account yet. Submitted parts will appear here once verified.
+            {t('archive.empty')}
           </div>
         )}
 
@@ -491,17 +499,17 @@ export default function PartWithoutScan() {
                     </span>
                     {row.month_key === currentMonthKey && (
                       <span className="badge-positive text-[10px] py-0.5 px-2">
-                        Current Month
+                        {t('archive.currentMonth')}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-4 text-xs shrink-0">
                     <span className="text-[var(--text-secondary)] hidden sm:inline">
-                      Parts: <strong className="text-[var(--text-primary)] font-mono">{row.total_qty.toLocaleString()}</strong>
+                      {t('archive.parts')} <strong className="text-[var(--text-primary)] font-mono">{fmtNumber(row.total_qty)}</strong>
                     </span>
                     <span className="text-[var(--text-secondary)]">
-                      Value: <strong className="text-[var(--green-500)] font-mono">{Number(row.total_value).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
+                      {t('archive.value')} <strong className="text-[var(--green-500)] font-mono">{fmtValue(Number(row.total_value))}</strong>
                     </span>
                     {isExpanded ? (
                       <ChevronUp size={16} className="text-[var(--text-tertiary)]" />
@@ -517,7 +525,7 @@ export default function PartWithoutScan() {
                     {monthData?.loading && monthData.entries.length === 0 ? (
                       <div className="py-6 flex items-center justify-center gap-2 text-xs text-[var(--text-tertiary)]">
                         <RefreshCw size={14} className="animate-spin" />
-                        <span>Loading month records...</span>
+                        <span>{t('archive.loading')}</span>
                       </div>
                     ) : monthData?.entries && monthData.entries.length > 0 ? (
                       <>
@@ -525,12 +533,12 @@ export default function PartWithoutScan() {
                           <table className="w-full text-left text-xs">
                             <thead>
                               <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
-                                <th className="pb-2 font-semibold">Date &amp; Time</th>
-                                <th className="pb-2 font-semibold">SAP Number</th>
-                                <th className="pb-2 font-semibold">Type</th>
-                                <th className="pb-2 font-semibold text-right">Quantity</th>
-                                <th className="pb-2 font-semibold text-right">Unit Value</th>
-                                <th className="pb-2 font-semibold text-right">Line Value</th>
+                                <th className="pb-2 font-semibold">{t('archive.columns.dateTime')}</th>
+                                <th className="pb-2 font-semibold">{t('archive.columns.sapNumber')}</th>
+                                <th className="pb-2 font-semibold">{t('archive.columns.type')}</th>
+                                <th className="pb-2 font-semibold text-right">{t('archive.columns.quantity')}</th>
+                                <th className="pb-2 font-semibold text-right">{t('archive.columns.unitValue')}</th>
+                                <th className="pb-2 font-semibold text-right">{t('archive.columns.lineValue')}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
@@ -539,24 +547,24 @@ export default function PartWithoutScan() {
                                 return (
                                   <tr key={entry.id} className="hover:bg-[rgba(var(--ov),0.02)]">
                                     <td className="py-2.5 text-[var(--text-secondary)]">
-                                      {new Date(entry.created_at).toLocaleString()}
+                                      {fmtDateTime(entry.created_at)}
                                     </td>
                                     <td className="py-2.5 font-bold text-[var(--text-primary)]">
                                       {entry.sap_number}
                                     </td>
                                     <td className="py-2.5 font-sans">
                                       <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-[10px]' : 'badge-warning text-[10px]'}>
-                                        {entry.kind === 'PRODUCED' ? 'Produced' : 'Modification'}
+                                        {entry.kind === 'PRODUCED' ? t('kind.PRODUCED') : t('kind.MODIFICATION')}
                                       </span>
                                     </td>
                                     <td className="py-2.5 text-right text-[var(--text-primary)] font-semibold">
                                       {entry.qty}
                                     </td>
                                     <td className="py-2.5 text-right text-[var(--text-tertiary)]">
-                                      {entry.unit_value}
+                                      {fmtNumber(Number(entry.unit_value))}
                                     </td>
                                     <td className="py-2.5 text-right text-[var(--green-500)] font-bold">
-                                      {lineVal.toFixed(1)}
+                                      {fmtValue(lineVal, false)}
                                     </td>
                                   </tr>
                                 );
@@ -574,14 +582,14 @@ export default function PartWithoutScan() {
                               className="btn-secondary text-xs py-1.5 px-4 flex items-center gap-2"
                             >
                               {monthData.loading && <RefreshCw size={12} className="animate-spin" />}
-                              <span>Load more entries</span>
+                              <span>{t('archive.loadMore')}</span>
                             </button>
                           </div>
                         )}
                       </>
                     ) : (
                       <div className="py-4 text-center text-xs text-[var(--text-tertiary)]">
-                        No approved entries found for this month.
+                        {t('archive.emptyMonth')}
                       </div>
                     )}
                   </div>

@@ -4,6 +4,8 @@ import { formatTimeWon, DEFAULT_SAVED_SECONDS_PER_EXTRACTION } from '../lib/extr
 import { useSync } from '../contexts/SyncContext';
 import { Clock, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Trans } from 'react-i18next';
+import { useT } from '../i18n';
 
 interface TimeWonClockProps {
   onClick?: () => void;
@@ -11,6 +13,7 @@ interface TimeWonClockProps {
 }
 
 export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = false }) => {
+  const { t } = useT('history');
   const { analytics: liveAnalytics } = useSync();
   const analytics = liveAnalytics ?? {
     totalExtractions: 0,
@@ -65,7 +68,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
         <button
           ref={buttonRef}
           onClick={onClick}
-          title="Click to view full extraction analytics"
+          title={t('clock.openTitle')}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--green-500)]/30 bg-[rgba(22,163,74,0.12)] hover:bg-[rgba(22,163,74,0.18)] transition-colors cursor-pointer shadow-xs shrink-0 select-none"
         >
           {/* Mini Analog Clock Icon */}
@@ -97,14 +100,14 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
           </div>
 
           <div className="flex items-baseline gap-1 text-xs whitespace-nowrap">
-            <span className="text-[var(--text-tertiary)] font-medium hidden sm:inline uppercase text-[10px] tracking-wider">Won:</span>
+            <span className="text-[var(--text-tertiary)] font-medium hidden sm:inline uppercase text-[10px] tracking-wider">{t('clock.won')}</span>
             <span className="font-mono font-bold text-[var(--green-500)] tabular-nums">
               {timeWon.formatted}
             </span>
           </div>
 
           <span className="badge-neutral text-[10px] py-0 px-1.5 text-[var(--text-secondary)] whitespace-nowrap">
-            {analytics.totalExtractions} {analytics.totalExtractions === 1 ? 'code' : 'codes'}
+            {t('clock.codes', { count: analytics.totalExtractions })}
           </span>
         </button>
 
@@ -156,22 +159,22 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
               >
                 <div className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-1 text-xs">
                   <Clock size={14} className="text-[var(--green-500)]" />
-                  <span>Time Won Calculator</span>
+                  <span>{t('clock.calculatorTitle')}</span>
                 </div>
                 <p className="text-[var(--text-secondary)] mb-3 text-xs leading-relaxed">
-                  Manual code editing takes <strong className="text-[var(--text-primary)]">~5-6 min</strong>. With CNC Process Pro, it takes only <strong className="text-[var(--text-primary)]">~30s–1 min</strong>.
+                  <Trans t={t} i18nKey="clock.calculatorText" components={{ b: <strong className="text-[var(--text-primary)]" /> }} />
                 </p>
                 <div className="p-2.5 bg-[var(--bg-input)] rounded-[var(--radius-md)] space-y-1.5 font-mono text-[11px] border border-[var(--border-subtle)]">
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-tertiary)]">Total Extractions:</span>
+                    <span className="text-[var(--text-tertiary)]">{t('clock.totalExtractions')}</span>
                     <span className="font-bold text-[var(--text-primary)] tabular-nums">{analytics.totalExtractions}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-tertiary)]">Avg Saved / Code:</span>
+                    <span className="text-[var(--text-tertiary)]">{t('clock.avgSaved')}</span>
                     <span className="font-bold text-[var(--green-500)] tabular-nums">~{perCode}</span>
                   </div>
                   <div className="flex justify-between border-t border-[var(--border-subtle)] pt-1">
-                    <span className="text-[var(--text-tertiary)]">Total Time Saved:</span>
+                    <span className="text-[var(--text-tertiary)]">{t('clock.totalSaved')}</span>
                     <span className="font-bold text-[var(--green-500)] tabular-nums">{timeWon.formatted}</span>
                   </div>
                 </div>
@@ -239,10 +242,10 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
             <div className="flex items-center gap-2">
               <span className="section-label flex items-center gap-1.5 text-[var(--green-500)]">
                 <Sparkles size={13} className="text-[var(--green-500)]" />
-                Time Won Using CNC Process Pro
+                {t('clock.widgetTitle')}
               </span>
               <span className="badge-positive text-[10px] py-0 px-2">
-                ~86% Faster
+                {t('clock.faster')}
               </span>
             </div>
             
@@ -251,7 +254,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
             </div>
 
             <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-              Every extraction saves <strong className="text-[var(--text-primary)]">~{perCode}</strong> compared to the typical 5–6 min manual process.
+              <Trans t={t} i18nKey="clock.widgetText" values={{ perCode }} components={{ b: <strong className="text-[var(--text-primary)]" /> }} />
             </p>
           </div>
         </div>
@@ -259,16 +262,16 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
         {/* Quick Stats Column */}
         <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 border-t sm:border-t-0 sm:border-l border-[var(--border-subtle)] pt-4 sm:pt-0 sm:pl-6">
           <div className="text-left sm:text-right">
-            <span className="section-label block">Codes Extracted</span>
+            <span className="section-label block">{t('clock.codesExtracted')}</span>
             <span className="text-2xl font-black text-[var(--text-primary)] tabular-nums">
               {analytics.totalExtractions}
             </span>
           </div>
 
           <div className="text-right">
-            <span className="section-label block">Contributing Users</span>
+            <span className="section-label block">{t('clock.contributingUsers')}</span>
             <span className="text-sm font-bold text-[var(--text-secondary)]">
-              {analytics.contributingUsers} {analytics.contributingUsers === 1 ? 'user' : 'users'}
+              {t('clock.users', { count: analytics.contributingUsers })}
             </span>
           </div>
         </div>

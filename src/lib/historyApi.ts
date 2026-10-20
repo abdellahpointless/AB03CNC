@@ -1,4 +1,5 @@
 import { get, set } from 'idb-keyval';
+import { scopedKey } from './instance';
 import { api, ApiError } from './api';
 import { compressCode, decompressCode, type StoredCode } from './codeStorage';
 import type { HistoryRecord } from '../types';
@@ -9,7 +10,8 @@ import type { HistoryRecord } from '../types';
  * the history record is uploaded automatically once the connection is back.
  */
 
-const OUTBOX_KEY = 'cnc-export-outbox-v1';
+// Per country: an offline upload must always go to the country it was made in.
+const OUTBOX_KEY = scopedKey('cnc-export-outbox-v1');
 export const OUTBOX_EVENT = 'cnc-outbox-changed';
 
 interface OutboxItem {

@@ -8,23 +8,35 @@ import { api } from '../lib/api';
 import { fetchAllHistory, fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadJson, downloadText, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
-import { csvCell } from '../lib/csv';
+import { csvCell, csvDialect } from '../lib/csv';
+import { machineName } from '../lib/machines';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, iosBackdrop, iosSurface } from '../lib/motion';
+import i18n, { useT } from '../i18n';
+import { fmtDateTime } from '../i18n/format';
 
 const PAGE_SIZE = 10;
 
+/** Display name of a tool category id (the id itself stays the data value). */
+function categoryLabel(id: string): string {
+  const key = `common:category.${id}`;
+  return id && i18n.exists(key) ? i18n.t(key as 'common:category.foret') : id;
+}
 
-export function historyToCsv(records: HistoryRecord[]): string {
+export function historyToCsv(records: HistoryRecord[], machineLabel: (id: string) => string = (id) => id): string {
+  const t = i18n.t.bind(i18n);
   const headers = [
-    'Date', 'Operator', 'Machine', 'Original File', 'Exported File', 'Original Tool', 'Original Context',
-    'Requested Diameter', 'Requested Length', 'Selection Type', 'Chosen Category',
-    'Chosen T-Number', 'Chosen Diameter', 'Chosen Length'
+    t('history:csv.date'), t('history:csv.operator'), t('history:csv.machine'), t('history:csv.originalFile'),
+    t('history:csv.exportedFile'), t('history:csv.originalTool'), t('history:csv.originalContext'),
+    t('history:csv.requestedDiameter'), t('history:csv.requestedLength'), t('history:csv.selectionType'),
+    t('history:csv.chosenCategory'), t('history:csv.chosenTNumber'), t('history:csv.chosenDiameter'),
+    t('history:csv.chosenLength'),
   ];
-  const rows = [headers.join(',')];
+  const { sep, num } = csvDialect(i18n.language);
+  const rows = [headers.join(sep)];
   for (const record of records) {
-    const base = [record.date, record.user || 'Unknown', record.machine || '-', record.originalFileName, record.exportedFileName];
+    const base = [record.date, record.user || t('history:shared.unknownUser'), (record.machine && machineLabel(record.machine)) || '-', record.originalFileName, record.exportedFileName];
     if (!record.changes.length) {
-      rows.push([...base, '-', '-', '-', '-', '-', '-', '-', '-', '-'].map(csvCell).join(','));
+      rows.push([...base, '-', '-', '-', '-', '-', '-', '-', '-', '-'].map(csvCell).join(sep));
       continue;
     }
     for (const change of record.changes) {
@@ -32,21 +44,23 @@ export function historyToCsv(records: HistoryRecord[]): string {
         ...base,
         change.originalT,
         change.originalContext || '',
-        change.reqDiameter ?? '',
-        change.reqLength ?? '',
-        change.appChose ? 'Auto' : 'Manual',
-        change.chosenCategory,
+        num(change.reqDiameter ?? ''),
+        num(change.reqLength ?? ''),
+        change.appChose ? t('history:csv.auto') : t('history:csv.manual'),
+        categoryLabel(change.chosenCategory),
         `T${change.chosenT}`,
-        change.chosenDiameter,
-        change.chosenLength,
-      ].map(csvCell).join(','));
+        num(change.chosenDiameter),
+        num(change.chosenLength),
+      ].map(csvCell).join(sep));
     }
   }
   return rows.join('\n');
 }
 
 export default function HistoryView() {
-  const { versions } = useSync();
+  const { t } = useT('history');
+  const { versions, machines } = useSync();
+  const machineLabel = (id: string) => machineName(machines, id);
   const [selectedUser, setSelectedUser] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
@@ -68,8 +82,8 @@ export default function HistoryView() {
   const lastCountsFetch = useRef(0);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(timer);
   }, [searchTerm]);
 
   // Load the visible page (and refresh it when another PC exports a program)
@@ -91,7 +105,7 @@ export default function HistoryView() {
         if (currentPage > pages) setCurrentPage(pages);
       })
       .catch(err => {
-        if (!cancelled) setLoadError(err?.message || 'Could not load history');
+        if (!cancelled) setLoadError(err?.message || t('view.errors.loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -161,7 +175,7 @@ export default function HistoryView() {
       const { lines: safeLines } = applyG53BeforeG52(code.split('\n'));
       setInspectCode(safeLines.join('\n'));
     } catch (err: any) {
-      setInspectCode('; ' + (err?.message || 'The G-code file for this record could not be retrieved.'));
+      setInspectCode('; ' + (err?.message || t('view.errors.codeNotRetrieved')));
     } finally {
       setIsLoadingCode(false);
     }
@@ -174,7 +188,7 @@ export default function HistoryView() {
       const { lines: safeLines } = applyG53BeforeG52(code.split('\n'));
       downloadText(record.exportedFileName, safeLines.join('\n'));
     } catch (e: any) {
-      alert(e?.message || 'Sorry, the code file for this record is not available.');
+      alert(e?.message || t('shared.codeUnavailable'));
     } finally {
       setDownloadingId(null);
     }
@@ -187,7 +201,7 @@ export default function HistoryView() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      alert('Copy failed: the browser blocked clipboard access.');
+      alert(t('view.errors.copyFailed'));
     }
   };
 
@@ -197,22 +211,22 @@ export default function HistoryView() {
       const all = await fetchAllHistory();
       if (!all.length) return;
       // newest first, like the screen
-      downloadText(`tool_history_report_${todayStamp()}.csv`, '﻿' + historyToCsv([...all].reverse()), 'text/csv;charset=utf-8');
+      downloadText(`tool_history_report_${todayStamp()}.csv`, '﻿' + historyToCsv([...all].reverse(), machineLabel), 'text/csv;charset=utf-8');
     } catch (err: any) {
-      alert('CSV export failed: ' + (err?.message || err));
+      alert(t('view.errors.csvFailed', { message: err?.message || String(err) }));
     } finally {
       setBusyAction(null);
     }
   };
 
   const archiveOlderThan30Days = async () => {
-    if (!confirm('Download a backup of history records older than 30 days and then delete them from the server?')) return;
+    if (!confirm(t('view.confirm.archive'))) return;
     setBusyAction('archive');
     try {
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
       const old = (await fetchAllHistory()).filter(r => (r.timestamp ?? 0) < cutoff);
       if (!old.length) {
-        alert('There are no records older than 30 days.');
+        alert(t('view.alerts.nothingToArchive'));
         return;
       }
       downloadJson(`CNC_History_Archive_${todayStamp()}.json`, {
@@ -222,9 +236,9 @@ export default function HistoryView() {
         history: [...old].reverse(),
       });
       const res = await api<{ deleted: number }>('/history/prune', { method: 'POST', body: { olderThanDays: 30 } });
-      alert(`Archive downloaded. ${res.deleted} record(s) older than 30 days were removed from the server.`);
+      alert(t('view.alerts.archiveDone', { count: res.deleted }));
     } catch (err: any) {
-      alert('Archive failed: ' + (err?.message || err));
+      alert(t('view.errors.archiveFailed', { message: err?.message || String(err) }));
     } finally {
       setBusyAction(null);
     }
@@ -240,11 +254,11 @@ export default function HistoryView() {
               <Clock size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              Program History &amp; Operator Activity
+              {t('view.title')}
             </h2>
           </div>
           <p className="text-xs text-[var(--text-secondary)] mt-1.5 pl-1">
-            Global traceability of all processed G-code files, machine assignments, and tool modifications.
+            {t('view.subtitle')}
           </p>
         </div>
         
@@ -256,20 +270,20 @@ export default function HistoryView() {
                 onClick={exportToCSV}
                 disabled={busyAction !== null}
                 className="btn-success text-xs py-2 px-3.5 whitespace-nowrap"
-                title="Export complete traceability report to Excel CSV"
+                title={t('view.exportCsvTitle')}
               >
                 {busyAction === 'csv' ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-                <span>Export CSV</span>
+                <span>{t('view.exportCsv')}</span>
               </button>
 
               <button
                 onClick={archiveOlderThan30Days}
                 disabled={busyAction !== null}
                 className="btn-secondary text-xs py-2 px-3 whitespace-nowrap text-[var(--orange-500)] border-[var(--orange-500)]/40 hover:bg-[var(--orange-500)]/10"
-                title="Download backup archive and prune records older than 30 days"
+                title={t('view.archiveTitle')}
               >
                 {busyAction === 'archive' ? <RefreshCw size={14} className="animate-spin" /> : <Archive size={14} />}
-                <span>Archive (&gt;30d)</span>
+                <span>{t('view.archive')}</span>
               </button>
             </>
           )}
@@ -293,20 +307,20 @@ export default function HistoryView() {
                 type="text"
                 value={searchTerm}
                 onChange={e => handleSearchChange(e.target.value)}
-                placeholder="Search by file, machine, operator, or tool (e.g. HAAS, T3, program.nc)..."
+                placeholder={t('view.searchPlaceholder')}
                 className="aurora-input w-full pl-9 py-1.5 text-xs"
               />
             </div>
 
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <Filter size={13} className="text-[var(--text-tertiary)]" />
-              <span className="text-[11px] text-[var(--text-secondary)] font-medium">Operator:</span>
+              <span className="text-[11px] text-[var(--text-secondary)] font-medium">{t('view.operatorFilter')}</span>
               <select
                 value={selectedUser}
                 onChange={e => handleUserChange(e.target.value)}
                 className="aurora-input text-xs py-1 px-2.5 cursor-pointer max-w-[170px]"
               >
-                <option value="ALL" className="bg-[var(--bg-panel)]">All ({grandTotal})</option>
+                <option value="ALL" className="bg-[var(--bg-panel)]">{t('view.allOption', { total: grandTotal })}</option>
                 {allUsers.map(u => (
                   <option key={u} value={u} className="bg-[var(--bg-panel)]">
                     {u} ({userCounts.find(c => c.username === u)?.count ?? 0})
@@ -318,16 +332,16 @@ export default function HistoryView() {
                 <button
                   onClick={handleExpandAll}
                   className="btn-secondary text-[10px] py-1 px-2"
-                  title="Expand page cards"
+                  title={t('view.expandTitle')}
                 >
-                  Expand
+                  {t('view.expand')}
                 </button>
                 <button
                   onClick={handleCollapseAll}
                   className="btn-secondary text-[10px] py-1 px-2"
-                  title="Collapse all cards"
+                  title={t('view.collapseTitle')}
                 >
-                  Collapse
+                  {t('view.collapse')}
                 </button>
               </div>
             </div>
@@ -338,11 +352,11 @@ export default function HistoryView() {
             <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[11px]">
               <div className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
-                <span>Records:</span>
+                <span>{t('view.records')}</span>
                 <span className="font-mono font-bold text-[var(--text-primary)]">
                   {startIndex + 1}–{endIndex}
                 </span>
-                <span className="text-[var(--text-tertiary)]">of</span>
+                <span className="text-[var(--text-tertiary)]">{t('view.of')}</span>
                 <span className="font-mono font-bold text-[var(--accent-primary)]">
                   {totalRecords}
                 </span>
@@ -359,7 +373,7 @@ export default function HistoryView() {
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={safeCurrentPage === 1}
                     className="btn-icon w-6 h-6 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                    title="Previous page"
+                    title={t('view.previousPage')}
                   >
                     <ChevronLeft size={13} />
                   </button>
@@ -376,7 +390,7 @@ export default function HistoryView() {
                               ? 'bg-[var(--accent-primary)] text-white font-bold shadow-xs'
                               : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'
                           }`}
-                          title={`Page ${page} (records ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalRecords)})`}
+                          title={t('view.pageButtonTitle', { page, start: (page - 1) * PAGE_SIZE + 1, end: Math.min(page * PAGE_SIZE, totalRecords) })}
                         >
                           {page}
                         </button>
@@ -388,7 +402,7 @@ export default function HistoryView() {
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={safeCurrentPage === totalPages}
                     className="btn-icon w-6 h-6 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                    title="Next page"
+                    title={t('view.nextPage')}
                   >
                     <ChevronRight size={13} />
                   </button>
@@ -403,19 +417,19 @@ export default function HistoryView() {
       {isLoading && paginatedRecords.length === 0 ? (
         <div className="glass-panel py-20 flex flex-col items-center justify-center text-[var(--text-tertiary)] gap-2">
           <RefreshCw size={22} className="animate-spin text-[var(--accent-primary)]" />
-          <p className="text-xs">Loading history...</p>
+          <p className="text-xs">{t('view.loading')}</p>
         </div>
       ) : grandTotal === 0 && selectedUser === 'ALL' && !debouncedSearch ? (
         <div className="glass-panel py-20 flex flex-col items-center justify-center text-[var(--text-tertiary)]">
           <FileText size={48} className="mb-3 opacity-30" />
-          <p className="text-base font-semibold text-[var(--text-primary)]">No history records yet</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">Exported files from any operator workstation will appear here in real-time.</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">{t('view.emptyTitle')}</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">{t('view.emptyText')}</p>
         </div>
       ) : filteredCount === 0 ? (
         <div className="glass-panel py-16 flex flex-col items-center justify-center text-[var(--text-tertiary)]">
           <Search size={36} className="mb-3 opacity-30" />
-          <p className="text-base font-semibold text-[var(--text-primary)]">No records match your filters</p>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">Try clearing your search query or selecting &quot;All Operators&quot;.</p>
+          <p className="text-base font-semibold text-[var(--text-primary)]">{t('view.noMatchTitle')}</p>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">{t('view.noMatchText')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
@@ -432,7 +446,7 @@ export default function HistoryView() {
                 <div 
                   onClick={() => toggleExpand(record.id)}
                   className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.5)] hover:bg-[rgba(var(--ov),0.03)] cursor-pointer transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 select-none"
-                  title={isExpanded ? 'Click to collapse record' : 'Click to expand record details'}
+                  title={isExpanded ? t('view.clickToCollapse') : t('view.clickToExpand')}
                 >
                   <div className="flex items-start gap-3 min-w-0">
                     <div className="p-2 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.12)] border border-[rgba(59,111,212,0.25)] text-[var(--accent-primary)] shrink-0 mt-0.5">
@@ -445,7 +459,7 @@ export default function HistoryView() {
                         </span>
                       </div>
                       <div className="text-[11px] text-[var(--text-tertiary)] font-mono mt-0.5 truncate">
-                        Exported: <span className="font-semibold text-[var(--text-secondary)]">{record.exportedFileName}</span>
+                        {t('view.exported')} <span className="font-semibold text-[var(--text-secondary)]">{record.exportedFileName}</span>
                       </div>
                     </div>
                   </div>
@@ -453,14 +467,14 @@ export default function HistoryView() {
                   <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
                     {record.machine && (
                       <span className="badge-neutral font-mono text-[10px] py-0.5 px-2 flex items-center gap-1">
-                        <Cpu size={11} className="text-[var(--accent-primary)]" /> {record.machine}
+                        <Cpu size={11} className="text-[var(--accent-primary)]" /> {machineLabel(record.machine)}
                       </span>
                     )}
                     <span className="badge-neutral text-[10px] py-0.5 px-2 flex items-center gap-1">
-                      <User size={11} className="text-[var(--orange-500)]" /> {record.user || 'Unknown'}
+                      <User size={11} className="text-[var(--orange-500)]" /> {record.user || t('shared.unknownUser')}
                     </span>
                     <span className="badge-neutral text-[10px] py-0.5 px-2 font-mono">
-                      {record.changes.length} {record.changes.length === 1 ? 'tool' : 'tools'}
+                      {t('view.toolCount', { count: record.changes.length })}
                     </span>
                     <div className="w-6 h-6 rounded-full bg-[rgba(var(--ov),0.06)] flex items-center justify-center text-[var(--text-secondary)] ml-1">
                       <ChevronDown 
@@ -475,7 +489,7 @@ export default function HistoryView() {
                 <div className="px-4 py-2 bg-[rgba(var(--ov),0.02)] border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-tertiary)]">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="flex items-center gap-1 text-[11px]">
-                      <Clock size={12} /> {record.date}
+                      <Clock size={12} /> {record.timestamp ? fmtDateTime(record.timestamp) : record.date}
                     </span>
 
                     {/* Compact Preview Chips when collapsed */}
@@ -497,17 +511,17 @@ export default function HistoryView() {
                     <button
                       onClick={() => handleInspect(record)}
                       className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1"
-                      title="Inspect remapped G-Code directly in browser"
+                      title={t('view.viewCodeTitle')}
                     >
-                      <Eye size={12} className="text-[var(--blue-500)]" /> View Code
+                      <Eye size={12} className="text-[var(--blue-500)]" /> {t('view.viewCode')}
                     </button>
                     <button
                       onClick={() => handleDownloadCode(record)}
                       disabled={downloadingId === record.id}
                       className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1 disabled:opacity-50"
-                      title="Download remapped G-Code file"
+                      title={t('view.downloadTitle')}
                     >
-                      <Download size={12} className="text-[var(--green-500)]" /> Download
+                      <Download size={12} className="text-[var(--green-500)]" /> {t('common:actions.download')}
                     </button>
                   </div>
                 </div>
@@ -525,8 +539,8 @@ export default function HistoryView() {
                     >
                       <div className="p-4 space-y-3 bg-[rgba(var(--surface-deep),0.4)]">
                         <div className="flex items-center justify-between">
-                          <span className="section-label">Tool Modifications</span>
-                          <span className="text-[11px] text-[var(--text-tertiary)]">{record.changes.length} tool(s) mapped</span>
+                          <span className="section-label">{t('view.toolModifications')}</span>
+                          <span className="text-[11px] text-[var(--text-tertiary)]">{t('view.toolsMapped', { count: record.changes.length })}</span>
                         </div>
 
                         {record.changes.map((change, i) => (
@@ -539,28 +553,28 @@ export default function HistoryView() {
                               </div>
                               <div className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-full)] bg-[rgba(var(--ov),0.04)] border border-[var(--border-subtle)] flex items-center gap-1.5 text-[var(--text-secondary)]">
                                 {change.appChose ? (
-                                  <><Bot size={11} className="text-[var(--blue-500)]"/> Auto Selection</>
+                                  <><Bot size={11} className="text-[var(--blue-500)]"/> {t('view.autoSelection')}</>
                                 ) : (
-                                  <><User size={11} className="text-[var(--orange-500)]"/> Manual Override</>
+                                  <><User size={11} className="text-[var(--orange-500)]"/> {t('view.manualOverride')}</>
                                 )}
                               </div>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] bg-[rgba(0,0,0,0.3)] p-2.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
                               <div>
-                                <div className="section-label text-[9px] mb-0.5">Original Request</div>
+                                <div className="section-label text-[9px] mb-0.5">{t('view.originalRequest')}</div>
                                 <div className="text-[var(--text-secondary)] font-mono">
                                   {change.reqDiameter ? `D${change.reqDiameter} ` : ''} 
                                   {change.reqLength ? `L${change.reqLength}` : ''}
                                 </div>
                                 <div className="text-[var(--text-tertiary)] truncate mt-1 text-[10px] border-t border-[var(--border-subtle)] pt-1" title={change.originalContext}>
-                                  {change.originalContext || 'Unknown context'}
+                                  {change.originalContext || t('view.unknownContext')}
                                 </div>
                               </div>
                               <div>
-                                <div className="section-label text-[9px] mb-0.5">Chosen Tool</div>
+                                <div className="section-label text-[9px] mb-0.5">{t('view.chosenTool')}</div>
                                 <div className="text-[var(--text-primary)] font-semibold flex items-center gap-1.5 flex-wrap">
-                                  <span className="capitalize">{change.chosenCategory}</span>
+                                  <span className="capitalize">{categoryLabel(change.chosenCategory)}</span>
                                   <span className="badge-neutral text-[9px] py-0 px-1 font-mono">D{change.chosenDiameter}</span>
                                   <span className="badge-neutral text-[9px] py-0 px-1 font-mono">L{change.chosenLength}</span>
                                 </div>
@@ -570,7 +584,7 @@ export default function HistoryView() {
                         ))}
                         
                         {record.changes.length === 0 && (
-                          <div className="text-xs text-[var(--text-tertiary)] italic px-1">No tools were modified.</div>
+                          <div className="text-xs text-[var(--text-tertiary)] italic px-1">{t('view.noToolsModified')}</div>
                         )}
                       </div>
                     </motion.div>
@@ -586,7 +600,7 @@ export default function HistoryView() {
       {filteredCount > 0 && totalPages > 1 && (
         <div className="glass-panel px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs mt-2">
           <div className="text-[var(--text-secondary)] font-medium">
-            Page <span className="font-bold text-[var(--text-primary)] font-mono">{safeCurrentPage}</span> of <span className="font-bold text-[var(--accent-primary)] font-mono">{totalPages}</span> ({totalRecords} records total)
+            {t('view.page')} <span className="font-bold text-[var(--text-primary)] font-mono">{safeCurrentPage}</span> {t('view.of')} <span className="font-bold text-[var(--accent-primary)] font-mono">{totalPages}</span> {t('view.recordsTotal', { total: totalRecords })}
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -594,10 +608,10 @@ export default function HistoryView() {
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={safeCurrentPage === 1}
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              title="Previous 10 records"
+              title={t('view.prev10Title')}
             >
               <ChevronLeft size={13} />
-              <span>Prev 10</span>
+              <span>{t('view.prev10')}</span>
             </button>
 
             <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] sm:max-w-none py-0.5">
@@ -614,7 +628,7 @@ export default function HistoryView() {
                         ? 'btn-primary font-bold shadow-xs'
                         : 'badge-neutral hover:bg-[rgba(var(--ov),0.08)] text-[var(--text-secondary)]'
                     }`}
-                    title={`Show records ${startNum} to ${endNum}`}
+                    title={t('view.showRecords', { start: startNum, end: endNum })}
                   >
                     {startNum}–{endNum}
                   </button>
@@ -626,9 +640,9 @@ export default function HistoryView() {
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={safeCurrentPage === totalPages}
               className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              title="Next 10 records"
+              title={t('view.next10Title')}
             >
-              <span>Next 10</span>
+              <span>{t('view.next10')}</span>
               <ChevronRight size={13} />
             </button>
           </div>
@@ -666,15 +680,15 @@ export default function HistoryView() {
                       {inspectingRecord.exportedFileName}
                     </h3>
                     <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 mt-0.5">
-                      <span>Operator: <strong className="text-[var(--text-primary)]">{inspectingRecord.user || 'Unknown'}</strong></span>
+                      <span>{t('view.modalOperator')} <strong className="text-[var(--text-primary)]">{inspectingRecord.user || t('shared.unknownUser')}</strong></span>
                       {inspectingRecord.machine && (
                         <>
                           <span>•</span>
-                          <span>Machine: <strong className="text-[var(--blue-500)]">{inspectingRecord.machine}</strong></span>
+                          <span>{t('view.modalMachine')} <strong className="text-[var(--blue-500)]">{machineLabel(inspectingRecord.machine)}</strong></span>
                         </>
                       )}
                       <span>•</span>
-                      <span>{inspectingRecord.date}</span>
+                      <span>{inspectingRecord.timestamp ? fmtDateTime(inspectingRecord.timestamp) : inspectingRecord.date}</span>
                     </div>
                   </div>
                 </div>
@@ -686,14 +700,14 @@ export default function HistoryView() {
                     className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {copied ? <Check size={13} className="text-[var(--green-500)]" /> : <Copy size={13} />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                    <span>{copied ? t('view.copied') : t('view.copy')}</span>
                   </button>
                   <button
                     onClick={() => handleDownloadCode(inspectingRecord)}
                     className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
                   >
                     <Download size={13} />
-                    <span>Download</span>
+                    <span>{t('common:actions.download')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -702,7 +716,7 @@ export default function HistoryView() {
                       setIsLoadingCode(false);
                     }}
                     className="btn-icon w-7 h-7 text-xs ml-1"
-                    title="Close"
+                    title={t('common:actions.close')}
                   >
                     <X size={16} />
                   </button>
@@ -714,7 +728,7 @@ export default function HistoryView() {
                 {isLoadingCode ? (
                   <div className="flex flex-col items-center justify-center h-48 text-[var(--text-tertiary)] gap-2">
                     <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
-                    <span>Loading program code from storage...</span>
+                    <span>{t('view.loadingCode')}</span>
                   </div>
                 ) : (
                   <pre className="whitespace-pre leading-relaxed select-all">

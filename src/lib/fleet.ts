@@ -1,27 +1,39 @@
 import { api } from './api';
+import i18n from '../i18n';
+import type { MachineBrand, MachineInfo } from '../regions';
+import { brandAccent } from './machines';
 
 export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
 
 export interface FleetMachine {
   id: string;
-  brand: 'HAAS' | 'FANUC' | 'DMG MORI';
+  /** Name shown to people (machines created in the app can have any name). */
+  name: string;
+  brand: MachineBrand;
   model: string;
   image: string;
   /** Brand colour used for the glow when the card is selected. */
   accent: string;
 }
 
-/** The machines shown in Preventive actions, in floor order. */
-export const FLEET: FleetMachine[] = [
-  { id: 'HAAS-1', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-2', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-3', brand: 'HAAS', model: 'VF-2', image: '/machines/haas-vf2.webp', accent: '#d32f2f' },
-  { id: 'HAAS-4', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'HAAS-5', brand: 'HAAS', model: 'VF-3', image: '/machines/haas-vf3.webp', accent: '#d32f2f' },
-  { id: 'FANUC-1', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
-  { id: 'FANUC-2', brand: 'FANUC', model: 'Robodrill', image: '/machines/fanuc-robodrill.webp', accent: '#f5c400' },
-  { id: 'DMG-1', brand: 'DMG MORI', model: 'CMX 600 V', image: '/machines/dmg-cmx600v.webp', accent: '#9aa4b6' },
-];
+/** The current country's machines, in floor order, ready for Preventive actions. */
+export function toFleet(machines: MachineInfo[]): FleetMachine[] {
+  return [...machines]
+    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name))
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      brand: m.brand,
+      model: m.model,
+      image: m.image || '/machines/generic.svg',
+      accent: brandAccent(m.brand),
+    }));
+}
+
+/** "HAAS VF-3" (no brand word for machines of another brand). */
+export function machineSubtitle(m: Pick<FleetMachine, 'brand' | 'model'>): string {
+  return [m.brand === 'OTHER' ? '' : m.brand, m.model].filter(Boolean).join(' ');
+}
 
 export interface MachineCheck {
   id: string;
@@ -44,17 +56,29 @@ export interface MachineEvent {
   machine_id: string;
   check_id: string | null;
   check_title: string | null;
-  action: 'DONE' | 'PROBLEM' | 'RESOLVE' | 'CHECK_ADDED' | 'CHECK_EDITED' | 'CHECK_REMOVED' | 'OWNERS_SET';
+  action: 'DONE' | 'PROBLEM' | 'RESOLVE' | 'CHECK_ADDED' | 'CHECK_EDITED' | 'CHECK_REMOVED' | 'OWNERS_SET' | 'MACHINE_ADDED' | 'MACHINE_REMOVED';
   note: string | null;
   username: string;
   at: number;
 }
 
+/**
+ * "Every day" / "Her gün". Each label is read when it is used, so it follows the page's language;
+ * `FREQUENCY_LABEL[f]` and `Object.entries(FREQUENCY_LABEL)` work as before (same key order).
+ */
 export const FREQUENCY_LABEL: Record<Frequency, string> = {
-  DAILY: 'Every day',
-  WEEKLY: 'Every week',
-  MONTHLY: 'Every month',
-  QUARTERLY: 'Every 3 months',
+  get DAILY() {
+    return i18n.t('common:frequency.DAILY');
+  },
+  get WEEKLY() {
+    return i18n.t('common:frequency.WEEKLY');
+  },
+  get MONTHLY() {
+    return i18n.t('common:frequency.MONTHLY');
+  },
+  get QUARTERLY() {
+    return i18n.t('common:frequency.QUARTERLY');
+  },
 };
 
 const DAY = 86_400_000;
@@ -120,14 +144,5 @@ export const updateCheck = (machine: string, id: string, patch: { title?: string
 export const deleteCheck = (machine: string, id: string) =>
   api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
-export function timeAgo(ts: number | null, now = Date.now()): string {
-  if (!ts) return 'never';
-  const s = Math.max(0, Math.round((now - ts) / 1000));
-  if (s < 60) return 'just now';
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} h ago`;
-  const d = Math.round(h / 24);
-  return d === 1 ? 'yesterday' : `${d} days ago`;
-}
+/** "3 min ago" / "3 dk önce": the localised version in src/i18n/format.ts. */
+export { timeAgo } from '../i18n/format';

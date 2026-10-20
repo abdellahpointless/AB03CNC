@@ -1,5 +1,29 @@
 import { MonthlySummaryRow } from '../types';
 import { downloadBlob } from './download';
+import i18n from '../i18n';
+import { fmtDateTime } from '../i18n/format';
+import type enParts from '../i18n/locales/en/parts';
+
+/*
+ * Sheet names, column headers and text cells follow the page's language (called at export time).
+ * Numeric cells stay numbers; file names stay in English.
+ */
+
+type ColumnKey = keyof (typeof enParts)['excel']['columns'];
+
+function col(key: ColumnKey): string {
+  return i18n.t(`parts:excel.columns.${key}`);
+}
+
+/** Entry kind as written in the Excel files. */
+function kindLabel(kind: string): string {
+  return kind === 'PRODUCED' ? i18n.t('parts:kind.producedPart') : i18n.t('parts:kind.MODIFICATION');
+}
+
+/** Review status as written in the admin Excel file (an unknown value is kept as it is). */
+function statusLabel(status: string): string {
+  return status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED' ? i18n.t(`parts:status.${status}`) : status;
+}
 
 /**
  * Lazy Excel generator for User's Part Without Scan export.
@@ -22,11 +46,11 @@ export async function exportUserPartEntriesExcel(params: {
   workbook.created = new Date();
 
   // Sheet 1: Summary (Month, Total Parts, Total Value)
-  const summarySheet = workbook.addWorksheet('Summary');
+  const summarySheet = workbook.addWorksheet(i18n.t('parts:excel.sheetSummary'));
   summarySheet.columns = [
-    { header: 'Month', key: 'month', width: 16 },
-    { header: 'Total Parts', key: 'total_qty', width: 16 },
-    { header: 'Total Value', key: 'total_value', width: 16 }
+    { header: col('month'), key: 'month', width: 16 },
+    { header: col('totalParts'), key: 'total_qty', width: 16 },
+    { header: col('totalValue'), key: 'total_value', width: 16 }
   ];
 
   params.summaryRows.forEach(row => {
@@ -38,19 +62,19 @@ export async function exportUserPartEntriesExcel(params: {
   });
 
   // Sheet 2: Entries (Date, SAP Number, Quantity, Type, Unit Value, Line Value)
-  const entriesSheet = workbook.addWorksheet('Entries');
+  const entriesSheet = workbook.addWorksheet(i18n.t('parts:excel.sheetEntries'));
   entriesSheet.columns = [
-    { header: 'Date', key: 'date', width: 22 },
-    { header: 'SAP Number', key: 'sap_number', width: 20 },
-    { header: 'Quantity', key: 'qty', width: 14 },
-    { header: 'Type', key: 'kind', width: 18 },
-    { header: 'Unit Value', key: 'unit_value', width: 14 },
-    { header: 'Line Value', key: 'line_value', width: 14 }
+    { header: col('date'), key: 'date', width: 22 },
+    { header: col('sapNumber'), key: 'sap_number', width: 20 },
+    { header: col('quantity'), key: 'qty', width: 14 },
+    { header: col('type'), key: 'kind', width: 18 },
+    { header: col('unitValue'), key: 'unit_value', width: 14 },
+    { header: col('lineValue'), key: 'line_value', width: 14 }
   ];
 
   params.entries.forEach(e => {
-    const dateFormatted = e.created_at ? new Date(e.created_at).toLocaleString() : '';
-    const typeLabel = e.kind === 'PRODUCED' ? 'Produced part' : 'Modification';
+    const dateFormatted = e.created_at ? fmtDateTime(e.created_at) : '';
+    const typeLabel = kindLabel(e.kind);
     const lineVal = Number(e.qty || 0) * Number(e.unit_value || 0);
 
     entriesSheet.addRow({
@@ -102,16 +126,16 @@ export async function exportAdminPartEntriesExcel(params: {
 }): Promise<void> {
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'CNC Process Pro Admin';
+  workbook.creator = i18n.t('parts:excel.creatorAdmin');
   workbook.created = new Date();
 
   // Sheet 1: Summary (Month, Operator, Total Parts, Total Value)
-  const summarySheet = workbook.addWorksheet('Summary');
+  const summarySheet = workbook.addWorksheet(i18n.t('parts:excel.sheetSummary'));
   summarySheet.columns = [
-    { header: 'Month', key: 'month', width: 16 },
-    { header: 'Operator', key: 'username', width: 20 },
-    { header: 'Total Parts', key: 'total_qty', width: 16 },
-    { header: 'Total Value', key: 'total_value', width: 16 }
+    { header: col('month'), key: 'month', width: 16 },
+    { header: col('operator'), key: 'username', width: 20 },
+    { header: col('totalParts'), key: 'total_qty', width: 16 },
+    { header: col('totalValue'), key: 'total_value', width: 16 }
   ];
 
   params.summaryRows.forEach(row => {
@@ -124,24 +148,24 @@ export async function exportAdminPartEntriesExcel(params: {
   });
 
   // Sheet 2: Entries (Date, Operator, SAP Number, Quantity, Type, Unit Value, Line Value, Status, Reviewed Date, Reviewed By)
-  const entriesSheet = workbook.addWorksheet('Entries');
+  const entriesSheet = workbook.addWorksheet(i18n.t('parts:excel.sheetEntries'));
   entriesSheet.columns = [
-    { header: 'Date', key: 'date', width: 22 },
-    { header: 'Operator', key: 'username', width: 18 },
-    { header: 'SAP Number', key: 'sap_number', width: 20 },
-    { header: 'Quantity', key: 'qty', width: 14 },
-    { header: 'Type', key: 'kind', width: 18 },
-    { header: 'Unit Value', key: 'unit_value', width: 14 },
-    { header: 'Line Value', key: 'line_value', width: 14 },
-    { header: 'Status', key: 'status', width: 16 },
-    { header: 'Reviewed Date', key: 'reviewed_at', width: 22 },
-    { header: 'Reviewed By', key: 'reviewed_by', width: 18 }
+    { header: col('date'), key: 'date', width: 22 },
+    { header: col('operator'), key: 'username', width: 18 },
+    { header: col('sapNumber'), key: 'sap_number', width: 20 },
+    { header: col('quantity'), key: 'qty', width: 14 },
+    { header: col('type'), key: 'kind', width: 18 },
+    { header: col('unitValue'), key: 'unit_value', width: 14 },
+    { header: col('lineValue'), key: 'line_value', width: 14 },
+    { header: col('status'), key: 'status', width: 16 },
+    { header: col('reviewedDate'), key: 'reviewed_at', width: 22 },
+    { header: col('reviewedBy'), key: 'reviewed_by', width: 18 }
   ];
 
   params.entries.forEach(e => {
-    const dateFormatted = e.created_at ? new Date(e.created_at).toLocaleString() : '';
-    const reviewedDateFormatted = e.reviewed_at ? new Date(e.reviewed_at).toLocaleString() : '-';
-    const typeLabel = e.kind === 'PRODUCED' ? 'Produced part' : 'Modification';
+    const dateFormatted = e.created_at ? fmtDateTime(e.created_at) : '';
+    const reviewedDateFormatted = e.reviewed_at ? fmtDateTime(e.reviewed_at) : '-';
+    const typeLabel = kindLabel(e.kind);
     const lineVal = Number(e.qty || 0) * Number(e.unit_value || 0);
 
     entriesSheet.addRow({
@@ -152,7 +176,7 @@ export async function exportAdminPartEntriesExcel(params: {
       kind: typeLabel,
       unit_value: e.unit_value,
       line_value: lineVal,
-      status: e.status,
+      status: statusLabel(e.status),
       reviewed_at: reviewedDateFormatted,
       reviewed_by: e.reviewed_by || '-'
     });

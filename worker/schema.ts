@@ -1,4 +1,5 @@
 import { DEFAULT_CHECKS, FLEET_IDS } from './fleet';
+import type { RegionId } from '../src/regions';
 
 /**
  * Database schema, applied automatically by the Worker on its first request
@@ -195,20 +196,105 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    // Machines become data: each country (database) has its own list, editable by its admins.
+    version: 4,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS machines (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        brand TEXT NOT NULL CHECK (brand IN ('HAAS', 'FANUC', 'DMG MORI', 'OTHER')),
+        model TEXT NOT NULL DEFAULT '',
+        image TEXT,
+        pockets INTEGER,
+        has_tools INTEGER NOT NULL DEFAULT 1,
+        active INTEGER NOT NULL DEFAULT 1,
+        sort INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
 
-let schemaReady: Promise<void> | null = null;
+/** One migration promise per database (each country, and the hub, has its own database). */
+const schemaReady = new Map<string, Promise<void>>();
 
-export function ensureSchema(db: D1Database): Promise<void> {
-  if (!schemaReady) {
-    schemaReady = migrate(db).catch((err) => {
-      schemaReady = null; // retry on the next request
-      throw err;
-    });
+/**
+ * Brings a database up to date, once per Worker instance. `instance` is the country id or
+ * 'master'; it also decides the one-time seed (Morocco gets its original machines).
+ */
+export function ensureSchema(db: D1Database, instance: RegionId | 'master' = 'ma'): Promise<void> {
+  let p = schemaReady.get(instance);
+  if (!p) {
+    p = migrate(db)
+      .then(() => seedInstance(db, instance))
+      .catch((err) => {
+        schemaReady.delete(instance); // retry on the next request
+        throw err;
+      });
+    schemaReady.set(instance, p);
   }
-  return schemaReady;
+  return p;
+}
+
+/** The machines of the original (Moroccan) installation, in floor order. */
+const MOROCCO_MACHINES: [id: string, brand: string, model: string, image: string, pockets: number | null, hasTools: number][] = [
+  ['HAAS-1', 'HAAS', 'VF-3', '/machines/haas-vf3.webp', 41, 1],
+  ['HAAS-2', 'HAAS', 'VF-3', '/machines/haas-vf3.webp', null, 1],
+  ['HAAS-3', 'HAAS', 'VF-2', '/machines/haas-vf2.webp', null, 0],
+  ['HAAS-4', 'HAAS', 'VF-3', '/machines/haas-vf3.webp', null, 1],
+  ['HAAS-5', 'HAAS', 'VF-3', '/machines/haas-vf3.webp', null, 1],
+  ['FANUC-1', 'FANUC', 'Robodrill', '/machines/fanuc-robodrill.webp', null, 1],
+  ['FANUC-2', 'FANUC', 'Robodrill', '/machines/fanuc-robodrill.webp', null, 1],
+  ['DMG-1', 'DMG MORI', 'CMX 600 V', '/machines/dmg-cmx600v.webp', null, 1],
+];
+
+/**
+ * Runs once per database. Records which instance the database belongs to and refuses to run
+ * if it belongs to another one (a misconfigured binding would otherwise mix two countries).
+ */
+async function seedInstance(db: D1Database, instance: RegionId | 'master'): Promise<void> {
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'instance'").first<{ value: string }>();
+  if (row) {
+    if (row.value !== instance) {
+      throw new Error(`Database belongs to "${row.value}" but is bound as "${instance}". Check the D1 bindings in wrangler.jsonc.`);
+    }
+    return;
+  }
+  // A database that is new to this instance must not already hold accounts (e.g. a copy of
+  // another country restored into it by mistake): its users would gain this instance's rights.
+  if (instance !== 'ma') {
+    const users = await db.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>();
+    if ((users?.n ?? 0) > 0) throw new Error(`Database bound as "${instance}" already has accounts but was never set up for it. Check the D1 bindings.`);
+  }
+  const now = Date.now();
+  const stmts: D1PreparedStatement[] = [];
+  if (instance === 'ma') {
+    MOROCCO_MACHINES.forEach(([id, brand, model, image, pockets, hasTools], i) =>
+      stmts.push(
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO machines (id, name, brand, model, image, pockets, has_tools, active, sort, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+          )
+          .bind(id, id, brand, model, image, pockets, hasTools, (i + 1) * 10, now),
+      ),
+    );
+  } else {
+    // A new country starts with no machines: drop the checklist rows that migration 2 seeded for
+    // the Moroccan machines (they would never be visible here).
+    stmts.push(db.prepare(`DELETE FROM machine_checks WHERE id LIKE '%-default-%' AND created_at = 0`));
+  }
+  stmts.push(
+    db.prepare("INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('instance', ?, ?)").bind(instance, now),
+    db.prepare("UPDATE counters SET value = value + 1 WHERE name IN ('v_machines', 'v_tools')"),
+  );
+  await db.batch(stmts);
+  // Two isolates may seed at the same time: whoever wrote first wins, the other only checks.
+  const after = await db.prepare("SELECT value FROM settings WHERE key = 'instance'").first<{ value: string }>();
+  if (after?.value !== instance) throw new Error(`Database belongs to "${after?.value}" but is bound as "${instance}".`);
 }
 
 async function migrate(db: D1Database): Promise<void> {

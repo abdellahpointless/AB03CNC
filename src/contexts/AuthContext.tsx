@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { INSTANCE, MASTER_PATH, scopedKey } from '../lib/instance';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from '../lib/api';
+import i18n from '../i18n';
 
 export type Role = 'ADMIN' | 'MACHINIST';
 
@@ -16,6 +18,11 @@ interface AuthContextType {
   status: Status;
   /** True when the database has no accounts yet (first deploy). */
   needsSetup: boolean;
+  /**
+   * This country (or the master hub) has no accounts and cannot be set up from the login page:
+   * its first account is created by the master admin (or, for the master, by a Moroccan admin).
+   */
+  notConfigured: boolean;
   /** The password used to sign in does not meet the current rules; shown as a reminder banner. */
   weakPassword: boolean;
   dismissWeakPassword: () => void;
@@ -36,7 +43,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // The last signed-in user is remembered per device so the app still opens
 // (read-only data from cache) when the network is briefly down.
-const USER_CACHE_KEY = 'cnc-session-user';
+const USER_CACHE_KEY = scopedKey('cnc-session-user');
 
 function readCachedUser(): User | null {
   try {
@@ -61,9 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [status, setStatus] = useState<Status>('loading');
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
   const [weakPassword, setWeakPassword] = useState(false);
   const [mfaEnabled, setMfaEnabled] = useState(false);
-  const [challenge, setChallenge] = useState<{ token: string; weak: boolean } | null>(null);
+  // `master`: the password belonged to the master admin, so the code is checked by the master hub.
+  const [challenge, setChallenge] = useState<{ token: string; weak: boolean; master: boolean } | null>(null);
 
   const setUser = useCallback((u: User | null) => {
     setUserState(u);
@@ -72,11 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    api<{ user: User | null; needsSetup?: boolean; mfaEnabled?: boolean }>('/auth/me')
+    api<{ user: User | null; needsSetup?: boolean; notConfigured?: boolean; mfaEnabled?: boolean }>('/auth/me')
       .then((res) => {
         if (cancelled) return;
         setUser(res.user);
         setMfaEnabled(!!res.mfaEnabled);
+        setNotConfigured(!res.user && !!res.notConfigured);
         setNeedsSetup(!res.user && !!res.needsSetup);
       })
       .catch((err) => {
@@ -104,13 +114,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      const res = await api<{ user?: User; weakPassword?: boolean; mfaRequired?: boolean; challenge?: string; mfaEnabled?: boolean }>(
+      const res = await api<{ user?: User; weakPassword?: boolean; mfaRequired?: boolean; challenge?: string; mfaEnabled?: boolean; master?: boolean }>(
         '/auth/login',
         { method: 'POST', body: { username: username.trim(), password } },
       );
       setNeedsSetup(false);
       if (res.mfaRequired && res.challenge) {
-        setChallenge({ token: res.challenge, weak: !!res.weakPassword });
+        setChallenge({ token: res.challenge, weak: !!res.weakPassword, master: !!res.master });
+        return { success: true };
+      }
+      // The master admin signed in from a country's page: open the master dashboard.
+      if (res.master && INSTANCE.kind !== 'master') {
+        window.location.assign(MASTER_PATH);
         return { success: true };
       }
       setWeakPassword(!!res.weakPassword);
@@ -118,26 +133,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.user ?? null);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Login failed' };
+      return { success: false, error: err?.message || i18n.t('app:auth.loginFailed') };
     }
   };
 
   const verifyMfa = async (code: string) => {
-    if (!challenge) return { success: false, expired: true, error: 'Sign-in expired. Please enter your password again.' };
+    if (!challenge) return { success: false, expired: true, error: i18n.t('app:auth.signInExpired') };
     try {
       const res = await api<{ user: User; weakPassword?: boolean }>('/auth/mfa/verify', {
         method: 'POST',
         body: { challenge: challenge.token, code: code.trim(), weakPassword: challenge.weak },
+        base: challenge.master ? '/master/api' : undefined,
       });
       setChallenge(null);
+      if (challenge.master && INSTANCE.kind !== 'master') {
+        window.location.assign(MASTER_PATH);
+        return { success: true };
+      }
       setWeakPassword(!!res.weakPassword);
       setMfaEnabled(true);
       setUser(res.user);
       return { success: true };
     } catch (err: any) {
-      const expired = err instanceof ApiError && err.status === 401 && /expired/i.test(err.message);
+      // The server message is translated for Turkish pages ("Giriş süresi doldu...").
+      // The server marks this case with a code, so it works whatever the message language is.
+      const expired = err instanceof ApiError && err.status === 401 && err.data?.code === 'challenge_expired';
       if (expired) setChallenge(null);
-      return { success: false, expired, error: err?.message || 'Wrong code' };
+      return { success: false, expired, error: err?.message || i18n.t('app:auth.wrongCode') };
     }
   };
 
@@ -149,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     } catch (err: any) {
       if (err instanceof ApiError && err.status === 409) setNeedsSetup(false);
-      return { success: false, error: err?.message || 'Setup failed' };
+      return { success: false, error: err?.message || i18n.t('app:auth.setupFailed') };
     }
   };
 
@@ -175,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         status,
         needsSetup,
+        notConfigured,
         weakPassword,
         dismissWeakPassword: () => setWeakPassword(false),
         mfaEnabled,

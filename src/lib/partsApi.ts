@@ -1,4 +1,5 @@
 import { api } from './api';
+import i18n from '../i18n';
 import type { MonthlySummaryRow, PartEntry, PartKind } from '../types';
 
 export function getDeviceLocalMonthKey(): string {
@@ -8,18 +9,18 @@ export function getDeviceLocalMonthKey(): string {
 
 export function validateSapNumber(raw: string): { isValid: boolean; sanitized: string; error?: string } {
   const sanitized = raw.trim().toUpperCase();
-  if (!sanitized) return { isValid: false, sanitized: '', error: 'SAP number cannot be empty.' };
-  if (sanitized.length > 40) return { isValid: false, sanitized, error: 'SAP number must not exceed 40 characters.' };
+  if (!sanitized) return { isValid: false, sanitized: '', error: i18n.t('parts:validation.sapEmpty') };
+  if (sanitized.length > 40) return { isValid: false, sanitized, error: i18n.t('parts:validation.sapTooLong') };
   if (!/^[A-Z0-9\-_.]+$/.test(sanitized)) {
-    return { isValid: false, sanitized, error: 'SAP number can only contain letters, numbers, hyphens (-), underscores (_), and periods (.).' };
+    return { isValid: false, sanitized, error: i18n.t('parts:validation.sapChars') };
   }
   return { isValid: true, sanitized };
 }
 
 export function validateQuantity(raw: number | string): { isValid: boolean; qty: number; error?: string } {
   const val = typeof raw === 'number' ? raw : parseInt(String(raw).trim(), 10);
-  if (isNaN(val) || !Number.isInteger(val)) return { isValid: false, qty: 0, error: 'Quantity must be a valid integer.' };
-  if (val < 1 || val > 9999) return { isValid: false, qty: val, error: 'Quantity must be between 1 and 9999.' };
+  if (isNaN(val) || !Number.isInteger(val)) return { isValid: false, qty: 0, error: i18n.t('parts:validation.qtyNotInteger') };
+  if (val < 1 || val > 9999) return { isValid: false, qty: val, error: i18n.t('parts:validation.qtyRange') };
   return { isValid: true, qty: val };
 }
 
@@ -29,7 +30,7 @@ async function wrap<T>(fn: () => Promise<T>, fallback: T): Promise<Result<T>> {
   try {
     return { success: true, ...(await fn()) } as Result<T>;
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Request failed', ...fallback } as Result<T>;
+    return { success: false, error: err?.message || i18n.t('parts:errors.requestFailed'), ...fallback } as Result<T>;
   }
 }
 

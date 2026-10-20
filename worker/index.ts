@@ -15,6 +15,20 @@ import {
   handleSetup,
 } from './auth';
 import { audit } from './security';
+import { translateMessage } from './i18n';
+import './i18n-tr';
+import { REGIONS, regionById, type RegionId } from '../src/regions';
+import { handleCreateMachine, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
+import {
+  handleCountryAdmins,
+  handleCreateCountryAdmin,
+  handleCreateFirstMaster,
+  handleCreateMaster,
+  handleDeleteMaster,
+  handleListMasters,
+  handleMasterAccountStatus,
+  handleMasterOverview,
+} from './routes/master';
 import { handleAckTool, handleBatchTools, handleDeleteTool, handleGetTools, handlePutTool } from './routes/tools';
 import {
   handleClearHistory,
@@ -59,10 +73,18 @@ import {
 type Access = 'public' | 'optional' | 'user' | 'admin';
 type Handler = (ctx: Ctx) => Promise<Response>;
 
-const routes: { method: string; pattern: URLPattern; access: Access; handler: Handler }[] = [];
+type Route = { method: string; pattern: URLPattern; access: Access; handler: Handler };
+
+/** Routes of a country app (each country runs the same app on its own database). */
+const routes: Route[] = [];
+/** Routes of the master hub. Nothing of the country app is reachable here. */
+const masterRoutes: Route[] = [];
 
 function route(method: string, path: string, access: Access, handler: Handler) {
   routes.push({ method, pattern: new URLPattern({ pathname: `/api${path}` }), access, handler });
+}
+function masterRoute(method: string, path: string, access: Access, handler: Handler) {
+  masterRoutes.push({ method, pattern: new URLPattern({ pathname: `/api${path}` }), access, handler });
 }
 
 // Auth
@@ -132,6 +154,34 @@ route('POST', '/admin/import/code', 'admin', handleImportCode);
 route('POST', '/admin/import/parts', 'admin', handleImportParts);
 route('POST', '/admin/import/settings', 'admin', handleImportSettings);
 
+
+// Machines of this country
+route('GET', '/fleet', 'user', handleListFleet);
+route('POST', '/fleet', 'admin', handleCreateMachine);
+route('PATCH', '/fleet/:machine', 'admin', handleUpdateMachine);
+route('DELETE', '/fleet/:machine', 'admin', handleRemoveMachine);
+
+// First master account (Moroccan admins only, once)
+route('GET', '/admin/master-account', 'admin', handleMasterAccountStatus);
+route('POST', '/admin/master-account', 'admin', handleCreateFirstMaster);
+
+// ---- Master hub (/master/api/...) ----
+masterRoute('GET', '/auth/me', 'optional', handleMe);
+masterRoute('POST', '/auth/login', 'public', handleLogin);
+masterRoute('POST', '/auth/logout', 'public', handleLogout);
+masterRoute('POST', '/auth/password', 'admin', handleChangeOwnPassword);
+masterRoute('POST', '/auth/mfa/verify', 'public', handleMfaVerify);
+masterRoute('POST', '/auth/mfa/setup', 'admin', handleMfaSetup);
+masterRoute('POST', '/auth/mfa/enable', 'admin', handleMfaEnable);
+masterRoute('POST', '/auth/mfa/disable', 'admin', handleMfaDisable);
+masterRoute('GET', '/overview', 'admin', handleMasterOverview);
+masterRoute('GET', '/countries/:region/admins', 'admin', handleCountryAdmins);
+masterRoute('POST', '/countries/:region/admins', 'admin', handleCreateCountryAdmin);
+masterRoute('GET', '/masters', 'admin', handleListMasters);
+masterRoute('POST', '/masters', 'admin', handleCreateMaster);
+masterRoute('DELETE', '/masters/:id', 'admin', handleDeleteMaster);
+masterRoute('GET', '/audit', 'admin', handleAuditLog);
+
 /** Headers added to every API response. The API only returns JSON, so it may do nothing else. */
 const API_SECURITY_HEADERS: Record<string, string> = {
   'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
@@ -161,18 +211,57 @@ function assertSameOrigin(request: Request, url: URL): void {
   if (site && site !== 'same-origin' && site !== 'none') throw new HttpError(403, 'Cross-site request refused');
 }
 
-async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+/**
+ * Which instance a request belongs to, from its path:
+ *   /ma/api/...      Morocco      /tr/api/...  Türkiye      /master/api/...  master hub
+ *   /api/...         Morocco (the address used before there were several countries; kept so
+ *                    shop-floor PCs that still run the previous version keep working)
+ */
+function resolveInstance(pathname: string): { instance: RegionId | 'master'; rest: string } | null {
+  const m = pathname.match(/^\/(ma|tr|master)\/api(\/.*)$/);
+  if (m) return { instance: m[1] as RegionId | 'master', rest: m[2] };
+  const legacy = pathname.match(/^\/api(\/.*)$/);
+  return legacy ? { instance: 'ma', rest: legacy[1] } : null;
+}
+
+/**
+ * The environment a handler sees. `DB` is replaced by the one database of the instance, so a
+ * country's code can never read another country. Master requests also get every country's
+ * database (read for the dashboard, and to create a country's admins).
+ */
+function instanceEnv(env: Env, instance: RegionId | 'master'): Env | null {
+  if (instance === 'master') {
+    if (!env.DB_HUB) return null;
+    const countries: Partial<Record<RegionId, D1Database>> = {};
+    for (const r of REGIONS) {
+      const db = (env as unknown as Record<string, D1Database | undefined>)[r.dbBinding];
+      if (db) countries[r.id] = db;
+    }
+    return { ...env, DB: env.DB_HUB, DB_TR: undefined, DB_HUB: undefined, HUB: undefined, COUNTRIES: countries, REGION: 'master' };
+  }
+  const region = regionById(instance)!;
+  const db = (env as unknown as Record<string, D1Database | undefined>)[region.dbBinding];
+  if (!db) return null;
+  return { ...env, DB: db, DB_TR: undefined, DB_HUB: undefined, HUB: env.DB_HUB, COUNTRIES: undefined, REGION: instance };
+}
+
+async function handleApi(request: Request, rawEnv: Env, url: URL, instance: RegionId | 'master', rest: string): Promise<Response> {
   const write = request.method !== 'GET' && request.method !== 'HEAD';
   if (write) assertSameOrigin(request, url);
 
+  const env = instanceEnv(rawEnv, instance);
+  if (!env) throw new HttpError(503, 'This country is not available yet.');
+  const table = instance === 'master' ? masterRoutes : routes;
+  const routeUrl = new URL(`/api${rest}${url.search}`, url.origin);
+
   let pathMatched = false;
-  for (const r of routes) {
-    const m = r.pattern.exec(url);
+  for (const r of table) {
+    const m = r.pattern.exec(routeUrl);
     if (!m) continue;
     pathMatched = true;
     if (r.method !== request.method) continue;
 
-    await ensureSchema(env.DB);
+    await ensureSchema(env.DB, instance);
     const session = r.access === 'public' ? null : await getSessionUser(env, request);
     const user = session?.user ?? null;
     if ((r.access === 'user' || r.access === 'admin') && !user) throw new HttpError(401, 'Not signed in');
@@ -191,7 +280,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     const response = await r.handler({ env, request, url, params, user });
     for (const c of session?.setCookies ?? []) response.headers.append('Set-Cookie', c);
     // Every admin change is written to the security log (user changes log their own, more precise, entry).
-    if (r.access === 'admin' && write && response.ok && !url.pathname.startsWith('/api/users')) {
+    if (r.access === 'admin' && write && response.ok && !/\/api\/(users|auth)\b/.test(url.pathname)) {
       await audit(env, request, 'admin_action', user, `${request.method} ${url.pathname}`);
     }
     return response;
@@ -199,25 +288,27 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   throw new HttpError(pathMatched ? 405 : 404, pathMatched ? 'Method not allowed' : 'Not found');
 }
 
-async function respond(request: Request, env: Env, url: URL): Promise<Response> {
+async function respond(request: Request, env: Env, url: URL, instance: RegionId | 'master', rest: string): Promise<Response> {
+  const language = instance === 'master' ? 'en' : regionById(instance)?.language;
   try {
-    return await handleApi(request, env, url);
+    return await handleApi(request, env, url, instance, rest);
   } catch (err) {
-    if (err instanceof HttpError) return json({ error: err.message, ...err.extra }, err.status);
+    if (err instanceof HttpError) return json({ error: translateMessage(err.message, language), ...err.extra }, err.status);
     // Log only the message: never request bodies, cookies or stack traces with user data.
     const message = err instanceof Error ? err.message : String(err);
     console.error('Unhandled API error', request.method, url.pathname, message);
     if (/daily row (read|write) limit/i.test(message)) {
-      return json({ error: 'The free Cloudflare database quota for today is used up. It resets at midnight UTC.' }, 503);
+      return json({ error: translateMessage('The free Cloudflare database quota for today is used up. It resets at midnight UTC.', language) }, 503);
     }
-    return json({ error: 'Server error. Please try again.' }, 500);
+    return json({ error: translateMessage('Server error. Please try again.', language) }, 500);
   }
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
-    return withSecurityHeaders(await respond(request, env, url));
+    const target = resolveInstance(url.pathname);
+    if (!target) return env.ASSETS.fetch(request);
+    return withSecurityHeaders(await respond(request, env, url, target.instance, target.rest));
   },
 } satisfies ExportedHandler<Env>;

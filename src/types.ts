@@ -1,4 +1,5 @@
-export type MachineId = 'HAAS-1' | 'HAAS-2' | 'HAAS-4' | 'HAAS-5' | 'FANUC-1' | 'FANUC-2' | 'DMG-1';
+/** A machine id of the current country (each country has its own machines, see /api/fleet). */
+export type MachineId = string;
 
 export type ToolCategory = 'foret' | 'fraise ebauche' | 'pointeur' | 'fraise' | 'chanfrein' | 'tourteau' | 'fraise finition' | 'taraud' | 'fraise boule' | 'fraise T' | 'fraise rayon' | 'empty';
 
@@ -45,11 +46,9 @@ export interface Tool {
   materials?: Material[];
 }
 
-export type MachineToolbox = Partial<Record<MachineId, Tool[]>>;
+export type MachineToolbox = Record<MachineId, Tool[] | undefined>;
 
-export const MACHINES: MachineId[] = [
-  'HAAS-1', 'HAAS-2', 'HAAS-4', 'HAAS-5', 'FANUC-1', 'FANUC-2', 'DMG-1'
-];
+
 
 export interface HistoryRecord {
   id: string;

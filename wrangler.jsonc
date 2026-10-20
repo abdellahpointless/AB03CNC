@@ -6,17 +6,34 @@
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
   "assets": {
-    // Vite builds the React app into ./dist; the Worker only runs for /api/*.
+    // Vite builds the React app into ./dist; the Worker only runs for the API paths.
+    //   /ma/api/*  Morocco    /tr/api/*  Türkiye    /master/api/*  master hub
+    //   /api/*     Morocco (address used before there were several countries)
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/ma/api/*", "/tr/api/*", "/master/api/*"]
   },
+  // One database per country, plus the master hub. Never swap these ids: each database
+  // remembers which country it belongs to and refuses to serve another one.
   "d1_databases": [
     {
+      // Morocco (the original installation)
       "binding": "DB",
       "database_name": "cnc-process-pro-db",
       "database_id": "6a1444c9-c30a-44ff-aba0-7b097a8b088e"
+    },
+    {
+      // Türkiye
+      "binding": "DB_TR",
+      "database_name": "cnc-process-tr-db",
+      "database_id": "e3720e87-ec7e-4b73-8185-798c2502619c"
+    },
+    {
+      // Master hub: master accounts only
+      "binding": "DB_HUB",
+      "database_name": "cnc-process-hub-db",
+      "database_id": "6ce6c856-f831-4aa3-96e7-956822a2149c"
     }
   ]
 }

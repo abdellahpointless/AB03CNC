@@ -6,11 +6,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { api } from '../lib/api';
 import { iosBackdrop, iosSurface } from '../lib/motion';
+import { useT } from '../i18n';
 
 type Tab = 'password' | 'mfa';
 
 /** Scannable QR code drawn as one SVG path (no images, nothing sent to a third party). */
 function QrCode({ text }: { text: string }) {
+  const { t } = useT('app');
   const { d, size } = useMemo(() => {
     const qr = qrcode(0, 'M');
     qr.addData(text);
@@ -21,7 +23,7 @@ function QrCode({ text }: { text: string }) {
     return { d: path, size: n + 8 };
   }, [text]);
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-44 h-44 rounded-[var(--radius-md)]" shapeRendering="crispEdges" role="img" aria-label="QR code for the authenticator app">
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-44 h-44 rounded-[var(--radius-md)]" shapeRendering="crispEdges" role="img" aria-label={t('security.qrAria')}>
       <rect width={size} height={size} fill="#fff" />
       <path d={d} fill="#000" />
     </svg>
@@ -29,6 +31,7 @@ function QrCode({ text }: { text: string }) {
 }
 
 function PasswordForm() {
+  const { t } = useT('app');
   const { changePassword, user } = useAuth();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -42,7 +45,7 @@ function PasswordForm() {
     e.preventDefault();
     setError('');
     if (next !== confirm) {
-      setError('The new passwords do not match');
+      setError(t('security.passwordsMismatch'));
       return;
     }
     setBusy(true);
@@ -50,32 +53,33 @@ function PasswordForm() {
       await changePassword(current, next);
       setDone(true);
     } catch (err: any) {
-      setError(err?.message || 'Could not change the password');
+      setError(err?.message || t('security.changeFailed'));
     } finally {
       setBusy(false);
     }
   };
 
   if (done) {
-    return <div className="badge-positive w-full py-2 px-3 text-xs">Password changed. Other PCs using this account were signed out.</div>;
+    return <div className="badge-positive w-full py-2 px-3 text-xs">{t('security.passwordChanged')}</div>;
   }
   return (
     <form onSubmit={submit} className="space-y-3">
-      <input type="password" className="aurora-input w-full text-xs" placeholder="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required autoFocus />
-      <input type="password" className="aurora-input w-full text-xs" placeholder={`New password (at least ${min} characters)`} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={min} maxLength={200} required />
-      <input type="password" className="aurora-input w-full text-xs" placeholder="Repeat new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.currentPassword')} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required autoFocus />
+      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.newPassword', { min })} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={min} maxLength={200} required />
+      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.repeatPassword')} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
       <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-        A short sentence is easier to remember and harder to guess than a single word. Avoid your username and common passwords.
+        {t('security.passwordTip')}
       </p>
       {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
-      <button type="submit" disabled={busy} className="btn-primary w-full text-xs py-2">{busy ? 'Saving...' : 'Change password'}</button>
+      <button type="submit" disabled={busy} className="btn-primary w-full text-xs py-2">{busy ? t('common:status.saving') : t('security.changePassword')}</button>
     </form>
   );
 }
 
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const { t } = useT('app');
   const [copied, setCopied] = useState(false);
-  const text = `CNC Process Pro recovery codes\nEach code can be used once if you lose your phone.\n\n${codes.join('\n')}\n`;
+  const text = `${t('security.recoveryFileTitle')}\n${t('security.recoveryFileNote')}\n\n${codes.join('\n')}\n`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -95,28 +99,29 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   };
   return (
     <div className="space-y-3">
-      <div className="badge-positive w-full py-2 px-3 text-xs">Two-step sign-in is on.</div>
+      <div className="badge-positive w-full py-2 px-3 text-xs">{t('security.mfaOn')}</div>
       <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-        Save these recovery codes somewhere safe (printed, or in a password manager). If you lose your phone, each code lets you sign in once.
-        <strong className="text-[var(--text-primary)]"> They are shown only now.</strong>
+        {t('security.recoverySave')}
+        <strong className="text-[var(--text-primary)]"> {t('security.recoveryShownOnce')}</strong>
       </p>
       <div className="grid grid-cols-2 gap-2 p-3 rounded-[var(--radius-md)] bg-[var(--bg-input)] border border-[var(--border-subtle)] font-mono text-sm text-center text-[var(--text-primary)]">
         {codes.map((c) => <span key={c}>{c}</span>)}
       </div>
       <div className="flex gap-2">
         <button type="button" onClick={copy} className="btn-secondary flex-1 text-xs py-2">
-          {copied ? <Check size={13} /> : <Copy size={13} />} <span>{copied ? 'Copied' : 'Copy'}</span>
+          {copied ? <Check size={13} /> : <Copy size={13} />} <span>{copied ? t('security.copied') : t('security.copy')}</span>
         </button>
         <button type="button" onClick={download} className="btn-secondary flex-1 text-xs py-2">
-          <Download size={13} /> <span>Download</span>
+          <Download size={13} /> <span>{t('common:actions.download')}</span>
         </button>
       </div>
-      <button type="button" onClick={onDone} className="btn-primary w-full text-xs py-2">I saved them</button>
+      <button type="button" onClick={onDone} className="btn-primary w-full text-xs py-2">{t('security.savedThem')}</button>
     </div>
   );
 }
 
 function MfaPanel() {
+  const { t } = useT('app');
   const { mfaEnabled, setMfaEnabled } = useAuth();
   const [setupData, setSetupData] = useState<{ secret: string; otpauth: string } | null>(null);
   const [code, setCode] = useState('');
@@ -131,7 +136,7 @@ function MfaPanel() {
     try {
       await fn();
     } catch (err: any) {
-      setError(err?.message || 'Something went wrong');
+      setError(err?.message || t('common:errors.generic'));
     } finally {
       setBusy(false);
     }
@@ -154,14 +159,14 @@ function MfaPanel() {
         className="space-y-3"
       >
         <div className="flex items-center gap-2 badge-positive w-full py-2 px-3 text-xs">
-          <ShieldCheck size={14} /> <span>Two-step sign-in is on for this account.</span>
+          <ShieldCheck size={14} /> <span>{t('security.mfaOnForAccount')}</span>
         </div>
-        <p className="text-xs text-[var(--text-secondary)]">To turn it off, confirm your password and a current code (or a recovery code).</p>
-        <input type="password" className="aurora-input w-full text-xs" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-        <input type="text" className="aurora-input w-full text-xs font-mono" placeholder="6-digit code or recovery code" value={code} onChange={(e) => setCode(e.target.value.slice(0, 12))} autoComplete="one-time-code" required />
+        <p className="text-xs text-[var(--text-secondary)]">{t('security.turnOffHint')}</p>
+        <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+        <input type="text" className="aurora-input w-full text-xs font-mono" placeholder={t('security.codeOrRecovery')} value={code} onChange={(e) => setCode(e.target.value.slice(0, 12))} autoComplete="one-time-code" required />
         {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
         <button type="submit" disabled={busy} className="btn-danger w-full text-xs py-2">
-          <ShieldOff size={13} /> <span>{busy ? 'Turning off...' : 'Turn off two-step sign-in'}</span>
+          <ShieldOff size={13} /> <span>{busy ? t('security.turningOff') : t('security.turnOff')}</span>
         </button>
       </form>
     );
@@ -173,8 +178,7 @@ function MfaPanel() {
         <div className="flex items-start gap-3 text-xs text-[var(--text-secondary)] leading-relaxed">
           <Smartphone size={18} className="shrink-0 text-[var(--blue-500)] mt-0.5" />
           <span>
-            With two-step sign-in, your password alone is not enough: you also enter a 6-digit code from an authenticator app on your phone
-            (Google Authenticator, Microsoft Authenticator, Authy, 1Password...). Strongly recommended for admin accounts.
+            {t('security.intro')}
           </span>
         </div>
         {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
@@ -184,7 +188,7 @@ function MfaPanel() {
           onClick={() => run(async () => setSetupData(await api('/auth/mfa/setup', { method: 'POST' })))}
           className="btn-primary w-full text-xs py-2"
         >
-          <ShieldCheck size={13} /> <span>{busy ? 'Preparing...' : 'Turn on two-step sign-in'}</span>
+          <ShieldCheck size={13} /> <span>{busy ? t('security.preparing') : t('security.turnOn')}</span>
         </button>
       </div>
     );
@@ -203,23 +207,24 @@ function MfaPanel() {
       }}
       className="space-y-3"
     >
-      <p className="text-xs text-[var(--text-secondary)]">1. Scan this code with your authenticator app.</p>
+      <p className="text-xs text-[var(--text-secondary)]">{t('security.step1')}</p>
       <div className="flex justify-center"><QrCode text={setupData.otpauth} /></div>
       <details className="text-[11px] text-[var(--text-tertiary)]">
-        <summary className="cursor-pointer">Can't scan? Enter this key by hand</summary>
+        <summary className="cursor-pointer">{t('security.cantScan')}</summary>
         <code className="block mt-1 break-all font-mono text-[var(--text-primary)] select-all">{setupData.secret.replace(/(.{4})/g, '$1 ').trim()}</code>
       </details>
-      <p className="text-xs text-[var(--text-secondary)]">2. Enter the 6-digit code it shows, and your password.</p>
+      <p className="text-xs text-[var(--text-secondary)]">{t('security.step2')}</p>
       <input type="text" inputMode="numeric" className="aurora-input w-full text-center font-mono text-lg tracking-[0.35em]" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} autoComplete="one-time-code" required autoFocus />
-      <input type="password" className="aurora-input w-full text-xs" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
       {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
-      <button type="submit" disabled={busy || code.length !== 6} className="btn-primary w-full text-xs py-2">{busy ? 'Checking...' : 'Confirm and turn on'}</button>
+      <button type="submit" disabled={busy || code.length !== 6} className="btn-primary w-full text-xs py-2">{busy ? t('security.checking') : t('security.confirmTurnOn')}</button>
     </form>
   );
 }
 
 /** "Security" sheet: change password and manage two-step sign-in. */
 export function ChangePasswordModal({ onClose, initialTab = 'password' }: { onClose: () => void; initialTab?: Tab }) {
+  const { t } = useT('app');
   const [tab, setTab] = useState<Tab>(initialTab);
   return createPortal(
     <motion.div
@@ -230,24 +235,24 @@ export function ChangePasswordModal({ onClose, initialTab = 'password' }: { onCl
       <motion.div className="glass-modal max-w-sm w-full p-6 max-h-[92vh] overflow-y-auto" {...iosSurface}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <ShieldCheck size={16} className="text-[var(--accent-primary)]" /> Account security
+            <ShieldCheck size={16} className="text-[var(--accent-primary)]" /> {t('security.title')}
           </h3>
-          <button onClick={onClose} className="btn-icon w-7 h-7" title="Close">
+          <button onClick={onClose} className="btn-icon w-7 h-7" title={t('common:actions.close')}>
             <X size={14} />
           </button>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 mb-4 rounded-[var(--radius-md)] bg-[var(--bg-input)] border border-[var(--border-subtle)] text-xs">
-          {(['password', 'mfa'] as Tab[]).map((t) => (
+          {(['password', 'mfa'] as Tab[]).map((id) => (
             <button
-              key={t}
+              key={id}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setTab(id)}
               className={`py-1.5 rounded-[calc(var(--radius-md)-4px)] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-                tab === t ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                tab === id ? 'bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {t === 'password' ? <KeyRound size={13} /> : <Smartphone size={13} />}
-              {t === 'password' ? 'Password' : 'Two-step sign-in'}
+              {id === 'password' ? <KeyRound size={13} /> : <Smartphone size={13} />}
+              {id === 'password' ? t('security.tabPassword') : t('security.tabMfa')}
             </button>
           ))}
         </div>

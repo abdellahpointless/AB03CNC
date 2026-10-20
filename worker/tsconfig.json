@@ -10,5 +10,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["./**/*.ts", "../src/types.ts", "../src/lib/defaultTools.ts", "../src/lib/csv.ts"]
+  "include": ["./**/*.ts", "../src/types.ts", "../src/lib/defaultTools.ts", "../src/lib/csv.ts", "../src/regions.ts"]
 }

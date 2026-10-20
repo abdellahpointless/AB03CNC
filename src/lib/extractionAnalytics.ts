@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 // Baseline time constants in seconds based on machining practice:
 // Manual code editing / tool modification: ~5 to 6 minutes (avg 5.5 min = 330 seconds)
 // CNC Process Pro app: ~30 seconds to 1 minute (avg 45 seconds)
@@ -21,30 +23,35 @@ export function formatTimeWon(totalSeconds: number): {
   const seconds = s % 60;
 
   const pad = (n: number) => n.toString().padStart(2, '0');
+  // Units in the page's language: "4m 45s" in English, "4 dk 45 sn" in Turkish.
+  const d = (n: number | string) => i18n.t('app:timeWon.days', { n });
+  const h = (n: number | string) => i18n.t('app:timeWon.hours', { n });
+  const m = (n: number | string) => i18n.t('app:timeWon.minutes', { n });
+  const sec = (n: number | string) => i18n.t('app:timeWon.seconds', { n });
 
   let formatted = '';
   if (days > 0) {
-    formatted = `${days}d ${hours}h ${minutes}m`;
+    formatted = `${d(days)} ${h(hours)} ${m(minutes)}`;
   } else if (hours > 0) {
-    formatted = `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+    formatted = `${h(hours)} ${m(pad(minutes))} ${sec(pad(seconds))}`;
   } else if (minutes > 0) {
-    formatted = `${minutes}m ${pad(seconds)}s`;
+    formatted = `${m(minutes)} ${sec(pad(seconds))}`;
   } else {
-    formatted = `${seconds}s`;
+    formatted = sec(seconds);
   }
 
   let shortText = '';
   if (days > 0) {
-    shortText = `${days}d ${hours}h`;
+    shortText = `${d(days)} ${h(hours)}`;
   } else if (hours > 0) {
-    shortText = `${hours}h ${minutes}m`;
+    shortText = `${h(hours)} ${m(minutes)}`;
   } else if (minutes > 0) {
-    shortText = `${minutes}m`;
+    shortText = m(minutes);
   } else {
-    shortText = `${seconds}s`;
+    shortText = sec(seconds);
   }
 
-  const clockTime = `${days > 0 ? `${days}d ` : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  const clockTime = `${days > 0 ? `${d(days)} ` : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 
   return { formatted, shortText, clockTime, days, hours, minutes, seconds };
 }

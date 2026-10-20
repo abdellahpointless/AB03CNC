@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { csvCell } from '../lib/csv';
+import { scopedKey } from '../lib/instance';
+import { csvCell, csvDialect } from '../lib/csv';
 import { get, set } from 'idb-keyval';
 import { useAuth } from '../contexts/AuthContext';
 import { Folder, Save, CheckCircle } from 'lucide-react';
 import { HistoryRecord } from '../types';
 import { api } from '../lib/api';
+import i18n, { useT } from '../i18n';
 
 /**
  * Optional local safety copy: every 10 minutes the admin PC appends new history
@@ -12,9 +14,9 @@ import { api } from '../lib/api';
  * (Chrome/Edge only - uses the File System Access API).
  */
 
-const HANDLE_KEY = 'cnc-backup-dir-handle';
-const CURSOR_KEY = 'cnc-backup-cursor-v2';
-const LAST_DATE_KEY = 'cnc-last-backup-date';
+const HANDLE_KEY = scopedKey('cnc-backup-dir-handle');
+const CURSOR_KEY = scopedKey('cnc-backup-cursor-v2');
+const LAST_DATE_KEY = scopedKey('cnc-last-backup-date');
 const CSV_NAME = 'Tool_Remapping_History.csv';
 const INTERVAL_MS = 10 * 60 * 1000;
 
@@ -44,29 +46,35 @@ async function appendRecords(dirHandle: FileSystemDirectoryHandle, records: Hist
   const fileHandle = await dirHandle.getFileHandle(CSV_NAME, { create: true });
   const existingSize = (await fileHandle.getFile()).size;
   const rows: string[] = [];
+  const { sep, num } = csvDialect(i18n.language);
   if (existingSize === 0) {
     rows.push([
-      'Action Date', 'User', 'Original File', 'Exported File', 'Original Tool', 'Original Context',
-      'Requested Diameter', 'Requested Length', 'Selection Type', 'Chosen Category',
-      'Chosen T-Number', 'Chosen Diameter', 'Chosen Length'
-    ].join(','));
+      i18n.t('data:csv.actionDate'), i18n.t('data:csv.user'), i18n.t('data:csv.originalFile'), i18n.t('data:csv.exportedFile'),
+      i18n.t('data:csv.originalTool'), i18n.t('data:csv.originalContext'),
+      i18n.t('data:csv.requestedDiameter'), i18n.t('data:csv.requestedLength'), i18n.t('data:csv.selectionType'), i18n.t('data:csv.chosenCategory'),
+      i18n.t('data:csv.chosenTNumber'), i18n.t('data:csv.chosenDiameter'), i18n.t('data:csv.chosenLength')
+    ].join(sep));
   }
+  const unknownUser = i18n.t('data:csv.unknownUser');
+  const autoLabel = i18n.t('data:csv.auto');
+  const manualLabel = i18n.t('data:csv.manual');
   for (const r of records) {
-    const base = [q(r.date), q(r.user || 'Unknown'), q(r.originalFileName), q(r.exportedFileName)];
+    const base = [q(r.date), q(r.user || unknownUser), q(r.originalFileName), q(r.exportedFileName)];
     if (!r.changes.length) {
-      rows.push([...base, ...Array(9).fill('"-"')].join(','));
+      rows.push([...base, ...Array(9).fill('"-"')].join(sep));
       continue;
     }
     for (const c of r.changes) {
       rows.push([
         ...base,
-        q(c.originalT), q(c.originalContext || ''), q(c.reqDiameter || ''), q(c.reqLength || ''),
-        q(c.appChose ? 'Auto' : 'Manual'), q(c.chosenCategory), q(`T${c.chosenT}`), q(c.chosenDiameter), q(c.chosenLength),
-      ].join(','));
+        q(c.originalT), q(c.originalContext || ''), q(num(c.reqDiameter || '')), q(num(c.reqLength || '')),
+        q(c.appChose ? autoLabel : manualLabel), q(c.chosenCategory), q(`T${c.chosenT}`), q(num(c.chosenDiameter)), q(num(c.chosenLength)),
+      ].join(sep));
     }
   }
   const writable = await fileHandle.createWritable({ keepExistingData: true });
-  await writable.write({ type: 'write', position: existingSize, data: (existingSize > 0 ? '\n' : '') + rows.join('\n') });
+  // A new file starts with a UTF-8 BOM so Excel shows accented and Turkish letters correctly.
+  await writable.write({ type: 'write', position: existingSize, data: (existingSize > 0 ? '\n' : '\uFEFF') + rows.join('\n') });
   await writable.close();
 }
 
@@ -110,6 +118,7 @@ export function BackupScheduler() {
 }
 
 export default function BackupManager() {
+  const { t } = useT('data');
   const { user } = useAuth();
   const [handleInfo, setHandleInfo] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -137,20 +146,18 @@ export default function BackupManager() {
       await set(HANDLE_KEY, handle);
       directoryHandleRef.current = handle;
       setHandleInfo(handle.name);
-      const fromStart = confirm(
-        'Write ALL existing history to the CSV in this folder?\n\nOK = all history (first-time setup)\nCancel = only programs extracted from now on (use this if the folder already has your older CSV)'
-      );
+      const fromStart = confirm(t('folder.confirmFromStart'));
       writeCursor(fromStart ? { ts: 0, id: '' } : { ts: Date.now(), id: '' });
       if (fromStart) await forceBackupNow();
     } catch (err: any) {
-      if (err?.name !== 'AbortError') setError('Failed to select directory: ' + (err?.message || err));
+      if (err?.name !== 'AbortError') setError(t('folder.selectFailed', { error: String(err?.message || err) }));
     }
   };
 
   const forceBackupNow = async () => {
     const handle = directoryHandleRef.current;
     if (!handle) {
-      setError('No directory selected');
+      setError(t('folder.noDirectory'));
       return;
     }
     setIsBusy(true);
@@ -159,13 +166,13 @@ export default function BackupManager() {
     try {
       if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted' &&
           (await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
-        throw new Error('Permission to write to the folder was denied');
+        throw new Error(t('folder.permissionDenied'));
       }
       const n = await runBackup(handle);
       setLastBackup(localStorage.getItem(LAST_DATE_KEY));
-      setMessage(n ? `${n} record(s) appended to ${CSV_NAME}.` : 'All records are already backed up to the CSV.');
+      setMessage(n ? t('folder.appended', { count: n, file: CSV_NAME }) : t('folder.upToDate'));
     } catch (err: any) {
-      setError('Backup failed: ' + (err?.message || err));
+      setError(t('folder.failed', { error: String(err?.message || err) }));
     } finally {
       setIsBusy(false);
     }
@@ -180,15 +187,15 @@ export default function BackupManager() {
           <Save size={18} />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">Automatic Folder Backup (this PC)</h3>
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('folder.title')}</h3>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            Every 10 minutes, new history records are appended to <code className="font-mono">{CSV_NAME}</code> in a folder on this computer.
+            {t('folder.descBefore')}<code className="font-mono">{CSV_NAME}</code>{t('folder.descAfter')}
           </p>
         </div>
       </div>
 
       {!supported && (
-        <div className="badge-warning text-xs py-2 px-3 mb-3">This browser cannot write to local folders. Use Chrome or Edge on the admin PC.</div>
+        <div className="badge-warning text-xs py-2 px-3 mb-3">{t('folder.unsupported')}</div>
       )}
       {error && <div className="badge-danger text-xs py-2 px-3 mb-3 font-semibold">{error}</div>}
       {message && <div className="badge-positive text-xs py-2 px-3 mb-3">{message}</div>}
@@ -196,12 +203,12 @@ export default function BackupManager() {
       <div className="flex items-center gap-4 flex-wrap pt-1">
         <button onClick={selectDirectory} disabled={!supported || isBusy} className="btn-secondary text-xs py-2 px-4 flex items-center gap-2">
           <Folder size={15} />
-          <span>{handleInfo ? 'Change Directory' : 'Select Target Directory'}</span>
+          <span>{handleInfo ? t('folder.change') : t('folder.select')}</span>
         </button>
         {handleInfo && (
           <div className="badge-positive text-xs py-1.5 px-3 flex items-center gap-1.5">
             <CheckCircle size={14} />
-            <span>Directory: <strong className="font-mono">{handleInfo}</strong></span>
+            <span>{t('folder.directory')} <strong className="font-mono">{handleInfo}</strong></span>
           </div>
         )}
       </div>
@@ -209,11 +216,11 @@ export default function BackupManager() {
       {handleInfo && (
         <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="text-[11px] text-[var(--text-tertiary)]">
-            Automatic backup runs every 10 min while the app is open on this PC.<br />
-            Last backup: <span className="text-[var(--text-secondary)] font-mono">{lastBackup || 'Never'}</span>
+            {t('folder.autoNote')}<br />
+            {t('folder.lastBackup')} <span className="text-[var(--text-secondary)] font-mono">{lastBackup || t('folder.never')}</span>
           </div>
           <button onClick={forceBackupNow} disabled={isBusy} className="btn-secondary text-xs py-1.5 px-3">
-            {isBusy ? 'Backing up...' : 'Force Backup Now'}
+            {isBusy ? t('folder.backingUp') : t('folder.forceNow')}
           </button>
         </div>
       )}
