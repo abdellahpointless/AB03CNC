@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Tool, MachineId, MACHINES, TOOL_CATEGORIES, ToolCategory, MATERIALS, Material } from '../types';
-import { Plus, Trash2, Check, Server, CircleDashed, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Check, Server, CircleDashed, AlertCircle, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
+import { useAuth } from '../contexts/AuthContext';
+import { ToolExcelImport } from './ToolExcelImport';
 import { useSync } from '../contexts/SyncContext';
 import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon, CenterDrillIcon, FaceMillIcon, TapIcon, EmptyIcon } from './ToolIcons';
 
@@ -14,6 +17,8 @@ export default function ToolDatabase({
   setSelectedMachine: propSetSelectedMachine
 }: ToolDatabaseProps) {
   const { toolbox, toolboxLoaded, connection, saveTool, deleteTool, acknowledgeTool } = useSync();
+  const { user } = useAuth();
+  const [showImport, setShowImport] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [internalSelectedMachine, setInternalSelectedMachine] = useState<MachineId>('HAAS-1');
   const selectedMachine = propSelectedMachine ?? internalSelectedMachine;
@@ -175,6 +180,7 @@ export default function ToolDatabase({
 
   return (
     <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full pb-12">
+      <AnimatePresence>{showImport && <ToolExcelImport key="excel-import" onClose={() => setShowImport(false)} />}</AnimatePresence>
       {/* Top Header Panel */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -207,6 +213,17 @@ export default function ToolDatabase({
               ))}
             </select>
           </div>
+
+          {user?.role === 'ADMIN' && connection !== 'offline' && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="btn-secondary text-xs py-2 px-4 whitespace-nowrap"
+              title="Import machines and tools from an Excel file"
+            >
+              <FileSpreadsheet size={15} className="text-[var(--green-500)]" />
+              <span>Import Excel</span>
+            </button>
+          )}
 
           {!isAdding && (
             <button

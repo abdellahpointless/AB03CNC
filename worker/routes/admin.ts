@@ -1,7 +1,7 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
 import { hashPassword, validateUsername } from '../auth';
-import { MAX_TOOLS_PER_MACHINE, bulkInsertToolsStmt, normalizeImportedTool, validateMachine } from './tools';
+import { MAX_TOOLS_PER_MACHINE, bulkInsertToolsStmt, normalizeImportedTool, parseTool, validateMachine } from './tools';
 import { codeStatements, historyInsertStatements, normalizeHistory, parseCode } from './history';
 import { validateSap } from './parts';
 import { DEFAULT_SAVED_SECONDS } from './analytics';
@@ -90,6 +90,67 @@ export async function handleImportTools(ctx: Ctx): Promise<Response> {
   stmts.push(bumpStmt(ctx.env, 'tools'));
   await ctx.env.DB.batch(stmts);
   return json({ ok: true, count });
+}
+
+// POST /api/admin/import/tools-excel { machines: { [machine]: Tool[] }, mode: 'update' | 'replace' }
+// Used by the Excel import in the tool inventory. Every tool is validated strictly.
+//  - update:  tools with the same T-number as an existing one replace it; other tools are kept
+//  - replace: each machine listed gets exactly the tools in the file (machines not listed are untouched)
+export async function handleImportToolsExcel(ctx: Ctx): Promise<Response> {
+  const body = await readJson<{ machines?: Record<string, unknown>; mode?: string }>(ctx.request, 2_000_000);
+  const mode = body.mode === 'replace' ? 'replace' : body.mode === 'update' ? 'update' : null;
+  if (!mode) throw new HttpError(400, "mode must be 'update' or 'replace'");
+  if (!body.machines || typeof body.machines !== 'object' || Array.isArray(body.machines)) throw new HttpError(400, 'machines object required');
+  const entries = Object.entries(body.machines);
+  if (!entries.length || entries.length > 20) throw new HttpError(400, 'Between 1 and 20 machines per import');
+
+  const stmts: D1PreparedStatement[] = [];
+  const summary: { machine: string; added: number; updated: number; total: number }[] = [];
+  for (const [machineRaw, list] of entries) {
+    const machine = validateMachine(machineRaw);
+    if (!Array.isArray(list) || !list.length) throw new HttpError(400, `${machineRaw}: no tools`);
+    if (list.length > MAX_TOOLS_PER_MACHINE) throw new HttpError(400, `${machine}: at most ${MAX_TOOLS_PER_MACHINE} tools per machine`);
+
+    const numbers = new Set<number>();
+    const incoming = list.map((raw, i) => {
+      const tool = parseTool({ ...(raw as object), id: 'x' }, 'x');
+      if (numbers.has(tool.number)) throw new HttpError(400, `${machine}: T${tool.number} appears twice (entry ${i + 1})`);
+      numbers.add(tool.number);
+      return tool;
+    });
+
+    const { results: existing } = await ctx.env.DB.prepare('SELECT id, number, sort_order FROM tools WHERE machine = ?')
+      .bind(machine)
+      .all<{ id: string; number: number; sort_order: number }>();
+    const idByNumber = new Map<number, string>();
+    for (const e of existing) if (!idByNumber.has(e.number)) idByNumber.set(e.number, e.id);
+    const maxOrder = existing.reduce((m, e) => Math.max(m, e.sort_order), -1);
+
+    let tools;
+    let startOrder: number;
+    let updated = 0;
+    if (mode === 'replace') {
+      stmts.push(ctx.env.DB.prepare('DELETE FROM tools WHERE machine = ?').bind(machine));
+      tools = incoming.map((t) => ({ ...t, id: newId().slice(0, 13) }));
+      startOrder = 0;
+    } else {
+      // Same T-number -> same row (keeps its id and position); anything else is added at the end.
+      tools = incoming.map((t) => {
+        const keep = idByNumber.get(t.number);
+        if (keep) updated++;
+        return { ...t, id: keep ?? newId().slice(0, 13), changed: true };
+      });
+      startOrder = maxOrder + 1;
+      if (existing.length + tools.length - updated > MAX_TOOLS_PER_MACHINE) {
+        throw new HttpError(400, `${machine}: a machine can hold at most ${MAX_TOOLS_PER_MACHINE} tools`);
+      }
+    }
+    stmts.push(bulkInsertToolsStmt(ctx.env, machine, tools, ctx.user!.username, startOrder));
+    summary.push({ machine, added: tools.length - updated, updated, total: tools.length });
+  }
+  stmts.push(bumpStmt(ctx.env, 'tools'));
+  await ctx.env.DB.batch(stmts);
+  return json({ ok: true, summary });
 }
 
 // POST /api/admin/import/history { records: HistoryRecord[], codes?: { [id]: CodePayload } }  (max 200 records)

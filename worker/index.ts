@@ -52,6 +52,7 @@ import {
   handleImportParts,
   handleImportSettings,
   handleImportTools,
+  handleImportToolsExcel,
   handleImportUsers,
 } from './routes/admin';
 
@@ -125,6 +126,7 @@ route('DELETE', '/machines/:machine/checks/:id', 'admin', handleDeleteCheck);
 // Data migration / restore
 route('POST', '/admin/import/users', 'admin', handleImportUsers);
 route('POST', '/admin/import/tools', 'admin', handleImportTools);
+route('POST', '/admin/import/tools-excel', 'admin', handleImportToolsExcel);
 route('POST', '/admin/import/history', 'admin', handleImportHistory);
 route('POST', '/admin/import/code', 'admin', handleImportCode);
 route('POST', '/admin/import/parts', 'admin', handleImportParts);
