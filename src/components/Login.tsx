@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone, Crown, Globe2 } from 'lucide-react';
 import { Flag } from './Flag';
-import { HUB_PATH, INSTANCE } from '../lib/instance';
+import { CHOOSE_COUNTRY_PATH, INSTANCE } from '../lib/instance';
 import { motion, useAnimate } from 'motion/react';
 import { useT } from '../i18n';
 
@@ -106,7 +106,7 @@ export default function Login() {
                 <span className="font-semibold text-[var(--text-primary)]">{t('common:role.MASTER')}</span>
               </span>
             )}
-            <a href={HUB_PATH} className="text-[11px] text-[var(--blue-500)] hover:underline inline-flex items-center gap-1">
+            <a href={CHOOSE_COUNTRY_PATH} className="text-[11px] text-[var(--blue-500)] hover:underline inline-flex items-center gap-1">
               <Globe2 size={12} /> {t('common:actions.changeCountry')}
             </a>
           </div>

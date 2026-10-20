@@ -1,11 +1,22 @@
 import React from 'react';
-import type { RegionId } from '../regions';
+import type { RegionId, UpcomingCountry } from '../regions';
 
 /**
  * Country flags drawn as SVG (flag emoji do not render on Windows).
  * Proportions follow the official flags, simplified for small sizes.
  */
-export function Flag({ country, className = '', title }: { country: RegionId; className?: string; title?: string }) {
+export function Flag({ country, className = '', title }: { country: RegionId | UpcomingCountry['id']; className?: string; title?: string }) {
+  if (country === 'tn') {
+    return (
+      <svg viewBox="0 0 1200 800" className={className} role="img" aria-label={title ?? 'Tunisia'}>
+        <rect width="1200" height="800" fill="#E70013" />
+        <circle cx="600" cy="400" r="200" fill="#fff" />
+        <circle cx="600" cy="400" r="150" fill="#E70013" />
+        <circle cx="640" cy="400" r="120" fill="#fff" />
+        <polygon fill="#E70013" points="570,400 630.9,378.8 632.2,314.4 671.1,365.8 732.8,347.1 696,400 732.8,452.9 671.1,434.2 632.2,485.6 630.9,421.2" />
+      </svg>
+    );
+  }
   if (country === 'tr') {
     return (
       <svg viewBox="0 0 1200 800" className={className} role="img" aria-label={title ?? 'Türkiye'}>

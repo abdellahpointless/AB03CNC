@@ -30,6 +30,20 @@ export interface RegionInfo {
   publicSetup: boolean;
   /** Label shown in authenticator apps so entries of different countries are distinguishable. */
   totpIssuer: string;
+  /** Optional parts of the app. Turned off, they are hidden and their API answers "not found". */
+  features: RegionFeatures;
+  /**
+   * Language of the comments in the programs the remapper gives out. CAM programs and tool
+   * categories are written in French; 'en' translates those French words to English.
+   */
+  gcodeComments: 'fr' | 'en';
+}
+
+export interface RegionFeatures {
+  /** "Part without scan" and the admin's "Part review" (part tracking and approval). */
+  partTracking: boolean;
+  /** "Preventive actions": machine checklists, problem reports and machine responsibility. */
+  preventive: boolean;
 }
 
 export const REGIONS: RegionInfo[] = [
@@ -44,6 +58,8 @@ export const REGIONS: RegionInfo[] = [
     legacyCookie: 'cnc_sid',
     publicSetup: true,
     totpIssuer: 'CNC Process Pro',
+    features: { partTracking: true, preventive: true },
+    gcodeComments: 'fr',
   },
   {
     id: 'tr',
@@ -55,8 +71,33 @@ export const REGIONS: RegionInfo[] = [
     sessionCookie: '__Host-cnc_sid_tr',
     publicSetup: false,
     totpIssuer: 'CNC Process Pro TR',
+    // Türkiye uses the G-code remapper and what comes with it (tool inventory, history).
+    features: { partTracking: false, preventive: false },
+    gcodeComments: 'en',
   },
 ];
+
+/**
+ * Countries announced on the country picker but not open yet: shown with a lock, no link,
+ * no database and no translation. To open one, move it to REGIONS (with its database,
+ * cookie and language).
+ */
+export interface UpcomingCountry {
+  id: 'tn';
+  name: string;
+  nativeName: string;
+  /** The language it will use, written in that language. */
+  languageName: string;
+}
+
+export const UPCOMING_COUNTRIES: UpcomingCountry[] = [{ id: 'tn', name: 'Tunisia', nativeName: 'Tunisie', languageName: 'Français' }];
+
+/** Which optional feature an API path belongs to (path without the /xx/api prefix). */
+export function featureOfApiPath(path: string): keyof RegionFeatures | null {
+  if (/^\/parts(\/|$)/.test(path) || /^\/admin\/import\/parts(\/|$)/.test(path)) return 'partTracking';
+  if (/^\/machines(\/|$)/.test(path)) return 'preventive';
+  return null;
+}
 
 export const MASTER = {
   dbBinding: 'DB_HUB' as const,

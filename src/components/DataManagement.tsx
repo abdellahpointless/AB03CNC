@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { currentRegion } from '../lib/instance';
-import { Database, DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
-import { buildFullBackup, migrateFromSupabase, restoreBackup, type LogKind, type MigrationOptions } from '../lib/migration';
+import { buildFullBackup, restoreBackup, type LogKind } from '../lib/migration';
 import { fetchAllHistory } from '../lib/historyApi';
 import { downloadJson, todayStamp } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
@@ -49,12 +48,6 @@ export default function DataManagement() {
   const { refreshNow } = useSync();
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Supabase migration
-  const [sbUrl, setSbUrl] = useState('');
-  const [sbKey, setSbKey] = useState('');
-  const [opts, setOpts] = useState<MigrationOptions>({ users: true, tools: true, history: true, programs: true, parts: true });
-  const migrationLog = useLog();
-
   // Backup / restore
   const [includePrograms, setIncludePrograms] = useState(false);
   const [replaceTools, setReplaceTools] = useState(false);
@@ -64,24 +57,6 @@ export default function DataManagement() {
   // Retention
   const [pruneDays, setPruneDays] = useState(90);
   const retentionLog = useLog();
-
-  const runMigration = async () => {
-    if (!confirm(t('migration.confirm'))) return;
-    migrationLog.clear();
-    setBusy('migrate');
-    try {
-      const s = await migrateFromSupabase({ url: sbUrl, anonKey: sbKey }, opts, migrationLog.log);
-      migrationLog.log(
-        t('migration.done', { users: s.users, tools: s.tools, history: s.history, programs: s.programs, parts: s.parts }),
-        'ok',
-      );
-      await refreshNow();
-    } catch (err: any) {
-      migrationLog.log(err?.message || String(err), 'error');
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const downloadBackup = async () => {
     backupLog.clear();
@@ -155,61 +130,8 @@ export default function DataManagement() {
     }
   };
 
-  const check = (key: keyof MigrationOptions, label: string) => (
-    <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
-      <input type="checkbox" checked={opts[key]} onChange={e => setOpts(o => ({ ...o, [key]: e.target.checked }))} disabled={busy !== null} />
-      {label}
-    </label>
-  );
-
   return (
     <div className="space-y-6">
-      {/* Supabase migration: only the original (Moroccan) installation came from Supabase. */}
-      {currentRegion().id === 'ma' && (<>
-      <div>
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
-            <Database size={18} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('migration.title')}</h3>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              {t('migration.description')}
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="section-label block mb-1">{t('migration.urlLabel')}</label>
-            <input className="aurora-input w-full text-xs font-mono" placeholder="https://xxxxxxxx.supabase.co" value={sbUrl} onChange={e => setSbUrl(e.target.value)} disabled={busy !== null} />
-          </div>
-          <div>
-            <label className="section-label block mb-1">{t('migration.keyLabel')}</label>
-            <input type="password" className="aurora-input w-full text-xs font-mono" placeholder="eyJhbGciOi..." value={sbKey} onChange={e => setSbKey(e.target.value)} disabled={busy !== null} autoComplete="off" />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
-          {check('users', t('migration.options.users'))}
-          {check('tools', t('migration.options.tools'))}
-          {check('history', t('migration.options.history'))}
-          {check('programs', t('migration.options.programs'))}
-          {check('parts', t('migration.options.parts'))}
-        </div>
-        <div className="mt-3 flex items-center gap-3 flex-wrap">
-          <button onClick={runMigration} disabled={busy !== null || !sbUrl || !sbKey} className="btn-primary text-xs py-2 px-4">
-            {busy === 'migrate' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
-            <span>{busy === 'migrate' ? t('migration.importing') : t('migration.start')}</span>
-          </button>
-          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
-            <Info size={12} /> {t('migration.keepOpen')}
-          </span>
-        </div>
-        <LogView lines={migrationLog.lines} />
-      </div>
-
-      <div className="border-t border-[var(--border-subtle)]" />
-      </>)}
-
       {/* Backup & restore */}
       <div>
         <div className="flex items-center gap-2.5 mb-3">

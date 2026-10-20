@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Crown } from 'lucide-react';
+import { ArrowRight, Crown, Lock } from 'lucide-react';
 import i18n from '../i18n';
-import { REGIONS, type RegionInfo } from '../regions';
+import { REGIONS, UPCOMING_COUNTRIES, type RegionInfo } from '../regions';
 import { MASTER_PATH, countryPath, lastCountry, rememberCountry } from '../lib/instance';
 import { Flag } from './Flag';
 import { SPRING_POP } from '../lib/motion';
@@ -14,7 +14,7 @@ import { SPRING_POP } from '../lib/motion';
  */
 export default function HubPage() {
   const last = lastCountry();
-  const both = (key: 'hub:title' | 'hub:master') => {
+  const both = (key: 'hub:title' | 'hub:master' | 'hub:comingSoon' | 'hub:notAvailable') => {
     const texts = Array.from(new Set(['en', 'tr'].map((lng) => i18n.t(key, { lng }) as string)));
     return texts.join(' · ');
   };
@@ -47,7 +47,7 @@ export default function HubPage() {
         <p className="text-xs text-[var(--text-secondary)] max-w-md">{i18n.t('hub:subtitle', { lng: 'tr' })}</p>
       </motion.div>
 
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-2xl">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-2xl lg:max-w-4xl">
         {REGIONS.map((r, i) => (
           <motion.button
             key={r.id}
@@ -80,6 +80,40 @@ export default function HubPage() {
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </div>
           </motion.button>
+        ))}
+        {/* Countries announced but not open yet: visible, locked, not clickable. */}
+        {UPCOMING_COUNTRIES.map((c, i) => (
+          <motion.div
+            key={c.id}
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ ...SPRING_POP, delay: 0.08 + (REGIONS.length + i) * 0.07 }}
+            className="no-glass glass-panel p-6 flex flex-col gap-5 border border-dashed border-[var(--border-subtle)] cursor-not-allowed select-none"
+            aria-disabled="true"
+            aria-label={`${c.name}: ${i18n.t('hub:notAvailable', { lng: 'en' })}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="relative">
+                <Flag country={c.id} className="w-20 h-[54px] rounded-[6px] opacity-45 grayscale-[35%]" />
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-[var(--bg-panel)]/90 border border-[var(--border-subtle)] flex items-center justify-center shadow-md">
+                    <Lock size={15} className="text-[var(--text-secondary)]" />
+                  </span>
+                </span>
+              </div>
+              <span className="badge-neutral text-[10px] py-0.5 px-2 whitespace-nowrap shrink-0">{both('hub:comingSoon')}</span>
+            </div>
+            <div className="opacity-70">
+              <div className="text-xl font-bold text-[var(--text-primary)]">
+                {c.name} <span className="text-sm font-semibold text-[var(--text-secondary)]">· {c.nativeName}</span>
+              </div>
+              <div className="text-xs text-[var(--text-secondary)] mt-0.5">{c.languageName}</div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-tertiary)]">
+              <Lock size={13} className="shrink-0" />
+              <span>{both('hub:notAvailable')}</span>
+            </div>
+          </motion.div>
         ))}
       </div>
 

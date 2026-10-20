@@ -22,8 +22,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage } from '../lib/api';
 import { setLanguage, useT } from '../i18n';
 import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, timeAgo } from '../i18n/format';
-import { HUB_PATH } from '../lib/instance';
-import type { RegionId } from '../regions';
+import { MASTER_PATH } from '../lib/instance';
+import { regionById, type RegionFeatures, type RegionId } from '../regions';
 import { Flag } from './Flag';
 import Login from './Login';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -55,6 +55,8 @@ interface Overview {
 
 type ActiveCountry = Extract<Country, { available: true }>;
 const isActive = (c: Country): c is ActiveCountry => c.available && (c as ActiveCountry).configured;
+/** Whether a country uses an optional part of the app (Türkiye has no part tracking or preventive actions). */
+const uses = (c: { id: RegionId }, feature: keyof RegionFeatures) => regionById(c.id)?.features[feature] ?? false;
 const SERIES: Record<RegionId, string> = { ma: 'var(--series-ma)', tr: 'var(--series-tr)' };
 
 /** /master/: the master admin's sign-in, then the dashboard. */
@@ -171,7 +173,7 @@ function MasterDashboard() {
             <button
               onClick={async () => {
                 await logout();
-                window.location.assign(HUB_PATH);
+                window.location.assign(MASTER_PATH);
               }}
               className="btn-icon"
               title={t('common:actions.signOut')}
@@ -215,12 +217,16 @@ function MasterDashboard() {
             {active.length > 0 && (
               <>
                 <ComparisonTable countries={active} />
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <div className={`grid grid-cols-1 gap-5 ${active.some((c) => uses(c, 'partTracking')) ? 'xl:grid-cols-2' : ''}`}>
                   <MonthlyChart countries={active} kind="programs" />
-                  <MonthlyChart countries={active} kind="parts" />
+                  {active.some((c) => uses(c, 'partTracking')) && (
+                    <MonthlyChart countries={active.filter((c) => uses(c, 'partTracking'))} kind="parts" />
+                  )}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  <MachineHealth countries={active} />
+                <div className={`grid grid-cols-1 gap-5 ${active.some((c) => uses(c, 'preventive')) ? 'lg:grid-cols-2' : ''}`}>
+                  {active.some((c) => uses(c, 'preventive')) && (
+                    <MachineHealth countries={active.filter((c) => uses(c, 'preventive'))} />
+                  )}
                   <TopOperators countries={active} />
                 </div>
               </>
@@ -290,19 +296,32 @@ function CountryCard({ country, index, onCreateAdmin }: { country: Country; inde
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Stat icon={<Activity size={13} />} label={t('card.programs')} value={fmtNumber(country.programs.total, 0)} detail={t('card.last30', { count: country.programs.last30Days })} />
             <Stat icon={<Timer size={13} />} label={t('card.timeSaved')} value={fmtDuration(country.programs.timeSavedSeconds)} />
-            <Stat
-              icon={<Package size={13} />}
-              label={t('card.partsMonth')}
-              value={fmtNumber(country.parts.thisMonthQty, 0)}
-              detail={country.parts.pending ? t('card.pending', { count: country.parts.pending }) : t('card.partsValue', { value: fmtNumber(country.parts.thisMonthValue, 1) })}
-            />
-            <Stat
-              icon={<AlertTriangle size={13} />}
-              label={t('card.problems')}
-              value={fmtNumber(country.machines.problems, 0)}
-              detail={t('card.due', { count: country.machines.dueChecks })}
-              tone={country.machines.problems ? 'danger' : undefined}
-            />
+            {uses(country, 'partTracking') ? (
+              <Stat
+                icon={<Package size={13} />}
+                label={t('card.partsMonth')}
+                value={fmtNumber(country.parts.thisMonthQty, 0)}
+                detail={country.parts.pending ? t('card.pending', { count: country.parts.pending }) : t('card.partsValue', { value: fmtNumber(country.parts.thisMonthValue, 1) })}
+              />
+            ) : (
+              <Stat icon={<Activity size={13} />} label={t('card.programs30')} value={fmtNumber(country.programs.last30Days, 0)} detail={t('card.gcodeOnly')} />
+            )}
+            {uses(country, 'preventive') ? (
+              <Stat
+                icon={<AlertTriangle size={13} />}
+                label={t('card.problems')}
+                value={fmtNumber(country.machines.problems, 0)}
+                detail={t('card.due', { count: country.machines.dueChecks })}
+                tone={country.machines.problems ? 'danger' : undefined}
+              />
+            ) : (
+              <Stat
+                icon={<Timer size={13} />}
+                label={t('card.autoShare')}
+                value={country.programs.appSelected + country.programs.manual ? `${fmtNumber((country.programs.appSelected / (country.programs.appSelected + country.programs.manual)) * 100, 0)} %` : '-'}
+                detail={t('card.autoShareDetail')}
+              />
+            )}
             <Stat icon={<Factory size={13} />} label={t('card.machines')} value={fmtNumber(country.machines.total, 0)} detail={t('card.tools', { count: country.tools.total })} />
             <Stat
               icon={<Users size={13} />}
@@ -330,17 +349,19 @@ function CountryCard({ country, index, onCreateAdmin }: { country: Country; inde
 function ComparisonTable({ countries }: { countries: ActiveCountry[] }) {
   const { t } = useT('master');
   const pct = (a: number, b: number) => (a + b ? `${fmtNumber((a / (a + b)) * 100, 0)} %` : '-');
+  const notUsed = t('compare.notUsed');
+  const ifUses = (feature: keyof RegionFeatures, value: (c: ActiveCountry) => string) => (c: ActiveCountry) => (uses(c, feature) ? value(c) : notUsed);
   const rows: { label: string; value: (c: ActiveCountry) => string }[] = [
     { label: t('compare.programsTotal'), value: (c) => fmtNumber(c.programs.total, 0) },
     { label: t('compare.programs30'), value: (c) => fmtNumber(c.programs.last30Days, 0) },
     { label: t('compare.timeSaved'), value: (c) => fmtDuration(c.programs.timeSavedSeconds) },
     { label: t('compare.autoShare'), value: (c) => pct(c.programs.appSelected, c.programs.manual) },
-    { label: t('compare.partsMonth'), value: (c) => fmtNumber(c.parts.thisMonthQty, 0) },
-    { label: t('compare.partsPending'), value: (c) => fmtNumber(c.parts.pending, 0) },
+    { label: t('compare.partsMonth'), value: ifUses('partTracking', (c) => fmtNumber(c.parts.thisMonthQty, 0)) },
+    { label: t('compare.partsPending'), value: ifUses('partTracking', (c) => fmtNumber(c.parts.pending, 0)) },
     { label: t('compare.machines'), value: (c) => fmtNumber(c.machines.total, 0) },
     { label: t('compare.tools'), value: (c) => fmtNumber(c.tools.total, 0) },
-    { label: t('compare.problems'), value: (c) => fmtNumber(c.machines.problems, 0) },
-    { label: t('compare.due'), value: (c) => fmtNumber(c.machines.dueChecks, 0) },
+    { label: t('compare.problems'), value: ifUses('preventive', (c) => fmtNumber(c.machines.problems, 0)) },
+    { label: t('compare.due'), value: ifUses('preventive', (c) => fmtNumber(c.machines.dueChecks, 0)) },
     { label: t('compare.users'), value: (c) => `${c.users.admins} / ${c.users.machinists}` },
     { label: t('compare.mfa'), value: (c) => `${c.users.adminsWithMfa} / ${c.users.admins}` },
     { label: t('compare.failed'), value: (c) => fmtNumber(c.security.failedSignIns7d, 0) },

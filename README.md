@@ -8,7 +8,7 @@ D1 database stores the data. Netlify and Supabase are no longer needed.
 
 ```
 Browser (each PC) ──► Cloudflare Worker
-                       ├─ /               country picker (Morocco · Türkiye)
+                       ├─ /               country picker (Morocco · Türkiye · Tunisia, locked)
                        ├─ /ma/  + /ma/api/*      Morocco app   ──► D1 cnc-process-pro-db  (English)
                        ├─ /tr/  + /tr/api/*      Türkiye app   ──► D1 cnc-process-tr-db   (Turkish)
                        ├─ /master/ + /master/api/*  master dashboard ──► D1 cnc-process-hub-db
@@ -17,7 +17,9 @@ Browser (each PC) ──► Cloudflare Worker
 
 ### Countries and the master dashboard
 
-- **One link, separate countries.** The root page lets people choose their country. Each
+- **One link, separate countries.** The root page lets people choose their country, once:
+  after that the link always opens that country (also after signing out) until someone uses
+  "Change country". Browsers that used the app before go straight to Morocco. Each
   country is a separate instance with its **own database**: its own accounts, machines,
   tools, history, parts and language (Morocco: English, Türkiye: Turkish). The Worker
   gives every request only the database of its country, and each database remembers which
@@ -32,6 +34,12 @@ Browser (each PC) ──► Cloudflare Worker
 - **Setting up a new country:** a Moroccan admin creates the first master account
   (Admin → Master admin account). The master then creates the first admin of the new
   country from the dashboard. New countries have no public "first-time setup".
+- **Features per country** (`features` in `src/regions.ts`): Türkiye only has the G-code
+  remapper with its tool inventory and history (no part tracking, part review or preventive
+  actions; their API answers "not found" there). Türkiye's output programs get their French
+  comments in English (`gcodeComments: 'en'`); Morocco's output is unchanged.
+- **Tunisia** is shown on the country picker with a lock (`UPCOMING_COUNTRIES`): no link,
+  no database, no language yet.
 - **Adding a third country later:** create a D1 database, add its binding to
   `wrangler.jsonc`, add an entry to `src/regions.ts` and a `src/i18n/locales/<lang>/` folder.
 
@@ -56,31 +64,12 @@ After that, every push to the production branch redeploys automatically.
 
 Optional: **Settings → Domains & Routes** lets you add your own domain.
 
-## 2. First start and moving your data out of Supabase
+## 2. First start
 
 1. Open the new URL. The first screen is **First-time setup**: create the admin account.
-2. Go to **Admin: Analytics, Users & Data → Import from Supabase**.
-3. Paste the Supabase project URL and the **anon** key, then press **Start import**.
-   It copies:
-   - user accounts (with their current passwords)
-   - the tool inventory
-   - the program history and the generated G-code files
-   - the part entries
-
-   Keep the tab open until the log says **Migration finished**. Running it again is safe,
-   because records that already exist are skipped.
-4. If you kept old **`CNC_History_Archive_*.json`** files from the 30-day archiving, import
-   them with **Restore / import a backup file…**. That brings the archived history (and the
-   "time won" count) back.
-
-### After the migration
-
-- Check that the operators can sign in, then **switch off the Netlify site**.
-- **Delete (or pause) the Supabase project.** Its tables were readable and writable by anyone
-  who had the anon key, and that key is visible inside the Netlify site's JavaScript. This
-  includes the user passwords, which were stored in plain text.
-- For the same reason, **change the passwords**: header 🔑 for your own, and the key icon next
-  to each user under Admin → Users.
+2. If you kept old **`CNC_History_Archive_*.json`** files from the 30-day archiving, import
+   them with **Admin → Restore / import a backup file…**. That brings the archived history
+   (and the "time won" count) back.
 
 ## 3. Daily use: what changed
 
@@ -157,7 +146,8 @@ src/                 React app
   lib/gcodeProcessor.ts, *Converter.ts   remapping + dialect rules (unit-tested in tests/)
   contexts/          AuthContext (sign-in), SyncContext (shared data + polling)
   lib/historyApi.ts  history, offline export queue, compressed program files
-  lib/migration.ts   Supabase import, backup / restore
+  lib/migration.ts   backup / restore
+  lib/gcodeTranslate.ts  French G-code comments to English (countries with gcodeComments 'en')
   regions.ts         the countries (database binding, language, cookie)
   lib/instance.ts    which page this is (picker / country / master), per-country storage keys
   i18n/              translations: locales/en/*.ts and locales/tr/*.ts (same keys, type-checked)

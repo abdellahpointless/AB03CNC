@@ -17,7 +17,7 @@ import {
 import { audit } from './security';
 import { translateMessage } from './i18n';
 import './i18n-tr';
-import { REGIONS, regionById, type RegionId } from '../src/regions';
+import { REGIONS, featureOfApiPath, regionById, type RegionId } from '../src/regions';
 import { handleCreateMachine, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
 import {
   handleCountryAdmins,
@@ -251,6 +251,11 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
 
   const env = instanceEnv(rawEnv, instance);
   if (!env) throw new HttpError(503, 'This country is not available yet.');
+  // Parts of the app a country does not use do not exist there.
+  if (instance !== 'master') {
+    const feature = featureOfApiPath(rest);
+    if (feature && !regionById(instance)!.features[feature]) throw new HttpError(404, 'Not found');
+  }
   const table = instance === 'master' ? masterRoutes : routes;
   const routeUrl = new URL(`/api${rest}${url.search}`, url.origin);
 

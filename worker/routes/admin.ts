@@ -8,8 +8,7 @@ import { DEFAULT_SAVED_SECONDS } from './analytics';
 import type { Tool } from '../../src/types';
 
 /**
- * Import endpoints used by the in-app migration tool (Supabase -> D1) and by
- * "Restore from backup". The browser sends data in small batches so each
+ * Import endpoints used by "Restore from backup". The browser sends data in small batches so each
  * request stays inside the Workers Free CPU budget.
  */
 

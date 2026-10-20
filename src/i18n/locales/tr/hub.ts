@@ -9,6 +9,8 @@ const hub: Translation<typeof en> = {
   lastUsed: 'Son kullanılan',
   open: 'Aç',
   master: 'Ana yönetici',
+  comingSoon: 'Yakında',
+  notAvailable: 'Henüz kullanılamıyor',
   masterHint: 'Ana yöneticiler herhangi bir ülkeden de giriş yapabilir.',
 };
 export default hub;

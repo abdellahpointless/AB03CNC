@@ -54,6 +54,30 @@ export function rememberCountry(id: RegionId): void {
   }
 }
 
+/** Address of the country picker when someone asks to change country (it never redirects). */
+export const CHOOSE_COUNTRY_PATH = '/?choose';
+
+export function wantsCountryPicker(search: string = typeof location === 'undefined' ? '' : location.search): boolean {
+  return new URLSearchParams(search).has('choose');
+}
+
+/**
+ * The country this browser belongs to. People pick it once on the country picker; after that
+ * the site's address always opens that country (also after signing out) until someone asks to
+ * change country. Browsers that used the app before there were several countries already have
+ * Morocco's saved data (its keys have no prefix), so they go straight to Morocco.
+ */
+export function homeCountry(): RegionId | null {
+  const last = lastCountry();
+  if (last) return last;
+  try {
+    if (localStorage.getItem('cnc-toolbox-cache-v1') !== null || localStorage.getItem('cnc-session-user') !== null) return 'ma';
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
+}
+
 export function lastCountry(): RegionId | null {
   try {
     const v = localStorage.getItem(LAST_COUNTRY_KEY);

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { HUB_PATH, currentRegion, scopedKey } from './lib/instance';
+import { CHOOSE_COUNTRY_PATH, currentRegion, scopedKey } from './lib/instance';
 import { Flag } from './components/Flag';
 import MachineManager from './components/MachineManager';
 import MasterAccountCard from './components/MasterAccountCard';
@@ -9,7 +9,6 @@ import HistoryView from './components/HistoryView';
 import RecentCodes from './components/RecentCodes';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
-import BackupManager, { BackupScheduler } from './components/BackupManager';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
 import PreventiveActions from './components/PreventiveActions';
@@ -63,6 +62,7 @@ function Workspace() {
   const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
   const { refreshNow, connection } = useSync();
+  const { features } = currentRegion();
   const [activeTab, setActiveTab] = useState<Tab>('REMAP');
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
@@ -113,7 +113,6 @@ function Workspace() {
   return (
     <div className="min-h-screen flex flex-col relative pb-8">
       {/* Automatic 10-minute folder backup on the admin PC */}
-      <BackupScheduler />
       <AnimatePresence>
         {showPasswordModal && <ChangePasswordModal key="password" initialTab={showPasswordModal} onClose={() => setShowPasswordModal(false)} />}
       </AnimatePresence>
@@ -195,7 +194,7 @@ function Workspace() {
                 </span>
                 {/* Country of this instance; click to go back to the country picker. */}
                 <a
-                  href={HUB_PATH}
+                  href={CHOOSE_COUNTRY_PATH}
                   className="shrink-0 inline-flex items-center rounded-[3px] ring-1 ring-[var(--border-subtle)] hover:ring-[var(--blue-500)] transition"
                   title={`${t(`common:country.${currentRegion().id}`)} · ${t('common:actions.changeCountry')}`}
                   aria-label={t('common:actions.changeCountry')}
@@ -349,45 +348,49 @@ function Workspace() {
           )}
 
           {/* Tab: Part without scan (Both Roles) */}
-          <button
-            onClick={() => setActiveTab('PART_ENTRY')}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-              activeTab === 'PART_ENTRY'
-                ? 'text-[var(--accent-primary)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
-            }`}
-          >
-            <PackagePlus size={15} />
-            <span>{t('tabs.partEntry')}</span>
-            {activeTab === 'PART_ENTRY' && (
-              <>
-              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
-              </>
-            )}
-          </button>
+          {features.partTracking && (
+            <button
+              onClick={() => setActiveTab('PART_ENTRY')}
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+                activeTab === 'PART_ENTRY'
+                  ? 'text-[var(--accent-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
+              }`}
+            >
+              <PackagePlus size={15} />
+              <span>{t('tabs.partEntry')}</span>
+              {activeTab === 'PART_ENTRY' && (
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+                </>
+              )}
+            </button>
+          )}
 
           {/* Tab: Preventive actions (Both Roles) */}
-          <button
-            onClick={() => setActiveTab('PREVENTIVE')}
-            className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-              activeTab === 'PREVENTIVE'
-                ? 'text-[var(--accent-primary)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
-            }`}
-          >
-            <Activity size={15} />
-            <span>{t('tabs.preventive')}</span>
-            {activeTab === 'PREVENTIVE' && (
-              <>
-              <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
-              </>
-            )}
-          </button>
+          {features.preventive && (
+            <button
+              onClick={() => setActiveTab('PREVENTIVE')}
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+                activeTab === 'PREVENTIVE'
+                  ? 'text-[var(--accent-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
+              }`}
+            >
+              <Activity size={15} />
+              <span>{t('tabs.preventive')}</span>
+              {activeTab === 'PREVENTIVE' && (
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+                </>
+              )}
+            </button>
+          )}
 
           {/* Tab: Part Review (ADMIN) */}
-          {user.role === 'ADMIN' && (
+          {features.partTracking && user.role === 'ADMIN' && (
             <button
               onClick={() => setActiveTab('PART_REVIEW')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
@@ -493,18 +496,15 @@ function Workspace() {
                 <div className="aurora-card aurora-card-static p-6">
                   <DataManagement />
                 </div>
-                <div className="aurora-card aurora-card-static p-6">
-                  <BackupManager />
-                </div>
               </div>
             )}
-            {activeTab === 'PART_ENTRY' && (
+            {activeTab === 'PART_ENTRY' && features.partTracking && (
               <PartWithoutScan />
             )}
-            {activeTab === 'PREVENTIVE' && (
+            {activeTab === 'PREVENTIVE' && features.preventive && (
               <PreventiveActions />
             )}
-            {activeTab === 'PART_REVIEW' && user.role === 'ADMIN' && (
+            {activeTab === 'PART_REVIEW' && features.partTracking && user.role === 'ADMIN' && (
               <PartReview />
             )}
           </motion.div>
