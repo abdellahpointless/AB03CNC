@@ -246,5 +246,22 @@ const remapper: Translation<typeof en> = {
       toolTooShort: '{{t}} {{length}} mm dışarıda ama kesme {{depth}} mm derine iniyor',
     },
   },
+  /** Takım yolu önizlemesi (components/ToolpathViewer). */
+  toolpath: {
+    title: 'Takım yolu',
+    open: 'Takım yolu',
+    openTitle: 'Programın her hareketini, her takım ayrı renkte, ve tahmini çevrim süresini görün',
+    tools: 'Takımlar',
+    lowestZ: 'En derin nokta',
+    fit: 'Ekrana sığdır',
+    noMoves: 'Bu programda gösterilecek hareket yok.',
+    estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
+    play: 'Oynat',
+    pause: 'Duraklat',
+    start: 'Başa dön',
+    end: 'Sona git',
+    position: 'Programdaki konum',
+    speed: 'Oynatma hızı',
+  },
 };
 export default remapper;

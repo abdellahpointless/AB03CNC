@@ -795,6 +795,7 @@ N190 M30`;
 
       <CodeEditorPair
         safety={safety}
+        machineBrand={machine?.brand}
         onSafetyOverride={(errors) => {
           // Tells the master admins (Telegram alert) that a program left with red safety problems.
           api('/alerts/safety-override', { method: 'POST', body: { machine: machine?.name ?? selectedMachine, program: fileName || 'program', errors } }).catch(() => undefined);

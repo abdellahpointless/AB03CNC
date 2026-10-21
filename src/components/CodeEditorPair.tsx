@@ -1,6 +1,8 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, ArrowDownToLine, MoveVertical, Flag } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, ArrowDownToLine, MoveVertical, Flag, Route } from 'lucide-react';
 import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
+
+const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
@@ -24,6 +26,8 @@ interface CodeEditorPairProps {
   safety?: SafetyReport | null;
   /** Called when someone exports although the safety check found red problems. */
   onSafetyOverride?: (errors: number) => void;
+  /** Brand of the target machine (rapid speed and tool change time of the toolpath estimate). */
+  machineBrand?: string;
 }
 
 /** Symbol and short code of each check: readable without knowing the app's language. */
@@ -181,7 +185,9 @@ export default function CodeEditorPair({
   onReanalyze,
   safety = null,
   onSafetyOverride,
+  machineBrand,
 }: CodeEditorPairProps) {
+  const [showToolpath, setShowToolpath] = useState(false);
   const { t } = useT('remapper');
   const [confirmingExport, setConfirmingExport] = useState(false);
   const outputScrollRef = useRef<HTMLDivElement>(null);
@@ -541,6 +547,15 @@ export default function CodeEditorPair({
             </div>
             
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowToolpath(true)}
+                disabled={!outputCode && !sourceCode.trim()}
+                className="btn-secondary text-xs py-1 px-2.5"
+                title={t('toolpath.openTitle')}
+              >
+                <Route size={13} />
+                <span className="hidden sm:inline">{t('toolpath.open')}</span>
+              </button>
               <button 
                 onClick={copyToClipboard}
                 disabled={!outputCode || isOutputStale}
@@ -637,6 +652,16 @@ export default function CodeEditorPair({
           </div>
         </div>
       </div>
+      {showToolpath && (
+        <Suspense fallback={null}>
+          <ToolpathViewer
+            code={outputCode && !isOutputStale ? outputCode : sourceCode}
+            title={fileName || 'program'}
+            brand={machineBrand}
+            onClose={() => setShowToolpath(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

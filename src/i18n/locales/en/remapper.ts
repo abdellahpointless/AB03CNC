@@ -255,5 +255,22 @@ const remapper = {
       toolTooShort: '{{t}} sticks out {{length}} mm but the cut goes {{depth}} mm deep',
     },
   },
+  /** Toolpath preview (components/ToolpathViewer). */
+  toolpath: {
+    title: 'Toolpath',
+    open: 'Toolpath',
+    openTitle: 'See every move of the program, one colour per tool, and the estimated cycle time',
+    tools: 'Tools',
+    lowestZ: 'Deepest point',
+    fit: 'Fit to screen',
+    noMoves: 'No moves to show in this program.',
+    estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
+    play: 'Play',
+    pause: 'Pause',
+    start: 'Start',
+    end: 'End',
+    position: 'Position in the program',
+    speed: 'Playback speed',
+  },
 };
 export default remapper;
