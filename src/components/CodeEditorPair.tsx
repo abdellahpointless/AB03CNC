@@ -1,5 +1,6 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, ChevronDown, XCircle } from 'lucide-react';
+import { SAFETY_CHECKS, type SafetyReport } from '../lib/safetyCheck';
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
@@ -19,6 +20,104 @@ interface CodeEditorPairProps {
   /** The output was generated from a different program/machine than what is shown now. */
   isOutputStale?: boolean;
   onReanalyze?: () => void;
+  /** Safety check of the output; errors ask for a confirmation before export. */
+  safety?: SafetyReport | null;
+}
+
+/** The safety check result above the output: a one-line summary that opens into the list. */
+function SafetyPanel({
+  report,
+  confirming,
+  onExportAnyway,
+  onCancel,
+  onGoToLine,
+}: {
+  report: SafetyReport;
+  confirming: boolean;
+  onExportAnyway: () => void;
+  onCancel: () => void;
+  onGoToLine: (line: number) => void;
+}) {
+  const { t } = useT('remapper');
+  // Open when there is something to read; a clean program stays a single green line.
+  const [open, setOpen] = useState(report.findings.length > 0);
+  useEffect(() => {
+    setOpen(report.findings.length > 0 || confirming);
+  }, [report, confirming]);
+
+  const tone = report.errors ? 'rose' : report.warnings ? 'orange' : 'green';
+  const color = `var(--${tone}-500)`;
+  const summary = report.findings.length
+    ? [
+        report.errors ? t('safety.errorsCount', { count: report.errors }) : null,
+        report.warnings ? t('safety.warningsCount', { count: report.warnings }) : null,
+        t('safety.passedCount', { count: report.passed.length }),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : t('safety.allClear', { count: SAFETY_CHECKS.length });
+
+  return (
+    <div className="border-b border-[var(--border-subtle)]" style={{ background: `color-mix(in srgb, ${color} 9%, transparent)` }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full px-4 py-2.5 flex items-center gap-2.5 text-xs text-left"
+      >
+        {report.errors || report.warnings ? <ShieldAlert size={15} style={{ color }} className="shrink-0" /> : <ShieldCheck size={15} style={{ color }} className="shrink-0" />}
+        <span className="font-bold text-[var(--text-primary)]">{t('safety.title')}</span>
+        <span className="font-semibold truncate" style={{ color }}>{summary}</span>
+        <span className="ml-auto flex items-center gap-1 text-[var(--text-tertiary)] shrink-0">
+          {open ? t('safety.hide') : t('safety.show')}
+          <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 space-y-1.5">
+          {report.findings.map((f, i) => {
+            const fc = f.level === 'error' ? 'var(--rose-500)' : 'var(--orange-500)';
+            const where = f.line === null ? t('safety.program') : f.params.n ? t('safety.lineN', { line: f.params.line, n: f.params.n }) : t('safety.line', { line: f.params.line });
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={f.line === null}
+                onClick={() => f.line !== null && onGoToLine(f.line)}
+                className="w-full flex items-start gap-2 text-left text-xs rounded-[var(--radius-sm)] px-2.5 py-1.5 bg-[var(--bg-panel)]/60 border enabled:hover:brightness-110 disabled:cursor-default"
+                style={{ borderColor: `color-mix(in srgb, ${fc} 40%, transparent)` }}
+              >
+                {f.level === 'error' ? <XCircle size={14} style={{ color: fc }} className="shrink-0 mt-px" /> : <AlertTriangle size={14} style={{ color: fc }} className="shrink-0 mt-px" />}
+                <span className="flex-1 text-[var(--text-primary)]">{t(`safety.msg.${f.code}` as 'safety.msg.noOffset', f.params as { t: string })}</span>
+                <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">{where}</span>
+              </button>
+            );
+          })}
+          {report.passed.map((c) => (
+            <div key={c} className="flex items-center gap-2 text-xs px-2.5 py-1 text-[var(--text-secondary)]">
+              <CheckCircle2 size={14} className="text-[var(--green-500)] shrink-0" />
+              <span>{t(`safety.checks.${c}`)}</span>
+            </div>
+          ))}
+          {confirming && (
+            <div className="mt-2 p-3 rounded-[var(--radius-md)] border border-[var(--rose-500)]/40 bg-[var(--rose-500)]/10 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 text-xs">
+                <div className="font-bold text-[var(--text-primary)]">{t('safety.confirmTitle')}</div>
+                <div className="text-[var(--text-secondary)] mt-0.5">{t('safety.confirmText')}</div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button type="button" onClick={onCancel} className="btn-secondary text-xs py-1.5 px-3">{t('safety.cancel')}</button>
+                <button type="button" onClick={onExportAnyway} className="btn-danger text-xs py-1.5 px-3 font-semibold">
+                  <Download size={13} />
+                  <span>{t('safety.exportAnyway')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -55,9 +154,12 @@ export default function CodeEditorPair({
   onLoadSample,
   onLoadHaasSample,
   isOutputStale = false,
-  onReanalyze
+  onReanalyze,
+  safety = null,
 }: CodeEditorPairProps) {
   const { t } = useT('remapper');
+  const [confirmingExport, setConfirmingExport] = useState(false);
+  const outputScrollRef = useRef<HTMLDivElement>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [hasImported, setHasImported] = useState(false);
   const [conversionNotification, setConversionNotification] = useState<string | null>(null);
@@ -124,8 +226,14 @@ export default function CodeEditorPair({
     }
   };
 
-  const handleExportClick = () => {
+  const handleExportClick = (confirmed = false) => {
     if (!outputCode || isOutputStale) return;
+    // Red safety findings: show them and ask before exporting.
+    if (!confirmed && safety && safety.errors > 0) {
+      setConfirmingExport(true);
+      return;
+    }
+    setConfirmingExport(false);
     if (sourceCode.trim()) {
       const { lines: processedSource, addedCount } = applyG53BeforeG52(sourceCode.split('\n'));
       if (addedCount > 0) {
@@ -231,6 +339,13 @@ export default function CodeEditorPair({
   };
 
   const outputLines = useMemo(() => outputCode.split('\n'), [outputCode]);
+  // Lines the safety check flagged (errors win over warnings on the same line).
+  const safetyLines = useMemo(() => {
+    const map = new Map<number, 'error' | 'warning'>();
+    for (const f of safety?.findings ?? []) if (f.line !== null && map.get(f.line) !== 'error') map.set(f.line, f.level);
+    return map;
+  }, [safety]);
+  useEffect(() => setConfirmingExport(false), [outputCode]);
   const changedLines = useMemo(
     () => (outputCode ? computeChangedLines(sourceCode.split('\n'), outputLines) : []),
     // Recomputed only when a new output is generated, not on every keystroke in the source.
@@ -412,7 +527,7 @@ export default function CodeEditorPair({
               </button>
               {onExport && (
                 <button 
-                  onClick={handleExportClick}
+                  onClick={() => handleExportClick()}
                   disabled={!outputCode || isOutputStale}
                   title={t('editor.extractTitle')}
                   className="btn-warning text-xs py-1.5 px-3 font-semibold"
@@ -423,6 +538,16 @@ export default function CodeEditorPair({
               )}
             </div>
           </div>
+
+          {safety && outputCode && !isOutputStale && (
+            <SafetyPanel
+              report={safety}
+              confirming={confirmingExport}
+              onExportAnyway={() => handleExportClick(true)}
+              onCancel={() => setConfirmingExport(false)}
+              onGoToLine={(line) => outputScrollRef.current?.querySelector(`[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+            />
+          )}
 
           {isOutputStale && outputCode && (
             <div className="px-4 py-2.5 border-b border-[var(--orange-500)]/30 bg-[rgba(224,138,77,0.12)] flex items-center justify-between gap-3 text-xs">
@@ -440,7 +565,7 @@ export default function CodeEditorPair({
           )}
 
           {/* Code Viewer */}
-          <div className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] ${isOutputStale ? 'opacity-50' : ''}`}>
+          <div ref={outputScrollRef} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] ${isOutputStale ? 'opacity-50' : ''}`}>
             {!outputCode ? (
               <div className="h-full flex items-center justify-center text-center p-6">
                 <div className="max-w-xs space-y-2">
@@ -462,14 +587,19 @@ export default function CodeEditorPair({
                   const isApprox = line.includes('(APPROX-REMAP:');
                   
                   let lineClass = 'text-[var(--text-primary)]';
-                  if (isApprox) {
+                  const flagged = safetyLines.get(i);
+                  if (flagged) {
+                    lineClass = flagged === 'error'
+                      ? 'bg-[var(--rose-500)]/15 text-[var(--rose-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--rose-500)]'
+                      : 'bg-[var(--orange-500)]/15 text-[var(--orange-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)] border-dashed';
+                  } else if (isApprox) {
                     lineClass = 'bg-[var(--orange-500)]/20 text-[var(--orange-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)]';
                   } else if (isChanged) {
                     lineClass = 'bg-[var(--green-500)]/15 text-[var(--green-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--green-500)]';
                   }
                   
                   return (
-                    <div key={i} className={`py-0.5 ${lineClass}`}>
+                    <div key={i} data-line={i} className={`py-0.5 ${lineClass}`}>
                       {line || ' '}
                     </div>
                   );

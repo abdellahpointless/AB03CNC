@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MachineId, ToolChangeBlock, Tool, TOOL_CATEGORIES, ToolCategory, HistoryRecord } from '../types';
 import { engineMachineId, maxPocketsFor } from '../regions';
@@ -6,6 +6,7 @@ import { currentRegion } from '../lib/instance';
 import CodeEditorPair from './CodeEditorPair';
 import { analyzeGCode, generateRemappedCode, applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
+import { checkProgram } from '../lib/safetyCheck';
 
 /** A program comment as shown to the operator (in English where the country reads no French). */
 const shownComment = (text: string) => (currentRegion().gcodeComments === 'en' ? translateCommentText(text) : text);
@@ -316,6 +317,18 @@ N190 M30`;
     setOutputCode(currentRegion().gcodeComments === 'en' ? translateGcodeComments(finalCode) : finalCode);
     setShowConfirm(false);
   };
+
+  // Safety check of the generated program (shown above the output; red findings ask before export).
+  const safety = useMemo(() => {
+    if (!outputCode) return null;
+    const toolDepths = blocks
+      .filter((b) => !b.skipOperation && !(resolutions[b.blockId] && resolutions[b.blockId].category === 'empty'))
+      .map((b) => ({ tool: b, used: resolutions[b.blockId] || b.matchedTool }))
+      .filter((x) => x.used)
+      .map(({ tool: b, used }) => ({ tool: used!.number, length: used!.length, depth: Math.abs(b.minZDepth || 0) }));
+    return checkProgram(outputCode, { fanuc: isFanucMachine || engineId.startsWith('FANUC'), toolDepths });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outputCode]);
 
   const handleExport = () => {
     if (!outputCode) return;
@@ -780,6 +793,7 @@ N190 M30`;
       </div>
 
       <CodeEditorPair
+        safety={safety}
         inputLabel={t('controls.sourceCode')}
         outputLabel={t('controls.processedCode')}
         sourceCode={sourceCode}
