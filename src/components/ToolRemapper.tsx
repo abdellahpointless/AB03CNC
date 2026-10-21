@@ -7,6 +7,7 @@ import CodeEditorPair from './CodeEditorPair';
 import { analyzeGCode, generateRemappedCode, applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
 import { checkProgram } from '../lib/safetyCheck';
+import { api } from '../lib/api';
 
 /** A program comment as shown to the operator (in English where the country reads no French). */
 const shownComment = (text: string) => (currentRegion().gcodeComments === 'en' ? translateCommentText(text) : text);
@@ -794,6 +795,10 @@ N190 M30`;
 
       <CodeEditorPair
         safety={safety}
+        onSafetyOverride={(errors) => {
+          // Tells the master admins (Telegram alert) that a program left with red safety problems.
+          api('/alerts/safety-override', { method: 'POST', body: { machine: machine?.name ?? selectedMachine, program: fileName || 'program', errors } }).catch(() => undefined);
+        }}
         inputLabel={t('controls.sourceCode')}
         outputLabel={t('controls.processedCode')}
         sourceCode={sourceCode}

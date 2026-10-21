@@ -41,6 +41,12 @@ Browser (each PC) ──► Cloudflare Worker
   on every open screen within seconds and its API answers "not found"; its data is kept.
   Türkiye's output programs get their French comments in English (`gcodeComments: 'en'`);
   Morocco's output is unchanged.
+- **Telegram alerts** (master dashboard → Telegram alerts): messages, and optionally voice calls
+  through the free CallMeBot service, when a machine problem is reported, an account gets locked,
+  or a program is exported despite red safety-check problems. Setup: create a bot with
+  @BotFather, add its token as the Worker **secret** `TELEGRAM_BOT_TOKEN` (Cloudflare → Workers →
+  cnc-process-pro → Settings → Variables and secrets), then each master links their Telegram
+  from the dashboard. The token is never stored in a database.
 - **Tunisia** is shown on the country picker with a lock (`UPCOMING_COUNTRIES`): no link,
   no database, no language yet.
 - **Adding a third country later:** create a D1 database, add its binding to

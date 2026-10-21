@@ -1,3 +1,4 @@
+import { machineProblemAlert, notifyLater } from '../alerts';
 import { HttpError, json, optStr, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
 import { FREQUENCIES, type Frequency } from '../fleet';
@@ -114,6 +115,10 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   }
   stmts.push(eventStmt(ctx, machine, check, body.action as string, note), bumpStmt(ctx.env, 'machines'));
   await db.batch(stmts);
+  if (body.action === 'PROBLEM') {
+    const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), `${check.title}${note && note !== check.title ? ` — ${note}` : ''}`, user);
+    await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${check.id}`);
+  }
   return json({ ok: true });
 }
 
@@ -133,6 +138,8 @@ export async function handleReportIssue(ctx: Ctx): Promise<Response> {
     eventStmt(ctx, machine, { id, title: note }, 'PROBLEM', note),
     bumpStmt(ctx.env, 'machines'),
   ]);
+  const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), note, ctx.user!.username);
+  await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${id}`);
   return json({ ok: true, id });
 }
 
@@ -208,4 +215,10 @@ export async function handleSetOwners(ctx: Ctx): Promise<Response> {
     bumpStmt(ctx.env, 'machines'),
   ]);
   return json({ ok: true });
+}
+
+/** The machine's display name for alerts (its id when it has none). */
+async function machineName(ctx: Ctx, id: string): Promise<string> {
+  const row = await ctx.env.DB.prepare('SELECT name FROM machines WHERE id = ?').bind(id).first<{ name: string }>().catch(() => null);
+  return row?.name || id;
 }

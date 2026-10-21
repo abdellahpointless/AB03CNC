@@ -24,6 +24,11 @@ export interface Env {
    * database alone is not enough to crack them. Never change or remove it once set.
    */
   AUTH_PEPPER?: string;
+  /** Telegram bot token for alerts (Worker secret, from @BotFather). Alerts are off without it. */
+  TELEGRAM_BOT_TOKEN?: string;
+  /** Local testing only: a stand-in for api.telegram.org / api.callmebot.com. */
+  TELEGRAM_API_BASE?: string;
+  CALLMEBOT_API_BASE?: string;
 }
 
 export type Role = 'ADMIN' | 'MACHINIST';
@@ -40,6 +45,8 @@ export interface Ctx {
   url: URL;
   params: Record<string, string>;
   user: AuthedUser | null;
+  /** Keeps work (alerts) running after the response is sent. */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 export type SyncScope = 'tools' | 'history' | 'users' | 'settings' | 'parts' | 'machines';

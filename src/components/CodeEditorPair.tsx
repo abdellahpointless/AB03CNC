@@ -22,6 +22,8 @@ interface CodeEditorPairProps {
   onReanalyze?: () => void;
   /** Safety check of the output; errors ask for a confirmation before export. */
   safety?: SafetyReport | null;
+  /** Called when someone exports although the safety check found red problems. */
+  onSafetyOverride?: (errors: number) => void;
 }
 
 /** Symbol and short code of each check: readable without knowing the app's language. */
@@ -178,6 +180,7 @@ export default function CodeEditorPair({
   isOutputStale = false,
   onReanalyze,
   safety = null,
+  onSafetyOverride,
 }: CodeEditorPairProps) {
   const { t } = useT('remapper');
   const [confirmingExport, setConfirmingExport] = useState(false);
@@ -565,7 +568,10 @@ export default function CodeEditorPair({
             <SafetyPanel
               report={safety}
               confirming={confirmingExport}
-              onExportAnyway={() => handleExportClick(true)}
+              onExportAnyway={() => {
+                onSafetyOverride?.(safety.errors);
+                handleExportClick(true);
+              }}
               onCancel={() => setConfirmingExport(false)}
               onGoToLine={(line) => outputScrollRef.current?.querySelector(`[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
             />

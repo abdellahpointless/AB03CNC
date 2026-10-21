@@ -27,6 +27,7 @@ import { regionById, type RegionFeatures, type RegionId } from '../regions';
 import { Flag } from './Flag';
 import Login from './Login';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import TelegramAlerts from './TelegramAlerts';
 import { SPRING_POP } from '../lib/motion';
 
 // ---- Data from GET /master/api/overview -------------------------------------------------
@@ -236,6 +237,7 @@ function MasterDashboard() {
             )}
 
             <CountryAdmins countries={data.countries} reload={reload} onAdd={(r) => setAdminFor(r)} />
+            <TelegramAlerts />
             <MasterAccounts />
           </>
         )}

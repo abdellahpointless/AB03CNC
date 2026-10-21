@@ -1,3 +1,4 @@
+import { lockoutAlert, notifyLater } from './alerts';
 import { HttpError, getCookie, json, readJson, str } from './http';
 import { bumpVersion, type Ctx, type AuthedUser, type Env, type Role } from './context';
 import { seedDefaultToolsIfEmpty } from './routes/tools';
@@ -410,6 +411,10 @@ async function loginWith(ctx: Ctx, username: string, password: string, extra: Re
         row ?? { username: '(unknown user)' },
         locked ? (row ? 'account locked' : 'IP throttled (unknown usernames)') : undefined,
       );
+      if (locked && row) {
+        const a = lockoutAlert(ctx.env.REGION, row.username);
+        await notifyLater(ctx, 'lockout', a.message, a.call, row.username);
+      }
     }
     throw new HttpError(401, 'Invalid username or password');
   }

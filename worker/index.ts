@@ -18,6 +18,15 @@ import { audit } from './security';
 import { translateMessage } from './i18n';
 import './i18n-tr';
 import { readFeatures } from './features';
+import {
+  handleAlertsLink,
+  handleAlertsLinkCheck,
+  handleAlertsStatus,
+  handleAlertsTest,
+  handleAlertsUnlink,
+  handleAlertsUpdate,
+  handleSafetyOverride,
+} from './routes/alerts';
 import { REGIONS, featureOfApiPath, regionById, type RegionId } from '../src/regions';
 import { handleCreateMachine, handleGetFeatures, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
 import {
@@ -159,6 +168,7 @@ route('POST', '/admin/import/settings', 'admin', handleImportSettings);
 
 // Machines of this country
 route('GET', '/features', 'user', handleGetFeatures);
+route('POST', '/alerts/safety-override', 'user', handleSafetyOverride);
 route('GET', '/fleet', 'user', handleListFleet);
 route('POST', '/fleet', 'admin', handleCreateMachine);
 route('PATCH', '/fleet/:machine', 'admin', handleUpdateMachine);
@@ -185,6 +195,12 @@ masterRoute('GET', '/masters', 'admin', handleListMasters);
 masterRoute('POST', '/masters', 'admin', handleCreateMaster);
 masterRoute('DELETE', '/masters/:id', 'admin', handleDeleteMaster);
 masterRoute('GET', '/audit', 'admin', handleAuditLog);
+masterRoute('GET', '/alerts', 'admin', handleAlertsStatus);
+masterRoute('POST', '/alerts/link', 'admin', handleAlertsLink);
+masterRoute('POST', '/alerts/link/check', 'admin', handleAlertsLinkCheck);
+masterRoute('PUT', '/alerts/me', 'admin', handleAlertsUpdate);
+masterRoute('DELETE', '/alerts/me', 'admin', handleAlertsUnlink);
+masterRoute('POST', '/alerts/test', 'admin', handleAlertsTest);
 
 /** Headers added to every API response. The API only returns JSON, so it may do nothing else. */
 const API_SECURITY_HEADERS: Record<string, string> = {
@@ -249,7 +265,7 @@ function instanceEnv(env: Env, instance: RegionId | 'master'): Env | null {
   return { ...env, DB: db, DB_TR: undefined, DB_HUB: undefined, HUB: env.DB_HUB, COUNTRIES: undefined, REGION: instance };
 }
 
-async function handleApi(request: Request, rawEnv: Env, url: URL, instance: RegionId | 'master', rest: string): Promise<Response> {
+async function handleApi(request: Request, rawEnv: Env, url: URL, instance: RegionId | 'master', rest: string, exec?: ExecutionContext): Promise<Response> {
   const write = request.method !== 'GET' && request.method !== 'HEAD';
   if (write) assertSameOrigin(request, url);
 
@@ -286,7 +302,7 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
       throw new HttpError(400, 'Invalid URL');
     }
 
-    const response = await r.handler({ env, request, url, params, user });
+    const response = await r.handler({ env, request, url, params, user, waitUntil: exec ? (p) => exec.waitUntil(p) : undefined });
     for (const c of session?.setCookies ?? []) response.headers.append('Set-Cookie', c);
     // Every admin change is written to the security log (user changes log their own, more precise, entry).
     if (r.access === 'admin' && write && response.ok && !/\/api\/(users|auth)\b/.test(url.pathname)) {
@@ -297,10 +313,10 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
   throw new HttpError(pathMatched ? 405 : 404, pathMatched ? 'Method not allowed' : 'Not found');
 }
 
-async function respond(request: Request, env: Env, url: URL, instance: RegionId | 'master', rest: string): Promise<Response> {
+async function respond(request: Request, env: Env, url: URL, instance: RegionId | 'master', rest: string, exec?: ExecutionContext): Promise<Response> {
   const language = instance === 'master' ? 'en' : regionById(instance)?.language;
   try {
-    return await handleApi(request, env, url, instance, rest);
+    return await handleApi(request, env, url, instance, rest, exec);
   } catch (err) {
     if (err instanceof HttpError) return json({ error: translateMessage(err.message, language), ...err.extra }, err.status);
     // Log only the message: never request bodies, cookies or stack traces with user data.
@@ -314,10 +330,10 @@ async function respond(request: Request, env: Env, url: URL, instance: RegionId 
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, exec: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const target = resolveInstance(url.pathname);
     if (!target) return env.ASSETS.fetch(request);
-    return withSecurityHeaders(await respond(request, env, url, target.instance, target.rest));
+    return withSecurityHeaders(await respond(request, env, url, target.instance, target.rest, exec));
   },
 } satisfies ExportedHandler<Env>;
