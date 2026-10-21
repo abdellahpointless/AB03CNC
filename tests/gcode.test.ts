@@ -209,3 +209,40 @@ describe('dialect converters', () => {
     expect(haasCode).toContain('F1200.');
   });
 });
+
+describe('FANUC -> HAAS fixes', () => {
+  const src = [
+    '%',
+    'O01203 (BRIDE ACIER)',
+    'N1 G0 G53 G49 Z0 G94 M95',
+    'T250550 M6',
+    'G43 H#513 D#513 M254 Z50. M8',
+    'M06 T230850',
+    'G0 G90 G54 X0 Y0 G43 H#513 D#513 M254 Z30. S8000 M3',
+    'G1 Z-5. F200',
+    'M30',
+    '%',
+  ].join('\n');
+  const out = convertFanucToHaas(src, 'x.nc').haasCode.split('\n');
+
+  it('reads a tool change written M6 first', () => {
+    expect(out.some((l) => /^N\d+ G00 G43 H230850 Z30\.$/.test(l))).toBe(true);
+    expect(out.join('\n')).not.toMatch(/H250550 Z30/);
+  });
+  it('keeps the move and spindle start that shared the G43 line', () => {
+    const i = out.findIndex((l) => l.includes('G43 H230850 Z30.'));
+    expect(out[i - 1]).toMatch(/^N\d+ G0 G90 G54 X0 Y0 S8000 M3$/);
+  });
+  it('turns a numbered FANUC safety line into the HAAS one instead of deleting it', () => {
+    expect(out[2]).toMatch(/G40 G17 G53 G49 G80 G90$/);
+  });
+  it('keeps % alone and the program name comment', () => {
+    expect(out[0]).toBe('%');
+    expect(out[out.length - 1]).toBe('%');
+    expect(out[1]).toBe('O1203 (BRIDE ACIER)');
+  });
+  it('still removes a first N line that only holds a comment', () => {
+    const r = convertFanucToHaas(['O12345', 'N10 (SAMPLE)', 'T6 M6', 'M30'].join('\n'), 'x.nc').haasCode;
+    expect(r).not.toContain('SAMPLE');
+  });
+});

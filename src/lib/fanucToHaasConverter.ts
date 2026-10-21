@@ -57,7 +57,9 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     const match = lines[i].trim().match(/^%?\s*O(\d{4,})/i);
     if (match) {
       const last4 = match[1].slice(-4);
-      lines[i] = `O${last4}`;
+      // Keep the program name comment, e.g. "O01203 (BRIDE ACIER)" -> "O1203 (BRIDE ACIER)".
+      const comment = lines[i].match(/\(.*\)\s*$/)?.[0];
+      lines[i] = comment ? `O${last4} ${comment.trim()}` : `O${last4}`;
       haasFilename = `O${last4}.txt`;
       stats.oCodeRenamed = true;
       break;
@@ -80,18 +82,17 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     const securityMatch = line.match(/^(N\d+\s+)?G0?0\s+G53\s+G49\s+Z0(?:\.0*)?\s+G94\s+M95$/i);
     if (securityMatch) {
       stats.securityLinesReplaced++;
-      const hasLeadingN = !!securityMatch[1];
-      if (hasLeadingN && !firstNLineRemoved) {
-        firstNLineRemoved = true;
-        return;
-      }
-      // Replaced with HAAS security line (goes to auto-numbering step)
+      // Always replaced with the HAAS security line (also when it carries the first N number:
+      // deleting it would leave the HAAS program without its safety line).
+      if (securityMatch[1]) firstNLineRemoved = true;
       line = 'G40 G17 G53 G49 G80 G90';
     }
 
     // Detect and remember Txx M6
-    if (/\bT(\d+)\b.*\bM0?6\b/i.test(line)) {
-      const toolMatch = line.match(/\bT(\d+)\b/i);
+    const toolCode = line.replace(/\([^)]*\)?/g, ' ');
+    if (/(?<![A-Z])M0*6(?![0-9.])/i.test(toolCode) && /(?<![A-Z])T\d+/i.test(toolCode)) {
+      // Tool change written either way round: "T12 M6", "M06 T12" or "M6T12".
+      const toolMatch = toolCode.match(/(?<![A-Z])T(\d+)/i);
       if (toolMatch) {
         lastToolNumber = toolMatch[1].padStart(2, '0');
         toolAlreadyCalled = true;
@@ -111,6 +112,22 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
         toolAlreadyCalled = true;
       }
 
+      // Everything else on the FANUC block (G90, G54, X/Y position, S speed, M3 spindle...) goes
+      // on its own block just before the G43 line, so no move or spindle start is lost.
+      const codePart = line.replace(/\([^)]*\)?/g, ' ');
+      const otherWords = codePart
+        .replace(/^\s*N\d+/i, ' ')
+        .replace(/(?<![A-Z])G0*43(?![0-9.])|(?<![A-Z])[HD]#?\d+|(?<![A-Z])M254(?![0-9])|(?<![A-Z])Z[-+]?\d*\.?\d*|(?<![A-Z])M0*8(?![0-9])/gi, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (otherWords.length > 0) {
+        const hasMotion = otherWords.some(w => /^G0*[0-3]$/i.test(w));
+        const needsRapid = !hasMotion && otherWords.some(w => /^[XY]/i.test(w));
+        haasLines.push(`N${nNumber} ${needsRapid ? 'G00 ' : ''}${otherWords.join(' ')}`);
+        nNumber += 10;
+      }
+
       haasLines.push(`N${nNumber} G00 G43 H${lastToolNumber} ${zVal}`);
       nNumber += 10;
 
@@ -128,9 +145,16 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
       line = line.replace(/F(\d+)(?!\.)\b/g, 'F$1.');
     }
 
-    // Remove very first Nxxx line only
+    // The very first N line is removed only when it holds no code, e.g. "N10 (PROGRAM NAME)".
+    // A first N line with a real command (move, tool, spindle) is kept.
     if (!firstNLineRemoved && /^N\d+\s+/i.test(line)) {
       firstNLineRemoved = true;
+      if (!line.replace(/^N\d+\s*/i, '').replace(/\([^)]*\)?/g, '').trim()) return;
+    }
+
+    // Program start/end marker stays alone on its line.
+    if (line === '%') {
+      haasLines.push(line);
       return;
     }
 
