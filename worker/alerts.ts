@@ -53,7 +53,7 @@ export async function telegram<T = unknown>(env: Env, method: string, body: Reco
 }
 
 /** A Telegram voice call that reads the text out (CallMeBot; the person authorised it once). */
-export async function telegramCall(env: Env, tgUsername: string, text: string, lang: 'en' | 'tr'): Promise<void> {
+export async function telegramCall(env: Env, tgUsername: string, text: string, lang: 'en' | 'tr'): Promise<string> {
   const qs = new URLSearchParams({
     source: 'web',
     user: `@${tgUsername.replace(/^@/, '')}`,
@@ -62,8 +62,14 @@ export async function telegramCall(env: Env, tgUsername: string, text: string, l
     rpt: '2',
   });
   const res = await fetch(`${callBase(env)}/start.php?${qs}`, { signal: AbortSignal.timeout(10000) });
-  const text_ = callReplyText(await res.text());
-  if (!res.ok || callFailed(text_)) throw new Error(`Call: ${text_.slice(0, 220) || res.status}`);
+  const reply = callReplyText(await res.text());
+  if (!res.ok || callFailed(reply)) throw new Error(`Call: ${callReplyTail(reply) || res.status}`);
+  return callReplyTail(reply);
+}
+
+/** The end of CallMeBot's reply, where it says what happened (the start is its step log). */
+export function callReplyTail(text: string, max = 300): string {
+  return text.length > max ? `…${text.slice(-max).trim()}` : text;
 }
 
 /**
@@ -85,6 +91,8 @@ export function callReplyText(html: string): string {
 }
 
 export function callFailed(text: string): boolean {
+  // CallMeBot logs its steps; once it says the call is starting, the call went out.
+  if (/starting telegram audio call|call (?:queued|started|placed)/i.test(text)) return false;
   return /not authori[sz]ed|authori[sz]e callmebot|\berror\b|invalid|not found|too many|blocked|limit/i.test(text);
 }
 

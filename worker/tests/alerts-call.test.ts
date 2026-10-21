@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { callFailed, callReplyText } from '../alerts';
+import { callFailed, callReplyTail, callReplyText } from '../alerts';
 
 const page = (body: string) =>
   `<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=UA-1"></script><script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag("js", new Date()); gtag("config", "UA-149177385-1"); if (x) console.error("error");</script><style>.error{color:red}</style></head><body>${body}</body></html>`;
@@ -15,5 +15,14 @@ describe('CallMeBot reply', () => {
     const t = callReplyText(page('<p>User not authorized. <a href="#">Click here to authorize CallMeBot to contact you.</a></p>'));
     expect(callFailed(t)).toBe(true);
     expect(t).toContain('User not authorized');
+  });
+  it('treats a reply that says the call is starting as success', () => {
+    const t = callReplyText(page('<p>Checking Authorization for @Abdellah_PNG... Using bot: @CallMeBot_API16<br>Autorization OK<br>User:@Abdellah_PNG<br>Text to speech:This is a test call from CNC Process Pro.<br>Converting mp3 file.<br>Starting Telegram Audio Call.<br>Check that you have Telegram open. Calls are limited to one every 65 seconds.</p>'));
+    expect(callFailed(t)).toBe(false);
+  });
+  it('shows the end of a long reply, where the outcome is', () => {
+    const long = `${'step. '.repeat(80)}User not authorized.`;
+    expect(callReplyTail(long)).toMatch(/User not authorized\.$/);
+    expect(callReplyTail(long).length).toBeLessThanOrEqual(301);
   });
 });

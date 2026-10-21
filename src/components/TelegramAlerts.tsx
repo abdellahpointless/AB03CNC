@@ -174,7 +174,7 @@ export default function TelegramAlerts() {
               <MessageCircle size={13} />
               <span>{t('alerts.testMessage')}</span>
             </button>
-            <button type="button" disabled={busy !== null || !me.tgUsername} onClick={() => run('call', async () => { await api('/alerts/test', { method: 'POST', body: { call: true } }); setNote(t('alerts.callSent')); })} className="btn-secondary text-xs py-1 px-2.5">
+            <button type="button" disabled={busy !== null || !me.tgUsername} onClick={() => run('call', async () => { const r = await api<{ detail?: string }>('/alerts/test', { method: 'POST', body: { call: true } }); setNote(r.detail ? `${t('alerts.callSent')} ${r.detail}` : t('alerts.callSent')); })} className="btn-secondary text-xs py-1 px-2.5">
               <PhoneCall size={13} />
               <span>{t('alerts.testCall')}</span>
             </button>

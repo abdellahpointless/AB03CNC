@@ -171,10 +171,11 @@ export async function handleAlertsTest(ctx: Ctx): Promise<Response> {
   const rec = await myRecipient(ctx);
   if (!rec) throw new HttpError(404, 'Telegram is not linked');
   const body = await readJson<{ call?: unknown }>(ctx.request, 200);
+  let detail = '';
   try {
     if (body.call === true) {
       if (!rec.tgUsername) throw new HttpError(400, 'Add your Telegram username first');
-      await telegramCall(ctx.env, rec.tgUsername, rec.lang === 'tr' ? 'Bu, CNC Process Pro test aramasıdır.' : 'This is a test call from CNC Process Pro.', rec.lang);
+      detail = await telegramCall(ctx.env, rec.tgUsername, rec.lang === 'tr' ? 'Bu, CNC Process Pro test aramasıdır.' : 'This is a test call from CNC Process Pro.', rec.lang);
     } else {
       await telegram(ctx.env, 'sendMessage', {
         chat_id: rec.chatId,
@@ -185,7 +186,7 @@ export async function handleAlertsTest(ctx: Ctx): Promise<Response> {
     if (err instanceof HttpError) throw err;
     throw new HttpError(502, err instanceof Error ? err.message : 'Telegram could not be reached');
   }
-  return json({ ok: true });
+  return json({ ok: true, detail });
 }
 
 // DELETE /master/api/alerts/me
