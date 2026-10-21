@@ -367,12 +367,15 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       stockGroup.add(outline);
       world.add(stockGroup);
 
-      const sup = s.min[2] - floorZ;
+      const restZ = setup.restZ ?? s.min[2];
+      const sup = restZ - floorZ;
       if (sup > 0.5) {
-        // Two parallels along X under the part, near the Y faces.
-        const w = Math.min(8, (s.max[1] - s.min[1]) / 4);
-        for (const y0 of [s.min[1] + 0.5, s.max[1] - 0.5 - w]) {
-          fixture.add(box([s.min[0] - 8, y0, floorZ], [s.max[0] + 8, y0 + w, s.min[2]], 0x8b95a7, 1, 0x30384a));
+        // Two thin parallels along X under the held part, near its Y faces; the part sits on them
+        // (on a ledge when the program says so, with a boss hanging between them).
+        const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
+        const w = Math.min(setup.restDepth !== null ? 5 : 8, (cb.max[1] - cb.min[1]) / 6);
+        for (const y0 of [cb.min[1] + 0.3, cb.max[1] - 0.3 - w]) {
+          fixture.add(box([cb.min[0] - 8, y0, floorZ], [cb.max[0] + 8, y0 + w, restZ], 0x8b95a7, 1, 0x30384a));
         }
       }
       if (setup.jawTopZ !== null) {

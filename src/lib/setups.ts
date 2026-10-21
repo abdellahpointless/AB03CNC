@@ -1,4 +1,5 @@
 import type { Move, Toolpath, Vec } from './toolpath';
+import { buildInput, carve, KEPT } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
 
 /*
@@ -43,12 +44,15 @@ export interface SetupInfo {
   pers: Face | null;
   /** How the part is turned on the machine: part direction -> machine direction. */
   orient: Mat3;
+  /** Other orientations the instructions allow (the first is the nearest turn). */
+  alternatives: Mat3[];
   /** Machine position of the part's origin: machine = orient · part + offset. */
   offset: Vec;
   /** Where the clamp holds the part (X/Y extents, program coordinates). */
   clampBox: { min: [number, number]; max: [number, number] } | null;
   support: number | null;
-  supportThickness: number | null;
+  /** "UNTERLAGE IN EP 5 MM": the part rests on the parallels this far below its top (Z0). */
+  restDepth: number | null;
   spacer: { mm: number; side: Face } | null;
   clamp: 'vise' | 'module' | null;
   side: 'back' | 'front' | null;
@@ -59,6 +63,8 @@ export interface SetupInfo {
   marker: { name: string; faces: Face[] } | null;
   /** Part block in program coordinates, when the program says enough to place it. */
   stock: { min: Vec; max: Vec } | null;
+  /** Where the part sits on the parallels. */
+  restZ: number | null;
   /** Where the supports stand (top of the vise floor / fixture plate). */
   floorZ: number | null;
   /** Top of the vise jaws (vise setups only). */
@@ -141,7 +147,7 @@ export function readInstructions(notes: string[]) {
   if (found.length) rotation = { axis: found[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
   const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE`));
-  const thick = t.match(new RegExp(`UNTERLAGE\\s*IN\\s*(?:EP(?:AISSEUR|AISEUR)?\\.?)\\s*${NUM}`));
+  const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:IN|SUR|AUF)?\\s*(?:EP(?:AISSEUR|AISEUR)?\\.?)\\s*${NUM}`));
   const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
   const marker = t.match(/(RAFI|TASTER)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
@@ -153,7 +159,7 @@ export function readInstructions(notes: string[]) {
     turns,
     pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
     support: sup ? num(sup[1]) : null,
-    supportThickness: thick ? num(thick[1]) : null,
+    restDepth: thick ? num(thick[1]) : null,
     spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
     clamp: /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN|UNTERLAGE/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
@@ -202,27 +208,24 @@ const STOP_Y = 50;
  * or TASTER points must match: the orientation that agrees with what is known, nearest to the
  * previous one, wins.
  */
-function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>): Mat3 {
-  if (ins.turns.length) return ins.turns.reduce((m, r) => mul(turn(r.axis, r.deg), m), prev);
+function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>): Mat3[] {
+  if (ins.turns.length) return [ins.turns.reduce((m, r) => mul(turn(r.axis, r.deg), m), prev)];
   const wants: [string, Vec][] = [];
   const front = frontDir(ins);
   if (front) wants.push(['front', front]);
   if (ins.marker) wants.push([ins.marker.name, direction(ins.marker.faces)]);
   const usable = wants.filter(([k]) => known.has(k));
-  if (!usable.length) return prev;
-  let best: Mat3 = prev;
-  let bestScore = Infinity;
-  ALL.forEach((m, order) => {
-    if (!usable.every(([k, v]) => same(apply(m, known.get(k)!), v))) return;
-    // Nearest turn first; between equal turns, prefer turning around X (the usual back-to-front flip).
+  if (!usable.length) return [prev];
+  // Every orientation that agrees with what is known; nearest turn first, then turning around X
+  // (the usual back-to-front flip). When several agree, the cuts decide (see analyseProgram).
+  const fits = ALL.map((m, order) => {
     const d = mul(m, transpose(prev));
-    const score = turnSize(m, prev) * 100 + (d[0] === 1 ? 0 : d[4] === 1 ? 1 : 2) * 10 + order / 100;
-    if (score < bestScore) {
-      bestScore = score;
-      best = m;
-    }
-  });
-  return best;
+    return { m, score: turnSize(m, prev) * 100 + (d[0] === 1 ? 0 : d[4] === 1 ? 1 : 2) * 10 + order / 100 };
+  })
+    .filter(({ m }) => usable.every(([k, v]) => same(apply(m, known.get(k)!), v)))
+    .sort((a, b) => a.score - b.score)
+    .map((x) => x.m);
+  return fits.length ? fits : [prev];
 }
 
 function frontDir(ins: ReturnType<typeof readInstructions>): Vec | null {
@@ -240,7 +243,51 @@ function learn(m: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<str
   if (ins.marker && !known.has(ins.marker.name)) known.set(ins.marker.name, apply(inv, direction(ins.marker.faces)));
 }
 
-export function analyseProgram(tp: Toolpath, opts: SetupOptions): ProgramSetups {
+/**
+ * Setups of a program. When the instructions allow more than one way to turn the part (a side
+ * without RAFI, a marker seen for the first time), the way where this setup's cuts meet what
+ * earlier setups cut away wins: through pockets and holes worked from both sides line up.
+ * `fixed` reuses orientations found before (e.g. when only the jaw height changed).
+ */
+export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[]): ProgramSetups {
+  if (fixed) return analyseWith(tp, opts, new Map(fixed.map((m, i) => [i, m])));
+  const chosen = new Map<number, Mat3>();
+  let result = analyseWith(tp, opts, chosen);
+  for (let k = 1; k < result.setups.length; k++) {
+    const options = result.setups[k].alternatives;
+    if (options.length < 2 || !result.part) continue;
+    const scores = options.map((o) => {
+      const r = analyseWith(tp, opts, new Map([...chosen, [k, o]]));
+      return { o, r, share: meetShare(tp, r, k) };
+    });
+    const first = scores[0];
+    const best = scores.reduce((a, b) => (b.share > a.share ? b : a));
+    // Only leave the nearest turn when the cuts clearly say so.
+    const pick = best.share > first.share * 1.5 && best.share - first.share > 0.02 ? best : first;
+    chosen.set(k, pick.o);
+    result = pick.r;
+  }
+  return result;
+}
+
+/** Share of setup k's cutting that falls where earlier setups already cut (coarse). */
+function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
+  const input = buildInput(tp, r);
+  if (!input) return 0;
+  const only = (keep: (setup: number) => boolean) => ({ ...input, maxVoxels: 40_000, moves: input.moves.map((m) => (keep(m.setup) ? m : { ...m, points: [] })) });
+  const before = carve(only((s) => s < k)).removed;
+  const now = carve(only((s) => s === k)).removed;
+  let both = 0;
+  let cut = 0;
+  for (let v = 0; v < now.length; v++) {
+    if (now[v] === KEPT) continue;
+    cut++;
+    if (before[v] !== KEPT) both++;
+  }
+  return cut ? both / cut : 0;
+}
+
+function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>): ProgramSetups {
   const { finished, raw } = partSizes(tp.header);
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
@@ -260,7 +307,8 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions): ProgramSetups 
     const idx = tp.moves.map((m, i) => (m.setup === k ? i : -1)).filter((i) => i >= 0);
     const moves = idx.map((i) => tp.moves[i]);
     const prev = out[k - 1];
-    orient = k === 0 ? IDENTITY : solveOrientation(orient, ins, known);
+    const alternatives = k === 0 ? [IDENTITY] : solveOrientation(orient, ins, known);
+    orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {
       index: k,
@@ -269,8 +317,10 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions): ProgramSetups 
       ...ins,
       clamp: ins.clamp ?? (notes.length ? prev?.clamp ?? 'vise' : null),
       orient,
+      alternatives,
       offset: [0, 0, 0],
       clampBox: null,
+      restZ: null,
       stock: null,
       floorZ: null,
       jawTopZ: null,
@@ -384,7 +434,11 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions): ProgramSetups 
     const max: Vec = [cx + size[0] / 2, cy + size[1] / 2, topZ];
     info.stock = { min, max };
     info.clampBox = { min: [cx - hold[0] / 2, cy - hold[1] / 2], max: [cx + hold[0] / 2, cy + hold[1] / 2] };
-    info.floorZ = min[2] - (ins.support ?? 0);
+    // The parallels hold the part under its bottom, or under a ledge ("IN EP 5 MM": 5 mm below
+    // Z0, e.g. a flange, with a boss hanging between the parallels).
+    const rest = ins.restDepth !== null && ins.restDepth < max[2] - min[2] ? Math.max(min[2], -ins.restDepth) : min[2];
+    info.restZ = rest;
+    info.floorZ = rest - (ins.support ?? 0);
 
     // The part frame: the first setup's program coordinates.
     if (k === 0 || !part) {

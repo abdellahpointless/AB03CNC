@@ -14,7 +14,7 @@ self.onmessage = (e: MessageEvent) => {
   const msg = e.data as { type: 'init'; input: SimInput } | { type: 'mesh'; step: number };
   if (msg.type === 'init') {
     const g = carve(msg.input, (share) => self.postMessage({ type: 'progress', share }));
-    m = mesher(g);
+    m = mesher(g, msg.input);
     last = -1;
     self.postMessage({ type: 'ready', size: g.size });
     return;

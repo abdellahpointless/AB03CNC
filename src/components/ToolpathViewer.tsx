@@ -270,7 +270,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     if (s.sizes) out.push(Number.isFinite(s.sizes.y) ? t('toolpath.ins.sizes', { x: fmtNumber(s.sizes.x), y: fmtNumber(s.sizes.y) }) : t('toolpath.ins.sizeX', { x: fmtNumber(s.sizes.x) }));
     if (s.topToward) out.push(t('toolpath.ins.topToward', { face: s.topToward }));
     if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
-    if (s.supportThickness !== null) out.push(t('toolpath.ins.supportThickness', { mm: fmtNumber(s.supportThickness) }));
+    if (s.restDepth !== null) out.push(t('toolpath.ins.restDepth', { mm: fmtNumber(s.restDepth) }));
     if (s.spacer) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(s.spacer.mm), side: s.spacer.side }));
     if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));
     if (s.marker) out.push(t('toolpath.ins.marker', { name: s.marker.name, faces: s.marker.faces.join(' ') }));

@@ -270,7 +270,7 @@ const remapper: Translation<typeof en> = {
       sizes: 'X’te {{x}}, Y’de {{y}} ile bağla',
       sizeX: 'X’te {{x}}',
       support: '{{mm}} mm paralel üzerinde',
-      supportThickness: 'Paraleller {{mm}} mm kalınlığında',
+      restDepth: 'Üst yüzeyin {{mm}} mm altından paralellere oturuyor',
       rotation: 'Parçayı {{axis}} etrafında {{deg}}° çevir',
       back: 'Arka yüz',
       front: 'Ön yüz',

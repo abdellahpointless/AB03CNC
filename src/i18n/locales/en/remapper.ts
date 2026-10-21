@@ -279,7 +279,7 @@ const remapper = {
       sizes: 'Clamp with {{x}} in X and {{y}} in Y',
       sizeX: '{{x}} in X',
       support: 'On {{mm}} mm parallels',
-      supportThickness: 'Parallels {{mm}} mm thick',
+      restDepth: 'Resting on the parallels {{mm}} mm below the top',
       rotation: 'Turn the part {{deg}}° around {{axis}}',
       back: 'Back side',
       front: 'Front side',
