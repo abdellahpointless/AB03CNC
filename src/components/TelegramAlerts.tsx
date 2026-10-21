@@ -82,7 +82,15 @@ export default function TelegramAlerts() {
       setNote(t('alerts.saved'));
     });
 
-  if (!status) return null;
+  if (!status) {
+    // Could not load: say so, instead of the card silently disappearing.
+    return error ? (
+      <section className="aurora-card aurora-card-static p-5 space-y-2">
+        <h3 className="section-label text-[var(--text-primary)]">{t('alerts.title')}</h3>
+        <div className="badge-danger text-xs py-1.5 px-3">{error}</div>
+      </section>
+    ) : null;
+  }
   const me = status.me;
 
   return (
