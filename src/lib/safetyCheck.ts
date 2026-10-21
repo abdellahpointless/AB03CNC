@@ -16,7 +16,6 @@ export type SafetyCode =
   | 'offsetMismatch' // HAAS: G43 H number is not the tool in the spindle
   | 'spindleOff' // cutting with the spindle stopped
   | 'noFeed' // first cutting move with no feed rate ever set
-  | 'rapidBelowZero' // G0 down below Z0 (part top) in absolute mode
   | 'noWorkOffset' // moving before any work offset (G54...) was selected
   | 'noProgramEnd' // no M30 / M2 / M99
   | 'toolTooShort'; // tool sticks out less than the deepest cut
@@ -30,7 +29,7 @@ export interface SafetyFinding {
 }
 
 /** The checks that ran, so the panel can list passed ones too. */
-export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'rapidBelowZero', 'toolTooShort', 'noProgramEnd'];
+export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd'];
 
 export interface SafetyReport {
   findings: SafetyFinding[];
@@ -164,11 +163,6 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: 
       }
     }
 
-    // A rapid move straight down below the top of the part.
-    const z = num(w.get('Z'));
-    if (motion === 0 && !cycle && !startsCycle && absolute && !machineCoords && Number.isFinite(z) && z < 0) {
-      add('warning', 'rapidBelowZero', i, { z: z.toFixed(3).replace(/\.?0+$/, '') });
-    }
   });
 
   if (!hasEnd) add('warning', 'noProgramEnd', null);

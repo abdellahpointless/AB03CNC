@@ -40,11 +40,6 @@ describe('program safety check', () => {
     expect(r.findings[0].params).toMatchObject({ h: 'H4', t: 'T7' });
   });
 
-  it('finds a rapid move below the part top, not drilling cycles or machine moves', () => {
-    const p = haasOk.replace('G0 Z50.\nG53', 'G0 Z-2.\nG53');
-    expect(codes(checkProgram(p, { fanuc: false }))).toEqual(['warning:rapidBelowZero@16']);
-  });
-
   it('finds no feed, no work offset and no program end', () => {
     const p = ['T1 M6', 'G0 X0 Y0 S1000 M3', 'G43 H1 Z5.', 'G1 Z-1.'].join('\n');
     expect(codes(checkProgram(p, { fanuc: false }))).toEqual(['error:noFeed@4', 'warning:noWorkOffset@2', 'warning:noProgramEnd@']);

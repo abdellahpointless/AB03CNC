@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, ArrowDownToLine, MoveVertical, Flag, Route } from 'lucide-react';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown } from 'lucide-react';
 import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -37,7 +37,6 @@ const CHECK_SYMBOL: Record<SafetyCode, { icon: React.ComponentType<{ size?: numb
   spindleOff: { icon: RotateCw, code: 'M3' },
   noFeed: { icon: Gauge, code: 'F' },
   noWorkOffset: { icon: Crosshair, code: 'G54' },
-  rapidBelowZero: { icon: ArrowDownToLine, code: 'G0↓' },
   toolTooShort: { icon: MoveVertical, code: 'L' },
   noProgramEnd: { icon: Flag, code: 'M30' },
 };
@@ -67,6 +66,9 @@ function SafetyPanel({
     return { level: worst ? worst.level : 'ok', line: worst?.line ?? null };
   };
   const clean = report.findings.length === 0;
+  // The list of problems is a pull tab: folded unless opened, or when an export is being confirmed.
+  const [open, setOpen] = useState(false);
+  const showList = !clean && (open || confirming);
 
   return (
     <div className="border-b border-[var(--border-subtle)] px-4 py-2 space-y-1.5">
@@ -99,9 +101,21 @@ function SafetyPanel({
           );
         })}
         {clean && <span className="text-[11px] text-[var(--green-500)] font-semibold ml-1 truncate">{t('safety.allClear', { count: SAFETY_CHECKS.length })}</span>}
+        {!clean && !confirming && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.06)]"
+          >
+            <span className="font-mono">{report.findings.length}</span>
+            {open ? t('safety.hide') : t('safety.show')}
+            <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
 
-      {!clean && (
+      {showList && (
         <div className="space-y-1">
           {report.findings.map((f, i) => {
             const color = LEVEL_COLOR[f.level];
