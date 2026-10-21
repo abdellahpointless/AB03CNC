@@ -26,6 +26,19 @@ export interface Move {
   depth?: number;
   seconds: number;
   length: number;
+  /** Setup (clamping) the move belongs to: a new setup starts at every G52. */
+  setup: number;
+}
+
+/** A clamping of the part: the operator instructions before a G52, and its shift. */
+export interface SetupRaw {
+  index: number;
+  /** 0-based line of its G52 (or 0 for a program without G52). */
+  line: number;
+  /** G52 local shift (X, Y, Z), when the program gives one. */
+  shift: Vec | null;
+  /** Operator instructions (M0 comments, support / spacer notes), as written in the program. */
+  notes: { line: number; text: string }[];
 }
 
 export interface ToolInfo {
@@ -33,6 +46,9 @@ export interface ToolInfo {
   label: string;
   firstLine: number;
   seconds: number;
+  /** From the "(DIAMETER 40.00 MM/LENGTH 40.00 MM)" comment, when present. */
+  diameter: number | null;
+  length: number | null;
 }
 
 export interface Toolpath {
@@ -45,6 +61,10 @@ export interface Toolpath {
   rapidLength: number;
   toolChanges: number;
   lowestZ: number | null;
+  /** One entry per clamping of the part (always at least one). */
+  setups: SetupRaw[];
+  /** The program's header comments (part name and sizes). */
+  header: string[];
 }
 
 export interface MachineSpeeds {
@@ -101,10 +121,30 @@ function toolLabel(lines: string[], i: number): string {
   return '';
 }
 
+/** Diameter and length from the comment lines right after a tool change. */
+function toolSize(lines: string[], i: number): { diameter: number | null; length: number | null } {
+  for (let j = i; j < Math.min(lines.length, i + 6); j++) {
+    const d = lines[j].match(/DIAMETER\s*([\d.]+)\s*MM/i);
+    if (d) {
+      const l = lines[j].match(/LENGTH\s*([\d.]+)\s*MM/i);
+      return { diameter: Number(d[1]), length: l ? Number(l[1]) : null };
+    }
+  }
+  const fromLabel = lines[i].match(/\bD\s*([\d.]+)/i);
+  return { diameter: fromLabel ? Number(fromLabel[1]) : null, length: null };
+}
+
+/** Operator instructions that describe how the part is clamped. */
+const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]/i;
+
 export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   const lines = code.split('\n');
   const moves: Move[] = [];
   const tools = new Map<number, ToolInfo>();
+  const setups: SetupRaw[] = [{ index: 0, line: 0, shift: null, notes: [] }];
+  let pendingNotes: { line: number; text: string }[] = [];
+  let setup = 0;
+  const header: string[] = [];
 
   let pos: [number | null, number | null, number | null] = [null, null, null];
   let motion = 0;
@@ -138,15 +178,40 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
 
   lines.forEach((raw, i) => {
     const line = raw.trim();
-    if (!line || line === '%' || line.replace(/^N\d+\s*/i, '').startsWith('(')) return;
+    if (!line || line === '%') return;
+    const comments = (line.match(/\(([^)]*)\)/g) ?? []).map((c) => c.slice(1, -1).trim()).filter(Boolean);
+    const commentOnly = line.replace(/^N\d+\s*/i, '').startsWith('(');
+    if ((commentOnly || /^O\d+/i.test(line)) && i < 12 && !moves.length && tools.size === 0) header.push(...comments);
+    // Operator instructions: comments on an M0 stop, or note lines about the support / spacer.
+    const stop = /(?<![A-Z0-9])M0*0(?![0-9])/i.test(codeOnly(line));
+    if (comments.length && (stop || (commentOnly && SETUP_NOTE.test(comments.join(' '))))) {
+      if (!/CHECK TOOL/i.test(comments.join(' '))) pendingNotes.push({ line: i, text: comments.join(' / ') });
+    }
+    if (commentOnly) return;
     const { g, m, v } = readWords(line);
     const has = (list: number[], ...c: number[]) => list.some((x) => c.includes(x));
+
+    // G52: the part was clamped again (new setup) and the zero point moves. Not a move.
+    if (has(g, 52)) {
+      const cur = setups[setup];
+      if (cur.shift !== null || moves.some((mv) => mv.setup === setup)) {
+        setup++;
+        setups.push({ index: setup, line: i, shift: null, notes: [] });
+      }
+      setups[setup].line = i;
+      setups[setup].shift = [v.get('X') ?? 0, v.get('Y') ?? 0, v.get('Z') ?? 0];
+      setups[setup].notes.push(...pendingNotes);
+      pendingNotes = [];
+      pos = [null, null, null];
+      cycle = null;
+      return;
+    }
 
     if (v.has('T')) pendingTool = v.get('T')!;
     if (has(m, 6)) {
       tool = pendingTool;
       toolChanges++;
-      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), firstLine: i, seconds: 0 });
+      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
       addTime(speeds.toolChange);
     }
     if (v.has('F')) feed = v.get('F')!;
@@ -204,8 +269,8 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       const hole: Vec = [x, y, cycleZ];
       grow([x, y, cycleR]);
       grow(hole);
-      moves.push({ kind: 'rapid', tool, line: i, points: [from, top], seconds: rapidTime(dist(from, top)), length: dist(from, top) });
-      moves.push({ kind: 'drill', tool, line: i, points: [[x, y, cycleR]], depth: cycleZ, seconds: seconds - rapidTime(dist(from, top)), length: depth });
+      moves.push({ kind: 'rapid', tool, line: i, points: [from, top], seconds: rapidTime(dist(from, top)), length: dist(from, top), setup });
+      moves.push({ kind: 'drill', tool, line: i, points: [[x, y, cycleR]], depth: cycleZ, seconds: seconds - rapidTime(dist(from, top)), length: depth, setup });
       addTime(seconds);
       pos = [x, y, back];
       return;
@@ -265,19 +330,21 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       }
       const length = Math.hypot(r * Math.abs(sweep), end[2] - from[2]);
       const seconds = feedTime(length);
-      moves.push({ kind: 'feed', tool, line: i, points, seconds, length });
+      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup });
       addTime(seconds);
     } else {
       const length = dist(from, end);
       const seconds = motion === 0 ? rapidTime(length) : feedTime(length);
       grow(from);
       grow(end);
-      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length });
+      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup });
       addTime(seconds);
     }
     pos = end;
   });
 
+  // Instructions without a G52 after them belong to the only setup.
+  if (setups.length === 1) setups[0].notes.push(...pendingNotes);
   // Every move, cycle, dwell and tool change was added to its tool (or to the time before the first tool).
   const totalSeconds = [...tools.values()].reduce((s, t) => s + t.seconds, 0) + extraSeconds;
   const finite = min.every(Number.isFinite);
@@ -291,5 +358,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     rapidLength: moves.filter((mv) => mv.kind === 'rapid').reduce((s, mv) => s + mv.length, 0),
     toolChanges,
     lowestZ: finite ? min[2] : null,
+    setups,
+    header,
   };
 }

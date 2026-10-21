@@ -1,11 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2 } from 'lucide-react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
+import { analyseSetups, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../lib/setups';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
+
+const Toolpath3D = lazy(() => import('./Toolpath3D'));
+const JAW_KEY = 'cnc-toolpath-jaw-height';
+function readJaw(): number {
+  try {
+    const v = Number(localStorage.getItem(JAW_KEY));
+    return v > 0 && v < 400 ? v : DEFAULT_JAW_HEIGHT;
+  } catch {
+    return DEFAULT_JAW_HEIGHT;
+  }
+}
+const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
 
 const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
 const SPEEDS = [10, 50, 250];
@@ -45,7 +58,28 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
   const total = path.moves.length;
-  const [step, setStep] = useState(total);
+  // Open on the first setup when there are several.
+  const [step, setStep] = useState(() => {
+    const k = path.moves.findIndex((m) => m.setup > 0);
+    return k > 0 ? k : total;
+  });
+  const [jawHeight, setJawHeight] = useState(readJaw);
+  const setups = useMemo(() => analyseSetups(path, { jawHeight }), [path, jawHeight]);
+  const multi = setups.length > 1;
+  const [mode3d, setMode3d] = useState(true);
+  const [fitKey, setFitKey] = useState(0);
+  // The setup shown is the one of the current move, so playing goes through the setups.
+  const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
+  const sel: SetupInfo | null = setups[currentMove?.setup ?? 0] ?? null;
+  const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
+  const totalHits = setups.reduce((n, x) => n + x.collisions.length, 0);
+  useEffect(() => {
+    try {
+      localStorage.setItem(JAW_KEY, String(jawHeight));
+    } catch {
+      /* private mode */
+    }
+  }, [jawHeight]);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const colorOf = useMemo(() => {
@@ -103,8 +137,26 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     [path],
   );
 
-  const homeTop = useMemo(() => fitView(path.min[0], path.max[0], -path.max[1], -path.min[1]), [path]);
-  const homeSide = useMemo(() => fitView(path.min[0], path.max[0], -path.max[2], -path.min[2]), [path]);
+  // Extent of the setup shown: its moves, the part and the jaws.
+  const bounds = useMemo(() => {
+    const lo: Vec = [Infinity, Infinity, Infinity];
+    const hi: Vec = [-Infinity, -Infinity, -Infinity];
+    const add = (p: Vec) => p.forEach((x, i) => { lo[i] = Math.min(lo[i], x); hi[i] = Math.max(hi[i], x); });
+    for (let i = range[0]; i <= range[1] && i < total; i++) {
+      const m = path.moves[i];
+      m.points.forEach(add);
+      if (m.kind === 'drill' && m.depth !== undefined) add([m.points[0][0], m.points[0][1], m.depth]);
+    }
+    if (sel?.stock) {
+      add(sel.stock.min);
+      add(sel.stock.max);
+      if (sel.floorZ !== null) add([sel.stock.min[0], sel.stock.min[1], sel.floorZ]);
+    }
+    if (!Number.isFinite(lo[0])) return { min: path.min, max: path.max };
+    return { min: lo, max: hi };
+  }, [path, range[0], range[1], sel, total]);
+  const homeTop = useMemo(() => fitView(bounds.min[0], bounds.max[0], -bounds.max[1], -bounds.min[1]), [bounds]);
+  const homeSide = useMemo(() => fitView(bounds.min[0], bounds.max[0], -bounds.max[2], -bounds.min[2]), [bounds]);
   const [view, setView] = useState<View>(homeTop);
   useEffect(() => setView(homeTop), [homeTop]);
 
@@ -140,7 +192,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     const sideFeeds = new Map<number | null, string[]>();
     const sideRapids: string[] = [];
     const holes: Move[] = [];
-    for (let i = 0; i < step; i++) {
+    for (let i = range[0]; i < Math.min(step, range[1] + 1); i++) {
       const m = path.moves[i];
       if (m.kind === 'drill') {
         holes.push(m);
@@ -157,9 +209,29 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
       }
     }
     return { feeds, rapids, sideFeeds, sideRapids, holes };
-  }, [step, path, topPaths, sidePaths]);
-  const ghost = useMemo(() => topPaths.join(''), [topPaths]);
-  const sideGhost = useMemo(() => sidePaths.join(''), [sidePaths]);
+  }, [step, path, topPaths, sidePaths, range[0], range[1]]);
+  const ghost = useMemo(() => topPaths.slice(range[0], range[1] + 1).join(''), [topPaths, range[0], range[1]]);
+  const sideGhost = useMemo(() => sidePaths.slice(range[0], range[1] + 1).join(''), [sidePaths, range[0], range[1]]);
+  const goSetup = (s: SetupInfo) => {
+    if (!s.moves) return;
+    setPlaying(false);
+    setStep(s.moves[1] + 1);
+  };
+  // Instructions in the user's language (the original text is shown under them).
+  const instructions = (s: SetupInfo): string[] => {
+    const out: string[] = [];
+    if (s.rotation) out.push(t('toolpath.ins.rotation', { deg: s.rotation.deg, axis: s.rotation.axis }));
+    if (s.side) out.push(t(`toolpath.ins.${s.side}`));
+    if (s.onEdge) out.push(t('toolpath.ins.onEdge'));
+    if (s.sizes) out.push(Number.isFinite(s.sizes.y) ? t('toolpath.ins.sizes', { x: fmtNumber(s.sizes.x), y: fmtNumber(s.sizes.y) }) : t('toolpath.ins.sizeX', { x: fmtNumber(s.sizes.x) }));
+    if (s.topToward) out.push(t('toolpath.ins.topToward', { face: s.topToward }));
+    if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
+    if (s.supportThickness !== null) out.push(t('toolpath.ins.supportThickness', { mm: fmtNumber(s.supportThickness) }));
+    if (s.spacer) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(s.spacer.mm), side: s.spacer.side }));
+    if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));
+    if (s.marker) out.push(t('toolpath.ins.marker', { name: s.marker.name, faces: s.marker.faces.join(' ') }));
+    return out;
+  };
 
   const current = step > 0 ? path.moves[step - 1] : null;
   const here = current ? current.points[current.points.length - 1] : null;
@@ -190,11 +262,48 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                 <ArrowDownToLine size={13} /> Z{fmtNumber(path.lowestZ, 2)}
               </span>
             )}
+            {setups.some((x) => x.jawTopZ !== null) && (
+              <span className={`${totalHits ? 'badge-danger' : 'badge-positive'} text-xs py-1 px-2.5 inline-flex items-center gap-1.5`}>
+                {totalHits ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
+                {totalHits ? t('toolpath.jawHits', { count: totalHits }) : t('toolpath.jawClear')}
+              </span>
+            )}
             <button onClick={onClose} className="btn-icon w-8 h-8" title={t('common:actions.close')} aria-label={t('common:actions.close')}>
               <X size={15} />
             </button>
           </div>
         </div>
+
+        {multi && (
+          <div className="flex items-center gap-2 px-5 py-2 border-b border-[var(--border-subtle)] overflow-x-auto" role="tablist" aria-label={t('toolpath.setup', { n: '' })}>
+            <Layers size={14} className="text-[var(--text-tertiary)] shrink-0" />
+            {setups.map((s) => {
+              const active = sel?.index === s.index;
+              return (
+                <button
+                  key={s.index}
+                  role="tab"
+                  aria-selected={active}
+                  disabled={!s.moves}
+                  onClick={() => goSetup(s)}
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-40 ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.05)]'}`}
+                >
+                  <span className={`w-5 h-5 rounded-full grid place-items-center font-mono font-bold text-[11px] ${active ? 'bg-[var(--accent-primary)] text-white' : 'bg-[rgba(var(--ov),0.08)]'}`}>{s.index + 1}</span>
+                  {s.clamp && <span>{t(`toolpath.clamp.${s.clamp}`)}</span>}
+                  {s.rotation && (
+                    <span className="inline-flex items-center gap-0.5 font-mono text-[11px] text-[var(--text-tertiary)]">
+                      <RotateCw size={11} />
+                      {s.rotation.deg}° {s.rotation.axis}
+                    </span>
+                  )}
+                  {s.support !== null && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">▭{fmtNumber(s.support)}</span>}
+                  {s.marker && <span className="font-mono text-[10px] font-bold text-[#FFB869]">{s.marker.name}</span>}
+                  {s.jawTopZ !== null && (s.collisions.length ? <span className="badge-danger text-[10px] px-1.5 py-0 font-bold">{s.collisions.length}</span> : <ShieldCheck size={12} className="text-[var(--emerald-500,#3FB97A)]" />)}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {total === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm text-[var(--text-secondary)]">{t('toolpath.noMoves')}</div>
@@ -203,13 +312,25 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
             <div className="min-h-0 flex flex-col">
               {/* Top view */}
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
-                <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>
-                <div className="absolute right-3 top-2 z-10">
-                  <button onClick={() => setView(homeTop)} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
+                {mode3d && (
+                  <Suspense fallback={null}>
+                    <Toolpath3D path={path} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} />
+                  </Suspense>
+                )}
+                {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
+                <div className="absolute right-3 top-2 z-10 flex items-center gap-2">
+                  <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label="3D / 2D">
+                    {[true, false].map((m) => (
+                      <button key={String(m)} role="radio" aria-checked={mode3d === m} onClick={() => setMode3d(m)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${mode3d === m ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
+                        {m ? t('toolpath.view3d') : t('toolpath.view2d')}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
                     <Maximize2 size={13} />
                   </button>
                 </div>
-                <svg
+                {!mode3d && <svg
                   ref={svgRef}
                   className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
                   viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -227,6 +348,15 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                   }}
                   onPointerUp={() => (drag.current = null)}
                 >
+                  {sel?.stock && (
+                    <g>
+                      {sel.jawTopZ !== null &&
+                        [[sel.stock.max[1], sel.stock.max[1] + 24], [sel.stock.min[1] - 24, sel.stock.min[1]]].map(([a, b], i) => (
+                          <rect key={i} x={(sel.stock!.min[0] + sel.stock!.max[0]) / 2 - sel.jawHalfWidth} y={-b} width={sel.jawHalfWidth * 2} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                        ))}
+                      <rect x={sel.stock.min[0]} y={-sel.stock.max[1]} width={sel.stock.max[0] - sel.stock.min[0]} height={sel.stock.max[1] - sel.stock.min[1]} fill="#B9C6DA" fillOpacity={0.08} stroke="#B9C6DA" strokeOpacity={0.6} strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+                    </g>
+                  )}
                   <path d={ghost} fill="none" stroke="#2A3650" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                   <path d={done.rapids.join('')} fill="none" stroke="#7F8BA0" strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" opacity={0.7} />
                   {[...done.feeds].map(([tool, parts]) => (
@@ -242,19 +372,25 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       </g>
                     );
                   })}
+                  {sel?.collisions.map((c, i) => (
+                    <circle key={`hit${i}`} cx={c.point[0]} cy={-c.point[1]} r={holeR * 1.6} fill="#FF4D4D" fillOpacity={0.85} />
+                  ))}
                   {here && (
                     <g>
                       <circle cx={here[0]} cy={-here[1]} r={holeR * 2.6} fill="#F3F6FC" fillOpacity={0.15} />
                       <circle cx={here[0]} cy={-here[1]} r={holeR * 1.1} fill="#F3F6FC" stroke={colorOf(current!.tool)} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
                     </g>
                   )}
-                </svg>
+                </svg>}
               </div>
               {/* Side view */}
               <div className="relative h-32 shrink-0 border-t border-[var(--border-subtle)] bg-[#0A0F19]">
                 <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XZ ↕</span>
                 <svg className="w-full h-full" viewBox={`${homeSide.x} ${homeSide.y} ${homeSide.w} ${homeSide.h}`} preserveAspectRatio="none">
                   <line x1={homeSide.x} x2={homeSide.x + homeSide.w} y1={0} y2={0} stroke="#3A4762" strokeWidth={1} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
+                  {sel?.stock && <rect x={sel.stock.min[0]} y={-sel.stock.max[2]} width={sel.stock.max[0] - sel.stock.min[0]} height={sel.stock.max[2] - sel.stock.min[2]} fill="#B9C6DA" fillOpacity={0.08} stroke="#B9C6DA" strokeOpacity={0.5} strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+                  {sel?.jawTopZ != null && <line x1={homeSide.x} x2={homeSide.x + homeSide.w} y1={-sel.jawTopZ} y2={-sel.jawTopZ} stroke="#F26D6D" strokeOpacity={0.7} strokeWidth={1.2} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
+                  {sel?.floorZ != null && <line x1={homeSide.x} x2={homeSide.x + homeSide.w} y1={-sel.floorZ} y2={-sel.floorZ} stroke="#5A6A82" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
                   <path d={sideGhost} fill="none" stroke="#2A3650" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                   <path d={done.sideRapids.join('')} fill="none" stroke="#7F8BA0" strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" opacity={0.7} />
                   {[...done.sideFeeds].map(([tool, parts]) => (
@@ -267,6 +403,66 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
 
             {/* Side panel: tools with their colour and time, the current line */}
             <div className="min-h-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4">
+              {sel && sel.notes.length > 0 ? (
+                <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)] p-3 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Box size={14} className="text-[var(--accent-primary)]" />
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{multi ? t('toolpath.setupOf', { n: sel.index + 1, total: setups.length }) : t('toolpath.setup', { n: 1 })}</span>
+                    {sel.clamp && <span className="badge-neutral text-[10px] py-0.5 px-2 ml-auto">{t(`toolpath.clamp.${sel.clamp}`)}</span>}
+                  </div>
+                  <ul className="space-y-1">
+                    {instructions(sel).map((x, i) => (
+                      <li key={i} className="text-xs text-[var(--text-primary)] flex gap-2"><span className="text-[var(--accent-primary)]">•</span>{x}</li>
+                    ))}
+                  </ul>
+                  {sel.stock && (
+                    <div className="text-[11px] font-mono text-[var(--text-secondary)]">
+                      {t('toolpath.part', { x: mm(sel.stock.max[0] - sel.stock.min[0]), y: mm(sel.stock.max[1] - sel.stock.min[1]), z: mm(sel.stock.max[2] - sel.stock.min[2]) })}
+                    </div>
+                  )}
+                  <details className="text-[11px] text-[var(--text-tertiary)]">
+                    <summary className="cursor-pointer select-none">{t('toolpath.original')}</summary>
+                    <div className="font-mono mt-1 space-y-0.5 break-words">{sel.notes.map((n, i) => <div key={i}>({n})</div>)}</div>
+                  </details>
+                  {sel.jawTopZ !== null ? (
+                    <div className="space-y-2 pt-1 border-t border-[var(--border-subtle)]">
+                      {sel.collisions.length ? (
+                        <div className="space-y-1">
+                          <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
+                          {sel.collisions.slice(0, 8).map((c, i) => (
+                            <button key={i} type="button" onClick={() => { setPlaying(false); setStep(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
+                              #{c.line + 1} · {t('toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) })}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="badge-positive text-xs py-1 px-2.5 inline-flex items-center gap-1.5">
+                          <ShieldCheck size={13} />
+                          {sel.jawClearance !== null ? t('toolpath.jawClearBy', { mm: mm(sel.jawClearance) }) : t('toolpath.jawClear')}
+                        </div>
+                      )}
+                      <label className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)]" title={t('toolpath.jawHeightHelp')}>
+                        <span>{t('toolpath.jawHeight')}</span>
+                        <input
+                          type="number"
+                          min={5}
+                          max={300}
+                          step={0.5}
+                          value={jawHeight}
+                          onChange={(e) => { const v = Number(e.target.value); if (v > 0 && v < 400) setJawHeight(v); }}
+                          className="aurora-input text-xs w-20 py-1 px-2 font-mono"
+                        />
+                        <span>mm</span>
+                      </label>
+                    </div>
+                  ) : (
+                    sel.clamp === 'module' && <div className="text-[11px] text-[var(--text-tertiary)]">{t('toolpath.noJawCheck')}</div>
+                  )}
+                  {sel.jawTopZ !== null && <p className="text-[10px] leading-relaxed text-[var(--text-tertiary)] flex gap-1.5"><Info size={11} className="shrink-0 mt-0.5" />{t('toolpath.setupNote')}</p>}
+                </div>
+              ) : (
+                <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">{t('toolpath.noSetup')}</p>
+              )}
               <div className="space-y-1.5">
                 {path.tools.map((tl) => {
                   const active = current?.tool === tl.tool;
