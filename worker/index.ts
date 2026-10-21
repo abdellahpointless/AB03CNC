@@ -249,6 +249,18 @@ function resolveInstance(pathname: string): { instance: RegionId | 'master'; res
  * country's code can never read another country. Master requests also get every country's
  * database (read for the dashboard, and to create a country's admins).
  */
+/**
+ * Telegram settings are copied explicitly into every environment, so the alerts code always sees
+ * the bot token (a spread of the Worker's env is not relied on for secrets).
+ */
+function alertSettings(env: Env): Pick<Env, 'TELEGRAM_BOT_TOKEN' | 'TELEGRAM_API_BASE' | 'CALLMEBOT_API_BASE'> {
+  return {
+    TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_API_BASE: env.TELEGRAM_API_BASE,
+    CALLMEBOT_API_BASE: env.CALLMEBOT_API_BASE,
+  };
+}
+
 function instanceEnv(env: Env, instance: RegionId | 'master'): Env | null {
   if (instance === 'master') {
     if (!env.DB_HUB) return null;
@@ -257,12 +269,12 @@ function instanceEnv(env: Env, instance: RegionId | 'master'): Env | null {
       const db = (env as unknown as Record<string, D1Database | undefined>)[r.dbBinding];
       if (db) countries[r.id] = db;
     }
-    return { ...env, DB: env.DB_HUB, DB_TR: undefined, DB_HUB: undefined, HUB: undefined, COUNTRIES: countries, REGION: 'master' };
+    return { ...env, ...alertSettings(env), DB: env.DB_HUB, DB_TR: undefined, DB_HUB: undefined, HUB: undefined, COUNTRIES: countries, REGION: 'master' };
   }
   const region = regionById(instance)!;
   const db = (env as unknown as Record<string, D1Database | undefined>)[region.dbBinding];
   if (!db) return null;
-  return { ...env, DB: db, DB_TR: undefined, DB_HUB: undefined, HUB: env.DB_HUB, COUNTRIES: undefined, REGION: instance };
+  return { ...env, ...alertSettings(env), DB: db, DB_TR: undefined, DB_HUB: undefined, HUB: env.DB_HUB, COUNTRIES: undefined, REGION: instance };
 }
 
 async function handleApi(request: Request, rawEnv: Env, url: URL, instance: RegionId | 'master', rest: string, exec?: ExecutionContext): Promise<Response> {
