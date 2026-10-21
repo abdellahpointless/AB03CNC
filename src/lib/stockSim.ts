@@ -237,6 +237,8 @@ interface Cross {
   p: Vec;
   n: Vec;
   cut: boolean;
+  /** +1: solid on the low side of the edge (surface faces +axis), -1: the other way. */
+  dir: number;
 }
 
 export function mesher(g: Grid, input: SimInput): Mesher {
@@ -302,45 +304,67 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   /**
    * Where the surface crosses the edge from sample A (solid) to sample B (cut or outside), and
    * which way it faces. dir: +1 if B is the next sample along the axis, -1 if the previous.
+   * The cut surface is the edge of everything cut near B so far (roughing and finishing passes
+   * together), found by halving the edge, so walls come out straight and smooth.
    */
-  const crossing = (A: [number, number, number], axis: number, dir: number, removedB: number | null): Cross => {
+  const crossing = (A: [number, number, number], axis: number, dir: number, B: [number, number, number], stepNo: number): Cross => {
     const pa = sampleAt(A[0], A[1], A[2]);
-    if (removedB === null) {
-      // Outside the raw part: its face lies halfway between the samples.
+    const half = (cut: boolean): Cross => {
       const p: Vec = [...pa];
       p[axis] += (dir * h[axis]) / 2;
       const n: Vec = [0, 0, 0];
       n[axis] = dir;
-      return { p, n, cut: false };
-    }
+      return { p, n, cut, dir };
+    };
+    if (!inGrid(B[0], B[1], B[2])) return half(false);
+    // Moves that cut B or the samples next to it, before this point of the program.
+    const moves: number[] = [];
+    const add = (i: number, j: number, k: number) => {
+      if (!inGrid(i, j, k)) return;
+      const r = g.removed[(k * ny + j) * nx + i];
+      if (r < stepNo && !moves.includes(r)) moves.push(r);
+    };
+    add(B[0], B[1], B[2]);
+    for (let a = 0; a < 3; a++)
+      for (const d of [-1, 1]) {
+        const c: [number, number, number] = [B[0], B[1], B[2]];
+        c[a] += d;
+        add(c[0], c[1], c[2]);
+      }
+    const covering = (p: Vec): [number, number] => {
+      for (const m of moves) {
+        const seg = inMove(m, p);
+        if (seg >= 0) return [m, seg];
+      }
+      return [-1, -1];
+    };
     const pb: Vec = [...pa];
     pb[axis] += dir * h[axis];
-    // Binary search for the edge of the tool that cut B.
+    let hit = covering(pb);
+    if (hit[0] < 0 || covering(pa)[0] >= 0) return half(true);
+    const at = (t: number): Vec => [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t];
     let t0 = 0;
     let t1 = 1;
-    let seg = inMove(removedB, pb);
-    if (seg < 0 || inMove(removedB, pa) >= 0) {
-      const p: Vec = [...pa];
-      p[axis] += (dir * h[axis]) / 2;
-      const n: Vec = [0, 0, 0];
-      n[axis] = dir;
-      return { p, n, cut: true };
-    }
-    const at = (t: number): Vec => [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t];
-    for (let it = 0; it < 9; it++) {
+    for (let it = 0; it < 8; it++) {
       const tm = (t0 + t1) / 2;
-      const sgm = inMove(removedB, at(tm));
-      if (sgm >= 0) {
+      const c = covering(at(tm));
+      if (c[0] >= 0) {
         t1 = tm;
-        seg = sgm;
+        hit = c;
       } else t0 = tm;
     }
     const p = at((t0 + t1) / 2);
-    const mv = input.moves[removedB];
+    const mv = input.moves[hit[0]];
     const s = input.setups[mv.setup];
     const tool = toolOf.get(mv.tool) ?? { radius: 3, cone: false };
-    const nm = sweepNormal(toMachine(s, p), mv.points[seg - 1], mv.points[seg], tool.radius, tool.cone, Math.max(h[0], h[1], h[2]) * 0.75);
-    return { p, n: toPart(s, nm), cut: true };
+    const nm = sweepNormal(toMachine(s, p), mv.points[hit[1] - 1], mv.points[hit[1]], tool.radius, tool.cone, Math.max(h[0], h[1], h[2]) * 0.75);
+    let n = toPart(s, nm);
+    // The normal must face out of the material along this edge.
+    if (n[axis] * dir < 0.05) {
+      n = [0, 0, 0];
+      n[axis] = dir;
+    }
+    return { p, n, cut: true, dir };
   };
 
   return {
@@ -357,7 +381,6 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       const cb = Math.floor(id / cx) % cy;
       const cc = Math.floor(id / (cx * cy));
       const solid = (i: number, j: number, k: number) => inGrid(i, j, k) && g.removed[(k * ny + j) * nx + i] >= stepNo;
-      const removedAt = (i: number, j: number, k: number) => (inGrid(i, j, k) ? g.removed[(k * ny + j) * nx + i] : null);
 
       // Crossings on edges, cached: key = sample index * 3 + axis (edge to the next sample).
       const edgeCache = new Map<number, Cross | null>();
@@ -371,8 +394,8 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         const s1 = solid(i, j, k);
         const s2 = solid(i2, j2, k2);
         let c: Cross | null = null;
-        if (s1 && !s2) c = crossing([i, j, k], axis, 1, removedAt(i2, j2, k2));
-        else if (!s1 && s2) c = crossing([i2, j2, k2], axis, -1, removedAt(i, j, k));
+        if (s1 && !s2) c = crossing([i, j, k], axis, 1, [i2, j2, k2], stepNo);
+        else if (!s1 && s2) c = crossing([i2, j2, k2], axis, -1, [i, j, k], stepNo);
         edgeCache.set(key, c);
         return c;
       };
@@ -401,34 +424,35 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         return v;
       };
 
-      const pos: number[] = [];
-      const nor: number[] = [];
-      const cut: number[] = [];
-      const tri = (a: Vec, b: Vec, c: Vec, want: Vec, isCut: boolean) => {
+      // Triangles as corner keys (cells) so shading can be smoothed where the surface is smooth.
+      const keyOf = (i: number, j: number, k: number) => ((k + 1) * (ny + 2) + (j + 1)) * (nx + 2) + (i + 1);
+      const triKeys: number[] = [];
+      const triNormal: number[] = [];
+      const triCut: number[] = [];
+      const facesAt = new Map<number, number[]>();
+      const tri = (ka: number, kb: number, kc: number, isCut: boolean) => {
+        const a = vertCache.get(ka)!;
+        const b = vertCache.get(kb)!;
+        const c = vertCache.get(kc)!;
         const ux = b[0] - a[0];
         const uy = b[1] - a[1];
         const uz = b[2] - a[2];
         const vx = c[0] - a[0];
         const vy = c[1] - a[1];
         const vz = c[2] - a[2];
-        let fx = uy * vz - uz * vy;
-        let fy = uz * vx - ux * vz;
-        let fz = ux * vy - uy * vx;
+        const fx = uy * vz - uz * vy;
+        const fy = uz * vx - ux * vz;
+        const fz = ux * vy - uy * vx;
         const len = Math.hypot(fx, fy, fz);
         if (len < 1e-12) return;
-        fx /= len;
-        fy /= len;
-        fz /= len;
-        if (fx * want[0] + fy * want[1] + fz * want[2] < 0) {
-          [b, c] = [c, b];
-          fx = -fx;
-          fy = -fy;
-          fz = -fz;
-        }
-        pos.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-        for (let q = 0; q < 3; q++) {
-          nor.push(fx, fy, fz);
-          cut.push(isCut ? 1 : 0);
+        const t = triCut.length;
+        triKeys.push(ka, kb, kc);
+        triNormal.push(fx / len, fy / len, fz / len);
+        triCut.push(isCut ? 1 : 0);
+        for (const kk of [ka, kb, kc]) {
+          const l = facesAt.get(kk);
+          if (l) l.push(t);
+          else facesAt.set(kk, [t]);
         }
       };
 
@@ -444,22 +468,67 @@ export function mesher(g: Grid, input: SimInput): Mesher {
               if (!e) continue;
               // The four cells around this edge.
               const [p, q] = axis === 0 ? [1, 2] : axis === 1 ? [2, 0] : [0, 1];
-              const cell = (dp: number, dq: number): Vec => {
+              const cell = (dp: number, dq: number): number => {
                 const c: [number, number, number] = [i, j, k];
                 c[p] -= dp;
                 c[q] -= dq;
-                return vertex(c[0], c[1], c[2]);
+                vertex(c[0], c[1], c[2]);
+                return keyOf(c[0], c[1], c[2]);
               };
               const v00 = cell(1, 1);
               const v10 = cell(0, 1);
               const v11 = cell(0, 0);
               const v01 = cell(1, 0);
-              const want = e.n;
-              tri(v00, v10, v11, want, e.cut);
-              tri(v00, v11, v01, want, e.cut);
+              // Wound so the face points out of the material (from the solid sample to the cut one).
+              if (e.dir > 0) {
+                tri(v00, v10, v11, e.cut);
+                tri(v00, v11, v01, e.cut);
+              } else {
+                tri(v00, v11, v10, e.cut);
+                tri(v00, v01, v11, e.cut);
+              }
             }
           }
-      return { id, positions: new Float32Array(pos), normals: new Float32Array(nor), cut: new Uint8Array(cut) };
+
+      // Shading: average with the neighbouring faces that bend less than ~35° (round walls look
+      // round), keep the face's own normal across sharper bends (edges stay crisp).
+      const CREASE = Math.cos((35 * Math.PI) / 180);
+      const nTri = triCut.length;
+      const pos = new Float32Array(nTri * 9);
+      const nor = new Float32Array(nTri * 9);
+      const cut = new Uint8Array(nTri * 3);
+      for (let t = 0; t < nTri; t++) {
+        const fx = triNormal[t * 3];
+        const fy = triNormal[t * 3 + 1];
+        const fz = triNormal[t * 3 + 2];
+        for (let c = 0; c < 3; c++) {
+          const kk = triKeys[t * 3 + c];
+          const v = vertCache.get(kk)!;
+          let sx = 0;
+          let sy = 0;
+          let sz = 0;
+          for (const o of facesAt.get(kk)!) {
+            const ox = triNormal[o * 3];
+            const oy = triNormal[o * 3 + 1];
+            const oz = triNormal[o * 3 + 2];
+            if (ox * fx + oy * fy + oz * fz >= CREASE) {
+              sx += ox;
+              sy += oy;
+              sz += oz;
+            }
+          }
+          const l = Math.hypot(sx, sy, sz) || 1;
+          const o = t * 9 + c * 3;
+          pos[o] = v[0];
+          pos[o + 1] = v[1];
+          pos[o + 2] = v[2];
+          nor[o] = sx / l;
+          nor[o + 1] = sy / l;
+          nor[o + 2] = sz / l;
+          cut[t * 3 + c] = triCut[t];
+        }
+      }
+      return { id, positions: pos, normals: nor, cut };
     },
   };
 }

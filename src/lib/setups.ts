@@ -201,6 +201,13 @@ const fitsIn = (t: [number, number, number] | null, a: number, b: number) => {
 /** Where the part is stopped on the table: its X- side at X-50 and its back (Y+) at Y+50 (G54). */
 const STOP_X = -50;
 const STOP_Y = 50;
+/**
+ * Where the vise floor / fixture plate is (G54 Z): the supports stand on it. Every setup of the
+ * shop's programs agrees on it within a millimetre, so with the G52 Z shift it tells where the
+ * part sits. Only used when it agrees with the program (within FLOOR_TRUST mm).
+ */
+export const TABLE_Z = -57;
+const FLOOR_TRUST = 15;
 
 /**
  * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
@@ -430,15 +437,33 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     }
     if (ins.topAt !== null) topZ = ins.topAt;
 
+    // The floor from the G52 shift. On the first side the raw part stands on the parallels, so
+    // its top follows (the face-mill guess is only a guess).
+    const floorRule = s.shift && notes.length ? TABLE_Z - s.shift[2] : null;
+    if (floorRule !== null && k === 0 && ins.restDepth === null && ins.support !== null && ins.topAt === null) {
+      const top = floorRule + ins.support + size[2];
+      // Only when the guess is clearly off (more than 1.5 mm): small differences are the floor's
+      // own tolerance.
+      if (Math.abs(top - topZ) > 1.5 && Math.abs(top - topZ) <= FLOOR_TRUST) topZ = top;
+    }
+
     const min: Vec = [cx - size[0] / 2, cy - size[1] / 2, topZ - size[2]];
     const max: Vec = [cx + size[0] / 2, cy + size[1] / 2, topZ];
     info.stock = { min, max };
     info.clampBox = { min: [cx - hold[0] / 2, cy - hold[1] / 2], max: [cx + hold[0] / 2, cy + hold[1] / 2] };
     // The parallels hold the part under its bottom, or under a ledge ("IN EP 5 MM": 5 mm below
     // Z0, e.g. a flange, with a boss hanging between the parallels).
-    const rest = ins.restDepth !== null && ins.restDepth < max[2] - min[2] ? Math.max(min[2], -ins.restDepth) : min[2];
+    let rest = ins.restDepth !== null && ins.restDepth < max[2] - min[2] ? Math.max(min[2], -ins.restDepth) : min[2];
+    let floor = rest - (ins.support ?? 0);
+    if (floorRule !== null && Math.abs(floorRule - floor) <= FLOOR_TRUST && floorRule <= rest) {
+      // The part sits on supports that reach the floor. When the written supports end higher than
+      // the part's bottom, it rests there on a ledge (a boss hanging between the parallels).
+      const top = floorRule + (ins.support ?? 0);
+      if (k > 0 && ins.restDepth === null && ins.support !== null && top > min[2] + 1.5 && top < max[2] - 0.5) rest = top;
+      floor = floorRule;
+    }
     info.restZ = rest;
-    info.floorZ = rest - (ins.support ?? 0);
+    info.floorZ = floor;
 
     // The part frame: the first setup's program coordinates.
     if (k === 0 || !part) {

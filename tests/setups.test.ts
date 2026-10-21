@@ -61,8 +61,9 @@ describe('setups', () => {
     const [a, b] = analyseSetups(tp, { jawHeight: 42 });
     expect(tp.setups).toHaveLength(2);
     expect(a.stock).toEqual({ min: [-27, -22, -30], max: [27, 22, 0] });
-    expect(a.floorZ).toBe(-68);
-    expect(a.jawTopZ).toBe(-26);
+    // The vise floor from the G52 shift: G54 Z-57 - Z10.
+    expect(a.floorZ).toBe(-67);
+    expect(a.jawTopZ).toBe(-25);
     expect(a.collisions).toEqual([]);
     // Second side: 30 high minus nothing faced, raw top 15 above Z0 as the program says.
     expect(b.rotation).toEqual({ axis: 'Y', deg: 180 });
@@ -79,7 +80,7 @@ describe('setups', () => {
     expect(analyseSetups(tp, { jawHeight: 42 })[0].collisions).toEqual([]);
     const hits = analyseSetups(tp, { jawHeight: 60 })[0].collisions;
     expect(hits).toHaveLength(1);
-    expect(hits[0]).toMatchObject({ tool: 2, depth: 2 });
+    expect(hits[0]).toMatchObject({ tool: 2, depth: 3 });
     expect(hits[0].line).toBe(18);
   });
 

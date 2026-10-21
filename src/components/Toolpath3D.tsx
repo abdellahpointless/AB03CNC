@@ -217,7 +217,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       return;
     }
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.55 });
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.55, side: THREE.DoubleSide });
     const chunks = new Map<number, THREE.Mesh>();
     let busy = false;
     let wanted = -1;
@@ -384,11 +384,11 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         const hw = setup.jawHalfWidth;
         const base = floorZ - 28;
         for (const [y0, y1] of [[cb.max[1], cb.max[1] + 24], [cb.min[1] - 24, cb.min[1]]] as [number, number][]) {
-          const jaw = box([cx - hw, y0, base], [cx + hw, y1, setup.jawTopZ], 0x5a6a82, 0.45, 0x9fb0c8);
+          const jaw = box([cx - hw, y0, base], [cx + hw, y1, setup.jawTopZ], 0x6b7a90, 1, 0x2a3446);
           jaws.push((jaw.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial);
           fixture.add(jaw);
         }
-        fixture.add(box([cx - hw, cb.min[1] - 24, base - 14], [cx + hw, cb.max[1] + 24, floorZ], 0x3b4659, 0.75, 0x55627a));
+        fixture.add(box([cx - hw, cb.min[1] - 24, base - 14], [cx + hw, cb.max[1] + 24, floorZ], 0x3b4659, 1, 0x232c3c));
         const line = new THREE.LineSegments(
           new THREE.EdgesGeometry(new THREE.BoxGeometry(hw * 2, 0.01, cb.max[1] - cb.min[1] + 48)),
           new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.55 }),
@@ -415,19 +415,6 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         tag.scale.set(h * tag.userData.aspect, h, 1);
         tag.position.copy(edge.clone().add(dir.clone().multiplyScalar(len + h)));
         marker.add(tag);
-        for (const f of setup.marker.faces) {
-          const n = FACE_DIR[f];
-          const axis = n.findIndex((x) => x !== 0);
-          const sz = [half[0] * 2, half[1] * 2, half[2] * 2];
-          const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(axis === 0 ? sz[1] : sz[0], axis === 2 ? sz[1] : sz[2]),
-            new THREE.MeshBasicMaterial({ color: 0xffa94d, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false }),
-          );
-          plane.position.copy(new THREE.Vector3(n[0] * (half[0] + 0.3), n[2] * (half[2] + 0.3), -n[1] * (half[1] + 0.3)));
-          if (axis === 0) plane.rotation.y = Math.PI / 2;
-          if (axis === 2) plane.rotation.x = Math.PI / 2;
-          marker.add(plane);
-        }
         stockGroup.add(marker);
         a.setupObjects.push(marker);
       }
@@ -483,7 +470,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         tool.position.copy(v3(tip));
         const hit = hitMoves.has(first + k);
         cutterMat.color.set(hit ? 0xff5c5c : 0xe8edf5);
-        jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : 0x5a6a82));
+        jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : 0x6b7a90));
       }
       hits.children.forEach((h) => ((h as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(h.userData.move <= first + k ? 0xff4d4d : 0x7a3a3a));
       a.requestMesh(n);
