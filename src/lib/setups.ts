@@ -1,4 +1,5 @@
 import type { Move, Toolpath, Vec } from './toolpath';
+import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
 
 /*
  * How the part sits in the machine in each setup, from the operator instructions written in
@@ -36,6 +37,16 @@ export interface SetupInfo {
   /** Instructions understood from the notes. */
   sizes: { x: number; y: number } | null;
   rotation: { axis: 'X' | 'Y' | 'Z'; deg: number } | null;
+  /** Every turn the instructions ask for, in order (signed degrees, right hand). */
+  turns: { axis: Axis; deg: number }[];
+  /** "PERS. Y+": the front face of the part points that way (part standing on edge). */
+  pers: Face | null;
+  /** How the part is turned on the machine: part direction -> machine direction. */
+  orient: Mat3;
+  /** Machine position of the part's origin: machine = orient · part + offset. */
+  offset: Vec;
+  /** Where the clamp holds the part (X/Y extents, program coordinates). */
+  clampBox: { min: [number, number]; max: [number, number] } | null;
   support: number | null;
   supportThickness: number | null;
   spacer: { mm: number; side: Face } | null;
@@ -58,6 +69,12 @@ export interface SetupInfo {
   jawClearance: number | null;
   /** First and last move index of the setup. */
   moves: [number, number] | null;
+}
+
+export interface ProgramSetups {
+  setups: SetupInfo[];
+  /** The raw part as a box in the part's own frame (the first setup's program coordinates). */
+  part: { min: Vec; max: Vec } | null;
 }
 
 export interface SetupOptions {
@@ -100,23 +117,41 @@ export function readInstructions(notes: string[]) {
   let sizes: { x: number; y: number } | null = both ? { x: num(both[1]), y: num(both[2]) } : xy ? { x: num(xy[1]), y: num(xy[1]) } : null;
   let onlyX: number | null = null;
   let rotation: SetupInfo['rotation'] = null;
-  const grad = t.match(/(\d+)\s*GRAD\s*UM\s*([XYZ])/);
-  if (grad) rotation = { axis: grad[2] as 'X', deg: Number(grad[1]) };
+  // Turns in the order they are written: "180 GRAD UM Y", "MIT/90 IN X", "MIT 180 IN Y".
+  const found: { at: number; axis: Axis; deg: number }[] = [];
+  for (const m of t.matchAll(/(\d+)\s*GRAD\s*UM\s*([XYZ])/g)) found.push({ at: m.index!, axis: m[2] as Axis, deg: Number(m[1]) });
   for (const m of t.matchAll(new RegExp(`${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*UND)`, 'g'))) {
     const v = num(m[1]);
-    if ([90, 180, 270].includes(v)) rotation ??= { axis: m[2] as 'X', deg: v };
+    if ([90, 180, 270].includes(v)) found.push({ at: m.index!, axis: m[2] as Axis, deg: v });
     else if (m[2] === 'X' && !sizes) onlyX = v;
   }
+  found.sort((a, b) => a.at - b.at);
+  // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-).
+  const hint = t.match(/([XYZ])\s*([+-])\s*(?:WIRD|IN)\s*([XYZ])\s*([+-])/);
+  const turns = found.map(({ axis, deg }) => {
+    if (deg % 180 !== 0 && hint) {
+      const from: Vec = [0, 0, 0];
+      const to: Vec = [0, 0, 0];
+      from['XYZ'.indexOf(hint[1])] = hint[2] === '-' ? -1 : 1;
+      to['XYZ'.indexOf(hint[3])] = hint[4] === '-' ? -1 : 1;
+      if (same(apply(turn(axis, -deg), from), to)) return { axis, deg: -deg };
+    }
+    return { axis, deg };
+  });
+  if (found.length) rotation = { axis: found[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
   const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE`));
   const thick = t.match(new RegExp(`UNTERLAGE\\s*IN\\s*(?:EP(?:AISSEUR|AISEUR)?\\.?)\\s*${NUM}`));
   const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
   const marker = t.match(/(RAFI|TASTER)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
+  const pers = t.match(/PERS\.?\s*(?:IN\s*)?([XYZ]\s*[+-])/);
   const topAt = t.match(new RegExp(`Z\\+\\s*IN\\s*${NUM}\\s*MM`));
   return {
     sizes,
     rotation,
+    turns,
+    pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
     support: sup ? num(sup[1]) : null,
     supportThickness: thick ? num(thick[1]) : null,
     spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
@@ -151,7 +186,61 @@ function samples(m: Move): Vec[] {
   return out;
 }
 
-export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
+const fitsIn = (t: [number, number, number] | null, a: number, b: number) => {
+  if (!t) return null;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (i !== j && Math.abs(t[i] - a) < 0.6 && Math.abs(t[j] - b) < 0.6) return t[3 - i - j];
+  return null;
+};
+
+/** Where the part is stopped on the table: its X- side at X-50 and its back (Y+) at Y+50 (G54). */
+const STOP_X = -50;
+const STOP_Y = 50;
+
+/**
+ * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
+ * setup. Otherwise the side that is up (RUECKS. / FRONTSEITE / PERS. on edge) and where the RAFI
+ * or TASTER points must match: the orientation that agrees with what is known, nearest to the
+ * previous one, wins.
+ */
+function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>): Mat3 {
+  if (ins.turns.length) return ins.turns.reduce((m, r) => mul(turn(r.axis, r.deg), m), prev);
+  const wants: [string, Vec][] = [];
+  const front = frontDir(ins);
+  if (front) wants.push(['front', front]);
+  if (ins.marker) wants.push([ins.marker.name, direction(ins.marker.faces)]);
+  const usable = wants.filter(([k]) => known.has(k));
+  if (!usable.length) return prev;
+  let best: Mat3 = prev;
+  let bestScore = Infinity;
+  ALL.forEach((m, order) => {
+    if (!usable.every(([k, v]) => same(apply(m, known.get(k)!), v))) return;
+    // Nearest turn first; between equal turns, prefer turning around X (the usual back-to-front flip).
+    const d = mul(m, transpose(prev));
+    const score = turnSize(m, prev) * 100 + (d[0] === 1 ? 0 : d[4] === 1 ? 1 : 2) * 10 + order / 100;
+    if (score < bestScore) {
+      bestScore = score;
+      best = m;
+    }
+  });
+  return best;
+}
+
+function frontDir(ins: ReturnType<typeof readInstructions>): Vec | null {
+  if (ins.pers) return direction([ins.pers]);
+  if (ins.side === 'back') return [0, 0, -1];
+  if (ins.side === 'front') return [0, 0, 1];
+  return null;
+}
+
+/** Remembers the part-frame direction of the front face and of the markers seen so far. */
+function learn(m: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>) {
+  const inv = transpose(m);
+  const front = frontDir(ins);
+  if (front && !known.has('front')) known.set('front', apply(inv, front));
+  if (ins.marker && !known.has(ins.marker.name)) known.set(ins.marker.name, apply(inv, direction(ins.marker.faces)));
+}
+
+export function analyseProgram(tp: Toolpath, opts: SetupOptions): ProgramSetups {
   const { finished, raw } = partSizes(tp.header);
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
@@ -159,6 +248,11 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
     return !!info && ((info.diameter ?? 0) >= 25 || /MESSERKOPF|\bMK_|PLAN/i.test(info.label));
   };
   const out: SetupInfo[] = [];
+  const known = new Map<string, Vec>();
+  let orient: Mat3 = IDENTITY;
+  /** What is left of the part, as a box in the part frame. */
+  let part: { min: Vec; max: Vec } | null = null;
+  let rawPart: { min: Vec; max: Vec } | null = null;
 
   tp.setups.forEach((s, k) => {
     const notes = s.notes.map((n) => n.text);
@@ -166,12 +260,17 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
     const idx = tp.moves.map((m, i) => (m.setup === k ? i : -1)).filter((i) => i >= 0);
     const moves = idx.map((i) => tp.moves[i]);
     const prev = out[k - 1];
+    orient = k === 0 ? IDENTITY : solveOrientation(orient, ins, known);
+    learn(orient, ins, known);
     const info: SetupInfo = {
       index: k,
       line: s.line,
       notes,
       ...ins,
       clamp: ins.clamp ?? (notes.length ? prev?.clamp ?? 'vise' : null),
+      orient,
+      offset: [0, 0, 0],
+      clampBox: null,
       stock: null,
       floorZ: null,
       jawTopZ: null,
@@ -181,9 +280,8 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
       moves: idx.length ? [idx[0], idx[idx.length - 1]] : null,
     };
     out.push(info);
-    if (!notes.length || !moves.length) return;
+    if (!moves.length || (!notes.length && !finished && !raw)) return;
 
-    // Top of the part: the first facing pass in this setup (plus one step: the raw top is above it).
     const faceLevels = [
       ...new Set(
         moves
@@ -192,7 +290,6 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
       ),
     ].sort((a, b) => b - a);
     const step = faceLevels.length > 1 ? Math.min(3, faceLevels[0] - faceLevels[1]) : 0;
-    let topZ = ins.topAt ?? (faceLevels.length ? faceLevels[0] + step : 0);
 
     // Where the program cuts (finishing tools, not the face mill): the part is around it.
     const pts: Vec[] = [];
@@ -201,7 +298,6 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
       if (m.kind === 'rapid' || isFaceMill(m.tool)) continue;
       const add = m.kind === 'drill' ? [m.points[0]] : m.points;
       pts.push(...add);
-      // A cutter may run outside the part by its radius (contours, lead-ins).
       for (let n = 0; n < add.length; n++) slack.push((diameter.get(m.tool ?? -1) ?? 0) / 2 + 3);
     }
     const xs = pts.map((p) => p[0]);
@@ -209,84 +305,110 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
     const measured = pts.length
       ? { cx: (percentile(xs, 0.05) + percentile(xs, 0.95)) / 2, cy: (percentile(ys, 0.05) + percentile(ys, 0.95)) / 2, w: percentile(xs, 0.95) - percentile(xs, 0.05), h: percentile(ys, 0.95) - percentile(ys, 0.05) }
       : { cx: 0, cy: 0, w: 0, h: 0 };
+    const inside = (cx: number, cy: number, w: number, h: number) =>
+      pts.length ? pts.filter((p, n) => Math.abs(p[0] - cx) <= w / 2 + slack[n] && Math.abs(p[1] - cy) <= h / 2 + slack[n]).length / pts.length : 0;
 
-    // Footprint (X, Y) and height of the part in this setup.
-    let sx: number | null = null;
-    let sy: number | null = null;
-    let height: number | null = null;
-    const fits = (t: [number, number, number] | null, a: number, b: number) => {
-      if (!t) return null;
-      for (let i = 0; i < 3; i++)
-        for (let j = 0; j < 3; j++) if (i !== j && Math.abs(t[i] - a) < 0.6 && Math.abs(t[j] - b) < 0.6) return t[3 - i - j];
-      return null;
-    };
-    const flipped = ins.rotation?.deg === 180 && ins.rotation.axis !== 'Z' && !!prev?.stock;
-    if (ins.sizes && Number.isFinite(ins.sizes.y)) {
-      sx = ins.sizes.x;
-      sy = ins.sizes.y;
-      height = fits(raw, sx, sy) ?? fits(finished, sx, sy) ?? (k === 0 ? raw?.[2] ?? finished?.[2] ?? null : finished?.[2] ?? null);
-    } else if (flipped) {
-      sx = prev!.stock!.max[0] - prev!.stock!.min[0];
-      sy = prev!.stock!.max[1] - prev!.stock!.min[1];
-    }
-    if (flipped && sx !== null && sy !== null) {
-      // Second side: the part is as high as after the first side's facing; Z0 is usually the
-      // finished top, so the raw top is what is left to face off.
-      height = prev!.stock!.max[2] - prev!.stock!.min[2] - Math.max(0, prev!.stock!.max[2]);
-      const finishedHeight = finished ? fits(finished, sx, sy) ?? finished[2] : null;
-      if (ins.topAt === null && finishedHeight !== null && height - finishedHeight >= 0 && height - finishedHeight < 20) topZ = height - finishedHeight;
-    } else if (sx === null) {
-      const dims = k === 0 ? raw ?? finished : finished ?? raw;
-      if (dims) {
-        let best: { score: number; p: [number, number, number] } | null = null;
-        const perms: [number, number, number][] = [
+    // Size of the part on the machine (X, Y, height).
+    let size: Vec | null = null;
+    if (k === 0 || !part) {
+      const dims = raw ?? finished;
+      if (ins.sizes && Number.isFinite(ins.sizes.y)) {
+        const h = fitsIn(raw, ins.sizes.x, ins.sizes.y) ?? fitsIn(finished, ins.sizes.x, ins.sizes.y) ?? dims?.[2] ?? null;
+        if (h !== null) size = [ins.sizes.x, ins.sizes.y, h];
+      } else if (dims) {
+        let best: { score: number; p: Vec } | null = null;
+        const perms: Vec[] = [
           [dims[0], dims[1], dims[2]], [dims[1], dims[0], dims[2]], [dims[0], dims[2], dims[1]],
           [dims[2], dims[0], dims[1]], [dims[1], dims[2], dims[0]], [dims[2], dims[1], dims[0]],
         ];
         const thinnest = Math.min(...dims);
         for (const p of perms) {
           if (ins.sizes && Math.abs(p[0] - ins.sizes.x) > 0.6) continue;
-          // Back side of a plate: it lies flat.
-          if (ins.side === 'back' && !ins.onEdge && p[2] !== thinnest) continue;
-          // The cuts must fit in the footprint; among those, the closest footprint wins.
+          // A plate clamped on its back or front lies flat.
+          if (ins.side && !ins.onEdge && p[2] !== thinnest) continue;
           const score = Math.max(0, measured.w - p[0] - 2) * 10 + Math.max(0, measured.h - p[1] - 2) * 10 + Math.abs(p[0] - measured.w) + Math.abs(p[1] - measured.h);
           if (!best || score < best.score) best = { score, p };
         }
-        if (best) [sx, sy, height] = best.p;
+        if (best) size = best.p;
       }
+    } else {
+      const b = turnedBox(orient, part.min, part.max);
+      size = [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]];
     }
-    if (sx === null || sy === null || height === null || !Number.isFinite(sx) || !Number.isFinite(sy)) return;
+    if (!size) return;
 
-    // Where the footprint sits: programs put zero in the middle of the part or on a corner.
+    // The part held by the clamp: the sizes in the instruction, or the finished part on a later side.
+    let hold: [number, number] = [size[0], size[1]];
+    if (ins.sizes && Number.isFinite(ins.sizes.y)) hold = [ins.sizes.x, ins.sizes.y];
+    else if (k > 0 && finished) {
+      const f = turnedBox(orient, [0, 0, 0], finished);
+      hold = [Math.min(size[0], f.max[0] - f.min[0]), Math.min(size[1], f.max[1] - f.min[1])];
+    }
+
+    // Where it sits: against the stops (from the G52 shift), else zero in the middle or on a corner.
     let cx = measured.cx;
     let cy = measured.cy;
-    const fin = finished ? (fits(finished, sx, sy) !== null ? [sx, sy] : [Math.min(sx, finished[0]), Math.min(sy, finished[1])]) : [sx, sy];
-    const candidates: [number, number][] = [
-      [0, 0],
-      [fin[0] / 2, -fin[1] / 2],
-      [-fin[0] / 2, -fin[1] / 2],
-      [fin[0] / 2, fin[1] / 2],
-      [-fin[0] / 2, fin[1] / 2],
-    ];
-    // The zero that keeps the most cuts inside the part wins (ties: the one nearest the cuts).
-    let best = { inside: -1, d: Infinity };
-    for (const [x, y] of candidates) {
-      const inside = pts.length ? pts.filter((p, n) => Math.abs(p[0] - x) <= sx! / 2 + slack[n] && Math.abs(p[1] - y) <= sy! / 2 + slack[n]).length / pts.length : 0;
-      const d = Math.hypot(x - measured.cx, y - measured.cy);
-      if (inside > best.inside + 0.02 || (Math.abs(inside - best.inside) <= 0.02 && d < best.d)) {
-        best = { inside, d };
-        if (inside >= 0.6 || d < 4) [cx, cy] = [x, y];
+    let placed = false;
+    if (s.shift && notes.length) {
+      const spacer = ins.spacer?.side === 'X-' ? ins.spacer.mm : 0;
+      const x = STOP_X - s.shift[0] + spacer + hold[0] / 2;
+      const y = STOP_Y - s.shift[1] - hold[1] / 2;
+      if (!pts.length || inside(x, y, size[0], size[1]) >= 0.6) {
+        [cx, cy] = [x, y];
+        placed = true;
       }
     }
-    const min: Vec = [cx - sx / 2, cy - sy / 2, topZ - height];
-    const max: Vec = [cx + sx / 2, cy + sy / 2, topZ];
-    info.stock = { min, max };
-    info.floorZ = min[2] - (ins.support ?? 0);
-    if (info.clamp !== 'vise') return;
+    if (!placed) {
+      let best = { inside: -1, d: Infinity };
+      for (const [x, y] of [[0, 0], [hold[0] / 2, -hold[1] / 2], [-hold[0] / 2, -hold[1] / 2], [hold[0] / 2, hold[1] / 2], [-hold[0] / 2, hold[1] / 2]]) {
+        const share = inside(x, y, size[0], size[1]);
+        const d = Math.hypot(x - measured.cx, y - measured.cy);
+        if (share > best.inside + 0.02 || (Math.abs(share - best.inside) <= 0.02 && d < best.d)) {
+          best = { inside: share, d };
+          if (share >= 0.6 || d < 4) [cx, cy] = [x, y];
+        }
+      }
+    }
 
-    // Vise: jaws on the Y faces, from the floor up to the jaw height.
+    // Height: the raw top on the first side; later, Z0 is the finished top, so the raw top is
+    // what is left to face off ("Z+ IN 15MM" says it outright).
+    let topZ = faceLevels.length ? faceLevels[0] + step : 0;
+    if (k > 0 && finished) {
+      const f = turnedBox(orient, [0, 0, 0], finished);
+      const left = size[2] - (f.max[2] - f.min[2]);
+      if (left >= -0.01 && left < 20) topZ = Math.max(0, left);
+    }
+    if (ins.topAt !== null) topZ = ins.topAt;
+
+    const min: Vec = [cx - size[0] / 2, cy - size[1] / 2, topZ - size[2]];
+    const max: Vec = [cx + size[0] / 2, cy + size[1] / 2, topZ];
+    info.stock = { min, max };
+    info.clampBox = { min: [cx - hold[0] / 2, cy - hold[1] / 2], max: [cx + hold[0] / 2, cy + hold[1] / 2] };
+    info.floorZ = min[2] - (ins.support ?? 0);
+
+    // The part frame: the first setup's program coordinates.
+    if (k === 0 || !part) {
+      part = { min: [...min], max: [...max] };
+      rawPart = { min: [...min], max: [...max] };
+      info.orient = orient = IDENTITY;
+      info.offset = [0, 0, 0];
+    } else {
+      const b = turnedBox(orient, part.min, part.max);
+      info.offset = [min[0] - b.min[0], min[1] - b.min[1], min[2] - b.min[2]];
+    }
+    // What the face mill takes off: the top comes down to its last level.
+    if (faceLevels.length) {
+      const cut: { min: Vec; max: Vec } = { min: [...min], max: [max[0], max[1], Math.min(max[2], faceLevels[faceLevels.length - 1])] };
+      const inv = transpose(orient);
+      const back = turnedBox(inv, [cut.min[0] - info.offset[0], cut.min[1] - info.offset[1], cut.min[2] - info.offset[2]], [cut.max[0] - info.offset[0], cut.max[1] - info.offset[1], cut.max[2] - info.offset[2]]);
+      part = back;
+    }
+
+    if (info.clamp !== 'vise') return;
+    // Vise: jaws on the Y sides of the held part, from the floor up to the jaw height.
+    const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
-    info.jawHalfWidth = Math.max(62.5, sx / 2 + 15);
+    info.jawHalfWidth = Math.max(62.5, hold[0] / 2 + 15);
     let clearance = Infinity;
     let open: Collision | null = null;
     idx.forEach((mi) => {
@@ -294,7 +416,7 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
       const r = (diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
       let hitHere: Collision | null = null;
       for (const p of samples(m)) {
-        const overJaw = (p[1] - r < min[1] || p[1] + r > max[1]) && Math.abs(p[0] - cx) < info.jawHalfWidth + r;
+        const overJaw = (p[1] - r < jaw.min[1] || p[1] + r > jaw.max[1]) && Math.abs(p[0] - cx) < info.jawHalfWidth + r;
         if (!overJaw) continue;
         const above = p[2] - info.jawTopZ!;
         clearance = Math.min(clearance, above);
@@ -311,5 +433,9 @@ export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
     });
     info.jawClearance = Number.isFinite(clearance) ? clearance : null;
   });
-  return out;
+  return { setups: out, part: rawPart };
+}
+
+export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {
+  return analyseProgram(tp, opts).setups;
 }

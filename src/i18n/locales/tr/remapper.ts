@@ -261,6 +261,7 @@ const remapper: Translation<typeof en> = {
     position: 'Programdaki konum',
     speed: 'Oynatma hızı',
     view3d: '3B',
+    carving: 'Parça işleniyor…',
     view2d: '2B',
     setup: 'Bağlama {{n}}',
     setupOf: 'Bağlama {{n}} / {{total}}',

@@ -270,6 +270,7 @@ const remapper = {
     position: 'Position in the program',
     speed: 'Playback speed',
     view3d: '3D',
+    carving: 'Cutting the part…',
     view2d: '2D',
     setup: 'Setup {{n}}',
     setupOf: 'Setup {{n}} of {{total}}',

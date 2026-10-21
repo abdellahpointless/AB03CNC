@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
-import { analyseSetups, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../lib/setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../lib/setups';
+import { FLIP_MS } from '../lib/stockSim';
+import type { SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
@@ -64,13 +66,19 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     return k > 0 ? k : total;
   });
   const [jawHeight, setJawHeight] = useState(readJaw);
-  const setups = useMemo(() => analyseSetups(path, { jawHeight }), [path, jawHeight]);
+  const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
+  // The jaw height only changes the jaw check, not where the part is: keep the program (and the
+  // cut part) when it changes.
+  const setups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }).setups), [program, path, jawHeight]);
+  const [solid, setSolid] = useState<SolidState>({ state: 'off', share: 0 });
+  /** While the part turns between setups, the new setup is shown before its first move. */
+  const [turning, setTurning] = useState<number | null>(null);
   const multi = setups.length > 1;
   const [mode3d, setMode3d] = useState(true);
   const [fitKey, setFitKey] = useState(0);
   // The setup shown is the one of the current move, so playing goes through the setups.
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
-  const sel: SetupInfo | null = setups[currentMove?.setup ?? 0] ?? null;
+  const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const totalHits = setups.reduce((n, x) => n + x.collisions.length, 0);
   useEffect(() => {
@@ -95,23 +103,58 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   }, [path]);
   const elapsed = step > 0 ? timeline[step - 1] : 0;
 
+  // First move of each setup after the first: playback stops there while the part turns.
+  const setupStarts = useMemo(() => setups.slice(1).map((x) => x.moves?.[0] ?? -1).filter((x) => x > 0), [setups]);
   useEffect(() => {
     if (!playing) return;
     let raf = 0;
     let last = performance.now();
-    let sim = step >= total ? 0 : elapsed;
+    let k = step >= total ? 0 : step;
+    let sim = k > 0 ? timeline[k - 1] : 0;
+    let shown = -1;
+    let shownAt = 0;
+    let holdUntil = 0;
+    /** First move of the setup the part just turned for (shown as that setup until it starts). */
+    let held = -1;
     if (step >= total) setStep(0);
     const tick = (now: number) => {
+      if (now < holdUntil) {
+        last = now;
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      if (holdUntil) holdUntil = 0;
       sim += ((now - last) / 1000) * SPEEDS[speed];
       last = now;
-      let k = 0;
+      const before = k;
       while (k < total && timeline[k] <= sim) k++;
-      setStep(Math.max(k, 1));
+      // Reaching a new setup: stop before its first move, let the part turn, then go on.
+      const start = setupStarts.find((x) => x >= before && x < k && x !== held);
+      if (start !== undefined) {
+        held = start;
+        k = start;
+        sim = timeline[start - 1];
+        holdUntil = now + FLIP_MS + 150;
+        setTurning(path.moves[start].setup);
+        setStep(k);
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      // At most ~30 updates a second: the screen does not need more.
+      if (k !== shown && (now - shownAt > 33 || k >= total)) {
+        shown = k;
+        shownAt = now;
+        setStep(Math.max(k, 1));
+        if (held >= 0 && k > held) setTurning(null);
+      }
       if (k >= total) setPlaying(false);
       else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      setTurning(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, speed]);
 
@@ -192,6 +235,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     const sideFeeds = new Map<number | null, string[]>();
     const sideRapids: string[] = [];
     const holes: Move[] = [];
+    if (mode3d) return { feeds, rapids, sideFeeds, sideRapids, holes };
     for (let i = range[0]; i < Math.min(step, range[1] + 1); i++) {
       const m = path.moves[i];
       if (m.kind === 'drill') {
@@ -209,7 +253,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
       }
     }
     return { feeds, rapids, sideFeeds, sideRapids, holes };
-  }, [step, path, topPaths, sidePaths, range[0], range[1]]);
+  }, [step, path, topPaths, sidePaths, range[0], range[1], mode3d]);
   const ghost = useMemo(() => topPaths.slice(range[0], range[1] + 1).join(''), [topPaths, range[0], range[1]]);
   const sideGhost = useMemo(() => sidePaths.slice(range[0], range[1] + 1).join(''), [sidePaths, range[0], range[1]]);
   const goSetup = (s: SetupInfo) => {
@@ -220,7 +264,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   // Instructions in the user's language (the original text is shown under them).
   const instructions = (s: SetupInfo): string[] => {
     const out: string[] = [];
-    if (s.rotation) out.push(t('toolpath.ins.rotation', { deg: s.rotation.deg, axis: s.rotation.axis }));
+    for (const r of s.turns) out.push(t('toolpath.ins.rotation', { deg: Math.abs(r.deg), axis: r.axis }));
     if (s.side) out.push(t(`toolpath.ins.${s.side}`));
     if (s.onEdge) out.push(t('toolpath.ins.onEdge'));
     if (s.sizes) out.push(Number.isFinite(s.sizes.y) ? t('toolpath.ins.sizes', { x: fmtNumber(s.sizes.x), y: fmtNumber(s.sizes.y) }) : t('toolpath.ins.sizeX', { x: fmtNumber(s.sizes.x) }));
@@ -314,10 +358,16 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
+                {mode3d && solid.state === 'carving' && (
+                  <div className="absolute left-3 top-2 z-10 inline-flex items-center gap-2 rounded-full bg-[#0E1421]/85 border border-[var(--border-subtle)] px-3 py-1 text-[11px] text-[var(--text-secondary)]">
+                    <span className="w-16 h-1 rounded-full bg-[rgba(var(--ov),0.1)] overflow-hidden"><span className="block h-full bg-[var(--accent-primary)]" style={{ width: `${Math.round(solid.share * 100)}%` }} /></span>
+                    {t('toolpath.carving')}
+                  </div>
+                )}
                 <div className="absolute right-3 top-2 z-10 flex items-center gap-2">
                   <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label="3D / 2D">
                     {[true, false].map((m) => (
@@ -383,8 +433,8 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                   )}
                 </svg>}
               </div>
-              {/* Side view */}
-              <div className="relative h-32 shrink-0 border-t border-[var(--border-subtle)] bg-[#0A0F19]">
+              {/* Side view (2D only: the 3D view shows the heights) */}
+              {!mode3d && <div className="relative h-32 shrink-0 border-t border-[var(--border-subtle)] bg-[#0A0F19]">
                 <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XZ ↕</span>
                 <svg className="w-full h-full" viewBox={`${homeSide.x} ${homeSide.y} ${homeSide.w} ${homeSide.h}`} preserveAspectRatio="none">
                   <line x1={homeSide.x} x2={homeSide.x + homeSide.w} y1={0} y2={0} stroke="#3A4762" strokeWidth={1} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />
@@ -398,7 +448,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                   ))}
                   {here && <line x1={here[0]} x2={here[0]} y1={-here[2]} y2={-here[2] - homeSide.h * 0.25} stroke="#F3F6FC" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
                 </svg>
-              </div>
+              </div>}
             </div>
 
             {/* Side panel: tools with their colour and time, the current line */}
