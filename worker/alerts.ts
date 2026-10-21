@@ -62,8 +62,30 @@ export async function telegramCall(env: Env, tgUsername: string, text: string, l
     rpt: '2',
   });
   const res = await fetch(`${callBase(env)}/start.php?${qs}`, { signal: AbortSignal.timeout(10000) });
-  const body = await res.text();
-  if (!res.ok || /not authori[sz]ed|error/i.test(body)) throw new Error(`Call: ${body.replace(/<[^>]+>/g, ' ').trim().slice(0, 160) || res.status}`);
+  const text_ = callReplyText(await res.text());
+  if (!res.ok || callFailed(text_)) throw new Error(`Call: ${text_.slice(0, 220) || res.status}`);
+}
+
+/**
+ * CallMeBot answers with a small web page. Only its visible text matters: scripts and styles
+ * (analytics code) are removed, so neither the error check nor the message shown can be fooled
+ * by the word "error" inside a script.
+ */
+export function callReplyText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function callFailed(text: string): boolean {
+  return /not authori[sz]ed|authori[sz]e callmebot|\berror\b|invalid|not found|too many|blocked|limit/i.test(text);
 }
 
 export async function listRecipients(hub: D1Database): Promise<Recipient[]> {
