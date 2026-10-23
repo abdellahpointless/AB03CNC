@@ -11,8 +11,9 @@ import type { ProgramSetups } from './setups';
  * that cut it is found (and which way it faces), and a surface is fitted through those points
  * (dual contouring). Flat faces stay flat, corners stay sharp, round walls are round.
  *
- * Tools are flat-bottomed cylinders pointing down (−Z on the machine), except 90° chamfer tools
- * (STICHEL / FASE / G45), which are cones. Rapid moves do not cut.
+ * Tools point down (−Z on the machine). End mills are flat-bottomed cylinders; pointed tools have
+ * a cone tip: chamfer tools (STICHEL / FASE, 45° per side or the angle in their code), spot drills
+ * (ZENTRIER / ANBOHR, 90° point) and drills (118° point). Rapid moves do not cut.
  */
 
 export const KEPT = 0x7fffffff;
@@ -22,7 +23,8 @@ export const FLIP_MS = 1300;
 export interface SimTool {
   tool: number | null;
   radius: number;
-  cone: boolean;
+  /** Pointed tip: how fast the radius grows per mm above the tip (tan of half the point angle); null = flat. */
+  slope: number | null;
 }
 
 export interface SimInput {
@@ -58,8 +60,25 @@ export function simTools(tp: Toolpath): SimTool[] {
   return tp.tools.map((t) => ({
     tool: t.tool,
     radius: Math.max(0.3, (t.diameter ?? guessDiameter(t.label)) / 2),
-    cone: /STICHEL|FASE|G45|SENKER|CHAMFER/i.test(t.label),
+    slope: tipSlope(t.label),
   }));
+}
+
+/** tan(half point angle) of a pointed tool, from its name; null for flat end mills and taps. */
+export function tipSlope(label: string): number | null {
+  const l = label.toUpperCase();
+  const half = (deg: number) => Math.tan((deg * Math.PI) / 180);
+  if (/GEWINDE|REIBAHLE|\bGB_|\bRA_/.test(l)) return null;
+  if (/STICHEL|FASE|SENKER|CHAMFER|ANFAS|ENTGRAT|KEGEL|\bST_/.test(l)) {
+    // "ST_04.00_025_G45": 45° per side. "90 GRAD STICHEL": 90° point.
+    const code = l.match(/_G(\d{2})(?:_|\b)/);
+    if (code) return half(Number(code[1]));
+    const point = l.match(/(\d{2,3})\s*(?:GRAD|°)/);
+    return half(point ? Number(point[1]) / 2 : 45);
+  }
+  if (/ZENTRIER|ANBOHR|NC-ANB|SPOT|\bZB_|\bNC_/.test(l)) return half(45);
+  if (/BOHRER|BOHREN|\bSB_|DRILL/.test(l)) return half(59);
+  return null;
 }
 
 /** "4.2MM BOHRER", "D10", "FRAESER 8" → a diameter, when the tool list has none. */
@@ -86,14 +105,14 @@ export function buildInput(tp: Toolpath, an: ProgramSetups): SimInput | null {
  * point the deepest tool position that covers it counts, so plunges, ramps and helixes cut to
  * their full depth.
  */
-export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, cone: boolean): boolean {
+export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): boolean {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const dz = b[2] - a[2];
   const wx = x - a[0];
   const wy = y - a[1];
   const l2 = dx * dx + dy * dy;
-  if (!cone) {
+  if (slope === null) {
     const w2 = wx * wx + wy * wy;
     if (l2 < 1e-12) return w2 <= r * r && z >= Math.min(a[2], b[2]) - 1e-9;
     // Tool positions u (0..1) whose disc covers the point: |w - u d|² <= r².
@@ -107,20 +126,20 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
     if (u1 > u2) return false;
     return z >= a[2] + Math.min(u1 * dz, u2 * dz) - 1e-9;
   }
-  // Cone (45°): radius at height h above the tip is min(r, h). Check the likely positions.
+  // Pointed tip: radius at height h above the tip is min(r, h · slope). Check the likely positions.
   const us = l2 < 1e-12 ? [dz < 0 ? 1 : 0] : [0, 1, Math.min(1, Math.max(0, (wx * dx + wy * dy) / l2))];
   for (const u of us) {
     const ex = wx - u * dx;
     const ey = wy - u * dy;
     const d = Math.sqrt(ex * ex + ey * ey);
     const h = z - (a[2] + u * dz);
-    if (h >= -1e-9 && d <= Math.min(r, h) + 1e-9) return true;
+    if (h >= -1e-9 && d <= Math.min(r, h * slope) + 1e-9) return true;
   }
   return false;
 }
 
 /** Which way the surface left by a sweep faces at machine point p (out of the material). */
-function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, cone: boolean, tol: number): Vec {
+function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, tol: number): Vec {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
@@ -135,10 +154,13 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, cone: boolean, tol: numb
     ix /= d;
     iy /= d;
   }
-  if (cone) {
+  if (slope !== null) {
     if (d < 1e-6) return [0, 0, 1];
-    const n = Math.SQRT1_2;
-    return [ix * n, iy * n, n];
+    // Above the point the tool is a cylinder: a straight wall.
+    const h = p[2] - (a[2] + u * (b[2] - a[2]));
+    if (h * slope >= r - tol) return [ix, iy, 0];
+    const n = Math.hypot(1, slope);
+    return [ix / n, iy / n, slope / n];
   }
   // Bottom of the tool (the point is inside the disc, far from its rim): the floor faces up.
   if (d < r - tol || d < 1e-6) return [0, 0, 1];
@@ -167,7 +189,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
     if (!s) return;
     const R = s.orient;
     const t = s.offset;
-    const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, cone: false };
+    const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
     const r = tool.radius;
     for (let q = 1; q < mv.points.length; q++) {
       const a = mv.points[q - 1];
@@ -204,7 +226,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
             const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
             const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
             const mz = R[6] * px + R[7] * py + R[8] * pz + t[2];
-            if (sweeps(mx, my, mz, a, b, r, tool.cone)) removed[v] = index;
+            if (sweeps(mx, my, mz, a, b, r, tool.slope)) removed[v] = index;
           }
         }
       }
@@ -295,9 +317,9 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   const inMove = (m: number, p: Vec): number => {
     const mv = input.moves[m];
     const s = input.setups[mv.setup];
-    const tool = toolOf.get(mv.tool) ?? { radius: 3, cone: false };
+    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
     const q = toMachine(s, p);
-    for (let i = 1; i < mv.points.length; i++) if (sweeps(q[0], q[1], q[2], mv.points[i - 1], mv.points[i], tool.radius, tool.cone)) return i;
+    for (let i = 1; i < mv.points.length; i++) if (sweeps(q[0], q[1], q[2], mv.points[i - 1], mv.points[i], tool.radius, tool.slope)) return i;
     return -1;
   };
 
@@ -356,8 +378,8 @@ export function mesher(g: Grid, input: SimInput): Mesher {
     const p = at((t0 + t1) / 2);
     const mv = input.moves[hit[0]];
     const s = input.setups[mv.setup];
-    const tool = toolOf.get(mv.tool) ?? { radius: 3, cone: false };
-    const nm = sweepNormal(toMachine(s, p), mv.points[hit[1] - 1], mv.points[hit[1]], tool.radius, tool.cone, Math.max(h[0], h[1], h[2]) * 0.75);
+    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
+    const nm = sweepNormal(toMachine(s, p), mv.points[hit[1] - 1], mv.points[hit[1]], tool.radius, tool.slope, Math.max(h[0], h[1], h[2]) * 0.75);
     let n = toPart(s, nm);
     // The normal must face out of the material along this edge.
     if (n[axis] * dir < 0.05) {

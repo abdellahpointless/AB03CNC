@@ -56,3 +56,26 @@ describe('toolpath reader', () => {
     expect(speedsFor('FANUC').rapid).toBeGreaterThan(speedsFor('HAAS').rapid);
   });
 });
+
+describe('cutter compensation', () => {
+  it('moves the tool off the programmed edge by its radius (G41 left, ramping on and off)', () => {
+    const p = parseToolpath(
+      ['T1 M6', '(DIAMETER 10.00 MM/LENGTH 30.00 MM)', 'G0 G90 X-20. Y-20. Z5.', 'G1 Z-2. F100', 'G1 G41 D1 X-10. Y-10.', 'G1 X10.', 'Y10.', 'X-10.', 'Y-10.', 'G1 G40 X-20. Y-20.'].join('\n'),
+      S,
+    );
+    const feeds = p.moves.filter((m) => m.kind === 'feed').slice(1);
+    // Starts on the path, then runs 5 mm to the left of the square (inside it), corners mitred.
+    expect(feeds[0].points[0]).toEqual([-20, -20, -2]);
+    expect(feeds.slice(1, 5).map((m) => m.points[1])).toEqual([[5, -5, -2], [5, 5, -2], [-5, 5, -2], [-5, -10, -2]]);
+    expect(feeds[5].points[1]).toEqual([-20, -20, -2]);
+  });
+
+  it('gives pointed tools their tip', async () => {
+    const { tipSlope } = await import('../src/lib/stockSim');
+    expect(tipSlope('90 GRAD STICHEL / ST_04.00_025_G45_FH')).toBeCloseTo(1, 5);
+    expect(tipSlope('ZENTRIERBOHRER D2MM-1/38MM LANG / ZB_02.30_038_000_FH')).toBeCloseTo(1, 5);
+    expect(tipSlope('4.2MM BOHRER/55MM LANG')).toBeCloseTo(Math.tan((59 * Math.PI) / 180), 5);
+    expect(tipSlope('GEWINDEBOHRER_M4 / GB_04.00_040_000_FH')).toBeNull();
+    expect(tipSlope('8MM FRAESER/44MM LANG')).toBeNull();
+  });
+});

@@ -5,7 +5,7 @@ import { codeOnly } from './gcodeProcessor';
  *
  * Covers what the shop's programs use: G0/G1, arcs G2/G3 (I/J or R, XY plane), absolute and
  * incremental (G90/G91), drilling and tapping cycles (G73, G74, G76, G81–G89 with G98/G99, Q
- * pecks), dwell G4, tool changes. Moves in machine coordinates (G53, G28, G30) are counted for
+ * pecks), dwell G4, tool changes, cutter radius compensation (G41/G42 with D, G40). Moves in machine coordinates (G53, G28, G30) are counted for
  * time but not drawn, since they are not in the part's coordinates.
  *
  * The time is an estimate: feeds at the programmed F, rapids at the machine's rapid rate, a fixed
@@ -28,6 +28,8 @@ export interface Move {
   length: number;
   /** Setup (clamping) the move belongs to: a new setup starts at every G52. */
   setup: number;
+  /** Cutter compensation (G41 left / G42 right of the path by r); start/end: the move that ramps it on/off. */
+  comp?: { side: 1 | -1; r: number; start?: boolean; end?: boolean };
 }
 
 /** A clamping of the part: the operator instructions before a G52, and its shift. */
@@ -160,6 +162,18 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   let returnToInitial = true;
   let initialZ = 0;
   let extraSeconds = 0;
+  let compSide: 0 | 1 | -1 = 0;
+  let compR = 0;
+  let compStart = false;
+  let compEnd = false;
+  const compOf = () => (compSide ? { side: compSide, r: compR, ...(compStart ? { start: true } : {}), ...(compEnd ? { end: true } : {}) } : undefined);
+  const compDone = () => {
+    compStart = false;
+    if (compEnd) {
+      compSide = 0;
+      compEnd = false;
+    }
+  };
 
   const min: Vec = [Infinity, Infinity, Infinity];
   const max: Vec = [-Infinity, -Infinity, -Infinity];
@@ -217,6 +231,16 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if (v.has('F')) feed = v.get('F')!;
     if (has(g, 90)) absolute = true;
     if (has(g, 91)) absolute = false;
+    // Cutter compensation: the path is the part's edge; the control moves the tool off it by the
+    // radius in D (the tool's own radius unless D names another tool).
+    if (has(g, 41, 42)) {
+      compSide = has(g, 41) ? 1 : -1;
+      const d = v.get('D');
+      const dia = (d !== undefined ? tools.get(d)?.diameter : null) ?? (tool !== null ? tools.get(tool)?.diameter : null) ?? 0;
+      compR = dia / 2;
+      compStart = true;
+    }
+    if (has(g, 40) && compSide) compEnd = true;
     if (has(g, 98)) returnToInitial = true;
     if (has(g, 99)) returnToInitial = false;
     if (has(g, 4)) {
@@ -330,19 +354,22 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       }
       const length = Math.hypot(r * Math.abs(sweep), end[2] - from[2]);
       const seconds = feedTime(length);
-      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup });
+      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() });
+      compDone();
       addTime(seconds);
     } else {
       const length = dist(from, end);
       const seconds = motion === 0 ? rapidTime(length) : feedTime(length);
       grow(from);
       grow(end);
-      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup });
+      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() });
+      compDone();
       addTime(seconds);
     }
     pos = end;
   });
 
+  applyCompensation(moves);
   // Instructions without a G52 after them belong to the only setup.
   if (setups.length === 1) setups[0].notes.push(...pendingNotes);
   // Every move, cycle, dwell and tool change was added to its tool (or to the time before the first tool).
@@ -361,4 +388,73 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     setups,
     header,
   };
+}
+
+/**
+ * Moves the tool off the programmed path for G41 (left of the direction of travel) and G42
+ * (right), by the compensation radius, as the control does: corners are mitred, the G41 move
+ * ramps on (starts on the path) and the G40 move ramps off (ends on the path).
+ */
+function applyCompensation(moves: Move[]) {
+  let i = 0;
+  while (i < moves.length) {
+    if (!moves[i].comp || moves[i].kind === 'drill') {
+      i++;
+      continue;
+    }
+    // A block of consecutive compensated moves.
+    let j = i;
+    while (j + 1 < moves.length && moves[j + 1].comp && moves[j + 1].kind !== 'drill' && !moves[j + 1].comp!.start && !moves[j].comp!.end) j++;
+    const block = moves.slice(i, j + 1);
+    const { side, r } = block[0].comp!;
+    if (r > 0) {
+      // Chain of points through the block; each move's first point is the previous one's last.
+      const pts: Vec[] = [block[0].points[0]];
+      const owner: [number, number][][] = [[[0, 0]]];
+      block.forEach((mv, b) => {
+        for (let k = 1; k < mv.points.length; k++) {
+          pts.push(mv.points[k]);
+          owner.push([[b, k]]);
+        }
+        if (b + 1 < block.length) owner[owner.length - 1].push([b + 1, 0]);
+      });
+      const normal = (a: Vec, c: Vec): [number, number] | null => {
+        const dx = c[0] - a[0];
+        const dy = c[1] - a[1];
+        const l = Math.hypot(dx, dy);
+        return l < 1e-6 ? null : [(-dy / l) * side, (dx / l) * side];
+      };
+      const segN = pts.slice(1).map((p, k) => normal(pts[k], p));
+      const near = (k: number, dir: -1 | 1): [number, number] | null => {
+        for (let q = k; q >= 0 && q < segN.length; q += dir) if (segN[q]) return segN[q];
+        return null;
+      };
+      const rampOn = !!block[0].comp!.start;
+      const rampOff = !!block[block.length - 1].comp!.end;
+      const offsets = pts.map((_, k): [number, number] => {
+        if ((k === 0 && rampOn) || (k === pts.length - 1 && rampOff)) return [0, 0];
+        // The ramp-on segment and the ramp-off segment do not set the direction at their ends.
+        const inc = k > 0 && !(rampOn && k === 1) ? near(k - 1, -1) : null;
+        const out = k < segN.length && !(rampOff && k === segN.length - 1) ? near(k, 1) : null;
+        const a = inc ?? out;
+        const b = out ?? inc;
+        if (!a || !b) return [0, 0];
+        const mx = a[0] + b[0];
+        const my = a[1] + b[1];
+        const ml = Math.hypot(mx, my);
+        if (ml < 1e-6) return [a[0] * r, a[1] * r];
+        const ux = mx / ml;
+        const uy = my / ml;
+        const scale = r / Math.max(0.25, ux * a[0] + uy * a[1]);
+        return [ux * scale, uy * scale];
+      });
+      const moved = pts.map((p, k): Vec => [p[0] + offsets[k][0], p[1] + offsets[k][1], p[2]]);
+      // New point arrays: the old points are shared with the moves around the block.
+      for (const mv of block) mv.points = mv.points.slice();
+      owner.forEach((refs, k) => {
+        for (const [b, idx] of refs) block[b].points[idx] = moved[k];
+      });
+    }
+    i = j + 1;
+  }
 }

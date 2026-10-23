@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { parallelWidth, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, FLIP_MS, type ChunkMesh } from '../lib/stockSim';
+import { buildInput, FLIP_MS, tipSlope, type ChunkMesh } from '../lib/stockSim';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -443,7 +443,10 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const holderMat = new THREE.MeshStandardMaterial({ color: 0x55627a, metalness: 0.6, roughness: 0.4 });
     const cutter = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), cutterMat);
     const holder = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), holderMat);
-    tool.add(cutter, holder);
+    // Pointed tools (chamfer, spot drill, drill) get their tip: a cone under the cutter.
+    const tipMesh = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 32), cutterMat);
+    tipMesh.rotation.x = Math.PI;
+    tool.add(cutter, holder, tipMesh);
     world.add(tool);
     a.setupObjects.push(tool);
     const sizeOf = new Map(path.tools.map((t) => [t.tool, t]));
@@ -462,8 +465,15 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         const info = sizeOf.get(cur.tool ?? -1);
         const r = Math.max(0.5, (info?.diameter ?? 6) / 2);
         const len = Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80);
-        cutter.scale.set(r, len, r);
-        cutter.position.set(0, len / 2, 0);
+        const slope = tipSlope(info?.label ?? '');
+        const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
+        tipMesh.visible = tipH > 0;
+        if (tipH > 0) {
+          tipMesh.scale.set(r, tipH, r);
+          tipMesh.position.set(0, tipH / 2, 0);
+        }
+        cutter.scale.set(r, len - tipH, r);
+        cutter.position.set(0, tipH + (len - tipH) / 2, 0);
         const hr = Math.max(r * 1.25, 9);
         holder.scale.set(hr, 28, hr);
         holder.position.set(0, len + 14, 0);
