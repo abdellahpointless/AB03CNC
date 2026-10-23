@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from 'react';
+import { Fragment, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Printer, QrCode, X } from 'lucide-react';
+import { Printer, QrCode, ScanLine, X } from 'lucide-react';
 import qrcode from 'qrcode-generator';
 import { machineSubtitle, type FleetMachine } from '../lib/fleet';
 import { checkUrl } from '../lib/phoneCheck';
 import { currentRegion } from '../lib/instance';
 import { iosBackdrop, iosSurface } from '../lib/motion';
+import { Flag } from './Flag';
 import { useT } from '../i18n';
 
 /** A QR code drawn as one SVG path (nothing sent to a third party). */
@@ -24,6 +25,30 @@ function QrSvg({ text, label }: { text: string; label: string }) {
       <rect width={size} height={size} fill="#fff" />
       <path d={d} fill="#000" />
     </svg>
+  );
+}
+
+/** The address, allowed to wrap only after "/" or "?" (never in the middle of a word). */
+function BreakableUrl({ url }: { url: string }) {
+  const parts: string[] = [];
+  let part = '';
+  for (const ch of url) {
+    part += ch;
+    if (ch === '/' || ch === '?') {
+      parts.push(part);
+      part = '';
+    }
+  }
+  if (part) parts.push(part);
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 && <wbr />}
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -73,17 +98,38 @@ export default function MachineQrSheet({ machines, onClose }: { machines: FleetM
             const url = checkUrl(m.id);
             return (
               <div key={m.id} className="qr-card">
+                <div className="qr-card-kicker">
+                  <Flag country={region.id} className="qr-card-flag" />
+                  <span>{t('header.title')}</span>
+                  <span className="qr-card-region">{region.name}</span>
+                </div>
                 <div className="qr-card-head">
-                  <img src={m.image} alt="" className="qr-card-img" />
                   <div className="min-w-0">
-                    <div className="qr-card-name">{m.name}</div>
+                    <div className="qr-card-name">
+                      {m.name.split(' ').map((word, i) => (
+                        <Fragment key={i}>
+                          {i > 0 && ' '}
+                          <span className="whitespace-nowrap">{word}</span>
+                        </Fragment>
+                      ))}
+                    </div>
                     <div className="qr-card-sub">{machineSubtitle(m)}</div>
                   </div>
+                  <img src={m.image} alt="" className="qr-card-img" />
                 </div>
-                <QrSvg text={url} label={`${m.name}: ${url}`} />
-                <div className="qr-card-cta">{t('qr.scan')}</div>
+                <div className="qr-frame">
+                  <i className="tl" />
+                  <i className="tr" />
+                  <i className="bl" />
+                  <i className="br" />
+                  <QrSvg text={url} label={`${m.name}: ${url}`} />
+                </div>
+                <div className="qr-card-cta">
+                  <ScanLine size={16} aria-hidden="true" />
+                  <span>{t('qr.scan')}</span>
+                </div>
                 <div className="qr-card-url">
-                  {region.name} · {url.replace(/^https?:\/\//, '')}
+                  <BreakableUrl url={url.replace(/^https?:\/\//, '')} />
                 </div>
               </div>
             );

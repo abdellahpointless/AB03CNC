@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { AlertTriangle, CheckCircle2, OctagonX, WifiOff, X } from 'lucide-react';
+import { WifiOff, X } from 'lucide-react';
 import { machineSubtitle, type FleetMachine, type MachineCheck, type machineSummary } from '../lib/fleet';
 import { currentRegion } from '../lib/instance';
 import { Flag } from './Flag';
@@ -12,9 +12,10 @@ type Summary = ReturnType<typeof machineSummary>;
 /*
  * The status board for a TV: every machine of the country, full screen, readable from across the
  * room by anyone (managers, warehouse, design, production elsewhere), CNC knowledge not needed.
- *   Running            green
- *   Needs attention    still running, its problems listed under it, glowing red
- *   Stopped            the whole tile glows red, with how long it has been stopped
+ * Calm when all is well: dark neutral tiles, colour only where something needs a look.
+ *   Running            a small green dot
+ *   Needs attention    amber dot, still running, its problems listed under it in red
+ *   Stopped            the tile turns a deep red that slowly breathes, with how long it has been stopped
  * Everything fits on the screen without scrolling; tiles grow or shrink with the number of machines.
  */
 
@@ -168,24 +169,24 @@ export default function StatusBoard({
         </div>
         <div className="sb-counts" aria-live="polite">
           {counts.down === 0 && counts.attention === 0 ? (
-            <span className="sb-pill running">
-              <CheckCircle2 /> {t('board.allRunning')}
+            <span className="sb-count running">
+              <i className="sb-dot" /> {t('board.allRunning')}
             </span>
           ) : (
             <>
-              <span className="sb-pill running">
-                <CheckCircle2 /> {t('board.countRunning', { count: counts.running })}
-              </span>
-              {counts.attention > 0 && (
-                <span className="sb-pill attention">
-                  <AlertTriangle /> {t('board.countAttention', { count: counts.attention })}
-                </span>
-              )}
               {counts.down > 0 && (
-                <span className="sb-pill down">
-                  <OctagonX /> {t('board.countStopped', { count: counts.down })}
+                <span className="sb-count down">
+                  <i className="sb-dot" /> {t('board.countStopped', { count: counts.down })}
                 </span>
               )}
+              {counts.attention > 0 && (
+                <span className="sb-count attention">
+                  <i className="sb-dot" /> {t('board.countAttention', { count: counts.attention })}
+                </span>
+              )}
+              <span className="sb-count running">
+                <i className="sb-dot" /> {t('board.countRunning', { count: counts.running })}
+              </span>
             </>
           )}
         </div>
@@ -213,16 +214,22 @@ export default function StatusBoard({
               <div className="sb-name">{m.name}</div>
               <div className="sb-sub">{machineSubtitle(m)}</div>
               <div className={`sb-state ${state}`}>
-                {state === 'down' ? <OctagonX /> : state === 'attention' ? <AlertTriangle /> : <CheckCircle2 />}
-                <span>{state === 'down' ? t('board.stopped') : state === 'attention' ? t('board.attention') : t('board.running')}</span>
+                <i className="sb-dot" />
+                <span>
+                  {state === 'down'
+                    ? downSince
+                      ? t('board.stoppedFor', { time: downFor(downSince) })
+                      : t('board.stopped')
+                    : state === 'attention'
+                      ? t('board.attention')
+                      : t('board.running')}
+                </span>
               </div>
-              {state === 'down' && downSince && <div className="sb-since">{t('board.stoppedFor', { time: downFor(downSince) })}</div>}
-              {state === 'attention' && <div className="sb-since running">{t('board.stillRunning')}</div>}
+              {state === 'attention' && <div className="sb-since">{t('board.stillRunning')}</div>}
               {shown.length > 0 && (
                 <ul className="sb-problems">
                   {shown.map((p) => (
                     <li key={p.id} className={p.stops ? 'stops' : ''}>
-                      {p.stops ? <OctagonX /> : <AlertTriangle />}
                       <span>{problemText(p)}</span>
                     </li>
                   ))}
