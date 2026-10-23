@@ -56,6 +56,7 @@ const app = {
   },
 
   login: {
+    scanHint: 'Sign in to open the checks of {{machine}}',
     tagline: 'Industrial Dialect & Tool Engine',
     noMasterTitle: 'No master account yet.',
     noMasterBody: "A Moroccan admin creates it in Admin → Master admin account. Then sign in here, or from any country's login page.",

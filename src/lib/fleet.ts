@@ -49,6 +49,8 @@ export interface MachineCheck {
   status_by: string | null;
   sort: number;
   created_at: number;
+  /** 1: this open problem stops the machine (breakdown). Missing before the server knew it. */
+  stops?: number;
 }
 
 export interface MachineEvent {
@@ -56,7 +58,18 @@ export interface MachineEvent {
   machine_id: string;
   check_id: string | null;
   check_title: string | null;
-  action: 'DONE' | 'PROBLEM' | 'RESOLVE' | 'CHECK_ADDED' | 'CHECK_EDITED' | 'CHECK_REMOVED' | 'OWNERS_SET' | 'MACHINE_ADDED' | 'MACHINE_REMOVED';
+  action:
+    | 'DONE'
+    | 'PROBLEM'
+    | 'RESOLVE'
+    | 'MACHINE_DOWN'
+    | 'MACHINE_UP'
+    | 'CHECK_ADDED'
+    | 'CHECK_EDITED'
+    | 'CHECK_REMOVED'
+    | 'OWNERS_SET'
+    | 'MACHINE_ADDED'
+    | 'MACHINE_REMOVED';
   note: string | null;
   username: string;
   at: number;
@@ -98,11 +111,24 @@ export function isDue(c: MachineCheck, now = Date.now()): boolean {
 
 export type MachineState = 'problem' | 'due' | 'ok';
 
+/** An open problem that stops the machine (breakdown). */
+export const stopsMachine = (c: MachineCheck) => c.status === 'PROBLEM' && !!c.stops;
+
 export function machineSummary(checks: MachineCheck[], now = Date.now()) {
   const problems = checks.filter((c) => c.status === 'PROBLEM');
   const due = checks.filter((c) => c.status !== 'PROBLEM' && isDue(c, now));
   const state: MachineState = problems.length ? 'problem' : due.length ? 'due' : 'ok';
-  return { state, problems, due, total: checks.filter((c) => c.kind === 'CHECK').length };
+  const stopping = problems.filter(stopsMachine);
+  return {
+    state,
+    problems,
+    due,
+    total: checks.filter((c) => c.kind === 'CHECK').length,
+    /** The machine is stopped by at least one open problem. */
+    down: stopping.length > 0,
+    /** Since when it is stopped (the oldest of those problems). */
+    downSince: stopping.length ? Math.min(...stopping.map((c) => c.status_at ?? now)) : null,
+  };
 }
 
 export interface MachineOwner {
@@ -129,11 +155,15 @@ export function isLockedFor(machineId: string, user: { id: string; role: string 
   return mine.length > 0 && !mine.some((o) => o.machine_id === machineId);
 }
 
-export const checkAction = (machine: string, id: string, action: 'DONE' | 'PROBLEM' | 'RESOLVE', note?: string) =>
-  api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/action`, { method: 'POST', body: { action, note } });
+export const checkAction = (machine: string, id: string, action: 'DONE' | 'PROBLEM' | 'RESOLVE', note?: string, stops?: boolean) =>
+  api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/action`, { method: 'POST', body: { action, note, stops } });
 
-export const reportIssue = (machine: string, note: string) =>
-  api(`/machines/${encodeURIComponent(machine)}/issues`, { method: 'POST', body: { note } });
+export const reportIssue = (machine: string, note: string, stops = false) =>
+  api(`/machines/${encodeURIComponent(machine)}/issues`, { method: 'POST', body: { note, stops } });
+
+/** Says whether an open problem stops the machine (or no longer does). */
+export const setStops = (machine: string, id: string, stops: boolean) =>
+  api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/action`, { method: 'POST', body: { action: 'STOPS', stops } });
 
 export const createCheck = (machine: string, title: string, frequency: Frequency) =>
   api(`/machines/${encodeURIComponent(machine)}/checks`, { method: 'POST', body: { title, frequency } });

@@ -6,8 +6,9 @@ import { requireMachine } from './fleet';
 
 /*
  * Preventive actions. Every user can mark a check as done, report a problem (on a check or on
- * the machine in general) and mark a problem as fixed. Admins edit the checklists.
- * Every action is written to machine_events so the history shows who did what and when.
+ * the machine in general), say whether a problem stops the machine, and mark a problem as fixed.
+ * Admins edit the checklists. Every action is written to machine_events so the history shows who
+ * did what and when.
  */
 
 interface CheckRow {
@@ -24,6 +25,14 @@ interface CheckRow {
   status_by: string | null;
   sort: number;
   created_at: number;
+  stops: number;
+}
+
+/** "The machine is stopped by this problem": optional, true or false. */
+function stopsFlag(v: unknown): boolean {
+  if (v === undefined || v === null) return false;
+  if (typeof v === 'boolean') return v;
+  throw new HttpError(400, 'stops must be true or false');
 }
 
 async function machineParam(ctx: Ctx): Promise<string> {
@@ -69,7 +78,7 @@ function eventStmt(ctx: Ctx, machine: string, check: { id: string; title: string
 export async function handleListMachines(ctx: Ctx): Promise<Response> {
   const [checks, events, owners] = await ctx.env.DB.batch([
     ctx.env.DB.prepare('SELECT c.* FROM machine_checks c JOIN machines m ON m.id = c.machine_id AND m.active = 1 ORDER BY c.machine_id, c.sort, c.created_at'),
-    ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC LIMIT 300'),
+    ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC, id DESC LIMIT 300'),
     ctx.env.DB.prepare(
       `SELECT o.machine_id, o.user_id, u.username FROM machine_owners o JOIN users u ON u.id = o.user_id
        ORDER BY o.machine_id, u.username COLLATE NOCASE`,
@@ -78,17 +87,22 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
   return json({ checks: checks.results, events: events.results, owners: owners.results, serverTime: Date.now() });
 }
 
-// POST /api/machines/:machine/checks/:id/action { action: DONE | PROBLEM | RESOLVE, note? }
+// POST /api/machines/:machine/checks/:id/action
+//   { action: DONE | PROBLEM | RESOLVE, note?, stops? }  stops: the problem stops the machine
+//   { action: STOPS, stops }                             an open problem stops it (or no longer)
 export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   const machine = await machineParam(ctx);
   await assertMayUpdate(ctx, machine);
   const check = await loadCheck(ctx, machine);
-  const body = await readJson<{ action?: unknown; note?: unknown }>(ctx.request, 5000);
+  const body = await readJson<{ action?: unknown; note?: unknown; stops?: unknown }>(ctx.request, 5000);
   const now = Date.now();
   const user = ctx.user!.username;
   const db = ctx.env.DB;
   let note: string | null = null;
+  let event = body.action as string;
   const stmts: D1PreparedStatement[] = [];
+  const after: D1PreparedStatement[] = [];
+  const stops = stopsFlag(body.stops);
 
   switch (body.action) {
     case 'DONE':
@@ -99,46 +113,61 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
     case 'PROBLEM':
       note = str(body.note, 'Problem description', { min: 3, max: 300 });
       stmts.push(
-        db.prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ? WHERE id = ?").bind(note, now, user, check.id),
+        db
+          .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ? WHERE id = ?")
+          .bind(note, now, user, stops ? 1 : 0, check.id),
       );
+      if (stops) after.push(eventStmt(ctx, machine, check, 'MACHINE_DOWN', note));
+      break;
+    case 'STOPS':
+      if (check.status !== 'PROBLEM') throw new HttpError(400, 'Only an open problem can stop the machine');
+      if (typeof body.stops !== 'boolean') throw new HttpError(400, 'stops must be true or false');
+      if (!!check.stops === stops) return json({ ok: true });
+      note = check.kind === 'ISSUE' ? check.note : check.note || check.title;
+      event = stops ? 'MACHINE_DOWN' : 'MACHINE_UP';
+      stmts.push(db.prepare('UPDATE machine_checks SET stops = ? WHERE id = ?').bind(stops ? 1 : 0, check.id));
       break;
     case 'RESOLVE':
       note = optStr(body.note, 'Note', 300);
       stmts.push(
         check.kind === 'ISSUE'
           ? db.prepare('DELETE FROM machine_checks WHERE id = ?').bind(check.id)
-          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ? WHERE id = ?").bind(now, user, check.id),
+          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ?, stops = 0 WHERE id = ?").bind(now, user, check.id),
       );
       break;
     default:
-      throw new HttpError(400, 'Action must be DONE, PROBLEM or RESOLVE');
+      throw new HttpError(400, 'Action must be DONE, PROBLEM, STOPS or RESOLVE');
   }
-  stmts.push(eventStmt(ctx, machine, check, body.action as string, note), bumpStmt(ctx.env, 'machines'));
+  stmts.push(eventStmt(ctx, machine, check, event, note), ...after, bumpStmt(ctx.env, 'machines'));
   await db.batch(stmts);
-  if (body.action === 'PROBLEM') {
-    const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), `${check.title}${note && note !== check.title ? ` — ${note}` : ''}`, user);
+  if (body.action === 'PROBLEM' || (body.action === 'STOPS' && stops)) {
+    const what = check.kind === 'ISSUE' ? check.note || check.title : `${check.title}${note && note !== check.title ? ` — ${note}` : ''}`;
+    const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), what, user, stops);
     await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${check.id}`);
   }
   return json({ ok: true });
 }
 
-// POST /api/machines/:machine/issues { note } -> a problem with the machine that isn't on the checklist
+// POST /api/machines/:machine/issues { note, stops? } -> a problem with the machine that isn't on
+// the checklist (stops: the machine cannot run)
 export async function handleReportIssue(ctx: Ctx): Promise<Response> {
   const machine = await machineParam(ctx);
   await assertMayUpdate(ctx, machine);
-  const body = await readJson<{ note?: unknown }>(ctx.request, 5000);
+  const body = await readJson<{ note?: unknown; stops?: unknown }>(ctx.request, 5000);
   const note = str(body.note, 'Problem description', { min: 3, max: 300 });
+  const stops = stopsFlag(body.stops);
   const id = newId();
   const now = Date.now();
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at)
-       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?)`,
-    ).bind(id, machine, note, note, now, ctx.user!.username, now),
+      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops)
+       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, ?)`,
+    ).bind(id, machine, note, note, now, ctx.user!.username, now, stops ? 1 : 0),
     eventStmt(ctx, machine, { id, title: note }, 'PROBLEM', note),
+    ...(stops ? [eventStmt(ctx, machine, { id, title: note }, 'MACHINE_DOWN', note)] : []),
     bumpStmt(ctx.env, 'machines'),
   ]);
-  const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), note, ctx.user!.username);
+  const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), note, ctx.user!.username, stops);
   await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${id}`);
   return json({ ok: true, id });
 }

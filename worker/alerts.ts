@@ -189,17 +189,17 @@ function countrySpoken(region: string | undefined): Bilingual {
   return r ? COUNTRY[r.id] : { en: 'Master', tr: 'Ana yönetim' };
 }
 
-export function machineProblemAlert(region: string | undefined, machine: string, note: string, user: string) {
+export function machineProblemAlert(region: string | undefined, machine: string, note: string, user: string, stops = false) {
   const c = countryLabel(region);
   const s = countrySpoken(region);
   return {
     message: {
-      en: `🛠️ ${c.en} · ${machine}\n❗ Problem reported: ${note}\n👤 ${user}`,
-      tr: `🛠️ ${c.tr} · ${machine}\n❗ Arıza bildirildi: ${note}\n👤 ${user}`,
+      en: `🛠️ ${c.en} · ${machine}\n${stops ? '⛔ Machine stopped: ' : '❗ Problem reported: '}${note}\n👤 ${user}`,
+      tr: `🛠️ ${c.tr} · ${machine}\n${stops ? '⛔ Tezgah durdu: ' : '❗ Arıza bildirildi: '}${note}\n👤 ${user}`,
     },
     call: {
-      en: `Alert. ${s.en}, machine ${machine}. Problem reported by ${user}: ${note}.`,
-      tr: `Uyarı. ${s.tr}, tezgah ${machine}. ${user} arıza bildirdi: ${note}.`,
+      en: stops ? `Alert. ${s.en}, machine ${machine} is stopped. Reported by ${user}: ${note}.` : `Alert. ${s.en}, machine ${machine}. Problem reported by ${user}: ${note}.`,
+      tr: stops ? `Uyarı. ${s.tr}, tezgah ${machine} durdu. ${user} bildirdi: ${note}.` : `Uyarı. ${s.tr}, tezgah ${machine}. ${user} arıza bildirdi: ${note}.`,
     },
   };
 }

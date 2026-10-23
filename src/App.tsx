@@ -12,6 +12,8 @@ import UserManagement from './components/UserManagement';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
 import PreventiveActions from './components/PreventiveActions';
+import PhoneCheck from './components/PhoneCheck';
+import { leavePhoneCheck, scannedMachine } from './lib/phoneCheck';
 import DataManagement from './components/DataManagement';
 import { TimeWonClock } from './components/TimeWonClock';
 import { SyncStatus } from './components/SyncStatus';
@@ -36,6 +38,8 @@ const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (
 export default function App() {
   const { user, status } = useAuth();
   const { t } = useT('app');
+  // Opened from a machine's QR code: after signing in, only that machine's checks (phone screen).
+  const [scanned, setScanned] = useState(scannedMachine);
 
   if (status === 'loading') {
     return (
@@ -52,7 +56,18 @@ export default function App() {
 
   return (
     <SyncProvider>
-      <Workspace key={user.id} />
+      {scanned ? (
+        <PhoneCheck
+          key={user.id}
+          machineId={scanned}
+          onOpenApp={() => {
+            leavePhoneCheck();
+            setScanned(null);
+          }}
+        />
+      ) : (
+        <Workspace key={user.id} />
+      )}
     </SyncProvider>
   );
 }

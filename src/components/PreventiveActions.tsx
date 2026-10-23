@@ -8,14 +8,20 @@ import {
   Clock,
   Lock,
   History as HistoryIcon,
+  Monitor,
+  OctagonX,
   Pencil,
   Plus,
+  QrCode,
   RefreshCw,
   Trash2,
   Users,
   Wrench,
   X,
 } from 'lucide-react';
+import StatusBoard from './StatusBoard';
+import MachineQrSheet from './MachineQrSheet';
+import { fmtDuration } from '../i18n/format';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import {
@@ -37,6 +43,7 @@ import {
   machineSummary,
   reportIssue,
   setOwners,
+  setStops,
   timeAgo,
   updateCheck,
 } from '../lib/fleet';
@@ -52,7 +59,18 @@ export default function PreventiveActions() {
   const { t } = useT('preventive');
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const { versions, machines, machinesLoaded } = useSync();
+  const { versions, machines, machinesLoaded, connection, lastSyncAt } = useSync();
+  const [board, setBoard] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  // The TV board takes the whole screen (full screen when the browser allows it).
+  const openBoard = () => {
+    document.documentElement.requestFullscreen?.().catch(() => undefined);
+    setBoard(true);
+  };
+  const closeBoard = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    setBoard(false);
+  }, []);
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
@@ -100,9 +118,12 @@ export default function PreventiveActions() {
   }, [byMachine, now, fleet]);
 
   const counts = useMemo(() => {
-    let problem = 0, due = 0, ok = 0;
-    for (const s of summaries.values()) s.state === 'problem' ? problem++ : s.state === 'due' ? due++ : ok++;
-    return { problem, due, ok };
+    let problem = 0, due = 0, ok = 0, down = 0;
+    for (const s of summaries.values()) {
+      s.state === 'problem' ? problem++ : s.state === 'due' ? due++ : ok++;
+      if (s.down) down++;
+    }
+    return { problem, due, ok, down };
   }, [summaries]);
 
   const ownersOf = useCallback((id: string) => owners.filter((o) => o.machine_id === id), [owners]);
@@ -132,6 +153,11 @@ export default function PreventiveActions() {
               <Wrench size={13} /> {t('header.myMachines', { names: myMachines.map(nameOf).join(', ') })}
             </span>
           )}
+          {counts.down > 0 && (
+            <span className="badge-danger">
+              <OctagonX size={13} /> {t('header.stopped', { count: counts.down })}
+            </span>
+          )}
           <span className={counts.problem ? 'badge-danger' : 'badge-neutral'}>
             <AlertTriangle size={13} /> {t('header.withProblem', { count: counts.problem })}
           </span>
@@ -141,6 +167,16 @@ export default function PreventiveActions() {
           <span className="badge-positive">
             <CheckCircle2 size={13} /> {t('header.allGood', { count: counts.ok })}
           </span>
+          <button onClick={openBoard} className="btn-secondary text-xs py-1.5 px-3" title={t('header.boardTitle')} disabled={!fleet.length}>
+            <Monitor size={14} />
+            <span>{t('header.board')}</span>
+          </button>
+          {isAdmin && (
+            <button onClick={() => setQrOpen(true)} className="btn-secondary text-xs py-1.5 px-3" title={t('header.qrTitle')} disabled={!fleet.length}>
+              <QrCode size={14} />
+              <span>{t('header.qr')}</span>
+            </button>
+          )}
           <button onClick={load} className="btn-icon" title={t('common:actions.refresh')} aria-label={t('common:actions.refresh')}>
             <RefreshCw size={14} />
           </button>
@@ -196,6 +232,18 @@ export default function PreventiveActions() {
                 onClose={() => setSelected(null)}
               />
             )}
+            {board && (
+              <StatusBoard
+                key="board"
+                fleet={fleet}
+                summaries={summaries}
+                now={now}
+                offline={connection === 'offline'}
+                updatedAt={lastSyncAt}
+                onClose={closeBoard}
+              />
+            )}
+            {qrOpen && <MachineQrSheet key="qr" machines={fleet} onClose={() => setQrOpen(false)} />}
           </AnimatePresence>,
           document.body,
         )}
@@ -236,7 +284,7 @@ function MachineCard({
 }) {
   const { t } = useT('preventive');
   const ref = useRef<HTMLDivElement>(null);
-  const state = loading ? 'loading' : summary.state;
+  const state = loading ? 'loading' : summary.down ? 'down' : summary.state;
 
 
   const enter = () => {
@@ -246,7 +294,9 @@ function MachineCard({
   };
 
   const label =
-    state === 'problem'
+    state === 'down'
+      ? t('status.stopped')
+      : state === 'problem'
       ? t('status.problems', { count: summary.problems.length })
       : state === 'due'
         ? t('status.checksToDo', { count: summary.due.length })
@@ -291,9 +341,9 @@ function MachineCard({
               <Lock size={12} />
             </span>
           )}
-          {state === 'problem' && (
+          {(state === 'problem' || state === 'down') && (
             <span className="machine-alert" aria-hidden>
-              <AlertTriangle size={14} />
+              {state === 'down' ? <OctagonX size={14} /> : <AlertTriangle size={14} />}
             </span>
           )}
         </div>
@@ -306,7 +356,7 @@ function MachineCard({
           </div>
           <span
             className={`shrink-0 text-[11px] py-0.5 px-2 ${
-              state === 'problem' ? 'badge-danger' : state === 'due' ? 'badge-warning' : state === 'ok' ? 'badge-positive' : 'badge-neutral'
+              state === 'problem' || state === 'down' ? 'badge-danger' : state === 'due' ? 'badge-warning' : state === 'ok' ? 'badge-positive' : 'badge-neutral'
             }`}
           >
             {label}
@@ -372,6 +422,11 @@ function MachinePopContent({
           <div className="section-label !text-[var(--rose-500)]">{t('pop.whatsWrong')}</div>
           {summary.problems.slice(0, 3).map((p) => (
             <div key={p.id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/25">
+              {!!p.stops && (
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--rose-500)] flex items-center gap-1 mb-0.5">
+                  <OctagonX size={11} /> {t('stop.badge')}
+                </div>
+              )}
               <div className="font-semibold text-[var(--text-primary)]">{p.kind === 'ISSUE' ? p.note : p.title}</div>
               {p.kind === 'CHECK' && p.note && <div className="text-[var(--rose-500)] mt-0.5">{p.note}</div>}
               <div className="text-[var(--text-tertiary)] mt-0.5">
@@ -449,6 +504,7 @@ function MachineSheet({
   const [error, setError] = useState('');
   const [problemFor, setProblemFor] = useState<string | null>(null); // check id, or '__machine'
   const [problemText, setProblemText] = useState('');
+  const [problemStops, setProblemStops] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editFreq, setEditFreq] = useState<Frequency>('DAILY');
@@ -496,11 +552,12 @@ function MachineSheet({
     const text = problemText.trim();
     if (text.length < 3) return setError(t('errors.describeProblem'));
     const ok = await run(`problem:${problemFor}`, () =>
-      problemFor === '__machine' ? reportIssue(machine.id, text) : checkAction(machine.id, problemFor!, 'PROBLEM', text),
+      problemFor === '__machine' ? reportIssue(machine.id, text, problemStops) : checkAction(machine.id, problemFor!, 'PROBLEM', text, problemStops),
     );
     if (ok) {
       setProblemFor(null);
       setProblemText('');
+      setProblemStops(false);
     }
   };
 
@@ -535,8 +592,32 @@ function MachineSheet({
           {t('common:actions.cancel')}
         </button>
       </div>
+      <label className={`stop-check ${problemStops ? 'on' : ''}`}>
+        <input type="checkbox" checked={problemStops} onChange={(e) => setProblemStops(e.target.checked)} />
+        <OctagonX size={14} />
+        <span>{t('problem.stops')}</span>
+      </label>
     </motion.div>
   );
+
+  /** "It stops the machine" / "Machine runs again" on an open problem. */
+  const stopToggle = (p: MachineCheck) =>
+    canAct ? (
+      <button
+        className={`text-xs py-1.5 px-3 ${p.stops ? 'btn-secondary' : 'btn-danger'}`}
+        disabled={!!busy}
+        onClick={() => run(`stops:${p.id}`, () => setStops(machine.id, p.id, !p.stops))}
+      >
+        <OctagonX size={13} />
+        <span>{p.stops ? t('stop.markRunning') : t('stop.markStopped')}</span>
+      </button>
+    ) : null;
+  const stopBadge = (p: MachineCheck) =>
+    p.stops ? (
+      <span className="badge-danger text-[10px] py-0.5 px-2 mt-1 inline-flex">
+        <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}
+      </span>
+    ) : null;
 
   return (
     <motion.div
@@ -554,7 +635,7 @@ function MachineSheet({
         {/* Left: the machine */}
         <div
           className={`machine-hero relative md:w-[38%] shrink-0 flex flex-col items-center justify-between p-6 gap-4 ${
-            summary.state === 'problem' ? 'is-problem' : ''
+            summary.down ? 'is-problem is-down' : summary.state === 'problem' ? 'is-problem' : ''
           }`}
           style={{ '--accent': machine.accent } as React.CSSProperties}
         >
@@ -582,6 +663,11 @@ function MachineSheet({
             />
           </div>
           <div className="self-stretch space-y-2">
+            {summary.down && (
+              <div className="badge-danger w-full justify-center py-2 text-xs font-bold machine-stopped-badge">
+                <OctagonX size={14} /> {t('stop.badge')}
+              </div>
+            )}
             <div
               className={`w-full justify-center py-2 text-xs ${
                 summary.state === 'problem' ? 'badge-danger' : summary.state === 'due' ? 'badge-warning' : 'badge-positive'
@@ -607,6 +693,7 @@ function MachineSheet({
                 onClick={() => {
                   setProblemFor('__machine');
                   setProblemText('');
+                  setProblemStops(false);
                 }}
               >
                 <AlertTriangle size={14} />
@@ -735,13 +822,15 @@ function MachineSheet({
                   {...waveItem(i)}
                   className="p-3 rounded-[var(--radius-md)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/30 flex items-center gap-3"
                 >
-                  <AlertTriangle size={16} className="text-[var(--rose-500)] shrink-0" />
+                  {p.stops ? <OctagonX size={16} className="text-[var(--rose-500)] shrink-0" /> : <AlertTriangle size={16} className="text-[var(--rose-500)] shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-[var(--text-primary)]">{p.note}</div>
                     <div className="text-[11px] text-[var(--text-tertiary)]">
                       {t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}
                     </div>
+                    {stopBadge(p)}
                   </div>
+                  {stopToggle(p)}
                   {canAct && (
                     <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
                       <CheckCircle2 size={13} />
@@ -800,9 +889,12 @@ function MachineSheet({
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-[var(--text-primary)] font-medium">{c.title}</div>
                           {st === 'problem' ? (
-                            <div className="text-[11px] text-[var(--rose-500)]">
-                              {c.note} · {c.status_by}, {timeAgo(c.status_at, now)}
-                            </div>
+                            <>
+                              <div className="text-[11px] text-[var(--rose-500)]">
+                                {c.note} · {c.status_by}, {timeAgo(c.status_at, now)}
+                              </div>
+                              {stopBadge(c)}
+                            </>
                           ) : (
                             <div className={`text-[11px] ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
                               {c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
@@ -812,10 +904,13 @@ function MachineSheet({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {!canAct ? null : st === 'problem' ? (
-                            <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${c.id}`, () => checkAction(machine.id, c.id, 'RESOLVE'))}>
-                              <CheckCircle2 size={13} />
-                              <span>{t('problem.fixed')}</span>
-                            </button>
+                            <>
+                              {stopToggle(c)}
+                              <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${c.id}`, () => checkAction(machine.id, c.id, 'RESOLVE'))}>
+                                <CheckCircle2 size={13} />
+                                <span>{t('problem.fixed')}</span>
+                              </button>
+                            </>
                           ) : (
                             <>
                               <button
@@ -834,6 +929,7 @@ function MachineSheet({
                                 onClick={() => {
                                   setProblemFor(c.id);
                                   setProblemText('');
+                                  setProblemStops(false);
                                 }}
                               >
                                 <AlertTriangle size={13} />

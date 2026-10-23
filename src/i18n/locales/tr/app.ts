@@ -57,6 +57,7 @@ const app: Translation<typeof en> = {
   },
 
   login: {
+    scanHint: '{{machine}} kontrollerini açmak için giriş yapın',
     tagline: 'Endüstriyel G-kodu ve Takım Motoru',
     noMasterTitle: 'Henüz ana yönetici hesabı yok.',
     noMasterBody:

@@ -214,6 +214,11 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    // An open problem can stop the machine (breakdown): the status board shows it as down.
+    version: 5,
+    statements: [`ALTER TABLE machine_checks ADD COLUMN stops INTEGER NOT NULL DEFAULT 0`],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

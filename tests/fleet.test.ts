@@ -29,3 +29,38 @@ describe('preventive checks', () => {
     expect(machineSummary([base], now).state).toBe('due');
   });
 });
+
+describe('stopped machines and QR links', () => {
+  const base = {
+    machine_id: 'HAAS-1',
+    frequency: null,
+    last_done_at: null,
+    last_done_by: null,
+    status_by: 'ali',
+    sort: 0,
+    created_at: 0,
+  } as const;
+
+  it('says a machine is down while a problem stops it, since the oldest such problem', async () => {
+    const { machineSummary } = await import('../src/lib/fleet');
+    const now = Date.now();
+    const checks = [
+      { ...base, id: 'a', kind: 'ISSUE' as const, title: 'Leak', note: 'Leak', status: 'PROBLEM' as const, status_at: now - 3_600_000, stops: 1 },
+      { ...base, id: 'b', kind: 'ISSUE' as const, title: 'Noise', note: 'Noise', status: 'PROBLEM' as const, status_at: now - 60_000, stops: 0 },
+    ];
+    const s = machineSummary(checks, now);
+    expect(s.down).toBe(true);
+    expect(s.downSince).toBe(now - 3_600_000);
+    expect(s.problems).toHaveLength(2);
+    expect(machineSummary([checks[1]], now).down).toBe(false);
+  });
+
+  it('reads the machine of a scanned QR code and builds the code address', async () => {
+    const { scannedMachine, checkUrl } = await import('../src/lib/phoneCheck');
+    expect(scannedMachine('?check=haas-1')).toBe('HAAS-1');
+    expect(scannedMachine('?check=FANUC-2&x=1')).toBe('FANUC-2');
+    expect(scannedMachine('?check=../../etc')).toBeNull();
+    expect(scannedMachine('')).toBeNull();
+    expect(checkUrl('DMG-1', 'https://example.test')).toBe('https://example.test/ma/?check=DMG-1');
+  });
+});

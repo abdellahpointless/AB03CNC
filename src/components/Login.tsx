@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone, Crown, Globe2 } from 'lucide-react';
 import { Flag } from './Flag';
 import { CHOOSE_COUNTRY_PATH, INSTANCE } from '../lib/instance';
+import { scannedMachine } from '../lib/phoneCheck';
+import { QrCode } from 'lucide-react';
 import { motion, useAnimate } from 'motion/react';
 import { useT } from '../i18n';
 
@@ -17,6 +19,7 @@ export default function Login() {
   const isMasterPage = INSTANCE.kind === 'master';
   const region = INSTANCE.kind === 'country' ? INSTANCE.region : null;
   const [code, setCode] = useState('');
+  const scanned = scannedMachine();
   const [useRecovery, setUseRecovery] = useState(false);
   const [cardRef, animateCard] = useAnimate();
   // iPhone-style "wrong passcode" shake.
@@ -111,6 +114,14 @@ export default function Login() {
             </a>
           </div>
         </div>
+
+        {/* Opened from a machine's QR code: say where signing in leads. */}
+        {scanned && !isMasterPage && (
+          <div className="mb-5 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-sm text-[var(--text-primary)] flex items-center gap-2.5">
+            <QrCode size={18} className="shrink-0 text-[var(--blue-500)]" />
+            <span>{t('login.scanHint', { machine: scanned })}</span>
+          </div>
+        )}
 
         {notConfigured && !mfaPending && (
           <div className="mb-5 p-3 rounded-[var(--radius-md)] bg-[rgba(224,138,77,0.1)] border border-[var(--orange-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
