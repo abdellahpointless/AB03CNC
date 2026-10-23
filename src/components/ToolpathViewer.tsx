@@ -81,6 +81,8 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const [turning, setTurning] = useState<number | null>(null);
   const multi = setups.length > 1;
   const [mode3d, setMode3d] = useState(true);
+  const mode3dRef = useRef(mode3d);
+  mode3dRef.current = mode3d;
   const [fitKey, setFitKey] = useState(0);
   const [isolate, setIsolate] = useState(false);
   // The setup shown is the one of the current move, so playing goes through the setups.
@@ -143,8 +145,9 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
         held = start;
         k = start;
         sim = timeline[start - 1];
+        // The 3D view turns the part (and changes the cales); the 2D view just marks the new setup.
         const next = path.moves[start].setup;
-        holdUntil = now + turnMs(setups[next - 1] ?? null, setups[next] ?? null) + 150;
+        holdUntil = now + (mode3dRef.current ? turnMs(setups[next - 1] ?? null, setups[next] ?? null) + 150 : 600);
         setTurning(path.moves[start].setup);
         seek(k);
         raf = requestAnimationFrame(tick);
