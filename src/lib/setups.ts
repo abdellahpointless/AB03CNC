@@ -88,7 +88,8 @@ export interface SetupOptions {
   jawHeight: number;
 }
 
-export const DEFAULT_JAW_HEIGHT = 42;
+/** Floor to top of the vise jaws: the same on every vise in the shop. */
+export const DEFAULT_JAW_HEIGHT = 45;
 
 const NUM = '(\\d+(?:[.,]\\d+)?)';
 const num = (s: string) => Number(s.replace(',', '.'));
@@ -161,7 +162,8 @@ export function readInstructions(notes: string[]) {
     support: sup ? num(sup[1]) : null,
     restDepth: thick ? num(thick[1]) : null,
     spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
-    clamp: /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN|UNTERLAGE/.test(t) ? ('vise' as const) : null,
+    // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
+    clamp: /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,
@@ -257,7 +259,7 @@ function learn(m: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<str
  * `fixed` reuses orientations found before (e.g. when only the jaw height changed).
  */
 export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[]): ProgramSetups {
-  if (fixed) return analyseWith(tp, opts, new Map(fixed.map((m, i) => [i, m])));
+  if (fixed) return withLedges(tp, opts, new Map(fixed.map((m, i) => [i, m])), analyseWith(tp, opts, new Map(fixed.map((m, i) => [i, m]))));
   const chosen = new Map<number, Mat3>();
   let result = analyseWith(tp, opts, chosen);
   for (let k = 1; k < result.setups.length; k++) {
@@ -274,7 +276,50 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
     chosen.set(k, pick.o);
     result = pick.r;
   }
-  return result;
+  return withLedges(tp, opts, chosen, result);
+}
+
+/** Width of the parallels drawn and checked under the held part (mm). */
+export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
+
+/**
+ * After a turn, the part may stand on a ledge: a boss cut on the side before now hangs down
+ * between the parallels, and the parallels carry the wider part above it. Find, for each later
+ * setup, the lowest material above the parallels (from a coarse cut of the setups before).
+ */
+function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>, result: ProgramSetups): ProgramSetups {
+  const input = buildInput(tp, result);
+  if (!input || result.setups.length < 2) return result;
+  const g = carve({ ...input, maxVoxels: 80_000 });
+  const [nx, ny, nz] = g.n;
+  const ledges = new Map<number, number>();
+  for (const s of result.setups) {
+    // Only where parallels are written (the part stands on them).
+    if (s.index === 0 || !s.stock || !s.clampBox || !s.moves || s.restDepth !== null || s.support === null) continue;
+    const before = s.moves[0];
+    const R = s.orient;
+    const t = s.offset;
+    const w = parallelWidth(s.clampBox.max[1] - s.clampBox.min[1]);
+    const halfZ = (Math.abs(R[6]) * g.step[0] + Math.abs(R[7]) * g.step[1] + Math.abs(R[8]) * g.step[2]) / 2;
+    let low = Infinity;
+    for (let k = 0; k < nz; k++)
+      for (let j = 0; j < ny; j++)
+        for (let i = 0; i < nx; i++) {
+          if (g.removed[(k * ny + j) * nx + i] < before) continue;
+          const px = g.origin[0] + (i + 0.5) * g.step[0];
+          const py = g.origin[1] + (j + 0.5) * g.step[1];
+          const pz = g.origin[2] + (k + 0.5) * g.step[2];
+          const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
+          const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
+          if (mx < s.clampBox.min[0] || mx > s.clampBox.max[0]) continue;
+          if (my > s.clampBox.min[1] + w && my < s.clampBox.max[1] - w) continue;
+          if (my < s.clampBox.min[1] || my > s.clampBox.max[1]) continue;
+          const mz = R[6] * px + R[7] * py + R[8] * pz + t[2] - halfZ;
+          if (mz < low) low = mz;
+        }
+    if (Number.isFinite(low) && low > s.stock.min[2] + 1.5 && low < s.stock.max[2] - 0.5) ledges.set(s.index, Math.round(low * 10) / 10);
+  }
+  return ledges.size ? analyseWith(tp, opts, chosen, ledges) : result;
 }
 
 /** Share of setup k's cutting that falls where earlier setups already cut (coarse). */
@@ -294,7 +339,7 @@ function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
   return cut ? both / cut : 0;
 }
 
-function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>): ProgramSetups {
+function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>): ProgramSetups {
   const { finished, raw } = partSizes(tp.header);
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
@@ -453,14 +498,23 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     info.clampBox = { min: [cx - hold[0] / 2, cy - hold[1] / 2], max: [cx + hold[0] / 2, cy + hold[1] / 2] };
     // The parallels hold the part under its bottom, or under a ledge ("IN EP 5 MM": 5 mm below
     // Z0, e.g. a flange, with a boss hanging between the parallels).
-    let rest = ins.restDepth !== null && ins.restDepth < max[2] - min[2] ? Math.max(min[2], -ins.restDepth) : min[2];
-    let floor = rest - (ins.support ?? 0);
-    if (floorRule !== null && Math.abs(floorRule - floor) <= FLOOR_TRUST && floorRule <= rest) {
+    // Order of trust: "IN EP" from the program, then the floor (G52 shift), then the shape.
+    const support = ins.support ?? 0;
+    const trusted = floorRule !== null && Math.abs(floorRule - (min[2] - support)) <= FLOOR_TRUST && floorRule <= min[2] + 1;
+    let rest = min[2];
+    let floor = rest - support;
+    if (ins.restDepth !== null && ins.restDepth < max[2] - min[2]) {
+      rest = Math.max(min[2], -ins.restDepth);
+      floor = trusted ? floorRule! : rest - support;
+    } else if (trusted) {
       // The part sits on supports that reach the floor. When the written supports end higher than
       // the part's bottom, it rests there on a ledge (a boss hanging between the parallels).
-      const top = floorRule + (ins.support ?? 0);
-      if (k > 0 && ins.restDepth === null && ins.support !== null && top > min[2] + 1.5 && top < max[2] - 0.5) rest = top;
-      floor = floorRule;
+      const top = floorRule! + support;
+      if (k > 0 && ins.support !== null && top > min[2] + 1.5 && top < max[2] - 0.5) rest = top;
+      floor = floorRule!;
+    } else if (ledges?.has(k)) {
+      rest = ledges.get(k)!;
+      floor = rest - support;
     }
     info.restZ = rest;
     info.floorZ = floor;

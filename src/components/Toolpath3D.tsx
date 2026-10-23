@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import type { Face, ProgramSetups, SetupInfo } from '../lib/setups';
+import { parallelWidth, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, type ChunkMesh } from '../lib/stockSim';
 
 /*
@@ -373,7 +373,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         // Two thin parallels along X under the held part, near its Y faces; the part sits on them
         // (on a ledge when the program says so, with a boss hanging between them).
         const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
-        const w = Math.min(setup.restDepth !== null ? 5 : 8, (cb.max[1] - cb.min[1]) / 6);
+        const w = parallelWidth(cb.max[1] - cb.min[1]);
         for (const y0 of [cb.min[1] + 0.3, cb.max[1] - 0.3 - w]) {
           fixture.add(box([cb.min[0] - 8, y0, floorZ], [cb.max[0] + 8, y0 + w, restZ], 0x8b95a7, 1, 0x30384a));
         }
