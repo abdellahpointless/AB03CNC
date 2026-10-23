@@ -173,15 +173,15 @@ function buildCales(setup: SetupInfo): THREE.Group | null {
   if (restZ - floorZ < 0.5) return null;
   const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
   const w = parallelWidth(cb.max[1] - cb.min[1]);
+  const cales = setup.cales ?? [cb.min[1] + 0.3, cb.max[1] - 0.3 - w].map((y0) => ({ y: [y0, y0 + w] as [number, number], top: restZ }));
   const g = new THREE.Group();
   const text = `${fmtMm(setup.support ?? restZ - floorZ)} MM`;
-  [cb.min[1] + 0.3, cb.max[1] - 0.3 - w].forEach((y0, k) => {
-    const top = setup.parallelTops?.[k] ?? restZ;
+  cales.forEach(({ y: [y0, y1], top }) => {
     const min: Vec = [cb.min[0] - 2, y0, floorZ];
-    const max: Vec = [cb.max[0] + 8, y0 + w, top];
+    const max: Vec = [cb.max[0] + 8, y1, top];
     const len = max[0] - min[0];
     const h = max[2] - min[2];
-    const geo = new THREE.BoxGeometry(len, h, w);
+    const geo = new THREE.BoxGeometry(len, h, y1 - y0);
     const plain = new THREE.MeshStandardMaterial({ color: STEEL_DARK.color, metalness: STEEL_DARK.metalness, roughness: STEEL_DARK.roughness });
     const side = new THREE.MeshStandardMaterial({ map: engraved(text, len / h), metalness: 0.3, roughness: 0.5 });
     // Faces: +X, -X, +Y (top), -Y, +Z (front, machine -Y), -Z (back).
@@ -192,7 +192,7 @@ function buildCales(setup: SetupInfo): THREE.Group | null {
     cale.position.copy(v3([(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2]));
     g.add(cale);
   });
-  g.userData.key = `${setup.support}|${setup.parallelTops?.map((x) => x.toFixed(1)).join('/')}`;
+  g.userData.key = `${setup.support}|${cales.map((c) => `${c.y[0].toFixed(1)}:${c.top.toFixed(1)}`).join('/')}`;
   return g;
 }
 

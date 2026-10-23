@@ -1,5 +1,5 @@
 import type { Move, Toolpath, Vec } from './toolpath';
-import { buildInput, carve, KEPT } from './stockSim';
+import { buildInput, carve, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
 
 /*
@@ -65,8 +65,12 @@ export interface SetupInfo {
   stock: { min: Vec; max: Vec } | null;
   /** Where the part sits on the parallels. */
   restZ: number | null;
-  /** Top of the front and back parallel: the part's real underside above each (from its shape). */
-  parallelTops: [number, number] | null;
+  /**
+   * The cales (parallels) under the part: where across Y they stand (machine Y, front to back)
+   * and how high each reaches (the part's real underside above it). They go where the part
+   * really touches the rest height, never under material that hangs lower.
+   */
+  cales: { y: [number, number]; top: number }[] | null;
   /** Where the supports stand (top of the vise floor / fixture plate). */
   floorZ: number | null;
   /** Top of the vise jaws (vise setups only). */
@@ -288,68 +292,154 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
 /** Width of the parallels drawn and checked under the held part (mm). */
 export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
 
+type Box = { min: Vec; max: Vec };
+
 /**
- * After a turn, the part may stand on a ledge: a boss cut on the side before now hangs down
- * between the parallels, and the parallels carry the wider part above it. Find, for each later
- * setup, the lowest material above the parallels (from a coarse cut of the setups before).
+ * The part as it really is at each setup: after a turn, its box is the material left by the
+ * setups before (from a coarse cut, made exact at the faces), not the raw block. Placement against
+ * the stops, the jaws and the cales follow from that box. Then, where the part stands on a ledge
+ * (a boss cut on the side before hangs down between the cales), it rests on the ledge, and each
+ * cale reaches up to the part's real underside above it.
+ * Each pass fixes one more setup (a box only depends on the setups before), so this settles fast.
  */
 function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>, result: ProgramSetups): ProgramSetups {
-  const input = buildInput(tp, result);
-  if (!input) return result;
-  const g = carve({ ...input, maxVoxels: 100_000 });
-  const [nx, ny, nz] = g.n;
-  /** Lowest material over each parallel (front, back) at the start of setup s. */
-  const lowest = (s: SetupInfo): [number, number] | null => {
-    if (!s.stock || !s.clampBox || !s.moves) return null;
-    const before = s.moves[0];
-    const R = s.orient;
-    const t = s.offset;
-    const cb = s.clampBox;
-    const w = parallelWidth(cb.max[1] - cb.min[1]);
-    const halfZ = (Math.abs(R[6]) * g.step[0] + Math.abs(R[7]) * g.step[1] + Math.abs(R[8]) * g.step[2]) / 2;
-    const low: [number, number] = [Infinity, Infinity];
-    for (let k = 0; k < nz; k++)
-      for (let j = 0; j < ny; j++)
-        for (let i = 0; i < nx; i++) {
-          if (g.removed[(k * ny + j) * nx + i] < before) continue;
-          const px = g.origin[0] + (i + 0.5) * g.step[0];
-          const py = g.origin[1] + (j + 0.5) * g.step[1];
-          const pz = g.origin[2] + (k + 0.5) * g.step[2];
-          const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
-          if (mx < cb.min[0] || mx > cb.max[0]) continue;
-          const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
-          const side: 0 | 1 | -1 = my >= cb.min[1] && my <= cb.min[1] + w ? 0 : my <= cb.max[1] && my >= cb.max[1] - w ? 1 : -1;
-          if (side === -1) continue;
-          const mz = R[6] * px + R[7] * py + R[8] * pz + t[2] - halfZ;
-          if (mz < low[side]) low[side] = mz;
-        }
-    return Number.isFinite(low[0]) || Number.isFinite(low[1]) ? low : null;
-  };
-  // After a turn the part may stand on a ledge: a boss cut on the side before hangs down between
-  // the parallels, and the parallels carry the wider part above it.
-  const ledges = new Map<number, number>();
-  for (const s of result.setups) {
-    // Only where parallels are written (the part stands on them).
-    if (s.index === 0 || s.restDepth !== null || s.support === null) continue;
-    const low = lowest(s);
-    if (!low || !s.stock) continue;
-    const l = Math.min(...low);
-    if (Number.isFinite(l) && l > s.stock.min[2] + 1.5 && l < s.stock.max[2] - 0.5) ledges.set(s.index, Math.round(l * 10) / 10);
-  }
-  const out = ledges.size ? analyseWith(tp, opts, chosen, ledges) : result;
-  // Every parallel reaches the part: its top is the part's real underside above it.
-  for (const s of out.setups) {
-    if (s.restZ === null || s.floorZ === null || s.restZ - s.floorZ < 0.5) continue;
-    const low = lowest(s);
-    const rest = s.restZ;
-    s.parallelTops = [0, 1].map((k) => {
-      const v = low?.[k];
-      // Far above the rest height means nothing sits on that side (a pocket): keep the rest height.
-      return v !== undefined && Number.isFinite(v) && v < rest + 3 ? Math.max(s.floorZ!, v) : rest;
-    }) as [number, number];
+  let out = result;
+  let boxes = new Map<number, Box>();
+  let ledges = new Map<number, number>();
+  for (let pass = 0; pass <= out.setups.length; pass++) {
+    const full = buildInput(tp, out);
+    if (!full) return out;
+    // Only what is cut before the last setup shapes any box or ledge.
+    const last = out.setups[out.setups.length - 1]?.moves?.[0] ?? full.moves.length;
+    const input = { ...full, moves: full.moves.map((m, i) => (i < last ? m : { ...m, points: [] })) };
+    const g = carve({ ...input, maxVoxels: 100_000 });
+    /** Lowest material over each cale (front, back) at the start of setup s, in machine Z. */
+    const lowest = (s: SetupInfo): [number, number] | null => {
+      if (!s.stock || !s.clampBox || !s.moves) return null;
+      const R = s.orient;
+      const t = s.offset;
+      const cb = s.clampBox;
+      const w = parallelWidth(cb.max[1] - cb.min[1]);
+      const a = ([0, 1, 2] as const).find((x) => R[6 + x] !== 0)!;
+      const sign = R[6 + a] > 0 ? -1 : 1;
+      const low = [0, 1].map((side) => {
+        const v = materialExtreme(input, g, s.moves![0], a, sign, (p) => {
+          const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
+          if (mx < cb.min[0] || mx > cb.max[0]) return false;
+          const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
+          return side === 0 ? my >= cb.min[1] && my <= cb.min[1] + w : my <= cb.max[1] && my >= cb.max[1] - w;
+        });
+        return v === null ? Infinity : R[6 + a] * v + t[2];
+      }) as [number, number];
+      return Number.isFinite(low[0]) || Number.isFinite(low[1]) ? low : null;
+    };
+    const nextBoxes = new Map<number, Box>();
+    for (const s of out.setups) {
+      if (s.index === 0 || !s.moves || !s.stock) continue;
+      const e = ([0, 1, 2] as const).map((a) => [materialExtreme(input, g, s.moves![0], a, -1), materialExtreme(input, g, s.moves![0], a, 1)]);
+      if (e.some(([lo, hi]) => lo === null || hi === null)) continue;
+      nextBoxes.set(s.index, { min: e.map((x) => x[0]!) as Vec, max: e.map((x) => x[1]!) as Vec });
+    }
+    const nextLedges = new Map<number, number>();
+    for (const s of out.setups) {
+      // Only where cales are written (the part stands on them).
+      if (s.index === 0 || s.restDepth !== null || s.support === null) continue;
+      const low = lowest(s);
+      if (!low || !s.stock) continue;
+      const l = Math.min(...low);
+      if (Number.isFinite(l) && l > s.stock.min[2] + 1.5 && l < s.stock.max[2] - 0.5) nextLedges.set(s.index, Math.round(l * 10) / 10);
+    }
+    const settled = sameBoxes(boxes, nextBoxes) && nextLedges.size === ledges.size && [...nextLedges].every(([k, v]) => Math.abs((ledges.get(k) ?? NaN) - v) < 0.05);
+    if (settled || pass === out.setups.length) {
+      for (const s of out.setups) s.cales = placeCales(s, input, g);
+      return out;
+    }
+    boxes = nextBoxes;
+    ledges = nextLedges;
+    out = analyseWith(tp, opts, chosen, ledges, boxes);
   }
   return out;
 }
+
+/**
+ * Where the cales go under the part at the start of setup s: from the part's real underside
+ * across Y (lowest material over the held X range), a cale stands where the underside sits at the
+ * rest height and nothing hangs lower over its width. The front one as far forward and the back
+ * one as far back as that allows; one cale when there is only room for one.
+ */
+function placeCales(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['cales'] {
+  if (!s.stock || !s.clampBox || !s.moves || s.restZ === null || s.floorZ === null || s.restZ - s.floorZ < 0.5) return null;
+  const rest = s.restZ;
+  const floor = s.floorZ;
+  const cb = s.clampBox;
+  const R = s.orient;
+  const t = s.offset;
+  const before = s.moves[0];
+  const w = parallelWidth(cb.max[1] - cb.min[1]);
+  // Underside profile across Y (bins of 0.5 mm), from the coarse cut.
+  const bw = 0.5;
+  const nb = Math.max(1, Math.ceil((cb.max[1] - cb.min[1]) / bw));
+  // Lowest material whose voxel lies over a bin (may hit a cale), and whose middle does (touches it).
+  const under = new Float64Array(nb).fill(Infinity);
+  const touchAt = new Float64Array(nb).fill(Infinity);
+  const [nx, ny, nz] = g.n;
+  const half: Vec = [0, 1, 2].map((r) => (Math.abs(R[r * 3]) * g.step[0] + Math.abs(R[r * 3 + 1]) * g.step[1] + Math.abs(R[r * 3 + 2]) * g.step[2]) / 2) as Vec;
+  for (let k = 0; k < nz; k++)
+    for (let j = 0; j < ny; j++)
+      for (let i = 0; i < nx; i++) {
+        if (g.removed[(k * ny + j) * nx + i] < before) continue;
+        const px = g.origin[0] + (i + 0.5) * g.step[0];
+        const py = g.origin[1] + (j + 0.5) * g.step[1];
+        const pz = g.origin[2] + (k + 0.5) * g.step[2];
+        const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
+        if (mx + half[0] < cb.min[0] || mx - half[0] > cb.max[0]) continue;
+        const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
+        const mz = R[6] * px + R[7] * py + R[8] * pz + t[2] - half[2];
+        const b0 = Math.max(0, Math.floor((my - half[1] - cb.min[1]) / bw));
+        const b1 = Math.min(nb - 1, Math.floor((my + half[1] - cb.min[1]) / bw - 1e-9));
+        for (let b = b0; b <= b1; b++) if (mz < under[b]) under[b] = mz;
+        const bc = Math.floor((my - cb.min[1]) / bw);
+        if (bc >= 0 && bc < nb && mz < touchAt[bc]) touchAt[bc] = mz;
+      }
+  const tol = half[2] * 2 + 0.2;
+  const fits = (y0: number) => {
+    let touch = false;
+    for (let b = Math.max(0, Math.floor((y0 - cb.min[1]) / bw)); b < nb && cb.min[1] + b * bw < y0 + w; b++) {
+      if (under[b] < rest - tol) return false;
+      if (touchAt[b] <= rest + tol) touch = true;
+    }
+    return touch;
+  };
+  const lo = cb.min[1] + 0.3;
+  const hi = cb.max[1] - 0.3 - w;
+  let front: number | null = null;
+  let back: number | null = null;
+  for (let y = lo; y <= hi + 1e-9; y += bw) if (fits(y)) { front = y; break; }
+  for (let y = hi; y >= lo - 1e-9; y -= bw) if (fits(y)) { back = y; break; }
+  // Nowhere it touches at the rest height: the cales at the jaws, up to the underside above them.
+  const ys = front === null || back === null ? [lo, hi] : back - front < w + 1 ? [front] : [front, back];
+  const free = front === null || back === null;
+  // Each cale up to the part's real underside above it (exact, not the coarse profile).
+  const a = ([0, 1, 2] as const).find((x) => R[6 + x] !== 0)!;
+  const sign = R[6 + a] > 0 ? -1 : 1;
+  return ys.map((y0) => {
+    const v = materialExtreme(input, g, before, a, sign, (p) => {
+      const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
+      if (mx < cb.min[0] || mx > cb.max[0]) return false;
+      const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
+      return my >= y0 && my <= y0 + w;
+    });
+    const z = v === null ? rest : R[6 + a] * v + t[2];
+    const near = free ? z < rest + 3 : Math.abs(z - rest) <= tol + 0.5;
+    return { y: [y0, y0 + w] as [number, number], top: near ? Math.max(floor, z) : rest };
+  });
+}
+
+const sameBoxes = (a: Map<number, Box>, b: Map<number, Box>) =>
+  a.size === b.size && [...b].every(([k, v]) => {
+    const o = a.get(k);
+    return !!o && [0, 1, 2].every((i) => Math.abs(o.min[i] - v.min[i]) < 0.02 && Math.abs(o.max[i] - v.max[i]) < 0.02);
+  });
 
 /** Share of setup k's cutting that falls where earlier setups already cut (coarse). */
 function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
@@ -368,7 +458,7 @@ function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
   return cut ? both / cut : 0;
 }
 
-function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>): ProgramSetups {
+function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>, boxes?: Map<number, Box>): ProgramSetups {
   const { finished, raw } = partSizes(tp.header);
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
@@ -402,7 +492,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       offset: [0, 0, 0],
       clampBox: null,
       restZ: null,
-      parallelTops: null,
+      cales: null,
       stock: null,
       floorZ: null,
       jawTopZ: null,
@@ -414,6 +504,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     };
     out.push(info);
     if (!moves.length || (!notes.length && !finished && !raw)) return;
+    // The part as it really is now (what the setups before left of it).
+    const real = boxes?.get(k);
+    if (real && part) part = { min: [...real.min], max: [...real.max] };
 
     const faceLevels = [
       ...new Set(

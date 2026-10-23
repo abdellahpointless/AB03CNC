@@ -238,6 +238,70 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
 
 /* ---------- Surfaces ---------- */
 
+/**
+ * How far the material left at move `before` reaches along a part axis (sign +1: its largest
+ * coordinate, -1: its smallest), only where `keep(p)` holds when given. Exact to far below a voxel:
+ * along the outermost layer of material, each voxel is bisected against the move that cut the
+ * voxel beyond it (or reaches the raw face when nothing did).
+ */
+export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 0 | 1 | 2, sign: 1 | -1, keep?: (p: Vec) => boolean): number | null {
+  const { n, step, origin, removed } = g;
+  const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
+  const cutBy = (m: number, p: Vec) => {
+    const mv = input.moves[m];
+    const s = mv && input.setups[mv.setup];
+    if (!s) return false;
+    const R = s.orient;
+    const t = s.offset;
+    const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
+    const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
+    const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
+    const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
+    for (let q = 1; q < mv.points.length; q++) if (sweeps(mx, my, mz, mv.points[q - 1], mv.points[q], tool.radius, tool.slope)) return true;
+    return false;
+  };
+  const [u, w] = axis === 0 ? [1, 2] : axis === 1 ? [0, 2] : [0, 1];
+  const id = (c: number[]) => (c[2] * n[1] + c[1]) * n[0] + c[0];
+  const c = [0, 0, 0];
+  for (let L = sign > 0 ? n[axis] - 1 : 0; L >= 0 && L < n[axis]; L -= sign) {
+    let best: number | null = null;
+    for (let a = 0; a < n[u]; a++)
+      for (let b = 0; b < n[w]; b++) {
+        c[axis] = L;
+        c[u] = a;
+        c[w] = b;
+        if (removed[id(c)] < before) continue;
+        const p: Vec = [origin[0] + (c[0] + 0.5) * step[0], origin[1] + (c[1] + 0.5) * step[1], origin[2] + (c[2] + 0.5) * step[2]];
+        if (keep && !keep(p)) continue;
+        // Beyond this voxel: the raw face, or material cut by the move that took the next voxel.
+        const out = L + sign;
+        let reach = 0;
+        if (out >= 0 && out < n[axis]) {
+          c[axis] = out;
+          const m = removed[id(c)];
+          reach = step[axis];
+          if (m < before) {
+            let lo = 0;
+            let hi = step[axis];
+            const q: Vec = [p[0], p[1], p[2]];
+            for (let it = 0; it < 10; it++) {
+              const mid = (lo + hi) / 2;
+              q[axis] = p[axis] + sign * mid;
+              if (cutBy(m, q)) hi = mid;
+              else lo = mid;
+            }
+            reach = lo;
+          }
+        }
+        // Untouched raw face: exactly the block's face (no voxel arithmetic).
+        const v = out < 0 || out >= n[axis] ? (sign > 0 ? input.part.max[axis] : input.part.min[axis]) : p[axis] + sign * reach;
+        if (best === null || v * sign > best * sign) best = v;
+      }
+    if (best !== null) return best;
+  }
+  return null;
+}
+
 export const CHUNK = 24;
 
 export interface ChunkMesh {
