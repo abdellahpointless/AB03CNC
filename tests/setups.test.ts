@@ -84,12 +84,16 @@ describe('setups', () => {
     expect(hits[0].line).toBe(18);
   });
 
-  it('does not check jaws on a modular fixture', () => {
-    const tp = parseToolpath(program(30).replace('TEIL MIT 54 IN X UND 44 IN Y EINSPANNEN', 'MOD. SPANNEN F. RUECKS./54 IN X UND 44 IN Y'), S);
-    const [a] = analyseSetups(tp, { jawHeight: 80 });
+  it('checks the jaws of the modular clamp like a vise, but not a part held in a fixture', () => {
+    const mod = parseToolpath(program(30).replace('TEIL MIT 54 IN X UND 44 IN Y EINSPANNEN', 'MOD. SPANNEN F. RUECKS./54 IN X UND 44 IN Y'), S);
+    const [a] = analyseSetups(mod, { jawHeight: 42 });
     expect(a.clamp).toBe('module');
-    expect(a.jawTopZ).toBeNull();
-    expect(a.collisions).toEqual([]);
+    expect(a.jawTopZ).toBe(a.floorZ! + 42);
+    const fix = parseToolpath(program(30).replace('TEIL MIT 54 IN X UND 44 IN Y EINSPANNEN', 'MOD. IN ALUVORRICHTUNG SPANNEN'), S);
+    const [b] = analyseSetups(fix, { jawHeight: 80 });
+    expect(b.clamp).toBe('fixture');
+    expect(b.jawTopZ).toBeNull();
+    expect(b.collisions).toEqual([]);
   });
 
   it('turns a top plate by where its RAFI points and which side is up', () => {

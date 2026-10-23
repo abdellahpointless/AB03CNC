@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
-import { analyseProgram, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../lib/setups';
-import { FLIP_MS } from '../lib/stockSim';
+import { toolAt } from '../lib/playback';
+import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, turnMs, type SetupInfo } from '../lib/setups';
 import type { SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
@@ -58,11 +58,19 @@ const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 6
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
 export default function ToolpathViewer({ code, title, brand, onClose }: { code: string; title: string; brand?: string; onClose: () => void }) {
   const { t } = useT('remapper');
-  const path = useMemo(() => parseToolpath(code, speedsFor(brand), { pieces: 4 }), [code, brand]);
+  const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
   const total = path.moves.length;
   // Open at the start of the program: the raw part, before the first move.
+  // clock: the instant shown (moves done + share of the current move), read by the 3D view on every
+  // frame; step: the move shown in the panels (the one in progress), updated a few times a second.
+  const clock = useRef(0);
   const [step, setStep] = useState(0);
+  const [, setFrame] = useState(0);
+  const seek = (n: number) => {
+    clock.current = n;
+    setStep(n);
+  };
   const [jawHeight, setJawHeight] = useState(readJaw);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
   // The jaw height only changes the jaw check, not where the part is: keep the program (and the
@@ -100,7 +108,9 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     let s = 0;
     return path.moves.map((m) => (s += m.seconds));
   }, [path]);
-  const elapsed = step > 0 ? timeline[step - 1] : 0;
+  const at = clock.current;
+  const atMove = Math.min(Math.floor(at), total - 1);
+  const elapsed = total ? (atMove > 0 ? timeline[atMove - 1] : 0) + Math.min(1, at - atMove) * path.moves[atMove].seconds : 0;
 
   // First move of each setup after the first: playback stops there while the part turns.
   const setupStarts = useMemo(() => setups.slice(1).map((x) => x.moves?.[0] ?? -1).filter((x) => x > 0), [setups]);
@@ -108,14 +118,14 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     if (!playing) return;
     let raf = 0;
     let last = performance.now();
-    let k = step >= total ? 0 : step;
-    let sim = k > 0 ? timeline[k - 1] : 0;
-    let shown = -1;
+    const from = clock.current >= total ? 0 : clock.current;
+    let k = Math.floor(from);
+    let sim = (k > 0 ? timeline[k - 1] : 0) + (from - k) * (path.moves[k]?.seconds ?? 0);
     let shownAt = 0;
     let holdUntil = 0;
     /** First move of the setup the part just turned for (shown as that setup until it starts). */
     let held = -1;
-    if (step >= total) setStep(0);
+    if (clock.current >= total) seek(0);
     const tick = (now: number) => {
       if (now < holdUntil) {
         last = now;
@@ -133,17 +143,21 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
         held = start;
         k = start;
         sim = timeline[start - 1];
-        holdUntil = now + FLIP_MS + 150;
+        const next = path.moves[start].setup;
+        holdUntil = now + turnMs(setups[next - 1] ?? null, setups[next] ?? null) + 150;
         setTurning(path.moves[start].setup);
-        setStep(k);
+        seek(k);
         raf = requestAnimationFrame(tick);
         return;
       }
-      // At most ~30 updates a second: the screen does not need more.
-      if (k !== shown && (now - shownAt > 33 || k >= total)) {
-        shown = k;
+      // The tool glides: the share of the move in progress, on every frame.
+      const pos = k >= total ? total : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
+      clock.current = pos;
+      // The panels (current line, time) at ~15 updates a second: they do not need more.
+      if (now - shownAt > 66 || k >= total) {
         shownAt = now;
-        setStep(Math.max(k, 1));
+        setStep(Math.min(total, Math.max(1, Math.ceil(pos))));
+        setFrame((f) => f + 1);
         if (held >= 0 && k > held) setTurning(null);
       }
       if (k >= total) setPlaying(false);
@@ -164,8 +178,8 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
         e.preventDefault();
         setPlaying((p) => !p);
       }
-      if (e.key === 'ArrowRight') setStep((s) => Math.min(total, s + 1));
-      if (e.key === 'ArrowLeft') setStep((s) => Math.max(0, s - 1));
+      if (e.key === 'ArrowRight') seek(Math.min(total, Math.floor(clock.current) + 1));
+      if (e.key === 'ArrowLeft') seek(Math.max(0, Math.ceil(clock.current) - 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -258,7 +272,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const goSetup = (s: SetupInfo) => {
     if (!s.moves) return;
     setPlaying(false);
-    setStep(s.moves[1] + 1);
+    seek(s.moves[1] + 1);
   };
   // Instructions in the user's language (the original text is shown under them).
   const instructions = (s: SetupInfo): string[] => {
@@ -277,7 +291,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   };
 
   const current = step > 0 ? path.moves[step - 1] : null;
-  const here = current ? current.points[current.points.length - 1] : null;
+  const here = current ? toolAt(path.moves, clock.current)?.p ?? null : null;
   const curLine = current ? lines[current.line] : '';
   const holeR = Math.max(homeTop.w, homeTop.h) * 0.008;
   const firstHoleTool = useMemo(() => {
@@ -357,10 +371,24 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
+                {/* The cales (parallels) the part stands on; while the part turns, the change. */}
+                {mode3d && !isolate && sel?.cales?.length && sel.support !== null ? (() => {
+                  const before = turning !== null ? setups[turning - 1] : null;
+                  const change = before && calesKey(before) !== calesKey(sel) && before.support !== null && before.support !== sel.support;
+                  return (
+                    <div
+                      className={`absolute left-3 bottom-3 z-10 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${change ? 'border-[#FFD27A] bg-[#2A2210]/90 text-[#FFD27A]' : 'border-[var(--border-subtle)] bg-[#0E1421]/85 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.calesHelp')}
+                    >
+                      <span className="font-mono text-[13px] leading-none">▭</span>
+                      {change ? t('toolpath.calesChange', { from: fmtNumber(before!.support!), to: fmtNumber(sel.support) }) : t('toolpath.cales', { mm: fmtNumber(sel.support) })}
+                    </div>
+                  );
+                })() : null}
                 {mode3d && solid.state === 'carving' && (
                   <div className="absolute left-3 top-2 z-10 inline-flex items-center gap-2 rounded-full bg-[#0E1421]/85 border border-[var(--border-subtle)] px-3 py-1 text-[11px] text-[var(--text-secondary)]">
                     <span className="w-16 h-1 rounded-full bg-[rgba(var(--ov),0.1)] overflow-hidden"><span className="block h-full bg-[var(--accent-primary)]" style={{ width: `${Math.round(solid.share * 100)}%` }} /></span>
@@ -490,7 +518,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                         <div className="space-y-1">
                           <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
                           {sel.collisions.slice(0, 8).map((c, i) => (
-                            <button key={i} type="button" onClick={() => { setPlaying(false); setStep(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
+                            <button key={i} type="button" onClick={() => { setPlaying(false); seek(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
                               #{c.line + 1} · {t('toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) })}
                             </button>
                           ))}
@@ -516,7 +544,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       </label>
                     </div>
                   ) : (
-                    sel.clamp === 'module' && <div className="text-[11px] text-[var(--text-tertiary)]">{t('toolpath.noJawCheck')}</div>
+                    sel.clamp === 'fixture' && <div className="text-[11px] text-[var(--text-tertiary)]">{t('toolpath.noJawCheck')}</div>
                   )}
                   {sel.jawTopZ !== null && <p className="text-[10px] leading-relaxed text-[var(--text-tertiary)] flex gap-1.5"><Info size={11} className="shrink-0 mt-0.5" />{t('toolpath.setupNote')}</p>}
                 </div>
@@ -533,7 +561,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       onClick={() => {
                         setPlaying(false);
                         const k = path.moves.findIndex((m) => m.tool === tl.tool);
-                        setStep(k >= 0 ? k + 1 : step);
+                        seek(k >= 0 ? k + 1 : step);
                       }}
                       className={`w-full flex items-center gap-2.5 text-left rounded-[var(--radius-sm)] px-2.5 py-2 border transition-colors ${active ? 'border-[var(--border-strong)] bg-[rgba(var(--ov),0.06)]' : 'border-transparent hover:bg-[rgba(var(--ov),0.04)]'}`}
                     >
@@ -556,7 +584,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                   <div className="font-mono text-xs text-[var(--text-primary)] break-all">{curLine.trim()}</div>
                   {here && (
                     <div className="font-mono text-[11px] text-[var(--text-secondary)] pt-1">
-                      X{fmtNumber(here[0], 3)} Y{fmtNumber(here[1], 3)} Z{fmtNumber(current.kind === 'drill' ? current.depth ?? here[2] : here[2], 3)}
+                      X{fmtNumber(here[0], 3)} Y{fmtNumber(here[1], 3)} Z{fmtNumber(here[2], 3)}
                     </div>
                   )}
                 </div>
@@ -569,13 +597,13 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
         {/* Player */}
         {total > 0 && (
           <div className="flex items-center gap-3 px-5 py-3 border-t border-[var(--border-subtle)]">
-            <button onClick={() => setStep(0)} className="btn-icon w-8 h-8" aria-label={t('toolpath.start')} title={t('toolpath.start')}>
+            <button onClick={() => seek(0)} className="btn-icon w-8 h-8" aria-label={t('toolpath.start')} title={t('toolpath.start')}>
               <SkipBack size={14} />
             </button>
             <button onClick={() => setPlaying((p) => !p)} className="btn-primary w-10 h-10 !p-0 rounded-full justify-center" aria-label={playing ? t('toolpath.pause') : t('toolpath.play')} title={playing ? t('toolpath.pause') : t('toolpath.play')}>
               {playing ? <Pause size={16} /> : <Play size={16} />}
             </button>
-            <button onClick={() => setStep(total)} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
+            <button onClick={() => seek(total)} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
               <SkipForward size={14} />
             </button>
             <input
@@ -585,7 +613,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               value={step}
               onChange={(e) => {
                 setPlaying(false);
-                setStep(Number(e.target.value));
+                seek(Number(e.target.value));
               }}
               className="flex-1 accent-[var(--accent-primary)]"
               aria-label={t('toolpath.position')}

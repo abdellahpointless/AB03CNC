@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { parallelWidth, STOP_PLATE, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, FLIP_MS, tipSlope, type ChunkMesh } from '../lib/stockSim';
+import { CALE_MS, calesKey, parallelWidth, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { buildInput, FLIP_MS, instant, tipSlope, type ChunkMesh } from '../lib/stockSim';
+import { movePath, runShares, toolAlong } from '../lib/playback';
+import { addLights } from '../lib/lights';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -36,8 +38,11 @@ interface Props {
   setup: SetupInfo | null;
   /** First and last move index shown. */
   range: [number, number];
-  /** Moves done (index of the current move + 1). */
-  step: number;
+  /**
+   * The instant shown: moves done + the share of the current move's time done. Read on every
+   * frame, so playing moves the tool smoothly without re-rendering React.
+   */
+  clock: { current: number };
   colorOf: (tool: number | null) => string;
   /** Change it to fit the camera again. */
   fitKey: number;
@@ -82,7 +87,7 @@ function box(min: Vec, max: Vec, color: number, opacity: number, edges = 0x00000
   return g;
 }
 
-// Brushed steel. Low metalness: without surroundings to reflect, very metallic surfaces look black.
+// Brushed steel: moderate metalness, so it picks up the studio surroundings without going dark.
 const STEEL = { color: 0xc9d1dc, metalness: 0.3, roughness: 0.42 };
 const STEEL_DARK = { color: 0x98a3b3, metalness: 0.35, roughness: 0.45 };
 
@@ -99,10 +104,12 @@ function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; r
 /**
  * A machine vise like the shop's: a long steel body, the fixed jaw at the back (Y+), the moving
  * jaw at the front (Y-) with its screw, and the stop on the left that the part is pushed against.
+ * The jaw plates and the stop touch the part's real faces (grip), so nothing cuts into it.
  */
-function buildVise(cb: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number]) {
+function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip']) {
   const g = new THREE.Group();
   const [x0, x1] = jawX;
+  const cb = { min: [hold.min[0], grip?.front ?? hold.min[1]], max: [hold.max[0], grip?.back ?? hold.max[1]] };
   const cx = (x0 + x1) / 2;
   const body = floorZ - 34;
   // Body and the bed the jaws run on.
@@ -128,8 +135,8 @@ function buildVise(cb: { min: [number, number]; max: [number, number] }, floorZ:
   moving.add(hex);
   g.add(moving);
   // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
-  // sits in, standing a little above the jaws. The part is slid left against it.
-  g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1] + 30, jawTop + 6], STEEL_DARK));
+  // sits in, level with the jaw tops. The part is slid left against it.
+  g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1] + 30, jawTop], STEEL_DARK));
   const jawMats = [plateBack, plateFront].map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial);
   return { group: g, moving, jawMats };
 }
@@ -165,15 +172,16 @@ function engraved(text: string, aspect: number): THREE.Texture {
  * The two cales (parallels) of a setup, along X under the held part near its Y faces, each up to
  * the part's real underside above it, with their height engraved ("40 MM").
  */
-function buildCales(setup: SetupInfo): THREE.Group | null {
-  const s = setup.stock;
-  if (!s || setup.floorZ === null) return null;
+function buildCales(setup: SetupInfo | null): THREE.Group | null {
+  const s = setup?.stock;
+  if (!setup || !s || setup.floorZ === null || !setup.cales?.length) return null;
   const floorZ = setup.floorZ;
   const restZ = setup.restZ ?? s.min[2];
   if (restZ - floorZ < 0.5) return null;
   const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
   const w = parallelWidth(cb.max[1] - cb.min[1]);
-  const cales = setup.cales ?? [cb.min[1] + 0.3, cb.max[1] - 0.3 - w].map((y0) => ({ y: [y0, y0 + w] as [number, number], top: restZ }));
+  const cales = setup.cales;
+  const length = cb.max[0] + 8 - (cb.min[0] - 2);
   const g = new THREE.Group();
   const text = `${fmtMm(setup.support ?? restZ - floorZ)} MM`;
   cales.forEach(({ y: [y0, y1], top }) => {
@@ -192,7 +200,15 @@ function buildCales(setup: SetupInfo): THREE.Group | null {
     cale.position.copy(v3([(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2]));
     g.add(cale);
   });
-  g.userData.key = `${setup.support}|${cales.map((c) => `${c.y[0].toFixed(1)}:${c.top.toFixed(1)}`).join('/')}`;
+  // Their height as a tag over the right end, shown while they are changed.
+  const tag = label(`▭ ${text}`, '#FFD27A');
+  const h = Math.min(Math.max(length * 0.07, 5), 12);
+  tag.scale.set(h * tag.userData.aspect, h, 1);
+  const top = Math.max(...cales.map((c) => c.top));
+  tag.position.copy(v3([cb.max[0] + 8, (cales[0].y[0] + cales[cales.length - 1].y[1]) / 2, top + h * 0.9]));
+  tag.visible = false;
+  g.add(tag);
+  g.userData.tag = tag;
   return g;
 }
 
@@ -256,13 +272,17 @@ interface Api {
   overlay: THREE.Group;
   /** The cales (parallels) of the setup shown. */
   cales: THREE.Group | null;
+  /** Instant last drawn (see clock). */
+  shownPos: number;
+  /** Instant of the program the solid should show (see stockSim SUB). */
+  meshAt: number;
 }
 
-export default function Toolpath3D({ path, program, setup, range, step, colorOf, fitKey, onSolid, isolate = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
-  const stepRef = useRef(step);
-  stepRef.current = step;
+  const clockRef = useRef(clock);
+  clockRef.current = clock;
   const setupRef = useRef(setup);
   setupRef.current = setup;
   const onSolidRef = useRef(onSolid);
@@ -277,14 +297,9 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     el.appendChild(renderer.domElement);
     renderer.domElement.style.display = 'block';
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a2030, 1.5));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.7);
-    sun.position.set(120, 260, 180);
-    scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xb8c8ff, 0.6);
-    fill.position.set(-150, 80, -120);
-    scene.add(fill);
     const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
+    // Lit from every side and from the viewer: no face turns black, whichever way it is turned.
+    const disposeLights = addLights(scene, renderer, camera);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.15;
@@ -319,6 +334,12 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const loop = (now: number) => {
       controls.update();
       const a = api.current;
+      // Follow the clock: the tool moves on every frame while playing.
+      const pos = clockRef.current.current;
+      if (a && pos !== a.shownPos) {
+        a.shownPos = pos;
+        a.progress(pos);
+      }
       if (a?.anim) {
         if (!a.anim(now)) a.anim = null;
         dirty = true;
@@ -348,6 +369,8 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       jaw: null,
       overlay,
       cales: null,
+      shownPos: NaN,
+      meshAt: 0,
     };
     return () => {
       cancelAnimationFrame(raf);
@@ -355,6 +378,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       controls.dispose();
       disposeTree(world);
       disposeTree(solid);
+      disposeLights();
       renderer.dispose();
       renderer.domElement.remove();
       api.current = null;
@@ -395,7 +419,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         a.solid.matrixWorldNeedsUpdate = true;
         if (a.stockFill) a.stockFill.visible = false;
         onSolidRef.current?.({ state: 'ready', share: 1 });
-        ask(stepRef.current);
+        ask(a.meshAt);
       }
       if (msg.type === 'mesh') {
         for (const c of msg.chunks as ChunkMesh[]) {
@@ -468,12 +492,17 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const feedPos: number[] = [];
     const feedCol: number[] = [];
     const rapidPos: number[] = [];
-    const feedEnd: number[] = [];
-    const rapidEnd: number[] = [];
+    const feedStart: number[] = [];
+    const rapidStart: number[] = [];
     const col = new THREE.Color();
     const push = (arr: number[], p: Vec) => arr.push(p[0], p[2], -p[1]);
-    for (const m of moves) {
-      const pts: Vec[] = m.kind === 'drill' ? [m.points[0], [m.points[0][0], m.points[0][1], m.depth ?? m.points[0][2]]] : m.points;
+    // Each move's path and running length, to place the tool anywhere along it.
+    const paths = moves.map(movePath);
+    const runs = paths.map(runShares);
+    for (const [n, m] of moves.entries()) {
+      const pts = paths[n];
+      feedStart.push(feedPos.length / 3);
+      rapidStart.push(rapidPos.length / 3);
       const target = m.kind === 'rapid' ? rapidPos : feedPos;
       if (m.kind !== 'rapid') col.set(colorOf(m.tool));
       for (let i = 1; i < pts.length; i++) {
@@ -481,8 +510,6 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         push(target, pts[i]);
         if (m.kind !== 'rapid') feedCol.push(col.r, col.g, col.b, col.r, col.g, col.b);
       }
-      feedEnd.push(feedPos.length / 3);
-      rapidEnd.push(rapidPos.length / 3);
     }
     const feedAttr = new THREE.Float32BufferAttribute(feedPos, 3);
     const ghostGeo = new THREE.BufferGeometry();
@@ -499,7 +526,15 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const rapids = new THREE.LineSegments(rapidGeo, new THREE.LineDashedMaterial({ color: 0x7f8ba0, dashSize: 2, gapSize: 2, transparent: true, opacity: 0.5 }));
     rapids.computeLineDistances();
     world.add(rapids);
-    a.setupObjects.push(ghost, feeds, rapids);
+    // The piece of the current move between its last corner and the tool.
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+    const trailMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+    const trail = new THREE.LineSegments(trailGeo, trailMat);
+    trail.frustumCulled = false;
+    trail.visible = false;
+    world.add(trail);
+    a.setupObjects.push(ghost, feeds, rapids, trail);
 
     // Fixture and the outline of the part.
     const stockGroup = new THREE.Group();
@@ -527,7 +562,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       if (setup.jawTopZ !== null) {
         const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
         const cx = (cb.min[0] + cb.max[0]) / 2;
-        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX);
+        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip);
         fixture.add(vise.group);
         jaws.push(...vise.jawMats);
         a.jaw = { obj: vise.moving, travel: 14 };
@@ -539,7 +574,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         line.position.copy(v3([(setup.jawX[0] + setup.jawX[1]) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
         fixture.add(line);
       } else {
-        // Modular fixture: a steel block under the part, with the stop on the left.
+        // A fixture: a steel block under the part, with the stop on the left.
         fixture.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
         fixture.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
       }
@@ -596,44 +631,74 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const sizeOf = new Map(path.tools.map((t) => [t.tool, t]));
     const hitMoves = new Set((setup?.collisions ?? []).map((c) => c.move));
 
-    a.progress = (n: number) => {
-      const k = Math.min(Math.max(n - 1, first - 1), last) - first; // index in this setup
-      feedGeo.setDrawRange(0, k >= 0 ? feedEnd[k] : 0);
-      rapidGeo.setDrawRange(0, k >= 0 ? rapidEnd[k] : 0);
+    let toolOn: number | null | undefined;
+    a.progress = (pos: number) => {
+      // The move in progress (or the last one, once the setup is done) and the share of its time.
+      const started = moves.length > 0 && pos > first;
+      const k = started ? Math.min(Math.floor(pos), last) - first : -1;
       const cur = k >= 0 ? moves[k] : null;
       tool.userData.has = !!cur;
       tool.visible = !!cur && !a.anim;
-      if (cur) {
-        const p = cur.points[cur.points.length - 1];
-        const tip: Vec = cur.kind === 'drill' ? [p[0], p[1], cur.depth ?? p[2]] : p;
-        const info = sizeOf.get(cur.tool ?? -1);
-        const r = Math.max(0.5, (info?.diameter ?? 6) / 2);
-        // Cutting length as written; a face mill (tourteau) is a wide flat disk.
-        const big = r >= 12;
-        const len = big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80);
-        const slope = tipSlope(info?.label ?? '');
-        const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
-        tipMesh.visible = tipH > 0;
-        if (tipH > 0) {
-          tipMesh.scale.set(r, tipH, r);
-          tipMesh.position.set(0, tipH / 2, 0);
+      if (!cur) {
+        feedGeo.setDrawRange(0, 0);
+        rapidGeo.setDrawRange(0, 0);
+        trail.visible = false;
+        a.meshAt = instant(Math.min(pos, first));
+      } else {
+        const at = toolAlong(cur, paths[k], runs[k], pos - (first + k));
+        // Lines: every move before this one, the corners of this one already passed, and the
+        // piece from the last corner to the tool.
+        const segs = Math.max(0, paths[k].length - 1);
+        const done = Math.min(at.done, segs);
+        const rapid = cur.kind === 'rapid';
+        feedGeo.setDrawRange(0, feedStart[k] + (rapid ? 0 : done * 2));
+        rapidGeo.setDrawRange(0, rapidStart[k] + (rapid ? done * 2 : 0));
+        trail.visible = done < segs;
+        if (trail.visible) {
+          const from = paths[k][done];
+          const attr = trailGeo.getAttribute('position') as THREE.BufferAttribute;
+          attr.setXYZ(0, from[0], from[2], -from[1]);
+          attr.setXYZ(1, at.p[0], at.p[2], -at.p[1]);
+          attr.needsUpdate = true;
+          trailMat.color.set(rapid ? 0x7f8ba0 : colorOf(cur.tool));
+          trailMat.opacity = rapid ? 0.5 : 0.85;
         }
-        cutter.scale.set(r, len - tipH, r);
-        cutter.position.set(0, tipH + (len - tipH) / 2, 0);
-        const hr = big ? Math.max(r * 0.38, 14) : Math.max(r * 1.25, 9);
-        const hh = big ? 40 : 28;
-        holder.scale.set(hr, hh, hr);
-        holder.position.set(0, len + hh / 2, 0);
-        tool.position.copy(v3(tip));
+        // The tool's shape only changes with the tool.
+        if (toolOn !== cur.tool) {
+          toolOn = cur.tool;
+          const info = sizeOf.get(cur.tool ?? -1);
+          const r = Math.max(0.5, (info?.diameter ?? 6) / 2);
+          // Cutting length as written; a face mill (tourteau) is a wide flat disk.
+          const big = r >= 12;
+          const len = big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80);
+          const slope = tipSlope(info?.label ?? '');
+          const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
+          tipMesh.visible = tipH > 0;
+          if (tipH > 0) {
+            tipMesh.scale.set(r, tipH, r);
+            tipMesh.position.set(0, tipH / 2, 0);
+          }
+          cutter.scale.set(r, len - tipH, r);
+          cutter.position.set(0, tipH + (len - tipH) / 2, 0);
+          const hr = big ? Math.max(r * 0.38, 14) : Math.max(r * 1.25, 9);
+          const hh = big ? 40 : 28;
+          holder.scale.set(hr, hh, hr);
+          holder.position.set(0, len + hh / 2, 0);
+        }
+        tool.position.copy(v3(at.p));
         const hit = hitMoves.has(first + k);
         cutterMat.color.set(hit ? 0xff5c5c : 0xe8edf5);
         jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : STEEL_DARK.color));
+        // The solid as it is with the tool right here.
+        a.meshAt = instant(first + k + at.cut);
       }
-      hits.children.forEach((h) => ((h as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(h.userData.move <= first + k ? 0xff4d4d : 0x7a3a3a));
-      a.requestMesh(n);
+      const reached = cur ? first + k : first - 1;
+      hits.children.forEach((h) => ((h as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a));
+      a.requestMesh(a.meshAt);
       a.invalidate();
     };
-    a.progress(stepRef.current);
+    a.shownPos = clockRef.current.current;
+    a.progress(a.shownPos);
 
     a.fit = () => {
       const bb = new THREE.Box3();
@@ -659,7 +724,6 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, setup, range[0], range[1], colorOf]);
 
-  useEffect(() => api.current?.progress(step), [step]);
   useEffect(() => {
     if (fitKey) api.current?.fit();
   }, [fitKey]);
@@ -729,6 +793,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const height = setup.stock ? Math.max(setup.stock.max[2] - setup.stock.min[2], 20) : 30;
 
     // The arrow: the turn from the old pose to the new one, around the part's middle.
+    let arrow: THREE.Group | null = null;
     const turn = q1.clone().multiply(q0.clone().invert());
     const angle = 2 * Math.acos(Math.min(1, Math.abs(turn.w))) * (turn.w < 0 ? -1 : 1);
     const axis = new THREE.Vector3(turn.x, turn.y, turn.z);
@@ -740,27 +805,48 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       const m = [axis.x, -axis.z, axis.y];
       const big = m.map(Math.abs).indexOf(Math.max(...m.map(Math.abs)));
       const deg = Math.round(Math.abs((angle * 180) / Math.PI));
-      const arrow = turnArrow(axis, angle, size * 0.5, `${deg}° ${'XYZ'[big]}`);
+      arrow = turnArrow(axis, angle, size * 0.5, `${deg}° ${'XYZ'[big]}`);
       // Around the part's middle, a little above the jaws.
       arrow.position.copy(v3([(st.min[0] + st.max[0]) / 2, (st.min[1] + st.max[1]) / 2, st.max[2] + height * 0.35]));
       a.overlay.add(arrow);
     }
 
-    // Changing cales: the old pair slides out to the right while the part is up, the new pair in.
+    // Changing cales, slowly enough to see which ones: with the part up, the old pair slides out to
+    // the right and the new pair slides in with its height shown; then the part sets down on them.
     const newCales = a.cales;
     const oldCales = buildCales(prev);
-    const changing = !!newCales && !!oldCales && newCales.userData.key !== oldCales.userData.key;
+    const changing = calesKey(prev) !== calesKey(setup) && (!!newCales || !!oldCales);
     const slide = setup.stock ? setup.stock.max[0] - setup.stock.min[0] + 120 : 150;
-    if (changing) a.overlay.add(oldCales!);
+    if (oldCales && changing) a.overlay.add(oldCales);
     else if (oldCales) disposeTree(oldCales);
-    const placeCales = (k: number) => {
+    const tagOf = (c: THREE.Group | null) => (c?.userData.tag as THREE.Sprite | undefined) ?? null;
+    // Timeline (ms): unclamp, lift and turn, [change the cales], set down, clamp.
+    const UNCLAMP = FLIP_MS * 0.15;
+    const TURN = FLIP_MS * 0.55;
+    const DOWN = FLIP_MS * 0.15;
+    const CLAMP = FLIP_MS * 0.15;
+    const SWAP = changing ? CALE_MS : 0;
+    const tTurn = UNCLAMP;
+    const tSwap = tTurn + TURN;
+    const tDown = tSwap + SWAP;
+    const tClamp = tDown + DOWN;
+    const total = tClamp + CLAMP;
+    const part = (ms: number, from: number, len: number) => (len > 0 ? Math.min(1, Math.max(0, (ms - from) / len)) : ms >= from ? 1 : 0);
+    const placeCales = (ms: number) => {
       if (!changing) return;
-      const out = Math.min(1, Math.max(0, (k - 0.22) / 0.2));
-      const inn = Math.min(1, Math.max(0, (k - 0.45) / 0.2));
-      oldCales!.position.x = ease(out) * slide;
-      oldCales!.visible = out < 1;
-      newCales!.position.x = (1 - ease(inn)) * slide;
-      newCales!.visible = inn > 0;
+      const sw = part(ms, tSwap, SWAP);
+      const out = Math.min(1, sw / 0.28);
+      const inn = Math.min(1, Math.max(0, (sw - 0.33) / 0.37));
+      if (oldCales) {
+        oldCales.position.x = ease(out) * slide;
+        oldCales.visible = out < 1;
+        tagOf(oldCales)!.visible = sw > 0 && out < 1;
+      }
+      if (newCales) {
+        newCales.position.x = (1 - ease(inn)) * slide;
+        newCales.visible = inn > 0;
+        tagOf(newCales)!.visible = inn > 0 && ms < tClamp;
+      }
     };
     placeCales(0);
     const start = performance.now();
@@ -772,29 +858,30 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     a.solid.matrix.compose(p0, q0, one);
     setJaw(0);
     a.anim = (now) => {
-      const t = Math.min(1, (now - start) / FLIP_MS);
-      // 0-15 %: unclamp. 15-85 %: lift, turn, set down. 85-100 %: clamp.
-      setJaw(t < 0.15 ? ease(t / 0.15) : t > 0.85 ? 1 - ease((t - 0.85) / 0.15) : 1);
-      const k = Math.min(1, Math.max(0, (t - 0.15) / 0.7));
-      const turnT = Math.min(1, Math.max(0, (k - 0.2) / 0.6));
-      const e = ease(turnT);
+      const ms = now - start;
+      setJaw(ms < tTurn ? ease(ms / UNCLAMP) : ms >= tClamp ? 1 - ease(part(ms, tClamp, CLAMP)) : 1);
+      // Up in the first part of the turn, turning, waiting up there while the cales change, down.
+      const up = part(ms, tTurn, TURN);
+      const lift = ease(Math.min(1, up / 0.4)) * (1 - ease(part(ms, tDown, DOWN)));
+      const e = ease(Math.min(1, Math.max(0, (up - 0.2) / 0.8)));
       q.slerpQuaternions(q0, q1, e);
       p.lerpVectors(p0, p1, e);
-      p.y += Math.sin(Math.PI * k) * height * 1.3;
+      p.y += lift * height * 1.3;
       a.solid.matrix.compose(p, q, one);
       a.solid.matrixWorldNeedsUpdate = true;
-      placeCales(k);
-      a.overlay.visible = t < 0.9;
-      if (t >= 1) {
+      placeCales(ms);
+      // The turn arrow while it turns (and until it sets down when nothing else happens).
+      if (arrow) arrow.visible = changing ? ms < tSwap : ms < tClamp;
+      if (ms >= total) {
         a.solid.matrix.copy(end);
         setJaw(0);
-        if (changing) {
-          newCales!.position.x = 0;
-          newCales!.visible = true;
+        if (newCales) {
+          newCales.position.x = 0;
+          newCales.visible = true;
+          tagOf(newCales)!.visible = false;
         }
         disposeTree(a.overlay);
         a.overlay.clear();
-        a.overlay.visible = true;
         hide.forEach((o) => (o.visible = o.userData.has !== false));
         return false;
       }

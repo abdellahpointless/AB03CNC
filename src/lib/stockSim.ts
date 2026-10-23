@@ -1,11 +1,13 @@
 import type { Toolpath, Vec } from './toolpath';
 import type { Mat3 } from './orient';
 import type { ProgramSetups } from './setups';
+import { movePath, runShares } from './playback';
 
 /*
  * The part as a fine grid of sample points in its own frame. Every cutting move takes away the
- * points the tool sweeps through; each point remembers which move took it away, so the part can
- * be shown at any point of the program without cutting again.
+ * points the tool sweeps through; each point remembers which move took it away and how far along
+ * that move the tool was when it first reached it, so the part can be shown at any instant of the
+ * program (the cut follows the tool continuously) without cutting again.
  *
  * The surface is not drawn as little cubes: where solid meets cut, the exact edge of the tool
  * that cut it is found (and which way it faces), and a surface is fitted through those points
@@ -17,6 +19,13 @@ import type { ProgramSetups } from './setups';
  */
 
 export const KEPT = 0x7fffffff;
+/**
+ * Instants of the program as whole numbers: move index × SUB + the share of that move done
+ * (0..SUB). The mesher shows the part at such an instant.
+ */
+export const SUB = 1024;
+/** The instant `pos` (moves done, with the share of the current move) as a whole number. */
+export const instant = (pos: number) => Math.max(0, Math.floor(pos * SUB));
 /** How long the part takes to turn between setups in the 3D view (ms). */
 export const FLIP_MS = 2200;
 
@@ -35,6 +44,8 @@ export interface SimInput {
   tools: SimTool[];
   /** Upper limit of sample points (memory and time). */
   maxVoxels?: number;
+  /** Also find, on the finished surface, the move reaching furthest past each sample (for drawing it); default on. */
+  surfaceMoves?: boolean;
 }
 
 export interface Grid {
@@ -44,16 +55,18 @@ export interface Grid {
   /** Average spacing. */
   size: number;
   origin: Vec;
+  /** Move that first cut each sample (KEPT: never cut). */
   removed: Int32Array;
+  /** How far along that move (0..65535 = start..end) the tool was when it reached the sample. */
+  share: Uint16Array;
+  /** Cut samples on the finished surface: the move reaching furthest past them, when not the first. */
+  outer?: Map<number, number>;
 }
+
 
 /** Moves of a parsed program, ready to cut (drilling becomes a straight plunge). */
 export function simMoves(tp: Toolpath): SimInput['moves'] {
-  return tp.moves.map((m) =>
-    m.kind === 'rapid'
-      ? { setup: m.setup, tool: m.tool, points: [] }
-      : { setup: m.setup, tool: m.tool, points: m.kind === 'drill' ? [m.points[0], [m.points[0][0], m.points[0][1], m.depth ?? m.points[0][2]]] : m.points },
-  );
+  return tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: m.kind === 'rapid' ? [] : movePath(m) }));
 }
 
 export function simTools(tp: Toolpath): SimTool[] {
@@ -138,6 +151,70 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
   return false;
 }
 
+/**
+ * When a tool moving from a to b first reaches machine point (x, y, z): the share u (0..1) of the
+ * move, or -1 when it never does. Same rule as `sweeps`: the point goes once the tool's disc is
+ * over it with its bottom at or below it.
+ */
+export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): number {
+  if (slope !== null) {
+    if (!sweeps(x, y, z, a, b, r, slope)) return -1;
+    // Pointed tip: the shares that reach the point form one stretch; find where it starts.
+    let lo = 0;
+    let hi = 1;
+    const e: Vec = [0, 0, 0];
+    for (let it = 0; it < 12; it++) {
+      const mid = (lo + hi) / 2;
+      e[0] = a[0] + (b[0] - a[0]) * mid;
+      e[1] = a[1] + (b[1] - a[1]) * mid;
+      e[2] = a[2] + (b[2] - a[2]) * mid;
+      if (sweeps(x, y, z, a, e, r, slope)) hi = mid;
+      else lo = mid;
+    }
+    return hi;
+  }
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  const wx = x - a[0];
+  const wy = y - a[1];
+  const l2 = dx * dx + dy * dy;
+  const w2 = wx * wx + wy * wy;
+  let u1 = 0;
+  let u2 = 1;
+  if (l2 < 1e-12) {
+    if (w2 > r * r) return -1;
+  } else {
+    const bq = (wx * dx + wy * dy) / l2;
+    const disc = bq * bq - (w2 - r * r) / l2;
+    if (disc < 0) return -1;
+    const sq = Math.sqrt(disc);
+    u1 = Math.max(0, bq - sq);
+    u2 = Math.min(1, bq + sq);
+    if (u1 > u2) return -1;
+  }
+  // The tool bottom is at a.z + u·dz: the point goes once the bottom reaches it.
+  if (dz >= 0) return z >= a[2] + u1 * dz - 1e-9 ? u1 : -1;
+  const uz = (z - a[2] + 1e-9) / dz;
+  if (uz > u2) return -1;
+  return Math.max(u1, uz);
+}
+
+/**
+ * How deep machine point (x, y, z) lies inside the tool moving from a to b where it passes closest:
+ * the distance to the tool's edge there (sideways to its rim, or up from its bottom); 0 or less
+ * when the tool does not reach it there.
+ */
+export function depthIn(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const l2 = dx * dx + dy * dy;
+  const u = l2 > 1e-12 ? Math.min(1, Math.max(0, ((x - a[0]) * dx + (y - a[1]) * dy) / l2)) : b[2] < a[2] ? 1 : 0;
+  const d = Math.hypot(x - a[0] - u * dx, y - a[1] - u * dy);
+  const h = z - (a[2] + u * (b[2] - a[2]));
+  return slope === null ? Math.min(r - d, h) : Math.min(r, h * slope) - d;
+}
+
 /** Which way the surface left by a sweep faces at machine point p (out of the material). */
 function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, tol: number): Vec {
   const dx = b[0] - a[0];
@@ -179,11 +256,40 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
   const step: Vec = [ext[0] / n[0], ext[1] / n[1], ext[2] / n[2]];
   const origin: Vec = [...part.min];
   const removed = new Int32Array(n[0] * n[1] * n[2]).fill(KEPT);
+  const share = new Uint16Array(n[0] * n[1] * n[2]);
   const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
   const [nx, ny, nz] = n;
 
+  /** Sample index range of the box a tool sweeps from a to b (machine coordinates of a setup). */
+  const range = (s: { orient: Mat3; offset: Vec }, a: Vec, b: Vec, r: number): [number, number, number, number, number, number] | null => {
+    const R = s.orient;
+    const t = s.offset;
+    const lo: Vec = [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.min(a[2], b[2])];
+    const hi: Vec = [Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r, 1e6];
+    // Machine box -> part frame box (quarter turns keep boxes square to the axes).
+    const pl: Vec = [Infinity, Infinity, Infinity];
+    const ph: Vec = [-Infinity, -Infinity, -Infinity];
+    for (let c = 0; c < 8; c++) {
+      const m: Vec = [c & 1 ? hi[0] : lo[0], c & 2 ? hi[1] : lo[1], c & 4 ? hi[2] : lo[2]];
+      const d: Vec = [m[0] - t[0], m[1] - t[1], m[2] - t[2]];
+      const p: Vec = [R[0] * d[0] + R[3] * d[1] + R[6] * d[2], R[1] * d[0] + R[4] * d[1] + R[7] * d[2], R[2] * d[0] + R[5] * d[1] + R[8] * d[2]];
+      for (let k = 0; k < 3; k++) {
+        pl[k] = Math.min(pl[k], p[k]);
+        ph[k] = Math.max(ph[k], p[k]);
+      }
+    }
+    const i0 = Math.max(0, Math.floor((pl[0] - origin[0]) / step[0] - 0.5));
+    const i1 = Math.min(nx - 1, Math.ceil((ph[0] - origin[0]) / step[0] - 0.5));
+    const j0 = Math.max(0, Math.floor((pl[1] - origin[1]) / step[1] - 0.5));
+    const j1 = Math.min(ny - 1, Math.ceil((ph[1] - origin[1]) / step[1] - 0.5));
+    const k0 = Math.max(0, Math.floor((pl[2] - origin[2]) / step[2] - 0.5));
+    const k1 = Math.min(nz - 1, Math.ceil((ph[2] - origin[2]) / step[2] - 0.5));
+    return i0 > i1 || j0 > j1 || k0 > k1 ? null : [i0, i1, j0, j1, k0, k1];
+  };
+
+  // Every sample: the move that first reaches it, and how far along that move.
   input.moves.forEach((mv, index) => {
-    if (onProgress && index % 500 === 0) onProgress(index / input.moves.length);
+    if (onProgress && index % 500 === 0) onProgress((index / input.moves.length) * 0.85);
     if (mv.points.length < 2) return;
     const s = input.setups[mv.setup];
     if (!s) return;
@@ -191,30 +297,15 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
     const t = s.offset;
     const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
     const r = tool.radius;
+    const run = runShares(mv.points);
     for (let q = 1; q < mv.points.length; q++) {
       const a = mv.points[q - 1];
       const b = mv.points[q];
-      const lo: Vec = [Math.min(a[0], b[0]) - r, Math.min(a[1], b[1]) - r, Math.min(a[2], b[2])];
-      const hi: Vec = [Math.max(a[0], b[0]) + r, Math.max(a[1], b[1]) + r, 1e6];
-      // Machine box -> part frame box (quarter turns keep boxes square to the axes).
-      const pl: Vec = [Infinity, Infinity, Infinity];
-      const ph: Vec = [-Infinity, -Infinity, -Infinity];
-      for (let c = 0; c < 8; c++) {
-        const m: Vec = [c & 1 ? hi[0] : lo[0], c & 2 ? hi[1] : lo[1], c & 4 ? hi[2] : lo[2]];
-        const d: Vec = [m[0] - t[0], m[1] - t[1], m[2] - t[2]];
-        const p: Vec = [R[0] * d[0] + R[3] * d[1] + R[6] * d[2], R[1] * d[0] + R[4] * d[1] + R[7] * d[2], R[2] * d[0] + R[5] * d[1] + R[8] * d[2]];
-        for (let k = 0; k < 3; k++) {
-          pl[k] = Math.min(pl[k], p[k]);
-          ph[k] = Math.max(ph[k], p[k]);
-        }
-      }
-      const i0 = Math.max(0, Math.floor((pl[0] - origin[0]) / step[0] - 0.5));
-      const i1 = Math.min(nx - 1, Math.ceil((ph[0] - origin[0]) / step[0] - 0.5));
-      const j0 = Math.max(0, Math.floor((pl[1] - origin[1]) / step[1] - 0.5));
-      const j1 = Math.min(ny - 1, Math.ceil((ph[1] - origin[1]) / step[1] - 0.5));
-      const k0 = Math.max(0, Math.floor((pl[2] - origin[2]) / step[2] - 0.5));
-      const k1 = Math.min(nz - 1, Math.ceil((ph[2] - origin[2]) / step[2] - 0.5));
-      if (i0 > i1 || j0 > j1 || k0 > k1) continue;
+      const s0 = run[q - 1];
+      const ds = run[q] - s0;
+      const box = range(s, a, b, r);
+      if (!box) continue;
+      const [i0, i1, j0, j1, k0, k1] = box;
       for (let k = k0; k <= k1; k++) {
         const pz = origin[2] + (k + 0.5) * step[2];
         for (let j = j0; j <= j1; j++) {
@@ -226,14 +317,90 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
             const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
             const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
             const mz = R[6] * px + R[7] * py + R[8] * pz + t[2];
-            if (sweeps(mx, my, mz, a, b, r, tool.slope)) removed[v] = index;
+            const u = touch(mx, my, mz, a, b, r, tool.slope);
+            if (u < 0) continue;
+            removed[v] = index;
+            share[v] = Math.min(65535, Math.floor((s0 + u * ds) * 65536));
           }
         }
       }
     }
   });
+
+  // On the finished surface, also the move that reaches furthest past each cut sample. A later
+  // pass that only skims a little more off (a finishing pass, a second circle a bit wider) may take
+  // no sample of its own; without it the wall would be drawn where the earlier pass left it.
+  let outer: Map<number, number> | undefined;
+  if (input.surfaceMoves !== false) {
+    const edge = new Uint8Array(removed.length);
+    // Blocks of 8×8×8 samples holding surface samples: a sweep only looks into those.
+    const bx = (nx + 7) >> 3;
+    const by = (ny + 7) >> 3;
+    const blocks = new Uint8Array(bx * by * ((nz + 7) >> 3));
+    for (let k = 0; k < nz; k++)
+      for (let j = 0; j < ny; j++)
+        for (let i = 0; i < nx; i++) {
+          const v = (k * ny + j) * nx + i;
+          if (removed[v] === KEPT) continue;
+          if ((i > 0 && removed[v - 1] === KEPT) || (i < nx - 1 && removed[v + 1] === KEPT) || (j > 0 && removed[v - nx] === KEPT) || (j < ny - 1 && removed[v + nx] === KEPT) || (k > 0 && removed[v - nx * ny] === KEPT) || (k < nz - 1 && removed[v + nx * ny] === KEPT)) {
+            edge[v] = 1;
+            blocks[((k >> 3) * by + (j >> 3)) * bx + (i >> 3)] = 1;
+          }
+        }
+    const best = new Int32Array(removed.length).fill(-1);
+    const bestDepth = new Float32Array(removed.length);
+    input.moves.forEach((mv, index) => {
+      if (onProgress && index % 500 === 0) onProgress(0.85 + (index / input.moves.length) * 0.15);
+      if (mv.points.length < 2) return;
+      const s = input.setups[mv.setup];
+      if (!s) return;
+      const R = s.orient;
+      const t = s.offset;
+      const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
+      for (let q = 1; q < mv.points.length; q++) {
+        const a = mv.points[q - 1];
+        const b = mv.points[q];
+        const box = range(s, a, b, tool.radius);
+        if (!box) continue;
+        const [i0, i1, j0, j1, k0, k1] = box;
+        for (let kb = k0 >> 3; kb <= k1 >> 3; kb++)
+          for (let jb = j0 >> 3; jb <= j1 >> 3; jb++)
+            for (let ib = i0 >> 3; ib <= i1 >> 3; ib++) {
+              if (!blocks[(kb * by + jb) * bx + ib]) continue;
+              const ka = Math.max(k0, kb << 3);
+              const kz = Math.min(k1, (kb << 3) + 7);
+              const ja = Math.max(j0, jb << 3);
+              const jz = Math.min(j1, (jb << 3) + 7);
+              const ia = Math.max(i0, ib << 3);
+              const iz = Math.min(i1, (ib << 3) + 7);
+              for (let k = ka; k <= kz; k++) {
+                const pz = origin[2] + (k + 0.5) * step[2];
+                for (let j = ja; j <= jz; j++) {
+                  const py = origin[1] + (j + 0.5) * step[1];
+                  let v = (k * ny + j) * nx + ia;
+                  for (let i = ia; i <= iz; i++, v++) {
+                    // Only moves from the one that first cut it on can reach it.
+                    if (!edge[v] || index < removed[v]) continue;
+                    const px = origin[0] + (i + 0.5) * step[0];
+                    const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
+                    const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
+                    const mz = R[6] * px + R[7] * py + R[8] * pz + t[2];
+                    const depth = depthIn(mx, my, mz, a, b, tool.radius, tool.slope);
+                    if (depth > bestDepth[v] || best[v] < 0) {
+                      bestDepth[v] = depth;
+                      best[v] = index;
+                    }
+                  }
+                }
+              }
+            }
+      }
+    });
+    outer = new Map();
+    for (let v = 0; v < best.length; v++) if (best[v] >= 0 && best[v] !== removed[v]) outer.set(v, best[v]);
+  }
   onProgress?.(1);
-  return { n, step, size: Math.cbrt(step[0] * step[1] * step[2]), origin, removed };
+  return { n, step, size: Math.cbrt(step[0] * step[1] * step[2]), origin, removed, share, outer };
 }
 
 /* ---------- Surfaces ---------- */
@@ -314,9 +481,10 @@ export interface ChunkMesh {
 
 export interface Mesher {
   chunks: number;
-  /** Chunks whose surface differs between two points of the program. */
+  /** Chunks whose surface differs between two instants of the program (see SUB). */
   dirty(from: number, to: number): number[];
-  build(id: number, step: number): ChunkMesh;
+  /** The surface of a chunk at an instant (see SUB). */
+  build(id: number, at: number): ChunkMesh;
 }
 
 interface Cross {
@@ -336,25 +504,78 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   const count = cx * cy * cz;
   const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
 
+  // The instant each sample is cut (KEPT: never).
+  const instantOf = (v: number) => {
+    const r = g.removed[v];
+    return r === KEPT ? KEPT : r * SUB + (g.share[v] >> 6);
+  };
+  // Where each cutting move can cut, as a box in the part frame (for the moves just before the
+  // current instant, which shape the fresh surface).
+  const boxes = new Float64Array(input.moves.length * 6).fill(NaN);
+  input.moves.forEach((mv, m) => {
+    const s = input.setups[mv.setup];
+    if (mv.points.length < 2 || !s) return;
+    const r = (toolOf.get(mv.tool) ?? { radius: 3 }).radius;
+    const lo: Vec = [Infinity, Infinity, Infinity];
+    const hi: Vec = [-Infinity, -Infinity, 1e6];
+    for (const p of mv.points) {
+      lo[0] = Math.min(lo[0], p[0] - r);
+      lo[1] = Math.min(lo[1], p[1] - r);
+      lo[2] = Math.min(lo[2], p[2]);
+      hi[0] = Math.max(hi[0], p[0] + r);
+      hi[1] = Math.max(hi[1], p[1] + r);
+    }
+    const R = s.orient;
+    for (let a = 0; a < 3; a++) {
+      // Part axis a is machine axis b (quarter turns), possibly reversed.
+      const b = [R[a], R[3 + a], R[6 + a]].findIndex((x) => x !== 0);
+      const sign = [R[a], R[3 + a], R[6 + a]][b];
+      const x0 = sign * (lo[b] - s.offset[b]);
+      const x1 = sign * (hi[b] - s.offset[b]);
+      boxes[m * 6 + a] = Math.min(x0, x1);
+      boxes[m * 6 + 3 + a] = Math.max(x0, x1);
+    }
+  });
+  const near = (m: number, p: Vec) =>
+    p[0] >= boxes[m * 6] && p[0] <= boxes[m * 6 + 3] && p[1] >= boxes[m * 6 + 1] && p[1] <= boxes[m * 6 + 4] && p[2] >= boxes[m * 6 + 2] && p[2] <= boxes[m * 6 + 5];
+  /** Moves before the current one that still count as fresh. */
+  const RECENT = 24;
+
+  // Running shares of every cutting move, for cutting a move short at the current instant.
+  const runs = new Map<number, Float64Array>();
+  const runOf = (m: number) => {
+    let r = runs.get(m);
+    if (!r) runs.set(m, (r = runShares(input.moves[m].points)));
+    return r;
+  };
+
   // Cells are numbered from -1 (outside the part) so chunk a holds cells a*CHUNK-1 ...
   const chunkOf = (c: number) => Math.floor((c + 1) / CHUNK);
-  // The moves that change each chunk (with a two-sample border), sorted, for exact updates.
+  // The instants that change each chunk (with a two-sample border), sorted, for exact updates.
   const lists: number[][] = Array.from({ length: count }, () => []);
-  for (let k = 0; k < nz; k++)
-    for (let j = 0; j < ny; j++)
-      for (let i = 0; i < nx; i++) {
-        const r = g.removed[(k * ny + j) * nx + i];
-        if (r === KEPT) continue;
-        const a0 = Math.max(0, chunkOf(i - 2));
-        const a1 = Math.min(cx - 1, chunkOf(i + 1));
-        const b0 = Math.max(0, chunkOf(j - 2));
-        const b1 = Math.min(cy - 1, chunkOf(j + 1));
-        const c0 = Math.max(0, chunkOf(k - 2));
-        const c1 = Math.min(cz - 1, chunkOf(k + 1));
-        for (let c = c0; c <= c1; c++) for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) lists[(c * cy + b) * cx + a].push(r);
-      }
+  const mark = (v: number, r: number) => {
+    const i = v % nx;
+    const j = Math.floor(v / nx) % ny;
+    const k = Math.floor(v / (nx * ny));
+    const a0 = Math.max(0, chunkOf(i - 2));
+    const a1 = Math.min(cx - 1, chunkOf(i + 1));
+    const b0 = Math.max(0, chunkOf(j - 2));
+    const b1 = Math.min(cy - 1, chunkOf(j + 1));
+    const c0 = Math.max(0, chunkOf(k - 2));
+    const c1 = Math.min(cz - 1, chunkOf(k + 1));
+    for (let c = c0; c <= c1; c++) for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) lists[(c * cy + b) * cx + a].push(r);
+  };
+  for (let v = 0; v < g.removed.length; v++) {
+    const r = instantOf(v);
+    if (r !== KEPT) mark(v, r);
+  }
+  // A later pass that only skims the surface changes it too: while it runs and once it is done.
+  for (const [v, m] of g.outer ?? []) {
+    mark(v, m * SUB);
+    mark(v, (m + 1) * SUB - 1);
+  }
   const changes = lists.map((l) => Int32Array.from(new Set(l)).sort());
-  /** Does chunk id change for any move in [a, b)? */
+  /** Does chunk id change at any instant in [a, b)? */
   const changesBetween = (id: number, a: number, b: number) => {
     const l = changes[id];
     let x = 0;
@@ -377,14 +598,30 @@ export function mesher(g: Grid, input: SimInput): Mesher {
     const R = s.orient;
     return [R[0] * v[0] + R[3] * v[1] + R[6] * v[2], R[1] * v[0] + R[4] * v[1] + R[7] * v[2], R[2] * v[0] + R[5] * v[1] + R[8] * v[2]];
   };
-  /** Is part point p inside what move m sweeps? Returns the segment index, or -1. */
-  const inMove = (m: number, p: Vec): number => {
+  /**
+   * Is part point p inside what move m sweeps up to share `upTo` of it (1 = the whole move)?
+   * Returns the segment that covers it and where that segment ends (cut short for the move in
+   * progress), or null.
+   */
+  const inMove = (m: number, p: Vec, upTo: number): { seg: number; end: Vec } | null => {
     const mv = input.moves[m];
     const s = input.setups[mv.setup];
     const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
     const q = toMachine(s, p);
-    for (let i = 1; i < mv.points.length; i++) if (sweeps(q[0], q[1], q[2], mv.points[i - 1], mv.points[i], tool.radius, tool.slope)) return i;
-    return -1;
+    const run = upTo < 1 ? runOf(m) : null;
+    for (let i = 1; i < mv.points.length; i++) {
+      const a = mv.points[i - 1];
+      let b = mv.points[i];
+      if (run) {
+        if (run[i - 1] >= upTo) break;
+        if (run[i] > upTo) {
+          const t = (upTo - run[i - 1]) / (run[i] - run[i - 1]);
+          b = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        }
+      }
+      if (sweeps(q[0], q[1], q[2], a, b, tool.radius, tool.slope)) return { seg: i, end: b };
+    }
+    return null;
   };
 
   /**
@@ -393,7 +630,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
    * The cut surface is the edge of everything cut near B so far (roughing and finishing passes
    * together), found by halving the edge, so walls come out straight and smooth.
    */
-  const crossing = (A: [number, number, number], axis: number, dir: number, B: [number, number, number], stepNo: number): Cross => {
+  const crossing = (A: [number, number, number], axis: number, dir: number, B: [number, number, number], at: number): Cross => {
     const pa = sampleAt(A[0], A[1], A[2]);
     const half = (cut: boolean): Cross => {
       const p: Vec = [...pa];
@@ -403,12 +640,19 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       return { p, n, cut, dir };
     };
     if (!inGrid(B[0], B[1], B[2])) return half(false);
-    // Moves that cut B or the samples next to it, before this point of the program.
+    // Moves that cut B or the samples next to it before this instant; the move in progress
+    // only as far as the tool has gone.
     const moves: number[] = [];
+    const now = Math.floor(at / SUB);
+    const upToNow = (at - now * SUB) / SUB;
     const add = (i: number, j: number, k: number) => {
       if (!inGrid(i, j, k)) return;
-      const r = g.removed[(k * ny + j) * nx + i];
-      if (r < stepNo && !moves.includes(r)) moves.push(r);
+      const v = (k * ny + j) * nx + i;
+      const r = g.removed[v];
+      if (instantOf(v) < at && !moves.includes(r)) moves.push(r);
+      // The pass reaching furthest past it, once it has started.
+      const l = g.outer?.get(v);
+      if (l !== undefined && l <= now && !moves.includes(l)) moves.push(l);
     };
     add(B[0], B[1], B[2]);
     for (let a = 0; a < 3; a++)
@@ -417,33 +661,36 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         c[a] += d;
         add(c[0], c[1], c[2]);
       }
-    const covering = (p: Vec): [number, number] => {
+    // The move in progress and the ones just before it, where they reach.
+    const pB = sampleAt(B[0], B[1], B[2]);
+    for (let m = Math.min(now, input.moves.length - 1); m >= Math.max(0, now - RECENT); m--) if (!moves.includes(m) && near(m, pB)) moves.push(m);
+    const covering = (p: Vec): { m: number; seg: number; end: Vec } | null => {
       for (const m of moves) {
-        const seg = inMove(m, p);
-        if (seg >= 0) return [m, seg];
+        const c = inMove(m, p, m === now ? upToNow : 1);
+        if (c) return { m, ...c };
       }
-      return [-1, -1];
+      return null;
     };
     const pb: Vec = [...pa];
     pb[axis] += dir * h[axis];
     let hit = covering(pb);
-    if (hit[0] < 0 || covering(pa)[0] >= 0) return half(true);
-    const at = (t: number): Vec => [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t];
+    if (!hit || covering(pa)) return half(true);
+    const along = (t: number): Vec => [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t];
     let t0 = 0;
     let t1 = 1;
     for (let it = 0; it < 8; it++) {
       const tm = (t0 + t1) / 2;
-      const c = covering(at(tm));
-      if (c[0] >= 0) {
+      const c = covering(along(tm));
+      if (c) {
         t1 = tm;
         hit = c;
       } else t0 = tm;
     }
-    const p = at((t0 + t1) / 2);
-    const mv = input.moves[hit[0]];
+    const p = along((t0 + t1) / 2);
+    const mv = input.moves[hit.m];
     const s = input.setups[mv.setup];
     const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
-    const nm = sweepNormal(toMachine(s, p), mv.points[hit[1] - 1], mv.points[hit[1]], tool.radius, tool.slope, Math.max(h[0], h[1], h[2]) * 0.75);
+    const nm = sweepNormal(toMachine(s, p), mv.points[hit.seg - 1], hit.end, tool.radius, tool.slope, Math.max(h[0], h[1], h[2]) * 0.75);
     let n = toPart(s, nm);
     // The normal must face out of the material along this edge.
     if (n[axis] * dir < 0.05) {
@@ -462,11 +709,11 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       for (let id = 0; id < count; id++) if (changesBetween(id, a, b)) out.push(id);
       return out;
     },
-    build(id, stepNo) {
+    build(id, at) {
       const ca = id % cx;
       const cb = Math.floor(id / cx) % cy;
       const cc = Math.floor(id / (cx * cy));
-      const solid = (i: number, j: number, k: number) => inGrid(i, j, k) && g.removed[(k * ny + j) * nx + i] >= stepNo;
+      const solid = (i: number, j: number, k: number) => inGrid(i, j, k) && instantOf((k * ny + j) * nx + i) >= at;
 
       // Crossings on edges, cached: key = sample index * 3 + axis (edge to the next sample).
       const edgeCache = new Map<number, Cross | null>();
@@ -480,8 +727,8 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         const s1 = solid(i, j, k);
         const s2 = solid(i2, j2, k2);
         let c: Cross | null = null;
-        if (s1 && !s2) c = crossing([i, j, k], axis, 1, [i2, j2, k2], stepNo);
-        else if (!s1 && s2) c = crossing([i2, j2, k2], axis, -1, [i, j, k], stepNo);
+        if (s1 && !s2) c = crossing([i, j, k], axis, 1, [i2, j2, k2], at);
+        else if (!s1 && s2) c = crossing([i2, j2, k2], axis, -1, [i, j, k], at);
         edgeCache.set(key, c);
         return c;
       };

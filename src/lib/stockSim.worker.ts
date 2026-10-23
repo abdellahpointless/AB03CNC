@@ -4,7 +4,8 @@ import { carve, mesher, type Mesher, type SimInput } from './stockSim';
  * Cuts the part away from the UI thread. Messages:
  *   { type: 'init', input }  -> { type: 'progress', share } ..., { type: 'ready', size }
  *   { type: 'mesh', step }   -> { type: 'mesh', step, full, chunks: [{ id, positions, normals, cut }] }
- * Only the chunks that change between two steps are sent again.
+ * step is an instant of the program (move × SUB + share of the move, see stockSim), so the cut
+ * follows the tool along a move. Only the chunks that change between two instants are sent again.
  */
 
 let m: Mesher | null = null;

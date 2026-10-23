@@ -1,5 +1,5 @@
 import type { Move, Toolpath, Vec } from './toolpath';
-import { buildInput, carve, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
+import { buildInput, carve, FLIP_MS, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
 
 /*
@@ -54,7 +54,8 @@ export interface SetupInfo {
   /** "UNTERLAGE IN EP 5 MM": the part rests on the parallels this far below its top (Z0). */
   restDepth: number | null;
   spacer: { mm: number; side: Face } | null;
-  clamp: 'vise' | 'module' | null;
+  /** vise; module: the shop's modular clamp (a vise too, same 45 mm jaws); fixture: held in a fixture. */
+  clamp: 'vise' | 'module' | 'fixture' | null;
   side: 'back' | 'front' | null;
   onEdge: boolean;
   topToward: Face | null;
@@ -78,6 +79,11 @@ export interface SetupInfo {
   jawHalfWidth: number;
   /** X extent of the vise jaws: they start at the stop on the left, where the part is pushed. */
   jawX: [number, number];
+  /**
+   * Where the stop and the jaw plates touch the part: the machine X of its left face and the Y of
+   * its front and back faces, as the part really is between the vise floor and the jaw tops.
+   */
+  grip: { stop: number; front: number; back: number } | null;
   collisions: Collision[];
   /** Lowest point of a tool that reaches over the jaws, above the jaw top (negative = into the jaws). */
   jawClearance: number | null;
@@ -171,7 +177,8 @@ export function readInstructions(notes: string[]) {
     restDepth: thick ? num(thick[1]) : null,
     spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
-    clamp: /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
+    // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
+    clamp: /VORRICHT|VORRI\b/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,
@@ -289,6 +296,17 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
   return withLedges(tp, opts, chosen, result);
 }
 
+/** Extra time the 3D view takes when the cales change between two setups (ms): shown slowly. */
+export const CALE_MS = 2600;
+
+/** The same cales (height and place) give the same key. */
+export const calesKey = (s: SetupInfo | null): string =>
+  s?.cales?.length ? `${s.support}|${s.cales.map((c) => `${c.y[0].toFixed(1)}:${c.top.toFixed(1)}`).join('/')}` : '';
+
+/** How long the 3D view takes to turn the part from one setup to the next (ms). */
+export const turnMs = (prev: SetupInfo | null, next: SetupInfo | null): number =>
+  FLIP_MS + (prev && next && calesKey(prev) !== calesKey(next) ? CALE_MS : 0);
+
 /** Width of the parallels drawn and checked under the held part (mm). */
 export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
 
@@ -312,7 +330,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     // Only what is cut before the last setup shapes any box or ledge.
     const last = out.setups[out.setups.length - 1]?.moves?.[0] ?? full.moves.length;
     const input = { ...full, moves: full.moves.map((m, i) => (i < last ? m : { ...m, points: [] })) };
-    const g = carve({ ...input, maxVoxels: 100_000 });
+    const g = carve({ ...input, maxVoxels: 100_000, surfaceMoves: false });
     /** Lowest material over each cale (front, back) at the start of setup s, in machine Z. */
     const lowest = (s: SetupInfo): [number, number] | null => {
       if (!s.stock || !s.clampBox || !s.moves) return null;
@@ -351,7 +369,11 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     }
     const settled = sameBoxes(boxes, nextBoxes) && nextLedges.size === ledges.size && [...nextLedges].every(([k, v]) => Math.abs((ledges.get(k) ?? NaN) - v) < 0.05);
     if (settled || pass === out.setups.length) {
-      for (const s of out.setups) s.cales = placeCales(s, input, g);
+      for (const s of out.setups) {
+        s.cales = placeCales(s, input, g);
+        s.grip = gripOf(s, input, g);
+        if (s.grip) s.jawX = [s.grip.stop - STOP_PLATE, s.grip.stop - STOP_PLATE + s.jawHalfWidth * 2];
+      }
       return out;
     }
     boxes = nextBoxes;
@@ -435,6 +457,32 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['cales'] 
   });
 }
 
+/** The part's real faces against the stop and the jaws (see SetupInfo.grip), at the start of setup s. */
+function gripOf(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['grip'] {
+  if (s.jawTopZ === null || s.floorZ === null || !s.clampBox || !s.moves) return null;
+  const R = s.orient;
+  const t = s.offset;
+  const lo = s.floorZ - 0.01;
+  const hi = s.jawTopZ;
+  // Only the part between the floor and the jaw tops touches them.
+  const inJaws = (p: Vec) => {
+    const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
+    return mz >= lo && mz <= hi;
+  };
+  /** Smallest (sign -1) or largest (+1) machine coordinate along machine axis `row` of that part. */
+  const reach = (row: number, sign: 1 | -1) => {
+    const a = ([0, 1, 2] as const).find((x) => R[row * 3 + x] !== 0)!;
+    const dir = R[row * 3 + a];
+    const v = materialExtreme(input, g, s.moves![0], a, (sign * dir) as 1 | -1, inJaws);
+    return v === null ? null : dir * v + t[row];
+  };
+  const stop = reach(0, -1);
+  const front = reach(1, -1);
+  const back = reach(1, 1);
+  const cb = s.clampBox;
+  return { stop: stop ?? cb.min[0], front: front ?? cb.min[1], back: back ?? cb.max[1] };
+}
+
 const sameBoxes = (a: Map<number, Box>, b: Map<number, Box>) =>
   a.size === b.size && [...b].every(([k, v]) => {
     const o = a.get(k);
@@ -445,7 +493,7 @@ const sameBoxes = (a: Map<number, Box>, b: Map<number, Box>) =>
 function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
   const input = buildInput(tp, r);
   if (!input) return 0;
-  const only = (keep: (setup: number) => boolean) => ({ ...input, maxVoxels: 40_000, moves: input.moves.map((m) => (keep(m.setup) ? m : { ...m, points: [] })) });
+  const only = (keep: (setup: number) => boolean) => ({ ...input, maxVoxels: 40_000, surfaceMoves: false, moves: input.moves.map((m) => (keep(m.setup) ? m : { ...m, points: [] })) });
   const before = carve(only((s) => s < k)).removed;
   const now = carve(only((s) => s === k)).removed;
   let both = 0;
@@ -498,6 +546,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       jawTopZ: null,
       jawHalfWidth: 0,
       jawX: [0, 0],
+      grip: null,
       collisions: [],
       jawClearance: null,
       moves: idx.length ? [idx[0], idx[idx.length - 1]] : null,
@@ -661,8 +710,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       part = back;
     }
 
-    if (info.clamp !== 'vise') return;
-    // Vise: jaws on the Y sides of the held part, from the floor up to the jaw height.
+    if (info.clamp !== 'vise' && info.clamp !== 'module') return;
+    // Vise (and the modular clamp): jaws on the Y sides of the held part, from the floor up to the
+    // jaw height.
     const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
     info.jawHalfWidth = Math.max(62.5, hold[0] / 2 + 15);
