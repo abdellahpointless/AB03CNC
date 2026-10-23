@@ -58,14 +58,11 @@ const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 6
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
 export default function ToolpathViewer({ code, title, brand, onClose }: { code: string; title: string; brand?: string; onClose: () => void }) {
   const { t } = useT('remapper');
-  const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
+  const path = useMemo(() => parseToolpath(code, speedsFor(brand), { pieces: 4 }), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
   const total = path.moves.length;
-  // Open on the first setup when there are several.
-  const [step, setStep] = useState(() => {
-    const k = path.moves.findIndex((m) => m.setup > 0);
-    return k > 0 ? k : total;
-  });
+  // Open at the start of the program: the raw part, before the first move.
+  const [step, setStep] = useState(0);
   const [jawHeight, setJawHeight] = useState(readJaw);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
   // The jaw height only changes the jaw check, not where the part is: keep the program (and the
@@ -415,7 +412,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     <g>
                       {sel.jawTopZ !== null &&
                         [[sel.stock.max[1], sel.stock.max[1] + 24], [sel.stock.min[1] - 24, sel.stock.min[1]]].map(([a, b], i) => (
-                          <rect key={i} x={(sel.stock!.min[0] + sel.stock!.max[0]) / 2 - sel.jawHalfWidth} y={-b} width={sel.jawHalfWidth * 2} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                          <rect key={i} x={sel.jawX[0]} y={-b} width={sel.jawX[1] - sel.jawX[0]} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                         ))}
                       <rect x={sel.stock.min[0]} y={-sel.stock.max[1]} width={sel.stock.max[0] - sel.stock.min[0]} height={sel.stock.max[1] - sel.stock.min[1]} fill="#B9C6DA" fillOpacity={0.08} stroke="#B9C6DA" strokeOpacity={0.6} strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
                     </g>

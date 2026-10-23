@@ -139,7 +139,8 @@ function toolSize(lines: string[], i: number): { diameter: number | null; length
 /** Operator instructions that describe how the part is clamped. */
 const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]/i;
 
-export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
+/** pieces: cut feed moves into pieces of about this many mm (smooth playback); off by default. */
+export function parseToolpath(code: string, speeds: MachineSpeeds, opts: { pieces?: number } = {}): Toolpath {
   const lines = code.split('\n');
   const moves: Move[] = [];
   const tools = new Map<number, ToolInfo>();
@@ -370,6 +371,13 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   });
 
   applyCompensation(moves);
+  // Long cuts (a face-mill pass across the part) in short pieces, so the tool and the cut move
+  // smoothly when played instead of jumping to the end of the pass.
+  if (opts.pieces) {
+    const pieces = splitLong(moves, opts.pieces);
+    moves.length = 0;
+    moves.push(...pieces);
+  }
   // Instructions without a G52 after them belong to the only setup.
   if (setups.length === 1) setups[0].notes.push(...pendingNotes);
   // Every move, cycle, dwell and tool change was added to its tool (or to the time before the first tool).
@@ -457,4 +465,38 @@ function applyCompensation(moves: Move[]) {
     }
     i = j + 1;
   }
+}
+
+/** Cuts feed moves longer than `max` mm into pieces of about `max` mm (same line, time shared). */
+function splitLong(moves: Move[], max: number): Move[] {
+  const out: Move[] = [];
+  for (const m of moves) {
+    if (m.kind !== 'feed' || m.length <= max * 1.5) {
+      out.push(m);
+      continue;
+    }
+    const n = Math.min(60, Math.ceil(m.length / max));
+    // Points along the move with their running length.
+    const run: number[] = [0];
+    for (let i = 1; i < m.points.length; i++) run.push(run[i - 1] + dist(m.points[i - 1], m.points[i]));
+    const total = run[run.length - 1] || 1;
+    const at = (d: number): Vec => {
+      let i = 1;
+      while (i < run.length - 1 && run[i] < d) i++;
+      const a = m.points[i - 1];
+      const b = m.points[i];
+      const seg = run[i] - run[i - 1] || 1;
+      const t = Math.min(1, Math.max(0, (d - run[i - 1]) / seg));
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    };
+    for (let k = 0; k < n; k++) {
+      const d0 = (total * k) / n;
+      const d1 = (total * (k + 1)) / n;
+      const pts: Vec[] = [k === 0 ? m.points[0] : at(d0)];
+      for (let i = 1; i < m.points.length - 1; i++) if (run[i] > d0 && run[i] < d1) pts.push(m.points[i]);
+      pts.push(k === n - 1 ? m.points[m.points.length - 1] : at(d1));
+      out.push({ ...m, points: pts, length: m.length / n, seconds: m.seconds / n });
+    }
+  }
+  return out;
 }

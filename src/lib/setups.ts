@@ -65,11 +65,15 @@ export interface SetupInfo {
   stock: { min: Vec; max: Vec } | null;
   /** Where the part sits on the parallels. */
   restZ: number | null;
+  /** Top of the front and back parallel: the part's real underside above each (from its shape). */
+  parallelTops: [number, number] | null;
   /** Where the supports stand (top of the vise floor / fixture plate). */
   floorZ: number | null;
   /** Top of the vise jaws (vise setups only). */
   jawTopZ: number | null;
   jawHalfWidth: number;
+  /** X extent of the vise jaws: they start at the stop on the left, where the part is pushed. */
+  jawX: [number, number];
   collisions: Collision[];
   /** Lowest point of a tool that reaches over the jaws, above the jaw top (negative = into the jaws). */
   jawClearance: number | null;
@@ -210,6 +214,8 @@ const STOP_Y = 50;
  */
 export const TABLE_Z = -57;
 const FLOOR_TRUST = 15;
+/** Thickness of the stop plate at the left end of the vise jaws (mm). */
+export const STOP_PLATE = 8;
 
 /**
  * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
@@ -289,19 +295,19 @@ export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
  */
 function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>, result: ProgramSetups): ProgramSetups {
   const input = buildInput(tp, result);
-  if (!input || result.setups.length < 2) return result;
-  const g = carve({ ...input, maxVoxels: 80_000 });
+  if (!input) return result;
+  const g = carve({ ...input, maxVoxels: 100_000 });
   const [nx, ny, nz] = g.n;
-  const ledges = new Map<number, number>();
-  for (const s of result.setups) {
-    // Only where parallels are written (the part stands on them).
-    if (s.index === 0 || !s.stock || !s.clampBox || !s.moves || s.restDepth !== null || s.support === null) continue;
+  /** Lowest material over each parallel (front, back) at the start of setup s. */
+  const lowest = (s: SetupInfo): [number, number] | null => {
+    if (!s.stock || !s.clampBox || !s.moves) return null;
     const before = s.moves[0];
     const R = s.orient;
     const t = s.offset;
-    const w = parallelWidth(s.clampBox.max[1] - s.clampBox.min[1]);
+    const cb = s.clampBox;
+    const w = parallelWidth(cb.max[1] - cb.min[1]);
     const halfZ = (Math.abs(R[6]) * g.step[0] + Math.abs(R[7]) * g.step[1] + Math.abs(R[8]) * g.step[2]) / 2;
-    let low = Infinity;
+    const low: [number, number] = [Infinity, Infinity];
     for (let k = 0; k < nz; k++)
       for (let j = 0; j < ny; j++)
         for (let i = 0; i < nx; i++) {
@@ -310,16 +316,39 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
           const py = g.origin[1] + (j + 0.5) * g.step[1];
           const pz = g.origin[2] + (k + 0.5) * g.step[2];
           const mx = R[0] * px + R[1] * py + R[2] * pz + t[0];
+          if (mx < cb.min[0] || mx > cb.max[0]) continue;
           const my = R[3] * px + R[4] * py + R[5] * pz + t[1];
-          if (mx < s.clampBox.min[0] || mx > s.clampBox.max[0]) continue;
-          if (my > s.clampBox.min[1] + w && my < s.clampBox.max[1] - w) continue;
-          if (my < s.clampBox.min[1] || my > s.clampBox.max[1]) continue;
+          const side: 0 | 1 | -1 = my >= cb.min[1] && my <= cb.min[1] + w ? 0 : my <= cb.max[1] && my >= cb.max[1] - w ? 1 : -1;
+          if (side === -1) continue;
           const mz = R[6] * px + R[7] * py + R[8] * pz + t[2] - halfZ;
-          if (mz < low) low = mz;
+          if (mz < low[side]) low[side] = mz;
         }
-    if (Number.isFinite(low) && low > s.stock.min[2] + 1.5 && low < s.stock.max[2] - 0.5) ledges.set(s.index, Math.round(low * 10) / 10);
+    return Number.isFinite(low[0]) || Number.isFinite(low[1]) ? low : null;
+  };
+  // After a turn the part may stand on a ledge: a boss cut on the side before hangs down between
+  // the parallels, and the parallels carry the wider part above it.
+  const ledges = new Map<number, number>();
+  for (const s of result.setups) {
+    // Only where parallels are written (the part stands on them).
+    if (s.index === 0 || s.restDepth !== null || s.support === null) continue;
+    const low = lowest(s);
+    if (!low || !s.stock) continue;
+    const l = Math.min(...low);
+    if (Number.isFinite(l) && l > s.stock.min[2] + 1.5 && l < s.stock.max[2] - 0.5) ledges.set(s.index, Math.round(l * 10) / 10);
   }
-  return ledges.size ? analyseWith(tp, opts, chosen, ledges) : result;
+  const out = ledges.size ? analyseWith(tp, opts, chosen, ledges) : result;
+  // Every parallel reaches the part: its top is the part's real underside above it.
+  for (const s of out.setups) {
+    if (s.restZ === null || s.floorZ === null || s.restZ - s.floorZ < 0.5) continue;
+    const low = lowest(s);
+    const rest = s.restZ;
+    s.parallelTops = [0, 1].map((k) => {
+      const v = low?.[k];
+      // Far above the rest height means nothing sits on that side (a pocket): keep the rest height.
+      return v !== undefined && Number.isFinite(v) && v < rest + 3 ? Math.max(s.floorZ!, v) : rest;
+    }) as [number, number];
+  }
+  return out;
 }
 
 /** Share of setup k's cutting that falls where earlier setups already cut (coarse). */
@@ -373,10 +402,12 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       offset: [0, 0, 0],
       clampBox: null,
       restZ: null,
+      parallelTops: null,
       stock: null,
       floorZ: null,
       jawTopZ: null,
       jawHalfWidth: 0,
+      jawX: [0, 0],
       collisions: [],
       jawClearance: null,
       moves: idx.length ? [idx[0], idx[idx.length - 1]] : null,
@@ -542,6 +573,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
     info.jawHalfWidth = Math.max(62.5, hold[0] / 2 + 15);
+    info.jawX = [jaw.min[0] - STOP_PLATE, jaw.min[0] - STOP_PLATE + info.jawHalfWidth * 2];
     let clearance = Infinity;
     let open: Collision | null = null;
     idx.forEach((mi) => {
@@ -549,7 +581,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       const r = (diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
       let hitHere: Collision | null = null;
       for (const p of samples(m)) {
-        const overJaw = (p[1] - r < jaw.min[1] || p[1] + r > jaw.max[1]) && Math.abs(p[0] - cx) < info.jawHalfWidth + r;
+        const overJaw = (p[1] - r < jaw.min[1] || p[1] + r > jaw.max[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
         if (!overJaw) continue;
         const above = p[2] - info.jawTopZ!;
         clearance = Math.min(clearance, above);

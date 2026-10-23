@@ -579,11 +579,48 @@ export function mesher(g: Grid, input: SimInput): Mesher {
 }
 
 /** Least-squares point of the crossing planes, pulled a little toward their middle, kept in the cell. */
+/** Eigen decomposition of a symmetric 3×3 matrix (Jacobi rotations). */
+export function eigenSym(M: number[]): { values: Vec; vectors: Vec[] } {
+  const a = M.slice();
+  const v = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  for (let sweep = 0; sweep < 12; sweep++) {
+    const off = Math.abs(a[1]) + Math.abs(a[2]) + Math.abs(a[5]);
+    if (off < 1e-12) break;
+    for (const [p, q] of [[0, 1], [0, 2], [1, 2]] as const) {
+      const apq = a[p * 3 + q];
+      if (Math.abs(apq) < 1e-15) continue;
+      const theta = (a[q * 3 + q] - a[p * 3 + p]) / (2 * apq);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1);
+      const s = t * c;
+      for (let k = 0; k < 3; k++) {
+        const akp = a[k * 3 + p];
+        const akq = a[k * 3 + q];
+        a[k * 3 + p] = c * akp - s * akq;
+        a[k * 3 + q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = a[p * 3 + k];
+        const aqk = a[q * 3 + k];
+        a[p * 3 + k] = c * apk - s * aqk;
+        a[q * 3 + k] = s * apk + c * aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = v[k * 3 + p];
+        const vkq = v[k * 3 + q];
+        v[k * 3 + p] = c * vkp - s * vkq;
+        v[k * 3 + q] = s * vkp + c * vkq;
+      }
+    }
+  }
+  return { values: [a[0], a[4], a[8]], vectors: [0, 1, 2].map((k) => [v[k], v[3 + k], v[6 + k]] as Vec) };
+}
+
 function solveQef(cs: Cross[], lo: Vec, hi: Vec): Vec {
   if (!cs.length) return [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
   const m: Vec = [0, 0, 0];
   for (const c of cs) for (let a = 0; a < 3; a++) m[a] += c.p[a] / cs.length;
-  // Solve (AᵀA + λI) x = Aᵀb + λ m in coordinates relative to m.
+  // Least squares for the crossing planes, in coordinates relative to m.
   const A = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   const B = [0, 0, 0];
   for (const c of cs) {
@@ -593,21 +630,25 @@ function solveQef(cs: Cross[], lo: Vec, hi: Vec): Vec {
       B[r] += c.n[r] * d;
     }
   }
-  const lam = 0.02;
-  A[0] += lam;
-  A[4] += lam;
-  A[8] += lam;
-  const det = A[0] * (A[4] * A[8] - A[5] * A[7]) - A[1] * (A[3] * A[8] - A[5] * A[6]) + A[2] * (A[3] * A[7] - A[4] * A[6]);
-  let x: Vec = [0, 0, 0];
-  if (Math.abs(det) > 1e-12) {
-    const inv = [
-      A[4] * A[8] - A[5] * A[7], A[2] * A[7] - A[1] * A[8], A[1] * A[5] - A[2] * A[4],
-      A[5] * A[6] - A[3] * A[8], A[0] * A[8] - A[2] * A[6], A[2] * A[3] - A[0] * A[5],
-      A[3] * A[7] - A[4] * A[6], A[1] * A[6] - A[0] * A[7], A[0] * A[4] - A[1] * A[3],
-    ];
-    x = [(inv[0] * B[0] + inv[1] * B[1] + inv[2] * B[2]) / det, (inv[3] * B[0] + inv[4] * B[1] + inv[5] * B[2]) / det, (inv[6] * B[0] + inv[7] * B[1] + inv[8] * B[2]) / det];
+  // Truncated pseudo-inverse: directions the normals barely pin down (nearly parallel faces,
+  // e.g. neighbouring facets of a hole wall) stay at the crossings' middle instead of shooting off
+  // along a near-degenerate intersection line; real corners and edges keep their sharp point.
+  const { values, vectors } = eigenSym(A);
+  const top = Math.max(values[0], values[1], values[2], 1e-12);
+  const x: Vec = [0, 0, 0];
+  for (let k = 0; k < 3; k++) {
+    if (values[k] < top * 0.08) continue;
+    const e = vectors[k];
+    const t = (e[0] * B[0] + e[1] * B[1] + e[2] * B[2]) / values[k];
+    for (let r = 0; r < 3; r++) x[r] += e[r] * t;
   }
   const out: Vec = [m[0] + x[0], m[1] + x[1], m[2] + x[2]];
+  // A fit far outside its cell (several surfaces meeting at odd angles, e.g. where a hole, its
+  // chamfer and the top face meet) would make a spike: use the crossings' middle instead.
+  for (let a = 0; a < 3; a++) {
+    const pad = (hi[a] - lo[a]) * 0.15;
+    if (out[a] < lo[a] - pad || out[a] > hi[a] + pad) return [Math.min(hi[0], Math.max(lo[0], m[0])), Math.min(hi[1], Math.max(lo[1], m[1])), Math.min(hi[2], Math.max(lo[2], m[2]))];
+  }
   for (let a = 0; a < 3; a++) out[a] = Math.min(hi[a], Math.max(lo[a], out[a]));
   return out;
 }
