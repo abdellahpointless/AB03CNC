@@ -11,7 +11,8 @@ import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
 
 const Toolpath3D = lazy(() => import('./Toolpath3D'));
-const JAW_KEY = 'cnc-toolpath-jaw-height';
+// v2: the shop's jaws are 45 mm (the first default, 42, was a guess).
+const JAW_KEY = 'cnc-toolpath-jaw-height-v2';
 function readJaw(): number {
   try {
     const v = Number(localStorage.getItem(JAW_KEY));
@@ -76,6 +77,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const multi = setups.length > 1;
   const [mode3d, setMode3d] = useState(true);
   const [fitKey, setFitKey] = useState(0);
+  const [isolate, setIsolate] = useState(false);
   // The setup shown is the one of the current move, so playing goes through the setups.
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
@@ -358,7 +360,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} step={step} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -376,6 +378,17 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       </button>
                     ))}
                   </div>
+                  {mode3d && (
+                    <button
+                      onClick={() => setIsolate((x) => !x)}
+                      aria-pressed={isolate}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${isolate ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.isolateHelp')}
+                    >
+                      <Box size={12} />
+                      {t('toolpath.isolate')}
+                    </button>
+                  )}
                   <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
                     <Maximize2 size={13} />
                   </button>

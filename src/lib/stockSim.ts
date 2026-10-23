@@ -18,7 +18,7 @@ import type { ProgramSetups } from './setups';
 
 export const KEPT = 0x7fffffff;
 /** How long the part takes to turn between setups in the 3D view (ms). */
-export const FLIP_MS = 1300;
+export const FLIP_MS = 2200;
 
 export interface SimTool {
   tool: number | null;
@@ -172,7 +172,7 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, to
 export function carve(input: SimInput, onProgress?: (share: number) => void): Grid {
   const { part } = input;
   const ext: Vec = [part.max[0] - part.min[0], part.max[1] - part.min[1], part.max[2] - part.min[2]];
-  const maxVoxels = input.maxVoxels ?? 1_500_000;
+  const maxVoxels = input.maxVoxels ?? 2_500_000;
   const target = Math.max(0.12, Math.cbrt((ext[0] * ext[1] * ext[2]) / maxVoxels));
   const n: [number, number, number] = [Math.max(2, Math.round(ext[0] / target)), Math.max(2, Math.round(ext[1] / target)), Math.max(2, Math.round(ext[2] / target))];
   // Samples sit in the middle of equal slices of the part box, so its faces fall halfway between.
@@ -425,6 +425,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       // One vertex per cell that the surface passes through: the point that best fits the
       // planes of its crossings (sharp edges and corners), kept inside the cell.
       const vertCache = new Map<number, Vec>();
+      const smoothAt = new Map<number, Vec>();
       const vertex = (i: number, j: number, k: number): Vec => {
         const key = ((k + 1) * (ny + 2) + (j + 1)) * (nx + 2) + (i + 1);
         const hit = vertCache.get(key);
@@ -443,6 +444,23 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         const hi3 = sampleAt(i + 1, j + 1, k + 1);
         const v = solveQef(cs, lo3, hi3);
         vertCache.set(key, v);
+        // Where all crossings face nearly the same way (a flat face or a round wall), the exact
+        // surface normal shades it: holes and curves come out smooth instead of faceted.
+        if (cs.length) {
+          let nx2 = 0;
+          let ny2 = 0;
+          let nz2 = 0;
+          for (const c of cs) {
+            nx2 += c.n[0];
+            ny2 += c.n[1];
+            nz2 += c.n[2];
+          }
+          const l = Math.hypot(nx2, ny2, nz2);
+          if (l > 1e-9) {
+            const avg: Vec = [nx2 / l, ny2 / l, nz2 / l];
+            if (cs.every((c) => c.n[0] * avg[0] + c.n[1] * avg[1] + c.n[2] * avg[2] > 0.9)) smoothAt.set(key, avg);
+          }
+        }
         return v;
       };
 
@@ -529,7 +547,12 @@ export function mesher(g: Grid, input: SimInput): Mesher {
           let sx = 0;
           let sy = 0;
           let sz = 0;
-          for (const o of facesAt.get(kk)!) {
+          const exact = smoothAt.get(kk);
+          if (exact && exact[0] * fx + exact[1] * fy + exact[2] * fz > 0.5) {
+            sx = exact[0];
+            sy = exact[1];
+            sz = exact[2];
+          } else for (const o of facesAt.get(kk)!) {
             const ox = triNormal[o * 3];
             const oy = triNormal[o * 3 + 1];
             const oz = triNormal[o * 3 + 2];

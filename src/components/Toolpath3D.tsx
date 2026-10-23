@@ -42,6 +42,8 @@ interface Props {
   /** Change it to fit the camera again. */
   fitKey: number;
   onSolid?: (s: SolidState) => void;
+  /** Show only the part (no vise, supports, toolpath or tool). */
+  isolate?: boolean;
 }
 
 function label(text: string, color: string): THREE.Sprite {
@@ -80,6 +82,83 @@ function box(min: Vec, max: Vec, color: number, opacity: number, edges = 0x00000
   return g;
 }
 
+// Brushed steel. Low metalness: without surroundings to reflect, very metallic surfaces look black.
+const STEEL = { color: 0xc9d1dc, metalness: 0.3, roughness: 0.42 };
+const STEEL_DARK = { color: 0x98a3b3, metalness: 0.35, roughness: 0.45 };
+
+/** A box of a given steel finish with dark edges (machine coordinates). */
+function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; roughness: number }): THREE.Group {
+  const g = box(min, max, finish.color, 1, 0x2a313d);
+  const m = (g.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+  m.metalness = finish.metalness;
+  m.roughness = finish.roughness;
+  ((g.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial).opacity = 0.35;
+  return g;
+}
+
+/**
+ * A machine vise like the shop's: a long steel body, the fixed jaw at the back (Y+), the moving
+ * jaw at the front (Y-) with its screw, and the stop on the left that the part is pushed against.
+ */
+function buildVise(cb: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, hw: number, cx: number, stopTop: number) {
+  const g = new THREE.Group();
+  const x0 = cx - hw;
+  const x1 = cx + hw;
+  const body = floorZ - 34;
+  // Body and the two rails the jaws run on.
+  g.add(steel([x0 - 18, cb.min[1] - 70, body - 16], [x1 + 18, cb.max[1] + 34, body], STEEL_DARK));
+  g.add(steel([x0 - 18, cb.min[1] - 70, body], [x1 + 18, cb.max[1] + 34, floorZ], STEEL));
+  // Fixed jaw with its hardened plate.
+  g.add(steel([x0, cb.max[1] + 5, floorZ], [x1, cb.max[1] + 30, jawTop], STEEL));
+  const plateBack = steel([x0, cb.max[1], floorZ], [x1, cb.max[1] + 5, jawTop], STEEL_DARK);
+  g.add(plateBack);
+  // Moving jaw (opens and closes in the animations).
+  const moving = new THREE.Group();
+  moving.add(steel([x0, cb.min[1] - 30, floorZ], [x1, cb.min[1] - 5, jawTop], STEEL));
+  const plateFront = steel([x0, cb.min[1] - 5, floorZ], [x1, cb.min[1], jawTop], STEEL_DARK);
+  moving.add(plateFront);
+  // Screw and its hex end at the front.
+  const screw = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 40, 24), new THREE.MeshStandardMaterial({ ...STEEL_DARK }));
+  screw.rotation.x = Math.PI / 2;
+  screw.position.copy(v3([cx, cb.min[1] - 50, floorZ - 14]));
+  moving.add(screw);
+  const hex = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 14, 6), new THREE.MeshStandardMaterial({ ...STEEL }));
+  hex.rotation.x = Math.PI / 2;
+  hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
+  moving.add(hex);
+  g.add(moving);
+  // The stop on the left: the part is slid against it.
+  const stop = steel([cb.min[0] - 10, cb.min[1] + 1, floorZ], [cb.min[0], cb.max[1] - 1, Math.max(stopTop, floorZ + 8)], STEEL_DARK);
+  g.add(stop);
+  const jawMats = [plateBack, plateFront].map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial);
+  return { group: g, moving, jawMats };
+}
+
+/** A curved arrow around a turning axis (three.js frame) showing which way the part turns. */
+function turnArrow(axis: THREE.Vector3, angle: number, radius: number, text: string): THREE.Group {
+  const g = new THREE.Group();
+  const arc = Math.min(Math.abs(angle), Math.PI * 1.7);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x5b8cf5, transparent: true, opacity: 0.95, depthTest: false });
+  const tube = new THREE.Mesh(new THREE.TorusGeometry(radius, Math.max(0.8, radius * 0.035), 10, 64, arc), mat);
+  tube.renderOrder = 11;
+  g.add(tube);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.12, radius * 0.28, 20), mat);
+  head.renderOrder = 11;
+  head.position.set(radius * Math.cos(arc), radius * Math.sin(arc), 0);
+  head.rotation.z = arc; // cone points along +Y; turned to the arc's direction of travel
+  g.add(head);
+  const tag = label(text, '#9DB8FF');
+  const h = Math.max(5, radius * 0.25);
+  tag.scale.set(h * tag.userData.aspect, h, 1);
+  tag.position.set(radius * Math.cos(arc / 2) * 1.25, radius * Math.sin(arc / 2) * 1.25, 0);
+  g.add(tag);
+  // The torus lies in its XY plane, turning around +Z: point +Z along the axis (negative angles
+  // turn the other way).
+  const dir = axis.clone().normalize().multiplyScalar(angle < 0 ? -1 : 1);
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+  return g;
+}
+
 function disposeTree(o: THREE.Object3D) {
   o.traverse((x) => {
     const m = x as THREE.Mesh;
@@ -107,9 +186,13 @@ interface Api {
   setupObjects: THREE.Object3D[];
   stockFill: THREE.Object3D | null;
   anim: ((now: number) => boolean) | null;
+  /** The vise's moving jaw: open = 0 (closed) .. 1 (open). */
+  jaw: { obj: THREE.Object3D; travel: number } | null;
+  /** Overlay objects (turn arrow) kept outside the world group. */
+  overlay: THREE.Group;
 }
 
-export default function Toolpath3D({ path, program, setup, range, step, colorOf, fitKey, onSolid }: Props) {
+export default function Toolpath3D({ path, program, setup, range, step, colorOf, fitKey, onSolid, isolate = false }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const stepRef = useRef(step);
@@ -144,6 +227,8 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const solid = new THREE.Group();
     solid.matrixAutoUpdate = false;
     scene.add(solid);
+    const overlay = new THREE.Group();
+    scene.add(overlay);
 
     let dirty = true;
     const invalidate = () => {
@@ -194,6 +279,8 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
       setupObjects: [],
       stockFill: null,
       anim: null,
+      jaw: null,
+      overlay,
     };
     return () => {
       cancelAnimationFrame(raf);
@@ -375,29 +462,28 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
         const w = parallelWidth(cb.max[1] - cb.min[1]);
         for (const y0 of [cb.min[1] + 0.3, cb.max[1] - 0.3 - w]) {
-          fixture.add(box([cb.min[0] - 8, y0, floorZ], [cb.max[0] + 8, y0 + w, restZ], 0x8b95a7, 1, 0x30384a));
+          fixture.add(steel([cb.min[0] - 2, y0, floorZ], [cb.max[0] + 8, y0 + w, restZ], STEEL_DARK));
         }
       }
+      a.jaw = null;
       if (setup.jawTopZ !== null) {
         const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
         const cx = (cb.min[0] + cb.max[0]) / 2;
-        const hw = setup.jawHalfWidth;
-        const base = floorZ - 28;
-        for (const [y0, y1] of [[cb.max[1], cb.max[1] + 24], [cb.min[1] - 24, cb.min[1]]] as [number, number][]) {
-          const jaw = box([cx - hw, y0, base], [cx + hw, y1, setup.jawTopZ], 0x6b7a90, 1, 0x2a3446);
-          jaws.push((jaw.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial);
-          fixture.add(jaw);
-        }
-        fixture.add(box([cx - hw, cb.min[1] - 24, base - 14], [cx + hw, cb.max[1] + 24, floorZ], 0x3b4659, 1, 0x232c3c));
+        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawHalfWidth, cx, setup.jawTopZ + 4);
+        fixture.add(vise.group);
+        jaws.push(...vise.jawMats);
+        a.jaw = { obj: vise.moving, travel: 14 };
+        // The top of the jaws as a thin red line, for the jaw check.
         const line = new THREE.LineSegments(
-          new THREE.EdgesGeometry(new THREE.BoxGeometry(hw * 2, 0.01, cb.max[1] - cb.min[1] + 48)),
-          new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.55 }),
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(setup.jawHalfWidth * 2, 0.01, cb.max[1] - cb.min[1] + 60)),
+          new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.5 }),
         );
         line.position.copy(v3([cx, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
         fixture.add(line);
       } else {
-        // Modular fixture: a block under the part.
-        fixture.add(box([s.min[0] - 6, s.min[1] - 6, floorZ - 30], [s.max[0] + 6, s.max[1] + 6, floorZ], 0x3b4659, 1, 0x1c2433));
+        // Modular fixture: a steel block under the part, with the stop on the left.
+        fixture.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
+        fixture.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
       }
 
       // RAFI / TASTER: an arrow from the part toward the faces the program names, and a label.
@@ -424,7 +510,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     const span = Math.max(path.max[0] - path.min[0], path.max[1] - path.min[1], 60) * 2.2;
     const grid = new THREE.GridHelper(span, 22, 0x2c3953, 0x1a2234);
     const center = s ? [(s.min[0] + s.max[0]) / 2, (s.min[1] + s.max[1]) / 2] : [(path.min[0] + path.max[0]) / 2, (path.min[1] + path.max[1]) / 2];
-    grid.position.copy(v3([center[0], center[1], floorZ - (setup?.jawTopZ !== null && s ? 42 : s ? 30 : 0)]));
+    grid.position.copy(v3([center[0], center[1], floorZ - (setup?.jawTopZ !== null && s ? 50 : s ? 30 : 0)]));
     world.add(grid);
 
     // Jaw hits: red spheres.
@@ -480,7 +566,7 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
         tool.position.copy(v3(tip));
         const hit = hitMoves.has(first + k);
         cutterMat.color.set(hit ? 0xff5c5c : 0xe8edf5);
-        jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : 0x6b7a90));
+        jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : STEEL_DARK.color));
       }
       hits.children.forEach((h) => ((h as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(h.userData.move <= first + k ? 0xff4d4d : 0x7a3a3a));
       a.requestMesh(n);
@@ -517,7 +603,27 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     if (fitKey) api.current?.fit();
   }, [fitKey]);
 
-  // Turning the part between setups: lift it, turn it, put it down in the new setup.
+  // Part only: hide the vise, supports, toolpath and tool.
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    a.world.visible = !isolate;
+    if (isolate && a.solidReady) {
+      // Frame the part alone.
+      const bb = new THREE.Box3().setFromObject(a.solid);
+      if (!bb.isEmpty()) {
+        const c = bb.getCenter(new THREE.Vector3());
+        const size = bb.getSize(new THREE.Vector3()).length();
+        a.controls.target.copy(c);
+        a.camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.35));
+        a.controls.update();
+      }
+    } else if (!isolate) a.fit();
+    a.invalidate();
+  }, [isolate]);
+
+  // Turning the part between setups: the jaw opens, the part lifts, turns (an arrow shows the
+  // way) and sets down, then the jaw closes. Opening a setup directly just clamps it.
   const lastSetup = useRef<SetupInfo | null>(null);
   useEffect(() => {
     const a = api.current;
@@ -526,9 +632,29 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     if (!a || !setup) return;
     const end = poseOf(setup);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    disposeTree(a.overlay);
+    a.overlay.clear();
+    const jaw = a.jaw;
+    const setJaw = (open: number) => {
+      if (jaw) jaw.obj.position.set(0, 0, open * jaw.travel); // three Z = machine -Y (towards the front)
+    };
+    const ease = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
     if (!prev || prev.index >= setup.index || !a.solidReady || reduce) {
       a.solid.matrix.copy(end);
       a.solid.matrixWorldNeedsUpdate = true;
+      if (reduce || !jaw) {
+        setJaw(0);
+        a.invalidate();
+        return;
+      }
+      // Clamp: the jaw closes on the part.
+      const t0 = performance.now();
+      setJaw(1);
+      a.anim = (now) => {
+        const t = Math.min(1, (now - t0) / 450);
+        setJaw(1 - ease(t));
+        return t < 1;
+      };
       a.invalidate();
       return;
     }
@@ -540,24 +666,52 @@ export default function Toolpath3D({ path, program, setup, range, step, colorOf,
     poseOf(prev).decompose(p0, q0, sc);
     end.decompose(p1, q1, sc);
     const height = setup.stock ? Math.max(setup.stock.max[2] - setup.stock.min[2], 20) : 30;
+
+    // The arrow: the turn from the old pose to the new one, around the part's middle.
+    const turn = q1.clone().multiply(q0.clone().invert());
+    const angle = 2 * Math.acos(Math.min(1, Math.abs(turn.w))) * (turn.w < 0 ? -1 : 1);
+    const axis = new THREE.Vector3(turn.x, turn.y, turn.z);
+    if (axis.lengthSq() > 1e-9 && Math.abs(angle) > 0.1 && setup.stock) {
+      axis.normalize();
+      const st = setup.stock;
+      const size = Math.max(st.max[0] - st.min[0], st.max[1] - st.min[1], st.max[2] - st.min[2]);
+      // Name the machine axis it turns around (three X/Y/Z = machine X/Z/-Y).
+      const m = [axis.x, -axis.z, axis.y];
+      const big = m.map(Math.abs).indexOf(Math.max(...m.map(Math.abs)));
+      const deg = Math.round(Math.abs((angle * 180) / Math.PI));
+      const arrow = turnArrow(axis, angle, size * 0.5, `${deg}° ${'XYZ'[big]}`);
+      // Around the part's middle, a little above the jaws.
+      arrow.position.copy(v3([(st.min[0] + st.max[0]) / 2, (st.min[1] + st.max[1]) / 2, st.max[2] + height * 0.35]));
+      a.overlay.add(arrow);
+    }
+
     const start = performance.now();
     const hide = a.setupObjects;
     hide.forEach((o) => (o.visible = false));
     const q = new THREE.Quaternion();
     const p = new THREE.Vector3();
     const one = new THREE.Vector3(1, 1, 1);
+    a.solid.matrix.compose(p0, q0, one);
+    setJaw(0);
     a.anim = (now) => {
       const t = Math.min(1, (now - start) / FLIP_MS);
-      // Lift first, turn in the middle, set down at the end.
-      const turnT = Math.min(1, Math.max(0, (t - 0.2) / 0.6));
-      const e = turnT < 0.5 ? 4 * turnT ** 3 : 1 - (-2 * turnT + 2) ** 3 / 2;
+      // 0-15 %: unclamp. 15-85 %: lift, turn, set down. 85-100 %: clamp.
+      setJaw(t < 0.15 ? ease(t / 0.15) : t > 0.85 ? 1 - ease((t - 0.85) / 0.15) : 1);
+      const k = Math.min(1, Math.max(0, (t - 0.15) / 0.7));
+      const turnT = Math.min(1, Math.max(0, (k - 0.2) / 0.6));
+      const e = ease(turnT);
       q.slerpQuaternions(q0, q1, e);
       p.lerpVectors(p0, p1, e);
-      p.y += Math.sin(Math.PI * t) * height * 1.3;
+      p.y += Math.sin(Math.PI * k) * height * 1.3;
       a.solid.matrix.compose(p, q, one);
       a.solid.matrixWorldNeedsUpdate = true;
+      a.overlay.visible = t < 0.9;
       if (t >= 1) {
         a.solid.matrix.copy(end);
+        setJaw(0);
+        disposeTree(a.overlay);
+        a.overlay.clear();
+        a.overlay.visible = true;
         hide.forEach((o) => (o.visible = o.userData.has !== false));
         return false;
       }

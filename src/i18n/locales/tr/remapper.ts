@@ -262,6 +262,8 @@ const remapper: Translation<typeof en> = {
     speed: 'Oynatma hızı',
     view3d: '3B',
     carving: 'Parça işleniyor…',
+    isolate: 'Yalnızca parça',
+    isolateHelp: 'Mengene, destekler, takım yolu ve takım olmadan yalnızca parçayı göster',
     view2d: '2B',
     setup: 'Bağlama {{n}}',
     setupOf: 'Bağlama {{n}} / {{total}}',

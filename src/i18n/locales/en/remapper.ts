@@ -271,6 +271,8 @@ const remapper = {
     speed: 'Playback speed',
     view3d: '3D',
     carving: 'Cutting the part…',
+    isolate: 'Part only',
+    isolateHelp: 'Show only the part, without the vise, supports, toolpath and tool',
     view2d: '2D',
     setup: 'Setup {{n}}',
     setupOf: 'Setup {{n}} of {{total}}',
