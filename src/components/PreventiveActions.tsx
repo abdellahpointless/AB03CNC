@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import StatusBoard from './StatusBoard';
 import MachineQrSheet from './MachineQrSheet';
+import CalesBox from './CalesBox';
 import { fmtDuration } from '../i18n/format';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
@@ -664,6 +665,7 @@ function MachineSheet({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
             />
+            <CalesBox machine={machine} canAct={canAct} />
           </div>
           <div className="self-stretch space-y-2">
             {summary.down && (

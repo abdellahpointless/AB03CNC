@@ -1194,6 +1194,274 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 }
 
 /* ---------------------------------------------------------------------------
+   Cales box: the small closed box next to the machine, and the 3D view it grows into.
+   Glow colours match the 3D scene (green = all there, yellow = damaged, red = missing).
+   --------------------------------------------------------------------------- */
+.cales-thumb {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  width: 136px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  overflow: visible;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+.cales-thumb-art {
+  display: block;
+  width: 100%;
+  transition: transform 360ms var(--ease-out), filter 360ms var(--ease-out);
+}
+.cales-thumb-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35));
+}
+.cales-thumb-ghost {
+  display: block;
+  width: 78%;
+  margin: 18% auto 16%;
+  aspect-ratio: 2.3;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #3a4454, #1c222c 70%);
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.35);
+  transform: perspective(300px) rotateX(38deg) rotateZ(-6deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cales-thumb:hover .cales-thumb-art {
+    transform: translateY(-3px) scale(1.04);
+    filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35));
+  }
+}
+.cales-thumb-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -8px;
+  line-height: 1.25;
+}
+.cales-thumb-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.cales-thumb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.cales-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--orange-500);
+  flex-shrink: 0;
+}
+.tone-ok .cales-dot { background: #3ddc84; box-shadow: 0 0 8px rgba(61, 220, 132, 0.6); }
+.tone-warn .cales-dot { background: #f5c542; box-shadow: 0 0 8px rgba(245, 197, 66, 0.55); }
+.tone-bad .cales-dot { background: #ff4d4f; box-shadow: 0 0 8px rgba(255, 77, 79, 0.55); }
+
+.cales-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 99995;
+  display: grid;
+  place-items: center;
+}
+.cales-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 6, 12, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+html.light .cales-backdrop { background: rgba(15, 23, 42, 0.32); }
+.cales-panel {
+  position: relative;
+  width: min(1240px, calc(100vw - 32px));
+  height: min(800px, calc(100dvh - 32px));
+  border-radius: 22px;
+  overflow: hidden;
+  background: radial-gradient(110% 95% at 50% 40%, #1e2635 0%, #0a0e14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+html.light .cales-panel {
+  background: radial-gradient(110% 95% at 50% 40%, #ffffff 0%, #dce3eb 100%);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+}
+@media (max-width: 640px) {
+  .cales-panel { width: calc(100vw - 16px); height: calc(100dvh - 16px); border-radius: 18px; }
+}
+.cales-stage { position: absolute; inset: 0; }
+.cales-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 220ms var(--ease-out);
+  touch-action: none;
+}
+.cales-stage.on .cales-canvas { opacity: 1; }
+.cales-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.cales-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 26px 20px;
+  background: linear-gradient(to bottom, rgba(10, 14, 20, 0.82), rgba(10, 14, 20, 0));
+  pointer-events: none;
+}
+.cales-head > * { pointer-events: auto; }
+html.light .cales-head { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0)); }
+.cales-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.cales-title span { font-weight: 500; color: var(--text-secondary); }
+.cales-summary {
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.cales-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 16px 14px;
+  background: linear-gradient(to top, rgba(10, 14, 20, 0.92) 45%, rgba(10, 14, 20, 0));
+}
+html.light .cales-foot { background: linear-gradient(to top, rgba(240, 244, 248, 0.94) 45%, rgba(240, 244, 248, 0)); }
+.cales-actions {
+  min-height: 40px;
+  display: flex;
+  justify-content: center;
+}
+.cales-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cales-hint { font-size: 12.5px; color: var(--text-secondary); }
+.cales-pair-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.cales-state {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(var(--ov), 0.08);
+  color: var(--text-secondary);
+}
+.cales-state.s-missing { background: rgba(255, 77, 79, 0.15); color: #ff7a7c; }
+.cales-state.s-damaged { background: rgba(245, 197, 66, 0.16); color: #f5c542; }
+html.light .cales-state.s-missing { color: #c22a2c; }
+html.light .cales-state.s-damaged { color: #8a5a00; }
+.cales-chips {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cales-chips::-webkit-scrollbar { display: none; }
+.cales-chip {
+  min-width: 46px;
+  height: 34px;
+  padding: 0 9px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--ov), 0.1);
+  background: rgba(var(--ov), 0.05);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.cales-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(var(--ov), 0.25);
+}
+.cales-chip.ok i { background: #3ddc84; box-shadow: 0 0 6px rgba(61, 220, 132, 0.7); }
+.cales-chip.s-damaged i { background: #f5c542; box-shadow: 0 0 6px rgba(245, 197, 66, 0.7); }
+.cales-chip.s-missing i { background: transparent; border: 1.5px dashed #ff4d4f; box-shadow: 0 0 6px rgba(255, 77, 79, 0.55); }
+.cales-chip.hover { background: rgba(var(--ov), 0.1); color: var(--text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .cales-chip:hover { background: rgba(var(--ov), 0.1); color: var(--text-primary); }
+}
+.cales-chip.on {
+  background: rgba(var(--ov), 0.16);
+  border-color: rgba(var(--ov), 0.32);
+  color: var(--text-primary);
+}
+.cales-fly {
+  position: fixed;
+  left: 0;
+  top: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+  will-change: transform;
+}
+@media (max-width: 640px) {
+  .cales-thumb { width: 112px; right: -4px; bottom: -8px; }
+  .cales-chips { justify-content: flex-start; }
+  .cales-hint { width: 100%; text-align: center; }
+}
+
+/* ---------------------------------------------------------------------------
    Phone check: the screen a machine's QR code opens. Big touch targets (≥ 46 px), 16 px+ text
    (no zoom on iPhone inputs), one column, nothing but this machine.
    --------------------------------------------------------------------------- */
