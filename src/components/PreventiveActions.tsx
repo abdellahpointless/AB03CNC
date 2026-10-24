@@ -147,8 +147,7 @@ export default function PreventiveActions() {
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-start md:items-end gap-2">
-        {/* What is going on (wraps), then the actions on their own row: nothing ends up alone on a line. */}
+        {/* One row: what is going on, then small action bubbles that open when pointed at. */}
         <div className="flex items-center gap-2 flex-wrap md:justify-end">
           {myMachines.length > 0 && !isAdmin && (
             <span className="badge-neutral" title={t('header.myMachinesTitle')}>
@@ -169,22 +168,21 @@ export default function PreventiveActions() {
           <span className="badge-positive">
             <CheckCircle2 size={13} /> {t('header.allGood', { count: counts.ok })}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={openBoard} className="btn-secondary text-xs py-1.5 px-3" title={t('header.boardTitle')} disabled={!fleet.length}>
-            <Monitor size={14} />
-            <span>{t('header.board')}</span>
+          <span className="w-px h-4 bg-[var(--border-subtle)] mx-0.5" aria-hidden="true" />
+          <button onClick={openBoard} className="pill-action no-glass" title={t('header.boardTitle')} disabled={!fleet.length}>
+            <Monitor size={13} />
+            <span className="pill-label">{t('header.board')}</span>
           </button>
           {isAdmin && (
-            <button onClick={() => setQrOpen(true)} className="btn-secondary text-xs py-1.5 px-3" title={t('header.qrTitle')} disabled={!fleet.length}>
-              <QrCode size={14} />
-              <span>{t('header.qr')}</span>
+            <button onClick={() => setQrOpen(true)} className="pill-action no-glass" title={t('header.qrTitle')} disabled={!fleet.length}>
+              <QrCode size={13} />
+              <span className="pill-label">{t('header.qr')}</span>
             </button>
           )}
-          <button onClick={load} className="btn-icon" title={t('common:actions.refresh')} aria-label={t('common:actions.refresh')}>
-            <RefreshCw size={14} />
+          <button onClick={load} className="pill-action no-glass">
+            <RefreshCw size={13} />
+            <span className="pill-label">{t('common:actions.refresh')}</span>
           </button>
-        </div>
         </div>
       </div>
 

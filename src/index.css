@@ -2044,3 +2044,52 @@ html.light .tab-submenu { background: rgba(255, 255, 255, 0.97); }
 
 /* Green badge text on its tinted pill: 5.2:1 (was 4.4:1). */
 html:not(.light) .badge-positive { color: #1fb257; }
+
+/* Small action bubbles (Preventive actions header): an icon that opens to show its name when
+   pointed at or reached with the keyboard. Same height as the status chips beside them. */
+.pill-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 26px;
+  padding: 0 6.5px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: rgba(var(--ov), 0.05);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition:
+    gap 240ms var(--ease-out),
+    padding 240ms var(--ease-out),
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    color 160ms var(--ease-out);
+}
+.pill-action svg { flex-shrink: 0; }
+.pill-action .pill-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 260ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+.pill-action:focus-visible { gap: 6px; padding: 0 10px; }
+.pill-action:focus-visible .pill-label { max-width: 160px; opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .pill-action:hover:not(:disabled) {
+    gap: 6px;
+    padding: 0 10px;
+    color: var(--text-primary);
+    background: rgba(var(--ov), 0.09);
+    border-color: var(--border-strong);
+  }
+  .pill-action:hover:not(:disabled) .pill-label { max-width: 160px; opacity: 1; }
+}
+.pill-action:active:not(:disabled) { transform: scale(0.94); }
+.pill-action:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .pill-action, .pill-action .pill-label { transition: none; }
+}
