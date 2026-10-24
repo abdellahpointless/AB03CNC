@@ -2010,13 +2010,6 @@ html.light .tab-submenu { background: rgba(255, 255, 255, 0.97); }
 }
 .skip-link:focus { transform: none; outline: 2px solid #fff; outline-offset: 2px; }
 
-/* One clear focus ring for every control reached with the keyboard (WCAG 2.4.7). Inputs keep
-   their own blue border + glow. */
-:where(button, a, summary, [tabindex]:not([tabindex='-1']), select:not(.aurora-input)):focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-
 /* Tab bar: names never get cut ("Tool Re", "Part wit"); on a narrow screen the bar scrolls and
    fades at the edge to show there is more. */
 .app-tabs > button { flex-shrink: 0; }
