@@ -185,6 +185,7 @@ const preventive: Translation<typeof en> = {
     pair: '{{h}} mm çifti',
     heights: 'Ölçüye göre çiftler',
     foundAll: 'Tüm paralelleri buldum',
+    foundRest: 'Kalanların hepsini buldum',
     hint: 'Eksik veya hasarlı bildirmek için bir çifte tıklayın. Kutuyu çevirmek için sürükleyin.',
     hintTouch: 'Eksik veya hasarlı bildirmek için bir çifte dokunun.',
     missing: 'Eksik',

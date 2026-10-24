@@ -185,6 +185,7 @@ const preventive = {
     pair: '{{h}} mm pair',
     heights: 'Pairs by height',
     foundAll: 'I found all the cales',
+    foundRest: 'I found all the rest',
     hint: 'Click a pair to report it missing or damaged. Drag to turn the box.',
     hintTouch: 'Tap a pair to report it missing or damaged.',
     missing: 'Missing',

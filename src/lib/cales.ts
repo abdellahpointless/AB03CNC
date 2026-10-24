@@ -38,11 +38,9 @@ export function calesSummary(r: CalesRecord): CalesSummary {
   return { missing, damaged, allGood: !missing.length && !damaged.length && r.verifiedAt !== null, verifiedAt: r.verifiedAt };
 }
 
-/** "I found all the cales": missing pairs are back; damaged ones stay damaged (they are there, but hurt). */
+/** "I found all the cales" / "I found all the rest": every pair not reported missing is there. Reports stay as they are. */
 export function foundAll(r: CalesRecord, now = Date.now()): CalesRecord {
-  const status = { ...r.status };
-  for (const h of CALE_HEIGHTS) if (status[h] === 'missing') status[h] = 'present';
-  return { status, verifiedAt: now };
+  return { ...r, verifiedAt: now };
 }
 
 export function setPair(r: CalesRecord, h: number, s: CaleStatus): CalesRecord {

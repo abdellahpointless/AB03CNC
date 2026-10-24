@@ -2,12 +2,6 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -17,9 +11,9 @@ import { CALE_HEIGHTS, type CaleStatus } from './cales';
  * The cales box in 3D: a dark case with a hinged lid and a foam insert, one pair of aluminium
  * cales per slot (43 mm on the left down to 8 mm on the right), the height engraved on each cale.
  *
- *   present + confirmed  soft green glow
- *   damaged              tool bites, scratches and dents, soft yellow glow
- *   missing              its place shows a dashed red outline with a soft red glow
+ *   present + confirmed  its printed height lights up soft green
+ *   damaged              tool bites, scratches and dents; its height lights up soft yellow
+ *   missing              its place shows a dashed red outline; its height lights up soft red
  *
  * Units are millimetres. Every movement chases its target smoothly, so any animation can be
  * interrupted and redirected from where it is (no jumps).
@@ -73,11 +67,10 @@ export interface Insets {
   left: number;
 }
 
-const COLORS = {
-  green: new THREE.Color('#3ddc84'),
-  yellow: new THREE.Color('#f5c542'),
-  red: new THREE.Color('#ff4d4f'),
-};
+/** Light behind a printed height, by its pair's state (rgb, kept faint: a hint, not a lamp). */
+const LIGHT = { green: '61,220,132', yellow: '245,197,66', red: '255,77,79' } as const;
+type Tone = keyof typeof LIGHT | null;
+const LABEL_PPM = 4;
 
 // ---- Small helpers ----
 
@@ -467,9 +460,9 @@ export class CalesScene {
   private scene = new THREE.Scene();
   private lineScene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
-  private composer: EffectComposer | null = null;
-  private fxaa: ShaderPass | null = null;
-  private passes: Record<'green' | 'yellow' | 'red', OutlinePass> | null = null;
+  private labelCtx: CanvasRenderingContext2D | null = null;
+  private labelTex: THREE.CanvasTexture | null = null;
+  private labelKey = '';
   private controls: OrbitControls | null = null;
   private pmrem: THREE.PMREMGenerator;
   private envTex: THREE.Texture;
@@ -514,7 +507,8 @@ export class CalesScene {
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.shadowMap.autoUpdate = false; // redrawn only when something moves (see frame), not for every glow pass
+    this.renderer.shadowMap.autoUpdate = false; // redrawn only when something moves (see frame)
+    this.renderer.autoClear = false; // the dashed outlines are drawn over the box (see frame)
     this.renderer.shadowMap.needsUpdate = true;
     this.maxAniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
     this.reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -568,7 +562,6 @@ export class CalesScene {
     }
     this.setView(this.fit(opts.startOpen ? VIEW_OPEN : VIEW_CLOSED, this.lidAngle));
 
-    this.setupComposer();
     if (opts.interactive) this.setupInteraction();
   }
 
@@ -676,28 +669,21 @@ export class CalesScene {
     pieces.forEach((p) => p.dispose());
     base.add(insert);
 
-    // The heights printed behind each slot (as on the real box).
+    // The heights printed behind each slot (as on the real box). Each one lights up with its pair's state.
     const stripD = SLOT_Z1 + IN_D / 2;
-    const ppm = 4;
-    const labels = labelTexture(
-      IN_W * ppm,
-      stripD * ppm,
-      (ctx) => {
-        ctx.fillStyle = '#d3dae3';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = `700 ${16 * ppm}px ${FONT}`;
-        CALE_HEIGHTS.forEach((h, i) => ctx.fillText(String(h), (slotX(i) + IN_W / 2) * ppm, stripD * ppm * 0.42));
-      },
-      this.maxAniso,
-    );
+    const cv = makeCanvas(IN_W * LABEL_PPM, stripD * LABEL_PPM);
+    this.labelCtx = cv.getContext('2d')!;
+    this.labelTex = new THREE.CanvasTexture(cv);
+    this.labelTex.colorSpace = THREE.SRGBColorSpace;
+    this.labelTex.anisotropy = this.maxAniso;
+    this.drawLabels(CALE_HEIGHTS.map(() => null));
     const labelMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(IN_W, stripD),
-      new THREE.MeshStandardMaterial({ map: labels, transparent: true, roughness: 0.75, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 }),
+      // Unlit, so a lit number looks the same from any angle and distance.
+      new THREE.MeshBasicMaterial({ map: this.labelTex, transparent: true, toneMapped: false, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
     );
     labelMesh.rotation.x = -Math.PI / 2;
     labelMesh.position.set(0, INSERT_TOP + 0.15, (SLOT_Z1 - IN_D / 2) / 2);
-    labelMesh.receiveShadow = true;
     base.add(labelMesh);
 
     // Hardware: hinges at the back, latches at the front.
@@ -807,23 +793,14 @@ export class CalesScene {
         ghost.userData.h = h;
         hg.add(mesh, ghost);
         group.add(hg);
-        // The dashed outline lives in its own scene, drawn after the glow, following the holder.
+        // The dashed outline lives in its own scene, drawn over the box, following the holder.
         const edges = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(new THREE.BoxGeometry(T, h, L)));
-        const dashMat = new LineMaterial({ color: COLORS.red.getHex(), linewidth: 2.2, dashed: true, dashSize: 5, gapSize: 3.6, transparent: true });
-        const glowMat = new LineMaterial({
-          color: COLORS.red.getHex(),
-          linewidth: 7,
-          transparent: true,
-          opacity: 0.22,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        });
-        this.lineMats.push(dashMat, glowMat);
-        const glow = new LineSegments2(edges, glowMat);
+        const dashMat = new LineMaterial({ color: 0xff4d4f, linewidth: 2.2, dashed: true, dashSize: 5, gapSize: 3.6, transparent: true });
+        this.lineMats.push(dashMat);
         const dash = new LineSegments2(edges, dashMat);
         dash.computeLineDistances();
         const lines = new THREE.Group();
-        lines.add(glow, dash);
+        lines.add(dash);
         lines.matrixAutoUpdate = false;
         lines.visible = false;
         this.lineScene.add(lines);
@@ -832,31 +809,6 @@ export class CalesScene {
       this.scene.add(group);
       this.bundles.push({ h, i, status: 'present', group, holders, pos: group.position.clone(), quat: new THREE.Quaternion(), spread: 0 });
     });
-  }
-
-  private setupComposer() {
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }); // no MSAA: FXAA at the end costs far less
-    const composer = new EffectComposer(this.renderer, target);
-    composer.addPass(new RenderPass(this.scene, this.camera));
-    const make = (color: THREE.Color) => {
-      const p = new OutlinePass(new THREE.Vector2(1, 1), this.scene, this.camera, []);
-      p.visibleEdgeColor.copy(color);
-      p.hiddenEdgeColor.set(0x000000);
-      p.edgeStrength = 2.5;
-      p.edgeGlow = 0.85;
-      p.edgeThickness = 0.8; // drawn at half resolution (see resize), so half the thickness
-      p.enabled = false;
-      composer.addPass(p);
-      return p;
-    };
-    this.passes = { green: make(COLORS.green), yellow: make(COLORS.yellow), red: make(COLORS.red) };
-    const lines = new RenderPass(this.lineScene, this.camera);
-    lines.clear = false;
-    composer.addPass(lines);
-    composer.addPass(new OutputPass());
-    this.fxaa = new ShaderPass(FXAAShader);
-    composer.addPass(this.fxaa);
-    this.composer = composer;
   }
 
   private setupInteraction() {
@@ -995,12 +947,6 @@ export class CalesScene {
     this.renderer.setSize(this.size.w, this.size.h, false);
     this.camera.aspect = this.size.w / this.size.h;
     this.camera.updateProjectionMatrix();
-    this.composer?.setPixelRatio(this.renderer.getPixelRatio());
-    this.composer?.setSize(this.size.w, this.size.h);
-    const pr = this.renderer.getPixelRatio();
-    // The glow is soft anyway: draw it at half resolution.
-    if (this.passes) for (const p of Object.values(this.passes)) p.setSize(Math.round((this.size.w * pr) / 2), Math.round((this.size.h * pr) / 2));
-    this.fxaa?.uniforms.resolution.value.set(1 / (this.size.w * pr), 1 / (this.size.h * pr));
     for (const m of this.lineMats) m.resolution.set(this.size.w, this.size.h);
     this.refit();
   }
@@ -1013,7 +959,7 @@ export class CalesScene {
   }
 
   /**
-   * Draws one tiny frame with every material and glow in use, so the shaders are compiled and the
+   * Draws one tiny frame with every material in use, so the shaders are compiled and the
    * textures sent to the graphics card now (idle time) instead of when the lid opens.
    */
   warmUp() {
@@ -1051,6 +997,7 @@ export class CalesScene {
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setRenderTarget(null);
     this.renderer.shadowMap.needsUpdate = true;
+    this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
     const url = this.canvas.toDataURL('image/webp', 0.92); // PNG where WebP cannot be written
     const box = this.closedBoxRect();
@@ -1097,8 +1044,6 @@ export class CalesScene {
     this.canvas.removeEventListener('pointermove', this.onMove);
     this.canvas.removeEventListener('pointerleave', this.onLeave);
     this.controls?.dispose();
-    this.composer?.dispose();
-    if (this.passes) Object.values(this.passes).forEach((p) => p.dispose());
     const seen = new Set<unknown>();
     const freeMaterial = (mat: THREE.Material) => {
       if (seen.has(mat)) return;
@@ -1324,7 +1269,7 @@ export class CalesScene {
 
     // Pairs: chase their targets. Going up they lift first, coming back they line up first.
     const outlinePhase = Math.floor((t - this.previewStart) / 700) % 2 === 0; // starts on the outline
-    const glow = { green: [] as THREE.Object3D[], yellow: [] as THREE.Object3D[], red: [] as THREE.Object3D[] };
+    const tones: Tone[] = [];
     const restQ = new THREE.Quaternion();
     const tp = new THREE.Vector3();
     for (const b of this.bundles) {
@@ -1362,16 +1307,14 @@ export class CalesScene {
       const previewing = isSel ? this.preview : null;
       let solid = b.status !== 'missing';
       let damagedLook = b.status === 'damaged';
-      let color: keyof typeof glow | null = b.status === 'missing' ? 'red' : b.status === 'damaged' ? 'yellow' : this.verified ? 'green' : null;
-      if (color === 'green' && this.waveStart >= 0 && wave < 0) color = null; // the wave has not reached it yet
       if (previewing === 'missing') {
         solid = !outlinePhase;
-        color = 'red';
       } else if (previewing === 'damaged') {
         solid = true;
         damagedLook = true;
-        color = b.status === 'damaged' ? 'yellow' : null;
       }
+      const shown = previewing ?? b.status; // hovering Missing / Damaged lights the number as it would be
+      tones.push(shown === 'missing' ? 'red' : shown === 'damaged' ? 'yellow' : this.verified ? 'green' : null);
       const look = this.looks(b.h, damagedLook);
       for (const hd of b.holders) {
         if (hd.mesh.geometry !== look.geo) {
@@ -1382,11 +1325,15 @@ export class CalesScene {
         if (hd.mesh.visible !== solid) moving = true;
         hd.mesh.visible = solid;
         hd.lines.visible = !solid;
-        if (color) glow[color].push(solid ? hd.mesh : hd.ghost);
       }
     }
     if (this.waveStart >= 0 && (t - this.waveStart) / 1000 > N * 0.055 + 0.4) this.waveStart = -1;
     if (moving) this.renderer.shadowMap.needsUpdate = true;
+    const key = tones.join();
+    if (tones.length && key !== this.labelKey) {
+      this.labelKey = key;
+      this.drawLabels(tones);
+    }
 
     this.scene.updateMatrixWorld();
     for (const b of this.bundles)
@@ -1395,14 +1342,27 @@ export class CalesScene {
         hd.lines.matrixWorldNeedsUpdate = true;
       }
 
-    if (this.composer && this.passes) {
-      for (const c of ['green', 'yellow', 'red'] as const) {
-        this.passes[c].selectedObjects = glow[c];
-        this.passes[c].enabled = glow[c].length > 0;
-      }
-      this.composer.render(dt);
-    } else {
-      this.renderer.render(this.scene, this.camera);
-    }
+    this.renderer.clear();
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.lineScene, this.camera);
+  }
+
+  /** Redraws the printed heights; a lit one gets its state's colour and a faint halo. */
+  private drawLabels(tones: Tone[]) {
+    const ctx = this.labelCtx!;
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${16 * LABEL_PPM}px ${FONT}`;
+    CALE_HEIGHTS.forEach((h, i) => {
+      const tone = tones[i];
+      ctx.fillStyle = tone ? `rgb(${LIGHT[tone]})` : '#aeb6c1';
+      ctx.shadowColor = tone ? `rgba(${LIGHT[tone]},0.55)` : 'transparent';
+      ctx.shadowBlur = tone ? 5 * LABEL_PPM : 0;
+      ctx.fillText(String(h), (slotX(i) + IN_W / 2) * LABEL_PPM, height * 0.42);
+    });
+    ctx.shadowBlur = 0;
+    this.labelTex!.needsUpdate = true;
   }
 }

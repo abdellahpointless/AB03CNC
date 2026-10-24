@@ -509,7 +509,7 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
                   {canAct ? (
                     <button type="button" className="btn-success text-sm py-2 px-4" onClick={confirmAll}>
                       <CheckCheck size={16} />
-                      <span>{t('cales.foundAll')}</span>
+                      <span>{CALE_HEIGHTS.some((h) => record.status[h] === 'missing') ? t('cales.foundRest') : t('cales.foundAll')}</span>
                     </button>
                   ) : (
                     <span className="badge-warning py-1.5">

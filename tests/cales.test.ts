@@ -19,9 +19,9 @@ describe('cales box', () => {
     expect(s.allGood).toBe(false);
   });
 
-  it('"I found all the cales" brings missing pairs back but keeps damaged ones damaged', () => {
+  it('"I found all the rest" confirms the box and keeps missing and damaged pairs as reported', () => {
     const r = foundAll(setPair(setPair(emptyCales(), 22, 'missing'), 30, 'damaged'), 1000);
-    expect(r.status[22]).toBe('present');
+    expect(r.status[22]).toBe('missing');
     expect(r.status[30]).toBe('damaged');
     expect(r.verifiedAt).toBe(1000);
     expect(calesSummary(r).allGood).toBe(false);
