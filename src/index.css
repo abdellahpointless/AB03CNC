@@ -1179,10 +1179,12 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   flex: 1;
   min-height: 280px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 .machine-viewer-photo {
+  min-height: 0; /* shrinks before it would push the cales box out */
   max-height: 300px;
   max-width: 100%;
   width: auto;
@@ -1198,9 +1200,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
    Glow colours match the 3D scene (green = all there, yellow = damaged, red = missing).
    --------------------------------------------------------------------------- */
 .cales-thumb {
-  position: absolute;
-  right: -6px;
-  bottom: -4px;
+  align-self: flex-end; /* under the machine, on the right: next to it, not over it */
   width: 136px;
   display: flex;
   flex-direction: column;
@@ -1211,7 +1211,6 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   color: inherit;
   cursor: pointer;
   overflow: visible;
-  z-index: 2;
   -webkit-tap-highlight-color: transparent;
 }
 .cales-thumb-art {
@@ -1285,9 +1284,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 .cales-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(3, 6, 12, 0.6);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(3, 6, 12, 0.72); /* no blur: re-blurring the page under a moving 3D view costs frames */
 }
 html.light .cales-backdrop { background: rgba(15, 23, 42, 0.32); }
 .cales-panel {
@@ -1456,7 +1453,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
   will-change: transform;
 }
 @media (max-width: 640px) {
-  .cales-thumb { width: 112px; right: -4px; bottom: -8px; }
+  .cales-thumb { width: 112px; }
   .cales-chips { justify-content: flex-start; }
   .cales-hint { width: 100%; text-align: center; }
 }

@@ -133,6 +133,7 @@ export default function CalesBox({ machine, canAct }: { machine: FleetMachine; c
         const cur = engine.current;
         if (alive.current && cur && !cur.contents) {
           cur.scene.buildContents();
+          cur.scene.warmUp();
           cur.contents = true;
         }
       }, 2500);
@@ -317,13 +318,14 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
       }
       if (!e.contents) {
         e.scene.buildContents();
+        e.scene.warmUp();
         e.contents = true;
       }
       eng.current = e;
       attach(e);
       e.scene.setTheme(docTheme());
       e.scene.setStatuses(record.status, record.verifiedAt !== null);
-      e.scene.start();
+      e.scene.renderStill(); // one frame of the closed box; drawing starts when it shows (below)
       setReady(true);
       // The picture may have aimed at a guess: aim at where the box really is.
       const to = targetRect();
@@ -342,6 +344,7 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
       raf = requestAnimationFrame(() => {
         setStageOn(true);
         setFly((f) => (f ? { ...f, opacity: 0 } : f));
+        eng.current?.scene.start();
         eng.current?.scene.open();
         window.setTimeout(() => !closing.current && setControls(true), reduce ? 0 : 380);
       });

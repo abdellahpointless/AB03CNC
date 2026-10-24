@@ -6,6 +6,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -466,6 +468,7 @@ export class CalesScene {
   private lineScene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private composer: EffectComposer | null = null;
+  private fxaa: ShaderPass | null = null;
   private passes: Record<'green' | 'yellow' | 'red', OutlinePass> | null = null;
   private controls: OrbitControls | null = null;
   private pmrem: THREE.PMREMGenerator;
@@ -506,11 +509,13 @@ export class CalesScene {
     private opts: CalesSceneOptions,
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25)); // every extra pixel costs: smooth turning beats sharpness
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false; // redrawn only when something moves (see frame), not for every glow pass
+    this.renderer.shadowMap.needsUpdate = true;
     this.maxAniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
     this.reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -830,16 +835,16 @@ export class CalesScene {
   }
 
   private setupComposer() {
-    const target = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType });
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }); // no MSAA: FXAA at the end costs far less
     const composer = new EffectComposer(this.renderer, target);
     composer.addPass(new RenderPass(this.scene, this.camera));
     const make = (color: THREE.Color) => {
       const p = new OutlinePass(new THREE.Vector2(1, 1), this.scene, this.camera, []);
       p.visibleEdgeColor.copy(color);
       p.hiddenEdgeColor.set(0x000000);
-      p.edgeStrength = 3;
+      p.edgeStrength = 2.5;
       p.edgeGlow = 0.85;
-      p.edgeThickness = 1.6;
+      p.edgeThickness = 0.8; // drawn at half resolution (see resize), so half the thickness
       p.enabled = false;
       composer.addPass(p);
       return p;
@@ -849,6 +854,8 @@ export class CalesScene {
     lines.clear = false;
     composer.addPass(lines);
     composer.addPass(new OutputPass());
+    this.fxaa = new ShaderPass(FXAAShader);
+    composer.addPass(this.fxaa);
     this.composer = composer;
   }
 
@@ -990,6 +997,10 @@ export class CalesScene {
     this.camera.updateProjectionMatrix();
     this.composer?.setPixelRatio(this.renderer.getPixelRatio());
     this.composer?.setSize(this.size.w, this.size.h);
+    const pr = this.renderer.getPixelRatio();
+    // The glow is soft anyway: draw it at half resolution.
+    if (this.passes) for (const p of Object.values(this.passes)) p.setSize(Math.round((this.size.w * pr) / 2), Math.round((this.size.h * pr) / 2));
+    this.fxaa?.uniforms.resolution.value.set(1 / (this.size.w * pr), 1 / (this.size.h * pr));
     for (const m of this.lineMats) m.resolution.set(this.size.w, this.size.h);
     this.refit();
   }
@@ -998,6 +1009,22 @@ export class CalesScene {
   buildContents() {
     if (!this.bundles.length) this.buildBundles();
     for (const m of this.lineMats) m.resolution.set(this.size.w, this.size.h);
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /**
+   * Draws one tiny frame with every material and glow in use, so the shaders are compiled and the
+   * textures sent to the graphics card now (idle time) instead of when the lid opens.
+   */
+  warmUp() {
+    if (this.bundles.length < 2) return;
+    const keep = { verified: this.verified, status: this.bundles.map((b) => b.status) };
+    this.verified = true;
+    this.bundles[0].status = 'missing';
+    this.bundles[1].status = 'damaged';
+    this.renderStill();
+    this.verified = keep.verified;
+    this.bundles.forEach((b, i) => (b.status = keep.status[i]));
   }
 
   /** Where the closed box is drawn right now, in CSS pixels of the canvas. */
@@ -1023,6 +1050,7 @@ export class CalesScene {
     this.scene.background = null;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.setRenderTarget(null);
+    this.renderer.shadowMap.needsUpdate = true;
     this.renderer.render(this.scene, this.camera);
     const url = this.canvas.toDataURL('image/webp', 0.92); // PNG where WebP cannot be written
     const box = this.closedBoxRect();
@@ -1036,6 +1064,7 @@ export class CalesScene {
     this.camera.aspect = keep.size.w / keep.size.h;
     this.camera.updateProjectionMatrix();
     this.setView(keep.view);
+    this.renderer.shadowMap.needsUpdate = true;
     return { url, box, w, h };
   }
 
@@ -1291,6 +1320,7 @@ export class CalesScene {
       this.applyLid();
       if (p >= 1) this.lidAnim = null;
     }
+    let moving = !!this.lidAnim; // shadows need redrawing only when something moved
 
     // Pairs: chase their targets. Going up they lift first, coming back they line up first.
     const outlinePhase = Math.floor((t - this.previewStart) / 700) % 2 === 0; // starts on the outline
@@ -1321,6 +1351,7 @@ export class CalesScene {
       b.spread += (spread - b.spread) * k(fast || 9);
       b.group.position.copy(b.pos);
       b.group.quaternion.copy(b.quat);
+      if (b.pos.distanceToSquared(tp) > 0.01 || Math.abs(spread - b.spread) > 0.001 || b.quat.angleTo(tq) > 0.001) moving = true;
       const off = T / 2 + PAIR_GAP / 2;
       b.holders.forEach((hd, idx) => {
         const sign = idx === 0 ? -1 : 1;
@@ -1346,13 +1377,16 @@ export class CalesScene {
         if (hd.mesh.geometry !== look.geo) {
           hd.mesh.geometry = look.geo;
           hd.mesh.material = look.mats;
+          moving = true;
         }
+        if (hd.mesh.visible !== solid) moving = true;
         hd.mesh.visible = solid;
         hd.lines.visible = !solid;
         if (color) glow[color].push(solid ? hd.mesh : hd.ghost);
       }
     }
     if (this.waveStart >= 0 && (t - this.waveStart) / 1000 > N * 0.055 + 0.4) this.waveStart = -1;
+    if (moving) this.renderer.shadowMap.needsUpdate = true;
 
     this.scene.updateMatrixWorld();
     for (const b of this.bundles)
