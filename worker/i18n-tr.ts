@@ -152,6 +152,19 @@ registerTurkish(
     'Unknown machine photo': 'Bilinmeyen tezgah fotoğrafı.',
     'The machine name needs at least one letter or digit': 'Tezgah adında en az bir harf veya rakam bulunmalıdır.',
 
+    // ---- routes/cales.ts ----
+    'Unknown cale height': 'Bilinmeyen paralel ölçüsü.',
+    'This pair is not reported missing': 'Bu çift kayıp olarak bildirilmemiş.',
+    'kind must be MISSING, DAMAGED or FOUND': 'Tür MISSING (kayıp), DAMAGED (hasarlı) veya FOUND (bulundu) olmalıdır.',
+    'count must be 1 or 2': 'Adet 1 veya 2 olmalıdır.',
+    'New cales are already requested for this pair, or it is in its place': 'Bu çift için yeni paralel zaten istendi veya çift yerinde.',
+    'Stock must be a whole number from 0 to 9999': 'Stok 0 ile 9999 arasında bir tam sayı olmalıdır.',
+    'decision must be APPROVE or REJECT': 'Karar APPROVE (onayla) veya REJECT (reddet) olmalıdır.',
+    'This request was already decided': 'Bu talep zaten karara bağlandı.',
+    'Out of stock': 'Stokta yok.',
+    'This pair is back in its place, or the request was already decided': 'Bu çift yerine döndü veya talep zaten karara bağlandı.',
+    'Choose a valid period': 'Geçerli bir dönem seçin.',
+
     // ---- routes/tools.ts ----
     'Tool body required': 'Takım verisi eksik.',
     'tools must be a non-empty array (max 100)': 'Takım listesi boş olamaz (en fazla 100 takım).',

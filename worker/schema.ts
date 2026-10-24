@@ -219,6 +219,77 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 5,
     statements: [`ALTER TABLE machine_checks ADD COLUMN stops INTEGER NOT NULL DEFAULT 0`],
   },
+  {
+    // Shift checks: every user does every due check once per period (credibility: each person
+    // confirms for themselves), and the cales box of each machine at the start of every shift.
+    version: 6,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS check_completions (
+        check_id TEXT NOT NULL,
+        machine_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        period_key TEXT NOT NULL,
+        result TEXT NOT NULL CHECK (result IN ('OK', 'PROBLEM')),
+        shift_key TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        PRIMARY KEY (check_id, user_id, period_key)
+      )`,
+      `CREATE INDEX IF NOT EXISTS check_completions_user ON check_completions(user_id, period_key)`,
+      // Only pairs that are not in good shape have a row; count = how many of the pair's 2 cales.
+      `CREATE TABLE IF NOT EXISTS cales_state (
+        machine_id TEXT NOT NULL,
+        height INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('MISSING', 'DAMAGED')),
+        count INTEGER NOT NULL CHECK (count IN (1, 2)),
+        at INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        PRIMARY KEY (machine_id, height)
+      )`,
+      `CREATE TABLE IF NOT EXISTS cales_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        machine_id TEXT NOT NULL,
+        height INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('MISSING', 'DAMAGED', 'FOUND', 'REPLACED')),
+        count INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        shift_key TEXT NOT NULL,
+        at INTEGER NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS cales_events_at ON cales_events(at)`,
+      `CREATE TABLE IF NOT EXISTS cales_checks (
+        machine_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        shift_key TEXT NOT NULL,
+        username TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        PRIMARY KEY (machine_id, user_id, shift_key)
+      )`,
+      // Spare single cales per machine and height. The CHECK makes an approval fail (and roll back)
+      // rather than ever take the stock below zero.
+      `CREATE TABLE IF NOT EXISTS cales_stock (
+        machine_id TEXT NOT NULL,
+        height INTEGER NOT NULL,
+        qty INTEGER NOT NULL DEFAULT 0 CHECK (qty >= 0),
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (machine_id, height)
+      )`,
+      `CREATE TABLE IF NOT EXISTS cales_requests (
+        id TEXT PRIMARY KEY,
+        machine_id TEXT NOT NULL,
+        height INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('MISSING', 'DAMAGED')),
+        count INTEGER NOT NULL CHECK (count IN (1, 2)),
+        requested_by TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'APPROVED', 'REJECTED')),
+        decided_by TEXT,
+        decided_at INTEGER
+      )`,
+      // One open request per pair.
+      `CREATE UNIQUE INDEX IF NOT EXISTS cales_requests_open ON cales_requests(machine_id, height) WHERE status = 'OPEN'`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

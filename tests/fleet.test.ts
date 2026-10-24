@@ -8,17 +8,22 @@ const base: MachineCheck = {
 const at = (s: string) => new Date(s).getTime();
 
 describe('preventive checks', () => {
-  it('a daily check is due until it is done today', () => {
-    const now = at('2026-10-19T10:00:00');
+  // Periods follow the country's clock (Morocco here, UTC+1 in October 2026).
+  it('a daily check is due until it is done today, local time', () => {
+    const now = at('2026-10-19T10:00:00+01:00');
     expect(isDue(base, now)).toBe(true);
-    expect(isDue({ ...base, last_done_at: at('2026-10-18T23:00:00') }, now)).toBe(true);
-    expect(isDue({ ...base, last_done_at: at('2026-10-19T07:30:00') }, now)).toBe(false);
+    expect(isDue({ ...base, last_done_at: at('2026-10-18T23:30:00+01:00') }, now)).toBe(true);
+    expect(isDue({ ...base, last_done_at: at('2026-10-19T00:30:00+01:00') }, now)).toBe(false);
+    expect(isDue({ ...base, last_done_at: at('2026-10-18T23:30:00Z') }, now)).toBe(false); // already the 19th in Casablanca
   });
-  it('weekly / monthly checks use the number of days since they were done', () => {
-    const now = at('2026-10-19T10:00:00');
-    expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: at('2026-10-14T10:00:00') }, now)).toBe(false);
-    expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: at('2026-10-12T09:00:00') }, now)).toBe(true);
-    expect(isDue({ ...base, frequency: 'MONTHLY', last_done_at: at('2026-10-01T10:00:00') }, now)).toBe(false);
+  it('weekly checks are due again from Monday, monthly from the 1st, quarterly from Jan/Apr/Jul/Oct 1st', () => {
+    const now = at('2026-10-19T10:00:00+01:00'); // a Monday
+    expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: at('2026-10-18T20:00:00+01:00') }, now)).toBe(true); // Sunday
+    expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: at('2026-10-19T08:00:00+01:00') }, now)).toBe(false);
+    expect(isDue({ ...base, frequency: 'MONTHLY', last_done_at: at('2026-10-01T09:00:00+01:00') }, now)).toBe(false);
+    expect(isDue({ ...base, frequency: 'MONTHLY', last_done_at: at('2026-09-30T22:00:00+01:00') }, now)).toBe(true);
+    expect(isDue({ ...base, frequency: 'QUARTERLY', last_done_at: at('2026-10-01T09:00:00+01:00') }, now)).toBe(false);
+    expect(isDue({ ...base, frequency: 'QUARTERLY', last_done_at: at('2026-09-15T09:00:00+01:00') }, now)).toBe(true);
   });
   it('a problem makes the machine red even if checks are due', () => {
     const now = at('2026-10-19T10:00:00');

@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { CALE_HEIGHTS, type CaleStatus } from './cales';
+import { CALE_HEIGHTS, type CaleStatus, type CalesState } from './cales';
 
 /*
  * The cales box in 3D: a dark case with a hinged lid and a foam insert, one pair of aluminium
@@ -432,6 +432,8 @@ interface Bundle {
   h: number;
   i: number;
   status: CaleStatus;
+  /** Cales of the pair concerned: with 1, only the second one is missing or damaged. */
+  count: 1 | 2;
   group: THREE.Group;
   holders: [Holder, Holder];
   // smoothed values
@@ -492,6 +494,7 @@ export class CalesScene {
   private selected: number | null = null;
   private hovered: number | null = null;
   private preview: Preview = null;
+  private previewCount: 1 | 2 = 2;
   private previewStart = 0;
   private waveStart = -1;
   private present = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -807,7 +810,7 @@ export class CalesScene {
         return { group: hg, mesh, ghost, lines } as Holder;
       }) as [Holder, Holder];
       this.scene.add(group);
-      this.bundles.push({ h, i, status: 'present', group, holders, pos: group.position.clone(), quat: new THREE.Quaternion(), spread: 0 });
+      this.bundles.push({ h, i, status: 'present', count: 2, group, holders, pos: group.position.clone(), quat: new THREE.Quaternion(), spread: 0 });
     });
   }
 
@@ -868,9 +871,12 @@ export class CalesScene {
 
   // ---- Public API ----
 
-  setStatuses(status: Record<number, CaleStatus>, verified: boolean) {
+  setStatuses(state: CalesState, verified: boolean) {
     this.verified = verified;
-    for (const b of this.bundles) b.status = status[b.h] ?? 'present';
+    for (const b of this.bundles) {
+      b.status = state[b.h]?.status ?? 'present';
+      b.count = state[b.h]?.count ?? 2;
+    }
   }
 
   setSelected(h: number | null) {
@@ -884,9 +890,10 @@ export class CalesScene {
     this.hovered = h;
   }
 
-  setPreview(p: Preview) {
+  setPreview(p: Preview, count: 1 | 2 = 2) {
     if (p !== this.preview) this.previewStart = performance.now();
     this.preview = p;
+    this.previewCount = count;
   }
 
   /** Every pair lights up green, one after the other from left to right. */
@@ -1303,20 +1310,15 @@ export class CalesScene {
         hd.group.position.set(sign * off * (1 - b.spread), sign * (b.h / 2 + 5) * b.spread, 0);
       });
 
-      // What it looks like now.
+      // What it looks like now; hovering Missing / Damaged shows the pair as it would be.
       const previewing = isSel ? this.preview : null;
-      let solid = b.status !== 'missing';
-      let damagedLook = b.status === 'damaged';
-      if (previewing === 'missing') {
-        solid = !outlinePhase;
-      } else if (previewing === 'damaged') {
-        solid = true;
-        damagedLook = true;
-      }
-      const shown = previewing ?? b.status; // hovering Missing / Damaged lights the number as it would be
+      const shown = previewing ?? b.status;
+      const count = previewing ? this.previewCount : b.count;
       tones.push(shown === 'missing' ? 'red' : shown === 'damaged' ? 'yellow' : this.verified ? 'green' : null);
-      const look = this.looks(b.h, damagedLook);
-      for (const hd of b.holders) {
+      for (const [idx, hd] of b.holders.entries()) {
+        const s = count === 2 || idx === 1 ? shown : 'present';
+        const solid = s !== 'missing' || (previewing === 'missing' && !outlinePhase);
+        const look = this.looks(b.h, s === 'damaged');
         if (hd.mesh.geometry !== look.geo) {
           hd.mesh.geometry = look.geo;
           hd.mesh.material = look.mats;

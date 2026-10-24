@@ -19,13 +19,18 @@ import {
   type MachineOwner,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP } from '../lib/motion';
+import { calesOf, type CaleRow } from '../lib/cales';
+import { currentRegion } from '../lib/instance';
+import { shiftOf } from '../lib/shifts';
+import CalesBox from './CalesBox';
 import { useT } from '../i18n';
 import { fmtDuration } from '../i18n/format';
 
 /*
  * The screen a machine's QR code opens on a phone: that machine only, big and simple.
  * What is still to do comes first, each with one big "Done" button; problems are on top in red;
- * finished checks fold away. Nothing else from the app is on this screen.
+ * finished checks fold away. Nothing else from the app is on this screen. Same rules as the app:
+ * everyone does every due check themselves, and the cales box once per shift.
  */
 
 export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string; onOpenApp: () => void }) {
@@ -34,6 +39,14 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
   const { versions, machines, machinesLoaded, features } = useSync();
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
+  /** Checks I did this period; this machine's cales box (state, my check this shift, open requests). */
+  const [mine, setMine] = useState<{ myDone: string[]; cales: CaleRow[]; checked: boolean; requested: number[]; skew: number }>({
+    myDone: [],
+    cales: [],
+    checked: false,
+    requested: [],
+    skew: 0,
+  });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [problemFor, setProblemFor] = useState<string | null>(null); // a check id, or '__machine'
@@ -48,16 +61,24 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
       const res = await fetchMachines();
       setChecks(res.checks.filter((c) => c.machine_id === machineId));
       setOwnerRows(res.owners || []);
+      setMine({
+        myDone: res.myDone,
+        cales: res.cales,
+        checked: res.calesChecked.includes(machineId),
+        requested: res.calesRequests.filter((r) => r.machine_id === machineId).map((r) => r.height),
+        skew: res.serverTime - Date.now(),
+      });
       setError('');
     } catch (err: any) {
       setError(err?.message || t('errors.loadMachines'));
     }
   }, [machineId, t]);
 
-  // Reload when anyone changes something (another phone, a PC).
+  // Reload when anyone changes something (another phone, a PC), and when a new shift starts.
+  const shiftKey = shiftOf(now + mine.skew, currentRegion().timeZone).key;
   useEffect(() => {
     load();
-  }, [load, versions.machines]);
+  }, [load, versions.machines, shiftKey]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60_000);
@@ -74,8 +95,11 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
   const locked = isLockedFor(machineId, user, owners);
   const summary = useMemo(() => machineSummary(checks || [], now), [checks, now]);
   const list = (checks || []).filter((c) => c.kind === 'CHECK');
-  const toDo = list.filter((c) => c.status !== 'PROBLEM' && isDue(c, now));
-  const doneList = list.filter((c) => c.status !== 'PROBLEM' && !isDue(c, now));
+  // Everyone does every check in its period themselves; admins see whether anyone did it.
+  const dueForMe = (c: MachineCheck) => (!locked && user?.role !== 'ADMIN' ? !mine.myDone.includes(c.id) : isDue(c, now));
+  const toDo = list.filter((c) => c.status !== 'PROBLEM' && dueForMe(c));
+  const doneList = list.filter((c) => c.status !== 'PROBLEM' && !dueForMe(c));
+  const calesState = useMemo(() => calesOf(mine.cales, machineId), [mine.cales, machineId]);
   const problems = summary.problems;
   const doneCount = list.length - toDo.length - list.filter((c) => c.status === 'PROBLEM').length;
 
@@ -228,6 +252,13 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
               <motion.span initial={false} animate={{ width: `${list.length ? (doneCount / list.length) * 100 : 0}%` }} transition={SPRING_POP} />
             </div>
           </div>
+        )}
+
+        {/* The cales box, checked once per shift */}
+        {checks && machine && (
+          <section className="phone-row flex justify-center">
+            <CalesBox machine={machine} canAct={!locked} state={calesState} checked={mine.checked} requested={mine.requested} onChanged={load} />
+          </section>
         )}
 
         {/* Open problems */}

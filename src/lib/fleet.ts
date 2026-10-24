@@ -2,6 +2,9 @@ import { api } from './api';
 import i18n from '../i18n';
 import type { MachineBrand, MachineInfo } from '../regions';
 import { brandAccent } from './machines';
+import { currentRegion } from './instance';
+import { periodKey } from './shifts';
+import type { CaleRow, StockRow } from './cales';
 
 export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
 
@@ -94,19 +97,14 @@ export const FREQUENCY_LABEL: Record<Frequency, string> = {
   },
 };
 
-const DAY = 86_400_000;
-const PERIOD_DAYS: Record<Frequency, number> = { DAILY: 1, WEEKLY: 7, MONTHLY: 30, QUARTERLY: 91 };
-
-/** A checklist item is due when it wasn't done in its period (daily = not yet today). */
+/**
+ * A checklist item is due when it was not done in its current calendar period, in the country's time
+ * zone: today, this week (from Monday), this month (from the 1st) or this quarter (Jan/Apr/Jul/Oct).
+ */
 export function isDue(c: MachineCheck, now = Date.now()): boolean {
   if (c.kind !== 'CHECK' || !c.frequency) return false;
-  if (!c.last_done_at) return true;
-  if (c.frequency === 'DAILY') {
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    return c.last_done_at < start.getTime();
-  }
-  return now - c.last_done_at >= PERIOD_DAYS[c.frequency] * DAY;
+  const tz = currentRegion().timeZone;
+  return !c.last_done_at || periodKey(c.frequency, c.last_done_at, tz) !== periodKey(c.frequency, now, tz);
 }
 
 export type MachineState = 'problem' | 'due' | 'ok';
@@ -138,7 +136,24 @@ export interface MachineOwner {
 }
 
 export const fetchMachines = () =>
-  api<{ checks: MachineCheck[]; events: MachineEvent[]; owners?: MachineOwner[]; serverTime: number }>('/machines');
+  api<{
+    checks: MachineCheck[];
+    events: MachineEvent[];
+    owners?: MachineOwner[];
+    serverTime: number;
+    /** Checks I did myself in their current period (everyone does every due check). */
+    myDone: string[];
+    /** Missing / damaged pairs of every cales box. */
+    cales: CaleRow[];
+    /** Machines whose cales box I confirmed this shift. */
+    calesChecked: string[];
+    /** Pairs with new cales asked for (open requests). */
+    calesRequests: { machine_id: string; height: number }[];
+  }>('/machines');
+
+export type RequiredItem = { kind: 'CHECK'; machineId: string; id: string; title: string } | { kind: 'CALES'; machineId: string };
+/** What I must do before using the rest of the app (nothing for admins). */
+export const fetchRequired = () => api<{ locked: boolean; items: RequiredItem[]; shift: { n: 1 | 2 | 3; key: string } }>('/machines/required');
 
 export const setOwners = (machine: string, userIds: string[]) =>
   api(`/machines/${encodeURIComponent(machine)}/owners`, { method: 'PUT', body: { userIds } });
@@ -173,6 +188,41 @@ export const updateCheck = (machine: string, id: string, patch: { title?: string
 
 export const deleteCheck = (machine: string, id: string) =>
   api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+const cales = (machine: string, what: string, body?: unknown) => api(`/machines/${encodeURIComponent(machine)}/cales/${what}`, { method: 'POST', body });
+/** A pair (or one cale of it) is missing or damaged, or a missing pair turned up again. */
+export const reportCales = (machine: string, height: number, kind: 'MISSING' | 'DAMAGED' | 'FOUND', count: 1 | 2 = 2) => cales(machine, 'report', { height, kind, count });
+/** "I found all the cales / all the rest", for this shift. */
+export const confirmCales = (machine: string) => cales(machine, 'confirm');
+/** Ask for new cales for a missing or damaged pair. */
+export const requestCales = (machine: string, height: number) => cales(machine, 'request', { height });
+
+export interface CaleRequest {
+  id: string;
+  machine_id: string;
+  height: number;
+  kind: 'MISSING' | 'DAMAGED';
+  count: number;
+  requested_by: string;
+  at: number;
+}
+export interface CaleEvent {
+  machine_id: string;
+  height: number;
+  kind: 'MISSING' | 'DAMAGED' | 'FOUND' | 'REPLACED';
+  count: number;
+  username: string;
+  shift_key: string;
+  at: number;
+}
+/** Admin: spare stock, open requests and the state of every box. */
+export const fetchCalesStock = () => api<{ stock: StockRow[]; requests: CaleRequest[]; state: CaleRow[] }>('/machines/cales/stock');
+export const setCalesStock = (machine: string, height: number, qty: number) =>
+  api(`/machines/cales/stock/${encodeURIComponent(machine)}/${height}`, { method: 'PUT', body: { qty } });
+export const decideCales = (id: string, decision: 'APPROVE' | 'REJECT') =>
+  api(`/machines/cales/requests/${encodeURIComponent(id)}`, { method: 'POST', body: { decision } });
+/** Every cales report from `from` to `to` (ms, end excluded). */
+export const fetchCalesLog = (from: number, to: number) => api<{ events: CaleEvent[] }>(`/machines/cales/log?from=${from}&to=${to}`);
 
 /** "3 min ago" / "3 dk önce": the localised version in src/i18n/format.ts. */
 export { timeAgo } from '../i18n/format';

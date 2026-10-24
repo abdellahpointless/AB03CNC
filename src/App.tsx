@@ -12,6 +12,7 @@ import UserManagement from './components/UserManagement';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
 import PreventiveActions from './components/PreventiveActions';
+import CalesStock from './components/CalesStock';
 import TabSubMenu from './components/TabSubMenu';
 import PhoneCheck from './components/PhoneCheck';
 import { leavePhoneCheck, scannedMachine } from './lib/phoneCheck';
@@ -23,7 +24,8 @@ import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { fetchRequired, type RequiredItem } from './lib/fleet';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
@@ -77,8 +79,36 @@ function Workspace() {
   const { t } = useT('app');
   const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
-  const { refreshNow, connection, features } = useSync();
+  const { refreshNow, connection, features, versions, machines } = useSync();
   const [activeTab, setActiveTab] = useState<Tab>('REMAP');
+
+  // Workflow gate, not a security boundary: the server says what is left for me (GET /machines/required)
+  // but does not block its other routes. Until someone who looks after a machine has done their checks
+  // and this shift's cales box, only Preventive actions is shown. Admins are never locked; a failed
+  // request never locks anyone.
+  const [required, setRequired] = useState<RequiredItem[]>([]);
+  const locked = features.preventive && required.length > 0;
+  useEffect(() => {
+    if (!features.preventive || user.role === 'ADMIN') return setRequired([]);
+    let alive = true;
+    const ask = () => fetchRequired().then((r) => alive && setRequired(r.locked ? r.items : []), () => undefined);
+    ask();
+    const id = window.setInterval(ask, 60_000); // a new shift or period starts by the clock
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [features.preventive, user.role, versions.machines]);
+  useEffect(() => {
+    if (locked && activeTab !== 'PREVENTIVE') setActiveTab('PREVENTIVE');
+  }, [locked, activeTab]);
+  const left = new Map<string, { checks: number; cales: boolean }>();
+  for (const i of required) {
+    const m = left.get(i.machineId) ?? { checks: 0, cales: false };
+    if (i.kind === 'CHECK') m.checks++;
+    else m.cales = true;
+    left.set(i.machineId, m);
+  }
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
     if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && activeTab === 'PREVENTIVE')) {
@@ -336,6 +366,22 @@ function Workspace() {
 
       {/* Tab Bar: Pill-shaped Glass Container (Section 8: Tabs) */}
       <div className="px-4 sm:px-6 pt-2.5 sm:pt-3 relative z-10">
+        {locked ? (
+          <div role="status" className="glass-panel rounded-[var(--radius-lg)] px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+            <span className="flex items-center gap-2 font-semibold text-[var(--orange-500)]">
+              <Lock size={15} /> {t('lock.title')}
+            </span>
+            <span className="text-[var(--text-secondary)]">{t('lock.help')}</span>
+            <span className="flex flex-wrap gap-1.5">
+              {[...left].map(([id, l]) => (
+                <span key={id} className="badge-warning">
+                  {machines.find((m) => m.id === id)?.name ?? id}:{' '}
+                  {[l.checks ? t('lock.checks', { count: l.checks }) : '', l.cales ? t('lock.cales') : ''].filter(Boolean).join(' · ')}
+                </span>
+              ))}
+            </span>
+          </div>
+        ) : (
         <nav aria-label={t('common:a11y.mainNav')} className="app-tabs glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
           {/* Tab 1: Tool Inventory */}
           <button
@@ -493,6 +539,7 @@ function Workspace() {
             </button>
           )}
         </nav>
+        )}
         {canReview && (
           <TabSubMenu
             anchor={partTabRef.current}
@@ -604,6 +651,11 @@ function Workspace() {
                 <div className="w-full">
                   <MachineManager />
                 </div>
+                {features.preventive && (
+                  <div className="w-full">
+                    <CalesStock />
+                  </div>
+                )}
                 {currentRegion().id === 'ma' && (
                   <div className="w-full">
                     <MasterAccountCard />

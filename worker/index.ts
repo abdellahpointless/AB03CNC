@@ -69,9 +69,19 @@ import {
   handleDeleteCheck,
   handleListMachines,
   handleReportIssue,
+  handleRequired,
   handleSetOwners,
   handleUpdateCheck,
 } from './routes/machines';
+import {
+  handleCalesConfirm,
+  handleCalesDecide,
+  handleCalesLog,
+  handleCalesReport,
+  handleCalesRequest,
+  handleCalesSetStock,
+  handleCalesStock,
+} from './routes/cales';
 import {
   handleImportCode,
   handleImportHistory,
@@ -151,6 +161,14 @@ route('GET', '/parts/admin-export', 'admin', handleAdminExport);
 
 // Preventive actions (machines)
 route('GET', '/machines', 'user', handleListMachines);
+route('GET', '/machines/required', 'user', handleRequired);
+route('GET', '/machines/cales/stock', 'admin', handleCalesStock);
+route('GET', '/machines/cales/log', 'admin', handleCalesLog);
+route('PUT', '/machines/cales/stock/:machine/:height', 'admin', handleCalesSetStock);
+route('POST', '/machines/cales/requests/:id', 'admin', handleCalesDecide);
+route('POST', '/machines/:machine/cales/report', 'user', handleCalesReport);
+route('POST', '/machines/:machine/cales/confirm', 'user', handleCalesConfirm);
+route('POST', '/machines/:machine/cales/request', 'user', handleCalesRequest);
 route('POST', '/machines/:machine/issues', 'user', handleReportIssue);
 route('POST', '/machines/:machine/checks/:id/action', 'user', handleCheckAction);
 route('POST', '/machines/:machine/checks', 'admin', handleCreateCheck);

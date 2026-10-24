@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCheck, CircleDashed, Hammer, Lock, Undo2, X } from 'lucide-react';
-import { CALE_HEIGHTS, calesSummary, foundAll, loadCales, saveCales, setPair, type CaleStatus, type CalesRecord } from '../lib/cales';
+import { CheckCheck, CircleDashed, Hammer, Lock, PackageCheck, PackagePlus, Undo2, X } from 'lucide-react';
+import { CALE_HEIGHTS, calesSummary, statusOf, type CalesState } from '../lib/cales';
 import type { CalesScene, Preview, Rect, Theme } from '../lib/calesScene';
-import type { FleetMachine } from '../lib/fleet';
-import { timeAgo } from '../i18n/format';
+import { confirmCales, reportCales, requestCales, type FleetMachine } from '../lib/fleet';
+import { errorMessage } from '../lib/api';
 import i18n, { useT } from '../i18n';
 import { EASE_OUT, SPRING_POP } from '../lib/motion';
 
@@ -13,6 +13,7 @@ import { EASE_OUT, SPRING_POP } from '../lib/motion';
  * The cales box of a machine: a small closed box next to the machine's photo. Pressing it makes the
  * box grow into a large 3D view where the lid opens on the cales (see lib/calesScene). There the
  * person confirms that every pair is there, or picks a pair and reports it missing or damaged.
+ * The state is the server's, shared by everyone on the machine; each press is saved there at once.
  *
  * The 3D part (three.js) is loaded only when a machine is opened, and built while nobody is
  * looking (idle time), so pressing the box starts moving at once.
@@ -55,24 +56,36 @@ function whenIdle(fn: () => void, timeout: number): () => void {
   return () => window.clearTimeout(id);
 }
 
-function useSummaryText(record: CalesRecord) {
+/** "2 pairs missing", "All there"... `checked`: I confirmed the box this shift. */
+function useSummaryText(state: CalesState, checked: boolean, canAct: boolean) {
   const { t } = useT('preventive');
-  const s = calesSummary(record);
-  const tone = s.missing.length ? 'bad' : s.damaged.length ? 'warn' : s.verifiedAt ? 'ok' : 'todo';
+  const s = calesSummary(state);
+  const tone = s.missing.length ? 'bad' : s.damaged.length ? 'warn' : checked ? 'ok' : 'todo';
   const problems = [
     s.missing.length ? t('cales.nMissing', { count: s.missing.length }) : '',
     s.damaged.length ? t('cales.nDamaged', { count: s.damaged.length }) : '',
   ].filter(Boolean);
-  const text = problems.length ? problems.join(' · ') : s.verifiedAt ? t('cales.allThere') : t('cales.notChecked');
-  const checked = s.verifiedAt ? t('cales.checked', { time: timeAgo(s.verifiedAt) }) : '';
-  return { tone, text, checked };
+  const text = problems.length ? problems.join(' · ') : !canAct ? t('cales.nothingReported') : checked ? t('cales.allThere') : t('cales.notChecked');
+  return { tone, text, checked: checked && problems.length ? t('cales.checked') : '' };
 }
 
-export default function CalesBox({ machine, canAct }: { machine: FleetMachine; canAct: boolean }) {
+interface BoxProps {
+  machine: FleetMachine;
+  canAct: boolean;
+  /** Missing / damaged pairs of this box. */
+  state: CalesState;
+  /** I confirmed this box this shift. */
+  checked: boolean;
+  /** Heights with new cales asked for. */
+  requested: number[];
+  /** Something was saved: reload. */
+  onChanged: () => Promise<unknown> | void;
+}
+
+export default function CalesBox({ machine, canAct, state, checked: checkedByMe, requested, onChanged }: BoxProps) {
   const { t } = useT('preventive');
   const theme = useDocTheme();
   const picKey = `${machine.name}|${theme}|${i18n.language}`;
-  const [record, setRecordState] = useState<CalesRecord>(() => loadCales(machine.id));
   const [pic, setPic] = useState<Pic | null>(() => pictures.get(picKey) ?? null);
   const [open, setOpen] = useState(false);
   const thumbRef = useRef<HTMLButtonElement>(null);
@@ -81,15 +94,7 @@ export default function CalesBox({ machine, canAct }: { machine: FleetMachine; c
   const pending = useRef<Promise<Engine | null> | null>(null);
   const alive = useRef(true);
   const events = useRef<Events>({ pick: () => {}, hover: () => {} });
-  const { tone, text, checked } = useSummaryText(record);
-
-  const setRecord = useCallback(
-    (r: CalesRecord) => {
-      setRecordState(r);
-      saveCales(machine.id, r);
-    },
-    [machine.id],
-  );
+  const { tone, text, checked } = useSummaryText(state, checkedByMe, canAct);
 
   /** The 3D scene, created once (its code is only downloaded now). Null when 3D is not available. */
   const getEngine = useCallback((): Promise<Engine | null> => {
@@ -192,8 +197,10 @@ export default function CalesBox({ machine, canAct }: { machine: FleetMachine; c
           <CalesViewer
             machine={machine}
             canAct={canAct}
-            record={record}
-            onChange={setRecord}
+            state={state}
+            checked={checkedByMe}
+            requested={requested}
+            onChanged={onChanged}
             pic={pic}
             warm={engine.current}
             getEngine={getEngine}
@@ -219,8 +226,10 @@ export default function CalesBox({ machine, canAct }: { machine: FleetMachine; c
 interface ViewerProps {
   machine: FleetMachine;
   canAct: boolean;
-  record: CalesRecord;
-  onChange: (r: CalesRecord) => void;
+  state: CalesState;
+  checked: boolean;
+  requested: number[];
+  onChanged: BoxProps['onChanged'];
   pic: Pic | null;
   /** The scene if it is already built. */
   warm: Engine | null;
@@ -235,7 +244,7 @@ interface ViewerProps {
 
 const FLY = { type: 'spring', duration: 0.6, bounce: 0 } as const;
 
-function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, events, anchor, tone, summary, onClosed }: ViewerProps) {
+function CalesViewer({ machine, canAct, state, checked, requested, onChanged, pic, warm, getEngine, events, anchor, tone, summary, onClosed }: ViewerProps) {
   const { t } = useT('preventive');
   const stageRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
@@ -254,6 +263,10 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
   const [selected, setSelected] = useState<number | null>(null);
   const [hoverH, setHoverH] = useState<number | null>(null);
   const [preview, setPreview] = useState<Preview>(null);
+  /** How many cales of the picked pair a report is about. */
+  const [count, setCount] = useState<1 | 2>(2);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   /** The picture of the box flying between the page and the big view. */
   const [fly, setFly] = useState<{ from: Rect | null; to: Rect; opacity: number } | null>(null);
   const trip = useRef<'in' | 'out'>('in');
@@ -324,7 +337,7 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
       eng.current = e;
       attach(e);
       e.scene.setTheme(docTheme());
-      e.scene.setStatuses(record.status, record.verifiedAt !== null);
+      e.scene.setStatuses(state, checked);
       e.scene.renderStill(); // one frame of the closed box; drawing starts when it shows (below)
       setReady(true);
       // The picture may have aimed at a guess: aim at where the box really is.
@@ -354,15 +367,17 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
 
   // Keep the scene in step.
   useEffect(() => {
-    eng.current?.scene.setStatuses(record.status, record.verifiedAt !== null);
-  }, [record, ready]);
+    eng.current?.scene.setStatuses(state, checked);
+  }, [state, checked, ready]);
   useEffect(() => {
     eng.current?.scene.setSelected(selected);
     setPreview(null);
+    setCount(2);
+    setError('');
   }, [selected, ready]);
   useEffect(() => {
-    eng.current?.scene.setPreview(preview);
-  }, [preview, ready]);
+    eng.current?.scene.setPreview(preview, count);
+  }, [preview, count, ready]);
 
   // Clicks in the 3D view.
   useEffect(() => {
@@ -424,17 +439,39 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
     return () => window.removeEventListener('keydown', onKey, true);
   }, [close]);
 
-  const mark = (s: CaleStatus) => {
-    if (selected === null) return;
-    onChange(setPair(record, selected, s));
-    setSelected(null); // it goes back into its place, showing what was reported
+  /** Saves on the server and reloads; `after` runs once it is saved. */
+  const run = async (fn: () => Promise<unknown>, after: () => void) => {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+      await onChanged();
+      after();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const confirmAll = () => {
-    onChange(foundAll(record));
-    setSelected(null);
-    eng.current?.scene.celebrate();
+  const mark = (kind: 'MISSING' | 'DAMAGED' | 'FOUND') => {
+    const h = selected;
+    if (h !== null) void run(() => reportCales(machine.id, h, kind, count), () => setSelected(null)); // back into its place, showing what was reported
   };
+
+  const request = () => {
+    const h = selected;
+    if (h !== null) void run(() => requestCales(machine.id, h), () => {});
+  };
+
+  const confirmAll = () =>
+    void run(
+      () => confirmCales(machine.id),
+      () => {
+        setSelected(null);
+        eng.current?.scene.celebrate();
+      },
+    );
 
   const hoverChip = (h: number | null) => {
     setHoverH(h);
@@ -449,7 +486,8 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
     onBlur: () => setPreview(null),
   });
 
-  const status: CaleStatus | null = selected === null ? null : record.status[selected] ?? 'present';
+  const status = selected === null ? null : statusOf(state, selected);
+  const pair = selected === null ? undefined : state[selected];
   const flyState = fly && { x: fly.to.x, y: fly.to.y, scale: fly.to.w / (pic?.w || 1), opacity: fly.opacity };
 
   return (
@@ -495,6 +533,11 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
           transition={SPRING_POP}
           style={{ pointerEvents: controls ? undefined : 'none' }}
         >
+          {error && (
+            <div role="alert" className="badge-danger self-center py-1.5 text-xs">
+              {error}
+            </div>
+          )}
           <div className="cales-actions">
             <AnimatePresence mode="popLayout" initial={false}>
               {selected === null || status === null ? (
@@ -507,9 +550,9 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
                   transition={SPRING_POP}
                 >
                   {canAct ? (
-                    <button type="button" className="btn-success text-sm py-2 px-4" onClick={confirmAll}>
+                    <button type="button" className="btn-success text-sm py-2 px-4" disabled={busy} onClick={confirmAll}>
                       <CheckCheck size={16} />
-                      <span>{CALE_HEIGHTS.some((h) => record.status[h] === 'missing') ? t('cales.foundRest') : t('cales.foundAll')}</span>
+                      <span>{CALE_HEIGHTS.some((h) => statusOf(state, h) === 'missing') ? t('cales.foundRest') : t('cales.foundAll')}</span>
                     </button>
                   ) : (
                     <span className="badge-warning py-1.5">
@@ -529,30 +572,47 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
                 >
                   <span className="cales-pair-title">
                     <b>{t('cales.pair', { h: selected })}</b>
-                    <span className={`cales-state s-${status}`}>{t(`cales.state.${status}`)}</span>
+                    <span className={`cales-state s-${status}`}>
+                      {t(`cales.state.${status}`)}
+                      {pair?.count === 1 && ` · ${t('cales.oneOfTwo')}`}
+                    </span>
                   </span>
+                  {canAct && (
+                    <span className="inline-flex gap-1" role="group" aria-label={t('cales.howMany')}>
+                      {([2, 1] as const).map((n) => (
+                        <button key={n} type="button" className={`cales-chip no-glass ${count === n ? 'on' : ''}`} aria-pressed={count === n} onClick={() => setCount(n)}>
+                          {n === 2 ? t('cales.both') : t('cales.one')}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                   {canAct && status === 'missing' && (
-                    <button type="button" className="btn-success text-sm py-2 px-4" onClick={() => mark('present')}>
+                    <button type="button" className="btn-success text-sm py-2 px-4" disabled={busy} onClick={() => mark('FOUND')}>
                       <Undo2 size={15} />
                       <span>{t('cales.foundIt')}</span>
                     </button>
                   )}
                   {canAct && status !== 'missing' && (
-                    <button type="button" className="btn-danger text-sm py-2 px-4" onClick={() => mark('missing')} {...previewOn('missing')}>
+                    <button type="button" className="btn-danger text-sm py-2 px-4" disabled={busy} onClick={() => mark('MISSING')} {...previewOn('missing')}>
                       <CircleDashed size={15} />
                       <span>{t('cales.missing')}</span>
                     </button>
                   )}
                   {canAct && status !== 'damaged' && (
-                    <button type="button" className="btn-warning text-sm py-2 px-4" onClick={() => mark('damaged')} {...previewOn('damaged')}>
+                    <button type="button" className="btn-warning text-sm py-2 px-4" disabled={busy} onClick={() => mark('DAMAGED')} {...previewOn('damaged')}>
                       <Hammer size={15} />
                       <span>{t('cales.damaged')}</span>
                     </button>
                   )}
-                  {canAct && status === 'damaged' && (
-                    <button type="button" className="btn-success text-sm py-2 px-4" onClick={() => mark('present')}>
-                      <Undo2 size={15} />
-                      <span>{t('cales.replaced')}</span>
+                  {pair && requested.includes(selected) && (
+                    <span className="badge-neutral py-1.5">
+                      <PackageCheck size={13} /> {t('cales.requested')}
+                    </span>
+                  )}
+                  {pair && canAct && !requested.includes(selected) && (
+                    <button type="button" className="btn-secondary text-sm py-2 px-4" disabled={busy} onClick={request}>
+                      <PackagePlus size={15} />
+                      <span>{t('cales.request', { count: pair.count })}</span>
                     </button>
                   )}
                   <button type="button" className="btn-secondary text-sm py-2 px-4" onClick={() => setSelected(null)}>
@@ -564,8 +624,8 @@ function CalesViewer({ machine, canAct, record, onChange, pic, warm, getEngine, 
           </div>
           <div className="cales-chips" role="group" aria-label={t('cales.heights')}>
             {CALE_HEIGHTS.map((h) => {
-              const s = record.status[h] ?? 'present';
-              const ok = s === 'present' && record.verifiedAt !== null;
+              const s = statusOf(state, h);
+              const ok = s === 'present' && checked;
               return (
                 <button
                   key={h}

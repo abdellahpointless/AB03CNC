@@ -11,6 +11,14 @@ const app = {
     signOut: 'Sign Out',
   },
 
+  lock: {
+    title: 'Do your checks first',
+    help: "The rest of the app opens once your machines' checks and this shift's cales box are done.",
+    checks_one: '{{count}} check',
+    checks_other: '{{count}} checks',
+    cales: 'cales box',
+  },
+
   banners: {
     weakPassword:
       'Your password no longer meets the security rules (at least {{min}} characters, not a common password). The app is reachable from the internet, so please choose a stronger one.',

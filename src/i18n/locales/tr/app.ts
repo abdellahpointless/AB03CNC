@@ -14,6 +14,14 @@ const app: Translation<typeof en> = {
     signOut: 'Çıkış yap',
   },
 
+  lock: {
+    title: 'Önce kontrollerinizi yapın',
+    help: 'Tezgahlarınızın kontrolleri ve bu vardiyanın paralel kutusu bitince uygulamanın geri kalanı açılır.',
+    checks_one: '{{count}} kontrol',
+    checks_other: '{{count}} kontrol',
+    cales: 'paralel kutusu',
+  },
+
   banners: {
     weakPassword:
       'Şifreniz artık güvenlik kurallarını karşılamıyor (en az {{min}} karakter, yaygın bir şifre olmamalı). Uygulamaya internetten erişilebildiği için lütfen daha güçlü bir şifre seçin.',

@@ -49,9 +49,15 @@ import {
   updateCheck,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
+import { calesOf, type CalesState } from '../lib/cales';
+import { currentRegion } from '../lib/instance';
+import { periodKey, shiftOf } from '../lib/shifts';
 import i18n, { useT } from '../i18n';
 
 type Summary = ReturnType<typeof machineSummary>;
+type Loaded = Awaited<ReturnType<typeof fetchMachines>>;
+/** My own part of the data (checks I did this period, boxes I confirmed this shift) and the cales boxes. */
+type Mine = Pick<Loaded, 'myDone' | 'cales' | 'calesChecked' | 'calesRequests'> & { skew: number };
 
 /** Translation key of what a person did ("marked done", "reported a problem", ...). */
 const actionKey = (action: MachineEvent['action']) => `events.${action}` as const;
@@ -75,6 +81,7 @@ export default function PreventiveActions() {
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
+  const [mine, setMine] = useState<Mine>({ myDone: [], cales: [], calesChecked: [], calesRequests: [], skew: 0 });
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<{ id: string; above: boolean } | null>(null);
@@ -86,16 +93,19 @@ export default function PreventiveActions() {
       setChecks(res.checks);
       setEvents(res.events);
       setOwnerRows(res.owners || []);
+      setMine({ myDone: res.myDone, cales: res.cales, calesChecked: res.calesChecked, calesRequests: res.calesRequests, skew: res.serverTime - Date.now() });
       setLoadError('');
     } catch (err: any) {
       setLoadError(err?.message || i18n.t('preventive:errors.loadMachines'));
     }
   }, []);
 
-  // Reload whenever any PC changes something (versions.machines is bumped by the server).
+  // Reload whenever any PC changes something (versions.machines is bumped by the server), and when a
+  // new shift starts (by the server's clock): what is mine to do starts again.
+  const shiftKey = shiftOf(now + mine.skew, currentRegion().timeZone).key;
   useEffect(() => {
     load();
-  }, [load, versions.machines]);
+  }, [load, versions.machines, shiftKey]);
 
   // "Due" depends on the clock (a daily check becomes due again at midnight).
   useEffect(() => {
@@ -226,12 +236,16 @@ export default function PreventiveActions() {
                 key={selectedMachine.id}
                 machine={selectedMachine}
                 checks={byMachine.get(selectedMachine.id) || []}
-                events={events.filter((e) => e.machine_id === selectedMachine.id).slice(0, 15)}
+                events={events.filter((e) => e.machine_id === selectedMachine.id)}
                 summary={summaries.get(selectedMachine.id)!}
                 isAdmin={isAdmin}
                 owners={ownersOf(selectedMachine.id)}
                 locked={isLockedFor(selectedMachine.id, user, owners)}
                 now={now}
+                myDone={mine.myDone}
+                cales={calesOf(mine.cales, selectedMachine.id)}
+                calesChecked={mine.calesChecked.includes(selectedMachine.id)}
+                calesRequested={mine.calesRequests.filter((r) => r.machine_id === selectedMachine.id).map((r) => r.height)}
                 onChanged={load}
                 onClose={() => setSelected(null)}
               />
@@ -489,17 +503,29 @@ function MachineSheet({
   owners,
   locked,
   now,
+  myDone,
+  cales,
+  calesChecked,
+  calesRequested,
   onChanged,
   onClose,
 }: {
   machine: FleetMachine;
   checks: MachineCheck[];
+  /** This machine's events, newest first. */
   events: MachineEvent[];
   summary: Summary;
   isAdmin: boolean;
   owners: MachineOwner[];
   locked: boolean;
   now: number;
+  /** Checks I did myself in their current period. */
+  myDone: string[];
+  cales: CalesState;
+  /** I confirmed the cales box this shift. */
+  calesChecked: boolean;
+  /** Heights with new cales asked for. */
+  calesRequested: number[];
   onChanged: () => Promise<void>;
   onClose: () => void;
 }) {
@@ -518,6 +544,19 @@ function MachineSheet({
   const [allUsers, setAllUsers] = useState<{ id: string; username: string; role: string }[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const canAct = !locked;
+  /** Everyone does every check in its period themselves; admins see whether anyone did it. */
+  const dueFor = (c: MachineCheck) =>
+    c.kind === 'CHECK' && !!c.frequency && c.status !== 'PROBLEM' && (canAct && !isAdmin ? !myDone.includes(c.id) : isDue(c, now));
+  const toDo = checks.filter(dueFor).length;
+  const tz = currentRegion().timeZone;
+  /** Who said this check was OK in the same period, before this problem was reported. */
+  const saidOk = (e: MachineEvent, i: number) => {
+    const f = e.action === 'PROBLEM' && e.check_id ? checks.find((c) => c.id === e.check_id)?.frequency : null;
+    if (!f) return null;
+    const p = periodKey(f, e.at, tz);
+    // shortcut: only the events loaded (the latest 300 of all machines), enough for a day of checks.
+    return events.slice(i + 1).find((o) => o.check_id === e.check_id && o.action === 'DONE' && o.username !== e.username && periodKey(f, o.at, tz) === p)?.username ?? null;
+  };
 
   const openPicker = async () => {
     setPicked(new Set(owners.map((o) => o.user_id)));
@@ -665,7 +704,7 @@ function MachineSheet({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
             />
-            <CalesBox machine={machine} canAct={canAct} />
+            <CalesBox machine={machine} canAct={canAct} state={cales} checked={calesChecked} requested={calesRequested} onChanged={onChanged} />
           </div>
           <div className="self-stretch space-y-2">
             {summary.down && (
@@ -675,16 +714,16 @@ function MachineSheet({
             )}
             <div
               className={`w-full justify-center py-2 text-xs ${
-                summary.state === 'problem' ? 'badge-danger' : summary.state === 'due' ? 'badge-warning' : 'badge-positive'
+                summary.state === 'problem' ? 'badge-danger' : toDo ? 'badge-warning' : 'badge-positive'
               }`}
             >
               {summary.state === 'problem' ? (
                 <>
                   <AlertTriangle size={14} /> {t('status.openProblems', { count: summary.problems.length })}
                 </>
-              ) : summary.state === 'due' ? (
+              ) : toDo ? (
                 <>
-                  <Clock size={14} /> {t('status.checksToDo', { count: summary.due.length })}
+                  <Clock size={14} /> {t('status.checksToDo', { count: toDo })}
                 </>
               ) : (
                 <>
@@ -851,7 +890,7 @@ function MachineSheet({
             <section key={g.f} className="space-y-2">
               <div className="section-label">{FREQUENCY_LABEL[g.f]}</div>
               {g.items.map((c, i) => {
-                const due = c.status !== 'PROBLEM' && isDue(c, now);
+                const due = dueFor(c);
                 const st = c.status === 'PROBLEM' ? 'problem' : due ? 'due' : 'ok';
                 return (
                   <motion.div
@@ -903,7 +942,7 @@ function MachineSheet({
                           ) : (
                             <div className={`text-[11px] ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
                               {c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
-                              {st === 'due' && c.last_done_at ? ` · ${t('check.dueAgain')}` : ''}
+                              {st === 'due' && c.last_done_at ? ` · ${isDue(c, now) ? t('check.dueAgain') : t('check.youToo')}` : ''}
                             </div>
                           )}
                         </div>
@@ -1017,8 +1056,10 @@ function MachineSheet({
               <div className="text-xs text-[var(--text-tertiary)]">{t('history.empty')}</div>
             ) : (
               <div className="space-y-1">
-                {events.map((e) => (
-                  <div key={e.id} className="flex items-start gap-2 text-xs">
+                {events.slice(0, 15).map((e, i) => {
+                  const ok = saidOk(e, i);
+                  return (
+                  <div key={e.id} className={`flex items-start gap-2 text-xs ${ok ? 'history-clash' : ''}`}>
                     <span
                       className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${
                         e.action === 'PROBLEM' ? 'bg-[var(--rose-500)]' : e.action === 'DONE' || e.action === 'RESOLVE' ? 'bg-[var(--green-500)]' : 'bg-[var(--text-tertiary)]'
@@ -1028,10 +1069,16 @@ function MachineSheet({
                       <b className="text-[var(--text-primary)]">{e.username}</b> {t(actionKey(e.action))}
                       {e.check_title && e.action !== 'PROBLEM' ? ` "${e.check_title}"` : ''}
                       {e.note ? `: ${e.note}` : ''}
+                      {ok && (
+                        <span className="history-clash-note">
+                          <AlertTriangle size={11} /> {t('history.saidOk', { user: ok })}
+                        </span>
+                      )}
                     </span>
                     <span className="text-[var(--text-tertiary)] shrink-0">{timeAgo(e.at, now)}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

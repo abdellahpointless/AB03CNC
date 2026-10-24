@@ -37,6 +37,8 @@ export interface RegionInfo {
    * categories are written in French; 'en' translates those French words to English.
    */
   gcodeComments: 'fr' | 'en';
+  /** Shifts and check periods follow this clock (IANA time zone). */
+  timeZone: string;
 }
 
 export interface RegionFeatures {
@@ -58,6 +60,7 @@ export const REGIONS: RegionInfo[] = [
     legacyCookie: 'cnc_sid',
     publicSetup: true,
     totpIssuer: 'CNC Process Pro',
+    timeZone: 'Africa/Casablanca',
     features: { partTracking: true, preventive: true },
     gcodeComments: 'fr',
   },
@@ -71,6 +74,7 @@ export const REGIONS: RegionInfo[] = [
     sessionCookie: '__Host-cnc_sid_tr',
     publicSetup: false,
     totpIssuer: 'CNC Process Pro TR',
+    timeZone: 'Europe/Istanbul',
     // Türkiye uses the G-code remapper and what comes with it (tool inventory, history).
     features: { partTracking: false, preventive: false },
     gcodeComments: 'en',

@@ -3,6 +3,8 @@ import { HttpError, json, optStr, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
 import { FREQUENCIES, type Frequency } from '../fleet';
 import { requireMachine } from './fleet';
+import { regionById } from '../../src/regions';
+import { currentPeriods, periodKey, shiftOf } from '../../src/lib/shifts';
 
 /*
  * Preventive actions. Every user can mark a check as done, report a problem (on a check or on
@@ -43,7 +45,7 @@ async function machineParam(ctx: Ctx): Promise<string> {
  * A user who is responsible for one or more machines may only update those machines;
  * users with no machine assigned (and admins) may update every machine.
  */
-async function assertMayUpdate(ctx: Ctx, machine: string): Promise<void> {
+export async function assertMayUpdate(ctx: Ctx, machine: string): Promise<void> {
   if (ctx.user!.role === 'ADMIN') return;
   const row = await ctx.env.DB.prepare(
     'SELECT COUNT(*) AS total, SUM(CASE WHEN machine_id = ? THEN 1 ELSE 0 END) AS mine FROM machine_owners WHERE user_id = ?',
@@ -53,6 +55,13 @@ async function assertMayUpdate(ctx: Ctx, machine: string): Promise<void> {
   if (row && row.total > 0 && !row.mine) {
     throw new HttpError(403, `${machine} is locked for you: you are responsible for other machines.`);
   }
+}
+
+/** Now, on this country's clock: the time zone and the running shift. */
+export function clock(ctx: Ctx) {
+  const tz = regionById(ctx.env.REGION)?.timeZone ?? 'UTC';
+  const now = Date.now();
+  return { now, tz, shift: shiftOf(now, tz) };
 }
 
 function frequency(v: unknown): Frequency {
@@ -74,17 +83,74 @@ function eventStmt(ctx: Ctx, machine: string, check: { id: string; title: string
   ).bind(machine, check?.id ?? null, check?.title ?? null, action, note, ctx.user!.username, Date.now());
 }
 
-// GET /api/machines -> every check of every machine + the latest events
+// GET /api/machines -> every check of every machine, the latest events, the cales boxes, and what
+// the signed-in user already did in the current periods / shift
 export async function handleListMachines(ctx: Ctx): Promise<Response> {
-  const [checks, events, owners] = await ctx.env.DB.batch([
+  const { now, tz, shift } = clock(ctx);
+  const me = ctx.user!.id;
+  const db = ctx.env.DB;
+  const [checks, events, owners, mine, cales, calesChecked, calesRequests] = await db.batch([
     ctx.env.DB.prepare('SELECT c.* FROM machine_checks c JOIN machines m ON m.id = c.machine_id AND m.active = 1 ORDER BY c.machine_id, c.sort, c.created_at'),
     ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC, id DESC LIMIT 300'),
     ctx.env.DB.prepare(
       `SELECT o.machine_id, o.user_id, u.username FROM machine_owners o JOIN users u ON u.id = o.user_id
        ORDER BY o.machine_id, u.username COLLATE NOCASE`,
     ),
+    db.prepare('SELECT check_id FROM check_completions WHERE user_id = ? AND period_key IN (?, ?, ?, ?)').bind(me, ...currentPeriods(now, tz)),
+    db.prepare('SELECT machine_id, height, status, count FROM cales_state'),
+    db.prepare('SELECT machine_id FROM cales_checks WHERE user_id = ? AND shift_key = ?').bind(me, shift.key),
+    db.prepare("SELECT machine_id, height FROM cales_requests WHERE status = 'OPEN'"),
   ]);
-  return json({ checks: checks.results, events: events.results, owners: owners.results, serverTime: Date.now() });
+  return json({
+    checks: checks.results,
+    events: events.results,
+    owners: owners.results,
+    serverTime: now,
+    shift,
+    myDone: (mine.results as { check_id: string }[]).map((r) => r.check_id),
+    cales: cales.results,
+    calesChecked: (calesChecked.results as { machine_id: string }[]).map((r) => r.machine_id),
+    calesRequests: calesRequests.results,
+  });
+}
+
+// GET /api/machines/required -> what the signed-in user must still do before using the rest of the app:
+// the due checks of the machines they look after (each person does them, once per period) and the
+// cales box of those machines (once per shift). Admins and people with no machine are never asked.
+// Workflow gate only: the app shows nothing but the checks while this list is not empty; the other
+// API routes are deliberately not blocked (a lost connection must never stop the shop floor).
+export async function handleRequired(ctx: Ctx): Promise<Response> {
+  const user = ctx.user!;
+  const { now, tz, shift } = clock(ctx);
+  if (user.role === 'ADMIN') return json({ locked: false, items: [], shift });
+  const db = ctx.env.DB;
+  const [day, week, month, quarter] = currentPeriods(now, tz);
+  const [checks, cales] = await db.batch([
+    // An open problem on a check is already reported: it does not keep anyone locked out.
+    db
+      .prepare(
+        `SELECT c.id, c.machine_id, c.title FROM machine_checks c
+         JOIN machine_owners o ON o.machine_id = c.machine_id AND o.user_id = ?1
+         JOIN machines m ON m.id = c.machine_id AND m.active = 1
+         WHERE c.kind = 'CHECK' AND c.frequency IS NOT NULL AND c.status = 'OK'
+           AND NOT EXISTS (SELECT 1 FROM check_completions x WHERE x.check_id = c.id AND x.user_id = ?1 AND x.period_key =
+             CASE c.frequency WHEN 'DAILY' THEN ?2 WHEN 'WEEKLY' THEN ?3 WHEN 'MONTHLY' THEN ?4 ELSE ?5 END)
+         ORDER BY c.machine_id, c.sort`,
+      )
+      .bind(user.id, day, week, month, quarter),
+    db
+      .prepare(
+        `SELECT o.machine_id FROM machine_owners o JOIN machines m ON m.id = o.machine_id AND m.active = 1
+         WHERE o.user_id = ?1 AND NOT EXISTS (SELECT 1 FROM cales_checks k WHERE k.machine_id = o.machine_id AND k.user_id = ?1 AND k.shift_key = ?2)
+         ORDER BY o.machine_id`,
+      )
+      .bind(user.id, shift.key),
+  ]);
+  const items = [
+    ...(checks.results as { id: string; machine_id: string; title: string }[]).map((c) => ({ kind: 'CHECK' as const, machineId: c.machine_id, id: c.id, title: c.title })),
+    ...(cales.results as { machine_id: string }[]).map((r) => ({ kind: 'CALES' as const, machineId: r.machine_id })),
+  ];
+  return json({ locked: items.length > 0, items, shift });
 }
 
 // POST /api/machines/:machine/checks/:id/action
@@ -95,7 +161,7 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   await assertMayUpdate(ctx, machine);
   const check = await loadCheck(ctx, machine);
   const body = await readJson<{ action?: unknown; note?: unknown; stops?: unknown }>(ctx.request, 5000);
-  const now = Date.now();
+  const { now, tz, shift } = clock(ctx);
   const user = ctx.user!.username;
   const db = ctx.env.DB;
   let note: string | null = null;
@@ -103,12 +169,24 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   const stmts: D1PreparedStatement[] = [];
   const after: D1PreparedStatement[] = [];
   const stops = stopsFlag(body.stops);
+  // Every person's own answer for this period (a problem counts as done).
+  const completion = (result: 'OK' | 'PROBLEM') =>
+    check.kind === 'CHECK' && check.frequency
+      ? [
+          db
+            .prepare(
+              `INSERT INTO check_completions (check_id, machine_id, user_id, username, period_key, result, shift_key, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (check_id, user_id, period_key) DO UPDATE SET result = excluded.result, shift_key = excluded.shift_key, at = excluded.at`,
+            )
+            .bind(check.id, machine, ctx.user!.id, user, periodKey(check.frequency, now, tz), result, shift.key, now),
+        ]
+      : [];
 
   switch (body.action) {
     case 'DONE':
       if (check.kind !== 'CHECK') throw new HttpError(400, 'Only checklist items can be marked as done');
       note = optStr(body.note, 'Note', 300);
-      stmts.push(db.prepare('UPDATE machine_checks SET last_done_at = ?, last_done_by = ? WHERE id = ?').bind(now, user, check.id));
+      stmts.push(db.prepare('UPDATE machine_checks SET last_done_at = ?, last_done_by = ? WHERE id = ?').bind(now, user, check.id), ...completion('OK'));
       break;
     case 'PROBLEM':
       note = str(body.note, 'Problem description', { min: 3, max: 300 });
@@ -116,6 +194,7 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
         db
           .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ? WHERE id = ?")
           .bind(note, now, user, stops ? 1 : 0, check.id),
+        ...completion('PROBLEM'),
       );
       if (stops) after.push(eventStmt(ctx, machine, check, 'MACHINE_DOWN', note));
       break;

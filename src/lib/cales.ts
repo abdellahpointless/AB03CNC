@@ -2,8 +2,8 @@
  * The cales (parallels) box that comes with each machine: two aluminium cales per height, always
  * used together as a pair. The box holds one pair per slot, tallest on the left.
  *
- * Preview: the state lives in this browser only (localStorage). The rules (who checks, how often,
- * what it means for the machine, history, alerts) are decided later, then it moves to the server.
+ * The state of every box is kept on the server (worker/routes/cales.ts) and shared by everyone who
+ * uses the machine. Only pairs that are missing or damaged are listed; every other pair is in place.
  */
 
 /** Heights in mm, in slot order (left → right as the box is seen from the front). */
@@ -12,66 +12,54 @@ export type CaleHeight = (typeof CALE_HEIGHTS)[number];
 
 export type CaleStatus = 'present' | 'missing' | 'damaged';
 
-export interface CalesRecord {
-  /** Status of each pair, by height. */
-  status: Record<number, CaleStatus>;
-  /** When someone last confirmed "all the cales are there" (ms), or null. */
-  verifiedAt: number | null;
+/** A pair that is not in good shape, and how many of its two cales are concerned. */
+export interface CalePair {
+  status: Exclude<CaleStatus, 'present'>;
+  count: 1 | 2;
+}
+/** Pairs of one box that are missing or damaged, by height. */
+export type CalesState = Record<number, CalePair>;
+
+/** A row as the server sends it. */
+export interface CaleRow {
+  machine_id: string;
+  height: number;
+  status: 'MISSING' | 'DAMAGED';
+  count: number;
 }
 
-export const emptyCales = (): CalesRecord => ({
-  status: Object.fromEntries(CALE_HEIGHTS.map((h) => [h, 'present'])) as Record<number, CaleStatus>,
-  verifiedAt: null,
-});
-
-export interface CalesSummary {
-  missing: number[];
-  damaged: number[];
-  /** Every pair is there and in good shape, and someone confirmed it. */
-  allGood: boolean;
-  verifiedAt: number | null;
+export function calesOf(rows: CaleRow[], machineId: string): CalesState {
+  const out: CalesState = {};
+  for (const r of rows)
+    if (r.machine_id === machineId) out[r.height] = { status: r.status === 'MISSING' ? 'missing' : 'damaged', count: r.count === 1 ? 1 : 2 };
+  return out;
 }
 
-export function calesSummary(r: CalesRecord): CalesSummary {
-  const missing = CALE_HEIGHTS.filter((h) => r.status[h] === 'missing');
-  const damaged = CALE_HEIGHTS.filter((h) => r.status[h] === 'damaged');
-  return { missing, damaged, allGood: !missing.length && !damaged.length && r.verifiedAt !== null, verifiedAt: r.verifiedAt };
+export const statusOf = (state: CalesState, h: number): CaleStatus => state[h]?.status ?? 'present';
+
+/** Heights missing / damaged (box order), and how many single cales that is. */
+export function calesSummary(state: CalesState) {
+  const pick = (s: CalePair['status']) => CALE_HEIGHTS.filter((h) => state[h]?.status === s);
+  const cales = (hs: number[]) => hs.reduce((n, h) => n + state[h].count, 0);
+  const missing = pick('missing');
+  const damaged = pick('damaged');
+  return { missing, damaged, missingCales: cales(missing), damagedCales: cales(damaged) };
 }
 
-/** "I found all the cales" / "I found all the rest": every pair not reported missing is there. Reports stay as they are. */
-export function foundAll(r: CalesRecord, now = Date.now()): CalesRecord {
-  return { ...r, verifiedAt: now };
+export interface StockRow {
+  machine_id: string;
+  height: number;
+  /** Spare single cales on hand. */
+  qty: number;
 }
 
-export function setPair(r: CalesRecord, h: number, s: CaleStatus): CalesRecord {
-  return { ...r, status: { ...r.status, [h]: s } };
-}
-
-// ---- Preview storage (this browser only) ----
-
-const key = (machineId: string) => `cnc-cales-preview:${machineId}`;
-
-export function loadCales(machineId: string): CalesRecord {
-  try {
-    const raw = localStorage.getItem(key(machineId));
-    if (!raw) return emptyCales();
-    const v = JSON.parse(raw) as Partial<CalesRecord>;
-    const base = emptyCales();
-    for (const h of CALE_HEIGHTS) {
-      const s = v.status?.[h];
-      if (s === 'present' || s === 'missing' || s === 'damaged') base.status[h] = s;
-    }
-    base.verifiedAt = typeof v.verifiedAt === 'number' ? v.verifiedAt : null;
-    return base;
-  } catch {
-    return emptyCales();
-  }
-}
-
-export function saveCales(machineId: string, r: CalesRecord): void {
-  try {
-    localStorage.setItem(key(machineId), JSON.stringify(r));
-  } catch {
-    /* storage unavailable: the preview still works for this visit */
-  }
+/** What to order, in single cales: every pair still missing or damaged, less the spare stock. */
+export function orderRows(state: CaleRow[], stock: StockRow[]) {
+  const spare = new Map(stock.map((s) => [`${s.machine_id}|${s.height}`, s.qty]));
+  return state.map((r) => {
+    const qty = spare.get(`${r.machine_id}|${r.height}`) ?? 0;
+    const missing = r.status === 'MISSING' ? r.count : 0;
+    const damaged = r.status === 'DAMAGED' ? r.count : 0;
+    return { machine_id: r.machine_id, height: r.height, missing, damaged, stock: qty, toOrder: Math.max(0, missing + damaged - qty) };
+  });
 }
