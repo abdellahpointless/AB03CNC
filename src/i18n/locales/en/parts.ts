@@ -148,6 +148,30 @@ const parts = {
     },
   },
 
+  /* ---------- Part review: production per operator (no Excel needed) ---------- */
+  production: {
+    title: 'Production per operator',
+    subtitle: 'Approved parts for the month. Updates by itself as you approve entries.',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    thisMonth: 'This month',
+    operators_one: '{{count}} operator',
+    operators_other: '{{count}} operators',
+    partsApproved_one: '{{qty}} part approved',
+    partsApproved_other: '{{qty}} parts approved',
+    totalValue: 'value {{value}}',
+    waitingTotal_one: '{{qty}} waiting for review',
+    waitingTotal_other: '{{qty}} waiting for review',
+    produced: '{{qty}} produced',
+    modified: '{{qty}} modified',
+    value: 'Value',
+    waiting: '+{{qty}} waiting',
+    waitingTitle: 'Submitted but not reviewed yet (not counted above)',
+    empty: 'Nothing logged for {{month}} yet.',
+    loading: 'Loading production...',
+    failed: 'Could not load the production: {{message}}',
+  },
+
   errors: {
     requestFailed: 'Request failed',
     unknown: 'Unknown error',

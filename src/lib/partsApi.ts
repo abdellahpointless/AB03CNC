@@ -94,6 +94,35 @@ export function fetchAdminMonthlySummary(monthFilter?: string) {
   });
 }
 
+/** One operator's month: approved produced / modified parts, their value, and what still waits for review. */
+export interface OperatorProduction {
+  user_id: string;
+  username: string;
+  produced_qty: number;
+  modification_qty: number;
+  total_value: number;
+  pending_qty: number;
+}
+
+/** Admin: every operator's production for one month (YYYY-MM), most productive first. */
+export function fetchAdminProduction(month: string) {
+  return wrap(
+    async () => ({
+      rows: (await api<{ rows: any[] }>(`/parts/admin-production?month=${encodeURIComponent(month)}`)).rows.map(
+        (r): OperatorProduction => ({
+          user_id: String(r.user_id),
+          username: String(r.username || ''),
+          produced_qty: Number(r.produced_qty || 0),
+          modification_qty: Number(r.modification_qty || 0),
+          total_value: Number(r.total_value || 0),
+          pending_qty: Number(r.pending_qty || 0),
+        }),
+      ),
+    }),
+    { rows: [] as OperatorProduction[] },
+  );
+}
+
 export async function fetchAdminEntriesForExport(monthFilter?: string): Promise<any[]> {
   const out: any[] = [];
   for (let offset = 0; ; offset += 500) {

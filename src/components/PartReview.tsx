@@ -9,6 +9,7 @@ import {
   fetchAdminEntriesForExport
 } from '../lib/partsApi';
 import { exportAdminPartEntriesExcel } from '../lib/partExportExcel';
+import PartProduction from './PartProduction';
 import { useT } from '../i18n';
 import { fmtDateTime, locale } from '../i18n/format';
 import {
@@ -224,6 +225,9 @@ export default function PartReview() {
           <span>{errorMsg}</span>
         </div>
       )}
+
+      {/* How much each operator produced this month (no Excel needed) */}
+      <PartProduction />
 
       {/* Main Review Card */}
       <div className="aurora-card p-6 space-y-4">

@@ -133,6 +133,28 @@ export async function handleAdminSummary(ctx: Ctx): Promise<Response> {
   return json({ rows: results });
 }
 
+// GET /api/parts/admin-production?month=YYYY-MM  (admin)
+// One month at a glance, per operator: approved produced / modified quantities and value,
+// plus what is still waiting for review. (The Excel export is unchanged.)
+export async function handleAdminProduction(ctx: Ctx): Promise<Response> {
+  const month = ctx.url.searchParams.get('month') || '';
+  if (!MONTH_RE.test(month)) throw new HttpError(400, 'Month filter must look like YYYY-MM');
+  const { results } = await ctx.env.DB.prepare(
+    `SELECT user_id, MAX(username) AS username,
+       SUM(CASE WHEN status = 'APPROVED' AND kind = 'PRODUCED' THEN qty ELSE 0 END) AS produced_qty,
+       SUM(CASE WHEN status = 'APPROVED' AND kind = 'MODIFICATION' THEN qty ELSE 0 END) AS modification_qty,
+       SUM(CASE WHEN status = 'APPROVED' THEN qty * unit_value ELSE 0 END) AS total_value,
+       SUM(CASE WHEN status = 'PENDING' THEN qty ELSE 0 END) AS pending_qty
+     FROM part_entries
+     WHERE month_key = ? AND status IN ('APPROVED', 'PENDING')
+     GROUP BY user_id
+     ORDER BY total_value DESC, username COLLATE NOCASE`,
+  )
+    .bind(month)
+    .all();
+  return json({ month, rows: results });
+}
+
 // GET /api/parts/admin-export?month=&offset=  (admin, includes review columns)
 export async function handleAdminExport(ctx: Ctx): Promise<Response> {
   const month = ctx.url.searchParams.get('month') || '';

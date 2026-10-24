@@ -55,6 +55,7 @@ import { handleAnalytics, handleSetSavedSeconds, handleSync } from './routes/ana
 import {
   handleAdminExport,
   handleAdminSummary,
+  handleAdminProduction,
   handleMyExport,
   handleMyMonthEntries,
   handleMySummary,
@@ -145,6 +146,7 @@ route('GET', '/parts/export', 'user', handleMyExport);
 route('GET', '/parts/pending', 'admin', handlePending);
 route('POST', '/parts/review', 'admin', handleReview);
 route('GET', '/parts/admin-summary', 'admin', handleAdminSummary);
+route('GET', '/parts/admin-production', 'admin', handleAdminProduction);
 route('GET', '/parts/admin-export', 'admin', handleAdminExport);
 
 // Preventive actions (machines)
