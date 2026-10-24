@@ -50,7 +50,7 @@ export default function RecentCodes() {
     try {
       const savedCode = await fetchRecordCode(record.id);
       const { lines: safeLines } = applyG53BeforeG52(savedCode.split('\n'));
-      downloadText(record.exportedFileName, safeLines.join('\n'));
+      downloadText(record.exportedFileName, safeLines.join('\n'), 'application/octet-stream');
     } catch (e: any) {
       alert(e?.message || t('shared.codeUnavailable'));
     } finally {

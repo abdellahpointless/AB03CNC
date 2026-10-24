@@ -379,7 +379,7 @@ function MachineCard({
             key="pop"
             initial={{ opacity: 0, scale: 0.85, y: hovered.above ? 8 : -8, filter: 'blur(6px)' }}
             animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-            exit={{ opacity: 0, scale: 0.92, filter: 'blur(4px)', transition: { duration: 0.14, ease: EASE_OUT } }}
+            exit={{ opacity: 0, scale: 0.85, y: hovered.above ? 8 : -8, filter: 'blur(4px)', transition: { duration: 0.14, ease: EASE_OUT } }}
             transition={SPRING_POP}
             style={{ transformOrigin: hovered.above ? 'bottom center' : 'top center' }}
             className={`machine-pop glass-modal ${hovered.above ? 'bottom-full mb-3' : 'top-full mt-3'}`}

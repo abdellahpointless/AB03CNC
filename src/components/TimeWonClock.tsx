@@ -4,6 +4,7 @@ import { formatTimeWon, DEFAULT_SAVED_SECONDS_PER_EXTRACTION } from '../lib/extr
 import { useSync } from '../contexts/SyncContext';
 import { Clock, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { iosMenu } from '../lib/motion';
 import { Trans } from 'react-i18next';
 import { useT } from '../i18n';
 
@@ -122,37 +123,9 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
                   top: tooltipCoords.top,
                   right: tooltipCoords.right,
                   zIndex: 999999,
-                }}
-                initial={{ 
-                  opacity: 0, 
-                  scaleX: 0.35, 
-                  scaleY: 0.15, 
-                  y: -14, 
-                  filter: 'blur(8px)',
-                  transformOrigin: '90% 0%'
-                }}
-                animate={{ 
-                  opacity: 1, 
-                  scaleX: [0.35, 1.08, 0.97, 1.02, 1], 
-                  scaleY: [0.15, 1.16, 0.95, 1.02, 1], 
-                  y: [ -14, 2, -1, 0 ], 
-                  filter: 'blur(0px)',
-                  transformOrigin: '90% 0%'
-                }}
-                exit={{ 
-                  opacity: 0, 
-                  scaleX: 0.45, 
-                  scaleY: 0.2, 
-                  y: -10, 
-                  filter: 'blur(6px)',
                   transformOrigin: '90% 0%',
-                  transition: { duration: 0.18, ease: [0.32, 0, 0.67, 0] }
                 }}
-                transition={{ 
-                  duration: 0.36, 
-                  ease: [0.16, 1, 0.3, 1],
-                  times: [0, 0.45, 0.7, 0.88, 1]
-                }}
+                {...iosMenu}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 className="w-72 sm:w-80 p-4 glass-modal shadow-2xl pointer-events-auto rounded-[var(--radius-lg)] border border-[rgba(var(--ov),0.18)] will-change-transform transform-gpu"

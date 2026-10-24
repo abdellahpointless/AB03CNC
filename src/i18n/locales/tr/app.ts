@@ -34,6 +34,15 @@ const app: Translation<typeof en> = {
     admin: 'Yönetici: Analiz, Kullanıcılar ve Veri',
   },
 
+  remapHistory: {
+    open: 'Geçmiş',
+    openTitle: 'Herkesin dışa aktardığı tüm programlar',
+    back: 'Takım Eşleştirici\'ye dön',
+  },
+  subTabs: {
+    partEntryMenu: 'Taramasız parça girişi altında daha fazlası',
+  },
+
   theme: {
     label: {
       dark: 'Koyu tema',

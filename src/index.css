@@ -303,14 +303,16 @@ button:not(.no-glass)::before {
   transition: opacity 150ms ease, background 150ms ease;
 }
 
-.btn-primary:hover:not(:disabled)::before,
-.btn-success:hover:not(:disabled)::before,
-.btn-warning:hover:not(:disabled)::before,
-.btn-secondary:hover:not(:disabled)::before,
-.btn-icon:hover:not(:disabled)::before,
-button:not(.no-glass):hover:not(:disabled)::before {
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 100%);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled)::before,
+  .btn-success:hover:not(:disabled)::before,
+  .btn-warning:hover:not(:disabled)::before,
+  .btn-secondary:hover:not(:disabled)::before,
+  .btn-icon:hover:not(:disabled)::before,
+  button:not(.no-glass):hover:not(:disabled)::before {
+    opacity: 1;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 100%);
+  }
 }
 
 .btn-primary > *,
@@ -343,12 +345,14 @@ button > * {
   padding: 8px 16px;
   cursor: pointer;
 }
-.btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 
-    0 8px 24px var(--blue-glow),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 
+      0 8px 24px var(--blue-glow),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  }
 }
 .btn-primary:active:not(:disabled) {
   transform: scale(0.96);
@@ -383,12 +387,14 @@ button > * {
   padding: 8px 16px;
   cursor: pointer;
 }
-.btn-success:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 
-    0 8px 24px var(--green-glow),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+@media (hover: hover) and (pointer: fine) {
+  .btn-success:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 
+      0 8px 24px var(--green-glow),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  }
 }
 .btn-success:active:not(:disabled) {
   transform: scale(0.96);
@@ -423,12 +429,14 @@ button > * {
   padding: 8px 16px;
   cursor: pointer;
 }
-.btn-warning:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 
-    0 8px 24px var(--orange-glow),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+@media (hover: hover) and (pointer: fine) {
+  .btn-warning:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 
+      0 8px 24px var(--orange-glow),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.6),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.28);
+  }
 }
 .btn-warning:active:not(:disabled) {
   transform: scale(0.96);
@@ -465,13 +473,15 @@ button > * {
   padding: 8px 16px;
   cursor: pointer;
 }
-.btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
-  border-color: rgba(255, 255, 255, 0.24);
-  border-top-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 
-    0 4px 14px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
+    border-color: rgba(255, 255, 255, 0.24);
+    border-top-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 
+      0 4px 14px rgba(0, 0, 0, 0.4),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+  }
 }
 .btn-secondary:active:not(:disabled) {
   transform: scale(0.96);
@@ -501,8 +511,10 @@ button > * {
   padding: 8px 16px;
   cursor: pointer;
 }
-.btn-danger:hover:not(:disabled) {
-  filter: brightness(1.08);
+@media (hover: hover) and (pointer: fine) {
+  .btn-danger:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
 }
 .btn-danger:active:not(:disabled) {
   transform: scale(0.96);
@@ -536,14 +548,16 @@ button > * {
   cursor: pointer;
   flex-shrink: 0;
 }
-.btn-icon:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 100%);
-  color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.25);
-  border-top-color: rgba(255, 255, 255, 0.42);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon:hover {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 100%);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25);
+    border-top-color: rgba(255, 255, 255, 0.42);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.35),
+      inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
+  }
 }
 @media (hover: hover) and (pointer: fine) {
   .btn-icon:hover:not(:disabled) {
@@ -553,11 +567,13 @@ button > * {
 .btn-icon:active:not(:disabled) {
   transform: scale(0.9);
 }
-.btn-icon-danger:hover {
-  background: linear-gradient(180deg, rgba(255, 102, 121, 0.25) 0%, rgba(255, 102, 121, 0.12) 100%);
-  color: var(--rose-500);
-  border-color: rgba(255, 102, 121, 0.35);
-  border-top-color: rgba(255, 102, 121, 0.55);
+@media (hover: hover) and (pointer: fine) {
+  .btn-icon-danger:hover {
+    background: linear-gradient(180deg, rgba(255, 102, 121, 0.25) 0%, rgba(255, 102, 121, 0.12) 100%);
+    color: var(--rose-500);
+    border-color: rgba(255, 102, 121, 0.35);
+    border-top-color: rgba(255, 102, 121, 0.55);
+  }
 }
 
 /* Section 6: Cards */
@@ -573,11 +589,15 @@ button > * {
 }
 /* Cards used to lift 3px on hover. On the big editor panes that made the text jump while
    selecting or typing, so the hover is now a calm border highlight only. */
-.aurora-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .aurora-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
 }
-.aurora-card-static:hover {
-  border-color: var(--border-subtle);
+@media (hover: hover) and (pointer: fine) {
+  .aurora-card-static:hover {
+    border-color: var(--border-subtle);
+  }
 }
 
 /* Signature 2px glowing accent line on card's bottom inner edge */
@@ -827,32 +847,42 @@ html.light .btn-secondary {
   border-bottom-color: rgba(15, 23, 42, 0.18);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 1);
 }
-html.light .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ffffff 0%, #e9edf3 100%);
-  border-color: rgba(15, 23, 42, 0.18);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
+@media (hover: hover) and (pointer: fine) {
+  html.light .btn-secondary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ffffff 0%, #e9edf3 100%);
+    border-color: rgba(15, 23, 42, 0.18);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
+  }
 }
 html.light .btn-icon {
   background: linear-gradient(180deg, #ffffff 0%, #f1f4f8 100%);
   border: 1px solid rgba(15, 23, 42, 0.12);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
-html.light .btn-icon:hover {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.2);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+@media (hover: hover) and (pointer: fine) {
+  html.light .btn-icon:hover {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.2);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+  }
 }
-html.light .btn-icon-danger:hover {
-  background: rgba(225, 29, 72, 0.08);
-  border-color: rgba(225, 29, 72, 0.3);
+@media (hover: hover) and (pointer: fine) {
+  html.light .btn-icon-danger:hover {
+    background: rgba(225, 29, 72, 0.08);
+    border-color: rgba(225, 29, 72, 0.3);
+  }
 }
 
 html.light .aurora-card {
   border-color: rgba(15, 23, 42, 0.08);
   box-shadow: var(--shadow-card);
 }
-html.light .aurora-card:hover { border-color: rgba(15, 23, 42, 0.14); }
-html.light .aurora-card-static:hover { border-color: rgba(15, 23, 42, 0.08); }
+@media (hover: hover) and (pointer: fine) {
+  html.light .aurora-card:hover { border-color: rgba(15, 23, 42, 0.14); }
+}
+@media (hover: hover) and (pointer: fine) {
+  html.light .aurora-card-static:hover { border-color: rgba(15, 23, 42, 0.08); }
+}
 
 html.light .badge-neutral { background: rgba(15, 23, 42, 0.05); }
 html.light .badge-positive { background: rgba(21, 128, 61, 0.1); border-color: rgba(21, 128, 61, 0.25); }
@@ -1895,3 +1925,67 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 @media (prefers-reduced-motion: reduce) {
   .machine-card[data-state='down'], .machine-stopped-badge { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Sub-tab menu (admins: "Part without scan" → "Part review"). Grows out of its tab.
+   --------------------------------------------------------------------------- */
+.tab-submenu {
+  z-index: 99980;
+  min-width: 210px;
+  /* Nearly solid: a menu must stay readable over whatever is under it. */
+  background: rgba(var(--surface), 0.96);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 14px;
+}
+.tab-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.tab-submenu-item svg { flex-shrink: 0; opacity: 0.85; }
+/* Menus highlight the row you point at; they do not shrink it. */
+.tab-submenu-item:active:not(:disabled) { transform: none; background: rgba(var(--ov), 0.1); }
+@media (hover: hover) and (pointer: fine) {
+  .tab-submenu-item:hover { background: rgba(var(--ov), 0.07); color: var(--text-primary); }
+}
+.tab-submenu-item.is-active { color: var(--accent-primary); background: rgba(59, 111, 212, 0.12); }
+
+/* ---------------------------------------------------------------------------
+   Pop-up windows for people who ask their system for less transparency or more contrast:
+   solid surfaces, no blur, a clear edge (Apple: reduce transparency / increase contrast).
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  .modal-backdrop {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(0, 0, 0, 0.62);
+  }
+  .glass-modal,
+  html.light .glass-modal {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-panel);
+  }
+}
+@media (prefers-contrast: more) {
+  .glass-modal,
+  html.light .glass-modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--text-tertiary);
+  }
+}
+
+html.light .tab-submenu { background: rgba(255, 255, 255, 0.97); }

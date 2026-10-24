@@ -31,6 +31,17 @@ const app = {
     admin: 'Admin: Analytics, Users & Data',
   },
 
+  /** History lives inside the Tool Remapper (a button), not in the tab bar. */
+  remapHistory: {
+    open: 'History',
+    openTitle: 'Every exported program, by everyone',
+    back: 'Back to Tool Remapper',
+  },
+  /** Part review appears under "Part without scan" when an admin points at it. */
+  subTabs: {
+    partEntryMenu: 'More in Part without scan',
+  },
+
   theme: {
     label: {
       dark: 'Dark mode',

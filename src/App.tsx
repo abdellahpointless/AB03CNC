@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CHOOSE_COUNTRY_PATH, currentRegion, scopedKey } from './lib/instance';
 import { Flag } from './components/Flag';
 import MachineManager from './components/MachineManager';
@@ -12,6 +12,7 @@ import UserManagement from './components/UserManagement';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
 import PreventiveActions from './components/PreventiveActions';
+import TabSubMenu from './components/TabSubMenu';
 import PhoneCheck from './components/PhoneCheck';
 import { leavePhoneCheck, scannedMachine } from './lib/phoneCheck';
 import DataManagement from './components/DataManagement';
@@ -22,7 +23,7 @@ import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor } from 'lucide-react';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
@@ -31,7 +32,7 @@ import { useT } from './i18n';
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'HISTORY' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE';
+type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE';
 
 const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (DIAMETER 10.00 MM / LENGTH 50.00 MM)\nN20 G90 G54 G0 X0. Y0.\nN21 T3 M6\nN22 (MK_40.00_040_000_ALHS)\nN23 G0 Z50.\nN24 T5 M6\nN25 (SF_12.00_075_000_ALHS)\nN30 M30\n%';
 
@@ -84,6 +85,45 @@ function Workspace() {
       setActiveTab('REMAP');
     }
   }, [features, activeTab]);
+  // History (admins) opens from a button inside the Tool Remapper, in place of the remapper.
+  const [remapView, setRemapView] = useState<'main' | 'history' | 'back'>('main');
+  const openTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setRemapView('main');
+  };
+
+  // "Part without scan" → "Part review" (admins): a small menu that drops out of the tab on hover.
+  const canReview = features.partTracking && user.role === 'ADMIN';
+  const partTabRef = useRef<HTMLButtonElement>(null);
+  const [partMenu, setPartMenu] = useState(false);
+  const partMenuTimer = useRef<number | undefined>(undefined);
+  const showPartMenu = () => {
+    window.clearTimeout(partMenuTimer.current);
+    if (canReview) setPartMenu(true);
+  };
+  // A short grace period lets the pointer travel from the tab into the menu.
+  const hidePartMenuSoon = () => {
+    window.clearTimeout(partMenuTimer.current);
+    partMenuTimer.current = window.setTimeout(() => setPartMenu(false), 180);
+  };
+  useEffect(() => {
+    if (!partMenu) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPartMenu(false);
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (partTabRef.current?.contains(target) || (target instanceof Element && target.closest('.tab-submenu'))) return;
+      setPartMenu(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [partMenu]);
+  useEffect(() => () => window.clearTimeout(partMenuTimer.current), []);
+  const partTabActive = activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW';
+
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
     try {
@@ -236,7 +276,7 @@ function Workspace() {
             {/* Time Won Clock Widget */}
             <TimeWonClock
               compact={true}
-              onClick={() => user.role === 'ADMIN' && setActiveTab('ADMIN')}
+              onClick={() => user.role === 'ADMIN' && openTab('ADMIN')}
             />
 
             {/* User / Role Chip: circular avatar + stacked two-line name/role inside bordered pill */}
@@ -289,7 +329,7 @@ function Workspace() {
         <nav className="glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
           {/* Tab 1: Tool Inventory */}
           <button
-            onClick={() => setActiveTab('DATABASE')}
+            onClick={() => openTab('DATABASE')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'DATABASE'
                 ? 'text-[var(--accent-primary)]'
@@ -308,7 +348,7 @@ function Workspace() {
 
           {/* Tab 2: Tool Remapper */}
           <button
-            onClick={() => setActiveTab('REMAP')}
+            onClick={() => openTab('REMAP')}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'REMAP'
                 ? 'text-[var(--accent-primary)]'
@@ -325,31 +365,10 @@ function Workspace() {
             )}
           </button>
 
-          {/* Tab 3: History (ADMIN) */}
-          {user.role === 'ADMIN' && (
-            <button
-              onClick={() => setActiveTab('HISTORY')}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-                activeTab === 'HISTORY'
-                  ? 'text-[var(--orange-500)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
-              }`}
-            >
-              <History size={15} />
-              <span>{t('tabs.history')}</span>
-              {activeTab === 'HISTORY' && (
-                <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(224,138,77,0.12)' }} transition={SPRING_PILL} />
-              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--orange-500)] shadow-[0_0_10px_var(--orange-glow)] rounded-full pointer-events-none" />
-                </>
-              )}
-            </button>
-          )}
-
           {/* Tab 3: Recent Codes (MACHINIST) */}
           {user.role === 'MACHINIST' && (
             <button
-              onClick={() => setActiveTab('RECENT_CODES')}
+              onClick={() => openTab('RECENT_CODES')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'RECENT_CODES'
                   ? 'text-[var(--accent-primary)]'
@@ -367,22 +386,50 @@ function Workspace() {
             </button>
           )}
 
-          {/* Tab: Part without scan (Both Roles) */}
+          {/* Tab: Part without scan (Both Roles). For admins, "Part review" drops out of it on hover. */}
           {features.partTracking && (
             <button
-              onClick={() => setActiveTab('PART_ENTRY')}
+              ref={partTabRef}
+              onClick={() => {
+                // Touch screens have no hover: tapping the tab you are on opens its menu.
+                if (canReview && partTabActive && !partMenu) {
+                  setPartMenu(true);
+                  return;
+                }
+                setPartMenu(false);
+                openTab('PART_ENTRY');
+              }}
+              onPointerEnter={(e) => e.pointerType === 'mouse' && showPartMenu()}
+              onPointerLeave={(e) => e.pointerType === 'mouse' && hidePartMenuSoon()}
+              onKeyDown={(e) => {
+                if (canReview && e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  showPartMenu();
+                }
+              }}
+              aria-haspopup={canReview ? 'menu' : undefined}
+              aria-expanded={canReview ? partMenu : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-                activeTab === 'PART_ENTRY'
-                  ? 'text-[var(--accent-primary)]'
+                partTabActive
+                  ? activeTab === 'PART_REVIEW'
+                    ? 'text-[var(--green-500)]'
+                    : 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <PackagePlus size={15} />
               <span>{t('tabs.partEntry')}</span>
-              {activeTab === 'PART_ENTRY' && (
+              {activeTab === 'PART_REVIEW' && (
                 <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+                  <ChevronRight size={12} className="-mx-1 opacity-60" />
+                  <span>{t('tabs.partReview')}</span>
+                </>
+              )}
+              {canReview && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${partMenu ? 'rotate-180' : ''}`} />}
+              {partTabActive && (
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: activeTab === 'PART_REVIEW' ? 'rgba(22,163,74,0.12)' : 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className={`absolute bottom-0 left-3 right-3 h-[2.5px] rounded-full pointer-events-none ${activeTab === 'PART_REVIEW' ? 'bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)]' : 'bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]'}`} />
                 </>
               )}
             </button>
@@ -391,7 +438,7 @@ function Workspace() {
           {/* Tab: Preventive actions (Both Roles) */}
           {features.preventive && (
             <button
-              onClick={() => setActiveTab('PREVENTIVE')}
+              onClick={() => openTab('PREVENTIVE')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'PREVENTIVE'
                   ? 'text-[var(--accent-primary)]'
@@ -409,31 +456,10 @@ function Workspace() {
             </button>
           )}
 
-          {/* Tab: Part Review (ADMIN) */}
-          {features.partTracking && user.role === 'ADMIN' && (
-            <button
-              onClick={() => setActiveTab('PART_REVIEW')}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-                activeTab === 'PART_REVIEW'
-                  ? 'text-[var(--green-500)]'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
-              }`}
-            >
-              <ClipboardCheck size={15} />
-              <span>{t('tabs.partReview')}</span>
-              {activeTab === 'PART_REVIEW' && (
-                <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
-              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
-                </>
-              )}
-            </button>
-          )}
-
           {/* Tab 4: Admin (ADMIN) */}
           {user.role === 'ADMIN' && (
             <button
-              onClick={() => setActiveTab('ADMIN')}
+              onClick={() => openTab('ADMIN')}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'ADMIN'
                   ? 'text-[var(--green-500)]'
@@ -451,6 +477,37 @@ function Workspace() {
             </button>
           )}
         </nav>
+        {canReview && (
+          <TabSubMenu
+            anchor={partTabRef.current}
+            open={partMenu}
+            label={t('subTabs.partEntryMenu')}
+            onPointerEnter={showPartMenu}
+            onPointerLeave={hidePartMenuSoon}
+            items={[
+              {
+                id: 'entry',
+                label: t('tabs.partEntry'),
+                icon: <PackagePlus size={14} />,
+                active: activeTab === 'PART_ENTRY',
+                onSelect: () => {
+                  setPartMenu(false);
+                  openTab('PART_ENTRY');
+                },
+              },
+              {
+                id: 'review',
+                label: t('tabs.partReview'),
+                icon: <ClipboardCheck size={14} />,
+                active: activeTab === 'PART_REVIEW',
+                onSelect: () => {
+                  setPartMenu(false);
+                  openTab('PART_REVIEW');
+                },
+              },
+            ]}
+          />
+        )}
       </div>
 
       {/* Main Content Area with Smooth AnimatePresence Dissolve Transition */}
@@ -470,8 +527,33 @@ function Workspace() {
                 setSelectedMachine={setDatabaseMachine}
               />
             )}
-            {activeTab === 'REMAP' && (
+            {activeTab === 'REMAP' && remapView === 'history' && user.role === 'ADMIN' && (
+              <motion.div
+                key="remap-history"
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
+                className="flex-1 flex flex-col"
+              >
+                <div className="max-w-7xl mx-auto w-full mb-3">
+                  <button type="button" className="btn-secondary text-xs py-2 px-3.5" onClick={() => setRemapView('back')}>
+                    <ChevronLeft size={14} />
+                    <span>{t('remapHistory.back')}</span>
+                  </button>
+                </div>
+                <HistoryView />
+              </motion.div>
+            )}
+            {activeTab === 'REMAP' && remapView !== 'history' && (
+              <motion.div
+                key="remap-main"
+                initial={remapView === 'back' ? { opacity: 0, x: -24 } : false}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
+                className="flex-1 flex flex-col"
+              >
               <ToolRemapper 
+                onOpenHistory={user.role === 'ADMIN' ? () => setRemapView('history') : undefined}
                 onNavigateToDatabase={handleNavigateToDatabase}
                 selectedMachine={remapperMachine}
                 setSelectedMachine={setRemapperMachine}
@@ -492,9 +574,7 @@ function Workspace() {
                 analyzedSignature={analyzedSignature}
                 setAnalyzedSignature={setAnalyzedSignature}
               />
-            )}
-            {activeTab === 'HISTORY' && user.role === 'ADMIN' && (
-              <HistoryView />
+              </motion.div>
             )}
             {activeTab === 'RECENT_CODES' && user.role === 'MACHINIST' && (
               <RecentCodes />

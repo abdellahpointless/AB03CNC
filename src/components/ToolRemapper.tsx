@@ -11,7 +11,7 @@ import { api } from '../lib/api';
 
 /** A program comment as shown to the operator (in English where the country reads no French). */
 const shownComment = (text: string) => (currentRegion().gcodeComments === 'en' ? translateCommentText(text) : text);
-import { Settings, Info, AlertTriangle, CheckCircle, Plus, AlertCircle, Trash2, Clock, Sparkles, Database, ArrowUpRight, Wrench } from 'lucide-react';
+import { Settings, Info, AlertTriangle, CheckCircle, Plus, AlertCircle, Trash2, Clock, Sparkles, Database, ArrowUpRight, Wrench, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, SPRING_TOAST, iosBackdrop, iosSurface } from '../lib/motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,6 +44,8 @@ interface ToolRemapperProps {
   /** machine + source the current analysis/output was produced from (detects stale output) */
   analyzedSignature?: string;
   setAnalyzedSignature?: (sig: string) => void;
+  /** Admins: opens the export History (it lives here, not in the tab bar). */
+  onOpenHistory?: () => void;
 }
 
 const signatureOf = (machine: string, source: string) => `${machine}\u0000${source}`;
@@ -67,9 +69,11 @@ export default function ToolRemapper({
   resolutions: propResolutions,
   setResolutions: propSetResolutions,
   analyzedSignature,
-  setAnalyzedSignature
+  setAnalyzedSignature,
+  onOpenHistory,
 }: ToolRemapperProps) {
   const { t } = useT('remapper');
+  const { t: tApp } = useT('app');
   const { user } = useAuth();
   const { toolbox, installTools, analytics, toolMachines } = useSync();
   /** Display name of a tool category id (the id itself stays the data value). */
@@ -337,13 +341,8 @@ N190 M30`;
     const { lines: processedExportLines } = applyG53BeforeG52(outputCode.split('\n'));
     const finalExportCode = processedExportLines.join('\n');
 
-    let exportedName = fileName;
-    const dotIdx = exportedName.lastIndexOf('.');
-    if (dotIdx !== -1) {
-      exportedName = exportedName.substring(0, dotIdx) + '-' + exportedName.substring(dotIdx + 1) + '.text';
-    } else {
-      exportedName += '.text';
-    }
+    // The exported program keeps exactly the imported program's name (O1234.NC stays O1234.NC).
+    const exportedName = fileName;
 
     // Process history record
     const recordId = crypto.randomUUID();
@@ -373,7 +372,8 @@ N190 M30`;
     };
 
     // Download first - the operator never waits on the network.
-    downloadText(exportedName, finalExportCode);
+    // octet-stream: the browser saves the name as is (a text type could make it add ".txt").
+    downloadText(exportedName, finalExportCode, 'application/octet-stream');
 
     const saved = formatTimeWon(analytics?.savedSecondsPerExtraction ?? 285).formatted;
     const extractedText = t('toast.extracted', { saved });
@@ -778,6 +778,19 @@ N190 M30`;
             <span>{t('controls.modify')}{blocks.length > 0 ? ` (${blocks.length})` : ''}</span>
           </button>
           
+          {/* History of every exported program (admins) */}
+          {onOpenHistory && (
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] whitespace-nowrap"
+              title={tApp('remapHistory.openTitle')}
+            >
+              <History size={14} className="text-[var(--orange-500)]" />
+              <span>{tApp('remapHistory.open')}</span>
+            </button>
+          )}
+
           {detectedMat && (
              <div className="h-10 px-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.08)] border border-[rgba(59,111,212,0.25)] flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-[var(--text-secondary)]">
                <span className="text-[10px] text-[var(--text-tertiary)] uppercase">{t('controls.material')}</span>

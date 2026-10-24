@@ -186,7 +186,7 @@ export default function HistoryView() {
     try {
       const code = await fetchRecordCode(record.id);
       const { lines: safeLines } = applyG53BeforeG52(code.split('\n'));
-      downloadText(record.exportedFileName, safeLines.join('\n'));
+      downloadText(record.exportedFileName, safeLines.join('\n'), 'application/octet-stream');
     } catch (e: any) {
       alert(e?.message || t('shared.codeUnavailable'));
     } finally {

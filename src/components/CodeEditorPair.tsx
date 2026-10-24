@@ -325,9 +325,7 @@ export default function CodeEditorPair({
     const result: FanucToHaasResult = convertFanucToHaas(cleanSource, fileName || 'program.txt');
     
     setSourceCode(result.haasCode);
-    if (setFileName && result.haasFilename) {
-      setFileName(result.haasFilename);
-    }
+    // The file keeps its imported name: the export is named exactly like the imported program.
 
     setHasImported(false);
     
@@ -359,9 +357,7 @@ export default function CodeEditorPair({
     const result: HaasToFanucResult = convertHaasToFanuc(cleanSource, fileName || 'fanuc_program.nc');
     
     setSourceCode(result.fanucCode);
-    if (setFileName && result.fanucFilename) {
-      setFileName(result.fanucFilename);
-    }
+    // The file keeps its imported name: the export is named exactly like the imported program.
 
     setHasImported(false);
     
