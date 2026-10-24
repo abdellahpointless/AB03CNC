@@ -107,5 +107,18 @@ const common: Translation<typeof en> = {
     offline: 'Sunucuya ulaşılamıyor. Ağ bağlantısını kontrol edin.',
     requestFailed: 'İstek başarısız oldu ({{status}})',
   },
+  a11y: {
+    skipToContent: 'Ana içeriğe geç',
+    mainNav: 'Ana bölümler',
+    machine: 'Tezgah',
+    toolFor: '{{tool}} için kullanılacak takım',
+    frequency: 'Ne sıklıkla',
+    checkTitle: 'Kontrol adı',
+    roleOf: '{{user}} kullanıcısının rolü',
+    category: 'Kategori',
+    pocket: 'Cep',
+    days: 'Gün sayısı',
+    notices: 'Bildirimler',
+  },
 };
 export default common;

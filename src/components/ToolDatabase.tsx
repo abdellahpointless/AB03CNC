@@ -212,6 +212,7 @@ export default function ToolDatabase({
         <div className="flex items-center gap-3">
           <div className="w-48">
             <select 
+              aria-label={t('common:a11y.machine')}
               value={selectedMachine}
               onChange={(e) => {
                 setSelectedMachine(e.target.value as MachineId);
@@ -317,6 +318,7 @@ export default function ToolDatabase({
                 <div>
                   <label className="section-label block mb-1.5">{t('form.category')}</label>
                   <select 
+                    aria-label={t('common:a11y.category')}
                     value={toolForm.category || 'empty'} 
                     onChange={e => setToolForm({ ...toolForm, category: e.target.value as ToolCategory })}
                     className="aurora-input w-full text-xs cursor-pointer"
@@ -514,6 +516,7 @@ export default function ToolDatabase({
                         <div>
                           <label className="section-label block mb-1.5">{t('form.category')}</label>
                           <select 
+                            aria-label={t('common:a11y.category')}
                             value={toolForm.category || 'empty'} 
                             onChange={e => setToolForm({ ...toolForm, category: e.target.value as ToolCategory })}
                             className="aurora-input w-full text-xs cursor-pointer"

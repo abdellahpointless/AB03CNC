@@ -46,7 +46,7 @@ const parts = {
   counter: {
     title: "This Month's Counter",
     totalValue: 'Total Approved Value',
-    partsProduced: 'Parts Produced:',
+    partsProduced: 'Parts approved:',
     resetNote: 'Counter automatically resets to 0 at the start of each calendar month. Previous months remain archived below.',
   },
   archive: {

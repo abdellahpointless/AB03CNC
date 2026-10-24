@@ -184,6 +184,7 @@ export default function PartReview() {
             <input
               type="month"
               title={t('review.monthFilterTitle')}
+              aria-label={t('review.monthFilterTitle')}
               value={exportMonthFilter}
               onChange={e => setExportMonthFilter(e.target.value.trim())}
               className="bg-transparent border-none outline-none font-mono text-xs text-[var(--text-primary)] w-36"
@@ -275,7 +276,8 @@ export default function PartReview() {
         {/* Table of Entries */}
         {entries.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            {/* Space between columns (QTY | KIND and VALUE | DATE used to touch). */}
+            <table className="w-full text-left text-xs [&_th]:px-3 [&_td]:px-3 [&_th:first-child]:pl-0 [&_td:first-child]:pl-0 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
                   <th className="pb-2.5 font-semibold">{t('review.columns.operator')}</th>

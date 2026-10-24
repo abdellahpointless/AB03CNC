@@ -495,6 +495,7 @@ N190 M30`;
             <div>
               <label className="section-label block mb-1">{t('addTool.pocket')}</label>
               <select 
+                aria-label={t('common:a11y.pocket')}
                 value={newToolForm.pocket} 
                 onChange={e => setNewToolForm({...newToolForm, pocket: e.target.value})} 
                 className="aurora-input w-full text-xs cursor-pointer"
@@ -527,6 +528,7 @@ N190 M30`;
             <div>
               <label className="section-label block mb-1">{t('fields.category')}</label>
               <select
+                aria-label={t('common:a11y.category')}
                 value={newToolForm.category}
                 onChange={e => setNewToolForm({...newToolForm, category: e.target.value as ToolCategory})}
                 className="aurora-input w-full text-xs cursor-pointer"
@@ -596,6 +598,7 @@ N190 M30`;
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-3">
          <div className="flex-1">
            <select 
+             aria-label={t('common:a11y.toolFor', { tool: block.originalT || 'M6' })}
              className="w-full text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 py-2.5 shadow-sm focus:ring-2 focus:ring-blue-500"
              value={resolutions[block.blockId]?.id || ""}
              onChange={(e) => {
@@ -716,6 +719,7 @@ N190 M30`;
           </label>
           <div className="flex items-center gap-2">
             <select 
+              aria-label={t('controls.targetMachine')}
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value as MachineId)}
               className="aurora-input flex-1 min-w-0 w-0 h-10 font-semibold cursor-pointer text-xs sm:text-sm py-2 px-3 rounded-[var(--radius-md)] border-[var(--border-subtle)] focus:border-[var(--accent-primary)] transition-colors truncate"
@@ -838,7 +842,7 @@ N190 M30`;
                 className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-5 z-[99999] overflow-hidden"
               >
                 <motion.div 
-                  {...iosSurface}
+                  {...iosSurface} role="dialog" aria-modal="true" aria-label={t('modal.title')}
                   className="glass-modal max-w-4xl w-full flex flex-col max-h-[82vh] overflow-hidden my-auto shadow-2xl border border-[var(--border-strong)]"
                 >
                 <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-panel)]">
@@ -1170,6 +1174,7 @@ N190 M30`;
                            
                            {resolutions[block.blockId] && (
                               <select 
+                                aria-label={t('common:a11y.toolFor', { tool: block.originalT || 'M6' })}
                                 className="text-xs rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-slate-200 py-1 shadow-sm font-semibold"
                                 value={blockResolutionId}
                                 onChange={(e) => {
@@ -1266,6 +1271,7 @@ N190 M30`;
                          {/* Option to override */}
                          <div className="flex justify-end border-t border-amber-100 dark:border-amber-900/30 pt-3">
                            <select 
+                             aria-label={t('common:a11y.toolFor', { tool: block.originalT || 'M6' })}
                              className="text-sm rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-slate-200 py-1.5 shadow-sm"
                              value=""
                              onChange={(e) => {
@@ -1360,7 +1366,7 @@ N190 M30`;
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
              <motion.div 
-              {...iosSurface}
+              {...iosSurface} role="dialog" aria-modal="true" aria-label={t('crashModal.title')}
               className="glass-modal p-8 max-w-lg w-full border-2 border-[var(--rose-500)]"
             >
               <div className="flex items-center gap-4 mb-6">
@@ -1407,7 +1413,7 @@ N190 M30`;
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              {...iosSurface}
+              {...iosSurface} role="dialog" aria-modal="true" aria-label={t('checklist.title')}
               className="glass-modal p-8 max-w-lg w-full"
             >
               <div className="flex items-center gap-4 mb-6">
@@ -1455,7 +1461,7 @@ N190 M30`;
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              {...iosSurface}
+              {...iosSurface} role="dialog" aria-modal="true" aria-label={t('special.title')}
               className="glass-modal overflow-hidden max-w-lg w-full"
             >
               <div className="p-6 border-b border-[var(--border-subtle)] bg-[rgba(255,102,121,0.08)]">
@@ -1534,7 +1540,7 @@ N190 M30`;
             className="fixed inset-0 modal-backdrop flex items-center justify-center p-6 z-[99999]"
           >
             <motion.div 
-              {...iosSurface}
+              {...iosSurface} role="dialog" aria-modal="true" aria-label={t('confirm.title')}
               className="glass-modal max-w-md w-full overflow-hidden"
             >
               <div className="p-6 text-center space-y-4">

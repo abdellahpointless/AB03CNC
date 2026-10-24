@@ -47,7 +47,7 @@ const parts: Translation<typeof en> = {
   counter: {
     title: 'Bu ayın sayacı',
     totalValue: 'Onaylanan toplam değer',
-    partsProduced: 'Üretilen parça:',
+    partsProduced: 'Onaylanan parça:',
     resetNote: "Sayaç her takvim ayının başında otomatik olarak 0'a döner. Önceki aylar aşağıdaki arşivde saklanır.",
   },
   archive: {

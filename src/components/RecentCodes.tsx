@@ -127,8 +127,12 @@ export default function RecentCodes() {
                      )}
                    </div>
                    <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 flex-wrap">
-                     <span>{t('recent.source')} <span className="text-[var(--text-secondary)]">{record.originalFileName}</span></span>
-                     <span>•</span>
+                     {record.originalFileName !== record.exportedFileName && (
+                       <>
+                         <span>{t('recent.source')} <span className="text-[var(--text-secondary)]">{record.originalFileName}</span></span>
+                         <span>•</span>
+                       </>
+                     )}
                      <span>{record.timestamp ? fmtDateTime(record.timestamp) : record.date}</span>
                      {record.user && (
                        <>

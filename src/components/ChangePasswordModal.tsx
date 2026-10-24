@@ -232,7 +232,7 @@ export function ChangePasswordModal({ onClose, initialTab = 'password' }: { onCl
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       {...iosBackdrop}
     >
-      <motion.div className="glass-modal max-w-sm w-full p-6 max-h-[92vh] overflow-y-auto" {...iosSurface}>
+      <motion.div className="glass-modal max-w-sm w-full p-6 max-h-[92vh] overflow-y-auto" {...iosSurface} role="dialog" aria-modal="true" aria-label={t('security.title')}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
             <ShieldCheck size={16} className="text-[var(--accent-primary)]" /> {t('security.title')}

@@ -147,7 +147,9 @@ export default function PreventiveActions() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col items-start md:items-end gap-2">
+        {/* What is going on (wraps), then the actions on their own row: nothing ends up alone on a line. */}
+        <div className="flex items-center gap-2 flex-wrap md:justify-end">
           {myMachines.length > 0 && !isAdmin && (
             <span className="badge-neutral" title={t('header.myMachinesTitle')}>
               <Wrench size={13} /> {t('header.myMachines', { names: myMachines.map(nameOf).join(', ') })}
@@ -167,6 +169,8 @@ export default function PreventiveActions() {
           <span className="badge-positive">
             <CheckCircle2 size={13} /> {t('header.allGood', { count: counts.ok })}
           </span>
+        </div>
+        <div className="flex items-center gap-2">
           <button onClick={openBoard} className="btn-secondary text-xs py-1.5 px-3" title={t('header.boardTitle')} disabled={!fleet.length}>
             <Monitor size={14} />
             <span>{t('header.board')}</span>
@@ -180,6 +184,7 @@ export default function PreventiveActions() {
           <button onClick={load} className="btn-icon" title={t('common:actions.refresh')} aria-label={t('common:actions.refresh')}>
             <RefreshCw size={14} />
           </button>
+        </div>
         </div>
       </div>
 
@@ -862,8 +867,8 @@ function MachineSheet({
                   >
                     {editing === c.id ? (
                       <div className="flex flex-wrap gap-2 items-center">
-                        <input className="aurora-input flex-1 min-w-[180px] text-xs" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-                        <select className="aurora-input text-xs" value={editFreq} onChange={(e) => setEditFreq(e.target.value as Frequency)}>
+                        <input className="aurora-input flex-1 min-w-[180px] text-xs" aria-label={t('common:a11y.checkTitle')} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                        <select className="aurora-input text-xs" aria-label={t('common:a11y.frequency')} value={editFreq} onChange={(e) => setEditFreq(e.target.value as Frequency)}>
                           {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
                             <option key={k} value={k}>
                               {v}
@@ -983,7 +988,7 @@ function MachineSheet({
                   maxLength={160}
                   onChange={(e) => setNewTitle(e.target.value)}
                 />
-                <select className="aurora-input text-xs" value={newFreq} onChange={(e) => setNewFreq(e.target.value as Frequency)}>
+                <select className="aurora-input text-xs" aria-label={t('common:a11y.frequency')} value={newFreq} onChange={(e) => setNewFreq(e.target.value as Frequency)}>
                   {Object.entries(FREQUENCY_LABEL).map(([k, v]) => (
                     <option key={k} value={k}>
                       {v}

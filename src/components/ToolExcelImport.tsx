@@ -90,7 +90,7 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       {...iosBackdrop}
     >
-      <motion.div className="glass-modal max-w-3xl w-full p-6 max-h-[92vh] overflow-y-auto" {...iosSurface}>
+      <motion.div className="glass-modal max-w-3xl w-full p-6 max-h-[92vh] overflow-y-auto" {...iosSurface} role="dialog" aria-modal="true" aria-label={t('import.title')}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
             <FileSpreadsheet size={16} className="text-[var(--green-500)]" /> {t('import.title')}

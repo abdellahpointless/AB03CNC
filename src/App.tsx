@@ -123,6 +123,9 @@ function Workspace() {
   }, [partMenu]);
   useEffect(() => () => window.clearTimeout(partMenuTimer.current), []);
   const partTabActive = activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW';
+  useEffect(() => {
+    document.querySelector('nav.app-tabs [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab]);
 
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
@@ -141,6 +144,7 @@ function Workspace() {
     }
   };
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const showMfaNudge = user.role === 'ADMIN' && !mfaEnabled && !weakPassword && !mfaNudgeHidden;
 
   // Machine selection is strictly isolated per user session - changes never affect other users
   const [databaseMachine, setDatabaseMachine] = useUserSessionStorage<MachineId>(user.username, 'selected-db-machine', 'HAAS-1');
@@ -172,11 +176,14 @@ function Workspace() {
 
   return (
     <div className="min-h-screen flex flex-col relative pb-8">
+      <a href="#main-content" className="skip-link">{t('common:a11y.skipToContent')}</a>
       {/* Automatic 10-minute folder backup on the admin PC */}
       <AnimatePresence>
         {showPasswordModal && <ChangePasswordModal key="password" initialTab={showPasswordModal} onClose={() => setShowPasswordModal(false)} />}
       </AnimatePresence>
 
+      {(weakPassword || showMfaNudge || connection === 'offline') && (
+      <div role="region" aria-label={t('common:a11y.notices')}>
       {weakPassword && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
           <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
@@ -199,7 +206,7 @@ function Workspace() {
         </div>
       )}
 
-      {user.role === 'ADMIN' && !mfaEnabled && !weakPassword && !mfaNudgeHidden && (
+      {showMfaNudge && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
           <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
@@ -226,6 +233,8 @@ function Workspace() {
           </div>
         </div>
       )}
+      </div>
+      )}
 
       {/* Aurora Glass Header (Section 4: App Shell / Header) */}
       <div className="px-4 sm:px-6 pt-3 sm:pt-4 relative z-20">
@@ -246,11 +255,12 @@ function Workspace() {
 
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-base sm:text-lg font-bold tracking-tight text-[var(--text-primary)] truncate">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--text-primary)] truncate">
                   CNC Process Pro
-                </span>
-                <span className="badge-neutral text-[10px] py-0.5 px-2 tracking-wide font-mono shrink-0">
-                  v6.0 AURORA
+                </h1>
+                {/* Hidden on phones (the wrapper: the badge's own display would win over "hidden"). */}
+                <span className="hidden sm:inline-flex shrink-0">
+                  <span className="badge-neutral text-[10px] py-0.5 px-2 tracking-wide font-mono">v6.0 AURORA</span>
                 </span>
                 {/* Country of this instance; click to go back to the country picker. */}
                 <a
@@ -269,7 +279,7 @@ function Workspace() {
           </div>
 
           {/* Center-Right & Right Controls */}
-          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto relative z-10 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto relative z-10 min-w-0 max-w-full flex-wrap justify-end">
             {/* Server Sync Status Pill */}
             <SyncStatus />
 
@@ -326,10 +336,11 @@ function Workspace() {
 
       {/* Tab Bar: Pill-shaped Glass Container (Section 8: Tabs) */}
       <div className="px-4 sm:px-6 pt-2.5 sm:pt-3 relative z-10">
-        <nav className="glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
+        <nav aria-label={t('common:a11y.mainNav')} className="app-tabs glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
           {/* Tab 1: Tool Inventory */}
           <button
             onClick={() => openTab('DATABASE')}
+            aria-current={activeTab === 'DATABASE' ? 'page' : undefined}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'DATABASE'
                 ? 'text-[var(--accent-primary)]'
@@ -349,6 +360,7 @@ function Workspace() {
           {/* Tab 2: Tool Remapper */}
           <button
             onClick={() => openTab('REMAP')}
+            aria-current={activeTab === 'REMAP' ? 'page' : undefined}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
               activeTab === 'REMAP'
                 ? 'text-[var(--accent-primary)]'
@@ -369,6 +381,7 @@ function Workspace() {
           {user.role === 'MACHINIST' && (
             <button
               onClick={() => openTab('RECENT_CODES')}
+            aria-current={activeTab === 'RECENT_CODES' ? 'page' : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'RECENT_CODES'
                   ? 'text-[var(--accent-primary)]'
@@ -390,6 +403,7 @@ function Workspace() {
           {features.partTracking && (
             <button
               ref={partTabRef}
+              aria-current={partTabActive ? 'page' : undefined}
               onClick={() => {
                 // Touch screens have no hover: tapping the tab you are on opens its menu.
                 if (canReview && partTabActive && !partMenu) {
@@ -439,6 +453,7 @@ function Workspace() {
           {features.preventive && (
             <button
               onClick={() => openTab('PREVENTIVE')}
+            aria-current={activeTab === 'PREVENTIVE' ? 'page' : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'PREVENTIVE'
                   ? 'text-[var(--accent-primary)]'
@@ -460,6 +475,7 @@ function Workspace() {
           {user.role === 'ADMIN' && (
             <button
               onClick={() => openTab('ADMIN')}
+            aria-current={activeTab === 'ADMIN' ? 'page' : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'ADMIN'
                   ? 'text-[var(--green-500)]'
@@ -511,7 +527,7 @@ function Workspace() {
       </div>
 
       {/* Main Content Area with Smooth AnimatePresence Dissolve Transition */}
-      <main className="flex-1 px-4 sm:px-6 pt-3 flex flex-col">
+      <main id="main-content" tabIndex={-1} className="flex-1 px-4 sm:px-6 pt-3 flex flex-col outline-none">
         {/* Tabs are switched many times a day: the new view appears at once and only fades in
             briefly (no exit wait, which used to add ~180 ms before every tab change). */}
           <motion.div 
@@ -580,16 +596,16 @@ function Workspace() {
               <RecentCodes />
             )}
             {activeTab === 'ADMIN' && user.role === 'ADMIN' && (
-              <div className="flex flex-col space-y-6 max-w-6xl mx-auto w-full pb-16">
+              <div className="flex flex-col space-y-6 max-w-5xl mx-auto w-full pb-16">
                 <Suspense fallback={<div className="aurora-card p-10 text-center text-xs text-[var(--text-tertiary)]">{t('loadingAnalytics')}</div>}>
                   <AdminExtractionAnalytics />
                 </Suspense>
                 <UserManagement />
-                <div className="max-w-4xl mx-auto w-full">
+                <div className="w-full">
                   <MachineManager />
                 </div>
                 {currentRegion().id === 'ma' && (
-                  <div className="max-w-4xl mx-auto w-full">
+                  <div className="w-full">
                     <MasterAccountCard />
                   </div>
                 )}

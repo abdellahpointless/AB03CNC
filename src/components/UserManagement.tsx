@@ -216,7 +216,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-12 w-full">
+    <div className="space-y-5 pb-12 w-full">
       {/* Header Glass Panel */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -267,6 +267,7 @@ export default function UserManagement() {
           <div className="w-full sm:w-36 space-y-1">
             <label className="section-label block">{t('users.role')}</label>
             <select
+              aria-label={t('users.role')}
               value={newRole}
               onChange={e => setNewRole(e.target.value as Role)}
               className="aurora-input w-full text-xs cursor-pointer"
@@ -331,6 +332,7 @@ export default function UserManagement() {
                     </td>
                     <td className="p-3.5">
                       <select
+                        aria-label={t('common:a11y.roleOf', { user: u.username })}
                         value={u.role}
                         disabled={busyId !== null || u.id === user?.id}
                         onChange={e => handleRoleChange(u, e.target.value as Role)}

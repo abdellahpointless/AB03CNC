@@ -25,7 +25,7 @@ export default function HubPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[620px] h-[320px] bg-[var(--blue-500)] opacity-10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[420px] h-[300px] bg-[#E30A17] opacity-[0.05] blur-[110px] rounded-full pointer-events-none" />
 
@@ -128,6 +128,6 @@ export default function HubPage() {
         <span>{both('hub:master')}</span>
         <span className="hidden sm:inline">- {i18n.t('hub:masterHint', { lng: 'en' })}</span>
       </motion.a>
-    </div>
+    </main>
   );
 }

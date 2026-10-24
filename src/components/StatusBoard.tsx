@@ -162,10 +162,10 @@ export default function StatusBoard({
       aria-modal="true"
       aria-label={t('board.title')}
     >
-      <header className="sb-head">
+      <div className="sb-head">
         <div className="sb-title">
           {region && <Flag country={region.id} className="sb-flag" />}
-          <span>{t('board.title')}</span>
+          <h2 className="sb-title-text">{t('board.title')}</h2>
         </div>
         <div className="sb-counts" aria-live="polite">
           {counts.down === 0 && counts.attention === 0 ? (
@@ -194,7 +194,7 @@ export default function StatusBoard({
           <span className="sb-time">{fmtTime(clock)}</span>
           <span className="sb-date">{new Date(clock).toLocaleDateString(region.locale, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </div>
-      </header>
+      </div>
 
       <div ref={gridRef} className="sb-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`, '--u': `${unit}px` } as React.CSSProperties}>
         {tiles.map(({ m, state, problems, downSince }, i) => {

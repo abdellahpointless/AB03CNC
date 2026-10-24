@@ -106,5 +106,19 @@ const common = {
     offline: 'Cannot reach the server. Check the network connection.',
     requestFailed: 'Request failed ({{status}})',
   },
+  /** Names read out by screen readers (not shown on screen). */
+  a11y: {
+    skipToContent: 'Skip to main content',
+    mainNav: 'Main sections',
+    machine: 'Machine',
+    toolFor: 'Tool to use for {{tool}}',
+    frequency: 'How often',
+    checkTitle: 'Check name',
+    roleOf: 'Role of {{user}}',
+    category: 'Category',
+    pocket: 'Pocket',
+    days: 'Number of days',
+    notices: 'Notices',
+  },
 };
 export default common;

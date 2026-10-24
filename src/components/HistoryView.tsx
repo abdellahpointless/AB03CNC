@@ -316,6 +316,7 @@ export default function HistoryView() {
               <Filter size={13} className="text-[var(--text-tertiary)]" />
               <span className="text-[11px] text-[var(--text-secondary)] font-medium">{t('view.operatorFilter')}</span>
               <select
+                aria-label={t('view.operatorFilter')}
                 value={selectedUser}
                 onChange={e => handleUserChange(e.target.value)}
                 className="aurora-input text-xs py-1 px-2.5 cursor-pointer max-w-[170px]"
@@ -458,9 +459,12 @@ export default function HistoryView() {
                           {record.originalFileName}
                         </span>
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)] font-mono mt-0.5 truncate">
-                        {t('view.exported')} <span className="font-semibold text-[var(--text-secondary)]">{record.exportedFileName}</span>
-                      </div>
+                      {/* Only when the export got another name (older exports): otherwise it repeats the title. */}
+                      {record.exportedFileName !== record.originalFileName && (
+                        <div className="text-[11px] text-[var(--text-tertiary)] font-mono mt-0.5 truncate">
+                          {t('view.exported')} <span className="font-semibold text-[var(--text-secondary)]">{record.exportedFileName}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -665,7 +669,7 @@ export default function HistoryView() {
             }}
           >
             <motion.div
-              {...iosSurface}
+              {...iosSurface} role="dialog" aria-modal="true" aria-label={inspectingRecord.originalFileName}
               className="glass-modal w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >

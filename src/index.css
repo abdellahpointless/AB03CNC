@@ -19,7 +19,7 @@
 
   --text-primary:   #f5f7fa;   /* headings, big numbers */
   --text-secondary: #9aa4b6;   /* subtitles, muted labels */
-  --text-tertiary:  #667085;   /* micro-labels, timestamps */
+  --text-tertiary:  #848ea0;   /* micro-labels, timestamps (4.9:1+ on every dark surface, WCAG AA) */
 
   --blue-500:  #3b6fd4;
   --blue-600:  #2f5fd0;
@@ -1609,7 +1609,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   --sb-line: rgba(255, 255, 255, 0.07);
   --sb-text: #e8ebef;
   --sb-text-2: #98a1ad;
-  --sb-text-3: #646c78;
+  --sb-text-3: #7f8794; /* 4.9:1 on the board's tiles (WCAG AA) */
   --sb-green: #56c08a;
   --sb-amber: #dfa94e;
   --sb-red: #ec6a6a;
@@ -1989,3 +1989,65 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 }
 
 html.light .tab-submenu { background: rgba(255, 255, 255, 0.97); }
+
+/* ---------------------------------------------------------------------------
+   UI/UX review: accessibility and consistency fixes.
+   --------------------------------------------------------------------------- */
+/* Keyboard users can jump past the header straight to the work area (WCAG 2.4.1). */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100000;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 160ms var(--ease-out);
+}
+.skip-link:focus { transform: none; outline: 2px solid #fff; outline-offset: 2px; }
+
+/* One clear focus ring for every control reached with the keyboard (WCAG 2.4.7). Inputs keep
+   their own blue border + glow. */
+:where(button, a, summary, [tabindex]:not([tabindex='-1']), select:not(.aurora-input)):focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Tab bar: names never get cut ("Tool Re", "Part wit"); on a narrow screen the bar scrolls and
+   fades at the edge to show there is more. */
+.app-tabs > button { flex-shrink: 0; }
+@media (max-width: 767px) {
+  .app-tabs {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    scroll-padding-inline: 12px;
+  }
+}
+
+/* A switched-off action looks switched off, not like a faded coloured button. */
+.btn-primary:disabled,
+.btn-success:disabled,
+.btn-warning:disabled,
+.btn-danger:disabled {
+  background: rgba(var(--ov), 0.05);
+  color: var(--text-tertiary);
+  border-color: var(--border-subtle);
+  box-shadow: none;
+  filter: none;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.btn-primary:disabled svg,
+.btn-success:disabled svg,
+.btn-warning:disabled svg,
+.btn-danger:disabled svg { color: var(--text-tertiary); }
+
+/* TV board title: a heading, styled like before. */
+.sb-title-text { font: inherit; letter-spacing: inherit; margin: 0; }
+
+/* Green badge text on its tinted pill: 5.2:1 (was 4.4:1). */
+html:not(.light) .badge-positive { color: #1fb257; }

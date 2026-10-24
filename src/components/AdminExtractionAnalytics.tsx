@@ -108,7 +108,7 @@ export default function AdminExtractionAnalytics() {
   const manualStrokeDash = (manualChangedPercentage / 100) * donutCircumference;
 
   // Prepare data for the Bar Chart
-  const chartDataMap: Record<string, { username: string; extractions: number; timeSavedSeconds: number; role?: string }> = {};
+  const chartDataMap: Record<string, { username: string; extractions: number; timeSavedSeconds: number; userRole?: string }> = {};
 
   if (Array.isArray(users)) {
     users.forEach((u: any) => {
@@ -118,7 +118,8 @@ export default function AdminExtractionAnalytics() {
           username: uname,
           extractions: 0,
           timeSavedSeconds: 0,
-          role: u.role
+          // Not "role": chart libraries copy row fields onto the bars, and role is an ARIA attribute.
+          userRole: u.role
         };
       }
     });
@@ -160,9 +161,9 @@ export default function AdminExtractionAnalytics() {
           <div className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-2 border-b border-[var(--border-subtle)] pb-1.5">
             <User size={13} className="text-[var(--accent-primary)]" />
             <span>{data.username}</span>
-            {data.role && (
+            {data.userRole && (
               <span className="badge-neutral text-[9px] py-0 px-1.5 font-mono ml-auto">
-                {roleLabel(data.role)}
+                {roleLabel(data.userRole)}
               </span>
             )}
           </div>
@@ -199,12 +200,12 @@ export default function AdminExtractionAnalytics() {
               <PieIcon size={20} />
             </span>
             <div>
-              <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 {t('analytics.distribution.title')}
                 <span className={hasLiveData ? "badge-positive text-[10px] py-0.5 px-2" : "badge-neutral text-[10px] py-0.5 px-2"}>
                   {hasLiveData ? t('analytics.distribution.live') : t('analytics.distribution.preview')}
                 </span>
-              </h3>
+              </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                 {t('analytics.distribution.subtitle')}
               </p>
@@ -381,12 +382,12 @@ export default function AdminExtractionAnalytics() {
                 <BarChart3 size={20} />
               </span>
               <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                   {t('analytics.byUser.title')}
                   <span className="badge-warning text-[10px] py-0.5 px-2">
                     {t('analytics.byUser.adminOnly')}
                   </span>
-                </h3>
+                </h2>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                   {t('analytics.byUser.subtitle')}
                 </p>
@@ -501,10 +502,10 @@ export default function AdminExtractionAnalytics() {
         {/* User Breakdown Table / Leaderboard */}
         {chartData.length > 0 && (
           <div className="mt-8 border-t border-[var(--border-subtle)] pt-6">
-            <h4 className="section-label mb-4 flex items-center gap-1.5 text-[var(--orange-500)]">
+            <h3 className="section-label mb-4 flex items-center gap-1.5 text-[var(--orange-500)]">
               <Award size={14} />
               {t('analytics.leaderboard.title')}
-            </h4>
+            </h3>
 
             <div className="divide-y divide-[var(--border-subtle)] overflow-hidden">
               {chartData.map((item, idx) => {
@@ -524,7 +525,7 @@ export default function AdminExtractionAnalytics() {
                           {item.username}
                         </span>
                         <span className="text-[10px] text-[var(--text-tertiary)]">
-                          {roleLabel(item.role)}
+                          {roleLabel(item.userRole)}
                         </span>
                       </div>
                     </div>

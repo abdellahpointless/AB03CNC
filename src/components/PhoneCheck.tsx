@@ -121,7 +121,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
 
   // ---- Screens without a checklist ----
   const shell = (body: React.ReactNode) => (
-    <div className="phone-check">
+    <main className="phone-check">
       <div className="phone-wrap py-10 space-y-5 text-center">
         {body}
         <button className="btn-secondary w-full phone-big" onClick={onOpenApp}>
@@ -129,7 +129,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
           <span>{t('phone.openApp')}</span>
         </button>
       </div>
-    </div>
+    </main>
   );
   if (!features.preventive) return shell(<p className="text-base text-[var(--text-secondary)]">{t('phone.notUsed')}</p>);
   if (machinesLoaded && !machine) {
@@ -197,7 +197,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
         <div className="phone-wrap flex items-center gap-3 py-3">
           {machine && <img src={machine.image} alt="" className="phone-head-img" />}
           <div className="min-w-0 flex-1">
-            <div className="text-xl font-bold leading-tight text-[var(--text-primary)] truncate">{machine?.name ?? machineId}</div>
+            <h1 className="text-xl font-bold leading-tight text-[var(--text-primary)] truncate">{machine?.name ?? machineId}</h1>
             <div className="text-sm text-[var(--text-tertiary)] truncate">{machine ? machineSubtitle(machine) : ''}</div>
           </div>
           <span className="phone-status">

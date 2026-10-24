@@ -193,6 +193,7 @@ export default function DataManagement() {
             max={3650}
             value={pruneDays}
             onChange={e => setPruneDays(Number(e.target.value))}
+            aria-label={`${t('retention.olderThan')} (${t('retention.days')})`}
             className="aurora-input w-20 text-xs py-1.5"
             disabled={busy !== null}
           />
