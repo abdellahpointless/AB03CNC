@@ -11,10 +11,10 @@ import { regionById, type RegionId } from '../src/regions';
  * action that triggered it: every failure is logged and swallowed.
  */
 
-export type AlertEvent = 'machineProblem' | 'lockout' | 'safetyOverride';
+export type AlertEvent = 'machineProblem' | 'missedTask' | 'lockout' | 'safetyOverride';
 export type AlertMode = 'off' | 'message' | 'call';
-export const ALERT_EVENTS: AlertEvent[] = ['machineProblem', 'lockout', 'safetyOverride'];
-export const DEFAULT_MODES: Record<AlertEvent, AlertMode> = { machineProblem: 'message', lockout: 'message', safetyOverride: 'message' };
+export const ALERT_EVENTS: AlertEvent[] = ['machineProblem', 'missedTask', 'lockout', 'safetyOverride'];
+export const DEFAULT_MODES: Record<AlertEvent, AlertMode> = { machineProblem: 'message', missedTask: 'message', lockout: 'message', safetyOverride: 'message' };
 
 export interface Recipient {
   userId: string;
@@ -136,7 +136,86 @@ async function recentlySent(hub: D1Database, key: string, windowMs: number): Pro
   return false;
 }
 
-/** Sends an alert to every linked master who wants this event. Never throws. */
+// ---- Linking chats (no webhook) ----------------------------------------------------------
+// A link is a one-time code in a t.me/<bot>?start=<code> link. Whoever presses Start with it is
+// added: a master linking their own chat (15 minutes), or another person a master invited by name
+// (7 days, the link is sent to them). The bot's recent messages are read with getUpdates.
+
+export interface PendingLink {
+  userId: string;
+  username: string;
+  lang: 'en' | 'tr';
+  /** The master who made the link. */
+  by?: string;
+  invite?: boolean;
+}
+export const LINK_TTL_MS = 15 * 60 * 1000;
+export const INVITE_TTL_MS = 7 * 86_400_000;
+
+interface TgUpdate {
+  update_id: number;
+  message?: { text?: string; chat: { id: number; type: string; first_name?: string; username?: string }; from?: { username?: string; first_name?: string } };
+}
+
+/** Adds everyone who pressed Start with a pending link; returns the user ids added. Never throws. */
+export async function claimPending(env: Env, hub: D1Database): Promise<string[]> {
+  try {
+    const now = Date.now();
+    const { results } = await hub.prepare("SELECT key, value, updated_at FROM settings WHERE key LIKE 'alerts:link:%'").all<{ key: string; value: string; updated_at: number }>();
+    const pending = new Map<string, PendingLink>();
+    for (const r of results) {
+      const link = JSON.parse(r.value) as PendingLink;
+      if (now - r.updated_at > (link.invite ? INVITE_TTL_MS : LINK_TTL_MS)) await hub.prepare('DELETE FROM settings WHERE key = ?').bind(r.key).run();
+      else pending.set(r.key.slice('alerts:link:'.length), link);
+    }
+    if (!pending.size || !telegramConfigured(env)) return [];
+    const offsetRow = await hub.prepare("SELECT value FROM settings WHERE key = 'alerts:offset'").first<{ value: string }>();
+    const updates = await telegram<TgUpdate[]>(env, 'getUpdates', { offset: Number(offsetRow?.value ?? 0) || undefined, timeout: 0, allowed_updates: ['message'] });
+    if (updates.length) {
+      // Updates older than this are done with (Telegram keeps them 24 h otherwise).
+      await hub
+        .prepare(
+          `INSERT INTO settings (key, value, updated_at) VALUES ('alerts:offset', ?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        )
+        .bind(String(updates[updates.length - 1].update_id + 1), now)
+        .run();
+    }
+    const added: string[] = [];
+    const known = await listRecipients(hub);
+    for (const u of updates) {
+      const m = u.message;
+      const code = m?.chat.type === 'private' ? /^\/start (\S+)$/.exec(m.text?.trim() ?? '')?.[1] : undefined;
+      const link = code ? pending.get(code) : undefined;
+      if (!m || !code || !link) continue;
+      pending.delete(code);
+      const previous = known.find((r) => r.userId === link.userId);
+      const rec: Recipient = {
+        userId: link.userId,
+        username: link.username,
+        chatId: m.chat.id,
+        name: m.chat.first_name || m.from?.first_name || m.chat.username || 'Telegram',
+        lang: link.lang,
+        tgUsername: m.from?.username ?? m.chat.username ?? previous?.tgUsername ?? null,
+        modes: previous?.modes ?? { ...DEFAULT_MODES },
+        linkedAt: now,
+      };
+      await saveRecipient(hub, rec);
+      await hub.prepare('DELETE FROM settings WHERE key = ?').bind(`alerts:link:${code}`).run();
+      added.push(rec.userId);
+      await telegram(env, 'sendMessage', {
+        chat_id: rec.chatId,
+        text: rec.lang === 'tr' ? `✅ CNC Process Pro uyarıları bu sohbete gelecek (${rec.username}).` : `✅ CNC Process Pro alerts will arrive in this chat (${rec.username}).`,
+      }).catch(() => undefined);
+    }
+    return added;
+  } catch (err) {
+    console.error('telegram link check failed', err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+/** Sends an alert to every linked person (masters and the people they invited) who wants this event. Never throws. */
 export async function notify(
   env: Env,
   hub: D1Database | undefined,
@@ -147,6 +226,7 @@ export async function notify(
 ): Promise<void> {
   try {
     if (!hub || !telegramConfigured(env)) return;
+    await claimPending(env, hub); // someone invited may have pressed Start since
     const recipients = (await listRecipients(hub)).filter((r) => r.modes[event] !== 'off');
     if (!recipients.length) return;
     if (dedupeKey && (await recentlySent(hub, `${event}:${dedupeKey}`, 10 * 60 * 1000))) return;
@@ -200,6 +280,22 @@ export function machineProblemAlert(region: string | undefined, machine: string,
     call: {
       en: stops ? `Alert. ${s.en}, machine ${machine} is stopped. Reported by ${user}: ${note}.` : `Alert. ${s.en}, machine ${machine}. Problem reported by ${user}: ${note}.`,
       tr: stops ? `Uyarı. ${s.tr}, tezgah ${machine} durdu. ${user} bildirdi: ${note}.` : `Uyarı. ${s.tr}, tezgah ${machine}. ${user} arıza bildirdi: ${note}.`,
+    },
+  };
+}
+
+/** The next shift reported that a start / end of shift task was not done. */
+export function missedTaskAlert(region: string | undefined, machine: string, task: string, notDoneBy: string, reporter: string) {
+  const c = countryLabel(region);
+  const s = countrySpoken(region);
+  return {
+    message: {
+      en: `📋 ${c.en} · ${machine}\n❌ Task not done in the previous shift: ${task}\n👤 Not done by: ${notDoneBy}\n🔎 Reported by: ${reporter}`,
+      tr: `📋 ${c.tr} · ${machine}\n❌ Önceki vardiyada yapılmayan görev: ${task}\n👤 Yapmayan: ${notDoneBy}\n🔎 Bildiren: ${reporter}`,
+    },
+    call: {
+      en: `${s.en}, machine ${machine}. ${reporter} reports that ${notDoneBy} did not do the task: ${task}.`,
+      tr: `${s.tr}, tezgah ${machine}. ${reporter}, ${notDoneBy} kişisinin şu görevi yapmadığını bildirdi: ${task}.`,
     },
   };
 }

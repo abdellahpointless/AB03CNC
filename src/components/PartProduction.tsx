@@ -1,30 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, ChevronLeft, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { BarChart3, Clock, RefreshCw } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
-import { fetchAdminProduction, getDeviceLocalMonthKey, type OperatorProduction } from '../lib/partsApi';
+import { fetchAdminProduction, type OperatorProduction, type PartsPeriod } from '../lib/partsApi';
 import { useT } from '../i18n';
-import { fmtMonth, locale } from '../i18n/format';
+import { fmtDate, locale } from '../i18n/format';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
 const fmtValue = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
 const fmtQty = (n: number) => n.toLocaleString(locale());
 
-function shiftMonth(key: string, by: number): string {
-  const [y, m] = key.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + by, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
+/** "26/09/2026 → 26/10/2026" in the page's date format. */
+const periodLabel = (p: PartsPeriod) => `${fmtDate(`${p.from}T00:00`)} → ${fmtDate(`${p.to}T00:00`)}`;
 
 /**
  * Part review, top card: how much each operator produced this month, at a glance, without
  * downloading the Excel file. Approved entries only; what still waits for review is shown apart.
  */
-export default function PartProduction() {
+export default function PartProduction({ period }: { period: PartsPeriod }) {
   const { t } = useT('parts');
   const { versions } = useSync();
-  const thisMonth = getDeviceLocalMonthKey();
-  const [month, setMonth] = useState(thisMonth);
   const [rows, setRows] = useState<OperatorProduction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +28,7 @@ export default function PartProduction() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchAdminProduction(month).then((res) => {
+    fetchAdminProduction(period).then((res) => {
       if (cancelled) return;
       if (res.success) {
         setRows(res.rows);
@@ -46,7 +41,7 @@ export default function PartProduction() {
     return () => {
       cancelled = true;
     };
-  }, [month, versions.parts]);
+  }, [period, versions.parts]);
 
   const totals = useMemo(() => {
     const parts = rows.reduce((n, r) => n + r.produced_qty + r.modification_qty, 0);
@@ -70,27 +65,7 @@ export default function PartProduction() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          {month !== thisMonth && (
-            <button type="button" className="btn-secondary text-xs py-1 px-2.5" onClick={() => setMonth(thisMonth)}>
-              {t('production.thisMonth')}
-            </button>
-          )}
-          <button type="button" className="btn-icon" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label={t('production.previousMonth')} title={t('production.previousMonth')}>
-            <ChevronLeft size={15} />
-          </button>
-          <span className="min-w-[8.5rem] text-center text-xs font-semibold text-[var(--text-primary)] capitalize tabular-nums">{fmtMonth(month)}</span>
-          <button
-            type="button"
-            className="btn-icon"
-            onClick={() => setMonth((m) => shiftMonth(m, 1))}
-            disabled={month >= thisMonth}
-            aria-label={t('production.nextMonth')}
-            title={t('production.nextMonth')}
-          >
-            <ChevronRight size={15} />
-          </button>
-        </div>
+        <span className="text-xs font-semibold text-[var(--text-primary)] tabular-nums self-start sm:self-auto">{periodLabel(period)}</span>
       </div>
 
       {error && <div className="text-xs text-[var(--rose-500)]">{t('production.failed', { message: error })}</div>}
@@ -104,7 +79,7 @@ export default function PartProduction() {
 
       {!loading && rows.length === 0 && !error && (
         <div className="py-8 text-center text-xs text-[var(--text-tertiary)] bg-[var(--bg-input)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)]">
-          {t('production.empty', { month: fmtMonth(month) })}
+          {t('production.empty', { month: periodLabel(period) })}
         </div>
       )}
 
@@ -119,7 +94,7 @@ export default function PartProduction() {
             {totals.waiting > 0 && (
               <>
                 <span className="text-[var(--text-tertiary)]">·</span>
-                <span className="inline-flex items-center gap-1 text-[var(--orange-500)]">
+                <span className="inline-flex items-center gap-1 text-[var(--orange-text)]">
                   <Clock size={11} />
                   {t('production.waitingTotal', { count: totals.waiting, qty: fmtQty(totals.waiting) })}
                 </span>
@@ -157,7 +132,7 @@ export default function PartProduction() {
                   <div className="text-right whitespace-nowrap">
                     <div className="text-sm font-bold font-mono text-[var(--green-500)] tabular-nums">{fmtValue(r.total_value)}</div>
                     {r.pending_qty > 0 ? (
-                      <div className="text-xs text-[var(--orange-500)]" title={t('production.waitingTitle')}>
+                      <div className="text-xs text-[var(--orange-text)]" title={t('production.waitingTitle')}>
                         {t('production.waiting', { qty: fmtQty(r.pending_qty) })}
                       </div>
                     ) : (

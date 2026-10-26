@@ -12,6 +12,7 @@ import UserManagement from './components/UserManagement';
 import PartWithoutScan from './components/PartWithoutScan';
 import PartReview from './components/PartReview';
 import PreventiveActions from './components/PreventiveActions';
+import PreventiveReports from './components/PreventiveReports';
 import CalesStock from './components/CalesStock';
 import TabSubMenu from './components/TabSubMenu';
 import PhoneCheck from './components/PhoneCheck';
@@ -26,18 +27,17 @@ import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
 import { fetchCalesStock, fetchRequired, type RequiredItem } from './lib/fleet';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
+import { Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
 import { ring, unlockSound } from './lib/alarm';
 import { fmtTime } from './i18n/format';
 import { motion, AnimatePresence } from 'motion/react';
-import { useTheme, type ThemeMode } from './hooks/useTheme';
-import { EASE_OUT, SPRING_PILL } from './lib/motion';
+import { SPRING_PILL } from './lib/motion';
 import { useT } from './i18n';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE';
+type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS';
 const TAB_NAME = {
   DATABASE: 'tabs.toolInventory',
   REMAP: 'tabs.remapper',
@@ -46,6 +46,7 @@ const TAB_NAME = {
   PART_ENTRY: 'tabs.partEntry',
   PART_REVIEW: 'tabs.partReview',
   PREVENTIVE: 'tabs.preventive',
+  PREVENTIVE_REPORTS: 'tabs.preventiveReports',
 } as const;
 
 const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (DIAMETER 10.00 MM / LENGTH 50.00 MM)\nN20 G90 G54 G0 X0. Y0.\nN21 T3 M6\nN22 (MK_40.00_040_000_ALHS)\nN23 G0 Z50.\nN24 T5 M6\nN25 (SF_12.00_075_000_ALHS)\nN30 M30\n%';
@@ -89,7 +90,7 @@ export default function App() {
 
 function Workspace() {
   const { t } = useT('app');
-  const { user: authUser, logout, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
+  const { user: authUser, weakPassword, dismissWeakPassword, mfaEnabled } = useAuth();
   const user = authUser!;
   const { refreshNow, connection, features, versions, machines } = useSync();
   const [activeTab, setActiveTab] = useState<Tab>('REMAP');
@@ -192,7 +193,7 @@ function Workspace() {
 
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
-    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && activeTab === 'PREVENTIVE')) {
+    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS'))) {
       setActiveTab('REMAP');
     }
   }, [features, activeTab]);
@@ -208,36 +209,13 @@ function Workspace() {
     document.title = `${pageName} · CNC Process Pro`;
   }, [pageName]);
 
-  // "Part without scan" → "Part review" (admins): a small menu that drops out of the tab on hover.
+  // "Part without scan" → "Part review" and "Preventive actions" → "Reports" (admins): small menus
+  // that drop out of the tab on hover, or on a second tap of the tab you are on.
   const canReview = features.partTracking && user.role === 'ADMIN';
-  const partTabRef = useRef<HTMLButtonElement>(null);
-  const [partMenu, setPartMenu] = useState(false);
-  const partMenuTimer = useRef<number | undefined>(undefined);
-  const showPartMenu = () => {
-    window.clearTimeout(partMenuTimer.current);
-    if (canReview) setPartMenu(true);
-  };
-  // A short grace period lets the pointer travel from the tab into the menu.
-  const hidePartMenuSoon = () => {
-    window.clearTimeout(partMenuTimer.current);
-    partMenuTimer.current = window.setTimeout(() => setPartMenu(false), 180);
-  };
-  useEffect(() => {
-    if (!partMenu) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPartMenu(false);
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (partTabRef.current?.contains(target) || (target instanceof Element && target.closest('.tab-submenu'))) return;
-      setPartMenu(false);
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('pointerdown', onDown);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', onDown);
-    };
-  }, [partMenu]);
-  useEffect(() => () => window.clearTimeout(partMenuTimer.current), []);
+  const partMenu = useTabMenu(canReview);
+  const canReports = features.preventive && user.role === 'ADMIN';
+  const prevMenu = useTabMenu(canReports);
+  const prevTabActive = activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS';
   const partTabActive = activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW';
   useEffect(() => {
     document.querySelector('nav.app-tabs [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -319,7 +297,7 @@ function Workspace() {
       {weakPassword && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
           <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-[var(--orange-500)] font-semibold">
+            <div className="flex items-center gap-2 text-[var(--orange-text)] font-semibold">
               <AlertTriangle size={16} className="shrink-0" />
               <span>
                 {t('banners.weakPassword', { min: user.role === 'ADMIN' ? 10 : 8 })}
@@ -360,7 +338,7 @@ function Workspace() {
 
       {connection === 'offline' && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
-          <div className="p-2.5 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 text-xs text-[var(--orange-500)] flex items-center gap-2">
+          <div className="p-2.5 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 text-xs text-[var(--orange-text)] flex items-center gap-2">
             <AlertTriangle size={14} className="shrink-0" />
             <span>{t('banners.offline')}</span>
           </div>
@@ -422,34 +400,6 @@ function Workspace() {
               onTimeSaved={() => user.role === 'ADMIN' && openTab('ADMIN')}
             />
 
-            {/* Circular icon buttons (desktop): security, theme, sync, sign out. On phones they are in the account menu. */}
-            <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
-            <button 
-              onClick={() => setShowPasswordModal('password')} 
-              className="btn-icon" 
-              title={t('header.securityTitle')}
-            >
-              <KeyRound size={15} />
-            </button>
-
-            <ThemeToggle />
-
-            <button 
-              onClick={handleGlobalRefresh} 
-              className="btn-icon" 
-              title={t('header.syncNow')}
-            >
-              <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
-
-            <button 
-              onClick={logout} 
-              className="btn-icon btn-icon-danger" 
-              title={t('header.signOut')}
-            >
-              <LogOut size={15} />
-            </button>
-            </div>
           </div>
         </header>
       </div>
@@ -477,7 +427,7 @@ function Workspace() {
         )}
         {locked ? (
           <div role="status" className="glass-panel rounded-[var(--radius-lg)] px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-            <span className="flex items-center gap-2 font-semibold text-[var(--orange-500)]">
+            <span className="flex items-center gap-2 font-semibold text-[var(--orange-text)]">
               <Lock size={15} /> {t('lock.title')}
             </span>
             <span className="text-[var(--text-secondary)]">{t('lock.help')}</span>
@@ -557,27 +507,27 @@ function Workspace() {
           {/* Tab: Part without scan (Both Roles). For admins, "Part review" drops out of it on hover. */}
           {features.partTracking && (
             <button
-              ref={partTabRef}
+              ref={partMenu.ref}
               aria-current={partTabActive ? 'page' : undefined}
               onClick={() => {
                 // Touch screens have no hover: tapping the tab you are on opens its menu.
-                if (canReview && partTabActive && !partMenu) {
-                  setPartMenu(true);
+                if (canReview && partTabActive && !partMenu.open) {
+                  partMenu.setOpen(true);
                   return;
                 }
-                setPartMenu(false);
+                partMenu.setOpen(false);
                 openTab('PART_ENTRY');
               }}
-              onPointerEnter={(e) => e.pointerType === 'mouse' && showPartMenu()}
-              onPointerLeave={(e) => e.pointerType === 'mouse' && hidePartMenuSoon()}
+              onPointerEnter={(e) => e.pointerType === 'mouse' && partMenu.show()}
+              onPointerLeave={(e) => e.pointerType === 'mouse' && partMenu.hideSoon()}
               onKeyDown={(e) => {
                 if (canReview && e.key === 'ArrowDown') {
                   e.preventDefault();
-                  showPartMenu();
+                  partMenu.show();
                 }
               }}
               aria-haspopup={canReview ? 'menu' : undefined}
-              aria-expanded={canReview ? partMenu : undefined}
+              aria-expanded={canReview ? partMenu.open : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 partTabActive
                   ? activeTab === 'PART_REVIEW'
@@ -594,7 +544,7 @@ function Workspace() {
                   <span>{t('tabs.partReview')}</span>
                 </>
               )}
-              {canReview && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${partMenu ? 'rotate-180' : ''}`} />}
+              {canReview && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${partMenu.open ? 'rotate-180' : ''}`} />}
               {partTabActive && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: activeTab === 'PART_REVIEW' ? 'rgba(22,163,74,0.12)' : 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
@@ -607,20 +557,48 @@ function Workspace() {
           {/* Tab: Preventive actions (Both Roles) */}
           {features.preventive && (
             <button
-              onClick={() => openTab('PREVENTIVE')}
-            aria-current={activeTab === 'PREVENTIVE' ? 'page' : undefined}
+              ref={prevMenu.ref}
+              aria-current={prevTabActive ? 'page' : undefined}
+              onClick={() => {
+                // Touch screens have no hover: tapping the tab you are on opens its menu.
+                if (canReports && prevTabActive && !prevMenu.open) {
+                  prevMenu.setOpen(true);
+                  return;
+                }
+                prevMenu.setOpen(false);
+                openTab('PREVENTIVE');
+              }}
+              onPointerEnter={(e) => e.pointerType === 'mouse' && prevMenu.show()}
+              onPointerLeave={(e) => e.pointerType === 'mouse' && prevMenu.hideSoon()}
+              onKeyDown={(e) => {
+                if (canReports && e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  prevMenu.show();
+                }
+              }}
+              aria-haspopup={canReports ? 'menu' : undefined}
+              aria-expanded={canReports ? prevMenu.open : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-                activeTab === 'PREVENTIVE'
-                  ? 'text-[var(--accent-primary)]'
+                prevTabActive
+                  ? activeTab === 'PREVENTIVE_REPORTS'
+                    ? 'text-[var(--rose-500)]'
+                    : 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <Activity size={15} />
               <span>{t('tabs.preventive')}</span>
-              {activeTab === 'PREVENTIVE' && (
+              {activeTab === 'PREVENTIVE_REPORTS' && (
                 <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+                  <ChevronRight size={12} className="-mx-1 opacity-60" />
+                  <span>{t('tabs.preventiveReports')}</span>
+                </>
+              )}
+              {canReports && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${prevMenu.open ? 'rotate-180' : ''}`} />}
+              {prevTabActive && (
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: activeTab === 'PREVENTIVE_REPORTS' ? 'rgba(244,63,94,0.12)' : 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className={`absolute bottom-0 left-3 right-3 h-[2.5px] rounded-full pointer-events-none ${activeTab === 'PREVENTIVE_REPORTS' ? 'bg-[var(--rose-500)]' : 'bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]'}`} />
                 </>
               )}
             </button>
@@ -657,11 +635,11 @@ function Workspace() {
         )}
         {canReview && (
           <TabSubMenu
-            anchor={partTabRef.current}
-            open={partMenu}
+            anchor={partMenu.ref.current}
+            open={partMenu.open}
             label={t('subTabs.partEntryMenu')}
-            onPointerEnter={showPartMenu}
-            onPointerLeave={hidePartMenuSoon}
+            onPointerEnter={partMenu.show}
+            onPointerLeave={partMenu.hideSoon}
             items={[
               {
                 id: 'entry',
@@ -669,7 +647,7 @@ function Workspace() {
                 icon: <PackagePlus size={14} />,
                 active: activeTab === 'PART_ENTRY',
                 onSelect: () => {
-                  setPartMenu(false);
+                  partMenu.setOpen(false);
                   openTab('PART_ENTRY');
                 },
               },
@@ -679,8 +657,39 @@ function Workspace() {
                 icon: <ClipboardCheck size={14} />,
                 active: activeTab === 'PART_REVIEW',
                 onSelect: () => {
-                  setPartMenu(false);
+                  partMenu.setOpen(false);
                   openTab('PART_REVIEW');
+                },
+              },
+            ]}
+          />
+        )}
+        {canReports && (
+          <TabSubMenu
+            anchor={prevMenu.ref.current}
+            open={prevMenu.open}
+            label={t('subTabs.preventiveMenu')}
+            onPointerEnter={prevMenu.show}
+            onPointerLeave={prevMenu.hideSoon}
+            items={[
+              {
+                id: 'machines',
+                label: t('tabs.preventive'),
+                icon: <Activity size={14} />,
+                active: activeTab === 'PREVENTIVE',
+                onSelect: () => {
+                  prevMenu.setOpen(false);
+                  openTab('PREVENTIVE');
+                },
+              },
+              {
+                id: 'reports',
+                label: t('tabs.preventiveReports'),
+                icon: <ClipboardX size={14} />,
+                active: activeTab === 'PREVENTIVE_REPORTS',
+                onSelect: () => {
+                  prevMenu.setOpen(false);
+                  openTab('PREVENTIVE_REPORTS');
                 },
               },
             ]}
@@ -812,6 +821,7 @@ function Workspace() {
             {activeTab === 'PREVENTIVE' && features.preventive && (
               <PreventiveActions />
             )}
+            {activeTab === 'PREVENTIVE_REPORTS' && features.preventive && user.role === 'ADMIN' && <PreventiveReports />}
             {activeTab === 'PART_REVIEW' && features.partTracking && user.role === 'ADMIN' && (
               <PartReview />
             )}
@@ -821,32 +831,34 @@ function Workspace() {
   );
 }
 
-const THEME_ORDER: ThemeMode[] = ['dark', 'light', 'system'];
-
-function ThemeToggle() {
-  const { t } = useT('app');
-  const { mode, setMode } = useTheme();
-  const next = THEME_ORDER[(THEME_ORDER.indexOf(mode) + 1) % THEME_ORDER.length];
-  const Icon = mode === 'light' ? Sun : mode === 'dark' ? Moon : Monitor;
-  return (
-    <button
-      onClick={() => setMode(next)}
-      className="btn-icon"
-      title={t('theme.title', { current: t(`theme.label.${mode}`), next: t(`theme.nextLabel.${next}`) })}
-      aria-label={t('theme.aria', { mode: t(`theme.label.${mode}`) })}
-    >
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={mode}
-          className="flex"
-          initial={{ opacity: 0, rotate: -45, scale: 0.8 }}
-          animate={{ opacity: 1, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, rotate: 45, scale: 0.8 }}
-          transition={{ duration: 0.2, ease: EASE_OUT }}
-        >
-          <Icon size={15} />
-        </motion.span>
-      </AnimatePresence>
-    </button>
-  );
+/** A small menu that drops out of a tab: on hover (mouse) with a short grace period to reach it. */
+function useTabMenu(enabled: boolean) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const show = () => {
+    window.clearTimeout(timer.current);
+    if (enabled) setOpen(true);
+  };
+  const hideSoon = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setOpen(false), 180);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || (target instanceof Element && target.closest('.tab-submenu'))) return;
+      setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [open]);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { ref, open, setOpen, show, hideSoon };
 }

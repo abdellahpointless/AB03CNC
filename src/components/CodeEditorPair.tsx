@@ -490,7 +490,7 @@ export default function CodeEditorPair({
                     title={t('editor.haasToFanucTitle')}
                     className="btn-secondary text-xs py-1 px-2.5"
                   >
-                    <ArrowLeftRight size={12} className="text-[var(--orange-500)]" />
+                    <ArrowLeftRight size={12} className="text-[var(--orange-text)]" />
                     <span>HAAS &rarr; FANUC</span>
                   </button>
                 </div>
@@ -615,7 +615,7 @@ export default function CodeEditorPair({
 
           {isOutputStale && outputCode && (
             <div className="px-4 py-2.5 border-b border-[var(--orange-500)]/30 bg-[rgba(224,138,77,0.12)] flex items-center justify-between gap-3 text-xs">
-              <span className="flex items-center gap-2 text-[var(--orange-500)] font-semibold">
+              <span className="flex items-center gap-2 text-[var(--orange-text)] font-semibold">
                 <AlertTriangle size={14} className="shrink-0" />
                 {t('editor.stale')}
               </span>
@@ -655,9 +655,9 @@ export default function CodeEditorPair({
                   if (flagged) {
                     lineClass = flagged === 'error'
                       ? 'bg-[var(--rose-500)]/15 text-[var(--rose-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--rose-500)]'
-                      : 'bg-[var(--orange-500)]/15 text-[var(--orange-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)] border-dashed';
+                      : 'bg-[var(--orange-500)]/15 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)] border-dashed';
                   } else if (isApprox) {
-                    lineClass = 'bg-[var(--orange-500)]/20 text-[var(--orange-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)]';
+                    lineClass = 'bg-[var(--orange-500)]/20 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)]';
                   } else if (isChanged) {
                     lineClass = 'bg-[var(--green-500)]/15 text-[var(--green-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--green-500)]';
                   }

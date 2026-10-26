@@ -124,6 +124,37 @@ export async function handleCalesSetStock(ctx: Ctx): Promise<Response> {
   return json({ ok: true });
 }
 
+// Admin: PUT /api/machines/cales/onmachine/:machine/:height { present: 0 | 1 | 2 }
+// What is really in the machine's box (single cales of the pair). Below 2 the rest is missing: the
+// box shows it and users can ask for new cales. 2 puts the pair back (a damaged pair: replaced).
+export async function handleCalesSetOnMachine(ctx: Ctx): Promise<Response> {
+  const machine = (await requireMachine(ctx.env, ctx.params.machine)).id;
+  const h = height(Number(ctx.params.height));
+  const { present } = await readJson<{ present?: unknown }>(ctx.request, 1000);
+  if (present !== 0 && present !== 1 && present !== 2) throw new HttpError(400, 'present must be 0, 1 or 2');
+  const { now, shift } = clock(ctx);
+  const db = ctx.env.DB;
+  const user = ctx.user!.username;
+  const before = await db.prepare('SELECT status, count FROM cales_state WHERE machine_id = ? AND height = ?').bind(machine, h).first<{ status: string; count: number }>();
+  const event = (kind: string, count: number) =>
+    db.prepare('INSERT INTO cales_events (machine_id, height, kind, count, username, shift_key, at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(machine, h, kind, count, user, shift.key, now);
+  const missing = 2 - present;
+  if (missing === 0 ? !before : before?.status === 'MISSING' && before.count === missing) return json({ ok: true });
+  await db.batch([
+    missing === 0
+      ? db.prepare('DELETE FROM cales_state WHERE machine_id = ? AND height = ?').bind(machine, h)
+      : db
+          .prepare(
+            `INSERT INTO cales_state (machine_id, height, status, count, at, username) VALUES (?, ?, 'MISSING', ?, ?, ?)
+             ON CONFLICT (machine_id, height) DO UPDATE SET status = 'MISSING', count = excluded.count, at = excluded.at, username = excluded.username`,
+          )
+          .bind(machine, h, missing, now, user),
+    missing === 0 ? event(before!.status === 'MISSING' ? 'FOUND' : 'REPLACED', before!.count) : event('MISSING', missing),
+    bumpStmt(ctx.env, 'machines'),
+  ]);
+  return json({ ok: true });
+}
+
 interface RequestRow {
   id: string;
   machine_id: string;

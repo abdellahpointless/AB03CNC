@@ -250,7 +250,7 @@ export default function HistoryView() {
       <div className="glass-panel p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-500)]">
+            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-text)]">
               <Clock size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -279,7 +279,7 @@ export default function HistoryView() {
               <button
                 onClick={archiveOlderThan30Days}
                 disabled={busyAction !== null}
-                className="btn-secondary text-xs py-2 px-3 whitespace-nowrap text-[var(--orange-500)] border-[var(--orange-500)]/40 hover:bg-[var(--orange-500)]/10"
+                className="btn-secondary text-xs py-2 px-3 whitespace-nowrap text-[var(--orange-text)] border-[var(--orange-500)]/40 hover:bg-[var(--orange-500)]/10"
                 title={t('view.archiveTitle')}
               >
                 {busyAction === 'archive' ? <RefreshCw size={14} className="animate-spin" /> : <Archive size={14} />}
@@ -475,7 +475,7 @@ export default function HistoryView() {
                       </span>
                     )}
                     <span className="badge-neutral text-xs py-0.5 px-2 flex items-center gap-1">
-                      <User size={11} className="text-[var(--orange-500)]" /> {record.user || t('shared.unknownUser')}
+                      <User size={11} className="text-[var(--orange-text)]" /> {record.user || t('shared.unknownUser')}
                     </span>
                     <span className="badge-neutral text-xs py-0.5 px-2 font-mono">
                       {t('view.toolCount', { count: record.changes.length })}
@@ -559,7 +559,7 @@ export default function HistoryView() {
                                 {change.appChose ? (
                                   <><Bot size={11} className="text-[var(--blue-text)]"/> {t('view.autoSelection')}</>
                                 ) : (
-                                  <><User size={11} className="text-[var(--orange-500)]"/> {t('view.manualOverride')}</>
+                                  <><User size={11} className="text-[var(--orange-text)]"/> {t('view.manualOverride')}</>
                                 )}
                               </div>
                             </div>

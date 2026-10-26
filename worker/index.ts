@@ -20,6 +20,8 @@ import './i18n-tr';
 import { readFeatures } from './features';
 import {
   handleAlertsLink,
+  handleAlertsInvite,
+  handleAlertsRemovePerson,
   handleAlertsLinkCheck,
   handleAlertsStatus,
   handleAlertsTest,
@@ -51,7 +53,7 @@ import {
   handlePruneHistory,
 } from './routes/history';
 import { handleCreateUser, handleDeleteUser, handleListUsers, handleUpdateUser } from './routes/users';
-import { handleAnalytics, handleSetSavedSeconds, handleSync } from './routes/analytics';
+import { handleAnalytics, handleSetHiddenUsers, handleSetSavedSeconds, handleSync } from './routes/analytics';
 import {
   handleAdminExport,
   handleAdminSummary,
@@ -71,6 +73,7 @@ import {
   handleReportIssue,
   handleReportMissed,
   handleRequired,
+  handleMachinesReport,
   handleSetOwners,
   handleUpdateCheck,
 } from './routes/machines';
@@ -81,6 +84,7 @@ import {
   handleCalesReport,
   handleCalesRequest,
   handleCalesSetStock,
+  handleCalesSetOnMachine,
   handleCalesStock,
 } from './routes/cales';
 import {
@@ -126,6 +130,7 @@ route('GET', '/admin/audit', 'admin', handleAuditLog);
 route('GET', '/sync', 'user', handleSync);
 route('GET', '/analytics', 'user', handleAnalytics);
 route('PUT', '/settings/saved-seconds', 'admin', handleSetSavedSeconds);
+route('PUT', '/settings/hidden-users', 'admin', handleSetHiddenUsers);
 
 // Tool inventory (shared by all operators, like before)
 route('GET', '/tools', 'user', handleGetTools);
@@ -163,9 +168,11 @@ route('GET', '/parts/admin-export', 'admin', handleAdminExport);
 // Preventive actions (machines)
 route('GET', '/machines', 'user', handleListMachines);
 route('GET', '/machines/required', 'user', handleRequired);
+route('GET', '/machines/report', 'admin', handleMachinesReport);
 route('GET', '/machines/cales/stock', 'admin', handleCalesStock);
 route('GET', '/machines/cales/log', 'admin', handleCalesLog);
 route('PUT', '/machines/cales/stock/:machine/:height', 'admin', handleCalesSetStock);
+route('PUT', '/machines/cales/onmachine/:machine/:height', 'admin', handleCalesSetOnMachine);
 route('POST', '/machines/cales/requests/:id', 'admin', handleCalesDecide);
 route('POST', '/machines/:machine/cales/report', 'user', handleCalesReport);
 route('POST', '/machines/:machine/cales/confirm', 'user', handleCalesConfirm);
@@ -219,6 +226,8 @@ masterRoute('DELETE', '/masters/:id', 'admin', handleDeleteMaster);
 masterRoute('GET', '/audit', 'admin', handleAuditLog);
 masterRoute('GET', '/alerts', 'admin', handleAlertsStatus);
 masterRoute('POST', '/alerts/link', 'admin', handleAlertsLink);
+masterRoute('POST', '/alerts/invite', 'admin', handleAlertsInvite);
+masterRoute('DELETE', '/alerts/people/:id', 'admin', handleAlertsRemovePerson);
 masterRoute('POST', '/alerts/link/check', 'admin', handleAlertsLinkCheck);
 masterRoute('PUT', '/alerts/me', 'admin', handleAlertsUpdate);
 masterRoute('DELETE', '/alerts/me', 'admin', handleAlertsUnlink);

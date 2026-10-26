@@ -54,6 +54,7 @@ const app: Translation<typeof en> = {
     recentCodes: 'Son kodlar',
     partEntry: 'Taramasız parça girişi',
     preventive: 'Önleyici bakım',
+    preventiveReports: 'Raporlar',
     partReview: 'Parça onayı',
     admin: 'Yönetim',
   },
@@ -77,6 +78,7 @@ const app: Translation<typeof en> = {
   },
   subTabs: {
     partEntryMenu: 'Taramasız parça girişi altında daha fazlası',
+    preventiveMenu: 'Önleyici bakım altında daha fazlası',
   },
 
   theme: {

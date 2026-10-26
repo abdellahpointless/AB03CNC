@@ -3,7 +3,7 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { ensureSchema } from '../schema';
 import { HttpError } from '../http';
 import type { AuthedUser, Ctx } from '../context';
-import { handleCalesConfirm, handleCalesDecide, handleCalesReport, handleCalesRequest, handleCalesSetStock } from '../routes/cales';
+import { handleCalesConfirm, handleCalesDecide, handleCalesReport, handleCalesRequest, handleCalesSetOnMachine, handleCalesSetStock } from '../routes/cales';
 import { handleCheckAction, handleListMachines, handleRequired } from '../routes/machines';
 
 // A real (local) D1 database: approvals must be all-or-nothing, so this is tested on SQLite itself.
@@ -135,5 +135,28 @@ describe('what a user must do first', () => {
     const list = (await (await call(handleListMachines, ali, {}, undefined, 'GET')).json()) as { myDone: string[]; calesChecked: string[] };
     expect(list.myDone).toHaveLength(11);
     expect(list.calesChecked).toEqual(['HAAS-1']);
+  });
+});
+
+describe('what is really on the machine (admin)', () => {
+  it('a machine with no cales shows them missing; a request, once approved, fills the box from the stock', async () => {
+    expect(await status(call(handleCalesSetOnMachine, admin, { machine: 'FANUC-1', height: '30' }, { present: 3 }, 'PUT'))).toBe(400);
+    expect(await status(call(handleCalesSetOnMachine, karim, { machine: 'FANUC-1', height: '30' }, { present: 0 }, 'PUT'))).toBe(200); // route is admin-only; the handler trusts it
+    await call(handleCalesSetOnMachine, admin, { machine: 'FANUC-1', height: '30' }, { present: 0 }, 'PUT');
+    expect(await stateOf('FANUC-1', 30)).toEqual({ status: 'MISSING', count: 2 });
+    await call(handleCalesRequest, karim, { machine: 'FANUC-1' }, { height: 30 });
+    await call(handleCalesSetStock, admin, { machine: 'FANUC-1', height: '30' }, { qty: 4 }, 'PUT');
+    const req = await openRequest('FANUC-1', 30);
+    expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'APPROVE' }))).toBe(200);
+    expect(await stateOf('FANUC-1', 30)).toBeNull();
+    expect(await stockOf('FANUC-1', 30)).toBe(2);
+  });
+  it('one cale left: one missing; back to two: found again', async () => {
+    await call(handleCalesSetOnMachine, admin, { machine: 'FANUC-1', height: '30' }, { present: 1 }, 'PUT');
+    expect(await stateOf('FANUC-1', 30)).toEqual({ status: 'MISSING', count: 1 });
+    await call(handleCalesSetOnMachine, admin, { machine: 'FANUC-1', height: '30' }, { present: 2 }, 'PUT');
+    expect(await stateOf('FANUC-1', 30)).toBeNull();
+    const last = await DB.prepare("SELECT kind, count FROM cales_events WHERE machine_id = 'FANUC-1' AND height = 30 ORDER BY id DESC LIMIT 1").first();
+    expect(last).toEqual({ kind: 'FOUND', count: 1 });
   });
 });

@@ -117,7 +117,13 @@ export default function PreventiveActions() {
     return () => clearInterval(t);
   }, []);
 
-  const fleet = useMemo(() => toFleet(machines), [machines]);
+  const allFleet = useMemo(() => toFleet(machines), [machines]);
+  const myMachines = useMemo(() => (user ? owners.filter((o) => o.user_id === user.id).map((o) => o.machine_id) : []), [owners, user]);
+  // Someone who looks after machines sees only those; admins and people without a machine see all.
+  const fleet = useMemo(
+    () => (user?.role !== 'ADMIN' && myMachines.length ? allFleet.filter((m) => myMachines.includes(m.id)) : allFleet),
+    [allFleet, myMachines, user],
+  );
 
   const byMachine = useMemo(() => {
     const map = new Map<string, MachineCheck[]>();
@@ -142,7 +148,6 @@ export default function PreventiveActions() {
   }, [summaries]);
 
   const ownersOf = useCallback((id: string) => owners.filter((o) => o.machine_id === id), [owners]);
-  const myMachines = useMemo(() => (user ? owners.filter((o) => o.user_id === user.id).map((o) => o.machine_id) : []), [owners, user]);
   const lastEvent = useCallback((id: string) => events.find((e) => e.machine_id === id), [events]);
   const selectedMachine = fleet.find((m) => m.id === selected) || null;
   const nameOf = (id: string) => fleet.find((m) => m.id === id)?.name ?? id;
@@ -462,10 +467,10 @@ function MachinePopContent({
 
       {summary.due.length > 0 && (
         <div className="space-y-1">
-          <div className="section-label !text-[var(--orange-500)]">{t('pop.toDo')}</div>
+          <div className="section-label !text-[var(--orange-text)]">{t('pop.toDo')}</div>
           {summary.due.slice(0, 4).map((c) => (
             <div key={c.id} className="flex items-start gap-1.5 text-[var(--text-secondary)]">
-              <Clock size={12} className="text-[var(--orange-500)] mt-0.5 shrink-0" />
+              <Clock size={12} className="text-[var(--orange-text)] mt-0.5 shrink-0" />
               <span>{c.title}</span>
             </div>
           ))}
@@ -476,7 +481,7 @@ function MachinePopContent({
       {summary.state === 'ok' && <div className="text-[var(--text-secondary)]">{t('pop.allChecksUpToDate', { total: summary.total })}</div>}
 
       {(owners.length > 0 || locked) && (
-        <div className={`flex items-start gap-1.5 ${locked ? 'text-[var(--orange-500)]' : 'text-[var(--text-secondary)]'}`}>
+        <div className={`flex items-start gap-1.5 ${locked ? 'text-[var(--orange-text)]' : 'text-[var(--text-secondary)]'}`}>
           {locked ? <Lock size={12} className="mt-0.5 shrink-0" /> : <Users size={12} className="mt-0.5 shrink-0" />}
           <span>
             {locked ? `${t('pop.lockedForYou')} ` : ''}
@@ -775,7 +780,7 @@ function MachineSheet({
 
           {locked && (
             <div className="p-3 rounded-[var(--radius-md)] bg-[var(--orange-500)]/10 border border-[var(--orange-500)]/30 flex items-start gap-2.5 text-xs">
-              <Lock size={16} className="text-[var(--orange-500)] shrink-0 mt-0.5" />
+              <Lock size={16} className="text-[var(--orange-text)] shrink-0 mt-0.5" />
               <div className="text-[var(--text-secondary)]">
                 <b className="text-[var(--text-primary)]">{t('locked.title', { name: machine.name })}</b> {t('locked.otherMachines')}{' '}
                 {owners.length ? t('locked.owners', { count: owners.length, names: owners.map((o) => o.username).join(', ') }) : ''} {t('locked.canSee')}
@@ -880,7 +885,7 @@ function MachineSheet({
                   {p.stops ? <OctagonX size={16} className="text-[var(--rose-500)] shrink-0" /> : <AlertTriangle size={16} className="text-[var(--rose-500)] shrink-0" />}
                   <div className="flex-1 min-w-[10rem]">
                     <div className="text-sm font-semibold text-[var(--text-primary)]">{p.note}</div>
-                    <div className="text-xs text-[var(--text-tertiary)]">
+                    <div className="text-xs text-[var(--text-secondary)]">
                       {t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}
                     </div>
                     {stopBadge(p)}
@@ -911,7 +916,7 @@ function MachineSheet({
                   <div key={c.id} className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-[var(--text-primary)]">{c.title}</div>
-                      <div className={`text-xs ${by.length ? 'text-[var(--text-tertiary)]' : 'text-[var(--orange-500)]'}`}>
+                      <div className={`text-xs ${by.length ? 'text-[var(--text-tertiary)]' : 'text-[var(--orange-text)]'}`}>
                         {FREQUENCY_LABEL[c.frequency!]} ·{' '}
                         {by.length ? t('prev.doneBy', { users }) : users ? t('prev.notDone', { users }) : t('prev.nobody')}
                       </div>
@@ -993,7 +998,7 @@ function MachineSheet({
                               {stopBadge(c)}
                             </>
                           ) : (
-                            <div className={`text-xs ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
+                            <div className={`text-xs ${st === 'due' ? 'text-[var(--orange-text)]' : 'text-[var(--text-secondary)]'}`}>
                               {endTaskWaiting(c, now) ? t('check.endLater') : c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
                               {st === 'due' && c.last_done_at ? ` · ${isDue(c, now) ? t('check.dueAgain') : t('check.youToo')}` : ''}
                             </div>

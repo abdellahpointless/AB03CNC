@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Boxes, CheckCircle2, Download, X } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { CALE_HEIGHTS, orderRows } from '../lib/cales';
-import { decideCales, fetchCalesLog, fetchCalesStock, setCalesStock, timeAgo, toFleet } from '../lib/fleet';
+import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet } from '../lib/fleet';
 import { currentRegion } from '../lib/instance';
 import { dayStart, periodStart } from '../lib/shifts';
 import { errorMessage } from '../lib/api';
 import { useT } from '../i18n';
 
 /*
- * Admin: spare cales (counted one by one) per machine and height, the requests for new cales, and
- * the Excel file of what to order. Approving a request takes the cales from this stock, puts the
+ * Admin: what is really in each machine's box, the spare cales (security stock, counted one by one)
+ * per machine and height, the requests for new cales, and the Excel file of what to order. Approving a request takes the cales from this stock, puts the
  * pair back in its box and logs it, in one transaction on the server.
  */
 
@@ -27,6 +27,7 @@ export default function CalesStock() {
   const [period, setPeriod] = useState<Period>('week');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [view, setView] = useState<'machine' | 'stock'>('machine');
 
   const load = useCallback(async () => {
     try {
@@ -67,7 +68,7 @@ export default function CalesStock() {
         period === 'custom' ? [dayStart(fy, fm, fd, tz), dayStart(ty, tm, td + 1, tz)] : [periodStart(period === 'week' ? 'WEEKLY' : 'MONTHLY', now, tz), now + 1];
       const { events } = await fetchCalesLog(start, end);
       const { exportCalesOrder } = await import('../lib/calesExport');
-      await exportCalesOrder({ rows: orderRows(d.state, d.stock), events, fleet, from: start, to: end });
+      await exportCalesOrder({ rows: orderRows(d.state, d.stock), events, fleet, state: d.state, stock: d.stock, from: start, to: end });
     });
 
   return (
@@ -166,10 +167,23 @@ export default function CalesStock() {
             )}
           </section>
 
-          <section className="space-y-2">
-            <h4 className="section-label">{t('stock.grid')}</h4>
-            <p className="text-xs text-[var(--text-tertiary)]">{t('stock.gridHelp')}</p>
-            <div className="overflow-x-auto">
+          <section className="space-y-3">
+            <div role="tablist" aria-label={t('stock.views')} className="inline-flex rounded-full border border-[var(--border-subtle)] p-1 gap-1">
+              {(['machine', 'stock'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === v}
+                  onClick={() => setView(v)}
+                  className={`no-glass rounded-full px-3.5 py-1.5 text-xs font-semibold ${view === v ? 'bg-[var(--blue-500)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                >
+                  {t(v === 'machine' ? 'stock.onMachine' : 'stock.securityStock')}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-[var(--text-tertiary)]">{t(view === 'machine' ? 'stock.onMachineHelp' : 'stock.gridHelp')}</p>
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t(view === 'machine' ? 'stock.onMachine' : 'stock.securityStock')}>
               <table className="border-collapse text-xs">
                 <thead>
                   <tr>
@@ -192,6 +206,27 @@ export default function CalesStock() {
                       {CALE_HEIGHTS.map((h) => {
                         const st = stateOf(m.id, h);
                         const s = st ? (st.status === 'MISSING' ? 'missing' : 'damaged') : null;
+                        if (view === 'machine') {
+                          // Single cales really in the box: a missing pair shows 0, one missing shows 1.
+                          const present = st?.status === 'MISSING' ? 2 - st.count : 2;
+                          return (
+                            <td key={h} className="p-1 text-center">
+                              <select
+                                aria-label={`${t('stock.onMachineCell', { machine: m.name, h })}${s ? `, ${t(`cales.state.${s}`)}` : ''}`}
+                                className={`aurora-input stock-cell ${s ? `s-${s}` : ''}`}
+                                value={present}
+                                disabled={busy === `box:${m.id}:${h}`}
+                                onChange={(e) => void run(`box:${m.id}:${h}`, () => setCalesOnMachine(m.id, h, Number(e.target.value) as 0 | 1 | 2))}
+                              >
+                                {[0, 1, 2].map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                          );
+                        }
                         const q = qty(m.id, h);
                         return (
                           <td key={h} className="p-1 text-center">

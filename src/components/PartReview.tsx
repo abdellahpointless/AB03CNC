@@ -6,20 +6,14 @@ import {
   fetchPendingEntries,
   reviewPartEntries,
   fetchAdminMonthlySummary,
-  fetchAdminEntriesForExport
+  fetchAdminEntriesForExport,
+  payPeriod,
 } from '../lib/partsApi';
 import { exportAdminPartEntriesExcel } from '../lib/partExportExcel';
 import PartProduction from './PartProduction';
+import PeriodPicker from './PeriodPicker';
 import { useT } from '../i18n';
-import { fmtDateTime, fmtMonth, locale } from '../i18n/format';
-
-// shortcut: the export filter lists the last 24 months only; add older ones if entries go further back.
-const RECENT_MONTHS = Array.from({ length: 24 }, (_, i) => {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() - i);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-});
+import { fmtDateTime, locale } from '../i18n/format';
 import {
   ClipboardCheck,
   Check,
@@ -30,7 +24,6 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  Filter,
   AlertCircle
 } from 'lucide-react';
 
@@ -54,7 +47,8 @@ export default function PartReview() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Admin Export State
-  const [exportMonthFilter, setExportMonthFilter] = useState<string>('');
+  // The period shown and exported: the 26th to the 26th by default (the end day is not counted).
+  const [period, setPeriod] = useState(() => payPeriod());
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const [reloadKey, setReloadKey] = useState(0);
@@ -145,12 +139,12 @@ export default function PartReview() {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      const summaryRes = await fetchAdminMonthlySummary(exportMonthFilter || undefined);
+      const summaryRes = await fetchAdminMonthlySummary(period);
       if (!summaryRes.success) throw new Error(summaryRes.error);
-      const allEntries = await fetchAdminEntriesForExport(exportMonthFilter || undefined);
+      const allEntries = await fetchAdminEntriesForExport(period);
 
       await exportAdminPartEntriesExcel({
-        monthFilter: exportMonthFilter || undefined,
+        monthFilter: `${period.from}_${period.to}`,
         summaryRows: summaryRes.rows!,
         entries: allEntries
       });
@@ -180,25 +174,9 @@ export default function PartReview() {
           </div>
         </div>
 
-        {/* Top Controls: Month Filter + Admin Excel Export + Refresh */}
+        {/* Top Controls: period (shown and exported) + Admin Excel Export + Refresh */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-[var(--bg-input)] px-2.5 py-1.5 rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-xs focus-within:ring-2 focus-within:ring-[var(--accent-primary)]">
-            <Filter size={13} className="text-[var(--text-tertiary)]" />
-            <select
-              title={t('review.monthFilterTitle')}
-              aria-label={t('review.monthFilterTitle')}
-              value={exportMonthFilter}
-              onChange={e => setExportMonthFilter(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs text-[var(--text-primary)] py-1.5 -my-1.5 cursor-pointer"
-            >
-              <option value="">{t('review.allMonths')}</option>
-              {RECENT_MONTHS.map((m) => (
-                <option key={m} value={m}>
-                  {fmtMonth(m)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PeriodPicker value={period} onChange={setPeriod} />
 
           <button
             onClick={handleExportAdminExcel}
@@ -234,7 +212,7 @@ export default function PartReview() {
       )}
 
       {/* How much each operator produced this month (no Excel needed) */}
-      <PartProduction />
+      <PartProduction period={period} />
 
       {/* Main Review Card */}
       <div className="aurora-card p-6 space-y-4">

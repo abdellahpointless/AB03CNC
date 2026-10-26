@@ -15,16 +15,38 @@ import { EASE_OUT, SPRING_POP } from '../lib/motion';
  * person confirms that every pair is there, or picks a pair and reports it missing or damaged.
  * The state is the server's, shared by everyone on the machine; each press is saved there at once.
  *
- * The 3D part (three.js) is loaded only when a machine is opened, and built while nobody is
- * looking (idle time), so pressing the box starts moving at once.
+ * The 3D part (three.js) is heavy: opening a machine only shows a picture of the closed box, kept
+ * on this device, so the 3D scene is built once per machine and device for that picture, and
+ * otherwise only when the box is pressed (after the picture has flown into place).
  */
 
 type Pic = { url: string; box: Rect; w: number; h: number };
 type Engine = { scene: CalesScene; canvas: HTMLCanvasElement; contents: boolean };
 type Events = { pick: (h: number | null) => void; hover: (h: number | null) => void };
 
-/** Pictures of the closed box, kept while the page is open (per machine name and colour mode). */
+/** Pictures of the closed box (per machine name, colour mode and language), also kept on this device. */
 const pictures = new Map<string, Pic>();
+const STORED = 'cnc-cales-pic:v1:'; // bump when the box looks different
+function cachedPic(key: string): Pic | null {
+  if (!pictures.has(key)) {
+    try {
+      const v = localStorage.getItem(STORED + key);
+      if (v) pictures.set(key, JSON.parse(v) as Pic);
+    } catch {
+      /* storage blocked: draw it again */
+    }
+  }
+  return pictures.get(key) ?? null;
+}
+function keepPic(key: string, p: Pic): Pic {
+  pictures.set(key, p);
+  try {
+    localStorage.setItem(STORED + key, JSON.stringify(p));
+  } catch {
+    /* storage full or blocked: kept for this page only */
+  }
+  return p;
+}
 const PIC_W = 520; // drawn larger than shown, so it stays sharp while it grows
 const PIC_H = 330;
 
@@ -86,7 +108,7 @@ export default function CalesBox({ machine, canAct, state, checked: checkedByMe,
   const { t } = useT('preventive');
   const theme = useDocTheme();
   const picKey = `${machine.name}|${theme}|${i18n.language}`;
-  const [pic, setPic] = useState<Pic | null>(() => pictures.get(picKey) ?? null);
+  const [pic, setPic] = useState<Pic | null>(() => cachedPic(picKey));
   const [open, setOpen] = useState(false);
   const thumbRef = useRef<HTMLButtonElement>(null);
   const artRef = useRef<HTMLSpanElement>(null);
@@ -124,29 +146,22 @@ export default function CalesBox({ machine, canAct, state, checked: checkedByMe,
     return pending.current;
   }, [machine.name]);
 
-  // Get ready quietly once the machine sheet has settled: first the picture, then the cales.
+  // No picture on this device yet: draw it once the machine sheet has settled.
   useEffect(() => {
     alive.current = true;
-    let cancelContents = () => {};
-    const cancelPicture = whenIdle(async () => {
-      const e = await getEngine();
-      if (!e || !alive.current) return;
-      const key = `${machine.name}|${docTheme()}|${i18n.language}`;
-      if (!pictures.has(key)) pictures.set(key, e.scene.snapshot(PIC_W, PIC_H));
-      setPic(pictures.get(key)!);
-      cancelContents = whenIdle(() => {
-        const cur = engine.current;
-        if (alive.current && cur && !cur.contents) {
-          cur.scene.buildContents();
-          cur.scene.warmUp();
-          cur.contents = true;
-        }
-      }, 2500);
-    }, 1200);
+    const key = `${machine.name}|${docTheme()}|${i18n.language}`;
+    const known = cachedPic(key);
+    if (known) setPic(known);
+    const cancelPicture = known
+      ? () => {}
+      : whenIdle(async () => {
+          const e = await getEngine();
+          if (!e || !alive.current) return;
+          setPic(keepPic(key, e.scene.snapshot(PIC_W, PIC_H)));
+        }, 1200);
     return () => {
       alive.current = false;
       cancelPicture();
-      cancelContents();
       engine.current?.scene.dispose();
       engine.current = null;
       pending.current = null;
@@ -158,10 +173,7 @@ export default function CalesBox({ machine, canAct, state, checked: checkedByMe,
     const e = engine.current;
     if (!e) return;
     e.scene.setTheme(theme);
-    if (!open) {
-      if (!pictures.has(picKey)) pictures.set(picKey, e.scene.snapshot(PIC_W, PIC_H));
-      setPic(pictures.get(picKey)!);
-    }
+    if (!open) setPic(cachedPic(picKey) ?? keepPic(picKey, e.scene.snapshot(PIC_W, PIC_H)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);
 
@@ -317,8 +329,12 @@ function CalesViewer({ machine, canAct, state, checked, requested, onChanged, pi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Meanwhile: make sure the scene exists, with its cales, and start drawing.
+  // Make sure the scene exists, with its cales, and start drawing. Building it blocks the page for a
+  // moment, so unless it is ready, wait until the picture has landed (no stutter while it flies).
+  const building = useRef(false);
   useEffect(() => {
+    if (building.current || (!landed && !eng.current?.contents)) return;
+    building.current = true;
     let cancelled = false;
     (async () => {
       const e = eng.current ?? (await getEngine());
@@ -348,7 +364,7 @@ function CalesViewer({ machine, canAct, state, checked, requested, onChanged, pi
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [landed]);
 
   // Landed and drawn: swap the picture for the live box, open the lid.
   useEffect(() => {

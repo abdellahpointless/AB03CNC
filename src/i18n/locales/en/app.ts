@@ -52,6 +52,7 @@ const app = {
     recentCodes: 'Recent Codes',
     partEntry: 'Part without scan',
     preventive: 'Preventive actions',
+    preventiveReports: 'Reports',
     partReview: 'Part review',
     admin: 'Admin',
   },
@@ -78,6 +79,7 @@ const app = {
   /** Part review appears under "Part without scan" when an admin points at it. */
   subTabs: {
     partEntryMenu: 'More in Part without scan',
+    preventiveMenu: 'More in Preventive actions',
   },
 
   theme: {

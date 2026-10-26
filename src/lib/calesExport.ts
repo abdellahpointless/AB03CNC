@@ -1,4 +1,4 @@
-import { CALE_HEIGHTS, type CaleHeight, type orderRows } from './cales';
+import { CALE_HEIGHTS, type CaleHeight, type CaleRow, type StockRow, type orderRows } from './cales';
 import type { CaleEvent, FleetMachine } from './fleet';
 import { currentRegion } from './instance';
 import { periodKey } from './shifts';
@@ -18,6 +18,9 @@ export async function exportCalesOrder(p: {
   rows: ReturnType<typeof orderRows>;
   events: CaleEvent[];
   fleet: FleetMachine[];
+  /** Pairs not in good shape now, and the spare cales: the two tables of the admin page. */
+  state: CaleRow[];
+  stock: StockRow[];
   from: number;
   /** End of the period (excluded). */
   to: number;
@@ -66,7 +69,20 @@ export async function exportCalesOrder(p: {
     });
   }
 
-  for (const sheet of [order, log]) {
+  // The two tables of the admin page, as they are now: cales in each machine's box, and spares.
+  const grid = (name: string, value: (m: string, h: number) => number) => {
+    const sheet = book.addWorksheet(name);
+    sheet.columns = [{ header: i18n.t('preventive:stock.excel.machine'), key: 'machine', width: 18 }, ...CALE_HEIGHTS.map((h) => ({ header: `${h}`, key: `h${h}`, width: 8 }))];
+    for (const m of p.fleet) sheet.addRow({ machine: m.name, ...Object.fromEntries(CALE_HEIGHTS.map((h) => [`h${h}`, value(m.id, h)])) });
+    return sheet;
+  };
+  const onMachine = grid(i18n.t('preventive:stock.onMachine'), (m, h) => {
+    const st = p.state.find((r) => r.machine_id === m && r.height === h);
+    return st?.status === 'MISSING' ? 2 - st.count : 2;
+  });
+  const spare = grid(i18n.t('preventive:stock.securityStock'), (m, h) => p.stock.find((r) => r.machine_id === m && r.height === h)?.qty ?? 0);
+
+  for (const sheet of [order, log, onMachine, spare]) {
     const head = sheet.getRow(1);
     head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };

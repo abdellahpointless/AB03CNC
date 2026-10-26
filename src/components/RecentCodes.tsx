@@ -138,7 +138,7 @@ export default function RecentCodes() {
                        <>
                          <span>•</span>
                          <span className="flex items-center gap-1 text-[var(--text-secondary)]">
-                           <UserCircle size={11} className="text-[var(--orange-500)]" /> {record.user}
+                           <UserCircle size={11} className="text-[var(--orange-text)]" /> {record.user}
                          </span>
                        </>
                      )}

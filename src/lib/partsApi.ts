@@ -87,8 +87,39 @@ export function reviewPartEntries(ids: string[], status: 'APPROVED' | 'REJECTED'
   return wrap(() => api<{ updated: number }>('/parts/review', { method: 'POST', body: { ids, status } }), { updated: 0 });
 }
 
-export function fetchAdminMonthlySummary(monthFilter?: string) {
-  const qs = monthFilter ? `?month=${encodeURIComponent(monthFilter)}` : '';
+/** A period of days on this PC's calendar, YYYY-MM-DD; the end day is not included. */
+export interface PartsPeriod {
+  from: string;
+  to: string;
+}
+
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dayMs = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+};
+
+/** The 26th-to-26th period that holds `at`, moved by `by` periods (-1 = the one before). */
+export function payPeriod(at = new Date(), by = 0): PartsPeriod {
+  const m = at.getMonth() + by - (at.getDate() < 26 ? 1 : 0);
+  return { from: ymd(new Date(at.getFullYear(), m, 26)), to: ymd(new Date(at.getFullYear(), m + 1, 26)) };
+}
+
+/** The same period one month earlier (-1) or later (1), keeping the chosen days. */
+export function shiftPeriod(p: PartsPeriod, by: number): PartsPeriod {
+  const move = (s: string) => {
+    const [y, m, d] = s.split('-').map(Number);
+    return ymd(new Date(y, m - 1 + by, d));
+  };
+  return { from: move(p.from), to: move(p.to) };
+}
+
+/** The period as times (ms) on this PC's calendar, the end excluded. */
+export const periodMs = (p: PartsPeriod) => ({ from: dayMs(p.from), to: dayMs(p.to) });
+const periodQs = (p: PartsPeriod) => `from=${dayMs(p.from)}&to=${dayMs(p.to)}`;
+
+export function fetchAdminMonthlySummary(period?: PartsPeriod) {
+  const qs = period ? `?${periodQs(period)}` : '';
   return wrap(async () => ({ rows: normalizeSummary((await api<{ rows: any[] }>(`/parts/admin-summary${qs}`)).rows) }), {
     rows: [] as MonthlySummaryRow[],
   });
@@ -104,11 +135,11 @@ export interface OperatorProduction {
   pending_qty: number;
 }
 
-/** Admin: every operator's production for one month (YYYY-MM), most productive first. */
-export function fetchAdminProduction(month: string) {
+/** Admin: every operator's production in a period, most productive first. */
+export function fetchAdminProduction(period: PartsPeriod) {
   return wrap(
     async () => ({
-      rows: (await api<{ rows: any[] }>(`/parts/admin-production?month=${encodeURIComponent(month)}`)).rows.map(
+      rows: (await api<{ rows: any[] }>(`/parts/admin-production?${periodQs(period)}`)).rows.map(
         (r): OperatorProduction => ({
           user_id: String(r.user_id),
           username: String(r.username || ''),
@@ -123,12 +154,10 @@ export function fetchAdminProduction(month: string) {
   );
 }
 
-export async function fetchAdminEntriesForExport(monthFilter?: string): Promise<any[]> {
+export async function fetchAdminEntriesForExport(period?: PartsPeriod): Promise<any[]> {
   const out: any[] = [];
   for (let offset = 0; ; offset += 500) {
-    const qs = new URLSearchParams({ offset: String(offset) });
-    if (monthFilter) qs.set('month', monthFilter);
-    const res = await api<{ entries: any[]; hasMore: boolean }>(`/parts/admin-export?${qs}`);
+    const res = await api<{ entries: any[]; hasMore: boolean }>(`/parts/admin-export?offset=${offset}${period ? `&${periodQs(period)}` : ''}`);
     out.push(...res.entries);
     if (!res.hasMore) return out;
   }

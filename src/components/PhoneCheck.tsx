@@ -160,7 +160,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
   if (machinesLoaded && !machine) {
     return shell(
       <>
-        <AlertTriangle size={36} className="mx-auto text-[var(--orange-500)]" />
+        <AlertTriangle size={36} className="mx-auto text-[var(--orange-text)]" />
         <p className="text-base text-[var(--text-secondary)]">{t('phone.unknown')}</p>
         <p className="font-mono text-sm text-[var(--text-tertiary)]">{machineId}</p>
       </>,
@@ -237,7 +237,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
 
         {locked && (
           <div className="phone-note">
-            <Lock size={18} className="shrink-0 text-[var(--orange-500)]" />
+            <Lock size={18} className="shrink-0 text-[var(--orange-text)]" />
             <span>{t('phone.viewOnly')}</span>
           </div>
         )}
@@ -311,7 +311,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
           </motion.div>
         ) : (
           <section className="space-y-2.5">
-            <h2 className="phone-section text-[var(--orange-500)]">{t('phone.toDo')}</h2>
+            <h2 className="phone-section text-[var(--orange-text)]">{t('phone.toDo')}</h2>
             <AnimatePresence initial={false}>
               {toDo.map((c) => (
                 <motion.div

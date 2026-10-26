@@ -21,6 +21,7 @@ import {
   User,
   BarChart3,
   Sliders,
+  Users,
   Award,
   PieChart as PieIcon,
   Sparkles,
@@ -57,6 +58,7 @@ export default function AdminExtractionAnalytics() {
   const { user } = useAuth();
   const { analytics: liveAnalytics, versions, refreshNow } = useSync();
   const [showSettings, setShowSettings] = useState(false);
+  const [showPeople, setShowPeople] = useState(false);
   const [users, setUsers] = useState<{ username: string; role: string }[]>([]);
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
@@ -138,7 +140,22 @@ export default function AdminExtractionAnalytics() {
     }
   });
 
-  const chartData = Object.values(chartDataMap).sort((a, b) => b.extractions - a.extractions);
+  // Test accounts the admin hid are left out of the chart and the list (and of every total).
+  const hidden = new Set(liveAnalytics?.hiddenUsers ?? []);
+  const everyone = Object.values(chartDataMap).sort((a, b) => a.username.localeCompare(b.username));
+  const chartData = everyone.filter((d) => !hidden.has(d.username.toLowerCase())).sort((a, b) => b.extractions - a.extractions);
+  const setShown = async (username: string, show: boolean) => {
+    setSettingsError(null);
+    const next = new Set(hidden);
+    if (show) next.delete(username.toLowerCase());
+    else next.add(username.toLowerCase());
+    try {
+      await api('/settings/hidden-users', { method: 'PUT', body: { usernames: [...next] } });
+      await refreshNow();
+    } catch (err: any) {
+      setSettingsError(err?.message || t('analytics.errors.saveFailed'));
+    }
+  };
 
   // Role names are shown as stored (ADMIN, MACHINIST) in English; translated for display only.
   const roleLabel = (role?: string): string => {
@@ -270,7 +287,7 @@ export default function AdminExtractionAnalytics() {
                 <span className="text-xs uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
                   {t('analytics.distribution.appSelected')}
                 </span>
-                <span className="text-xs font-mono text-[var(--orange-500)] font-medium">
+                <span className="text-xs font-mono text-[var(--orange-text)] font-medium">
                   {t('analytics.distribution.manualPercent', { percent: manualChangedPercentage })}
                 </span>
               </div>
@@ -322,7 +339,7 @@ export default function AdminExtractionAnalytics() {
             {/* Manually Changed Card */}
             <div className="p-4 rounded-[var(--radius-md)] border border-[var(--orange-500)]/30 bg-[rgba(224,138,77,0.08)] flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-[var(--orange-500)]/20 border border-[var(--orange-500)]/40 flex items-center justify-center text-[var(--orange-500)] shrink-0">
+                <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-[var(--orange-500)]/20 border border-[var(--orange-500)]/40 flex items-center justify-center text-[var(--orange-text)] shrink-0">
                   <Wrench size={20} />
                 </div>
                 <div>
@@ -338,7 +355,7 @@ export default function AdminExtractionAnalytics() {
               </div>
 
               <div className="text-right">
-                <div className="font-mono text-2xl font-bold text-[var(--orange-500)] leading-none">
+                <div className="font-mono text-2xl font-bold text-[var(--orange-text)] leading-none">
                   {pct(manualChangedPercentage)}
                 </div>
                 <span className="text-xs font-mono text-[var(--text-tertiary)] mt-1 block">
@@ -391,6 +408,14 @@ export default function AdminExtractionAnalytics() {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowPeople(!showPeople)}
+              aria-expanded={showPeople}
+              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            >
+              <Users size={13} />
+              <span>{t('analytics.byUser.people')}</span>
+            </button>
+            <button
               onClick={() => setShowSettings(!showSettings)}
               className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
               title={t('analytics.byUser.settingsTitle')}
@@ -400,6 +425,27 @@ export default function AdminExtractionAnalytics() {
             </button>
           </div>
         </div>
+
+        {showPeople && (
+          <div className="mb-6 p-4 glass-panel space-y-3">
+            <div>
+              <span className="section-label">{t('analytics.byUser.peopleTitle')}</span>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">{t('analytics.byUser.peopleHelp')}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {everyone.map((d) => {
+                const shown = !hidden.has(d.username.toLowerCase());
+                return (
+                  <label key={d.username} className={`inline-flex items-center gap-2 min-h-8 pointer-coarse:min-h-11 px-3 rounded-full border text-xs cursor-pointer select-none ${shown ? 'border-[var(--blue-500)]/40 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-tertiary)] line-through'}`}>
+                    <input type="checkbox" className="w-4 h-4 accent-[var(--blue-500)]" checked={shown} onChange={(e) => setShown(d.username, e.target.checked)} />
+                    {d.username}
+                  </label>
+                );
+              })}
+            </div>
+            {settingsError && <div className="badge-danger text-xs py-1.5 px-3">{settingsError}</div>}
+          </div>
+        )}
 
         {/* Optional Baseline Calculation Settings Drawer */}
         {showSettings && (
@@ -496,7 +542,7 @@ export default function AdminExtractionAnalytics() {
         {/* User Breakdown Table / Leaderboard */}
         {chartData.length > 0 && (
           <div className="mt-8 border-t border-[var(--border-subtle)] pt-6">
-            <h3 className="section-label mb-4 flex items-center gap-1.5 text-[var(--orange-500)]">
+            <h3 className="section-label mb-4 flex items-center gap-1.5 text-[var(--orange-text)]">
               <Award size={14} />
               {t('analytics.leaderboard.title')}
             </h3>

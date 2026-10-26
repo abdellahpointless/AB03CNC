@@ -1,11 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
-import { BellRing, ExternalLink, MessageCircle, Phone, PhoneCall, RefreshCw, Send, Unlink, BellOff } from 'lucide-react';
+import { BellRing, Copy, ExternalLink, MessageCircle, Phone, PhoneCall, RefreshCw, Send, Trash2, Unlink, BellOff, UserPlus, Users } from 'lucide-react';
 import { api, errorMessage } from '../lib/api';
 import i18n, { useT } from '../i18n';
 
 type Mode = 'off' | 'message' | 'call';
-type Event = 'machineProblem' | 'lockout' | 'safetyOverride';
+type Event = 'machineProblem' | 'missedTask' | 'lockout' | 'safetyOverride';
+/** Someone a master invited: linked (name = their Telegram name) or still waiting (url = their link). */
+interface Person {
+  id: string;
+  label: string;
+  name: string | null;
+  linkedAt: number | null;
+  url: string | null;
+}
 interface Me {
   name: string;
   tgUsername: string | null;
@@ -17,10 +25,11 @@ interface Status {
   configured: boolean;
   bot: string | null;
   me: Me | null;
+  people: Person[];
   events: Event[];
 }
 
-const EVENT_ICON: Record<Event, string> = { machineProblem: '🛠️', lockout: '🔒', safetyOverride: '🛡️' };
+const EVENT_ICON: Record<Event, string> = { machineProblem: '🛠️', missedTask: '📋', lockout: '🔒', safetyOverride: '🛡️' };
 
 function Qr({ text }: { text: string }) {
   const { d, size } = useMemo(() => {
@@ -49,6 +58,8 @@ export default function TelegramAlerts() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [tgUser, setTgUser] = useState('');
+  const [newName, setNewName] = useState('');
+  const [invite, setInvite] = useState<{ url: string; label: string } | null>(null);
 
   const load = () =>
     api<Status>('/alerts')
@@ -234,6 +245,99 @@ export default function TelegramAlerts() {
               <button type="submit" disabled={busy !== null} className="btn-secondary text-xs py-1.5 px-3">{t('alerts.save')}</button>
             </form>
           </div>
+        </div>
+      )}
+
+      {status.configured && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-3">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+              <Users size={13} /> {t('alerts.people.title')}
+            </div>
+            <p className="text-xs text-[var(--text-tertiary)] leading-relaxed mt-1">{t('alerts.people.help')}</p>
+          </div>
+          {status.people.length > 0 && (
+            <ul className="space-y-1.5">
+              {status.people.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] px-3 py-2 text-xs">
+                  <span className="font-semibold text-[var(--text-primary)]">{p.label}</span>
+                  {p.linkedAt ? (
+                    <span className="badge-positive">✅ {p.name}</span>
+                  ) : (
+                    <span className="badge-warning">{t('alerts.people.waiting')}</span>
+                  )}
+                  <span className="ml-auto flex gap-1.5">
+                    {!p.linkedAt && p.url && (
+                      <button type="button" className="btn-secondary text-xs py-1 px-2.5" onClick={() => setInvite({ url: p.url!, label: p.label })}>
+                        <Copy size={13} />
+                        <span>{t('alerts.people.showLink')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs py-1 px-2.5"
+                      disabled={busy !== null}
+                      aria-label={t('alerts.people.remove', { name: p.label })}
+                      title={t('alerts.people.remove', { name: p.label })}
+                      onClick={() =>
+                        run(`rm:${p.id}`, async () => {
+                          await api(`/alerts/people/${encodeURIComponent(p.id)}`, { method: 'DELETE' });
+                          setStatus((s) => (s ? { ...s, people: s.people.filter((x) => x.id !== p.id) } : s));
+                        })
+                      }
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="flex gap-2"
+            onSubmit={(ev) => {
+              ev.preventDefault();
+              const label = newName.trim();
+              if (!label) return;
+              run('invite', async () => {
+                const res = await api<{ url: string }>('/alerts/invite', { method: 'POST', body: { name: label, lang: i18n.language === 'tr' ? 'tr' : 'en' } });
+                setInvite({ url: res.url, label });
+                setNewName('');
+                await load();
+              });
+            }}
+          >
+            <input
+              className="aurora-input text-xs flex-1 min-w-0"
+              placeholder={t('alerts.people.namePlaceholder')}
+              aria-label={t('alerts.people.namePlaceholder')}
+              value={newName}
+              onChange={(ev) => setNewName(ev.target.value)}
+              maxLength={60}
+              autoComplete="off"
+            />
+            <button type="submit" disabled={busy !== null || !newName.trim()} className="btn-primary text-xs py-1.5 px-3">
+              <UserPlus size={13} />
+              <span>{t('alerts.people.add')}</span>
+            </button>
+          </form>
+          {invite && (
+            <div className="flex flex-col sm:flex-row gap-4 items-start rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] p-3">
+              <Qr text={invite.url} />
+              <div className="space-y-2 text-xs text-[var(--text-secondary)] min-w-0">
+                <p>{t('alerts.people.sendLink', { name: invite.label })}</p>
+                <code className="block break-all font-mono text-[var(--text-primary)] select-all">{invite.url}</code>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs py-1.5 px-3"
+                  onClick={() => navigator.clipboard?.writeText(invite.url).then(() => setNote(t('alerts.people.copied')), () => undefined)}
+                >
+                  <Copy size={13} />
+                  <span>{t('alerts.people.copy')}</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

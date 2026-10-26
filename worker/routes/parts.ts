@@ -25,6 +25,18 @@ function validateMonthKey(raw: unknown): string {
   return Math.abs(monthIndex(raw) - monthIndex(serverKey)) <= 1 ? raw : serverKey;
 }
 
+/** Optional ?from=&to= (ms, end excluded): a period such as the 26th to the 26th, on the entry time. */
+function rangeOf(url: URL): { sql: string; args: string[] } | null {
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  if (!from && !to) return null;
+  const f = Number(from);
+  const t = Number(to);
+  if (!Number.isFinite(f) || !Number.isFinite(t) || f >= t || t - f > 400 * 86_400_000) throw new HttpError(400, 'Invalid date range');
+  // julianday() reads every date format the Excel import may have stored, not only toISOString().
+  return { sql: 'julianday(created_at) >= julianday(?) AND julianday(created_at) < julianday(?)', args: [new Date(f).toISOString(), new Date(t).toISOString()] };
+}
+
 const summarySql = (where: string) => `
   SELECT month_key, user_id, MAX(username) AS username, SUM(qty) AS total_qty, SUM(qty * unit_value) AS total_value
   FROM part_entries WHERE status = 'APPROVED' ${where}
@@ -128,17 +140,23 @@ export async function handleReview(ctx: Ctx): Promise<Response> {
 export async function handleAdminSummary(ctx: Ctx): Promise<Response> {
   const month = ctx.url.searchParams.get('month') || '';
   if (month && !MONTH_RE.test(month)) throw new HttpError(400, 'Month filter must look like YYYY-MM');
-  const stmt = month ? ctx.env.DB.prepare(summarySql('AND month_key = ?')).bind(month) : ctx.env.DB.prepare(summarySql(''));
+  const range = rangeOf(ctx.url);
+  const stmt = range
+    ? ctx.env.DB.prepare(summarySql(`AND ${range.sql}`)).bind(...range.args)
+    : month
+      ? ctx.env.DB.prepare(summarySql('AND month_key = ?')).bind(month)
+      : ctx.env.DB.prepare(summarySql(''));
   const { results } = await stmt.all();
   return json({ rows: results });
 }
 
-// GET /api/parts/admin-production?month=YYYY-MM  (admin)
+// GET /api/parts/admin-production?month=YYYY-MM or ?from=&to=  (admin)
 // One month at a glance, per operator: approved produced / modified quantities and value,
 // plus what is still waiting for review. (The Excel export is unchanged.)
 export async function handleAdminProduction(ctx: Ctx): Promise<Response> {
   const month = ctx.url.searchParams.get('month') || '';
-  if (!MONTH_RE.test(month)) throw new HttpError(400, 'Month filter must look like YYYY-MM');
+  const range = rangeOf(ctx.url);
+  if (!range && !MONTH_RE.test(month)) throw new HttpError(400, 'Month filter must look like YYYY-MM');
   const { results } = await ctx.env.DB.prepare(
     `SELECT user_id, MAX(username) AS username,
        SUM(CASE WHEN status = 'APPROVED' AND kind = 'PRODUCED' THEN qty ELSE 0 END) AS produced_qty,
@@ -146,22 +164,25 @@ export async function handleAdminProduction(ctx: Ctx): Promise<Response> {
        SUM(CASE WHEN status = 'APPROVED' THEN qty * unit_value ELSE 0 END) AS total_value,
        SUM(CASE WHEN status = 'PENDING' THEN qty ELSE 0 END) AS pending_qty
      FROM part_entries
-     WHERE month_key = ? AND status IN ('APPROVED', 'PENDING')
+     WHERE ${range ? range.sql : 'month_key = ?'} AND status IN ('APPROVED', 'PENDING')
      GROUP BY user_id
      ORDER BY total_value DESC, username COLLATE NOCASE`,
   )
-    .bind(month)
+    .bind(...(range ? range.args : [month]))
     .all();
   return json({ month, rows: results });
 }
 
-// GET /api/parts/admin-export?month=&offset=  (admin, includes review columns)
+// GET /api/parts/admin-export?month=&offset= or ?from=&to=&offset=  (admin, includes review columns)
 export async function handleAdminExport(ctx: Ctx): Promise<Response> {
   const month = ctx.url.searchParams.get('month') || '';
   if (month && !MONTH_RE.test(month)) throw new HttpError(400, 'Month filter must look like YYYY-MM');
   const offset = intParam(ctx.url, 'offset', 0, 0, 10_000_000);
   const cols = 'id, user_id, created_at, username, sap_number, qty, kind, unit_value, status, reviewed_at, reviewed_by, month_key';
-  const stmt = month
+  const range = rangeOf(ctx.url);
+  const stmt = range
+    ? ctx.env.DB.prepare(`SELECT ${cols} FROM part_entries WHERE ${range.sql} ORDER BY created_at DESC LIMIT 500 OFFSET ?`).bind(...range.args, offset)
+    : month
     ? ctx.env.DB.prepare(`SELECT ${cols} FROM part_entries WHERE month_key = ? ORDER BY created_at DESC LIMIT 500 OFFSET ?`).bind(month, offset)
     : ctx.env.DB.prepare(`SELECT ${cols} FROM part_entries ORDER BY created_at DESC LIMIT 500 OFFSET ?`).bind(offset);
   const { results } = await stmt.all();

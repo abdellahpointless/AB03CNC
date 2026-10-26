@@ -770,12 +770,12 @@ N190 M30`;
           }}
           className={
             blocks.length > 0
-              ? "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-500)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
+              ? "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-text)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
               : "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition whitespace-nowrap cursor-pointer opacity-70"
           }
           title={blocks.length > 0 ? t('controls.modifyTitle') : t('controls.modifyTitleDisabled')}
         >
-          <Wrench size={14} className={blocks.length > 0 ? "text-[var(--orange-500)]" : "text-[var(--text-tertiary)]"} />
+          <Wrench size={14} className={blocks.length > 0 ? "text-[var(--orange-text)]" : "text-[var(--text-tertiary)]"} />
           <span>{t('controls.modify')}{blocks.length > 0 ? ` (${blocks.length})` : ''}</span>
         </button>
         
@@ -787,7 +787,7 @@ N190 M30`;
             className="btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] whitespace-nowrap"
             title={tApp('remapHistory.openTitle')}
           >
-            <History size={14} className="text-[var(--orange-500)]" />
+            <History size={14} className="text-[var(--orange-text)]" />
             <span>{tApp('remapHistory.open')}</span>
           </button>
         )}
@@ -837,7 +837,7 @@ N190 M30`;
                 >
                 <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-panel)]">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 rounded-[var(--radius-md)] text-[var(--orange-500)]">
+                    <div className="p-2.5 bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 rounded-[var(--radius-md)] text-[var(--orange-text)]">
                       <AlertTriangle size={22} />
                     </div>
                     <div>
@@ -1050,7 +1050,7 @@ N190 M30`;
                              </h3>
                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-orange-100 dark:border-orange-900/30">
                                L{block.lineIndex+1}: {block.originalLine}
-                                <div className="text-xs text-slate-500 mt-2 border-t border-orange-200 dark:border-orange-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-orange-200 dark:border-orange-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                               </div>
                               <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
                                 {t('unsupported.text')}
@@ -1102,7 +1102,7 @@ N190 M30`;
                              </h3>
                              <div className="font-mono text-sm bg-rose-50 dark:bg-rose-950/30 px-3 py-2 rounded-lg border border-rose-100 dark:border-rose-900/40 text-slate-700 dark:text-slate-300">
                                L{block.lineIndex+1}: {block.originalLine}
-                               <div className="text-xs text-slate-500 mt-2 border-t border-rose-200 dark:border-rose-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                               <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-rose-200 dark:border-rose-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                              </div>
                              <p className="text-sm text-rose-700 dark:text-rose-300 font-medium">
                                <Trans
@@ -1131,7 +1131,7 @@ N190 M30`;
                          className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/50 rounded-xl shadow-sm hover:shadow transition"
                        >
                          <div className="flex items-start gap-3 overflow-hidden">
-                           <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-md mt-0.5">
+                           <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-md mt-0.5">
                              <CheckCircle size={18}/>
                            </div>
                            <div className="flex flex-col min-w-0">
@@ -1209,18 +1209,18 @@ N190 M30`;
                              </h3>
                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/30">
                                L{block.lineIndex+1}: {block.originalLine}
-                                <div className="text-xs text-slate-500 mt-2 border-t border-amber-200 dark:border-amber-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-amber-200 dark:border-amber-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                               </div>
                               <div className="mt-4 grid grid-cols-2 gap-3 text-xs w-full sm:w-auto">
                                 <div className="bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/40">
-                                  <div className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t('approx.required')}</div>
+                                  <div className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t('approx.required')}</div>
                                   <div className="font-medium text-slate-700 dark:text-slate-300">
                                     {categoryUpper(block.parsedCategory) || "?"} D{block.parsedDiameter ?? "?"} L{block.parsedLength ?? "?"}
                                     <div className="text-amber-600 dark:text-amber-500 text-xs mt-0.5">{t('approx.reqMin', { value: block.minZDepth !== undefined ? Math.abs(block.minZDepth) + 1 : "?" })}</div>
                                   </div>
                                 </div>
                                 <div className="bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/40">
-                                  <div className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t('approx.assigned')}</div>
+                                  <div className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t('approx.assigned')}</div>
                                   <div className="font-medium text-amber-700 dark:text-amber-400">
                                     {categoryUpper(block.matchedTool?.category) || "?"} D{block.matchedTool?.diameter ?? "?"} L{block.matchedTool?.length ?? "?"}
                                   </div>
@@ -1229,7 +1229,7 @@ N190 M30`;
                             </div>
                             <div className="text-right flex-shrink-0 ml-4 hidden sm:block">
                              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider mb-1">{t('approx.assignedTool')}</div>
-                             <div className="relative text-lg font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-3 py-1 mt-2 rounded-lg">
+                             <div className="relative text-lg font-black text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-3 py-1 mt-2 rounded-lg">
                                {block.matchedTool?.pocket !== undefined && (
                                  <div className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full text-white flex items-center justify-center text-xs font-bold shadow-sm">
                                    {block.matchedTool.pocket}
@@ -1250,7 +1250,7 @@ N190 M30`;
                            </div>
                            <div className="flex-1 min-w-[120px]">
                              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('approx.chosenLength')}</div>
-                             <div className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">{t('approx.safe', { length: block.matchedTool?.length })}</div>
+                             <div className="font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">{t('approx.safe', { length: block.matchedTool?.length })}</div>
                            </div>
                            <div className="flex-1 min-w-[120px]">
                              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('approx.requestedLength')}</div>
@@ -1299,25 +1299,25 @@ N190 M30`;
                           </h3>
                           <div className="font-mono text-sm bg-slate-100 dark:bg-slate-900 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                             {block.originalLine}
-                            <div className="text-xs text-slate-500 mt-2 border-t border-slate-200 dark:border-slate-700 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-slate-200 dark:border-slate-700 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-4 text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 shadow-inner">
                         <div>
-                          <div className="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.category')}</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.category')}</div>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{categoryName(block.parsedCategory) || '?'}</div>
                         </div>
                         <div>
-                          <div className="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.diameter')}</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.diameter')}</div>
                           <div className="font-medium text-slate-900 dark:text-slate-100">{block.parsedDiameter !== null ? block.parsedDiameter : '?'}</div>
                         </div>
                         <div>
-                          <div className="text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.length')}</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs mb-1 uppercase tracking-wider font-semibold">{t('fields.length')}</div>
                           <div className="font-medium text-slate-900 dark:text-slate-100">
                             {block.parsedLength !== null ? block.parsedLength : '?'}
-                            <div className="text-xs text-rose-500 mt-1 font-semibold">{t('missing.reqMin', { value: block.minZDepth !== undefined ? Math.abs(block.minZDepth) + 1 : '?' })}</div>
+                            <div className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-semibold">{t('missing.reqMin', { value: block.minZDepth !== undefined ? Math.abs(block.minZDepth) + 1 : '?' })}</div>
                           </div>
                         </div>
                       </div>
@@ -1534,14 +1534,14 @@ N190 M30`;
               className="glass-modal max-w-md w-full overflow-hidden"
             >
               <div className="p-6 text-center space-y-4">
-                <div className="mx-auto w-16 h-16 bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-500)] rounded-full flex items-center justify-center mb-4">
+                <div className="mx-auto w-16 h-16 bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-text)] rounded-full flex items-center justify-center mb-4">
                   <AlertTriangle size={32} />
                 </div>
                 <h2 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">{t('confirm.title')}</h2>
                 <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
                   {t('confirm.text')}
                   <br /><br />
-                  <strong className="text-[var(--orange-500)]">{t('confirm.important')}</strong> {t('confirm.warning')}
+                  <strong className="text-[var(--orange-text)]">{t('confirm.important')}</strong> {t('confirm.warning')}
                 </p>
               </div>
               <div className="p-4 bg-[var(--bg-panel)] border-t border-[var(--border-subtle)] flex gap-3 justify-end">

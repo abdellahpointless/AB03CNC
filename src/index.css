@@ -31,6 +31,7 @@
   --green-glow: rgba(22, 163, 74, 0.40);
 
   --orange-500: #e08a4d;
+  --orange-text: #e08a4d;    /* orange text: on dark surfaces the 500 itself reads well */
   --orange-600: #c27f5e;
   --orange-glow: rgba(224, 138, 77, 0.35);
 
@@ -94,6 +95,7 @@ html.light {
   --green-600: #116a32;
   --green-glow: rgba(21, 128, 61, 0.2);
   --orange-500: #c2620f;
+  --orange-text: #9a4a08;    /* #c2620f text is only 4.2:1 on white */
   --orange-600: #a4520c;
   --orange-glow: rgba(194, 98, 15, 0.2);
   --rose-500:  #e11d48;
@@ -142,18 +144,6 @@ body {
   border-radius: var(--radius-lg);
 }
 
-.glass-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 35%);
-  pointer-events: none;
-  z-index: 0;
-}
 
 /* Interactive sheen sliding effect */
 .glass-interactive {
@@ -203,17 +193,6 @@ body {
   .glass-modal {
     position: relative;
   }
-}
-.glass-modal::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 35%);
-  pointer-events: none;
-  z-index: 1;
 }
 
 /* Section 5: Buttons with Premium Glassy / Glossy Tactile Finish */
@@ -831,12 +810,8 @@ html.light .glass-panel {
   border-top: 1px solid rgba(255, 255, 255, 0.95);
   box-shadow: 0 6px 24px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
-html.light .glass-panel::before,
-html.light .glass-modal::before {
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 35%);
-}
 html.light .glass-modal {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-top: 1px solid rgba(255, 255, 255, 1);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -2250,7 +2225,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
 @media (hover: hover) and (pointer: fine) {
   .tab-submenu-item:hover { background: rgba(var(--ov), 0.07); color: var(--text-primary); }
 }
-.tab-submenu-item.is-active { color: var(--accent-primary); background: rgba(59, 111, 212, 0.12); }
+.tab-submenu-item.is-active { color: var(--blue-text); background: rgba(59, 111, 212, 0.12); }
 
 /* ---------------------------------------------------------------------------
    Pop-up windows for people who ask their system for less transparency or more contrast:

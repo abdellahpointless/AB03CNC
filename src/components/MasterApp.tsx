@@ -255,7 +255,7 @@ function Stat({ icon, label, value, detail, tone }: { icon: React.ReactNode; lab
         {icon}
         <span className="truncate">{label}</span>
       </div>
-      <div className={`mt-1 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-[var(--rose-500)]' : tone === 'warning' ? 'text-[var(--orange-500)]' : 'text-[var(--text-primary)]'}`}>
+      <div className={`mt-1 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-[var(--rose-500)]' : tone === 'warning' ? 'text-[var(--orange-text)]' : 'text-[var(--text-primary)]'}`}>
         {value}
       </div>
       {detail && <div className="text-xs text-[var(--text-tertiary)] truncate">{detail}</div>}
@@ -338,10 +338,10 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
           <FeatureSwitches country={country} onChanged={onChanged} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
             <span className="inline-flex items-center gap-1">
-              <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-500)]' : 'text-[var(--green-500)]'} />
+              <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-text)]' : 'text-[var(--green-500)]'} />
               {t('card.mfa', { count: country.users.adminsWithMfa, total: country.users.admins })}
             </span>
-            <span className={country.security.failedSignIns7d > 20 ? 'text-[var(--orange-500)]' : ''}>{t('card.failed', { count: country.security.failedSignIns7d })}</span>
+            <span className={country.security.failedSignIns7d > 20 ? 'text-[var(--orange-text)]' : ''}>{t('card.failed', { count: country.security.failedSignIns7d })}</span>
             <span>{country.programs.lastAt ? t('card.lastActivity', { time: timeAgo(country.programs.lastAt) }) : t('card.noActivity')}</span>
           </div>
         </>

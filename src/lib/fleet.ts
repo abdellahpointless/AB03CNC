@@ -268,3 +268,15 @@ export const fetchCalesLog = (from: number, to: number) => api<{ events: CaleEve
 
 /** "3 min ago" / "3 dk önce": the localised version in src/i18n/format.ts. */
 export { timeAgo } from '../i18n/format';
+
+/** Admin: what went wrong in a period, and how many checks each person confirmed. */
+export interface MachinesReport {
+  events: { machine_id: string; check_title: string | null; action: 'PROBLEM' | 'MACHINE_DOWN' | 'MISSED'; note: string | null; username: string; at: number }[];
+  cales: { machine_id: string; height: number; kind: 'MISSING' | 'DAMAGED'; count: number; username: string; at: number }[];
+  people: { username: string; done: number; problems: number }[];
+  hidden: string[];
+}
+export const fetchMachinesReport = (from: number, to: number) => api<MachinesReport>(`/machines/report?from=${from}&to=${to}`);
+/** Admin: how many single cales of a pair are really in the machine's box (0, 1 or 2). */
+export const setCalesOnMachine = (machine: string, height: number, present: 0 | 1 | 2) =>
+  api(`/machines/cales/onmachine/${encodeURIComponent(machine)}/${height}`, { method: 'PUT', body: { present } });

@@ -1,4 +1,5 @@
-import { machineProblemAlert, notifyLater } from '../alerts';
+import { getHiddenUsers } from './analytics';
+import { machineProblemAlert, missedTaskAlert, notifyLater } from '../alerts';
 import { HttpError, json, optStr, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
 import { FREQUENCIES, type Frequency } from '../fleet';
@@ -190,6 +191,8 @@ export async function handleReportMissed(ctx: Ctx): Promise<Response> {
     bumpStmt(ctx.env, 'machines'),
   ]);
   if (!made.meta.changes) throw new HttpError(409, 'This task was already reported for the previous shift');
+  const a = missedTaskAlert(ctx.env.REGION, await machineName(ctx, machine), check.title, names.join(', '), ctx.user!.username);
+  await notifyLater(ctx, 'missedTask', a.message, a.call, `${machine}:${check.id}:missed`);
   return json({ ok: true, users: names });
 }
 
@@ -369,4 +372,47 @@ export async function handleSetOwners(ctx: Ctx): Promise<Response> {
 async function machineName(ctx: Ctx, id: string): Promise<string> {
   const row = await ctx.env.DB.prepare('SELECT name FROM machines WHERE id = ?').bind(id).first<{ name: string }>().catch(() => null);
   return row?.name || id;
+}
+
+// Admin: GET /api/machines/report?from=&to=  (ms, end excluded; at most ~13 months)
+// What went wrong in the period (problems, stopped machines, "not done" reports, missing or damaged
+// cales) and, per person, how many checks they confirmed. Hidden test accounts are left out.
+export async function handleMachinesReport(ctx: Ctx): Promise<Response> {
+  const from = Number(ctx.url.searchParams.get('from'));
+  const to = Number(ctx.url.searchParams.get('to'));
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from > 400 * 86_400_000) throw new HttpError(400, 'Invalid date range');
+  const db = ctx.env.DB;
+  const [events, cales, people, hidden] = await Promise.all([
+    db
+      .prepare(
+        `SELECT machine_id, check_title, action, note, username, at FROM machine_events
+         WHERE action IN ('PROBLEM', 'MACHINE_DOWN', 'MISSED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT 2000`,
+      )
+      .bind(from, to)
+      .all<{ machine_id: string; check_title: string | null; action: string; note: string | null; username: string; at: number }>(),
+    db
+      .prepare(
+        `SELECT machine_id, height, kind, count, username, at FROM cales_events
+         WHERE kind IN ('MISSING', 'DAMAGED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT 2000`,
+      )
+      .bind(from, to)
+      .all<{ machine_id: string; height: number; kind: string; count: number; username: string; at: number }>(),
+    db
+      .prepare(
+        `SELECT username, SUM(ok) AS done, SUM(bad) AS problems FROM (
+           SELECT username, result = 'OK' AS ok, result = 'PROBLEM' AS bad FROM check_completions WHERE at >= ?1 AND at < ?2
+           UNION ALL SELECT username, 1, 0 FROM cales_checks WHERE at >= ?1 AND at < ?2
+         ) GROUP BY username COLLATE NOCASE ORDER BY done DESC`,
+      )
+      .bind(from, to)
+      .all<{ username: string; done: number; problems: number }>(),
+    getHiddenUsers(ctx.env),
+  ]);
+  const shown = (u: string) => !hidden.includes(u.toLowerCase());
+  return json({
+    events: events.results,
+    cales: cales.results,
+    people: people.results.filter((p) => shown(p.username)),
+    hidden,
+  });
 }

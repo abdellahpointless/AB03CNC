@@ -415,7 +415,7 @@ export default function ToolDatabase({
           )}
 
           {/* List of Tools */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 items-start">
+          <div className="flex flex-col gap-2.5">
             {shown.map((tool, toolIdx) => {
               const isChanged = tool.changed;
               const isExpanded = expandedId === tool.id;
@@ -424,7 +424,7 @@ export default function ToolDatabase({
                 <div 
                   key={tool.id} 
                   style={{ '--i': toolIdx } as React.CSSProperties}
-                  className={`wave-in flex flex-col rounded-[var(--radius-md)] border transition ${isExpanded ? 'md:col-span-2 xl:col-span-3 ' : ''}${
+                  className={`wave-in flex flex-col rounded-[var(--radius-md)] border transition ${
                     isChanged 
                       ? 'border-[var(--orange-500)]/50 bg-[rgba(224,138,77,0.08)]' 
                       : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)]'
@@ -433,9 +433,9 @@ export default function ToolDatabase({
                   {/* Tool Data Row */}
                   <div 
                     onClick={() => handleToolClick(tool)}
-                    className="flex flex-col items-start p-3.5 sm:p-4 gap-3 cursor-pointer transition-colors"
+                    className="flex flex-col sm:flex-row items-start sm:items-center p-3.5 sm:p-4 gap-4 cursor-pointer transition-colors"
                   >
-                    <div className="flex items-center gap-4 min-w-0 w-full">
+                    <div className="flex items-center gap-4 min-w-0 w-full sm:w-80 sm:shrink-0">
                       <div className={`relative flex items-center justify-center p-2 rounded-[var(--radius-sm)] font-bold w-full max-w-[100px] shrink-0 gap-2 ${
                         isChanged ? 'bg-[var(--orange-500)] text-white shadow-[0_0_8px_var(--orange-glow)]' : 'bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
                       }`}>
@@ -470,7 +470,7 @@ export default function ToolDatabase({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs">
+                    <div className="flex-1 flex flex-wrap gap-x-8 gap-y-1 font-mono text-xs">
                       {tool.category !== 'empty' && (
                         <>
                           <div className="flex items-center gap-2">
@@ -628,10 +628,10 @@ export default function ToolDatabase({
             })}
             
             {toolsForMachine.length > 0 && shown.length === 0 && (
-              <p className="col-span-full py-10 text-center text-sm text-[var(--text-secondary)]">{t('list.noMatch', { query: query.trim() })}</p>
+              <p className="py-10 text-center text-sm text-[var(--text-secondary)]">{t('list.noMatch', { query: query.trim() })}</p>
             )}
             {toolsForMachine.length === 0 && !isAdding && (
-              <div className="col-span-full py-16 text-center text-[var(--text-tertiary)] flex flex-col items-center">
+              <div className="py-16 text-center text-[var(--text-tertiary)] flex flex-col items-center">
                 <CircleDashed size={44} className="opacity-30 mb-3"/>
                 <p className="text-sm font-semibold text-[var(--text-secondary)]">{t('list.emptyTitle', { machine: machineLabel })}</p>
                 <p className="text-xs text-[var(--text-tertiary)] mt-1">{t('list.emptyHint')}</p>

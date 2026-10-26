@@ -30,7 +30,9 @@ export interface Analytics {
   contributingUsers: number;
   appSelected: number;
   manualChanged: number;
-  users: { username: string; extractions: number; timeSavedSeconds: number; lastExtractedAt: number | null }[];
+  users: { username: string; extractions: number; timeSavedSeconds: number; lastExtractedAt: number | null; hidden?: boolean }[];
+  /** Admins: accounts hidden from the statistics (lower case). */
+  hiddenUsers?: string[];
 }
 
 type Connection = 'connecting' | 'online' | 'offline';

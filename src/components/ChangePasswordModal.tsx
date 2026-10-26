@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Copy, Download, Eye, EyeOff, KeyRound, ShieldCheck, ShieldOff, Smartphone, X } from 'lucide-react';
 import qrcode from 'qrcode-generator';
@@ -258,6 +258,11 @@ function MfaPanel() {
 export function ChangePasswordModal({ onClose, initialTab = 'password' }: { onClose: () => void; initialTab?: Tab }) {
   const { t } = useT('app');
   const [tab, setTab] = useState<Tab>(initialTab);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return createPortal(
     <motion.div
       className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-[99999]"

@@ -21,7 +21,7 @@ function LogView({ lines }: { lines: LogLine[] }) {
   const color: Record<LogKind, string> = {
     info: 'text-[var(--text-secondary)]',
     ok: 'text-[var(--green-500)]',
-    warn: 'text-[var(--orange-500)]',
+    warn: 'text-[var(--orange-text)]',
     error: 'text-[var(--rose-500)]',
   };
   return (
@@ -175,7 +175,7 @@ export default function DataManagement() {
       {/* Retention */}
       <div>
         <div className="flex items-center gap-2.5 mb-3">
-          <div className="p-2 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-500)]">
+          <div className="p-2 rounded-[var(--radius-md)] bg-[var(--orange-500)]/15 border border-[var(--orange-500)]/30 text-[var(--orange-text)]">
             <AlertTriangle size={18} />
           </div>
           <div>
