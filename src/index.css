@@ -886,8 +886,8 @@ html.light .aurora-card {
 
 html.light .badge-neutral { background: rgba(15, 23, 42, 0.05); }
 html.light .badge-positive { background: rgba(21, 128, 61, 0.1); border-color: rgba(21, 128, 61, 0.25); color: #166534; }
-html.light .badge-danger { background: rgba(225, 29, 72, 0.08); border-color: rgba(225, 29, 72, 0.25); }
-html.light .badge-warning { background: rgba(194, 98, 15, 0.1); border-color: rgba(194, 98, 15, 0.25); }
+html.light .badge-danger { background: rgba(225, 29, 72, 0.08); border-color: rgba(225, 29, 72, 0.25); color: #be123c; }
+html.light .badge-warning { background: rgba(194, 98, 15, 0.1); border-color: rgba(194, 98, 15, 0.25); color: #9a4a08; }
 
 html.light .aurora-input {
   background: #ffffff;
@@ -1101,6 +1101,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   flex-shrink: 0;
 }
 .check-dot.ok { background: var(--green-500); }
+.check-dot.later { box-shadow: inset 0 0 0 2px var(--text-tertiary); } /* end of shift task, not asked yet */
 .check-dot.due { background: var(--orange-500); }
 .check-dot.problem { background: var(--rose-500); box-shadow: 0 0 10px rgba(255, 70, 90, 0.7); }
 
@@ -1172,6 +1173,11 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   color: #fff;
   background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
 }
+
+/* End of shift banner: the bell swings while the PC rings. */
+.shift-bell { animation: shift-bell 1s ease-in-out infinite; transform-origin: 50% 10%; }
+@media (prefers-reduced-motion: reduce) { .shift-bell { animation: none; } }
+@keyframes shift-bell { 0%, 50%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20%, 40% { transform: rotate(-14deg); } }
 
 /* History: a problem reported after someone else said the same check was OK in that period. */
 .history-clash {

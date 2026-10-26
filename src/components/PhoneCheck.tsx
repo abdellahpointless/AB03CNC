@@ -7,6 +7,7 @@ import {
   FREQUENCY_LABEL,
   checkAction,
   fetchMachines,
+  endTaskWaiting,
   isDue,
   isLockedFor,
   machineSubtitle,
@@ -94,7 +95,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
   const machine = useMemo(() => toFleet(machines).find((m) => m.id === machineId) ?? null, [machines, machineId]);
   const locked = isLockedFor(machineId, user, owners);
   const summary = useMemo(() => machineSummary(checks || [], now), [checks, now]);
-  const list = (checks || []).filter((c) => c.kind === 'CHECK');
+  const list = (checks || []).filter((c) => c.kind === 'CHECK' && !endTaskWaiting(c, now)); // end tasks show in their last 45 minutes
   // Everyone does every check in its period themselves; admins see whether anyone did it.
   const dueForMe = (c: MachineCheck) => (features.shiftChecks && !locked && user?.role !== 'ADMIN' ? !mine.myDone.includes(c.id) : isDue(c, now));
   const toDo = list.filter((c) => c.status !== 'PROBLEM' && dueForMe(c));

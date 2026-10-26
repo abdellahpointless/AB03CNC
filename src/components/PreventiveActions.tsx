@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Flag,
   Lock,
   History as HistoryIcon,
   Monitor,
@@ -41,8 +42,10 @@ import {
   fetchUsers,
   isLockedFor,
   isDue,
+  endTaskWaiting,
   machineSummary,
   reportIssue,
+  reportMissed,
   setOwners,
   setStops,
   timeAgo,
@@ -51,13 +54,14 @@ import {
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
 import { calesOf, type CalesState } from '../lib/cales';
 import { currentRegion } from '../lib/instance';
-import { periodKey, shiftOf } from '../lib/shifts';
+import { periodKey, shiftOf, shiftStart } from '../lib/shifts';
 import i18n, { useT } from '../i18n';
 
 type Summary = ReturnType<typeof machineSummary>;
 type Loaded = Awaited<ReturnType<typeof fetchMachines>>;
 /** My own part of the data (checks I did this period, boxes I confirmed this shift) and the cales boxes. */
-type Mine = Pick<Loaded, 'myDone' | 'cales' | 'calesChecked' | 'calesRequests'> & { skew: number };
+type Mine = Pick<Loaded, 'myDone' | 'cales' | 'calesChecked' | 'calesRequests' | 'prevShift'> & { skew: number };
+const SHIFT_HOURS: Record<string, string> = { S1: '08:00–16:00', S2: '16:00–24:00', S3: '00:00–08:00' };
 
 /** Translation key of what a person did ("marked done", "reported a problem", ...). */
 const actionKey = (action: MachineEvent['action']) => `events.${action}` as const;
@@ -81,7 +85,7 @@ export default function PreventiveActions() {
   const [checks, setChecks] = useState<MachineCheck[] | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [owners, setOwnerRows] = useState<MachineOwner[]>([]);
-  const [mine, setMine] = useState<Mine>({ myDone: [], cales: [], calesChecked: [], calesRequests: [], skew: 0 });
+  const [mine, setMine] = useState<Mine>({ myDone: [], cales: [], calesChecked: [], calesRequests: [], prevShift: { key: '', done: [], people: [] }, skew: 0 });
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<{ id: string; above: boolean } | null>(null);
@@ -93,7 +97,7 @@ export default function PreventiveActions() {
       setChecks(res.checks);
       setEvents(res.events);
       setOwnerRows(res.owners || []);
-      setMine({ myDone: res.myDone, cales: res.cales, calesChecked: res.calesChecked, calesRequests: res.calesRequests, skew: res.serverTime - Date.now() });
+      setMine({ myDone: res.myDone, cales: res.cales, calesChecked: res.calesChecked, calesRequests: res.calesRequests, prevShift: res.prevShift, skew: res.serverTime - Date.now() });
       setLoadError('');
     } catch (err: any) {
       setLoadError(err?.message || i18n.t('preventive:errors.loadMachines'));
@@ -246,6 +250,7 @@ export default function PreventiveActions() {
                 cales={calesOf(mine.cales, selectedMachine.id)}
                 calesChecked={mine.calesChecked.includes(selectedMachine.id)}
                 calesRequested={mine.calesRequests.filter((r) => r.machine_id === selectedMachine.id).map((r) => r.height)}
+                prevShift={mine.prevShift}
                 onChanged={load}
                 onClose={() => setSelected(null)}
               />
@@ -482,7 +487,7 @@ function MachinePopContent({
 
       <div className="pt-2 border-t border-[var(--border-subtle)] text-[var(--text-tertiary)] flex items-center justify-between gap-2">
         <span className="truncate">
-          {last ? `${last.username} ${t(actionKey(last.action))} · ${timeAgo(last.at, now)}` : t('pop.noActions')}
+          {last ? `${last.username} ${t(actionKey(last.action), { users: last.note })} · ${timeAgo(last.at, now)}` : t('pop.noActions')}
         </span>
         <span className="text-[var(--blue-500)] font-semibold shrink-0">{locked ? t('pop.clickToView') : t('pop.clickToOpen')}</span>
       </div>
@@ -507,6 +512,7 @@ function MachineSheet({
   cales,
   calesChecked,
   calesRequested,
+  prevShift,
   onChanged,
   onClose,
 }: {
@@ -526,6 +532,7 @@ function MachineSheet({
   calesChecked: boolean;
   /** Heights with new cales asked for. */
   calesRequested: number[];
+  prevShift: Mine['prevShift'];
   onChanged: () => Promise<void>;
   onClose: () => void;
 }) {
@@ -540,16 +547,19 @@ function MachineSheet({
   const [editTitle, setEditTitle] = useState('');
   const [editFreq, setEditFreq] = useState<Frequency>('DAILY');
   const [newTitle, setNewTitle] = useState('');
-  const [newFreq, setNewFreq] = useState<Frequency>('DAILY');
+  const [newFreq, setNewFreq] = useState<Frequency>('SHIFT_START');
   const [picking, setPicking] = useState(false);
   const [allUsers, setAllUsers] = useState<{ id: string; username: string; role: string }[] | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const canAct = !locked;
   /** Everyone does every check in its period themselves; admins see whether anyone did it. */
   const dueFor = (c: MachineCheck) =>
-    c.kind === 'CHECK' && !!c.frequency && c.status !== 'PROBLEM' && (shifts && canAct && !isAdmin ? !myDone.includes(c.id) : isDue(c, now));
+    c.kind === 'CHECK' && !!c.frequency && c.status !== 'PROBLEM' && !endTaskWaiting(c, now) && (shifts && canAct && !isAdmin ? !myDone.includes(c.id) : isDue(c, now));
   const toDo = checks.filter(dueFor).length;
   const tz = currentRegion().timeZone;
+  /** Start / end of shift tasks, and who worked on this machine in the previous shift (to report). */
+  const shiftTasks = checks.filter((c) => c.kind === 'CHECK' && (c.frequency === 'SHIFT_START' || c.frequency === 'SHIFT_END'));
+  const workedPrev = [...new Set(prevShift.people.filter((p) => p.machine_id === machine.id).map((p) => p.username))];
   /** Who said this check was OK in the same period, before this problem was reported. */
   const saidOk = (e: MachineEvent, i: number) => {
     const f = shifts && e.action === 'PROBLEM' && e.check_id ? checks.find((c) => c.id === e.check_id)?.frequency : null;
@@ -607,7 +617,7 @@ function MachineSheet({
 
   const issues = checks.filter((c) => c.kind === 'ISSUE');
   const list = checks.filter((c) => c.kind === 'CHECK');
-  const groups = (['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY'] as Frequency[])
+  const groups = (Object.keys(FREQUENCY_LABEL) as Frequency[])
     .map((f) => ({ f, items: list.filter((c) => c.frequency === f) }))
     .filter((g) => g.items.length);
 
@@ -887,12 +897,52 @@ function MachineSheet({
             </section>
           )}
 
+          {shifts && canAct && shiftTasks.length > 0 && prevShift.key && (
+            <section className="space-y-2">
+              <div className="section-label">{t('prev.title', { hours: SHIFT_HOURS[prevShift.key.slice(-2)] })}</div>
+              <p className="text-[11px] text-[var(--text-tertiary)]">{t('prev.hint')}</p>
+              {shiftTasks.map((c) => {
+                const by = prevShift.done.filter((d) => d.check_id === c.id).map((d) => d.username);
+                const reported = events.some((e) => e.action === 'MISSED' && e.check_id === c.id && e.at >= shiftStart(now, tz));
+                const users = (by.length ? by : workedPrev).join(', ');
+                return (
+                  <div key={c.id} className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-[var(--text-primary)]">{c.title}</div>
+                      <div className={`text-[11px] ${by.length ? 'text-[var(--text-tertiary)]' : 'text-[var(--orange-500)]'}`}>
+                        {FREQUENCY_LABEL[c.frequency!]} ·{' '}
+                        {by.length ? t('prev.doneBy', { users }) : users ? t('prev.notDone', { users }) : t('prev.nobody')}
+                      </div>
+                    </div>
+                    {reported ? (
+                      <span className="badge-warning shrink-0">
+                        <Flag size={12} /> {t('prev.reported')}
+                      </span>
+                    ) : (
+                      users && (
+                        <button
+                          className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+                          disabled={!!busy}
+                          title={t('prev.reportTitle', { users })}
+                          onClick={() => run(`missed:${c.id}`, () => reportMissed(machine.id, c.id))}
+                        >
+                          <Flag size={13} />
+                          <span>{t('prev.report')}</span>
+                        </button>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
           {groups.map((g) => (
             <section key={g.f} className="space-y-2">
               <div className="section-label">{FREQUENCY_LABEL[g.f]}</div>
               {g.items.map((c, i) => {
                 const due = dueFor(c);
-                const st = c.status === 'PROBLEM' ? 'problem' : due ? 'due' : 'ok';
+                const st = c.status === 'PROBLEM' ? 'problem' : due ? 'due' : endTaskWaiting(c, now) ? 'later' : 'ok';
                 return (
                   <motion.div
                     key={c.id}
@@ -942,7 +992,7 @@ function MachineSheet({
                             </>
                           ) : (
                             <div className={`text-[11px] ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
-                              {c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
+                              {endTaskWaiting(c, now) ? t('check.endLater') : c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
                               {st === 'due' && c.last_done_at ? ` · ${isDue(c, now) ? t('check.dueAgain') : t('check.youToo')}` : ''}
                             </div>
                           )}
@@ -1060,16 +1110,16 @@ function MachineSheet({
                 {events.slice(0, 15).map((e, i) => {
                   const ok = saidOk(e, i);
                   return (
-                  <div key={e.id} className={`flex items-start gap-2 text-xs ${ok ? 'history-clash' : ''}`}>
+                  <div key={e.id} className={`flex items-start gap-2 text-xs ${ok || e.action === 'MISSED' ? 'history-clash' : ''}`}>
                     <span
                       className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${
                         e.action === 'PROBLEM' ? 'bg-[var(--rose-500)]' : e.action === 'DONE' || e.action === 'RESOLVE' ? 'bg-[var(--green-500)]' : 'bg-[var(--text-tertiary)]'
                       }`}
                     />
                     <span className="text-[var(--text-secondary)] flex-1">
-                      <b className="text-[var(--text-primary)]">{e.username}</b> {t(actionKey(e.action))}
+                      <b className="text-[var(--text-primary)]">{e.username}</b> {t(actionKey(e.action), { users: e.note })}
                       {e.check_title && e.action !== 'PROBLEM' ? ` "${e.check_title}"` : ''}
-                      {e.note ? `: ${e.note}` : ''}
+                      {e.note && e.action !== 'MISSED' ? `: ${e.note}` : ''}
                       {ok && (
                         <span className="history-clash-note">
                           <AlertTriangle size={11} /> {t('history.saidOk', { user: ok })}

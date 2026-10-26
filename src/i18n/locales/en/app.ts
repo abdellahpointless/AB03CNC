@@ -11,6 +11,15 @@ const app = {
     signOut: 'Sign Out',
   },
 
+  ending: {
+    title: 'End of shift soon',
+    banner: 'Shift ends at {{time}}. Do your end of shift tasks:',
+    tasks_one: '{{count}} task',
+    tasks_other: '{{count}} tasks',
+    doNow: 'Do them now',
+    body: 'Shift ends at {{time}}. Still to do: {{list}}',
+  },
+
   lock: {
     title: 'Do your checks first',
     help: "The rest of the app opens once your machines' checks and this shift's cales box are done.",

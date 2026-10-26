@@ -2,8 +2,9 @@
 export const FLEET_IDS = ['HAAS-1', 'HAAS-2', 'HAAS-3', 'HAAS-4', 'HAAS-5', 'FANUC-1', 'FANUC-2', 'DMG-1'] as const;
 export type FleetId = (typeof FLEET_IDS)[number];
 
-export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
-export const FREQUENCIES: Frequency[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY'];
+import type { Frequency } from '../src/lib/shifts';
+export type { Frequency };
+export const FREQUENCIES: Frequency[] = ['SHIFT_START', 'SHIFT_END', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY'];
 
 /** Starter checklist given to every machine. Admins can edit it per machine in the app. */
 export const DEFAULT_CHECKS: { title: string; frequency: Frequency }[] = [

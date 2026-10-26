@@ -4,10 +4,10 @@ import type { MachineBrand, MachineInfo } from '../regions';
 import { brandAccent } from './machines';
 import { currentRegion } from './instance';
 import { currentFeatures } from './features';
-import { periodKey } from './shifts';
+import { inEndWindow, periodKey, type Frequency } from './shifts';
 import type { CaleRow, StockRow } from './cales';
 
-export type Frequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
+export type { Frequency };
 
 export interface FleetMachine {
   id: string;
@@ -73,7 +73,9 @@ export interface MachineEvent {
     | 'CHECK_REMOVED'
     | 'OWNERS_SET'
     | 'MACHINE_ADDED'
-    | 'MACHINE_REMOVED';
+    | 'MACHINE_REMOVED'
+    /** A start / end of shift task the previous shift did not do; `note` names the people. */
+    | 'MISSED';
   note: string | null;
   username: string;
   at: number;
@@ -84,6 +86,12 @@ export interface MachineEvent {
  * `FREQUENCY_LABEL[f]` and `Object.entries(FREQUENCY_LABEL)` work as before (same key order).
  */
 export const FREQUENCY_LABEL: Record<Frequency, string> = {
+  get SHIFT_START() {
+    return i18n.t('common:frequency.SHIFT_START');
+  },
+  get SHIFT_END() {
+    return i18n.t('common:frequency.SHIFT_END');
+  },
   get DAILY() {
     return i18n.t('common:frequency.DAILY');
   },
@@ -99,7 +107,11 @@ export const FREQUENCY_LABEL: Record<Frequency, string> = {
 };
 
 const DAY = 86_400_000;
-const PERIOD_DAYS: Record<Frequency, number> = { DAILY: 1, WEEKLY: 7, MONTHLY: 30, QUARTERLY: 91 };
+const PERIOD_DAYS: Record<Frequency, number> = { SHIFT_START: 1 / 3, SHIFT_END: 1 / 3, DAILY: 1, WEEKLY: 7, MONTHLY: 30, QUARTERLY: 91 };
+
+/** An end of shift task is only asked for in the last 45 minutes of the shift. */
+export const endTaskWaiting = (c: Pick<MachineCheck, 'frequency'>, now = Date.now()) =>
+  c.frequency === 'SHIFT_END' && !inEndWindow(now, currentRegion().timeZone);
 
 /**
  * A checklist item is due when it was not done in its period. With shift checks on, periods are
@@ -108,9 +120,9 @@ const PERIOD_DAYS: Record<Frequency, number> = { DAILY: 1, WEEKLY: 7, MONTHLY: 3
  * others 7, 30 or 91 days after they were done.
  */
 export function isDue(c: MachineCheck, now = Date.now()): boolean {
-  if (c.kind !== 'CHECK' || !c.frequency) return false;
+  if (c.kind !== 'CHECK' || !c.frequency || endTaskWaiting(c, now)) return false;
   if (!c.last_done_at) return true;
-  if (currentFeatures().shiftChecks) {
+  if (currentFeatures().shiftChecks || c.frequency === 'SHIFT_START' || c.frequency === 'SHIFT_END') {
     const tz = currentRegion().timeZone;
     return periodKey(c.frequency, c.last_done_at, tz) !== periodKey(c.frequency, now, tz);
   }
@@ -164,11 +176,26 @@ export const fetchMachines = () =>
     calesChecked: string[];
     /** Pairs with new cales asked for (open requests). */
     calesRequests: { machine_id: string; height: number }[];
+    /** The shift before this one: who confirmed its start / end tasks, and who worked on each machine. */
+    prevShift: { key: string; done: { check_id: string; username: string }[]; people: { machine_id: string; username: string }[] };
   }>('/machines');
 
 export type RequiredItem = { kind: 'CHECK'; machineId: string; id: string; title: string } | { kind: 'CALES'; machineId: string };
 /** What I must do before using the rest of the app (nothing for admins). */
-export const fetchRequired = () => api<{ locked: boolean; items: RequiredItem[]; shift: { n: 1 | 2 | 3; key: string } }>('/machines/required');
+export const fetchRequired = () =>
+  api<{
+    locked: boolean;
+    items: RequiredItem[];
+    /** End of shift tasks still to do, in the last 45 minutes of the shift. */
+    ending: RequiredItem[];
+    shift: { n: 1 | 2 | 3; key: string };
+    /** When this shift ends. */
+    endsAt: number;
+  }>('/machines/required');
+
+/** A start / end of shift task was not done in the previous shift (the server names who). */
+export const reportMissed = (machine: string, id: string) =>
+  api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/missed`, { method: 'POST' });
 
 export const setOwners = (machine: string, userIds: string[]) =>
   api(`/machines/${encodeURIComponent(machine)}/owners`, { method: 'PUT', body: { userIds } });

@@ -290,6 +290,34 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE UNIQUE INDEX IF NOT EXISTS cales_requests_open ON cales_requests(machine_id, height) WHERE status = 'OPEN'`,
     ],
   },
+  {
+    // Tasks at the start and at the end of every shift. SQLite cannot change a CHECK constraint, so
+    // the table is rebuilt (same columns, every row copied) in this one transaction.
+    version: 7,
+    statements: [
+      `CREATE TABLE machine_checks_v7 (
+        id TEXT PRIMARY KEY,
+        machine_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'CHECK' CHECK (kind IN ('CHECK', 'ISSUE')),
+        title TEXT NOT NULL,
+        frequency TEXT CHECK (frequency IN ('SHIFT_START', 'SHIFT_END', 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY')),
+        status TEXT NOT NULL DEFAULT 'OK' CHECK (status IN ('OK', 'PROBLEM')),
+        note TEXT,
+        last_done_at INTEGER,
+        last_done_by TEXT,
+        status_at INTEGER,
+        status_by TEXT,
+        sort INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        stops INTEGER NOT NULL DEFAULT 0
+      )`,
+      `INSERT INTO machine_checks_v7 (id, machine_id, kind, title, frequency, status, note, last_done_at, last_done_by, status_at, status_by, sort, created_at, stops)
+       SELECT id, machine_id, kind, title, frequency, status, note, last_done_at, last_done_by, status_at, status_by, sort, created_at, stops FROM machine_checks`,
+      `DROP TABLE machine_checks`,
+      `ALTER TABLE machine_checks_v7 RENAME TO machine_checks`,
+      `CREATE INDEX IF NOT EXISTS machine_checks_machine ON machine_checks(machine_id, sort)`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -71,6 +71,8 @@ const common: Translation<typeof en> = {
     OTHER: 'Diğer',
   },
   frequency: {
+    SHIFT_START: 'Her vardiya başında',
+    SHIFT_END: 'Her vardiya sonunda',
     DAILY: 'Her gün',
     WEEKLY: 'Her hafta',
     MONTHLY: 'Her ay',

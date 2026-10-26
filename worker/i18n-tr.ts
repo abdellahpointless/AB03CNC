@@ -135,8 +135,11 @@ registerTurkish(
     'Stored program file is incomplete.': 'Sunucudaki program dosyası tam değil.',
 
     // ---- routes/machines.ts (preventive maintenance) ----
-    'Frequency must be DAILY, WEEKLY, MONTHLY or QUARTERLY':
-      'Sıklık DAILY (günlük), WEEKLY (haftalık), MONTHLY (aylık) veya QUARTERLY (üç aylık) olmalıdır.',
+    'Frequency must be SHIFT_START, SHIFT_END, DAILY, WEEKLY, MONTHLY or QUARTERLY':
+      'Sıklık SHIFT_START (vardiya başı), SHIFT_END (vardiya sonu), DAILY (günlük), WEEKLY (haftalık), MONTHLY (aylık) veya QUARTERLY (üç aylık) olmalıdır.',
+    'Only start and end of shift tasks can be reported for the previous shift': 'Önceki vardiya için yalnızca vardiya başı ve sonu görevleri bildirilebilir.',
+    'Nobody worked on this machine in the previous shift': 'Önceki vardiyada bu tezgahta kimse çalışmadı.',
+    'This task was already reported for the previous shift': 'Bu görev önceki vardiya için zaten bildirildi.',
     'Check not found': 'Kontrol maddesi bulunamadı.',
     'Only checklist items can be marked as done': 'Yalnızca kontrol listesi maddeleri yapıldı olarak işaretlenebilir.',
     'Action must be DONE, PROBLEM or RESOLVE': 'İşlem DONE, PROBLEM veya RESOLVE olmalıdır.',

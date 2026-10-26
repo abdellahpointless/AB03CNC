@@ -4,7 +4,7 @@ import { bumpStmt, newId, type Ctx } from '../context';
 import { FREQUENCIES, type Frequency } from '../fleet';
 import { requireMachine } from './fleet';
 import { regionById } from '../../src/regions';
-import { currentPeriods, periodKey, shiftOf } from '../../src/lib/shifts';
+import { SHIFT_MS, currentPeriods, inEndWindow, periodKey, previousShift, shiftOf, shiftStart } from '../../src/lib/shifts';
 
 /*
  * Preventive actions. Every user can mark a check as done, report a problem (on a check or on
@@ -66,7 +66,7 @@ export function clock(ctx: Ctx) {
 
 function frequency(v: unknown): Frequency {
   if (typeof v === 'string' && (FREQUENCIES as string[]).includes(v)) return v as Frequency;
-  throw new HttpError(400, 'Frequency must be DAILY, WEEKLY, MONTHLY or QUARTERLY');
+  throw new HttpError(400, 'Frequency must be SHIFT_START, SHIFT_END, DAILY, WEEKLY, MONTHLY or QUARTERLY');
 }
 
 async function loadCheck(ctx: Ctx, machine: string): Promise<CheckRow> {
@@ -89,17 +89,21 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
   const { now, tz, shift } = clock(ctx);
   const me = ctx.user!.id;
   const db = ctx.env.DB;
-  const [checks, events, owners, mine, cales, calesChecked, calesRequests] = await db.batch([
+  const prev = previousShift(now, tz).key;
+  const [checks, events, owners, mine, cales, calesChecked, calesRequests, prevDone, prevPeople] = await db.batch([
     ctx.env.DB.prepare('SELECT c.* FROM machine_checks c JOIN machines m ON m.id = c.machine_id AND m.active = 1 ORDER BY c.machine_id, c.sort, c.created_at'),
     ctx.env.DB.prepare('SELECT * FROM machine_events ORDER BY at DESC, id DESC LIMIT 300'),
     ctx.env.DB.prepare(
       `SELECT o.machine_id, o.user_id, u.username FROM machine_owners o JOIN users u ON u.id = o.user_id
        ORDER BY o.machine_id, u.username COLLATE NOCASE`,
     ),
-    db.prepare('SELECT check_id FROM check_completions WHERE user_id = ? AND period_key IN (?, ?, ?, ?)').bind(me, ...currentPeriods(now, tz)),
+    db.prepare('SELECT check_id FROM check_completions WHERE user_id = ? AND period_key IN (?, ?, ?, ?, ?)').bind(me, ...currentPeriods(now, tz)),
     db.prepare('SELECT machine_id, height, status, count FROM cales_state'),
     db.prepare('SELECT machine_id FROM cales_checks WHERE user_id = ? AND shift_key = ?').bind(me, shift.key),
     db.prepare("SELECT machine_id, height FROM cales_requests WHERE status = 'OPEN'"),
+    // The previous shift: who confirmed its start / end tasks, and who worked on each machine then.
+    db.prepare('SELECT check_id, username FROM check_completions WHERE period_key = ?').bind(prev),
+    db.prepare('SELECT machine_id, username FROM check_completions WHERE shift_key = ?1 UNION SELECT machine_id, username FROM cales_checks WHERE shift_key = ?1').bind(prev),
   ]);
   return json({
     checks: checks.results,
@@ -111,6 +115,7 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
     cales: cales.results,
     calesChecked: (calesChecked.results as { machine_id: string }[]).map((r) => r.machine_id),
     calesRequests: calesRequests.results,
+    prevShift: { key: prev, done: prevDone.results, people: prevPeople.results },
   });
 }
 
@@ -122,22 +127,23 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
 export async function handleRequired(ctx: Ctx): Promise<Response> {
   const user = ctx.user!;
   const { now, tz, shift } = clock(ctx);
-  if (user.role === 'ADMIN') return json({ locked: false, items: [], shift });
+  const endsAt = shiftStart(now, tz) + SHIFT_MS;
+  if (user.role === 'ADMIN') return json({ locked: false, items: [], ending: [], shift, endsAt });
   const db = ctx.env.DB;
-  const [day, week, month, quarter] = currentPeriods(now, tz);
+  const [day, week, month, quarter, shiftKey] = currentPeriods(now, tz);
   const [checks, cales] = await db.batch([
     // An open problem on a check is already reported: it does not keep anyone locked out.
     db
       .prepare(
-        `SELECT c.id, c.machine_id, c.title FROM machine_checks c
+        `SELECT c.id, c.machine_id, c.title, c.frequency FROM machine_checks c
          JOIN machine_owners o ON o.machine_id = c.machine_id AND o.user_id = ?1
          JOIN machines m ON m.id = c.machine_id AND m.active = 1
          WHERE c.kind = 'CHECK' AND c.frequency IS NOT NULL AND c.status = 'OK'
            AND NOT EXISTS (SELECT 1 FROM check_completions x WHERE x.check_id = c.id AND x.user_id = ?1 AND x.period_key =
-             CASE c.frequency WHEN 'DAILY' THEN ?2 WHEN 'WEEKLY' THEN ?3 WHEN 'MONTHLY' THEN ?4 ELSE ?5 END)
+             CASE c.frequency WHEN 'DAILY' THEN ?2 WHEN 'WEEKLY' THEN ?3 WHEN 'MONTHLY' THEN ?4 WHEN 'QUARTERLY' THEN ?5 ELSE ?6 END)
          ORDER BY c.machine_id, c.sort`,
       )
-      .bind(user.id, day, week, month, quarter),
+      .bind(user.id, day, week, month, quarter, shiftKey),
     db
       .prepare(
         `SELECT o.machine_id FROM machine_owners o JOIN machines m ON m.id = o.machine_id AND m.active = 1
@@ -146,11 +152,45 @@ export async function handleRequired(ctx: Ctx): Promise<Response> {
       )
       .bind(user.id, shift.key),
   ]);
+  const rows = checks.results as { id: string; machine_id: string; title: string; frequency: Frequency }[];
+  const item = (c: (typeof rows)[number]) => ({ kind: 'CHECK' as const, machineId: c.machine_id, id: c.id, title: c.title });
   const items = [
-    ...(checks.results as { id: string; machine_id: string; title: string }[]).map((c) => ({ kind: 'CHECK' as const, machineId: c.machine_id, id: c.id, title: c.title })),
+    ...rows.filter((c) => c.frequency !== 'SHIFT_END').map(item),
     ...(cales.results as { machine_id: string }[]).map((r) => ({ kind: 'CALES' as const, machineId: r.machine_id })),
   ];
-  return json({ locked: items.length > 0, items, shift });
+  // End-of-shift tasks never lock anyone out: in the last 45 minutes the app rings for them instead.
+  const ending = inEndWindow(now, tz) ? rows.filter((c) => c.frequency === 'SHIFT_END').map(item) : [];
+  return json({ locked: items.length > 0, items, ending, shift, endsAt });
+}
+
+// POST /api/machines/:machine/checks/:id/missed -> a start / end of shift task was not done in the
+// previous shift. The server names the people: whoever confirmed it then (so it was not really done),
+// otherwise whoever worked on this machine during that shift. Once per task per shift.
+export async function handleReportMissed(ctx: Ctx): Promise<Response> {
+  const machine = await machineParam(ctx);
+  await assertMayUpdate(ctx, machine);
+  const check = await loadCheck(ctx, machine);
+  if (check.frequency !== 'SHIFT_START' && check.frequency !== 'SHIFT_END') throw new HttpError(400, 'Only start and end of shift tasks can be reported for the previous shift');
+  const { now, tz } = clock(ctx);
+  const prev = previousShift(now, tz).key;
+  const db = ctx.env.DB;
+  const [confirmed, present] = await db.batch([
+    db.prepare('SELECT username FROM check_completions WHERE check_id = ? AND period_key = ?').bind(check.id, prev),
+    db.prepare('SELECT username FROM check_completions WHERE machine_id = ?1 AND shift_key = ?2 UNION SELECT username FROM cales_checks WHERE machine_id = ?1 AND shift_key = ?2').bind(machine, prev),
+  ]);
+  const names = [...new Set((confirmed.results.length ? confirmed.results : present.results).map((r) => (r as { username: string }).username))];
+  if (!names.length) throw new HttpError(409, 'Nobody worked on this machine in the previous shift');
+  const [made] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO machine_events (machine_id, check_id, check_title, action, note, username, at)
+         SELECT ?, ?, ?, 'MISSED', ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM machine_events WHERE check_id = ? AND action = 'MISSED' AND at >= ?)`,
+      )
+      .bind(machine, check.id, check.title, names.join(', '), ctx.user!.username, now, check.id, shiftStart(now, tz)),
+    bumpStmt(ctx.env, 'machines'),
+  ]);
+  if (!made.meta.changes) throw new HttpError(409, 'This task was already reported for the previous shift');
+  return json({ ok: true, users: names });
 }
 
 // POST /api/machines/:machine/checks/:id/action

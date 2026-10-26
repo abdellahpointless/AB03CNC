@@ -70,6 +70,8 @@ const common = {
     OTHER: 'Other',
   },
   frequency: {
+    SHIFT_START: 'Start of every shift',
+    SHIFT_END: 'End of every shift',
     DAILY: 'Every day',
     WEEKLY: 'Every week',
     MONTHLY: 'Every month',

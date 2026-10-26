@@ -25,7 +25,9 @@ import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
 import { fetchRequired, type RequiredItem } from './lib/fleet';
-import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
+import { ring, unlockSound } from './lib/alarm';
+import { fmtTime } from './i18n/format';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme, type ThemeMode } from './hooks/useTheme';
 import { EASE_OUT, SPRING_PILL } from './lib/motion';
@@ -87,11 +89,24 @@ function Workspace() {
   // and this shift's cales box, only Preventive actions is shown. Admins are never locked; a failed
   // request never locks anyone.
   const [required, setRequired] = useState<RequiredItem[]>([]);
+  // End of shift tasks still to do, in the last 45 minutes of the shift (they never lock).
+  const [ending, setEnding] = useState<RequiredItem[]>([]);
+  const [endsAt, setEndsAt] = useState(0);
   const locked = features.preventive && features.shiftChecks && required.length > 0;
   useEffect(() => {
-    if (!features.preventive || !features.shiftChecks || user.role === 'ADMIN') return setRequired([]);
+    if (!features.preventive || !features.shiftChecks || user.role === 'ADMIN') {
+      setRequired([]);
+      setEnding([]);
+      return;
+    }
     let alive = true;
-    const ask = () => fetchRequired().then((r) => alive && setRequired(r.locked ? r.items : []), () => undefined);
+    const ask = () =>
+      fetchRequired().then((r) => {
+        if (!alive) return;
+        setRequired(r.locked ? r.items : []);
+        setEnding(r.ending);
+        setEndsAt(r.endsAt);
+      }, () => undefined);
     ask();
     const id = window.setInterval(ask, 60_000); // a new shift or period starts by the clock
     return () => {
@@ -109,6 +124,47 @@ function Workspace() {
     else m.cales = true;
     left.set(i.machineId, m);
   }
+  const nameOf = (id: string) => machines.find((m) => m.id === id)?.name ?? id;
+  const endLeft = new Map<string, number>();
+  for (const i of ending) endLeft.set(i.machineId, (endLeft.get(i.machineId) ?? 0) + 1);
+  const endList = [...endLeft].map(([id, n]) => `${nameOf(id)}: ${t('ending.tasks', { count: n })}`).join(' · ');
+
+  // Browsers ask before showing PC notifications, and let a page ring only after a click: both on the first click.
+  const pending = required.length > 0 || ending.length > 0;
+  useEffect(() => {
+    if (!pending) return;
+    const onDown = () => {
+      unlockSound();
+      if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission();
+    };
+    window.addEventListener('pointerdown', onDown, { once: true });
+    return () => window.removeEventListener('pointerdown', onDown);
+  }, [pending]);
+
+  // End of shift: one notification on the PC (outside the browser), then the PC rings every few seconds
+  // until the person is in the app, on Preventive actions. shortcut: needs the app open in a browser
+  // tab (it may be in the background); a closed browser would need web push.
+  const tabRef = useRef(activeTab);
+  tabRef.current = activeTab;
+  const notified = useRef(0);
+  const endBody = t('ending.body', { time: fmtTime(endsAt), list: endList });
+  useEffect(() => {
+    if (!ending.length) return;
+    if (notified.current !== endsAt && 'Notification' in window && Notification.permission === 'granted') {
+      notified.current = endsAt;
+      const n = new Notification(t('ending.title'), { body: endBody, tag: 'cnc-shift-end', requireInteraction: true });
+      n.onclick = () => {
+        window.focus();
+        setActiveTab('PREVENTIVE');
+        n.close();
+      };
+    }
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || !document.hasFocus() || tabRef.current !== 'PREVENTIVE') ring();
+    }, 3000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ending.length, endsAt]);
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
     if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && activeTab === 'PREVENTIVE')) {
@@ -362,6 +418,25 @@ function Workspace() {
 
       {/* Tab Bar: Pill-shaped Glass Container (Section 8: Tabs) */}
       <div className="px-4 sm:px-6 pt-2.5 sm:pt-3 relative z-10">
+        {ending.length > 0 && (
+          <div role="alert" className="glass-panel rounded-[var(--radius-lg)] px-4 py-3 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs border border-[var(--rose-500)]/40">
+            <span className="flex items-center gap-2 font-semibold text-[var(--rose-500)]">
+              <BellRing size={15} className="shift-bell" /> {t('ending.banner', { time: fmtTime(endsAt) })}
+            </span>
+            <span className="flex flex-wrap gap-1.5">
+              {[...endLeft].map(([id, n]) => (
+                <span key={id} className="badge-danger">
+                  {nameOf(id)}: {t('ending.tasks', { count: n })}
+                </span>
+              ))}
+            </span>
+            {activeTab !== 'PREVENTIVE' && (
+              <button type="button" className="btn-danger text-xs py-1.5 px-3 sm:ml-auto" onClick={() => openTab('PREVENTIVE')}>
+                {t('ending.doNow')}
+              </button>
+            )}
+          </div>
+        )}
         {locked ? (
           <div role="status" className="glass-panel rounded-[var(--radius-lg)] px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
             <span className="flex items-center gap-2 font-semibold text-[var(--orange-500)]">
@@ -371,7 +446,7 @@ function Workspace() {
             <span className="flex flex-wrap gap-1.5">
               {[...left].map(([id, l]) => (
                 <span key={id} className="badge-warning">
-                  {machines.find((m) => m.id === id)?.name ?? id}:{' '}
+                  {nameOf(id)}:{' '}
                   {[l.checks ? t('lock.checks', { count: l.checks }) : '', l.cales ? t('lock.cales') : ''].filter(Boolean).join(' · ')}
                 </span>
               ))}

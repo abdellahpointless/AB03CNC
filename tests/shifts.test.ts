@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentPeriods, dayStart, periodKey, periodStart, shiftOf } from '../src/lib/shifts';
+import { currentPeriods, dayStart, inEndWindow, periodKey, periodStart, previousShift, shiftOf, shiftStart } from '../src/lib/shifts';
 
 const IST = 'Europe/Istanbul'; // UTC+3 all year
 const CAS = 'Africa/Casablanca';
@@ -48,7 +48,7 @@ describe('check periods', () => {
   });
 
   it('lists the current period of every frequency', () => {
-    expect(currentPeriods(at('2026-10-24T09:00:00Z'), IST)).toEqual(['2026-10-24', '2026-W43', '2026-10', '2026-Q4']);
+    expect(currentPeriods(at('2026-10-24T09:00:00Z'), IST)).toEqual(['2026-10-24', '2026-W43', '2026-10', '2026-Q4', '2026-10-24-S1']);
   });
 });
 
@@ -67,5 +67,22 @@ describe('period starts (for exports)', () => {
     expect(periodStart('MONTHLY', sat, IST)).toBe(at('2026-10-01T00:00:00+03:00'));
     expect(periodStart('WEEKLY', at('2026-10-19T00:30:00+01:00'), CAS)).toBe(at('2026-10-19T00:00:00+01:00')); // Monday itself
     expect(periodStart('WEEKLY', at('2026-11-01T10:00:00+01:00'), CAS)).toBe(at('2026-10-26T00:00:00+01:00')); // Sunday, across months
+  });
+});
+
+describe('start and end of shift tasks', () => {
+  it('are due once per shift', () => {
+    expect(periodKey('SHIFT_START', at('2026-10-24T05:30:00Z'), IST)).toBe('2026-10-24-S1');
+    expect(periodKey('SHIFT_END', at('2026-10-24T20:59:00Z'), IST)).toBe('2026-10-24-S2');
+  });
+
+  it('knows when the shift started, the last 45 minutes, and the shift before', () => {
+    expect(shiftStart(at('2026-10-24T12:44:30Z'), IST)).toBe(at('2026-10-24T05:00:00Z')); // 15:44:30 -> 08:00
+    expect(shiftStart(at('2026-10-24T22:10:00Z'), IST)).toBe(at('2026-10-24T21:00:00Z')); // 01:10 -> 00:00
+    expect(inEndWindow(at('2026-10-24T12:14:59Z'), IST)).toBe(false); // 15:14:59
+    expect(inEndWindow(at('2026-10-24T12:15:00Z'), IST)).toBe(true); // 15:15
+    expect(inEndWindow(at('2026-10-24T20:59:59Z'), IST)).toBe(true); // 23:59:59
+    expect(previousShift(at('2026-10-24T05:00:00Z'), IST).key).toBe('2026-10-24-S3'); // 08:00 -> night shift
+    expect(previousShift(at('2026-10-24T22:00:00Z'), IST).key).toBe('2026-10-24-S2'); // 01:00 -> 16-24 of the day before
   });
 });

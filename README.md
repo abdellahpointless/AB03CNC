@@ -35,8 +35,10 @@ Browser (each PC) ──► Cloudflare Worker
   (Admin → Master admin account). The master then creates the first admin of the new
   country from the dashboard. New countries have no public "first-time setup".
 - **Features per country**: part tracking (Part without scan, Part review), preventive
-  actions, and shift checks & cales box (needs preventive actions: own checks per person, cales
-  box every shift, lock until done, cales stock) can be switched on or off per country by a
+  actions, and shift checks & cales box (needs preventive actions: own checks per person,
+  start / end of shift tasks, cales box every shift, lock until the start tasks are done, a PC
+  notification and ringing in the last 45 minutes for the end tasks, reporting the previous
+  shift, cales stock) can be switched on or off per country by a
   master admin (dashboard → "Features in this country"). Defaults are in `src/regions.ts`
   (Türkiye starts with all off); the choice is stored in the country's database
   (`settings.features`). Switched off, a feature is hidden on every open screen within seconds

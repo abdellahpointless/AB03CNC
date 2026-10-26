@@ -14,6 +14,15 @@ const app: Translation<typeof en> = {
     signOut: 'Çıkış yap',
   },
 
+  ending: {
+    title: 'Vardiya bitiyor',
+    banner: 'Vardiya {{time}} saatinde bitiyor. Vardiya sonu görevlerinizi yapın:',
+    tasks_one: '{{count}} görev',
+    tasks_other: '{{count}} görev',
+    doNow: 'Şimdi yap',
+    body: 'Vardiya {{time}} saatinde bitiyor. Yapılacaklar: {{list}}',
+  },
+
   lock: {
     title: 'Önce kontrollerinizi yapın',
     help: 'Tezgahlarınızın kontrolleri ve bu vardiyanın paralel kutusu bitince uygulamanın geri kalanı açılır.',

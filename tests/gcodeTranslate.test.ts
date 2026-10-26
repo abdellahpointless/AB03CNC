@@ -62,6 +62,8 @@ describe('features per country', async () => {
     expect(featuresOfApiPath('/machines/cales/stock')).toEqual(['preventive', 'shiftChecks']);
     expect(featuresOfApiPath('/machines/cales/requests/abc')).toEqual(['preventive', 'shiftChecks']);
     expect(featuresOfApiPath('/machines/HAAS-1/cales/report')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/machines/HAAS-1/checks/abc/missed')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/machines/HAAS-1/checks/abc/action')).toEqual(['preventive']);
     expect(featuresOfApiPath('/fleet')).toEqual([]);
     expect(featuresOfApiPath('/tools')).toEqual([]);
     expect(featuresOfApiPath('/partsx')).toEqual([]);

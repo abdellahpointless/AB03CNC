@@ -104,7 +104,7 @@ export const UPCOMING_COUNTRIES: UpcomingCountry[] = [{ id: 'tn', name: 'Tunisia
 /** The optional features an API path needs, all of them switched on (path without the /xx/api prefix). */
 export function featuresOfApiPath(path: string): (keyof RegionFeatures)[] {
   if (/^\/parts(\/|$)/.test(path) || /^\/admin\/import\/parts(\/|$)/.test(path)) return ['partTracking'];
-  if (/^\/machines\/(required|cales)(\/|$)/.test(path) || /^\/machines\/[^/]+\/cales\//.test(path)) return ['preventive', 'shiftChecks'];
+  if (/^\/machines\/(required|cales)(\/|$)/.test(path) || /^\/machines\/[^/]+\/(cales\/|checks\/[^/]+\/missed$)/.test(path)) return ['preventive', 'shiftChecks'];
   if (/^\/machines(\/|$)/.test(path)) return ['preventive'];
   return [];
 }
