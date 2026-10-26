@@ -83,7 +83,7 @@ export function SyncStatus() {
             <span>{t('sync.waitingUploads')}</span>
             <span className="font-mono text-[var(--text-primary)]">{pendingUploads}</span>
           </div>
-          <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+          <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
             {t('sync.help')}
           </p>
           <button onClick={retry} disabled={busy} className="btn-secondary w-full text-xs py-1.5">

@@ -70,6 +70,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
           ref={buttonRef}
           onClick={onClick}
           title={t('clock.openTitle')}
+          aria-describedby={showTooltip ? 'time-saved-tip' : undefined}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--green-500)]/30 bg-[rgba(22,163,74,0.12)] hover:bg-[rgba(22,163,74,0.18)] transition-colors cursor-pointer shadow-xs shrink-0 select-none"
         >
           {/* Mini Analog Clock Icon */}
@@ -101,13 +102,13 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
           </div>
 
           <div className="flex items-baseline gap-1 text-xs whitespace-nowrap">
-            <span className="text-[var(--text-tertiary)] font-medium hidden sm:inline uppercase text-[10px] tracking-wider">{t('clock.won')}</span>
+            <span className="text-[var(--text-tertiary)] font-medium hidden sm:inline uppercase text-xs tracking-wider">{t('clock.won')}</span>
             <span className="font-mono font-bold text-[var(--green-500)] tabular-nums">
               {timeWon.formatted}
             </span>
           </div>
 
-          <span className="badge-neutral text-[10px] py-0 px-1.5 text-[var(--text-secondary)] whitespace-nowrap">
+          <span className="badge-neutral text-xs py-0 px-1.5 text-[var(--text-secondary)] whitespace-nowrap">
             {t('clock.codes', { count: analytics.totalExtractions })}
           </span>
         </button>
@@ -118,6 +119,8 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
             {showTooltip && tooltipCoords && (
               <motion.div 
                 key="mac-ghost-tooltip"
+                id="time-saved-tip"
+                role="tooltip"
                 style={{
                   position: 'fixed',
                   top: tooltipCoords.top,
@@ -137,7 +140,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
                 <p className="text-[var(--text-secondary)] mb-3 text-xs leading-relaxed">
                   <Trans t={t} i18nKey="clock.calculatorText" components={{ b: <strong className="text-[var(--text-primary)]" /> }} />
                 </p>
-                <div className="p-2.5 bg-[var(--bg-input)] rounded-[var(--radius-md)] space-y-1.5 font-mono text-[11px] border border-[var(--border-subtle)]">
+                <div className="p-2.5 bg-[var(--bg-input)] rounded-[var(--radius-md)] space-y-1.5 font-mono text-xs border border-[var(--border-subtle)]">
                   <div className="flex justify-between">
                     <span className="text-[var(--text-tertiary)]">{t('clock.totalExtractions')}</span>
                     <span className="font-bold text-[var(--text-primary)] tabular-nums">{analytics.totalExtractions}</span>
@@ -154,7 +157,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
               </motion.div>
             )}
           </AnimatePresence>,
-          document.body
+          document.querySelector('main') ?? document.body
         )}
       </div>
     );
@@ -216,9 +219,6 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
               <span className="section-label flex items-center gap-1.5 text-[var(--green-500)]">
                 <Sparkles size={13} className="text-[var(--green-500)]" />
                 {t('clock.widgetTitle')}
-              </span>
-              <span className="badge-positive text-[10px] py-0 px-2">
-                {t('clock.faster')}
               </span>
             </div>
             

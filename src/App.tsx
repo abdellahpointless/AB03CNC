@@ -20,11 +20,12 @@ import DataManagement from './components/DataManagement';
 import { TimeWonClock } from './components/TimeWonClock';
 import { SyncStatus } from './components/SyncStatus';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { AccountMenu } from './components/AccountMenu';
 import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
-import { fetchRequired, type RequiredItem } from './lib/fleet';
+import { fetchCalesStock, fetchRequired, type RequiredItem } from './lib/fleet';
 import { Database, Wrench, History, Shield, LogOut, RefreshCw, PackagePlus, ClipboardCheck, Activity, KeyRound, ShieldCheck, AlertTriangle, X, Sun, Moon, Monitor, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
 import { ring, unlockSound } from './lib/alarm';
 import { fmtTime } from './i18n/format';
@@ -37,6 +38,15 @@ import { useT } from './i18n';
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
 
 type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE';
+const TAB_NAME = {
+  DATABASE: 'tabs.toolInventory',
+  REMAP: 'tabs.remapper',
+  ADMIN: 'tabs.admin',
+  RECENT_CODES: 'tabs.recentCodes',
+  PART_ENTRY: 'tabs.partEntry',
+  PART_REVIEW: 'tabs.partReview',
+  PREVENTIVE: 'tabs.preventive',
+} as const;
 
 const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (DIAMETER 10.00 MM / LENGTH 50.00 MM)\nN20 G90 G54 G0 X0. Y0.\nN21 T3 M6\nN22 (MK_40.00_040_000_ALHS)\nN23 G0 Z50.\nN24 T5 M6\nN25 (SF_12.00_075_000_ALHS)\nN30 M30\n%';
 
@@ -165,6 +175,21 @@ function Workspace() {
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ending.length, endsAt]);
+  // Admins: open requests for new cales, shown as a count on the Admin tab.
+  const calesOn = features.preventive && features.shiftChecks && user.role === 'ADMIN';
+  const [calesAsks, setCalesAsks] = useState(0);
+  useEffect(() => {
+    if (!calesOn) {
+      setCalesAsks(0);
+      return;
+    }
+    let alive = true;
+    fetchCalesStock().then((d) => alive && setCalesAsks(d.requests.length), () => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [calesOn, versions.machines]);
+
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
     if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && activeTab === 'PREVENTIVE')) {
@@ -177,6 +202,11 @@ function Workspace() {
     setActiveTab(tab);
     setRemapView('main');
   };
+  // The browser tab and history name the screen that is open.
+  const pageName = activeTab === 'REMAP' && remapView === 'history' ? t('tabs.history') : t(TAB_NAME[activeTab]);
+  useEffect(() => {
+    document.title = `${pageName} · CNC Process Pro`;
+  }, [pageName]);
 
   // "Part without scan" → "Part review" (admins): a small menu that drops out of the tab on hover.
   const canReview = features.partTracking && user.role === 'ADMIN';
@@ -212,6 +242,22 @@ function Workspace() {
   useEffect(() => {
     document.querySelector('nav.app-tabs [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [activeTab]);
+  // Which edges of the tab bar hide more tabs (the CSS fades that edge).
+  const tabsRef = useRef<HTMLElement>(null);
+  const [moreTabs, setMoreTabs] = useState<'left' | 'right' | 'both' | undefined>();
+  const measureTabs = () => {
+    const n = tabsRef.current;
+    if (!n) return;
+    const l = n.scrollLeft > 2;
+    const r = n.scrollLeft + n.clientWidth < n.scrollWidth - 2;
+    setMoreTabs(l && r ? 'both' : l ? 'left' : r ? 'right' : undefined);
+  };
+  useEffect(() => {
+    measureTabs();
+    window.addEventListener('resize', measureTabs);
+    return () => window.removeEventListener('resize', measureTabs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, locked, features]);
 
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
@@ -294,10 +340,11 @@ function Workspace() {
 
       {showMfaNudge && (
         <div className="px-4 sm:px-6 pt-3 relative z-30">
-          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
-              <ShieldCheck size={16} className="shrink-0 text-[var(--blue-500)]" />
-              <span>{t('banners.mfaNudge')}</span>
+          <div className="py-2 px-3 sm:p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold min-w-0">
+              <ShieldCheck size={16} className="shrink-0 text-[var(--blue-text)]" />
+              <span className="sm:hidden">{t('banners.mfaNudgeShort')}</span>
+              <span className="hidden sm:inline">{t('banners.mfaNudge')}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowPasswordModal('mfa')} className="btn-primary text-xs py-1 px-3">
@@ -347,14 +394,14 @@ function Workspace() {
                 {/* Country of this instance; click to go back to the country picker. */}
                 <a
                   href={CHOOSE_COUNTRY_PATH}
-                  className="shrink-0 inline-flex items-center rounded-[3px] ring-1 ring-[var(--border-subtle)] hover:ring-[var(--blue-500)] transition"
+                  className="group shrink-0 inline-flex items-center p-1 -m-1"
                   title={`${t(`common:country.${currentRegion().id}`)} · ${t('common:actions.changeCountry')}`}
                   aria-label={t('common:actions.changeCountry')}
                 >
-                  <Flag country={currentRegion().id} className="w-6 h-4 rounded-[3px] block" />
+                  <Flag country={currentRegion().id} className="w-6 h-4 rounded-[3px] block ring-1 ring-[var(--border-subtle)] group-hover:ring-[var(--blue-500)] transition" />
                 </a>
               </div>
-              <span className="text-[11px] sm:text-[12px] text-[var(--text-secondary)] font-normal hidden sm:block truncate">
+              <span className="text-xs sm:text-[12px] text-[var(--text-secondary)] font-normal hidden sm:block truncate">
                 {t('header.subtitle')}
               </span>
             </div>
@@ -362,31 +409,21 @@ function Workspace() {
 
           {/* Center-Right & Right Controls */}
           <div className="flex items-center gap-2 sm:gap-2.5 ml-auto relative z-10 min-w-0 max-w-full flex-wrap justify-end">
-            {/* Server Sync Status Pill */}
-            <SyncStatus />
-
-            {/* Time Won Clock Widget */}
-            <TimeWonClock
-              compact={true}
-              onClick={() => user.role === 'ADMIN' && openTab('ADMIN')}
-            />
-
-            {/* User / Role Chip: circular avatar + stacked two-line name/role inside bordered pill */}
-            <div className="flex items-center gap-2 py-1 px-2.5 sm:px-3 rounded-full border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.04)] shrink-0">
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-[var(--blue-500)] to-[var(--blue-600)] flex items-center justify-center text-white font-bold text-xs uppercase shadow-xs">
-                {user.username.slice(0, 2)}
-              </div>
-              <div className="flex flex-col text-left leading-none pr-1">
-                <span className="text-xs font-semibold text-[var(--text-primary)]">
-                  {user.username}
-                </span>
-                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
-                  {t(`common:role.${user.role}`)}
-                </span>
-              </div>
+            {/* Phones: the sync pill and the time saved move into the account menu (no room in one row). */}
+            <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
+              <SyncStatus />
+              <TimeWonClock compact={true} onClick={() => user.role === 'ADMIN' && openTab('ADMIN')} />
             </div>
 
-            {/* Circular Icon Buttons: Change Password, Refresh Sync, Sign Out */}
+            <AccountMenu
+              onSecurity={() => setShowPasswordModal('password')}
+              onSync={handleGlobalRefresh}
+              syncing={isRefreshing}
+              onTimeSaved={() => user.role === 'ADMIN' && openTab('ADMIN')}
+            />
+
+            {/* Circular icon buttons (desktop): security, theme, sync, sign out. On phones they are in the account menu. */}
+            <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
             <button 
               onClick={() => setShowPasswordModal('password')} 
               className="btn-icon" 
@@ -412,6 +449,7 @@ function Workspace() {
             >
               <LogOut size={15} />
             </button>
+            </div>
           </div>
         </header>
       </div>
@@ -453,7 +491,7 @@ function Workspace() {
             </span>
           </div>
         ) : (
-        <nav aria-label={t('common:a11y.mainNav')} className="app-tabs glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
+        <nav ref={tabsRef} onScroll={measureTabs} data-more={moreTabs} aria-label={t('common:a11y.mainNav')} className="app-tabs glass-panel p-1.5 flex items-center gap-1 overflow-x-auto hide-scrollbar rounded-full max-w-full">
           {/* Tab 1: Tool Inventory */}
           <button
             onClick={() => openTab('DATABASE')}
@@ -601,6 +639,12 @@ function Workspace() {
             >
               <Shield size={15} />
               <span>{t('tabs.admin')}</span>
+              {calesAsks > 0 && (
+                <span className="badge-danger py-0 px-1.5 text-xs">
+                  {calesAsks}
+                  <span className="sr-only"> {t('adminNav.calesRequests', { count: calesAsks })}</span>
+                </span>
+              )}
               {activeTab === 'ADMIN' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
@@ -715,24 +759,49 @@ function Workspace() {
             )}
             {activeTab === 'ADMIN' && user.role === 'ADMIN' && (
               <div className="flex flex-col space-y-6 max-w-5xl mx-auto w-full pb-16">
-                <Suspense fallback={<div className="aurora-card p-10 text-center text-xs text-[var(--text-tertiary)]">{t('loadingAnalytics')}</div>}>
-                  <AdminExtractionAnalytics />
-                </Suspense>
-                <UserManagement />
-                <div className="w-full">
+                {/* One long page: links to each part, kept at the top while scrolling. */}
+                <nav aria-label={t('adminNav.label')} className="sticky top-2 z-10 glass-panel rounded-full p-1.5 flex gap-1 overflow-x-auto hide-scrollbar">
+                  {(
+                    [
+                      ['admin-analytics', t('adminNav.analytics')],
+                      ['admin-users', t('adminNav.users')],
+                      ['admin-machines', t('adminNav.machines')],
+                      ...(calesOn ? [['admin-cales', calesAsks ? `${t('adminNav.cales')} (${calesAsks})` : t('adminNav.cales')]] : []),
+                      ...(currentRegion().id === 'ma' ? [['admin-master', t('adminNav.master')]] : []),
+                      ['admin-data', t('adminNav.data')],
+                    ] as [string, string][]
+                  ).map(([id, label]) => (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      className="shrink-0 inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.06)]"
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </nav>
+                <div id="admin-analytics" className="scroll-mt-20">
+                  <Suspense fallback={<div className="aurora-card p-10 text-center text-xs text-[var(--text-tertiary)]">{t('loadingAnalytics')}</div>}>
+                    <AdminExtractionAnalytics />
+                  </Suspense>
+                </div>
+                <div id="admin-users" className="scroll-mt-20">
+                  <UserManagement />
+                </div>
+                <div id="admin-machines" className="w-full scroll-mt-20">
                   <MachineManager />
                 </div>
-                {features.preventive && features.shiftChecks && (
-                  <div className="w-full">
+                {calesOn && (
+                  <div id="admin-cales" className="w-full scroll-mt-20">
                     <CalesStock />
                   </div>
                 )}
                 {currentRegion().id === 'ma' && (
-                  <div className="w-full">
+                  <div id="admin-master" className="w-full scroll-mt-20">
                     <MasterAccountCard />
                   </div>
                 )}
-                <div className="aurora-card aurora-card-static p-6">
+                <div id="admin-data" className="aurora-card aurora-card-static p-6 scroll-mt-20">
                   <DataManagement />
                 </div>
               </div>

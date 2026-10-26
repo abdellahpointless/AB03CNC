@@ -80,7 +80,7 @@ export default function MasterAccountCard() {
             <Crown size={14} />
             <span>{busy ? t('common:status.working') : t('master.create')}</span>
           </button>
-          <p className="sm:col-span-3 text-[11px] text-[var(--text-tertiary)]">{t('master.passwordHint')}</p>
+          <p className="sm:col-span-3 text-xs text-[var(--text-tertiary)]">{t('master.passwordHint')}</p>
           {error && <div className="sm:col-span-3 badge-danger text-xs py-1.5 px-3">{error}</div>}
         </form>
       )}

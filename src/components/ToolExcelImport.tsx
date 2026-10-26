@@ -123,7 +123,7 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
                 <strong className="text-[var(--text-primary)]"> {t('excel.sheetInstructions')}</strong>{t('import.introAfter')}
               </p>
               <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
-                <table className="w-full text-[11px] border-collapse font-mono">
+                <table className="w-full text-xs border-collapse font-mono">
                   <thead>
                     <tr className="bg-[var(--blue-500)]/15 text-[var(--text-primary)]">
                       {headers.map((h) => <th key={h} className="p-2 text-left whitespace-nowrap font-bold">{h}</th>)}
@@ -138,7 +138,7 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
                   </tbody>
                 </table>
               </div>
-              <ul className="text-[11px] text-[var(--text-tertiary)] space-y-0.5 leading-relaxed list-disc pl-4">
+              <ul className="text-xs text-[var(--text-tertiary)] space-y-0.5 leading-relaxed list-disc pl-4">
                 <li>
                   <strong className="text-[var(--text-secondary)]">{t('columns.machine')}</strong>:{' '}
                   {toolMachines.length ? toolMachines.map((m) => m.name).join(', ') : t('import.guide.noMachines')}{t('import.guide.machineNewBefore')}
@@ -163,7 +163,7 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
                 disabled={busy}
                 className="no-glass w-full border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-md)] py-5 flex flex-col items-center gap-1.5 text-xs text-[var(--text-secondary)] transition-colors"
               >
-                <Upload size={18} className="text-[var(--blue-500)]" />
+                <Upload size={18} className="text-[var(--blue-text)]" />
                 <span>{fileName ? fileName : t('import.dropHint')}</span>
               </button>
             </section>
@@ -191,7 +191,7 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
                             <tr key={p.machine} className="border-t border-[var(--border-subtle)]">
                               <td className="p-2 font-semibold text-[var(--text-primary)]">
                                 {p.name}
-                                {p.isNew && <span className="badge-positive text-[9px] py-0 px-1.5 ml-2">{t('import.table.newMachine')}</span>}
+                                {p.isNew && <span className="badge-positive text-xs py-0 px-1.5 ml-2">{t('import.table.newMachine')}</span>}
                               </td>
                               <td className="p-2">{p.total}</td>
                               <td className="p-2 text-[var(--green-500)]">{mode === 'replace' ? p.total : p.added}</td>

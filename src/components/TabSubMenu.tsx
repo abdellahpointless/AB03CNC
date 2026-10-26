@@ -77,6 +77,7 @@ export default function TabSubMenu({
         </motion.div>
       )}
     </AnimatePresence>,
-    document.body,
+    // Inside <main> so the menu sits in a page landmark (screen readers, axe 'region').
+    document.querySelector('main') ?? document.body,
   );
 }

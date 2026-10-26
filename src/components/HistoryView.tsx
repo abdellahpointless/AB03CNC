@@ -314,7 +314,7 @@ export default function HistoryView() {
 
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <Filter size={13} className="text-[var(--text-tertiary)]" />
-              <span className="text-[11px] text-[var(--text-secondary)] font-medium">{t('view.operatorFilter')}</span>
+              <span className="text-xs text-[var(--text-secondary)] font-medium">{t('view.operatorFilter')}</span>
               <select
                 aria-label={t('view.operatorFilter')}
                 value={selectedUser}
@@ -332,14 +332,14 @@ export default function HistoryView() {
               <div className="flex items-center gap-1 border-l border-[var(--border-subtle)] pl-2">
                 <button
                   onClick={handleExpandAll}
-                  className="btn-secondary text-[10px] py-1 px-2"
+                  className="btn-secondary text-xs py-1 px-2"
                   title={t('view.expandTitle')}
                 >
                   {t('view.expand')}
                 </button>
                 <button
                   onClick={handleCollapseAll}
-                  className="btn-secondary text-[10px] py-1 px-2"
+                  className="btn-secondary text-xs py-1 px-2"
                   title={t('view.collapseTitle')}
                 >
                   {t('view.collapse')}
@@ -350,7 +350,7 @@ export default function HistoryView() {
 
           {/* Compact Inline Pagination Strip */}
           {filteredCount > 0 && (
-            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[11px]">
+            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-xs">
               <div className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
                 <span>{t('view.records')}</span>
@@ -362,7 +362,7 @@ export default function HistoryView() {
                   {totalRecords}
                 </span>
                 {selectedUser !== 'ALL' && (
-                  <span className="badge-neutral text-[10px] py-0 px-1.5 ml-1">
+                  <span className="badge-neutral text-xs py-0 px-1.5 ml-1">
                     {selectedUser}
                   </span>
                 )}
@@ -386,7 +386,7 @@ export default function HistoryView() {
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`min-w-6 h-6 px-1.5 text-[11px] rounded-[var(--radius-sm)] font-mono transition cursor-pointer ${
+                          className={`min-w-6 h-6 px-1.5 text-xs rounded-[var(--radius-sm)] font-mono transition cursor-pointer ${
                             isCur
                               ? 'bg-[var(--accent-primary)] text-white font-bold shadow-xs'
                               : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'
@@ -461,7 +461,7 @@ export default function HistoryView() {
                       </div>
                       {/* Only when the export got another name (older exports): otherwise it repeats the title. */}
                       {record.exportedFileName !== record.originalFileName && (
-                        <div className="text-[11px] text-[var(--text-tertiary)] font-mono mt-0.5 truncate">
+                        <div className="text-xs text-[var(--text-tertiary)] font-mono mt-0.5 truncate">
                           {t('view.exported')} <span className="font-semibold text-[var(--text-secondary)]">{record.exportedFileName}</span>
                         </div>
                       )}
@@ -470,14 +470,14 @@ export default function HistoryView() {
 
                   <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
                     {record.machine && (
-                      <span className="badge-neutral font-mono text-[10px] py-0.5 px-2 flex items-center gap-1">
+                      <span className="badge-neutral font-mono text-xs py-0.5 px-2 flex items-center gap-1">
                         <Cpu size={11} className="text-[var(--accent-primary)]" /> {machineLabel(record.machine)}
                       </span>
                     )}
-                    <span className="badge-neutral text-[10px] py-0.5 px-2 flex items-center gap-1">
+                    <span className="badge-neutral text-xs py-0.5 px-2 flex items-center gap-1">
                       <User size={11} className="text-[var(--orange-500)]" /> {record.user || t('shared.unknownUser')}
                     </span>
-                    <span className="badge-neutral text-[10px] py-0.5 px-2 font-mono">
+                    <span className="badge-neutral text-xs py-0.5 px-2 font-mono">
                       {t('view.toolCount', { count: record.changes.length })}
                     </span>
                     <div className="w-6 h-6 rounded-full bg-[rgba(var(--ov),0.06)] flex items-center justify-center text-[var(--text-secondary)] ml-1">
@@ -492,20 +492,20 @@ export default function HistoryView() {
                 {/* Timestamp & Actions Bar */}
                 <div className="px-4 py-2 bg-[rgba(var(--ov),0.02)] border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-tertiary)]">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1 text-[11px]">
+                    <span className="flex items-center gap-1 text-xs">
                       <Clock size={12} /> {record.timestamp ? fmtDateTime(record.timestamp) : record.date}
                     </span>
 
                     {/* Compact Preview Chips when collapsed */}
                     {!isExpanded && record.changes.length > 0 && (
-                      <div className="hidden sm:flex items-center gap-1 text-[10px] font-mono">
+                      <div className="hidden sm:flex items-center gap-1 text-xs font-mono">
                         {record.changes.slice(0, 3).map((c, idx) => (
-                          <span key={idx} className="badge-neutral text-[9px] py-0 px-1.5">
+                          <span key={idx} className="badge-neutral text-xs py-0 px-1.5">
                             {c.originalT}→T{c.chosenT}
                           </span>
                         ))}
                         {record.changes.length > 3 && (
-                          <span className="text-[10px] text-[var(--text-tertiary)]">+{record.changes.length - 3}</span>
+                          <span className="text-xs text-[var(--text-tertiary)]">+{record.changes.length - 3}</span>
                         )}
                       </div>
                     )}
@@ -514,15 +514,15 @@ export default function HistoryView() {
                   <div className="flex items-center gap-2 ml-auto" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => handleInspect(record)}
-                      className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1"
+                      className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
                       title={t('view.viewCodeTitle')}
                     >
-                      <Eye size={12} className="text-[var(--blue-500)]" /> {t('view.viewCode')}
+                      <Eye size={12} className="text-[var(--blue-text)]" /> {t('view.viewCode')}
                     </button>
                     <button
                       onClick={() => handleDownloadCode(record)}
                       disabled={downloadingId === record.id}
-                      className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1 disabled:opacity-50"
+                      className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1 disabled:opacity-50"
                       title={t('view.downloadTitle')}
                     >
                       <Download size={12} className="text-[var(--green-500)]" /> {t('common:actions.download')}
@@ -544,7 +544,7 @@ export default function HistoryView() {
                       <div className="p-4 space-y-3 bg-[rgba(var(--surface-deep),0.4)]">
                         <div className="flex items-center justify-between">
                           <span className="section-label">{t('view.toolModifications')}</span>
-                          <span className="text-[11px] text-[var(--text-tertiary)]">{t('view.toolsMapped', { count: record.changes.length })}</span>
+                          <span className="text-xs text-[var(--text-tertiary)]">{t('view.toolsMapped', { count: record.changes.length })}</span>
                         </div>
 
                         {record.changes.map((change, i) => (
@@ -553,34 +553,34 @@ export default function HistoryView() {
                               <div className="font-mono font-bold text-[var(--text-primary)] flex items-center gap-2">
                                 <span>{change.originalT}</span>
                                 <span className="text-[var(--text-tertiary)] font-normal">→</span>
-                                <span className="badge-positive font-mono text-[11px] py-0.5 px-1.5">T{change.chosenT}</span>
+                                <span className="badge-positive font-mono text-xs py-0.5 px-1.5">T{change.chosenT}</span>
                               </div>
-                              <div className="text-[10px] font-semibold px-2 py-0.5 rounded-[var(--radius-full)] bg-[rgba(var(--ov),0.04)] border border-[var(--border-subtle)] flex items-center gap-1.5 text-[var(--text-secondary)]">
+                              <div className="text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-full)] bg-[rgba(var(--ov),0.04)] border border-[var(--border-subtle)] flex items-center gap-1.5 text-[var(--text-secondary)]">
                                 {change.appChose ? (
-                                  <><Bot size={11} className="text-[var(--blue-500)]"/> {t('view.autoSelection')}</>
+                                  <><Bot size={11} className="text-[var(--blue-text)]"/> {t('view.autoSelection')}</>
                                 ) : (
                                   <><User size={11} className="text-[var(--orange-500)]"/> {t('view.manualOverride')}</>
                                 )}
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-2 mt-2 text-[11px] bg-[rgba(0,0,0,0.3)] p-2.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
+                            <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-[rgba(0,0,0,0.3)] p-2.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
                               <div>
-                                <div className="section-label text-[9px] mb-0.5">{t('view.originalRequest')}</div>
+                                <div className="section-label text-xs mb-0.5">{t('view.originalRequest')}</div>
                                 <div className="text-[var(--text-secondary)] font-mono">
                                   {change.reqDiameter ? `D${change.reqDiameter} ` : ''} 
                                   {change.reqLength ? `L${change.reqLength}` : ''}
                                 </div>
-                                <div className="text-[var(--text-tertiary)] truncate mt-1 text-[10px] border-t border-[var(--border-subtle)] pt-1" title={change.originalContext}>
+                                <div className="text-[var(--text-tertiary)] truncate mt-1 text-xs border-t border-[var(--border-subtle)] pt-1" title={change.originalContext}>
                                   {change.originalContext || t('view.unknownContext')}
                                 </div>
                               </div>
                               <div>
-                                <div className="section-label text-[9px] mb-0.5">{t('view.chosenTool')}</div>
+                                <div className="section-label text-xs mb-0.5">{t('view.chosenTool')}</div>
                                 <div className="text-[var(--text-primary)] font-semibold flex items-center gap-1.5 flex-wrap">
                                   <span className="capitalize">{categoryLabel(change.chosenCategory)}</span>
-                                  <span className="badge-neutral text-[9px] py-0 px-1 font-mono">D{change.chosenDiameter}</span>
-                                  <span className="badge-neutral text-[9px] py-0 px-1 font-mono">L{change.chosenLength}</span>
+                                  <span className="badge-neutral text-xs py-0 px-1 font-mono">D{change.chosenDiameter}</span>
+                                  <span className="badge-neutral text-xs py-0 px-1 font-mono">L{change.chosenLength}</span>
                                 </div>
                               </div>
                             </div>
@@ -676,19 +676,19 @@ export default function HistoryView() {
               {/* Modal Header */}
               <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-panel)]">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
+                  <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)]">
                     <FileText size={18} />
                   </div>
                   <div>
                     <h3 className="font-bold text-[var(--text-primary)] text-sm">
                       {inspectingRecord.exportedFileName}
                     </h3>
-                    <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 mt-0.5">
+                    <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-2 mt-0.5">
                       <span>{t('view.modalOperator')} <strong className="text-[var(--text-primary)]">{inspectingRecord.user || t('shared.unknownUser')}</strong></span>
                       {inspectingRecord.machine && (
                         <>
                           <span>•</span>
-                          <span>{t('view.modalMachine')} <strong className="text-[var(--blue-500)]">{machineLabel(inspectingRecord.machine)}</strong></span>
+                          <span>{t('view.modalMachine')} <strong className="text-[var(--blue-text)]">{machineLabel(inspectingRecord.machine)}</strong></span>
                         </>
                       )}
                       <span>•</span>

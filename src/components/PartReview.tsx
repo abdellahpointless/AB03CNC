@@ -11,7 +11,15 @@ import {
 import { exportAdminPartEntriesExcel } from '../lib/partExportExcel';
 import PartProduction from './PartProduction';
 import { useT } from '../i18n';
-import { fmtDateTime, locale } from '../i18n/format';
+import { fmtDateTime, fmtMonth, locale } from '../i18n/format';
+
+// shortcut: the export filter lists the last 24 months only; add older ones if entries go further back.
+const RECENT_MONTHS = Array.from({ length: 24 }, (_, i) => {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - i);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+});
 import {
   ClipboardCheck,
   Check,
@@ -163,14 +171,9 @@ export default function PartReview() {
             <ClipboardCheck size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                {t('review.title')}
-              </h2>
-              <span className="badge-warning text-[10px] py-0.5 px-2 font-mono">
-                {t('review.adminBadge')}
-              </span>
-            </div>
+            <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+              {t('review.title')}
+            </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               {t('review.subtitle')}
             </p>
@@ -179,19 +182,22 @@ export default function PartReview() {
 
         {/* Top Controls: Month Filter + Admin Excel Export + Refresh */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-[var(--bg-input)] px-2.5 py-1.5 rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-xs">
+          <div className="flex items-center gap-1.5 bg-[var(--bg-input)] px-2.5 py-1.5 rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-xs focus-within:ring-2 focus-within:ring-[var(--accent-primary)]">
             <Filter size={13} className="text-[var(--text-tertiary)]" />
-            <input
-              type="month"
+            <select
               title={t('review.monthFilterTitle')}
               aria-label={t('review.monthFilterTitle')}
               value={exportMonthFilter}
-              onChange={e => setExportMonthFilter(e.target.value.trim())}
-              className="bg-transparent border-none outline-none font-mono text-xs text-[var(--text-primary)] w-36"
-            />
-            {exportMonthFilter && (
-              <button type="button" onClick={() => setExportMonthFilter('')} className="no-glass text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" title={t('review.clearMonthFilter')}>✕</button>
-            )}
+              onChange={e => setExportMonthFilter(e.target.value)}
+              className="bg-transparent border-none outline-none text-xs text-[var(--text-primary)] py-1.5 -my-1.5 cursor-pointer"
+            >
+              <option value="">{t('review.allMonths')}</option>
+              {RECENT_MONTHS.map((m) => (
+                <option key={m} value={m}>
+                  {fmtMonth(m)}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
@@ -236,7 +242,7 @@ export default function PartReview() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
           <div className="flex items-center gap-2">
             <span className="section-label">{t('review.queueTitle')}</span>
-            <span className="badge-neutral text-[10px] py-0 px-2 font-mono">
+            <span className="badge-neutral text-xs py-0 px-2 font-mono">
               {t('review.pageItems', { page: page + 1, items: entries.length })}
             </span>
           </div>
@@ -279,7 +285,7 @@ export default function PartReview() {
             {/* Space between columns (QTY | KIND and VALUE | DATE used to touch). */}
             <table className="w-full text-left text-xs [&_th]:px-3 [&_td]:px-3 [&_th:first-child]:pl-0 [&_td:first-child]:pl-0 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
+                <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-xs tracking-wider">
                   <th className="pb-2.5 font-semibold">{t('review.columns.operator')}</th>
                   <th className="pb-2.5 font-semibold">{t('review.columns.sapNumber')}</th>
                   <th className="pb-2.5 font-semibold text-right">{t('review.columns.qty')}</th>
@@ -316,7 +322,7 @@ export default function PartReview() {
 
                       {/* Kind */}
                       <td className="py-3 font-sans">
-                        <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-[10px]' : 'badge-warning text-[10px]'}>
+                        <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-xs' : 'badge-warning text-xs'}>
                           {entry.kind === 'PRODUCED' ? t('kind.PRODUCED') : t('kind.MODIFICATION')}
                         </span>
                       </td>
@@ -327,7 +333,7 @@ export default function PartReview() {
                       </td>
 
                       {/* Date */}
-                      <td className="py-3 text-[var(--text-secondary)] font-sans text-[11px]">
+                      <td className="py-3 text-[var(--text-secondary)] font-sans text-xs">
                         {fmtDateTime(entry.created_at)}
                       </td>
 

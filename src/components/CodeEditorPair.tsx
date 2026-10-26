@@ -91,7 +91,7 @@ function SafetyPanel({
               aria-label={`${t(`safety.checks.${c}`)}: ${level === 'ok' ? 'OK' : level}`}
               disabled={line === null}
               onClick={() => line !== null && onGoToLine(line)}
-              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-mono font-bold border disabled:cursor-default"
+              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-mono font-bold border disabled:cursor-default"
               style={{ color, borderColor: `color-mix(in srgb, ${color} 35%, transparent)`, background: `color-mix(in srgb, ${color} ${level === 'ok' ? 6 : 14}%, transparent)` }}
             >
               <Icon size={11} />
@@ -100,13 +100,13 @@ function SafetyPanel({
             </button>
           );
         })}
-        {clean && <span className="text-[11px] text-[var(--green-500)] font-semibold ml-1 truncate">{t('safety.allClear', { count: SAFETY_CHECKS.length })}</span>}
+        {clean && <span className="text-xs text-[var(--green-500)] font-semibold ml-1 truncate">{t('safety.allClear', { count: SAFETY_CHECKS.length })}</span>}
         {!clean && !confirming && (
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.06)]"
+            className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.06)]"
           >
             <span className="font-mono">{report.findings.length}</span>
             {open ? t('safety.hide') : t('safety.show')}
@@ -129,7 +129,7 @@ function SafetyPanel({
                 className="w-full flex items-center gap-2 text-left text-xs py-0.5 enabled:hover:brightness-125 disabled:cursor-default"
               >
                 {f.level === 'error' ? <XCircle size={14} style={{ color }} className="shrink-0" /> : <AlertTriangle size={14} style={{ color }} className="shrink-0" />}
-                <span className="inline-flex items-center gap-1 font-mono font-bold text-[10.5px] shrink-0" style={{ color }}>
+                <span className="inline-flex items-center gap-1 font-mono font-bold text-xs shrink-0" style={{ color }}>
                   <Icon size={11} />
                   {code}
                 </span>
@@ -137,7 +137,7 @@ function SafetyPanel({
                   {t(`safety.msg.${f.code}` as 'safety.msg.noOffset', f.params as { t: string })}
                 </span>
                 {f.params.n || f.params.line ? (
-                  <span className="font-mono text-[10.5px] text-[var(--text-tertiary)] shrink-0">{f.params.n || `#${f.params.line}`}</span>
+                  <span className="font-mono text-xs text-[var(--text-tertiary)] shrink-0">{f.params.n || `#${f.params.line}`}</span>
                 ) : null}
               </button>
             );
@@ -387,6 +387,17 @@ export default function CodeEditorPair({
     return map;
   }, [safety]);
   useEffect(() => setConfirmingExport(false), [outputCode]);
+  // Ctrl+S (Cmd+S on a Mac) downloads the program instead of saving the web page.
+  useEffect(() => {
+    if (!onExport) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's') return;
+      e.preventDefault();
+      handleExportClick();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   const changedLines = useMemo(
     () => (outputCode ? computeChangedLines(sourceCode.split('\n'), outputLines) : []),
     // Recomputed only when a new output is generated, not on every keystroke in the source.
@@ -400,14 +411,14 @@ export default function CodeEditorPair({
       {hasImported && (
         <div className="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--blue-500)]/20 border border-[var(--blue-500)]/40 flex items-center justify-center text-[var(--blue-500)] shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[var(--blue-500)]/20 border border-[var(--blue-500)]/40 flex items-center justify-center text-[var(--blue-text)] shrink-0">
               <Sparkles size={16} />
             </div>
             <div>
               <span className="text-xs font-semibold text-[var(--text-primary)]">
-                {t('editor.importedPrefix')} <code className="font-mono text-[var(--blue-500)] font-bold">{fileName}</code> {t('editor.importedSuffix')}
+                {t('editor.importedPrefix')} <code className="font-mono text-[var(--blue-text)] font-bold">{fileName}</code> {t('editor.importedSuffix')}
               </span>
-              <p className="text-[11px] text-[var(--text-secondary)]">
+              <p className="text-xs text-[var(--text-secondary)]">
                 {t('editor.importedHint')}
               </p>
             </div>
@@ -457,7 +468,7 @@ export default function CodeEditorPair({
                 {inputLabel}
               </span>
               {fileName && (
-                <span className="badge-neutral text-[10px] py-0.5 px-2 font-mono max-w-[140px] truncate" title={fileName}>
+                <span className="badge-neutral text-xs py-0.5 px-2 font-mono max-w-[140px] truncate" title={fileName}>
                   {fileName}
                 </span>
               )}
@@ -471,7 +482,7 @@ export default function CodeEditorPair({
                     title={t('editor.fanucToHaasTitle')}
                     className="btn-secondary text-xs py-1 px-2.5"
                   >
-                    <Sparkles size={12} className="text-[var(--blue-500)]" />
+                    <Sparkles size={12} className="text-[var(--blue-text)]" />
                     <span>FANUC &rarr; HAAS</span>
                   </button>
                   <button
@@ -579,7 +590,7 @@ export default function CodeEditorPair({
                 <button 
                   onClick={() => handleExportClick()}
                   disabled={!outputCode || isOutputStale}
-                  title={t('editor.extractTitle')}
+                  title={`${t('editor.extractTitle')} (Ctrl+S)`}
                   className="btn-warning text-xs py-1.5 px-3 font-semibold"
                 >
                   <Download size={13} />

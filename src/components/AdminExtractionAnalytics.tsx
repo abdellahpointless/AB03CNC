@@ -162,12 +162,12 @@ export default function AdminExtractionAnalytics() {
             <User size={13} className="text-[var(--accent-primary)]" />
             <span>{data.username}</span>
             {data.userRole && (
-              <span className="badge-neutral text-[9px] py-0 px-1.5 font-mono ml-auto">
+              <span className="badge-neutral text-xs py-0 px-1.5 font-mono ml-auto">
                 {roleLabel(data.userRole)}
               </span>
             )}
           </div>
-          <div className="space-y-1.5 font-mono text-[11px]">
+          <div className="space-y-1.5 font-mono text-xs">
             <div className="flex justify-between gap-4">
               <span className="text-[var(--text-secondary)]">{t('analytics.tooltip.codesExtracted')}</span>
               <span className="font-bold text-[var(--accent-primary)]">{data.extractions}</span>
@@ -202,7 +202,7 @@ export default function AdminExtractionAnalytics() {
             <div>
               <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                 {t('analytics.distribution.title')}
-                <span className={hasLiveData ? "badge-positive text-[10px] py-0.5 px-2" : "badge-neutral text-[10px] py-0.5 px-2"}>
+                <span className={hasLiveData ? "badge-positive text-xs py-0.5 px-2" : "badge-neutral text-xs py-0.5 px-2"}>
                   {hasLiveData ? t('analytics.distribution.live') : t('analytics.distribution.preview')}
                 </span>
               </h2>
@@ -213,7 +213,7 @@ export default function AdminExtractionAnalytics() {
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="badge-neutral text-[11px] py-1 px-2.5">
+            <span className="badge-neutral text-xs py-1 px-2.5">
               {hasLiveData ? t('analytics.distribution.totalEvaluated') : t('analytics.distribution.sampleTotal')}{' '}
               <strong className="text-[var(--text-primary)] ml-1">{t('analytics.toolCount', { count: totalEvaluatedTools })}</strong>
             </span>
@@ -267,10 +267,10 @@ export default function AdminExtractionAnalytics() {
                 <span className="text-3xl font-extrabold font-mono text-[var(--green-500)] tracking-tight">
                   {pct(appSelectedPercentage)}
                 </span>
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
+                <span className="text-xs uppercase tracking-wider font-semibold text-[var(--text-tertiary)] mt-0.5">
                   {t('analytics.distribution.appSelected')}
                 </span>
-                <span className="text-[9px] font-mono text-[var(--orange-500)] font-medium">
+                <span className="text-xs font-mono text-[var(--orange-500)] font-medium">
                   {t('analytics.distribution.manualPercent', { percent: manualChangedPercentage })}
                 </span>
               </div>
@@ -302,11 +302,8 @@ export default function AdminExtractionAnalytics() {
                     <span className="font-bold text-sm text-[var(--text-primary)]">
                       {t('analytics.distribution.byAppTitle')}
                     </span>
-                    <span className="badge-positive text-[10px] py-0 px-2 font-mono">
-                      {t('analytics.distribution.byAppBadge')}
-                    </span>
                   </div>
-                  <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
+                  <span className="text-xs text-[var(--text-secondary)] block mt-0.5">
                     {t('analytics.distribution.byAppText')}
                   </span>
                 </div>
@@ -316,7 +313,7 @@ export default function AdminExtractionAnalytics() {
                 <div className="font-mono text-2xl font-bold text-[var(--green-500)] leading-none">
                   {pct(appSelectedPercentage)}
                 </div>
-                <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1 block">
+                <span className="text-xs font-mono text-[var(--text-tertiary)] mt-1 block">
                   {t('analytics.toolCount', { count: appSelectedToolsCount })}
                 </span>
               </div>
@@ -333,11 +330,8 @@ export default function AdminExtractionAnalytics() {
                     <span className="font-bold text-sm text-[var(--text-primary)]">
                       {t('analytics.distribution.manualTitle')}
                     </span>
-                    <span className="badge-warning text-[10px] py-0 px-2 font-mono">
-                      {t('analytics.distribution.manualBadge')}
-                    </span>
                   </div>
-                  <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
+                  <span className="text-xs text-[var(--text-secondary)] block mt-0.5">
                     {t('analytics.distribution.manualText')}
                   </span>
                 </div>
@@ -347,7 +341,7 @@ export default function AdminExtractionAnalytics() {
                 <div className="font-mono text-2xl font-bold text-[var(--orange-500)] leading-none">
                   {pct(manualChangedPercentage)}
                 </div>
-                <span className="text-[11px] font-mono text-[var(--text-tertiary)] mt-1 block">
+                <span className="text-xs font-mono text-[var(--text-tertiary)] mt-1 block">
                   {t('analytics.toolCount', { count: manualChangedToolsCount })}
                 </span>
               </div>
@@ -355,14 +349,14 @@ export default function AdminExtractionAnalytics() {
 
             {/* Status notification */}
             {!hasLiveData ? (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(59,111,212,0.08)] border border-[var(--blue-500)]/30 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(59,111,212,0.08)] border border-[var(--blue-500)]/30 text-xs text-[var(--text-secondary)] flex items-center gap-2">
                 <Info size={14} className="text-[var(--accent-primary)] shrink-0" />
                 <span>
                   {t('analytics.distribution.previewNote')}
                 </span>
               </div>
             ) : (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.02)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-tertiary)] flex items-center gap-2">
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.02)] border border-[var(--border-subtle)] text-xs text-[var(--text-tertiary)] flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-[var(--accent-primary)] shrink-0" />
                 <span>
                   {t('analytics.distribution.liveNote')}
@@ -378,13 +372,13 @@ export default function AdminExtractionAnalytics() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)] rounded-[var(--radius-md)]">
+              <span className="p-2.5 bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)] rounded-[var(--radius-md)]">
                 <BarChart3 size={20} />
               </span>
               <div>
                 <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
                   {t('analytics.byUser.title')}
-                  <span className="badge-warning text-[10px] py-0.5 px-2">
+                  <span className="badge-warning text-xs py-0.5 px-2">
                     {t('analytics.byUser.adminOnly')}
                   </span>
                 </h2>
@@ -467,7 +461,7 @@ export default function AdminExtractionAnalytics() {
                 <XAxis
                   dataKey="username"
                   stroke="var(--text-tertiary)"
-                  fontSize={11}
+                  fontSize={12}
                   tickLine={false}
                   axisLine={{ stroke: 'rgba(var(--ov),0.1)' }}
                   interval={0}
@@ -476,7 +470,7 @@ export default function AdminExtractionAnalytics() {
                 <YAxis
                   allowDecimals={false}
                   stroke="var(--text-tertiary)"
-                  fontSize={11}
+                  fontSize={12}
                   tickLine={false}
                   axisLine={{ stroke: 'rgba(var(--ov),0.1)' }}
                   tick={{ fill: 'var(--text-secondary)' }}
@@ -524,7 +518,7 @@ export default function AdminExtractionAnalytics() {
                         <span className="font-semibold text-xs text-[var(--text-primary)] block">
                           {item.username}
                         </span>
-                        <span className="text-[10px] text-[var(--text-tertiary)]">
+                        <span className="text-xs text-[var(--text-tertiary)]">
                           {roleLabel(item.userRole)}
                         </span>
                       </div>
@@ -532,7 +526,7 @@ export default function AdminExtractionAnalytics() {
 
                     {/* Progress Bar Representation */}
                     <div className="flex-1 max-w-xs hidden md:block">
-                      <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] mb-1">
+                      <div className="flex items-center justify-between text-xs text-[var(--text-tertiary)] mb-1">
                         <span>{t('analytics.leaderboard.share')}</span>
                         <span className="font-mono font-semibold text-[var(--text-secondary)]">{pct(percent)}</span>
                       </div>
@@ -550,14 +544,14 @@ export default function AdminExtractionAnalytics() {
                     {/* Stats */}
                     <div className="flex items-center gap-6 text-right">
                       <div>
-                        <span className="text-[10px] text-[var(--text-tertiary)] block">{t('analytics.leaderboard.extractions')}</span>
+                        <span className="text-xs text-[var(--text-tertiary)] block">{t('analytics.leaderboard.extractions')}</span>
                         <span className="font-bold text-xs text-[var(--text-primary)] font-mono">
                           {item.extractions}
                         </span>
                       </div>
 
                       <div className="min-w-[90px]">
-                        <span className="text-[10px] text-[var(--text-tertiary)] block">{t('analytics.leaderboard.timeWon')}</span>
+                        <span className="text-xs text-[var(--text-tertiary)] block">{t('analytics.leaderboard.timeWon')}</span>
                         <span className="font-bold text-xs text-[var(--green-500)] font-mono">
                           {userWon.formatted}
                         </span>

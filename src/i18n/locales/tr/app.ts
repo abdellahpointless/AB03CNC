@@ -14,6 +14,12 @@ const app: Translation<typeof en> = {
     signOut: 'Çıkış yap',
   },
 
+  account: {
+    open: 'Hesap menüsü ({{name}})',
+    security: 'Şifre ve iki adımlı doğrulama',
+    version: 'Sürüm {{version}}',
+  },
+
   ending: {
     title: 'Vardiya bitiyor',
     banner: 'Vardiya {{time}} saatinde bitiyor. Vardiya sonu görevlerinizi yapın:',
@@ -35,6 +41,7 @@ const app: Translation<typeof en> = {
     weakPassword:
       'Şifreniz artık güvenlik kurallarını karşılamıyor (en az {{min}} karakter, yaygın bir şifre olmamalı). Uygulamaya internetten erişilebildiği için lütfen daha güçlü bir şifre seçin.',
     mfaNudge: 'Yönetici hesabınızı iki adımlı doğrulamayla koruyun: şifreden sonra telefonunuzdaki bir kod sorulur.',
+    mfaNudgeShort: 'İki adımlı doğrulamayı açın',
     turnOn: 'Aç',
     offline:
       'Sunucuyla bağlantı yok. Son kaydedilen takım listesiyle takım eşleştirmeye devam edebilirsiniz; geçmiş, bağlantı geri geldiğinde otomatik olarak yüklenir.',
@@ -48,7 +55,19 @@ const app: Translation<typeof en> = {
     partEntry: 'Taramasız parça girişi',
     preventive: 'Önleyici bakım',
     partReview: 'Parça onayı',
-    admin: 'Yönetici: Analiz, Kullanıcılar ve Veri',
+    admin: 'Yönetim',
+  },
+
+  adminNav: {
+    label: 'Yönetim bölümleri',
+    analytics: 'Kazanılan süre',
+    users: 'Kullanıcılar',
+    machines: 'Tezgahlar',
+    cales: 'Paralel stoku',
+    master: 'Ana hesap',
+    data: 'Yedek ve veri',
+    calesRequests_one: '{{count}} açık yeni paralel talebi',
+    calesRequests_other: '{{count}} açık yeni paralel talebi',
   },
 
   remapHistory: {
@@ -106,14 +125,12 @@ const app: Translation<typeof en> = {
     usernamePlaceholder: 'Kullanıcı adınızı girin',
     password: 'Şifre',
     minTenChars: 'En az 10 karakter',
-    secureAccess: 'Güvenli erişim',
     confirmPassword: 'Şifre (tekrar)',
     creatingAccount: 'Hesap oluşturuluyor...',
     signingIn: 'Giriş yapılıyor...',
     createAdmin: 'Yönetici hesabı oluştur',
-    signInToSystem: 'Sisteme giriş yap',
+    signInToSystem: 'Giriş yap',
     passwordsMismatch: 'Girilen iki şifre aynı değil',
-    roleBasedSecurity: 'Rol tabanlı güvenlik',
   },
 
   security: {
@@ -125,6 +142,7 @@ const app: Translation<typeof en> = {
     changeFailed: 'Şifre değiştirilemedi',
     passwordChanged: 'Şifre değiştirildi. Bu hesabı kullanan diğer bilgisayarlardaki oturumlar kapatıldı.',
     currentPassword: 'Mevcut şifre',
+    showPassword: 'Şifreyi göster',
     newPassword: 'Yeni şifre (en az {{min}} karakter)',
     repeatPassword: 'Yeni şifreyi tekrarlayın',
     passwordTip:

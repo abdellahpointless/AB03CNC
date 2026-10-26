@@ -22,6 +22,7 @@ const parts = {
     exportTitle: 'Download personal approved records as Excel (.xlsx)',
     refreshTitle: 'Refresh summary data',
     exportFailed: 'Failed to generate Excel file: {{message}}',
+    nothingToExport: 'Nothing approved yet to export',
   },
   form: {
     title: 'New Production Entry',
@@ -42,6 +43,8 @@ const parts = {
     submitFailed: 'Submission failed. Please try again.',
     invalidSap: 'Invalid SAP number',
     invalidQty: 'Invalid quantity',
+    needSap: 'Enter a SAP number first',
+    needQty: 'Enter a quantity from 1 to 9999',
   },
   counter: {
     title: "This Month's Counter",
@@ -75,10 +78,9 @@ const parts = {
   /* ---------- Part review (admin screen) ---------- */
   review: {
     title: 'Part Review',
-    adminBadge: 'Admin Panel',
     subtitle: 'Review, approve or reject manual production entries logged by operators',
-    monthFilterTitle: 'Only export this month (leave empty for all months)',
-    clearMonthFilter: 'Clear month filter',
+    monthFilterTitle: 'Month to export',
+    allMonths: 'All months',
     exportTitle: 'Export all operator records with audit status to Excel',
     exporting: 'Exporting...',
     exportAll: 'Export All Excel',

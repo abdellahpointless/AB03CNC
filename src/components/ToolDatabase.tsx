@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Tool, MachineId, TOOL_CATEGORIES, ToolCategory, MATERIALS, Material } from '../types';
-import { Plus, Trash2, Check, Server, CircleDashed, AlertCircle, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Check, Server, CircleDashed, AlertCircle, RefreshCw, FileSpreadsheet, Search } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { ToolExcelImport } from './ToolExcelImport';
@@ -68,6 +68,13 @@ export default function ToolDatabase({
       return posA - posB;
     });
   }, [rawTools]);
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? toolsForMachine.filter((tool) =>
+        [`t${tool.number}`, tool.description ?? '', tool.category, catName(tool.category), tool.diameter ? String(tool.diameter) : ''].some((s) => s.toLowerCase().includes(q)),
+      )
+    : toolsForMachine;
 
   const generateId = () => crypto.randomUUID().slice(0, 13);
 
@@ -197,7 +204,7 @@ export default function ToolDatabase({
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
+            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)]">
               <Server size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -256,16 +263,27 @@ export default function ToolDatabase({
       {/* Main Database Container */}
       <div className="aurora-card p-0 flex flex-col overflow-hidden">
         {/* Table Top Header */}
-        <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex justify-between items-center">
+        <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <span className="section-label text-[var(--text-primary)]">
               {t('list.slots', { machine: machineLabel })}
             </span>
-            <span className="badge-neutral text-[10px] py-0 px-2 font-mono">
+            <span className="badge-neutral text-xs py-0 px-2 font-mono whitespace-nowrap">
               {t('list.toolCount', { count: toolsForMachine.length })}
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('list.search')}
+              aria-label={t('list.search')}
+              className="aurora-input pl-9 w-full text-xs"
+            />
+          </div>
+          <span className="text-xs text-[var(--text-tertiary)] flex items-center gap-1.5">
             {!toolboxLoaded && connection !== 'offline' && <RefreshCw size={11} className="animate-spin" />}
             {connection === 'offline' ? t('list.offline') : t('list.clickToEdit')}
           </span>
@@ -277,7 +295,7 @@ export default function ToolDatabase({
           {isAdding && !editingId && (
             <div className="glass-panel p-5 mb-4 border border-[var(--blue-500)]/40 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-2 mb-4">
-                <span className="section-label text-[var(--blue-500)]">
+                <span className="section-label text-[var(--blue-text)]">
                   {t('form.addTitle', { machine: machineLabel })}
                 </span>
               </div>
@@ -397,8 +415,8 @@ export default function ToolDatabase({
           )}
 
           {/* List of Tools */}
-          <div className="flex flex-col gap-2.5">
-            {toolsForMachine.map((tool, toolIdx) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 items-start">
+            {shown.map((tool, toolIdx) => {
               const isChanged = tool.changed;
               const isExpanded = expandedId === tool.id;
 
@@ -406,7 +424,7 @@ export default function ToolDatabase({
                 <div 
                   key={tool.id} 
                   style={{ '--i': toolIdx } as React.CSSProperties}
-                  className={`wave-in flex flex-col rounded-[var(--radius-md)] border transition ${
+                  className={`wave-in flex flex-col rounded-[var(--radius-md)] border transition ${isExpanded ? 'md:col-span-2 xl:col-span-3 ' : ''}${
                     isChanged 
                       ? 'border-[var(--orange-500)]/50 bg-[rgba(224,138,77,0.08)]' 
                       : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)]'
@@ -415,14 +433,14 @@ export default function ToolDatabase({
                   {/* Tool Data Row */}
                   <div 
                     onClick={() => handleToolClick(tool)}
-                    className="flex flex-col sm:flex-row items-start sm:items-center p-3.5 sm:p-4 gap-4 cursor-pointer transition-colors"
+                    className="flex flex-col items-start p-3.5 sm:p-4 gap-3 cursor-pointer transition-colors"
                   >
-                    <div className="flex items-center gap-4 min-w-[200px]">
+                    <div className="flex items-center gap-4 min-w-0 w-full">
                       <div className={`relative flex items-center justify-center p-2 rounded-[var(--radius-sm)] font-bold w-full max-w-[100px] shrink-0 gap-2 ${
                         isChanged ? 'bg-[var(--orange-500)] text-white shadow-[0_0_8px_var(--orange-glow)]' : 'bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-primary)]'
                       }`}>
                         {tool.pocket !== undefined && (
-                          <div className="absolute -top-2 -left-2 w-5 h-5 bg-[var(--rose-500)] rounded-full text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                          <div className="absolute -top-2 -left-2 w-5 h-5 bg-[var(--rose-500)] rounded-full text-white flex items-center justify-center text-xs font-bold shadow-xs">
                             {tool.pocket}
                           </div>
                         )}
@@ -430,10 +448,10 @@ export default function ToolDatabase({
                         <span className="font-mono text-xs">T{tool.number}</span>
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="font-bold text-xs text-[var(--text-primary)] truncate max-w-[200px]" title={tool.description}>
+                        <span className="font-bold text-xs text-[var(--text-primary)] line-clamp-2 break-words" title={tool.description}>
                           {tool.description ? tool.description : (tool.category === 'empty' ? t('emptySlot') : `${catUpper(tool.category)} D${tool.diameter}`)}
                         </span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)] mt-0.5 font-mono">
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] mt-0.5 font-mono">
                           <span className="capitalize">{tool.category === 'empty' ? t('emptySlot') : catName(tool.category)}</span>
                           {tool.pocket !== undefined && (
                             <>
@@ -445,24 +463,24 @@ export default function ToolDatabase({
                         {tool.materials && tool.materials.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {tool.materials.map(m => (
-                              <span key={m} className="badge-neutral text-[9px] py-0 px-1 font-semibold">{m}</span>
+                              <span key={m} className="badge-neutral text-xs py-0 px-1 font-semibold">{m}</span>
                             ))}
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex-1 flex gap-8 font-mono text-xs">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs">
                       {tool.category !== 'empty' && (
                         <>
                           <div className="flex items-center gap-2">
-                            <span className="text-[var(--text-tertiary)] font-bold text-[10px] tracking-wider">{t('list.dia')}</span>
+                            <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.dia')}</span>
                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
                               {tool.diameter ? tool.diameter.toFixed(2) : '-'} {t('common:units.mm')}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[var(--text-tertiary)] font-bold text-[10px] tracking-wider">{t('list.len')}</span>
+                            <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.len')}</span>
                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
                               {tool.length ? tool.length.toFixed(2) : '-'} {t('common:units.mm')}
                             </span>
@@ -472,7 +490,7 @@ export default function ToolDatabase({
                     </div>
                     
                     {isChanged && (
-                      <div className="hidden md:flex items-center gap-1.5 text-[10px] font-bold badge-warning py-0.5 px-2">
+                      <div className="hidden md:flex items-center gap-1.5 text-xs font-bold badge-warning py-0.5 px-2">
                         <AlertCircle size={12}/> {t('list.modified')}
                       </div>
                     )}
@@ -609,8 +627,11 @@ export default function ToolDatabase({
               );
             })}
             
+            {toolsForMachine.length > 0 && shown.length === 0 && (
+              <p className="col-span-full py-10 text-center text-sm text-[var(--text-secondary)]">{t('list.noMatch', { query: query.trim() })}</p>
+            )}
             {toolsForMachine.length === 0 && !isAdding && (
-              <div className="py-16 text-center text-[var(--text-tertiary)] flex flex-col items-center">
+              <div className="col-span-full py-16 text-center text-[var(--text-tertiary)] flex flex-col items-center">
                 <CircleDashed size={44} className="opacity-30 mb-3"/>
                 <p className="text-sm font-semibold text-[var(--text-secondary)]">{t('list.emptyTitle', { machine: machineLabel })}</p>
                 <p className="text-xs text-[var(--text-tertiary)] mt-1">{t('list.emptyHint')}</p>

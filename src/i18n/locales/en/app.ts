@@ -8,7 +8,14 @@ const app = {
     syncTitle: 'CNC Process Pro - Click to sync now',
     securityTitle: 'Account security (password, two-step sign-in)',
     syncNow: 'Sync now',
-    signOut: 'Sign Out',
+    signOut: 'Sign out',
+  },
+
+  /** The menu behind the user chip in the header. */
+  account: {
+    open: 'Account menu ({{name}})',
+    security: 'Password and two-step sign-in',
+    version: 'Version {{version}}',
   },
 
   ending: {
@@ -32,6 +39,7 @@ const app = {
     weakPassword:
       'Your password no longer meets the security rules (at least {{min}} characters, not a common password). The app is reachable from the internet, so please choose a stronger one.',
     mfaNudge: 'Protect your admin account with two-step sign-in: a code from your phone is asked after the password.',
+    mfaNudgeShort: 'Turn on two-step sign-in',
     turnOn: 'Turn on',
     offline:
       'No connection to the server. You can keep remapping with the last saved tool inventory; history uploads automatically when the connection returns.',
@@ -45,7 +53,20 @@ const app = {
     partEntry: 'Part without scan',
     preventive: 'Preventive actions',
     partReview: 'Part review',
-    admin: 'Admin: Analytics, Users & Data',
+    admin: 'Admin',
+  },
+
+  /** Links to each part of the long Admin page. */
+  adminNav: {
+    label: 'Admin sections',
+    analytics: 'Time saved',
+    users: 'Users',
+    machines: 'Machines',
+    cales: 'Cales stock',
+    master: 'Master account',
+    data: 'Backup and data',
+    calesRequests_one: '{{count}} open request for new cales',
+    calesRequests_other: '{{count}} open requests for new cales',
   },
 
   /** History lives inside the Tool Remapper (a button), not in the tab bar. */
@@ -106,14 +127,12 @@ const app = {
     usernamePlaceholder: 'Enter username',
     password: 'Password',
     minTenChars: 'At least 10 characters',
-    secureAccess: 'Secure Access',
     confirmPassword: 'Confirm Password',
     creatingAccount: 'Creating account...',
     signingIn: 'Signing in...',
     createAdmin: 'Create Admin Account',
-    signInToSystem: 'Sign In to System',
+    signInToSystem: 'Sign in',
     passwordsMismatch: 'The two passwords do not match',
-    roleBasedSecurity: 'Role-Based Security',
   },
 
   security: {
@@ -126,6 +145,7 @@ const app = {
     changeFailed: 'Could not change the password',
     passwordChanged: 'Password changed. Other PCs using this account were signed out.',
     currentPassword: 'Current password',
+    showPassword: 'Show password',
     newPassword: 'New password (at least {{min}} characters)',
     repeatPassword: 'Repeat new password',
     passwordTip: 'A short sentence is easier to remember and harder to guess than a single word. Avoid your username and common passwords.',

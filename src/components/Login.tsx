@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, User as UserIcon, ArrowRight, ShieldCheck, Smartphone, Crown, Globe2 } from 'lucide-react';
+import { Lock, User as UserIcon, ArrowRight, Smartphone, Crown, Globe2 } from 'lucide-react';
 import { Flag } from './Flag';
 import { CHOOSE_COUNTRY_PATH, INSTANCE } from '../lib/instance';
 import { scannedMachine } from '../lib/phoneCheck';
@@ -93,7 +93,6 @@ export default function Login() {
             CNC Process Pro
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className="badge-neutral text-[11px] py-0.5 px-2">v6.0 Aurora</span>
             <span className="text-xs text-[var(--text-secondary)]">{t('login.tagline')}</span>
           </div>
           {/* Which instance this is: a country (flag) or the master dashboard; and the way back to the country picker. */}
@@ -109,7 +108,7 @@ export default function Login() {
                 <span className="font-semibold text-[var(--text-primary)]">{t('common:role.MASTER')}</span>
               </span>
             )}
-            <a href={CHOOSE_COUNTRY_PATH} className="text-[11px] text-[var(--blue-500)] hover:underline inline-flex items-center gap-1">
+            <a href={CHOOSE_COUNTRY_PATH} className="text-xs text-[var(--blue-text)] hover:underline inline-flex items-center gap-1 py-1.5 -my-1.5">
               <Globe2 size={12} /> {t('common:actions.changeCountry')}
             </a>
           </div>
@@ -118,7 +117,7 @@ export default function Login() {
         {/* Opened from a machine's QR code: say where signing in leads. */}
         {scanned && !isMasterPage && (
           <div className="mb-5 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-sm text-[var(--text-primary)] flex items-center gap-2.5">
-            <QrCode size={18} className="shrink-0 text-[var(--blue-500)]" />
+            <QrCode size={18} className="shrink-0 text-[var(--blue-text)]" />
             <span>{t('login.scanHint', { machine: scanned })}</span>
           </div>
         )}
@@ -146,7 +145,7 @@ export default function Login() {
         {mfaPending ? (
           <form onSubmit={handleCode} className="space-y-5">
             <div className="flex items-start gap-3 p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 text-xs text-[var(--text-secondary)] leading-relaxed">
-              <Smartphone size={18} className="shrink-0 text-[var(--blue-500)] mt-0.5" />
+              <Smartphone size={18} className="shrink-0 text-[var(--blue-text)] mt-0.5" />
               <span>
                 {useRecovery ? t('login.recoveryHint') : t('login.appHint')}
               </span>
@@ -200,7 +199,7 @@ export default function Login() {
                   setCode('');
                   setError('');
                 }}
-                className="no-glass text-[var(--blue-500)] hover:underline"
+                className="no-glass text-[var(--blue-text)] hover:underline"
               >
                 {useRecovery ? t('login.useApp') : t('login.useRecovery')}
               </button>
@@ -241,7 +240,7 @@ export default function Login() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="section-label">{t('login.password')}</label>
-              <span className="text-[11px] text-[var(--text-tertiary)]">{needsSetup ? t('login.minTenChars') : t('login.secureAccess')}</span>
+              {needsSetup && <span className="text-xs text-[var(--text-tertiary)]">{t('login.minTenChars')}</span>}
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
@@ -299,14 +298,6 @@ export default function Login() {
           </button>
         </form>
         )}
-
-        <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-tertiary)]">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-[var(--green-500)]" />
-            <span>{t('login.roleBasedSecurity')}</span>
-          </div>
-          <span>CNC Studio v6.0</span>
-        </div>
       </motion.div>
     </main>
   );

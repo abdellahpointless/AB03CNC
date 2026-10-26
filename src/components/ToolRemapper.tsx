@@ -475,7 +475,7 @@ N190 M30`;
               <Plus size={16} className="text-[var(--accent-primary)]" />
               {t('addTool.titlePrefix')} <span className="text-[var(--accent-primary)]">{machineLabel}</span> {t('addTool.titleSuffix')}
             </h4>
-            <span className="text-[11px] text-[var(--text-secondary)]">{t('addTool.hint')}</span>
+            <span className="text-xs text-[var(--text-secondary)]">{t('addTool.hint')}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -670,6 +670,17 @@ N190 M30`;
     else mergedAvailableTools.push(pt);
   });
 
+  // Ctrl+Enter (Cmd+Enter on a Mac) runs Analyze & Remap from anywhere on the remapper.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter') return;
+      e.preventDefault();
+      handleProcess();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   return (
     <div className="flex flex-col h-full relative space-y-4">
       {/* Floating Extraction / Time Won Toast (portaled: the animated tab container would otherwise pin it to the top-left) */}
@@ -690,7 +701,7 @@ N190 M30`;
               <span className="font-bold text-xs text-[var(--text-primary)]">
                 {t('toast.title')}
               </span>
-              <span className="text-[11px] text-[var(--text-secondary)] font-normal truncate max-w-xs">
+              <span className="text-xs text-[var(--text-secondary)] font-normal truncate max-w-xs">
                 {extractionToast}
               </span>
             </div>
@@ -742,7 +753,7 @@ N190 M30`;
         <button 
           onClick={handleProcess}
           className="btn-primary h-10 px-5 sm:px-6 flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide rounded-[var(--radius-md)] shadow-[0_4px_18px_rgba(59,111,212,0.4)] hover:shadow-[0_6px_24px_rgba(59,111,212,0.6)] active:scale-[0.98] transition cursor-pointer"
-          title={t('controls.analyzeTitle')}
+          title={`${t('controls.analyzeTitle')} (Ctrl+Enter)`}
         >
           <Sparkles size={15} />
           <span>{t('controls.analyze')}</span>
@@ -783,7 +794,7 @@ N190 M30`;
 
         {detectedMat && (
            <div className="h-10 px-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.08)] border border-[rgba(59,111,212,0.25)] flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-[var(--text-secondary)]">
-             <span className="text-[10px] text-[var(--text-tertiary)] uppercase">{t('controls.material')}</span>
+             <span className="text-xs text-[var(--text-tertiary)] uppercase">{t('controls.material')}</span>
              <span className="text-[var(--accent-primary)] font-bold">{detectedMat}</span>
            </div>
         )}
@@ -1205,7 +1216,7 @@ N190 M30`;
                                   <div className="text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{t('approx.required')}</div>
                                   <div className="font-medium text-slate-700 dark:text-slate-300">
                                     {categoryUpper(block.parsedCategory) || "?"} D{block.parsedDiameter ?? "?"} L{block.parsedLength ?? "?"}
-                                    <div className="text-amber-600 dark:text-amber-500 text-[10px] mt-0.5">{t('approx.reqMin', { value: block.minZDepth !== undefined ? Math.abs(block.minZDepth) + 1 : "?" })}</div>
+                                    <div className="text-amber-600 dark:text-amber-500 text-xs mt-0.5">{t('approx.reqMin', { value: block.minZDepth !== undefined ? Math.abs(block.minZDepth) + 1 : "?" })}</div>
                                   </div>
                                 </div>
                                 <div className="bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/40">
@@ -1396,7 +1407,7 @@ N190 M30`;
               className="glass-modal p-8 max-w-lg w-full"
             >
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-3 bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)] rounded-full">
+                <div className="p-3 bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)] rounded-full">
                   <CheckCircle size={24} />
                 </div>
                 <div>
@@ -1477,7 +1488,7 @@ N190 M30`;
                        <div>
                          <span className="font-bold text-[var(--text-primary)] block">
                            {tool.pocket !== undefined && (
-                             <span className="inline-flex items-center justify-center w-5 h-5 mr-2 bg-[var(--rose-500)] rounded-full text-white text-[10px] font-bold">
+                             <span className="inline-flex items-center justify-center w-5 h-5 mr-2 bg-[var(--rose-500)] rounded-full text-white text-xs font-bold">
                                {tool.pocket}
                              </span>
                            )}

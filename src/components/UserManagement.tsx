@@ -71,7 +71,7 @@ function SecurityLog() {
         className="no-glass w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(var(--ov),0.03)] transition-colors"
       >
         <span className="section-label flex items-center gap-2"><ScrollText size={14} /> {t('users.log.title')}</span>
-        <span className="text-[11px] text-[var(--text-tertiary)]">{open ? t('users.log.hide') : t('users.log.show')}</span>
+        <span className="text-xs text-[var(--text-tertiary)]">{open ? t('users.log.hide') : t('users.log.show')}</span>
       </button>
       {open && (
         <div className="border-t border-[var(--border-subtle)]">
@@ -98,13 +98,13 @@ function SecurityLog() {
                   )}
                   {events.map((e) => (
                     <tr key={e.id} className="border-b border-[var(--border-subtle)] last:border-0">
-                      <td className="p-2.5 whitespace-nowrap font-mono text-[11px] text-[var(--text-secondary)]">{fmtDateTime(e.at)}</td>
+                      <td className="p-2.5 whitespace-nowrap font-mono text-xs text-[var(--text-secondary)]">{fmtDateTime(e.at)}</td>
                       <td className="p-2.5 font-semibold text-[var(--text-primary)]">{e.username ?? '-'}</td>
                       <td className={`p-2.5 ${ALERT_ACTIONS.has(e.action) ? 'text-[var(--rose-500)]' : 'text-[var(--text-primary)]'}`}>
                         {actionLabel(e.action)}
                         {e.detail && <span className="text-[var(--text-tertiary)]"> &middot; {e.detail}</span>}
                       </td>
-                      <td className="p-2.5 font-mono text-[11px] text-[var(--text-tertiary)]">{e.ip ?? '-'}</td>
+                      <td className="p-2.5 font-mono text-xs text-[var(--text-tertiary)]">{e.ip ?? '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -221,7 +221,7 @@ export default function UserManagement() {
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
+            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)]">
               <Shield size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -293,7 +293,7 @@ export default function UserManagement() {
       <div className="aurora-card p-0 overflow-hidden">
         <div className="p-4 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.5)] flex items-center justify-between">
           <span className="section-label">{t('users.registered')}</span>
-          <span className="badge-neutral text-[10px] py-0 px-2 font-mono">{t('users.userCount', { n: users.length })}</span>
+          <span className="badge-neutral text-xs py-0 px-2 font-mono">{t('users.userCount', { n: users.length })}</span>
         </div>
         {loading && users.length === 0 ? (
           <div className="p-8 text-center text-xs text-[var(--text-tertiary)] flex items-center justify-center gap-2">
@@ -322,9 +322,9 @@ export default function UserManagement() {
                           <UserIcon size={14} />
                         </div>
                         <span className="font-semibold text-xs text-[var(--text-primary)]">{u.username}</span>
-                        {u.id === user?.id && <span className="badge-neutral text-[9px] py-0 px-1.5">{t('users.you')}</span>}
+                        {u.id === user?.id && <span className="badge-neutral text-xs py-0 px-1.5">{t('users.you')}</span>}
                         {!!u.mfa_enabled && (
-                          <span className="badge-positive text-[9px] py-0 px-1.5 inline-flex items-center gap-1" title={t('users.mfaOnTitle')}>
+                          <span className="badge-positive text-xs py-0 px-1.5 inline-flex items-center gap-1" title={t('users.mfaOnTitle')}>
                             <ShieldCheck size={10} /> {t('users.twoStep')}
                           </span>
                         )}
@@ -336,7 +336,7 @@ export default function UserManagement() {
                         value={u.role}
                         disabled={busyId !== null || u.id === user?.id}
                         onChange={e => handleRoleChange(u, e.target.value as Role)}
-                        className={`text-[10px] px-2.5 py-1 rounded-[var(--radius-full)] font-mono font-bold cursor-pointer ${
+                        className={`text-xs px-2.5 py-1 rounded-[var(--radius-full)] font-mono font-bold cursor-pointer ${
                           u.role === 'ADMIN' ? 'badge-warning' : 'badge-positive'
                         }`}
                         title={u.id === user?.id ? t('users.ownRoleTitle') : t('users.changeRoleTitle')}

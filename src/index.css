@@ -23,6 +23,7 @@
 
   --blue-500:  #3b6fd4;
   --blue-600:  #2f5fd0;
+  --blue-text: #6f9cf0;      /* blue text and links on dark surfaces (6.4:1+, WCAG AA) */
   --blue-glow: rgba(59, 111, 212, 0.45);
 
   --green-500: #16a34a;
@@ -87,6 +88,7 @@ html.light {
 
   --blue-500:  #2f62d6;
   --blue-600:  #2552bd;
+  --blue-text: #2f62d6;
   --blue-glow: rgba(47, 98, 214, 0.25);
   --green-500: #15803d;
   --green-600: #116a32;
@@ -704,7 +706,7 @@ button > * {
 
 .section-label {
   font-weight: 500;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-tertiary);
@@ -1136,7 +1138,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   gap: 6px;
   padding: 0 16px 14px;
   margin-top: -6px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
   min-width: 0;
 }
@@ -1167,7 +1169,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   border-radius: 999px;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   color: #fff;
@@ -1280,7 +1282,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -1411,7 +1413,7 @@ html.light .cales-foot { background: linear-gradient(to top, rgba(240, 244, 248,
 .cales-state {
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   background: rgba(var(--ov), 0.08);
   color: var(--text-secondary);
@@ -1763,14 +1765,14 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
   padding-bottom: 10px;
   margin-bottom: 10px;
   border-bottom: 1px solid #eaecf0;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #667085;
 }
 .qr-card-flag { width: 16px; height: auto; border-radius: 2px; }
-.qr-card-region { margin-left: auto; font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: #98a2b3; }
+.qr-card-region { margin-left: auto; font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: #475467; }
 .qr-card-head {
   align-self: stretch;
   display: flex;
@@ -1839,10 +1841,10 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
   margin-top: 8px;
   max-width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 9.5px;
+  font-size: 12px;
   line-height: 1.35;
   text-align: center;
-  color: #98a2b3;
+  color: #475467;
 }
 @media print {
   @page { margin: 12mm; }
@@ -1980,7 +1982,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
 }
 .sb-date {
   margin-top: 0.6vh;
-  font-size: clamp(11px, 0.95vw, 23px);
+  font-size: clamp(12px, 0.95vw, 23px);
   color: var(--sb-text-3);
   text-transform: capitalize;
 }
@@ -2066,7 +2068,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
 }
 .sb-sub {
   margin-top: calc(var(--u) * 0.6);
-  font-size: max(11px, calc(var(--u) * 3.4));
+  font-size: max(12px, calc(var(--u) * 3.4));
   color: var(--sb-text-3);
 }
 .sb-tile.down .sb-sub { color: #9c7f80; }
@@ -2085,7 +2087,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
 .sb-state.down { color: var(--sb-red-soft); }
 .sb-since {
   margin-top: calc(var(--u) * 1);
-  font-size: max(11px, calc(var(--u) * 3.6));
+  font-size: max(12px, calc(var(--u) * 3.6));
   font-weight: 500;
   color: var(--sb-text-3);
 }
@@ -2145,7 +2147,7 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
   min-height: 34px;
   justify-content: space-between;
   gap: 2vw;
-  font-size: clamp(11px, 0.8vw, 19px);
+  font-size: clamp(12px, 0.8vw, 19px);
   color: var(--sb-text-3);
 }
 .sb-hint { opacity: 0; transition: opacity 300ms ease; }
@@ -2379,4 +2381,42 @@ html:not(.light) .badge-positive { color: #1fb257; }
 .pill-action:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   .pill-action, .pill-action .pill-label { transition: none; }
+}
+
+/* Touch screens (phones, tablets, gloved hands): every button, field and tab at least 44 px tall.
+   Mouse users keep the compact desktop sizes. */
+@media (pointer: coarse) {
+  button,
+  select,
+  a[href],
+  [role='button'],
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Tab bar wider than the screen: snap to tabs and fade the edge where more tabs are hidden. */
+.app-tabs {
+  scroll-snap-type: x proximity;
+}
+.app-tabs > * {
+  scroll-snap-align: start;
+}
+.app-tabs[data-more='right'] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+.app-tabs[data-more='left'] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent);
+}
+.app-tabs[data-more='both'] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 }

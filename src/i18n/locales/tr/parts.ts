@@ -23,6 +23,7 @@ const parts: Translation<typeof en> = {
     exportTitle: 'Onaylanan kişisel kayıtlarınızı Excel (.xlsx) olarak indirin',
     refreshTitle: 'Özet verilerini yenile',
     exportFailed: 'Excel dosyası oluşturulamadı: {{message}}',
+    nothingToExport: 'Dışa aktarılacak onaylı kayıt yok',
   },
   form: {
     title: 'Yeni üretim kaydı',
@@ -43,6 +44,8 @@ const parts: Translation<typeof en> = {
     submitFailed: 'Kayıt gönderilemedi. Lütfen tekrar deneyin.',
     invalidSap: 'Geçersiz SAP numarası',
     invalidQty: 'Geçersiz adet',
+    needSap: 'Önce SAP numarasını girin',
+    needQty: '1 ile 9999 arasında bir adet girin',
   },
   counter: {
     title: 'Bu ayın sayacı',
@@ -76,10 +79,9 @@ const parts: Translation<typeof en> = {
   /* ---------- Parça onayı (yönetici ekranı) ---------- */
   review: {
     title: 'Parça onayı',
-    adminBadge: 'Yönetici paneli',
     subtitle: 'Operatörlerin elle girdiği üretim kayıtlarını inceleyin, onaylayın veya reddedin',
-    monthFilterTitle: 'Yalnızca bu ayı dışa aktar (tüm aylar için boş bırakın)',
-    clearMonthFilter: 'Ay filtresini temizle',
+    monthFilterTitle: 'Dışa aktarılacak ay',
+    allMonths: 'Tüm aylar',
     exportTitle: "Tüm operatör kayıtlarını onay durumlarıyla birlikte Excel'e aktar",
     exporting: 'Dışa aktarılıyor...',
     exportAll: "Tümünü Excel'e aktar",

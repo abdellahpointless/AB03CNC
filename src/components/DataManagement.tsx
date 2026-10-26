@@ -25,7 +25,7 @@ function LogView({ lines }: { lines: LogLine[] }) {
     error: 'text-[var(--rose-500)]',
   };
   return (
-    <div className="mt-3 max-h-56 overflow-y-auto rounded-[var(--radius-md)] bg-[var(--bg-input)] border border-[var(--border-subtle)] p-3 font-mono text-[11px] space-y-0.5">
+    <div className="mt-3 max-h-56 overflow-y-auto rounded-[var(--radius-md)] bg-[var(--bg-input)] border border-[var(--border-subtle)] p-3 font-mono text-xs space-y-0.5">
       {lines.map((l, i) => (
         <div key={i} className={color[l.kind]}>
           <span className="text-[var(--text-tertiary)]">{new Date(l.t).toLocaleTimeString(locale())} </span>
@@ -151,8 +151,8 @@ export default function DataManagement() {
             {busy === 'backup' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
             <span>{t('backup.download')}</span>
           </button>
-          <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
-            <input type="checkbox" checked={includePrograms} onChange={e => setIncludePrograms(e.target.checked)} disabled={busy !== null} />
+          <label className="flex items-center gap-2 min-h-8 pointer-coarse:min-h-11 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
+            <input type="checkbox" className="w-5 h-5 accent-[var(--blue-500)]" checked={includePrograms} onChange={e => setIncludePrograms(e.target.checked)} disabled={busy !== null} />
             {t('backup.includePrograms')}
           </label>
         </div>
@@ -162,8 +162,8 @@ export default function DataManagement() {
             {busy === 'restore' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}
             <span>{t('backup.restore')}</span>
           </button>
-          <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
-            <input type="checkbox" checked={replaceTools} onChange={e => setReplaceTools(e.target.checked)} disabled={busy !== null} />
+          <label className="flex items-center gap-2 min-h-8 pointer-coarse:min-h-11 text-xs text-[var(--text-secondary)] cursor-pointer select-none">
+            <input type="checkbox" className="w-5 h-5 accent-[var(--blue-500)]" checked={replaceTools} onChange={e => setReplaceTools(e.target.checked)} disabled={busy !== null} />
             {t('backup.replaceTools')}
           </label>
         </div>
@@ -209,7 +209,7 @@ export default function DataManagement() {
         </div>
         <LogView lines={retentionLog.lines} />
         {retentionLog.lines.some(l => l.kind === 'ok') && (
-          <div className="mt-2 text-[11px] text-[var(--green-500)] flex items-center gap-1">
+          <div className="mt-2 text-xs text-[var(--green-500)] flex items-center gap-1">
             <CheckCircle2 size={12} /> {t('retention.done')}
           </div>
         )}

@@ -152,7 +152,7 @@ export default function PreventiveActions() {
       {/* Header */}
       <div className="aurora-card aurora-card-static p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 flex items-center justify-center text-[var(--blue-500)] shrink-0">
+          <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 flex items-center justify-center text-[var(--blue-text)] shrink-0">
             <Activity size={20} />
           </div>
           <div>
@@ -373,12 +373,12 @@ function MachineCard({
         <div className="flex items-end justify-between gap-2 px-4 pb-4 pt-1 machine-label">
           <div className="min-w-0">
             <div className="text-[15px] font-bold text-[var(--text-primary)] leading-tight">{machine.name}</div>
-            <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+            <div className="text-xs text-[var(--text-tertiary)] truncate">
               {machineSubtitle(machine)}
             </div>
           </div>
           <span
-            className={`shrink-0 text-[11px] py-0.5 px-2 ${
+            className={`shrink-0 text-xs py-0.5 px-2 ${
               state === 'problem' || state === 'down' ? 'badge-danger' : state === 'due' ? 'badge-warning' : state === 'ok' ? 'badge-positive' : 'badge-neutral'
             }`}
           >
@@ -446,7 +446,7 @@ function MachinePopContent({
           {summary.problems.slice(0, 3).map((p) => (
             <div key={p.id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/25">
               {!!p.stops && (
-                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--rose-500)] flex items-center gap-1 mb-0.5">
+                <div className="text-xs font-bold uppercase tracking-wide text-[var(--rose-500)] flex items-center gap-1 mb-0.5">
                   <OctagonX size={11} /> {t('stop.badge')}
                 </div>
               )}
@@ -489,7 +489,7 @@ function MachinePopContent({
         <span className="truncate">
           {last ? `${last.username} ${t(actionKey(last.action), { users: last.note })} · ${timeAgo(last.at, now)}` : t('pop.noActions')}
         </span>
-        <span className="text-[var(--blue-500)] font-semibold shrink-0">{locked ? t('pop.clickToView') : t('pop.clickToOpen')}</span>
+        <span className="text-[var(--blue-text)] font-semibold shrink-0">{locked ? t('pop.clickToView') : t('pop.clickToOpen')}</span>
       </div>
     </div>
   );
@@ -668,7 +668,7 @@ function MachineSheet({
     ) : null;
   const stopBadge = (p: MachineCheck) =>
     p.stops ? (
-      <span className="badge-danger text-[10px] py-0.5 px-2 mt-1 inline-flex">
+      <span className="badge-danger text-xs py-0.5 px-2 mt-1 inline-flex">
         <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}
       </span>
     ) : null;
@@ -789,7 +789,7 @@ function MachineSheet({
                 <Users size={12} /> {t('owners.title')}
               </div>
               {isAdmin && !picking && (
-                <button className="btn-secondary text-xs py-1 px-2.5" onClick={openPicker}>
+                <button className="btn-secondary text-xs py-1 px-2.5 whitespace-nowrap shrink-0" onClick={openPicker}>
                   <Pencil size={12} />
                   <span>{t('owners.choose')}</span>
                 </button>
@@ -817,7 +817,7 @@ function MachineSheet({
                 transition={SPRING_POP}
                 className="p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] space-y-3"
               >
-                <p className="text-[11px] text-[var(--text-tertiary)]">
+                <p className="text-xs text-[var(--text-tertiary)]">
                   {t('owners.pickerHelp')}
                 </p>
                 {!allUsers ? (
@@ -875,23 +875,25 @@ function MachineSheet({
                 <motion.div
                   key={p.id}
                   {...waveItem(i)}
-                  className="p-3 rounded-[var(--radius-md)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/30 flex items-center gap-3"
+                  className="p-3 rounded-[var(--radius-md)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/30 flex flex-wrap items-center gap-3"
                 >
                   {p.stops ? <OctagonX size={16} className="text-[var(--rose-500)] shrink-0" /> : <AlertTriangle size={16} className="text-[var(--rose-500)] shrink-0" />}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-[10rem]">
                     <div className="text-sm font-semibold text-[var(--text-primary)]">{p.note}</div>
-                    <div className="text-[11px] text-[var(--text-tertiary)]">
+                    <div className="text-xs text-[var(--text-tertiary)]">
                       {t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}
                     </div>
                     {stopBadge(p)}
                   </div>
-                  {stopToggle(p)}
-                  {canAct && (
-                    <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
-                      <CheckCircle2 size={13} />
-                      <span>{t('problem.fixed')}</span>
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-2 ml-auto">
+                    {stopToggle(p)}
+                    {canAct && (
+                      <button className="btn-success text-xs py-1.5 px-3" disabled={!!busy} onClick={() => run(`fix:${p.id}`, () => checkAction(machine.id, p.id, 'RESOLVE'))}>
+                        <CheckCircle2 size={13} />
+                        <span>{t('problem.fixed')}</span>
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </section>
@@ -900,7 +902,7 @@ function MachineSheet({
           {shifts && canAct && shiftTasks.length > 0 && prevShift.key && (
             <section className="space-y-2">
               <div className="section-label">{t('prev.title', { hours: SHIFT_HOURS[prevShift.key.slice(-2)] })}</div>
-              <p className="text-[11px] text-[var(--text-tertiary)]">{t('prev.hint')}</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{t('prev.hint')}</p>
               {shiftTasks.map((c) => {
                 const by = prevShift.done.filter((d) => d.check_id === c.id).map((d) => d.username);
                 const reported = events.some((e) => e.action === 'MISSED' && e.check_id === c.id && e.at >= shiftStart(now, tz));
@@ -909,7 +911,7 @@ function MachineSheet({
                   <div key={c.id} className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-[var(--text-primary)]">{c.title}</div>
-                      <div className={`text-[11px] ${by.length ? 'text-[var(--text-tertiary)]' : 'text-[var(--orange-500)]'}`}>
+                      <div className={`text-xs ${by.length ? 'text-[var(--text-tertiary)]' : 'text-[var(--orange-500)]'}`}>
                         {FREQUENCY_LABEL[c.frequency!]} ·{' '}
                         {by.length ? t('prev.doneBy', { users }) : users ? t('prev.notDone', { users }) : t('prev.nobody')}
                       </div>
@@ -979,25 +981,25 @@ function MachineSheet({
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <span className={`check-dot ${st}`} />
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-[10rem]">
                           <div className="text-sm text-[var(--text-primary)] font-medium">{c.title}</div>
                           {st === 'problem' ? (
                             <>
-                              <div className="text-[11px] text-[var(--rose-500)]">
+                              <div className="text-xs text-[var(--rose-500)]">
                                 {c.note} · {c.status_by}, {timeAgo(c.status_at, now)}
                               </div>
                               {stopBadge(c)}
                             </>
                           ) : (
-                            <div className={`text-[11px] ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
+                            <div className={`text-xs ${st === 'due' ? 'text-[var(--orange-500)]' : 'text-[var(--text-tertiary)]'}`}>
                               {endTaskWaiting(c, now) ? t('check.endLater') : c.last_done_at ? t('check.doneBy', { time: timeAgo(c.last_done_at, now), user: c.last_done_by }) : t('check.notDone')}
                               {st === 'due' && c.last_done_at ? ` · ${isDue(c, now) ? t('check.dueAgain') : t('check.youToo')}` : ''}
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
                           {!canAct ? null : st === 'problem' ? (
                             <>
                               {stopToggle(c)}
@@ -1134,7 +1136,7 @@ function MachineSheet({
             )}
           </section>
 
-          <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+          <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-1.5">
             <Wrench size={12} /> {t('sheet.footer')}
           </div>
         </div>

@@ -64,7 +64,7 @@ export default function RecentCodes() {
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-500)]">
+            <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)]">
               <FileText size={20} />
             </div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
@@ -121,12 +121,12 @@ export default function RecentCodes() {
                        {record.exportedFileName}
                      </span>
                      {record.machine && (
-                       <span className="badge-neutral text-[10px] py-0 px-1.5 font-mono">
+                       <span className="badge-neutral text-xs py-0 px-1.5 font-mono">
                          {machineName(machines, record.machine)}
                        </span>
                      )}
                    </div>
-                   <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 flex-wrap">
+                   <div className="text-xs text-[var(--text-tertiary)] flex items-center gap-2 flex-wrap">
                      {record.originalFileName !== record.exportedFileName && (
                        <>
                          <span>{t('recent.source')} <span className="text-[var(--text-secondary)]">{record.originalFileName}</span></span>
@@ -146,12 +146,12 @@ export default function RecentCodes() {
                    {record.changes && record.changes.length > 0 && (
                      <div className="flex flex-wrap gap-1 mt-1">
                         {record.changes.slice(0, 6).map((c, i) => (
-                           <span key={i} className="badge-positive font-mono text-[9px] py-0 px-1.5">
+                           <span key={i} className="badge-positive font-mono text-xs py-0 px-1.5">
                              {c.originalT} → T{c.chosenT}
                            </span>
                         ))}
                         {record.changes.length > 6 && (
-                           <span className="badge-neutral text-[9px] py-0 px-1.5">
+                           <span className="badge-neutral text-xs py-0 px-1.5">
                              {t('recent.more', { count: record.changes.length - 6 })}
                            </span>
                         )}
@@ -162,7 +162,7 @@ export default function RecentCodes() {
                  <button
                     onClick={() => handleExportAgain(record)}
                     disabled={downloadingId === record.id}
-                    className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 shrink-0"
+                    className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 shrink-0"
                     title={t('recent.exportAgainTitle')}
                  >
                    <Download size={14} />

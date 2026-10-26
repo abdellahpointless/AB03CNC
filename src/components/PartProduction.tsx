@@ -66,13 +66,13 @@ export default function PartProduction() {
           </div>
           <div className="min-w-0">
             <div className="section-label">{t('production.title')}</div>
-            <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{t('production.subtitle')}</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{t('production.subtitle')}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 self-start sm:self-auto">
           {month !== thisMonth && (
-            <button type="button" className="btn-secondary text-[11px] py-1 px-2.5" onClick={() => setMonth(thisMonth)}>
+            <button type="button" className="btn-secondary text-xs py-1 px-2.5" onClick={() => setMonth(thisMonth)}>
               {t('production.thisMonth')}
             </button>
           )}
@@ -110,7 +110,7 @@ export default function PartProduction() {
 
       {rows.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-secondary)]">
             <span>{t('production.operators', { count: totals.operators })}</span>
             <span className="text-[var(--text-tertiary)]">·</span>
             <span className="font-semibold text-[var(--text-primary)]">{t('production.partsApproved', { count: totals.parts, qty: fmtQty(totals.parts) })}</span>
@@ -136,12 +136,12 @@ export default function PartProduction() {
                   style={{ '--i': i } as React.CSSProperties}
                   className="wave-in grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(7rem,12rem)_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-2.5 py-2 rounded-[var(--radius-md)] hover:bg-[rgba(var(--ov),0.035)] transition-colors"
                 >
-                  <span className="w-7 h-7 rounded-full bg-[var(--accent-primary)]/14 border border-[var(--accent-primary)]/25 text-[var(--accent-primary)] text-[11px] font-bold uppercase flex items-center justify-center">
+                  <span className="w-7 h-7 rounded-full bg-[var(--accent-primary)]/14 border border-[var(--accent-primary)]/25 text-[var(--accent-primary)] text-xs font-bold uppercase flex items-center justify-center">
                     {r.username.slice(0, 2)}
                   </span>
                   <div className="min-w-0">
                     <div className="text-xs font-semibold text-[var(--text-primary)] truncate">{r.username}</div>
-                    <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                    <div className="text-xs text-[var(--text-tertiary)] truncate">
                       {t('production.produced', { qty: fmtQty(r.produced_qty) })}
                       {r.modification_qty > 0 && <> · {t('production.modified', { qty: fmtQty(r.modification_qty) })}</>}
                     </div>
@@ -157,11 +157,11 @@ export default function PartProduction() {
                   <div className="text-right whitespace-nowrap">
                     <div className="text-sm font-bold font-mono text-[var(--green-500)] tabular-nums">{fmtValue(r.total_value)}</div>
                     {r.pending_qty > 0 ? (
-                      <div className="text-[10px] text-[var(--orange-500)]" title={t('production.waitingTitle')}>
+                      <div className="text-xs text-[var(--orange-500)]" title={t('production.waitingTitle')}>
                         {t('production.waiting', { qty: fmtQty(r.pending_qty) })}
                       </div>
                     ) : (
-                      <div className="text-[10px] text-[var(--text-tertiary)]">{t('production.value')}</div>
+                      <div className="text-xs text-[var(--text-tertiary)]">{t('production.value')}</div>
                     )}
                   </div>
                 </li>

@@ -67,11 +67,14 @@ export default function PartWithoutScan() {
 
   // Live calculation for preview
   const numQty = typeof qty === 'number' && qty > 0 ? qty : 0;
+  const submitHint = !sapNumber.trim() ? t('form.needSap') : numQty <= 0 ? t('form.needQty') : '';
   const unitVal = kind === 'PRODUCED' ? 1 : 0.5;
   const previewValue = numQty * unitVal;
 
   const sapInputId = useId();
   const qtyInputId = useId();
+  const submitHintId = useId();
+  const exportHintId = useId();
 
   // Load on mount, and again whenever an admin approves/rejects entries on another PC
   useEffect(() => {
@@ -226,7 +229,7 @@ export default function PartWithoutScan() {
       {/* Header Banner */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 flex items-center justify-center text-[var(--blue-500)] shrink-0 shadow-xs">
+          <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 flex items-center justify-center text-[var(--blue-text)] shrink-0 shadow-xs">
             <PackagePlus size={22} />
           </div>
           <div>
@@ -241,8 +244,14 @@ export default function PartWithoutScan() {
 
         {/* Action button: Export Excel */}
         <div className="flex items-center gap-2.5">
+          {!isLoadingSummary && summaryRows.length === 0 && (
+            <span id={exportHintId} className="text-xs text-[var(--text-tertiary)]">
+              {t('scan.nothingToExport')}
+            </span>
+          )}
           <button
             onClick={handleExportExcel}
+            aria-describedby={summaryRows.length === 0 ? exportHintId : undefined}
             disabled={isExporting || summaryRows.length === 0}
             className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-2"
             title={t('scan.exportTitle')}
@@ -276,7 +285,7 @@ export default function PartWithoutScan() {
                 <Layers size={14} className="text-[var(--accent-primary)]" />
                 {t('form.title')}
               </span>
-              <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
+              <span className="text-xs font-mono text-[var(--text-tertiary)]">
                 {t('form.month', { month: currentMonthKey })}
               </span>
             </div>
@@ -295,10 +304,10 @@ export default function PartWithoutScan() {
                   placeholder={t('form.sapPlaceholder')}
                   maxLength={40}
                   disabled={isSubmitting}
-                  className="aurora-input w-full font-mono text-xs sm:text-sm tracking-wide uppercase"
+                  className="aurora-input w-full font-mono text-xs sm:text-sm tracking-wide uppercase placeholder:normal-case placeholder:tracking-normal"
                   autoComplete="off"
                 />
-                <span className="text-[10px] text-[var(--text-tertiary)] mt-1 block">
+                <span className="text-xs text-[var(--text-tertiary)] mt-1 block">
                   {t('form.sapHint')}
                 </span>
               </div>
@@ -324,7 +333,7 @@ export default function PartWithoutScan() {
                     className="aurora-input w-full font-mono text-xs sm:text-sm"
                     placeholder="1"
                   />
-                  <span className="text-[10px] text-[var(--text-tertiary)] mt-1 block">
+                  <span className="text-xs text-[var(--text-tertiary)] mt-1 block">
                     {t('form.quantityHint')}
                   </span>
                 </div>
@@ -345,7 +354,7 @@ export default function PartWithoutScan() {
                       }`}
                     >
                       <div>{t('form.producedPart')}</div>
-                      <div className="text-[10px] opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(1) })}</div>
+                      <div className="text-xs opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(1) })}</div>
                     </button>
 
                     <button
@@ -359,7 +368,7 @@ export default function PartWithoutScan() {
                       }`}
                     >
                       <div>{t('form.modification')}</div>
-                      <div className="text-[10px] opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(0.5) })}</div>
+                      <div className="text-xs opacity-75 font-mono">{t('form.kindValue', { value: fmtValue(0.5) })}</div>
                     </button>
                   </div>
                 </div>
@@ -391,7 +400,8 @@ export default function PartWithoutScan() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting || !sapNumber.trim() || numQty <= 0}
+                disabled={isSubmitting || !!submitHint}
+                aria-describedby={submitHint ? submitHintId : undefined}
                 className="btn-primary w-full py-2.5 text-xs font-bold tracking-wide"
               >
                 {isSubmitting ? (
@@ -406,19 +416,24 @@ export default function PartWithoutScan() {
                   </>
                 )}
               </button>
+              {submitHint && !isSubmitting && (
+                <p id={submitHintId} className="text-xs text-[var(--text-tertiary)] text-center -mt-1">
+                  {submitHint}
+                </p>
+              )}
             </form>
           </div>
         </div>
 
         {/* Counter Card (Right Column) */}
-        <div className="aurora-card p-6 flex flex-col justify-between">
+        <div className="aurora-card p-6 flex flex-col self-start">
           <div>
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
               <span className="section-label flex items-center gap-2">
                 <Calendar size={14} className="text-[var(--green-500)]" />
                 {t('counter.title')}
               </span>
-              <span className="badge-neutral text-[10px] font-mono">
+              <span className="badge-neutral text-xs font-mono">
                 {currentMonthKey}
               </span>
             </div>
@@ -442,7 +457,7 @@ export default function PartWithoutScan() {
             </div>
           </div>
 
-          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed mt-4">
+          <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed mt-4">
             {t('counter.resetNote')}
           </div>
         </div>
@@ -498,7 +513,7 @@ export default function PartWithoutScan() {
                       {row.month_key}
                     </span>
                     {row.month_key === currentMonthKey && (
-                      <span className="badge-positive text-[10px] py-0.5 px-2">
+                      <span className="badge-positive text-xs py-0.5 px-2">
                         {t('archive.currentMonth')}
                       </span>
                     )}
@@ -532,7 +547,7 @@ export default function PartWithoutScan() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-xs">
                             <thead>
-                              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
+                              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-tertiary)] uppercase text-xs tracking-wider">
                                 <th className="pb-2 font-semibold">{t('archive.columns.dateTime')}</th>
                                 <th className="pb-2 font-semibold">{t('archive.columns.sapNumber')}</th>
                                 <th className="pb-2 font-semibold">{t('archive.columns.type')}</th>
@@ -553,7 +568,7 @@ export default function PartWithoutScan() {
                                       {entry.sap_number}
                                     </td>
                                     <td className="py-2.5 font-sans">
-                                      <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-[10px]' : 'badge-warning text-[10px]'}>
+                                      <span className={entry.kind === 'PRODUCED' ? 'badge-neutral text-xs' : 'badge-warning text-xs'}>
                                         {entry.kind === 'PRODUCED' ? t('kind.PRODUCED') : t('kind.MODIFICATION')}
                                       </span>
                                     </td>

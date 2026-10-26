@@ -76,7 +76,7 @@ export default function MachineQrSheet({ machines, onClose }: { machines: FleetM
       <motion.div {...iosSurface} role="dialog" aria-modal="true" aria-label={t('qr.title')} className="qr-sheet mx-auto max-w-5xl">
         <div className="qr-no-print flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2.5">
-            <QrCode size={20} className="text-[var(--blue-500)]" />
+            <QrCode size={20} className="text-[var(--blue-text)]" />
             <div>
               <div className="font-bold text-[var(--text-primary)]">{t('qr.title')}</div>
               <div className="text-xs text-[var(--text-secondary)] max-w-xl">{t('qr.help')}</div>

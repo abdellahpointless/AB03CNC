@@ -204,7 +204,7 @@ export default function TelegramAlerts() {
                         disabled={busy !== null || (m === 'call' && !me.tgUsername)}
                         title={m === 'call' && !me.tgUsername ? t('alerts.needUsername') : undefined}
                         onClick={() => save({ modes: { [e]: m } })}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-40 ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-40 ${
                           active ? (m === 'call' ? 'bg-[var(--rose-500)] text-white' : m === 'message' ? 'bg-[#2AABEE] text-white' : 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)]') : 'text-[var(--text-secondary)]'
                         }`}
                       >
@@ -222,7 +222,7 @@ export default function TelegramAlerts() {
             <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
               <Phone size={13} /> {t('alerts.callsTitle')}
             </div>
-            <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">{t('alerts.callsHelp')}</p>
+            <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">{t('alerts.callsHelp')}</p>
             <form
               className="flex gap-2"
               onSubmit={(ev) => {

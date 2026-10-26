@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Copy, Download, KeyRound, ShieldCheck, ShieldOff, Smartphone, X } from 'lucide-react';
+import { Check, Copy, Download, Eye, EyeOff, KeyRound, ShieldCheck, ShieldOff, Smartphone, X } from 'lucide-react';
 import qrcode from 'qrcode-generator';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
@@ -9,6 +9,38 @@ import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 
 type Tab = 'password' | 'mfa';
+
+/** A form field with its label above it; password fields get an eye button to show what was typed. */
+function Field({ label, type = 'text', className = '', ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const { t } = useT('app');
+  const id = useId();
+  const [shown, setShown] = useState(false);
+  const secret = type === 'password';
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-xs font-semibold text-[var(--text-secondary)]">
+        {label}
+      </label>
+      <div className="relative">
+        <input id={id} type={secret && shown ? 'text' : type} className={`${className}${secret ? ' pr-11' : ''}`} {...rest} />
+        {secret && (
+          // The wrapper is positioned: the stylesheet makes every button position: relative.
+          <span className="absolute inset-y-0 right-0 flex">
+            <button
+              type="button"
+              className="no-glass w-11 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+              onClick={() => setShown((v) => !v)}
+              aria-label={t('security.showPassword')}
+              aria-pressed={shown}
+            >
+              {shown ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Scannable QR code drawn as one SVG path (no images, nothing sent to a third party). */
 function QrCode({ text }: { text: string }) {
@@ -64,10 +96,10 @@ function PasswordForm() {
   }
   return (
     <form onSubmit={submit} className="space-y-3">
-      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.currentPassword')} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required autoFocus />
-      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.newPassword', { min })} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={min} maxLength={200} required />
-      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.repeatPassword')} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
-      <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+      <Field type="password" className="aurora-input w-full text-xs" label={t('security.currentPassword')} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required autoFocus />
+      <Field type="password" className="aurora-input w-full text-xs" label={t('security.newPassword', { min })} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={min} maxLength={200} required />
+      <Field type="password" className="aurora-input w-full text-xs" label={t('security.repeatPassword')} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+      <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
         {t('security.passwordTip')}
       </p>
       {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
@@ -162,8 +194,8 @@ function MfaPanel() {
           <ShieldCheck size={14} /> <span>{t('security.mfaOnForAccount')}</span>
         </div>
         <p className="text-xs text-[var(--text-secondary)]">{t('security.turnOffHint')}</p>
-        <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-        <input type="text" className="aurora-input w-full text-xs font-mono" placeholder={t('security.codeOrRecovery')} value={code} onChange={(e) => setCode(e.target.value.slice(0, 12))} autoComplete="one-time-code" required />
+        <Field type="password" className="aurora-input w-full text-xs" label={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+        <Field type="text" className="aurora-input w-full text-xs font-mono" label={t('security.codeOrRecovery')} value={code} onChange={(e) => setCode(e.target.value.slice(0, 12))} autoComplete="one-time-code" required />
         {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
         <button type="submit" disabled={busy} className="btn-danger w-full text-xs py-2">
           <ShieldOff size={13} /> <span>{busy ? t('security.turningOff') : t('security.turnOff')}</span>
@@ -176,7 +208,7 @@ function MfaPanel() {
     return (
       <div className="space-y-3">
         <div className="flex items-start gap-3 text-xs text-[var(--text-secondary)] leading-relaxed">
-          <Smartphone size={18} className="shrink-0 text-[var(--blue-500)] mt-0.5" />
+          <Smartphone size={18} className="shrink-0 text-[var(--blue-text)] mt-0.5" />
           <span>
             {t('security.intro')}
           </span>
@@ -209,13 +241,13 @@ function MfaPanel() {
     >
       <p className="text-xs text-[var(--text-secondary)]">{t('security.step1')}</p>
       <div className="flex justify-center"><QrCode text={setupData.otpauth} /></div>
-      <details className="text-[11px] text-[var(--text-tertiary)]">
+      <details className="text-xs text-[var(--text-tertiary)]">
         <summary className="cursor-pointer">{t('security.cantScan')}</summary>
         <code className="block mt-1 break-all font-mono text-[var(--text-primary)] select-all">{setupData.secret.replace(/(.{4})/g, '$1 ').trim()}</code>
       </details>
       <p className="text-xs text-[var(--text-secondary)]">{t('security.step2')}</p>
-      <input type="text" inputMode="numeric" className="aurora-input w-full text-center font-mono text-lg tracking-[0.35em]" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} autoComplete="one-time-code" required autoFocus />
-      <input type="password" className="aurora-input w-full text-xs" placeholder={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+      <input type="text" inputMode="numeric" className="aurora-input w-full text-center font-mono text-lg tracking-[0.35em]" placeholder="000000" aria-label={t('security.step2')} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} autoComplete="one-time-code" required autoFocus />
+      <Field type="password" className="aurora-input w-full text-xs" label={t('security.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
       {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
       <button type="submit" disabled={busy || code.length !== 6} className="btn-primary w-full text-xs py-2">{busy ? t('security.checking') : t('security.confirmTurnOn')}</button>
     </form>

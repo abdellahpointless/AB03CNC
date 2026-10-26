@@ -148,12 +148,12 @@ function MasterDashboard() {
             </div>
             <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-bold text-[var(--text-primary)] leading-tight">{t('title')}</h1>
-              <p className="text-[11px] text-[var(--text-secondary)] truncate">{t('subtitle')}</p>
+              <p className="text-xs text-[var(--text-secondary)] truncate">{t('subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {data && <span className="text-[11px] text-[var(--text-tertiary)] hidden md:inline">{t('updated', { time: fmtDateTime(data.generatedAt) })}</span>}
-            <div className="flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] overflow-hidden text-[11px] font-semibold" role="group" aria-label={t('language')}>
+            {data && <span className="text-xs text-[var(--text-tertiary)] hidden md:inline">{t('updated', { time: fmtDateTime(data.generatedAt) })}</span>}
+            <div className="flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] overflow-hidden text-xs font-semibold" role="group" aria-label={t('language')}>
               {(['en', 'tr'] as const).map((lng) => (
                 <button
                   key={lng}
@@ -193,7 +193,7 @@ function MasterDashboard() {
         {!mfaEnabled && (
           <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.1)] border border-[var(--blue-500)]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-[var(--text-primary)] font-semibold">
-              <ShieldCheck size={16} className="shrink-0 text-[var(--blue-500)]" />
+              <ShieldCheck size={16} className="shrink-0 text-[var(--blue-text)]" />
               <span>{t('mfaNudge')}</span>
             </div>
             <button onClick={() => setSecurity('mfa')} className="btn-primary text-xs py-1 px-3 shrink-0">
@@ -251,14 +251,14 @@ function MasterDashboard() {
 function Stat({ icon, label, value, detail, tone }: { icon: React.ReactNode; label: string; value: string; detail?: string; tone?: 'danger' | 'warning' }) {
   return (
     <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] min-w-0">
-      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
         {icon}
         <span className="truncate">{label}</span>
       </div>
       <div className={`mt-1 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-[var(--rose-500)]' : tone === 'warning' ? 'text-[var(--orange-500)]' : 'text-[var(--text-primary)]'}`}>
         {value}
       </div>
-      {detail && <div className="text-[11px] text-[var(--text-tertiary)] truncate">{detail}</div>}
+      {detail && <div className="text-xs text-[var(--text-tertiary)] truncate">{detail}</div>}
     </div>
   );
 }
@@ -280,7 +280,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
           <Flag country={country.id} className="w-10 h-[27px] rounded-[4px] shadow-sm" />
           <div>
             <h2 className="text-lg font-bold text-[var(--text-primary)] leading-tight">{t(`common:country.${country.id}`)}</h2>
-            <div className="text-[11px] text-[var(--text-tertiary)]">{t(`common:language.${country.language as 'en' | 'tr'}`)}</div>
+            <div className="text-xs text-[var(--text-tertiary)]">{t(`common:language.${country.language as 'en' | 'tr'}`)}</div>
           </div>
         </div>
         <span className={status === 'active' ? 'badge-positive' : status === 'notSetUp' ? 'badge-warning' : 'badge-neutral'}>{t(`status.${status}`)}</span>
@@ -336,7 +336,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
             />
           </div>
           <FeatureSwitches country={country} onChanged={onChanged} />
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-tertiary)]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-500)]' : 'text-[var(--green-500)]'} />
               {t('card.mfa', { count: country.users.adminsWithMfa, total: country.users.admins })}
@@ -387,13 +387,13 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="section-label">{t('features.title')}</span>
-        <span className="text-[10px] text-[var(--text-tertiary)]">{t('features.dataKept')}</span>
+        <span className="text-xs text-[var(--text-tertiary)]">{t('features.dataKept')}</span>
       </div>
       {items.map((it) => (
         <div key={it.key} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-semibold text-[var(--text-primary)]">{it.label}</div>
-            <div className="text-[11px] text-[var(--text-tertiary)] truncate">{it.hint}</div>
+            <div className="text-xs text-[var(--text-tertiary)] truncate">{it.hint}</div>
           </div>
           <button
             type="button"
@@ -446,7 +446,8 @@ function ComparisonTable({ countries }: { countries: ActiveCountry[] }) {
       <div className="p-4 border-b border-[var(--border-subtle)]">
         <h3 className="section-label text-[var(--text-primary)]">{t('compare.title')}</h3>
       </div>
-      <div className="overflow-x-auto">
+      {/* Focusable so keyboard users can scroll it sideways on a narrow screen. */}
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t('compare.title')}>
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)]">
@@ -508,21 +509,21 @@ function MonthlyChart({ countries, kind }: { countries: ActiveCountry[]; kind: '
     color: 'var(--text-primary)',
     fontSize: 12,
   };
-  const axis = { stroke: 'var(--text-tertiary)', fontSize: 11, tickLine: false, axisLine: false } as const;
+  const axis = { stroke: 'var(--text-tertiary)', fontSize: 12, tickLine: false, axisLine: false } as const;
   const name = (id: string) => t(`common:country.${id as RegionId}`);
 
   return (
     <section className="aurora-card aurora-card-static p-5">
       <div className="flex items-center justify-between mb-3 gap-3">
         <h3 className="section-label text-[var(--text-primary)]">{title}</h3>
-        <button type="button" onClick={() => setShowTable((v) => !v)} className="no-glass text-[11px] text-[var(--blue-500)] hover:underline">
+        <button type="button" onClick={() => setShowTable((v) => !v)} className="no-glass text-xs text-[var(--blue-text)] hover:underline py-1.5 px-1 -my-1.5 -mx-1">
           {showTable ? t('charts.hideTable') : t('charts.showTable')}
         </button>
       </div>
       {empty ? (
         <div className="h-56 flex items-center justify-center text-xs text-[var(--text-tertiary)]">{t('charts.empty')}</div>
       ) : showTable ? (
-        <div className="overflow-x-auto max-h-64 overflow-y-auto">
+        <div className="overflow-x-auto max-h-64 overflow-y-auto" tabIndex={0} role="region" aria-label={title}>
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="border-b border-[var(--border-subtle)]">
@@ -608,12 +609,12 @@ function MachineHealth({ countries }: { countries: ActiveCountry[] }) {
                     <span className="font-semibold text-[var(--text-primary)]">{m.name}</span>
                     <span className="flex items-center gap-2">
                       {m.problems > 0 && (
-                        <span className="badge-danger text-[10px] py-0 px-2">
+                        <span className="badge-danger text-xs py-0 px-2">
                           <AlertTriangle size={11} /> {t('machines.problems', { count: m.problems })}
                         </span>
                       )}
                       {m.due > 0 && (
-                        <span className="badge-warning text-[10px] py-0 px-2">
+                        <span className="badge-warning text-xs py-0 px-2">
                           <Clock size={11} /> {t('machines.due', { count: m.due })}
                         </span>
                       )}
@@ -765,7 +766,7 @@ function AccountForm({
     >
       <input className="aurora-input w-full text-xs" placeholder={t('admins.username')} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" maxLength={40} required autoFocus />
       <input className="aurora-input w-full text-xs" type="password" placeholder={t('admins.password')} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={10} maxLength={200} required />
-      <p className="text-[11px] text-[var(--text-tertiary)]">{t('admins.hint')}</p>
+      <p className="text-xs text-[var(--text-tertiary)]">{t('admins.hint')}</p>
       {confirmWithOwnPassword && (
         <input className="aurora-input w-full text-xs" type="password" placeholder={t('masters.yourPassword')} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" required />
       )}

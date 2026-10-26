@@ -25,7 +25,7 @@ const data = {
     confirmPrune:
       'Delete history records (and their stored G-code files) older than {{days}} days?\n\nA JSON archive of the deleted records is downloaded first.',
     confirmClearAll:
-      'Delete ALL history records and stored G-code files?\n\nA full JSON archive is downloaded first. The "time won" counter is not reset.',
+      'Delete ALL history records and stored G-code files?\n\nA full JSON archive is downloaded first. The "time saved" counter is not reset.',
     typeToConfirm: 'Type {{word}} to confirm',
     /** The word the admin has to type to clear all history. */
     deleteWord: 'DELETE',

@@ -66,7 +66,7 @@ export default function HubPage() {
             <div className="flex items-start justify-between gap-3">
               <Flag country={r.id} className="w-20 h-[54px] rounded-[6px] shadow-[0_6px_18px_rgba(0,0,0,0.35)]" />
               {last === r.id && (
-                <span className="badge-neutral text-[10px] py-0.5 px-2">{i18n.t('hub:lastUsed', { lng: r.language })}</span>
+                <span className="badge-neutral text-xs py-0.5 px-2">{i18n.t('hub:lastUsed', { lng: r.language })}</span>
               )}
             </div>
             <div>
@@ -75,7 +75,7 @@ export default function HubPage() {
                 {i18n.t('hub:language', { lng: r.language, language: i18n.t(`common:language.${r.language}`) })}
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm font-semibold text-[var(--blue-500)]">
+            <div className="flex items-center justify-between text-sm font-semibold text-[var(--blue-text)]">
               <span>{i18n.t('hub:open', { lng: r.language })}</span>
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </div>
@@ -101,7 +101,7 @@ export default function HubPage() {
                   </span>
                 </span>
               </div>
-              <span className="badge-neutral text-[10px] py-0.5 px-2 whitespace-nowrap shrink-0">{both('hub:comingSoon')}</span>
+              <span className="badge-neutral text-xs py-0.5 px-2 whitespace-nowrap shrink-0">{both('hub:comingSoon')}</span>
             </div>
             <div className="opacity-70">
               <div className="text-xl font-bold text-[var(--text-primary)]">
@@ -122,7 +122,7 @@ export default function HubPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.35, duration: 0.3 }}
-        className="relative z-10 mt-10 inline-flex items-center gap-2 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+        className="relative z-10 mt-10 inline-flex items-center gap-2 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
       >
         <Crown size={13} className="text-amber-500" />
         <span>{both('hub:master')}</span>
