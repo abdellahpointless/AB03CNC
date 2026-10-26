@@ -34,11 +34,13 @@ Browser (each PC) ──► Cloudflare Worker
 - **Setting up a new country:** a Moroccan admin creates the first master account
   (Admin → Master admin account). The master then creates the first admin of the new
   country from the dashboard. New countries have no public "first-time setup".
-- **Features per country**: part tracking (Part without scan, Part review) and preventive
-  actions can be switched on or off per country by a master admin (dashboard → "Features in
-  this country"). Defaults are in `src/regions.ts` (Türkiye starts with both off); the choice
-  is stored in the country's database (`settings.features`). Switched off, a feature is hidden
-  on every open screen within seconds and its API answers "not found"; its data is kept.
+- **Features per country**: part tracking (Part without scan, Part review), preventive
+  actions, and shift checks & cales box (needs preventive actions: own checks per person, cales
+  box every shift, lock until done, cales stock) can be switched on or off per country by a
+  master admin (dashboard → "Features in this country"). Defaults are in `src/regions.ts`
+  (Türkiye starts with all off); the choice is stored in the country's database
+  (`settings.features`). Switched off, a feature is hidden on every open screen within seconds
+  and its API answers "not found"; its data is kept.
   Türkiye's output programs get their French comments in English (`gcodeComments: 'en'`);
   Morocco's output is unchanged.
 - **Telegram alerts** (master dashboard → Telegram alerts): messages, and optionally voice calls

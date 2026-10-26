@@ -530,6 +530,7 @@ function MachineSheet({
   onClose: () => void;
 }) {
   const { t } = useT('preventive');
+  const shifts = useSync().features.shiftChecks;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [problemFor, setProblemFor] = useState<string | null>(null); // check id, or '__machine'
@@ -546,12 +547,12 @@ function MachineSheet({
   const canAct = !locked;
   /** Everyone does every check in its period themselves; admins see whether anyone did it. */
   const dueFor = (c: MachineCheck) =>
-    c.kind === 'CHECK' && !!c.frequency && c.status !== 'PROBLEM' && (canAct && !isAdmin ? !myDone.includes(c.id) : isDue(c, now));
+    c.kind === 'CHECK' && !!c.frequency && c.status !== 'PROBLEM' && (shifts && canAct && !isAdmin ? !myDone.includes(c.id) : isDue(c, now));
   const toDo = checks.filter(dueFor).length;
   const tz = currentRegion().timeZone;
   /** Who said this check was OK in the same period, before this problem was reported. */
   const saidOk = (e: MachineEvent, i: number) => {
-    const f = e.action === 'PROBLEM' && e.check_id ? checks.find((c) => c.id === e.check_id)?.frequency : null;
+    const f = shifts && e.action === 'PROBLEM' && e.check_id ? checks.find((c) => c.id === e.check_id)?.frequency : null;
     if (!f) return null;
     const p = periodKey(f, e.at, tz);
     // shortcut: only the events loaded (the latest 300 of all machines), enough for a day of checks.
@@ -704,7 +705,7 @@ function MachineSheet({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
             />
-            <CalesBox machine={machine} canAct={canAct} state={cales} checked={calesChecked} requested={calesRequested} onChanged={onChanged} />
+            {shifts && <CalesBox machine={machine} canAct={canAct} state={cales} checked={calesChecked} requested={calesRequested} onChanged={onChanged} />}
           </div>
           <div className="self-stretch space-y-2">
             {summary.down && (

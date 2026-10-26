@@ -43,6 +43,8 @@ const master = {
     partTrackingHint: 'Part without scan, Part review',
     preventive: 'Preventive actions',
     preventiveHint: 'Machine checklists, problem reports, machine responsibility',
+    shiftChecks: 'Shift checks & cales box',
+    shiftChecksHint: 'With preventive actions: own checks per person, cales box every shift, lock, cales stock',
   },
   compare: {
     title: 'Comparison',

@@ -1,13 +1,13 @@
 import { regionById, type RegionFeatures, type RegionId } from '../src/regions';
 
 /*
- * Optional parts of a country's app (part tracking, preventive actions). The defaults are in
+ * Optional parts of a country's app (part tracking, preventive actions, shift checks). The defaults are in
  * src/regions.ts; a master admin can switch them on or off per country from the dashboard.
  * The choice is stored in the country's own database (settings key "features"). Switching a
  * feature off hides it and closes its API; its data stays in the database.
  */
 
-export const FEATURE_KEYS: (keyof RegionFeatures)[] = ['partTracking', 'preventive'];
+export const FEATURE_KEYS: (keyof RegionFeatures)[] = ['partTracking', 'preventive', 'shiftChecks'];
 
 export async function readFeatures(db: D1Database, region: RegionId): Promise<RegionFeatures> {
   const features: RegionFeatures = { ...regionById(region)!.features };

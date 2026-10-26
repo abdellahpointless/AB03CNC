@@ -236,7 +236,7 @@ export async function handleCreateCountryAdmin(ctx: Ctx): Promise<Response> {
   return json({ ok: true, user: { id, username, role: 'ADMIN' } });
 }
 
-// PUT /master/api/countries/:region/features { partTracking?: boolean, preventive?: boolean }
+// PUT /master/api/countries/:region/features { partTracking?, preventive?, shiftChecks?: boolean }
 export async function handleSetCountryFeatures(ctx: Ctx): Promise<Response> {
   const region = regionParam(ctx);
   const db = await openCountry(ctx.env, region);

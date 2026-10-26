@@ -96,7 +96,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
   const summary = useMemo(() => machineSummary(checks || [], now), [checks, now]);
   const list = (checks || []).filter((c) => c.kind === 'CHECK');
   // Everyone does every check in its period themselves; admins see whether anyone did it.
-  const dueForMe = (c: MachineCheck) => (!locked && user?.role !== 'ADMIN' ? !mine.myDone.includes(c.id) : isDue(c, now));
+  const dueForMe = (c: MachineCheck) => (features.shiftChecks && !locked && user?.role !== 'ADMIN' ? !mine.myDone.includes(c.id) : isDue(c, now));
   const toDo = list.filter((c) => c.status !== 'PROBLEM' && dueForMe(c));
   const doneList = list.filter((c) => c.status !== 'PROBLEM' && !dueForMe(c));
   const calesState = useMemo(() => calesOf(mine.cales, machineId), [mine.cales, machineId]);
@@ -255,7 +255,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
         )}
 
         {/* The cales box, checked once per shift */}
-        {checks && machine && (
+        {features.shiftChecks && checks && machine && (
           <section className="phone-row flex justify-center">
             <CalesBox machine={machine} canAct={!locked} state={calesState} checked={mine.checked} requested={mine.requested} onChanged={load} />
           </section>

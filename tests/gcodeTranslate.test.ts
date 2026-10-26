@@ -50,21 +50,27 @@ describe('French G-code comments to English', () => {
 });
 
 describe('features per country', async () => {
-  const { REGIONS, featureOfApiPath } = await import('../src/regions');
-  it('maps API paths to the optional features', () => {
-    expect(featureOfApiPath('/parts')).toBe('partTracking');
-    expect(featureOfApiPath('/parts/pending')).toBe('partTracking');
-    expect(featureOfApiPath('/admin/import/parts')).toBe('partTracking');
-    expect(featureOfApiPath('/machines/HAAS-1/checks')).toBe('preventive');
-    expect(featureOfApiPath('/fleet')).toBeNull();
-    expect(featureOfApiPath('/tools')).toBeNull();
-    expect(featureOfApiPath('/partsx')).toBeNull();
+  const { REGIONS, featuresOfApiPath } = await import('../src/regions');
+  it('maps API paths to the optional features they need', () => {
+    expect(featuresOfApiPath('/parts')).toEqual(['partTracking']);
+    expect(featuresOfApiPath('/parts/pending')).toEqual(['partTracking']);
+    expect(featuresOfApiPath('/admin/import/parts')).toEqual(['partTracking']);
+    expect(featuresOfApiPath('/machines')).toEqual(['preventive']);
+    expect(featuresOfApiPath('/machines/HAAS-1/checks')).toEqual(['preventive']);
+    // Shift checks and the cales box only exist with preventive actions.
+    expect(featuresOfApiPath('/machines/required')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/machines/cales/stock')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/machines/cales/requests/abc')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/machines/HAAS-1/cales/report')).toEqual(['preventive', 'shiftChecks']);
+    expect(featuresOfApiPath('/fleet')).toEqual([]);
+    expect(featuresOfApiPath('/tools')).toEqual([]);
+    expect(featuresOfApiPath('/partsx')).toEqual([]);
   });
   it('Türkiye only has the G-code remapper; Morocco keeps everything', () => {
     const [ma, tr] = REGIONS;
-    expect(ma.features).toEqual({ partTracking: true, preventive: true });
+    expect(ma.features).toEqual({ partTracking: true, preventive: true, shiftChecks: true });
     expect(ma.gcodeComments).toBe('fr');
-    expect(tr.features).toEqual({ partTracking: false, preventive: false });
+    expect(tr.features).toEqual({ partTracking: false, preventive: false, shiftChecks: false });
     expect(tr.gcodeComments).toBe('en');
   });
 });

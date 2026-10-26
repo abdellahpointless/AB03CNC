@@ -27,7 +27,7 @@ import {
   handleAlertsUpdate,
   handleSafetyOverride,
 } from './routes/alerts';
-import { REGIONS, featureOfApiPath, regionById, type RegionId } from '../src/regions';
+import { REGIONS, featuresOfApiPath, regionById, type RegionId } from '../src/regions';
 import { handleCreateMachine, handleGetFeatures, handleListFleet, handleRemoveMachine, handleUpdateMachine } from './routes/fleet';
 import {
   handleCountryAdmins,
@@ -316,8 +316,11 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
     await ensureSchema(env.DB, instance);
     // A feature switched off for this country (by a master admin) does not exist there.
     if (instance !== 'master') {
-      const feature = featureOfApiPath(rest);
-      if (feature && !(await readFeatures(env.DB, instance))[feature]) throw new HttpError(404, 'Not found');
+      const needed = featuresOfApiPath(rest);
+      if (needed.length) {
+        const on = await readFeatures(env.DB, instance);
+        if (!needed.every((f) => on[f])) throw new HttpError(404, 'Not found');
+      }
     }
     const session = r.access === 'public' ? null : await getSessionUser(env, request);
     const user = session?.user ?? null;

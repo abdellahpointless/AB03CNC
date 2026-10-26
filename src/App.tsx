@@ -87,9 +87,9 @@ function Workspace() {
   // and this shift's cales box, only Preventive actions is shown. Admins are never locked; a failed
   // request never locks anyone.
   const [required, setRequired] = useState<RequiredItem[]>([]);
-  const locked = features.preventive && required.length > 0;
+  const locked = features.preventive && features.shiftChecks && required.length > 0;
   useEffect(() => {
-    if (!features.preventive || user.role === 'ADMIN') return setRequired([]);
+    if (!features.preventive || !features.shiftChecks || user.role === 'ADMIN') return setRequired([]);
     let alive = true;
     const ask = () => fetchRequired().then((r) => alive && setRequired(r.locked ? r.items : []), () => undefined);
     ask();
@@ -98,7 +98,7 @@ function Workspace() {
       alive = false;
       window.clearInterval(id);
     };
-  }, [features.preventive, user.role, versions.machines]);
+  }, [features.preventive, features.shiftChecks, user.role, versions.machines]);
   useEffect(() => {
     if (locked && activeTab !== 'PREVENTIVE') setActiveTab('PREVENTIVE');
   }, [locked, activeTab]);
@@ -288,10 +288,6 @@ function Workspace() {
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-[var(--text-primary)] truncate">
                   CNC Process Pro
                 </h1>
-                {/* Hidden on phones (the wrapper: the badge's own display would win over "hidden"). */}
-                <span className="hidden sm:inline-flex shrink-0">
-                  <span className="badge-neutral text-[10px] py-0.5 px-2 tracking-wide font-mono">v6.0 AURORA</span>
-                </span>
                 {/* Country of this instance; click to go back to the country picker. */}
                 <a
                   href={CHOOSE_COUNTRY_PATH}
@@ -651,7 +647,7 @@ function Workspace() {
                 <div className="w-full">
                   <MachineManager />
                 </div>
-                {features.preventive && (
+                {features.preventive && features.shiftChecks && (
                   <div className="w-full">
                     <CalesStock />
                   </div>

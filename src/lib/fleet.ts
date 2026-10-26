@@ -3,6 +3,7 @@ import i18n from '../i18n';
 import type { MachineBrand, MachineInfo } from '../regions';
 import { brandAccent } from './machines';
 import { currentRegion } from './instance';
+import { currentFeatures } from './features';
 import { periodKey } from './shifts';
 import type { CaleRow, StockRow } from './cales';
 
@@ -97,14 +98,28 @@ export const FREQUENCY_LABEL: Record<Frequency, string> = {
   },
 };
 
+const DAY = 86_400_000;
+const PERIOD_DAYS: Record<Frequency, number> = { DAILY: 1, WEEKLY: 7, MONTHLY: 30, QUARTERLY: 91 };
+
 /**
- * A checklist item is due when it was not done in its current calendar period, in the country's time
- * zone: today, this week (from Monday), this month (from the 1st) or this quarter (Jan/Apr/Jul/Oct).
+ * A checklist item is due when it was not done in its period. With shift checks on, periods are
+ * calendar ones in the country's time zone: today, this week (from Monday), this month (from the
+ * 1st) or this quarter (Jan/Apr/Jul/Oct). Without: a daily check is due again at midnight, the
+ * others 7, 30 or 91 days after they were done.
  */
 export function isDue(c: MachineCheck, now = Date.now()): boolean {
   if (c.kind !== 'CHECK' || !c.frequency) return false;
-  const tz = currentRegion().timeZone;
-  return !c.last_done_at || periodKey(c.frequency, c.last_done_at, tz) !== periodKey(c.frequency, now, tz);
+  if (!c.last_done_at) return true;
+  if (currentFeatures().shiftChecks) {
+    const tz = currentRegion().timeZone;
+    return periodKey(c.frequency, c.last_done_at, tz) !== periodKey(c.frequency, now, tz);
+  }
+  if (c.frequency === 'DAILY') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return c.last_done_at < start.getTime();
+  }
+  return now - c.last_done_at >= PERIOD_DAYS[c.frequency] * DAY;
 }
 
 export type MachineState = 'problem' | 'due' | 'ok';

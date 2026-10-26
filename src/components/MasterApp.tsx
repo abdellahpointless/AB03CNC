@@ -381,6 +381,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
   const items: { key: keyof RegionFeatures; label: string; hint: string }[] = [
     { key: 'partTracking', label: t('features.partTracking'), hint: t('features.partTrackingHint') },
     { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
+    { key: 'shiftChecks', label: t('features.shiftChecks'), hint: t('features.shiftChecksHint') },
   ];
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">
@@ -399,7 +400,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
             role="switch"
             aria-checked={local[it.key]}
             aria-label={`${it.label} (${t(`common:country.${country.id}`)})`}
-            disabled={busy !== null}
+            disabled={busy !== null || (it.key === 'shiftChecks' && !local.preventive)} // works only with preventive actions
             onClick={() => toggle(it.key)}
             className={`relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 disabled:opacity-60 ${
               local[it.key] ? 'bg-[var(--green-500)]' : 'bg-[rgba(var(--ov),0.18)]'

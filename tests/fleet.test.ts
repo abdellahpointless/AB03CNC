@@ -25,6 +25,19 @@ describe('preventive checks', () => {
     expect(isDue({ ...base, frequency: 'QUARTERLY', last_done_at: at('2026-10-01T09:00:00+01:00') }, now)).toBe(false);
     expect(isDue({ ...base, frequency: 'QUARTERLY', last_done_at: at('2026-09-15T09:00:00+01:00') }, now)).toBe(true);
   });
+  it('with shift checks off, keeps the old rule: daily from midnight, the others by days since done', async () => {
+    const { rememberFeatures } = await import('../src/lib/features');
+    rememberFeatures({ partTracking: true, preventive: true, shiftChecks: false });
+    try {
+      const now = new Date(2026, 9, 19, 10).getTime(); // Monday 10:00, this computer's clock
+      expect(isDue({ ...base, last_done_at: new Date(2026, 9, 18, 23).getTime() }, now)).toBe(true);
+      expect(isDue({ ...base, last_done_at: new Date(2026, 9, 19, 7, 30).getTime() }, now)).toBe(false);
+      expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: new Date(2026, 9, 18, 20).getTime() }, now)).toBe(false); // Sunday, < 7 days
+      expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: new Date(2026, 9, 12, 9).getTime() }, now)).toBe(true);
+    } finally {
+      rememberFeatures({ partTracking: true, preventive: true, shiftChecks: true });
+    }
+  });
   it('a problem makes the machine red even if checks are due', () => {
     const now = at('2026-10-19T10:00:00');
     const s = machineSummary([base, { ...base, id: 'p', kind: 'ISSUE', frequency: null, status: 'PROBLEM', note: 'Leak' }], now);
