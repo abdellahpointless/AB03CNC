@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Crown, Lock } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import i18n from '../i18n';
 import { REGIONS, UPCOMING_COUNTRIES, type RegionInfo } from '../regions';
-import { MASTER_PATH, countryPath, lastCountry, rememberCountry } from '../lib/instance';
+import { countryPath, lastCountry, rememberCountry } from '../lib/instance';
 import { Flag } from './Flag';
 import { SPRING_POP } from '../lib/motion';
 
@@ -14,7 +14,7 @@ import { SPRING_POP } from '../lib/motion';
  */
 export default function HubPage() {
   const last = lastCountry();
-  const both = (key: 'hub:title' | 'hub:master' | 'hub:comingSoon' | 'hub:notAvailable') => {
+  const both = (key: 'hub:title' | 'hub:comingSoon' | 'hub:notAvailable') => {
     const texts = Array.from(new Set(['en', 'tr'].map((lng) => i18n.t(key, { lng }) as string)));
     return texts.join(' · ');
   };
@@ -117,17 +117,6 @@ export default function HubPage() {
         ))}
       </div>
 
-      <motion.a
-        href={MASTER_PATH}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35, duration: 0.3 }}
-        className="relative z-10 mt-10 inline-flex items-center gap-2 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
-      >
-        <Crown size={13} className="text-amber-500" />
-        <span>{both('hub:master')}</span>
-        <span className="hidden sm:inline">- {i18n.t('hub:masterHint', { lng: 'en' })}</span>
-      </motion.a>
     </main>
   );
 }

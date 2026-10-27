@@ -5,9 +5,7 @@ const hub = {
   language: 'App language: {{language}}',
   lastUsed: 'Last used',
   open: 'Open',
-  master: 'Master admin',
   comingSoon: 'Coming soon',
   notAvailable: 'Not available yet',
-  masterHint: 'Masters can also sign in from any country.',
 };
 export default hub;

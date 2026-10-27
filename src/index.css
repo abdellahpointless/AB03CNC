@@ -1278,6 +1278,15 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 /* The vise and the cales: tiles that come out of the machine's side when it is pointed at
    (under the machine on phones and tablets, which cannot point). */
 .machine-slot.is-active { z-index: 40; }
+/* Choosing the vise or the cales of a machine: every other machine fades into a blur. */
+.machine-slot { transition: filter 320ms var(--ease-out), opacity 320ms var(--ease-out); }
+.machine-floor:has(.machine-side :is(:hover, :focus-visible)) .machine-slot:not(.is-active) {
+  filter: blur(5px) saturate(0.7);
+  opacity: 0.55 !important; /* over the opacity the cards' entrance animation leaves inline */
+}
+@media (prefers-reduced-motion: reduce) {
+  .machine-slot { transition: none; }
+}
 .machine-side {
   position: absolute !important;
   top: 12px;

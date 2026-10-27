@@ -289,7 +289,13 @@ export default function PreventiveActions() {
 // Machine card on the floor
 // ---------------------------------------------------------------------------------------------
 
-const CAN_HOVER = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+/** Closed (a sliver at the card's edge), funnel, open: the clip-path frames of the tiles' "genie". */
+const GENIE: Record<'left' | 'right', string[]> = {
+  right: ['polygon(0% 46%, 0% 46%, 0% 54%, 0% 54%)', 'polygon(0% 34%, 70% 4%, 70% 96%, 0% 66%)', 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'],
+  left: ['polygon(100% 46%, 100% 46%, 100% 54%, 100% 54%)', 'polygon(30% 4%, 100% 34%, 100% 66%, 30% 96%)', 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'],
+};
+
+const CAN_HOVER =typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
 function MachineCard({
   index,
@@ -437,10 +443,12 @@ function MachineCard({
         {CAN_HOVER && sideShown && (
           <motion.div
             key="side"
-            initial={{ opacity: 0, x: left ? 14 : -14, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: left ? 14 : -14, scale: 0.9, transition: { duration: 0.14, ease: EASE_OUT } }}
-            transition={SPRING_POP}
+            // Flows out of the machine's edge like a macOS window from the Dock (genie): a thin
+            // funnel at the card that widens into the tiles, and back in when it closes.
+            initial={{ clipPath: GENIE[left ? 'left' : 'right'][0], x: left ? 24 : -24 }}
+            animate={{ clipPath: GENIE[left ? 'left' : 'right'], x: 0, transitionEnd: { clipPath: 'none' } }}
+            exit={{ clipPath: [...GENIE[left ? 'left' : 'right']].reverse(), x: left ? 24 : -24, transition: { duration: 0.28, ease: 'easeIn' } }}
+            transition={{ clipPath: { duration: 0.5, times: [0, 0.45, 1], ease: EASE_OUT }, x: SPRING_POP }}
             className={`machine-side ${left ? 'on-left' : 'on-right'}`}
           >
             {side}
