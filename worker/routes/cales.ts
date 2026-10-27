@@ -109,28 +109,32 @@ export async function handleCalesRequest(ctx: Ctx): Promise<Response> {
   return json({ ok: true });
 }
 
-// Admin: GET /api/machines/cales/stock -> spare stock, open requests and the state of every box
+// Admin: GET /api/machines/cales/stock -> the general spare stock per size, open requests, the state of
+// every box, and what the machines took from the stock (approved requests, newest first)
 export async function handleCalesStock(ctx: Ctx): Promise<Response> {
   const db = ctx.env.DB;
-  const [stock, requests, state] = await db.batch([
-    db.prepare('SELECT machine_id, height, qty FROM cales_stock'),
+  const [stock, requests, state, taken] = await db.batch([
+    db.prepare('SELECT height, qty FROM cales_spare'),
     db.prepare("SELECT id, machine_id, height, kind, count, requested_by, at FROM cales_requests WHERE status = 'OPEN' ORDER BY at"),
     db.prepare('SELECT machine_id, height, status, count FROM cales_state'),
+    // shortcut: the latest 5000 takes only, years of a small shop; page it if the history ever outgrows that.
+    db.prepare(
+      "SELECT machine_id, height, count, requested_by, decided_by, decided_at AS at FROM cales_requests WHERE status = 'APPROVED' ORDER BY decided_at DESC LIMIT 5000",
+    ),
   ]);
-  return json({ stock: stock.results, requests: requests.results, state: state.results });
+  return json({ stock: stock.results, requests: requests.results, state: state.results, taken: taken.results });
 }
 
-// Admin: PUT /api/machines/cales/stock/:machine/:height { qty } -> spare single cales on hand
+// Admin: PUT /api/machines/cales/stock/:height { qty } -> spare single cales of this size on hand (all machines)
 export async function handleCalesSetStock(ctx: Ctx): Promise<Response> {
-  const machine = (await requireMachine(ctx.env, ctx.params.machine)).id;
   const h = height(Number(ctx.params.height));
   const { qty } = await readJson<{ qty?: unknown }>(ctx.request, 1000);
   if (typeof qty !== 'number' || !Number.isInteger(qty) || qty < 0 || qty > 9999) throw new HttpError(400, 'Stock must be a whole number from 0 to 9999');
   await ctx.env.DB.prepare(
-    `INSERT INTO cales_stock (machine_id, height, qty, updated_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT (machine_id, height) DO UPDATE SET qty = excluded.qty, updated_at = excluded.updated_at`,
+    `INSERT INTO cales_spare (height, qty, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (height) DO UPDATE SET qty = excluded.qty, updated_at = excluded.updated_at`,
   )
-    .bind(machine, h, qty, Date.now())
+    .bind(h, qty, Date.now())
     .run();
   return json({ ok: true });
 }
@@ -191,7 +195,7 @@ export async function handleCalesDecide(ctx: Ctx): Promise<Response> {
     if (!r.meta.changes) throw new HttpError(409, 'This request was already decided');
     return json({ ok: true });
   }
-  const stock = await db.prepare('SELECT qty FROM cales_stock WHERE machine_id = ? AND height = ?').bind(req.machine_id, req.height).first<{ qty: number }>();
+  const stock = await db.prepare('SELECT qty FROM cales_spare WHERE height = ?').bind(req.height).first<{ qty: number }>();
   if (!stock || stock.qty < req.count) throw new HttpError(409, 'Out of stock');
   // One transaction, every step guarded: nothing happens if someone decided first or the pair turned
   // up again in the meantime, and the stock CHECK (qty >= 0) rolls everything back rather than go negative.
@@ -200,7 +204,7 @@ export async function handleCalesDecide(ctx: Ctx): Promise<Response> {
   const m = req.machine_id;
   const h = req.height;
   const res = await db.batch([
-    db.prepare(`UPDATE cales_stock SET qty = qty - ?, updated_at = ? WHERE machine_id = ? AND height = ? AND ${open} AND ${out}`).bind(req.count, now, m, h, req.id, m, h),
+    db.prepare(`UPDATE cales_spare SET qty = qty - ?, updated_at = ? WHERE height = ? AND ${open} AND ${out}`).bind(req.count, now, h, req.id, m, h),
     db
       .prepare(`INSERT INTO cales_events (machine_id, height, kind, count, username, shift_key, at) SELECT ?, ?, 'REPLACED', ?, ?, ?, ? WHERE ${open} AND ${out}`)
       .bind(m, h, req.count, admin, shift.key, now, req.id, m, h),

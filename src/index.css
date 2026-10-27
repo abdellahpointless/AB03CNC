@@ -2489,3 +2489,20 @@ html:not(.light) .badge-positive { color: #1fb257; }
   -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
 }
+
+/* Cales stock: which machines took a size from the general stock, shown while a size is pointed at. */
+.cales-taken-tip {
+  position: fixed !important;
+  z-index: 99980;
+  width: 320px;
+  max-height: 290px;
+  overflow: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  pointer-events: none;
+  background: var(--bg-panel) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(var(--ov), 0.08) !important;
+}

@@ -260,10 +260,18 @@ export interface CaleEvent {
   shift_key: string;
   at: number;
 }
-/** Admin: spare stock, open requests and the state of every box. */
-export const fetchCalesStock = () => api<{ stock: StockRow[]; requests: CaleRequest[]; state: CaleRow[] }>('/machines/cales/stock');
-export const setCalesStock = (machine: string, height: number, qty: number) =>
-  api(`/machines/cales/stock/${encodeURIComponent(machine)}/${height}`, { method: 'PUT', body: { qty } });
+/** Cales a machine took from the general stock (an approved request). */
+export interface CaleTaken {
+  machine_id: string;
+  height: number;
+  count: number;
+  requested_by: string;
+  decided_by: string;
+  at: number;
+}
+/** Admin: the general spare stock per size, open requests, the state of every box, what the machines took. */
+export const fetchCalesStock = () => api<{ stock: StockRow[]; requests: CaleRequest[]; state: CaleRow[]; taken: CaleTaken[] }>('/machines/cales/stock');
+export const setCalesStock = (height: number, qty: number) => api(`/machines/cales/stock/${height}`, { method: 'PUT', body: { qty } });
 export const decideCales = (id: string, decision: 'APPROVE' | 'REJECT') =>
   api(`/machines/cales/requests/${encodeURIComponent(id)}`, { method: 'POST', body: { decision } });
 /** Every cales report from `from` to `to` (ms, end excluded). */

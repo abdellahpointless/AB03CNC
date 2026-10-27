@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
-import { ensureSchema } from '../schema';
+import { MIGRATIONS, ensureSchema } from '../schema';
 import { HttpError } from '../http';
 import type { AuthedUser, Ctx } from '../context';
-import { handleCalesConfirm, handleCalesDecide, handleCalesReport, handleCalesRequest, handleCalesSetOnMachine, handleCalesSetStock } from '../routes/cales';
+import { handleCalesConfirm, handleCalesDecide, handleCalesReport, handleCalesRequest, handleCalesSetOnMachine, handleCalesSetStock, handleCalesStock } from '../routes/cales';
 import { handleCheckAction, handleListMachines, handleReportVise, handleRequired } from '../routes/machines';
 
 // A real (local) D1 database: approvals must be all-or-nothing, so this is tested on SQLite itself.
@@ -35,7 +35,7 @@ const status = (p: Promise<Response>) =>
     (r) => r.status,
     (e) => (e instanceof HttpError ? e.status : Promise.reject(e)),
   );
-const stockOf = async (m: string, h: number) => (await DB.prepare('SELECT qty FROM cales_stock WHERE machine_id = ? AND height = ?').bind(m, h).first<{ qty: number }>())?.qty;
+const stockOf = async (_m: string, h: number) => (await DB.prepare('SELECT qty FROM cales_spare WHERE height = ?').bind(h).first<{ qty: number }>())?.qty; // one stock for all machines
 const stateOf = (m: string, h: number) => DB.prepare('SELECT status, count FROM cales_state WHERE machine_id = ? AND height = ?').bind(m, h).first();
 const openRequest = (m: string, h: number) => DB.prepare("SELECT id FROM cales_requests WHERE machine_id = ? AND height = ? AND status = 'OPEN'").bind(m, h).first<{ id: string }>();
 
@@ -69,7 +69,7 @@ describe('new cales: requests and approval', () => {
   });
 
   it('is blocked when the stock is short, and then changes nothing', async () => {
-    await call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '30' }, { qty: 1 }, 'PUT');
+    await call(handleCalesSetStock, admin, { height: '30' }, { qty: 1 }, 'PUT');
     const req = await openRequest('HAAS-1', 30);
     expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'APPROVE' }))).toBe(409);
     expect(await stockOf('HAAS-1', 30)).toBe(1);
@@ -77,7 +77,7 @@ describe('new cales: requests and approval', () => {
   });
 
   it('takes the cales from stock, puts the pair back and logs it, once', async () => {
-    await call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '30' }, { qty: 5 }, 'PUT');
+    await call(handleCalesSetStock, admin, { height: '30' }, { qty: 5 }, 'PUT');
     const req = await openRequest('HAAS-1', 30);
     expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'APPROVE' }))).toBe(200);
     expect(await stockOf('HAAS-1', 30)).toBe(3);
@@ -89,7 +89,7 @@ describe('new cales: requests and approval', () => {
   });
 
   it('does nothing if the pair turned up again before the approval', async () => {
-    await call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '25' }, { qty: 4 }, 'PUT');
+    await call(handleCalesSetStock, admin, { height: '25' }, { qty: 4 }, 'PUT');
     await call(handleCalesReport, ali, { machine: 'HAAS-1' }, { height: 25, kind: 'MISSING', count: 1 });
     await call(handleCalesRequest, ali, { machine: 'HAAS-1' }, { height: 25 });
     const req = await openRequest('HAAS-1', 25);
@@ -114,8 +114,27 @@ describe('new cales: requests and approval', () => {
   });
 
   it('never lets the stock go below zero', async () => {
-    await expect(DB.prepare("UPDATE cales_stock SET qty = qty - 10 WHERE machine_id = 'HAAS-1' AND height = 25").run()).rejects.toThrow(/CHECK/);
-    expect(await status(call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '25' }, { qty: -1 }, 'PUT'))).toBe(400);
+    await expect(DB.prepare('UPDATE cales_spare SET qty = qty - 10 WHERE height = 25').run()).rejects.toThrow(/CHECK/);
+    expect(await status(call(handleCalesSetStock, admin, { height: '25' }, { qty: -1 }, 'PUT'))).toBe(400);
+  });
+});
+
+describe('the general stock', () => {
+  it('lists what each machine took from it (approved requests, newest first)', async () => {
+    const body = (await (await call(handleCalesStock, admin, {}, undefined, 'GET')).json()) as { taken: { machine_id: string; height: number; count: number; decided_by: string }[] };
+    expect(body.taken.length).toBeGreaterThan(0);
+    expect(body.taken[0]).toMatchObject({ machine_id: 'HAAS-1', height: 30, count: 2, decided_by: 'chef' });
+  });
+
+  it('starts from the old per-machine counts, added up per size', async () => {
+    const v8 = MIGRATIONS.find((m) => m.version === 8)!;
+    await DB.batch([
+      DB.prepare('DELETE FROM cales_spare'),
+      DB.prepare("INSERT OR REPLACE INTO cales_stock (machine_id, height, qty, updated_at) VALUES ('HAAS-1', 33, 3, 1), ('FANUC-1', 33, 4, 2), ('HAAS-2', 15, 1, 3)"),
+      ...v8.statements.map((q) => DB.prepare(q)),
+    ]);
+    const { results } = await DB.prepare('SELECT height, qty FROM cales_spare WHERE height IN (33, 15) ORDER BY height').all();
+    expect(results).toEqual([{ height: 15, qty: 1 }, { height: 33, qty: 7 }]);
   });
 });
 
@@ -184,7 +203,7 @@ describe('what is really on the machine (admin)', () => {
     await call(handleCalesSetOnMachine, admin, { machine: 'FANUC-1', height: '30' }, { present: 0 }, 'PUT');
     expect(await stateOf('FANUC-1', 30)).toEqual({ status: 'MISSING', count: 2 });
     await call(handleCalesRequest, karim, { machine: 'FANUC-1' }, { height: 30 });
-    await call(handleCalesSetStock, admin, { machine: 'FANUC-1', height: '30' }, { qty: 4 }, 'PUT');
+    await call(handleCalesSetStock, admin, { height: '30' }, { qty: 4 }, 'PUT');
     const req = await openRequest('FANUC-1', 30);
     expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'APPROVE' }))).toBe(200);
     expect(await stateOf('FANUC-1', 30)).toBeNull();

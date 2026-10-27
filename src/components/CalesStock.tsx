@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Boxes, CheckCircle2, Download, FileText, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Boxes, CheckCircle2, Download, FileSpreadsheet, FileText, History, X } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { CALE_HEIGHTS, MIN_SPARE, lowStock, orderRows } from '../lib/cales';
-import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet } from '../lib/fleet';
+import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet, type CaleTaken } from '../lib/fleet';
 import { currentRegion } from '../lib/instance';
 import { dayStart, periodStart } from '../lib/shifts';
 import { errorMessage } from '../lib/api';
-import { fmtDate } from '../i18n/format';
+import { fmtDate, fmtDateTime } from '../i18n/format';
 import { useT } from '../i18n';
 
 /*
@@ -54,12 +55,17 @@ export default function CalesStock() {
     }
   };
 
-  const qty = (m: string, h: number) => data?.stock.find((s) => s.machine_id === m && s.height === h)?.qty ?? 0;
+  const qty = (h: number) => data?.stock.find((s) => s.height === h)?.qty ?? 0;
   const stateOf = (m: string, h: number) => data?.state.find((s) => s.machine_id === m && s.height === h);
   const nameOf = (id: string) => fleet.find((m) => m.id === id)?.name ?? id;
-  // What to order: every machine and size whose security stock is under MIN_SPARE single cales.
-  const low = useMemo(() => (data ? lowStock(fleet.map((m) => m.id), data.stock) : []), [data, fleet]);
-  const bySize = CALE_HEIGHTS.map((h) => ({ h, need: low.filter((r) => r.height === h).reduce((n, r) => n + r.need, 0) })).filter((r) => r.need);
+  // What to order: every size whose general stock is under MIN_SPARE single cales.
+  const low = useMemo(() => (data ? lowStock(data.stock) : []), [data]);
+  // The size whose "taken" history is shown (pointed at, or focused), and where.
+  const [history, setHistory] = useState<{ h: number; x: number; y: number } | null>(null);
+  const showHistory = (h: number, el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    setHistory({ h, x: Math.min(r.right + 10, window.innerWidth - 330), y: Math.min(r.top, window.innerHeight - 300) });
+  };
 
   /** The order as a clean page in a new window, and the print dialog: "Save as PDF" makes the file. */
   const exportPdf = () => {
@@ -72,11 +78,9 @@ export default function CalesStock() {
 <style>body{font:13px/1.45 system-ui,sans-serif;color:#111;margin:32px}h1{font-size:20px;margin:0}p{color:#444;margin:4px 0 18px}h2{font-size:15px;margin:22px 0 8px}
 table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px 9px;text-align:left}th{background:#eee}td.n{text-align:right}tfoot td{font-weight:700}</style></head><body>
 <h1>${esc(t('stock.pdfTitle'))}</h1><p>${esc(`${currentRegion().name} · ${fmtDate(Date.now())} · ${t('stock.toOrderHelp', { min: MIN_SPARE })}`)}</p>
-<h2>${esc(t('stock.bySize'))}</h2><table><thead><tr><th>${esc(t('stock.size'))}</th><th>${esc(t('stock.toOrderCol'))}</th></tr></thead><tbody>
-${bySize.map((r) => `<tr>${cell(`${r.h} mm`)}${cell(r.need, true)}</tr>`).join('')}</tbody>
-<tfoot><tr>${cell(t('stock.total'))}${cell(bySize.reduce((n, r) => n + r.need, 0), true)}</tr></tfoot></table>
-<h2>${esc(t('stock.byMachine'))}</h2><table><thead><tr><th>${esc(t('stock.machine'))}</th><th>${esc(t('stock.size'))}</th><th>${esc(t('stock.inStock'))}</th><th>${esc(t('stock.toOrderCol'))}</th></tr></thead><tbody>
-${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.need, true)}</tr>`).join('')}</tbody></table></body></html>`);
+<table><thead><tr><th>${esc(t('stock.size'))}</th><th>${esc(t('stock.inStock'))}</th><th>${esc(t('stock.toOrderCol'))}</th></tr></thead><tbody>
+${low.map((r) => `<tr>${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.need, true)}</tr>`).join('')}</tbody>
+<tfoot><tr>${cell(t('stock.total'))}${cell('')}${cell(low.reduce((n, r) => n + r.need, 0), true)}</tr></tfoot></table></body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -166,37 +170,24 @@ ${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${ce
             {low.length === 0 ? (
               <p className="text-xs text-[var(--text-secondary)]">{t('stock.nothingToOrder', { min: MIN_SPARE })}</p>
             ) : (
-              <>
-                <div className="flex flex-wrap gap-1.5" aria-label={t('stock.bySize')}>
-                  {bySize.map((r) => (
-                    <span key={r.h} className="badge-warning">
-                      {r.h} mm · {t('stock.nCales', { count: r.need })}
-                    </span>
+              <table className="w-full max-w-xl border-collapse text-xs">
+                <thead>
+                  <tr className="text-left">
+                    <th scope="col" className="p-2 section-label">{t('stock.size')}</th>
+                    <th scope="col" className="p-2 section-label text-right">{t('stock.inStock')}</th>
+                    <th scope="col" className="p-2 section-label text-right">{t('stock.toOrderCol')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {low.map((r) => (
+                    <tr key={r.height} className="border-t border-[var(--border-subtle)]">
+                      <th scope="row" className="p-2 text-left font-semibold text-[var(--text-primary)]">{r.height} mm</th>
+                      <td className="p-2 text-right text-[var(--text-secondary)]">{r.stock}</td>
+                      <td className="p-2 text-right font-bold text-[var(--orange-text)]">{r.need}</td>
+                    </tr>
                   ))}
-                </div>
-                <div className="overflow-x-auto max-h-80" tabIndex={0} role="region" aria-label={t('stock.byMachine')}>
-                  <table className="w-full border-collapse text-xs">
-                    <thead>
-                      <tr className="text-left">
-                        <th scope="col" className="p-2 section-label">{t('stock.machine')}</th>
-                        <th scope="col" className="p-2 section-label">{t('stock.size')}</th>
-                        <th scope="col" className="p-2 section-label text-right">{t('stock.inStock')}</th>
-                        <th scope="col" className="p-2 section-label text-right">{t('stock.toOrderCol')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {low.map((r) => (
-                        <tr key={`${r.machine_id}|${r.height}`} className="border-t border-[var(--border-subtle)]">
-                          <th scope="row" className="p-2 text-left font-semibold text-[var(--text-primary)]">{nameOf(r.machine_id)}</th>
-                          <td className="p-2 text-[var(--text-primary)]">{r.height} mm</td>
-                          <td className="p-2 text-right text-[var(--text-secondary)]">{r.stock}</td>
-                          <td className="p-2 text-right font-bold text-[var(--orange-text)]">{r.need}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                </tbody>
+              </table>
             )}
           </section>
 
@@ -207,7 +198,7 @@ ${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${ce
             ) : (
               data.requests.map((r) => {
                 const back = !stateOf(r.machine_id, r.height); // the pair turned up again since
-                const short = qty(r.machine_id, r.height) < r.count;
+                const short = qty(r.height) < r.count;
                 const s = r.kind === 'MISSING' ? 'missing' : 'damaged';
                 return (
                   <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] text-xs">
@@ -258,30 +249,30 @@ ${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${ce
               ))}
             </div>
             <p className="text-xs text-[var(--text-tertiary)]">{t(view === 'machine' ? 'stock.onMachineHelp' : 'stock.gridHelp')}</p>
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t(view === 'machine' ? 'stock.onMachine' : 'stock.securityStock')}>
-              <table className="border-collapse text-xs">
-                <thead>
-                  <tr>
-                    <th scope="col" className="p-2 section-label text-left">
-                      {t('stock.machine')}
-                    </th>
-                    {CALE_HEIGHTS.map((h) => (
-                      <th key={h} scope="col" className="p-1 section-label text-center">
-                        {h}
+            {view === 'machine' ? (
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t('stock.onMachine')}>
+                <table className="border-collapse text-xs">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="p-2 section-label text-left">
+                        {t('stock.machine')}
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {fleet.map((m) => (
-                    <tr key={m.id} className="border-t border-[var(--border-subtle)]">
-                      <th scope="row" className="p-2 pr-3 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap">
-                        {m.name}
-                      </th>
-                      {CALE_HEIGHTS.map((h) => {
-                        const st = stateOf(m.id, h);
-                        const s = st ? (st.status === 'MISSING' ? 'missing' : 'damaged') : null;
-                        if (view === 'machine') {
+                      {CALE_HEIGHTS.map((h) => (
+                        <th key={h} scope="col" className="p-1 section-label text-center">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fleet.map((m) => (
+                      <tr key={m.id} className="border-t border-[var(--border-subtle)]">
+                        <th scope="row" className="p-2 pr-3 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                          {m.name}
+                        </th>
+                        {CALE_HEIGHTS.map((h) => {
+                          const st = stateOf(m.id, h);
+                          const s = st ? (st.status === 'MISSING' ? 'missing' : 'damaged') : null;
                           // Single cales really in the box: a missing pair shows 0, one missing shows 1.
                           const present = st?.status === 'MISSING' ? 2 - st.count : 2;
                           return (
@@ -301,10 +292,49 @@ ${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${ce
                               </select>
                             </td>
                           );
-                        }
-                        const q = qty(m.id, h);
-                        return (
-                          <td key={h} className="p-1 text-center">
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs py-2 px-3.5"
+                  disabled={!!busy || !data.taken.length}
+                  onClick={() => run('taken', async () => (await import('../lib/calesExport')).exportCalesTaken(data.taken, fleet))}
+                >
+                  <FileSpreadsheet size={14} className="text-[var(--green-500)]" />
+                  <span>{t('stock.takenExport')}</span>
+                </button>
+                <table className="w-full max-w-xl border-collapse text-xs">
+                  <thead>
+                    <tr className="text-left">
+                      <th scope="col" className="p-2 section-label">{t('stock.size')}</th>
+                      <th scope="col" className="p-2 section-label">{t('stock.inStock')}</th>
+                      <th scope="col" className="p-2 section-label">{t('stock.lastTaken')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CALE_HEIGHTS.map((h) => {
+                      const q = qty(h);
+                      const last = data.taken.find((r) => r.height === h);
+                      return (
+                        // Pointing at (or focusing) a size shows when, and which machines, took from it.
+                        <tr
+                          key={h}
+                          className={`border-t border-[var(--border-subtle)] ${history?.h === h ? 'bg-[rgba(var(--ov),0.05)]' : ''}`}
+                          onMouseEnter={(e) => showHistory(h, e.currentTarget)}
+                          onMouseLeave={() => setHistory(null)}
+                          onFocus={(e) => showHistory(h, e.currentTarget)}
+                          onBlur={() => setHistory(null)}
+                        >
+                          <th scope="row" className="p-2 text-left font-semibold text-[var(--text-primary)] whitespace-nowrap">
+                            {h} mm
+                          </th>
+                          <td className="p-1">
                             <input
                               key={q} // a value saved on the server resets the field
                               type="number"
@@ -313,26 +343,59 @@ ${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${ce
                               step={1}
                               inputMode="numeric"
                               defaultValue={q}
-                              aria-label={`${t('stock.cell', { machine: m.name, h })}${s ? `, ${t(`cales.state.${s}`)}` : ''}`}
-                              className={`aurora-input stock-cell ${s ? `s-${s}` : ''}`}
-                              disabled={busy === `qty:${m.id}:${h}`}
+                              aria-label={t('stock.cell', { h })}
+                              aria-describedby={history?.h === h ? 'cales-taken-tip' : undefined}
+                              className={`aurora-input stock-cell ${q < MIN_SPARE ? 's-damaged' : ''}`}
+                              disabled={busy === `qty:${h}`}
                               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                               onBlur={(e) => {
                                 const el = e.currentTarget;
                                 if (el.value === '') el.value = String(q);
-                                else if (Number(el.value) !== q) void run(`qty:${m.id}:${h}`, () => setCalesStock(m.id, h, Number(el.value)));
+                                else if (Number(el.value) !== q) void run(`qty:${h}`, () => setCalesStock(h, Number(el.value)));
                               }}
                             />
                           </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <td className="p-2 text-[var(--text-secondary)]">
+                            {last ? t('stock.lastTakenBy', { machine: nameOf(last.machine_id), count: last.count, time: timeAgo(last.at) }) : '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
           </section>
         </div>
+      )}
+      {history && data && createPortal(<TakenTip h={history.h} x={history.x} y={history.y} taken={data.taken} nameOf={nameOf} />, document.getElementById('main-content') ?? document.body)}
+    </div>
+  );
+}
+
+/** When, and which machines, took cales of one size from the general stock (newest first). */
+function TakenTip({ h, x, y, taken, nameOf }: { h: number; x: number; y: number; taken: CaleTaken[]; nameOf: (id: string) => string }) {
+  const { t } = useT('preventive');
+  const rows = taken.filter((r) => r.height === h);
+  return (
+    <div id="cales-taken-tip" role="tooltip" className="cales-taken-tip glass-modal" style={{ left: x, top: y }}>
+      <div className="flex items-center gap-1.5 font-bold text-[var(--text-primary)]">
+        <History size={13} /> {t('stock.takenTitle', { h })}
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-[var(--text-secondary)]">{t('stock.takenNone')}</p>
+      ) : (
+        <ul className="space-y-1">
+          {rows.slice(0, 8).map((r, i) => (
+            <li key={i} className="flex justify-between gap-3">
+              <span className="text-[var(--text-secondary)]">{fmtDateTime(r.at)}</span>
+              <span className="text-[var(--text-primary)] font-semibold">
+                {nameOf(r.machine_id)} · {t('stock.nCales', { count: r.count })}
+              </span>
+            </li>
+          ))}
+          {rows.length > 8 && <li className="text-[var(--text-secondary)]">{t('stock.takenMore', { count: rows.length - 8 })}</li>}
+        </ul>
       )}
     </div>
   );

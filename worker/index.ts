@@ -172,7 +172,7 @@ route('GET', '/machines/required', 'user', handleRequired);
 route('GET', '/machines/report', 'admin', handleMachinesReport);
 route('GET', '/machines/cales/stock', 'admin', handleCalesStock);
 route('GET', '/machines/cales/log', 'admin', handleCalesLog);
-route('PUT', '/machines/cales/stock/:machine/:height', 'admin', handleCalesSetStock);
+route('PUT', '/machines/cales/stock/:height', 'admin', handleCalesSetStock);
 route('PUT', '/machines/cales/onmachine/:machine/:height', 'admin', handleCalesSetOnMachine);
 route('POST', '/machines/cales/requests/:id', 'admin', handleCalesDecide);
 route('POST', '/machines/:machine/cales/report', 'user', handleCalesReport);

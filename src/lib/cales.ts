@@ -53,31 +53,30 @@ export function calesSummary(state: CalesState) {
 }
 
 export interface StockRow {
-  machine_id: string;
   height: number;
-  /** Spare single cales on hand. */
+  /** Spare single cales of this size on hand, shared by every machine. */
   qty: number;
 }
 
-/** A machine's security stock under this many single cales of a size goes on the order. */
+/** The general stock under this many single cales of a size goes on the order. */
 export const MIN_SPARE = 4;
 
-/** Every machine and size with fewer than MIN_SPARE spare cales, and how many bring it back to MIN_SPARE. */
-export function lowStock(machineIds: string[], stock: StockRow[]) {
-  const spare = new Map(stock.map((s) => [`${s.machine_id}|${s.height}`, s.qty]));
-  return machineIds
-    .flatMap((m) => CALE_HEIGHTS.map((h) => ({ machine_id: m, height: h as number, stock: spare.get(`${m}|${h}`) ?? 0 })))
+/** Every size with fewer than MIN_SPARE spare cales, and how many bring it back to MIN_SPARE. */
+export function lowStock(stock: StockRow[]) {
+  const spare = new Map(stock.map((s) => [s.height, s.qty]));
+  return CALE_HEIGHTS.map((h) => ({ height: h as number, stock: spare.get(h) ?? 0 }))
     .filter((r) => r.stock < MIN_SPARE)
     .map((r) => ({ ...r, need: MIN_SPARE - r.stock }));
 }
 
-/** What to order, in single cales: every pair still missing or damaged, less the spare stock. */
+/** What to order per size, in single cales: every pair still missing or damaged on any machine, less the general stock. */
 export function orderRows(state: CaleRow[], stock: StockRow[]) {
-  const spare = new Map(stock.map((s) => [`${s.machine_id}|${s.height}`, s.qty]));
-  return state.map((r) => {
-    const qty = spare.get(`${r.machine_id}|${r.height}`) ?? 0;
-    const missing = r.status === 'MISSING' ? r.count : 0;
-    const damaged = r.status === 'DAMAGED' ? r.count : 0;
-    return { machine_id: r.machine_id, height: r.height, missing, damaged, stock: qty, toOrder: Math.max(0, missing + damaged - qty) };
-  });
+  const spare = new Map(stock.map((s) => [s.height, s.qty]));
+  return CALE_HEIGHTS.map((h) => {
+    const rows = state.filter((r) => r.height === h);
+    const missing = rows.reduce((n, r) => n + (r.status === 'MISSING' ? r.count : 0), 0);
+    const damaged = rows.reduce((n, r) => n + (r.status === 'DAMAGED' ? r.count : 0), 0);
+    const qty = spare.get(h) ?? 0;
+    return { height: h as number, missing, damaged, stock: qty, toOrder: Math.max(0, missing + damaged - qty) };
+  }).filter((r) => r.missing || r.damaged);
 }

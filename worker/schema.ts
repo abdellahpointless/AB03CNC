@@ -7,7 +7,7 @@ import type { RegionId } from '../src/regions';
  *
  * Never edit a migration that has shipped - append a new one instead.
  */
-const MIGRATIONS: { version: number; statements: string[] }[] = [
+export const MIGRATIONS: { version: number; statements: string[] }[] = [
   {
     version: 1,
     statements: [
@@ -316,6 +316,19 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `DROP TABLE machine_checks`,
       `ALTER TABLE machine_checks_v7 RENAME TO machine_checks`,
       `CREATE INDEX IF NOT EXISTS machine_checks_machine ON machine_checks(machine_id, sort)`,
+    ],
+  },
+  {
+    // One general security stock per cale size, shared by every machine (no longer one per machine).
+    // It starts with today's per-machine counts added up per size; cales_stock is left as it was.
+    version: 8,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS cales_spare (
+        height INTEGER PRIMARY KEY,
+        qty INTEGER NOT NULL DEFAULT 0 CHECK (qty >= 0),
+        updated_at INTEGER NOT NULL
+      )`,
+      `INSERT OR IGNORE INTO cales_spare (height, qty, updated_at) SELECT height, SUM(qty), MAX(updated_at) FROM cales_stock GROUP BY height`,
     ],
   },
 ];

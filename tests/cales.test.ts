@@ -22,35 +22,34 @@ describe('cales box', () => {
     expect(calesSummary(state)).toEqual({ missing: [41, 8], damaged: [30], missingCales: 3, damagedCales: 2 });
   });
 
-  it('orders what is missing or damaged and not covered by the spare stock (single cales)', () => {
+  it('orders, per size, what is missing or damaged on any machine and not covered by the general stock', () => {
     const rows = orderRows(
       [
         { machine_id: 'HAAS-1', height: 30, status: 'MISSING', count: 2 },
+        { machine_id: 'FANUC-1', height: 30, status: 'DAMAGED', count: 1 },
         { machine_id: 'HAAS-1', height: 43, status: 'DAMAGED', count: 1 },
         { machine_id: 'FANUC-1', height: 8, status: 'MISSING', count: 2 },
       ],
       [
-        { machine_id: 'HAAS-1', height: 30, qty: 1 },
-        { machine_id: 'HAAS-1', height: 43, qty: 5 },
-        { machine_id: 'FANUC-1', height: 30, qty: 9 }, // another machine's stock does not count
+        { height: 30, qty: 1 },
+        { height: 43, qty: 5 },
       ],
     );
     expect(rows).toEqual([
-      { machine_id: 'HAAS-1', height: 30, missing: 2, damaged: 0, stock: 1, toOrder: 1 },
-      { machine_id: 'HAAS-1', height: 43, missing: 0, damaged: 1, stock: 5, toOrder: 0 },
-      { machine_id: 'FANUC-1', height: 8, missing: 2, damaged: 0, stock: 0, toOrder: 2 },
+      { height: 43, missing: 0, damaged: 1, stock: 5, toOrder: 0 },
+      { height: 30, missing: 2, damaged: 1, stock: 1, toOrder: 2 },
+      { height: 8, missing: 2, damaged: 0, stock: 0, toOrder: 2 },
     ]);
   });
 });
 
 describe('cales to order', () => {
-  it('lists every machine and size under 4 spare cales, with what brings it back to 4', () => {
-    const stock = CALE_HEIGHTS.map((h) => ({ machine_id: 'HAAS-1', height: h, qty: 4 }));
-    stock[0] = { machine_id: 'HAAS-1', height: 43, qty: 1 };
-    stock[13] = { machine_id: 'HAAS-1', height: 8, qty: 9 };
-    const rows = lowStock(['HAAS-1'], stock);
-    expect(rows).toEqual([{ machine_id: 'HAAS-1', height: 43, stock: 1, need: 3 }]);
-    // a machine with no stock counted yet needs 4 of every size
-    expect(lowStock(['FANUC-1'], stock).map((r) => r.need)).toEqual(CALE_HEIGHTS.map(() => 4));
+  it('lists every size under 4 in the general stock, with what brings it back to 4', () => {
+    const stock = CALE_HEIGHTS.map((h) => ({ height: h as number, qty: 4 }));
+    stock[0] = { height: 43, qty: 1 };
+    stock[13] = { height: 8, qty: 9 };
+    expect(lowStock(stock)).toEqual([{ height: 43, stock: 1, need: 3 }]);
+    // nothing counted yet: 4 of every size
+    expect(lowStock([]).map((r) => r.need)).toEqual(CALE_HEIGHTS.map(() => 4));
   });
 });
