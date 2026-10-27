@@ -27,7 +27,7 @@ import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
 import { fetchCalesStock, fetchRequired, type RequiredItem } from './lib/fleet';
-import { Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
+import { Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Boxes, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
 import { ring, unlockSound } from './lib/alarm';
 import { fmtTime } from './i18n/format';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,7 +37,7 @@ import { useT } from './i18n';
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS';
+type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS' | 'PREVENTIVE_CALES';
 const TAB_NAME = {
   DATABASE: 'tabs.toolInventory',
   REMAP: 'tabs.remapper',
@@ -47,6 +47,7 @@ const TAB_NAME = {
   PART_REVIEW: 'tabs.partReview',
   PREVENTIVE: 'tabs.preventive',
   PREVENTIVE_REPORTS: 'tabs.preventiveReports',
+  PREVENTIVE_CALES: 'tabs.preventiveCales',
 } as const;
 
 const DEFAULT_PROGRAM = '%\nO1000\nN14 T2 M6\nN15 (ST_10.00_050_G45_ALHS)\nN16 (DIAMETER 10.00 MM / LENGTH 50.00 MM)\nN20 G90 G54 G0 X0. Y0.\nN21 T3 M6\nN22 (MK_40.00_040_000_ALHS)\nN23 G0 Z50.\nN24 T5 M6\nN25 (SF_12.00_075_000_ALHS)\nN30 M30\n%';
@@ -193,10 +194,10 @@ function Workspace() {
 
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
-    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS'))) {
+    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
       setActiveTab('REMAP');
     }
-  }, [features, activeTab]);
+  }, [features, activeTab, calesOn]);
   // History (admins) opens from a button inside the Tool Remapper, in place of the remapper.
   const [remapView, setRemapView] = useState<'main' | 'history' | 'back'>('main');
   const openTab = (tab: Tab) => {
@@ -215,7 +216,7 @@ function Workspace() {
   const partMenu = useTabMenu(canReview);
   const canReports = features.preventive && user.role === 'ADMIN';
   const prevMenu = useTabMenu(canReports);
-  const prevTabActive = activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS';
+  const prevTabActive = activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS' || activeTab === 'PREVENTIVE_CALES';
   const partTabActive = activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW';
   useEffect(() => {
     document.querySelector('nav.app-tabs [aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -588,11 +589,17 @@ function Workspace() {
             >
               <Activity size={15} />
               <span>{t('tabs.preventive')}</span>
-              {activeTab === 'PREVENTIVE_REPORTS' && (
+              {(activeTab === 'PREVENTIVE_REPORTS' || activeTab === 'PREVENTIVE_CALES') && (
                 <>
                   <ChevronRight size={12} className="-mx-1 opacity-60" />
-                  <span>{t('tabs.preventiveReports')}</span>
+                  <span>{t(TAB_NAME[activeTab])}</span>
                 </>
+              )}
+              {calesAsks > 0 && (
+                <span className="badge-danger py-0 px-1.5 text-xs">
+                  {calesAsks}
+                  <span className="sr-only"> {t('adminNav.calesRequests', { count: calesAsks })}</span>
+                </span>
               )}
               {canReports && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${prevMenu.open ? 'rotate-180' : ''}`} />}
               {prevTabActive && (
@@ -617,12 +624,6 @@ function Workspace() {
             >
               <Shield size={15} />
               <span>{t('tabs.admin')}</span>
-              {calesAsks > 0 && (
-                <span className="badge-danger py-0 px-1.5 text-xs">
-                  {calesAsks}
-                  <span className="sr-only"> {t('adminNav.calesRequests', { count: calesAsks })}</span>
-                </span>
-              )}
               {activeTab === 'ADMIN' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
@@ -692,6 +693,20 @@ function Workspace() {
                   openTab('PREVENTIVE_REPORTS');
                 },
               },
+              ...(calesOn
+                ? [
+                    {
+                      id: 'cales',
+                      label: calesAsks ? `${t('tabs.preventiveCales')} (${calesAsks})` : t('tabs.preventiveCales'),
+                      icon: <Boxes size={14} />,
+                      active: activeTab === 'PREVENTIVE_CALES',
+                      onSelect: () => {
+                        prevMenu.setOpen(false);
+                        openTab('PREVENTIVE_CALES');
+                      },
+                    },
+                  ]
+                : []),
             ]}
           />
         )}
@@ -775,7 +790,6 @@ function Workspace() {
                       ['admin-analytics', t('adminNav.analytics')],
                       ['admin-users', t('adminNav.users')],
                       ['admin-machines', t('adminNav.machines')],
-                      ...(calesOn ? [['admin-cales', calesAsks ? `${t('adminNav.cales')} (${calesAsks})` : t('adminNav.cales')]] : []),
                       ...(currentRegion().id === 'ma' ? [['admin-master', t('adminNav.master')]] : []),
                       ['admin-data', t('adminNav.data')],
                     ] as [string, string][]
@@ -800,11 +814,6 @@ function Workspace() {
                 <div id="admin-machines" className="w-full scroll-mt-20">
                   <MachineManager />
                 </div>
-                {calesOn && (
-                  <div id="admin-cales" className="w-full scroll-mt-20">
-                    <CalesStock />
-                  </div>
-                )}
                 {currentRegion().id === 'ma' && (
                   <div id="admin-master" className="w-full scroll-mt-20">
                     <MasterAccountCard />
@@ -822,6 +831,11 @@ function Workspace() {
               <PreventiveActions />
             )}
             {activeTab === 'PREVENTIVE_REPORTS' && features.preventive && user.role === 'ADMIN' && <PreventiveReports />}
+            {activeTab === 'PREVENTIVE_CALES' && calesOn && (
+              <div className="max-w-6xl mx-auto w-full pb-16">
+                <CalesStock />
+              </div>
+            )}
             {activeTab === 'PART_REVIEW' && features.partTracking && user.role === 'ADMIN' && (
               <PartReview />
             )}

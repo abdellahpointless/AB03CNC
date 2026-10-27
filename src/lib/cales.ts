@@ -59,6 +59,18 @@ export interface StockRow {
   qty: number;
 }
 
+/** A machine's security stock under this many single cales of a size goes on the order. */
+export const MIN_SPARE = 4;
+
+/** Every machine and size with fewer than MIN_SPARE spare cales, and how many bring it back to MIN_SPARE. */
+export function lowStock(machineIds: string[], stock: StockRow[]) {
+  const spare = new Map(stock.map((s) => [`${s.machine_id}|${s.height}`, s.qty]));
+  return machineIds
+    .flatMap((m) => CALE_HEIGHTS.map((h) => ({ machine_id: m, height: h as number, stock: spare.get(`${m}|${h}`) ?? 0 })))
+    .filter((r) => r.stock < MIN_SPARE)
+    .map((r) => ({ ...r, need: MIN_SPARE - r.stock }));
+}
+
 /** What to order, in single cales: every pair still missing or damaged, less the spare stock. */
 export function orderRows(state: CaleRow[], stock: StockRow[]) {
   const spare = new Map(stock.map((s) => [`${s.machine_id}|${s.height}`, s.qty]));

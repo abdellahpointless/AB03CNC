@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Boxes, CheckCircle2, Download, X } from 'lucide-react';
+import { Boxes, CheckCircle2, Download, FileText, X } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
-import { CALE_HEIGHTS, orderRows } from '../lib/cales';
+import { CALE_HEIGHTS, MIN_SPARE, lowStock, orderRows } from '../lib/cales';
 import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet } from '../lib/fleet';
 import { currentRegion } from '../lib/instance';
 import { dayStart, periodStart } from '../lib/shifts';
 import { errorMessage } from '../lib/api';
+import { fmtDate } from '../i18n/format';
 import { useT } from '../i18n';
 
 /*
@@ -56,6 +57,30 @@ export default function CalesStock() {
   const qty = (m: string, h: number) => data?.stock.find((s) => s.machine_id === m && s.height === h)?.qty ?? 0;
   const stateOf = (m: string, h: number) => data?.state.find((s) => s.machine_id === m && s.height === h);
   const nameOf = (id: string) => fleet.find((m) => m.id === id)?.name ?? id;
+  // What to order: every machine and size whose security stock is under MIN_SPARE single cales.
+  const low = useMemo(() => (data ? lowStock(fleet.map((m) => m.id), data.stock) : []), [data, fleet]);
+  const bySize = CALE_HEIGHTS.map((h) => ({ h, need: low.filter((r) => r.height === h).reduce((n, r) => n + r.need, 0) })).filter((r) => r.need);
+
+  /** The order as a clean page in a new window, and the print dialog: "Save as PDF" makes the file. */
+  const exportPdf = () => {
+    const w = window.open('', '_blank');
+    if (!w) return setError(t('stock.popupBlocked'));
+    const esc = (v: string | number) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+    const day = new Date().toISOString().slice(0, 10);
+    const cell = (v: string | number, right = false) => `<td${right ? ' class="n"' : ''}>${esc(v)}</td>`;
+    w.document.write(`<!doctype html><html lang="${document.documentElement.lang}"><head><meta charset="utf-8"><title>${esc(`${t('stock.pdfFile')}-${day}`)}</title>
+<style>body{font:13px/1.45 system-ui,sans-serif;color:#111;margin:32px}h1{font-size:20px;margin:0}p{color:#444;margin:4px 0 18px}h2{font-size:15px;margin:22px 0 8px}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px 9px;text-align:left}th{background:#eee}td.n{text-align:right}tfoot td{font-weight:700}</style></head><body>
+<h1>${esc(t('stock.pdfTitle'))}</h1><p>${esc(`${currentRegion().name} · ${fmtDate(Date.now())} · ${t('stock.toOrderHelp', { min: MIN_SPARE })}`)}</p>
+<h2>${esc(t('stock.bySize'))}</h2><table><thead><tr><th>${esc(t('stock.size'))}</th><th>${esc(t('stock.toOrderCol'))}</th></tr></thead><tbody>
+${bySize.map((r) => `<tr>${cell(`${r.h} mm`)}${cell(r.need, true)}</tr>`).join('')}</tbody>
+<tfoot><tr>${cell(t('stock.total'))}${cell(bySize.reduce((n, r) => n + r.need, 0), true)}</tr></tfoot></table>
+<h2>${esc(t('stock.byMachine'))}</h2><table><thead><tr><th>${esc(t('stock.machine'))}</th><th>${esc(t('stock.size'))}</th><th>${esc(t('stock.inStock'))}</th><th>${esc(t('stock.toOrderCol'))}</th></tr></thead><tbody>
+${low.map((r) => `<tr>${cell(nameOf(r.machine_id))}${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.need, true)}</tr>`).join('')}</tbody></table></body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
 
   const exportOrder = (d: Data) =>
     run('export', async () => {
@@ -79,7 +104,7 @@ export default function CalesStock() {
             <Boxes size={20} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-[var(--text-primary)]">{t('stock.title')}</h3>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">{t('stock.title')}</h2>
             <p className="text-xs text-[var(--text-secondary)]">{t('stock.subtitle')}</p>
           </div>
         </div>
@@ -125,8 +150,58 @@ export default function CalesStock() {
         <div className="p-8 text-center text-xs text-[var(--text-tertiary)]">{t('stock.loading')}</div>
       ) : (
         <div className="p-5 space-y-6">
+          <section className="space-y-2" aria-labelledby="cales-to-order">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 id="cales-to-order" className="section-label">
+                  {t('stock.toOrder')}
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">{t('stock.toOrderHelp', { min: MIN_SPARE })}</p>
+              </div>
+              <button type="button" className="btn-primary text-xs py-2 px-4" disabled={!low.length} onClick={exportPdf}>
+                <FileText size={14} />
+                <span>{t('stock.pdf')}</span>
+              </button>
+            </div>
+            {low.length === 0 ? (
+              <p className="text-xs text-[var(--text-secondary)]">{t('stock.nothingToOrder', { min: MIN_SPARE })}</p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-1.5" aria-label={t('stock.bySize')}>
+                  {bySize.map((r) => (
+                    <span key={r.h} className="badge-warning">
+                      {r.h} mm · {t('stock.nCales', { count: r.need })}
+                    </span>
+                  ))}
+                </div>
+                <div className="overflow-x-auto max-h-80" tabIndex={0} role="region" aria-label={t('stock.byMachine')}>
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="text-left">
+                        <th scope="col" className="p-2 section-label">{t('stock.machine')}</th>
+                        <th scope="col" className="p-2 section-label">{t('stock.size')}</th>
+                        <th scope="col" className="p-2 section-label text-right">{t('stock.inStock')}</th>
+                        <th scope="col" className="p-2 section-label text-right">{t('stock.toOrderCol')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {low.map((r) => (
+                        <tr key={`${r.machine_id}|${r.height}`} className="border-t border-[var(--border-subtle)]">
+                          <th scope="row" className="p-2 text-left font-semibold text-[var(--text-primary)]">{nameOf(r.machine_id)}</th>
+                          <td className="p-2 text-[var(--text-primary)]">{r.height} mm</td>
+                          <td className="p-2 text-right text-[var(--text-secondary)]">{r.stock}</td>
+                          <td className="p-2 text-right font-bold text-[var(--orange-text)]">{r.need}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+
           <section className="space-y-2">
-            <h4 className="section-label">{t('stock.requests')}</h4>
+            <h3 className="section-label">{t('stock.requests')}</h3>
             {data.requests.length === 0 ? (
               <p className="text-xs text-[var(--text-tertiary)]">{t('stock.noRequests')}</p>
             ) : (
