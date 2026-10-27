@@ -289,13 +289,7 @@ export default function PreventiveActions() {
 // Machine card on the floor
 // ---------------------------------------------------------------------------------------------
 
-/** Closed (a sliver at the card's edge), funnel, open: the clip-path frames of the tiles' "genie". */
-const GENIE: Record<'left' | 'right', string[]> = {
-  right: ['polygon(0% 46%, 0% 46%, 0% 54%, 0% 54%)', 'polygon(0% 34%, 70% 4%, 70% 96%, 0% 66%)', 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'],
-  left: ['polygon(100% 46%, 100% 46%, 100% 54%, 100% 54%)', 'polygon(30% 4%, 100% 34%, 100% 66%, 30% 96%)', 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'],
-};
-
-const CAN_HOVER =typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+const CAN_HOVER = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 
 function MachineCard({
   index,
@@ -370,7 +364,7 @@ function MachineCard({
   return (
     <motion.div
       {...waveItem(index)}
-      className={`relative machine-slot ${sideShown ? 'is-active' : ''}`}
+      className={`relative machine-slot ${sideShown ? `is-active side-${left ? 'left' : 'right'}` : ''}`}
       // A tap on a phone also sends a mouse "enter": only devices that can point open the pop-up.
       onMouseEnter={CAN_HOVER ? enter : undefined}
       onMouseLeave={() => onHover(null)}
@@ -378,6 +372,8 @@ function MachineCard({
       onFocus={(e) => e.currentTarget.contains(e.target) && e.target.matches(':focus-visible') && enter()}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHover(null)}
     >
+      {/* The card and, when pointed at, the vise / cales panel joined to its border: they lift together. */}
+      <motion.div className="relative" animate={CAN_HOVER && sideShown ? { y: -10, scale: 1.035 } : { y: 0, scale: 1 }} transition={SPRING_POP}>
       <motion.div
         ref={ref}
         role="button"
@@ -387,7 +383,6 @@ function MachineCard({
         data-locked={locked ? 'true' : undefined}
         className="machine-card"
         style={{ '--accent': machine.accent } as React.CSSProperties}
-        whileHover={{ y: -10, scale: 1.035 }}
         whileTap={{ scale: 0.985 }}
         transition={SPRING_POP}
         onClick={onOpen}
@@ -437,24 +432,27 @@ function MachineCard({
         )}
       </motion.div>
 
-      {/* Phones and tablets cannot point: the vise and the cales sit under the machine instead. */}
-      {!CAN_HOVER && !loading && <div className="machine-side-row">{side}</div>}
       <AnimatePresence>
         {CAN_HOVER && sideShown && (
           <motion.div
             key="side"
-            // Flows out of the machine's edge like a macOS window from the Dock (genie): a thin
-            // funnel at the card that widens into the tiles, and back in when it closes.
-            initial={{ clipPath: GENIE[left ? 'left' : 'right'][0], x: left ? 24 : -24 }}
-            animate={{ clipPath: GENIE[left ? 'left' : 'right'], x: 0, transitionEnd: { clipPath: 'none' } }}
-            exit={{ clipPath: [...GENIE[left ? 'left' : 'right']].reverse(), x: left ? 24 : -24, transition: { duration: 0.28, ease: 'easeIn' } }}
-            transition={{ clipPath: { duration: 0.5, times: [0, 0.45, 1], ease: EASE_OUT }, x: SPRING_POP }}
+            // Slides out from under the card's edge and becomes part of its border.
+            initial={{ opacity: 0, x: left ? 48 : -48 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: left ? 48 : -48, transition: { duration: 0.22, ease: EASE_OUT } }}
+            transition={{ type: 'spring', duration: 0.5, bounce: 0 }}
+            data-state={state}
+            style={{ '--accent': machine.accent } as React.CSSProperties}
             className={`machine-side ${left ? 'on-left' : 'on-right'}`}
           >
             {side}
           </motion.div>
         )}
       </AnimatePresence>
+      </motion.div>
+
+      {/* Phones and tablets cannot point: the vise and the cales sit under the machine instead. */}
+      {!CAN_HOVER && !loading && <div className="machine-side-row">{side}</div>}
 
       {/* "What's going on" pop-up */}
       <AnimatePresence>

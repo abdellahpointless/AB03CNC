@@ -986,6 +986,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
   transition: transform 500ms var(--spring-soft), opacity 400ms var(--ease-out);
 }
 /* Selected / hovered: full colour, lifts, brand-tinted glow */
+.machine-slot.is-active .machine-card,
 .machine-card:hover,
 .machine-card:focus-visible {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
@@ -995,12 +996,14 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
     radial-gradient(120% 80% at 50% 100%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
     var(--bg-card-hover);
 }
+.machine-slot.is-active .machine-card .machine-img,
 .machine-card:hover .machine-img,
 .machine-card:focus-visible .machine-img {
   filter: none;
   opacity: 1;
   transform: scale(1.04);
 }
+.machine-slot.is-active .machine-card .machine-floor-shadow,
 .machine-card:hover .machine-floor-shadow,
 .machine-card:focus-visible .machine-floor-shadow {
   transform: scaleX(0.86);
@@ -1015,10 +1018,12 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 .machine-card[data-state='problem'] .machine-img {
   filter: grayscale(1) brightness(0.8) contrast(0.92) drop-shadow(0 0 12px rgba(255, 70, 90, 0.75));
 }
+.machine-slot.is-active .machine-card[data-state='problem'] .machine-img,
 .machine-card[data-state='problem']:hover .machine-img,
 .machine-card[data-state='problem']:focus-visible .machine-img {
   filter: drop-shadow(0 0 14px rgba(255, 70, 90, 0.8));
 }
+.machine-slot.is-active .machine-card[data-state='problem'],
 .machine-card[data-state='problem']:hover,
 .machine-card[data-state='problem']:focus-visible {
   border-color: rgba(255, 102, 121, 0.8);
@@ -1287,28 +1292,52 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 @media (prefers-reduced-motion: reduce) {
   .machine-slot { transition: none; }
 }
+/* Pointed at, the card grows a side: the panel slides out from under it and shares its border, colour
+   and glow, so card and panel read as one shape. */
+.machine-slot.is-active .machine-card { z-index: 1; transition: border-color 300ms var(--ease-out), box-shadow 400ms var(--ease-out), background 400ms var(--ease-out), border-radius 200ms var(--ease-out); }
+.machine-slot.is-active.side-right .machine-card { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.machine-slot.is-active.side-left .machine-card { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .machine-side {
   position: absolute !important;
-  top: 12px;
-  z-index: 61;
+  top: 0;
+  bottom: 0;
+  width: 168px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  background:
+    radial-gradient(120% 80% at 50% 100%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    var(--bg-card-hover);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45), 0 0 40px color-mix(in srgb, var(--accent) 18%, transparent);
 }
-/* The padding reaches back over the card, so the pointer never "leaves" on its way to a tile. */
-.machine-side.on-right { left: 100%; margin-left: -14px; padding-left: 22px; }
-.machine-side.on-left { right: 100%; margin-right: -14px; padding-right: 22px; }
-.machine-side-row { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-:is(.machine-side, .machine-side-row) :is(.cales-thumb, .vise-thumb) {
+.machine-side.on-right { left: 100%; margin-left: -1px; border-left-color: var(--border-subtle); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+.machine-side.on-left { right: 100%; margin-right: -1px; border-right-color: var(--border-subtle); border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
+.machine-side:is([data-state='problem'], [data-state='down']) { border-color: rgba(255, 102, 121, 0.8); }
+.machine-side.on-right:is([data-state='problem'], [data-state='down']) { border-left-color: var(--border-subtle); }
+.machine-side.on-left:is([data-state='problem'], [data-state='down']) { border-right-color: var(--border-subtle); }
+.machine-side :is(.cales-thumb, .vise-thumb) {
   align-self: auto;
-  width: 150px;
+  width: 100%;
+  padding: 6px 4px;
+  border-radius: var(--radius-md);
+  background: none;
+  border: 1px solid transparent;
+  transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.machine-side :is(.cales-thumb, .vise-thumb):is(:hover, :focus-visible) { background: rgba(var(--ov), 0.07); border-color: var(--border-subtle); }
+.machine-side :is(.cales-thumb-art img, .vise-thumb img) { width: auto; max-width: 100%; max-height: 82px; margin: 0 auto; }
+.machine-side-row { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+.machine-side-row :is(.cales-thumb, .vise-thumb) {
+  align-self: auto;
+  width: 140px;
   padding: 10px 10px 9px;
   border-radius: var(--radius-md);
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
-.machine-side-row :is(.cales-thumb, .vise-thumb) { width: 140px; box-shadow: none; }
 .vise-thumb {
   display: flex;
   flex-direction: column;
