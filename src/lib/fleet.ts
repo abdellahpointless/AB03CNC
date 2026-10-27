@@ -275,6 +275,8 @@ export interface MachinesReport {
   cales: { machine_id: string; height: number; kind: 'MISSING' | 'DAMAGED'; count: number; username: string; at: number }[];
   people: { username: string; done: number; problems: number }[];
   hidden: string[];
+  /** More events than the list holds: only the newest are in it. */
+  truncated: boolean;
 }
 export const fetchMachinesReport = (from: number, to: number) => api<MachinesReport>(`/machines/report?from=${from}&to=${to}`);
 /** Admin: how many single cales of a pair are really in the machine's box (0, 1 or 2). */

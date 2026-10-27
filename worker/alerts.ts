@@ -121,19 +121,21 @@ export async function saveRecipient(hub: D1Database, rec: Recipient): Promise<vo
     .run();
 }
 
-/** True when the same alert was already sent within the window (no flood of identical alerts). */
+/** True when the same alert was already delivered within the window (no flood of identical alerts). */
 async function recentlySent(hub: D1Database, key: string, windowMs: number): Promise<boolean> {
-  const now = Date.now();
   const row = await hub.prepare('SELECT updated_at FROM settings WHERE key = ?').bind(`alerts:last:${key}`).first<{ updated_at: number }>();
-  if (row && now - row.updated_at < windowMs) return true;
+  return !!row && Date.now() - row.updated_at < windowMs;
+}
+
+/** Remembered only after a message really went out, so a failed send can be retried at once. */
+async function markSent(hub: D1Database, key: string): Promise<void> {
   await hub
     .prepare(
       `INSERT INTO settings (key, value, updated_at) VALUES (?, '', ?)
        ON CONFLICT(key) DO UPDATE SET updated_at = excluded.updated_at`,
     )
-    .bind(`alerts:last:${key}`, now)
+    .bind(`alerts:last:${key}`, Date.now())
     .run();
-  return false;
 }
 
 // ---- Linking chats (no webhook) ----------------------------------------------------------
@@ -229,17 +231,21 @@ export async function notify(
     await claimPending(env, hub); // someone invited may have pressed Start since
     const recipients = (await listRecipients(hub)).filter((r) => r.modes[event] !== 'off');
     if (!recipients.length) return;
-    if (dedupeKey && (await recentlySent(hub, `${event}:${dedupeKey}`, 10 * 60 * 1000))) return;
-    await Promise.all(
+    const key = dedupeKey && `${event}:${dedupeKey}`;
+    if (key && (await recentlySent(hub, key, 10 * 60 * 1000))) return;
+    const delivered = await Promise.all(
       recipients.map(async (r) => {
         try {
           await telegram(env, 'sendMessage', { chat_id: r.chatId, text: message[r.lang] });
           if (r.modes[event] === 'call' && r.tgUsername) await telegramCall(env, r.tgUsername, call[r.lang], r.lang);
+          return true;
         } catch (err) {
           console.error('alert not delivered to', r.username, err instanceof Error ? err.message : err);
+          return false;
         }
       }),
     );
+    if (key && delivered.some(Boolean)) await markSent(hub, key);
   } catch (err) {
     console.error('alerts failed', err instanceof Error ? err.message : err);
   }

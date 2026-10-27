@@ -234,6 +234,7 @@ export default function PreventiveReports() {
           <section className="aurora-card aurora-card-static p-0 overflow-hidden">
             <div className="p-5 border-b border-[var(--border-subtle)]">
               <h3 className="section-label text-[var(--text-primary)]">{t('reports.listTitle')}</h3>
+              {data.truncated && <p className="text-xs text-[var(--orange-text)] mt-1">{t('reports.truncated', { count: 2000 })}</p>}
             </div>
             {rows.length === 0 ? (
               <p className="p-8 text-center text-sm text-[var(--text-secondary)]">{t('reports.nothing')}</p>

@@ -106,17 +106,20 @@ export async function handleListMachines(ctx: Ctx): Promise<Response> {
     db.prepare('SELECT check_id, username FROM check_completions WHERE period_key = ?').bind(prev),
     db.prepare('SELECT machine_id, username FROM check_completions WHERE shift_key = ?1 UNION SELECT machine_id, username FROM cales_checks WHERE shift_key = ?1').bind(prev),
   ]);
+  // Same rule as assertMayUpdate: a non-admin responsible for machines is sent those machines only.
+  const own = new Set((owners.results as { machine_id: string; user_id: string }[]).filter((o) => o.user_id === me).map((o) => o.machine_id));
+  const only = <T extends { machine_id: string }>(rows: T[]) => (ctx.user!.role !== 'ADMIN' && own.size ? rows.filter((r) => own.has(r.machine_id)) : rows);
   return json({
-    checks: checks.results,
-    events: events.results,
-    owners: owners.results,
+    checks: only(checks.results as CheckRow[]),
+    events: only(events.results as { machine_id: string }[]),
+    owners: only(owners.results as { machine_id: string }[]),
     serverTime: now,
     shift,
     myDone: (mine.results as { check_id: string }[]).map((r) => r.check_id),
-    cales: cales.results,
+    cales: only(cales.results as { machine_id: string }[]),
     calesChecked: (calesChecked.results as { machine_id: string }[]).map((r) => r.machine_id),
-    calesRequests: calesRequests.results,
-    prevShift: { key: prev, done: prevDone.results, people: prevPeople.results },
+    calesRequests: only(calesRequests.results as { machine_id: string }[]),
+    prevShift: { key: prev, done: prevDone.results, people: only(prevPeople.results as { machine_id: string }[]) },
   });
 }
 
@@ -265,7 +268,8 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   if (body.action === 'PROBLEM' || (body.action === 'STOPS' && stops)) {
     const what = check.kind === 'ISSUE' ? check.note || check.title : `${check.title}${note && note !== check.title ? ` — ${note}` : ''}`;
     const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), what, user, stops);
-    await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${check.id}`);
+    // "stops" is part of the key: a problem that then turns out to stop the machine must still be sent.
+    await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${check.id}:${stops}`);
   }
   return json({ ok: true });
 }
@@ -374,6 +378,8 @@ async function machineName(ctx: Ctx, id: string): Promise<string> {
   return row?.name || id;
 }
 
+const REPORT_LIMIT = 2000;
+
 // Admin: GET /api/machines/report?from=&to=  (ms, end excluded; at most ~13 months)
 // What went wrong in the period (problems, stopped machines, "not done" reports, missing or damaged
 // cales) and, per person, how many checks they confirmed. Hidden test accounts are left out.
@@ -386,14 +392,14 @@ export async function handleMachinesReport(ctx: Ctx): Promise<Response> {
     db
       .prepare(
         `SELECT machine_id, check_title, action, note, username, at FROM machine_events
-         WHERE action IN ('PROBLEM', 'MACHINE_DOWN', 'MISSED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT 2000`,
+         WHERE action IN ('PROBLEM', 'MACHINE_DOWN', 'MISSED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT ${REPORT_LIMIT + 1}`,
       )
       .bind(from, to)
       .all<{ machine_id: string; check_title: string | null; action: string; note: string | null; username: string; at: number }>(),
     db
       .prepare(
         `SELECT machine_id, height, kind, count, username, at FROM cales_events
-         WHERE kind IN ('MISSING', 'DAMAGED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT 2000`,
+         WHERE kind IN ('MISSING', 'DAMAGED') AND at >= ? AND at < ? ORDER BY at DESC LIMIT ${REPORT_LIMIT + 1}`,
       )
       .bind(from, to)
       .all<{ machine_id: string; height: number; kind: string; count: number; username: string; at: number }>(),
@@ -410,8 +416,10 @@ export async function handleMachinesReport(ctx: Ctx): Promise<Response> {
   ]);
   const shown = (u: string) => !hidden.includes(u.toLowerCase());
   return json({
-    events: events.results,
-    cales: cales.results,
+    events: events.results.slice(0, REPORT_LIMIT),
+    cales: cales.results.slice(0, REPORT_LIMIT),
+    // The list is the newest rows only; the screen says so instead of looking complete.
+    truncated: events.results.length > REPORT_LIMIT || cales.results.length > REPORT_LIMIT,
     people: people.results.filter((p) => shown(p.username)),
     hidden,
   });

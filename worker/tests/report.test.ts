@@ -43,6 +43,19 @@ describe('preventive report', () => {
   it('lists only problems, stops and not-done reports inside the period', async () => {
     const r = await call(handleMachinesReport, `from=${T0}&to=${T0 + 86_400_000}`);
     expect(r.events.map((e: { action: string }) => e.action).sort()).toEqual(['MISSED', 'PROBLEM']);
+    expect(r.truncated).toBe(false);
+  });
+  it('says so when there are more events than the list holds', async () => {
+    const T1 = T0 + 30 * 86_400_000;
+    await DB.prepare(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2001)
+       INSERT INTO machine_events (machine_id, check_id, check_title, action, note, username, at) SELECT 'HAAS-2', 'c1', 'Coolant', 'PROBLEM', NULL, 'x', ? + i FROM n`,
+    )
+      .bind(T1)
+      .run();
+    const r = await call(handleMachinesReport, `from=${T1}&to=${T1 + 86_400_000}`);
+    expect(r.events).toHaveLength(2000);
+    expect(r.truncated).toBe(true);
   });
   it('counts checks and cales boxes confirmed per person, without hidden test accounts', async () => {
     await call(handleSetHiddenUsers, '', { usernames: ['TEST'] });

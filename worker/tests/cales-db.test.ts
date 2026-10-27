@@ -19,6 +19,7 @@ beforeAll(async () => {
   DB = (await mf.getD1Database('DB')) as unknown as D1Database;
   await ensureSchema(DB, 'ma');
   await DB.batch([
+    DB.prepare("INSERT INTO users (id, username, password_hash, role, created_at) VALUES ('u-ali', 'ali', 'x', 'MACHINIST', 0), ('u-karim', 'karim', 'x', 'MACHINIST', 0)"),
     DB.prepare("INSERT INTO machine_owners (machine_id, user_id, assigned_at) VALUES ('HAAS-1', 'u-ali', 0), ('FANUC-1', 'u-karim', 0)"),
   ]);
 }, 60_000);
@@ -95,12 +96,38 @@ describe('new cales: requests and approval', () => {
     await call(handleCalesReport, ali, { machine: 'HAAS-1' }, { height: 25, kind: 'FOUND' });
     expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'APPROVE' }))).toBe(409);
     expect(await stockOf('HAAS-1', 25)).toBe(4);
-    expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'REJECT' }))).toBe(200);
+    // finding it again already closed the request: nothing is left for the admin to reject
+    expect(await openRequest('HAAS-1', 25)).toBeNull();
+    expect(await status(call(handleCalesDecide, admin, { id: req!.id }, { decision: 'REJECT' }))).toBe(409);
+  });
+
+  it('closes the open request when the pair is back, so the next loss can be requested again', async () => {
+    await call(handleCalesReport, ali, { machine: 'HAAS-1' }, { height: 25, kind: 'MISSING', count: 1 });
+    await call(handleCalesRequest, ali, { machine: 'HAAS-1' }, { height: 25 });
+    await call(handleCalesReport, ali, { machine: 'HAAS-1' }, { height: 25, kind: 'FOUND' });
+    expect(await openRequest('HAAS-1', 25)).toBeNull();
+    await call(handleCalesReport, ali, { machine: 'HAAS-1' }, { height: 25, kind: 'MISSING', count: 2 });
+    expect(await status(call(handleCalesRequest, ali, { machine: 'HAAS-1' }, { height: 25 }))).toBe(200);
+    // the admin putting the pair back in the "On machine" table closes it too
+    await call(handleCalesSetOnMachine, admin, { machine: 'HAAS-1', height: '25' }, { present: 2 }, 'PUT');
+    expect(await openRequest('HAAS-1', 25)).toBeNull();
   });
 
   it('never lets the stock go below zero', async () => {
     await expect(DB.prepare("UPDATE cales_stock SET qty = qty - 10 WHERE machine_id = 'HAAS-1' AND height = 25").run()).rejects.toThrow(/CHECK/);
     expect(await status(call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '25' }, { qty: -1 }, 'PUT'))).toBe(400);
+  });
+});
+
+describe('the machine list', () => {
+  const machinesOf = async (u: AuthedUser) => {
+    const body = (await (await call(handleListMachines, u, {}, undefined, 'GET')).json()) as { checks: { machine_id: string }[]; events: { machine_id: string }[] };
+    return [...new Set([...body.checks, ...body.events].map((r) => r.machine_id))];
+  };
+  it('sends a responsible user only the machines they look after', async () => {
+    expect(await machinesOf(ali)).toEqual(['HAAS-1']);
+    expect((await machinesOf(admin)).length).toBeGreaterThan(1);
+    expect((await machinesOf(youssef)).length).toBeGreaterThan(1); // no machine: sees all, like before
   });
 });
 

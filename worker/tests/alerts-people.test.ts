@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { ensureSchema } from '../schema';
-import { claimPending, listRecipients, missedTaskAlert, notify } from '../alerts';
+import { claimPending, listRecipients, machineProblemAlert, missedTaskAlert, notify } from '../alerts';
 import type { Env } from '../context';
 
 // Several people on Telegram: a master invites someone by name, they press Start with the link,
@@ -11,6 +11,7 @@ let hub: D1Database;
 const env = { TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_API_BASE: 'https://tg.test' } as unknown as Env;
 let updates: unknown[] = [];
 const sent: { chat_id: number; text: string }[] = [];
+let failSend = false;
 
 beforeAll(async () => {
   mf = new Miniflare(convertV4MiniflareOptions({ modules: true, compatibilityDate: '2026-01-01', script: 'export default { fetch: () => new Response() }', d1Databases: ['DB'] }));
@@ -19,6 +20,7 @@ beforeAll(async () => {
   vi.stubGlobal('fetch', async (url: string, init: { body: string }) => {
     const method = url.split('/').pop();
     const body = JSON.parse(init.body);
+    if (method === 'sendMessage' && failSend) return new Response(JSON.stringify({ ok: false, description: 'Telegram is down' }));
     if (method === 'sendMessage') sent.push(body);
     const result = method === 'getUpdates' ? updates : {};
     return new Response(JSON.stringify({ ok: true, result }));
@@ -56,5 +58,23 @@ describe('telegram people', () => {
     expect(sent.map((m) => m.chat_id)).toEqual([111]);
     expect(sent[0].text).toContain('Not done by: ali');
     expect(sent[0].text).toContain('Reported by: youssef');
+  });
+  it('sends "machine stopped" after a plain problem, but not the same alert twice', async () => {
+    sent.length = 0;
+    const problem = machineProblemAlert('ma', 'HAAS-1', 'Pump noisy', 'ali', false);
+    const stopped = machineProblemAlert('ma', 'HAAS-1', 'Pump noisy', 'ali', true);
+    await notify(env, hub, 'machineProblem', problem.message, problem.call, 'HAAS-1:c1:false');
+    await notify(env, hub, 'machineProblem', problem.message, problem.call, 'HAAS-1:c1:false');
+    await notify(env, hub, 'machineProblem', stopped.message, stopped.call, 'HAAS-1:c1:true');
+    expect(sent.map((m) => m.text.includes('Machine stopped'))).toEqual([false, true]);
+  });
+  it('can retry at once when nobody got the alert', async () => {
+    sent.length = 0;
+    const a = machineProblemAlert('ma', 'HAAS-2', 'Door stuck', 'ali', true);
+    failSend = true;
+    await notify(env, hub, 'machineProblem', a.message, a.call, 'HAAS-2:c9:true');
+    failSend = false;
+    await notify(env, hub, 'machineProblem', a.message, a.call, 'HAAS-2:c9:true');
+    expect(sent).toHaveLength(1);
   });
 });

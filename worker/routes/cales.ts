@@ -21,6 +21,16 @@ async function userMachine(ctx: Ctx): Promise<string> {
   return machine;
 }
 
+/**
+ * The pair is back in its place: an open request for it is moot. Closing it here keeps the
+ * one-open-request-per-pair rule from blocking the next time this pair goes missing.
+ */
+function closeRequest(db: D1Database, machine: string, h: number, now: number, and = '') {
+  return db
+    .prepare(`UPDATE cales_requests SET status = 'REJECTED', decided_by = 'system', decided_at = ?3 WHERE machine_id = ?1 AND height = ?2 AND status = 'OPEN' ${and}`)
+    .bind(machine, h, now);
+}
+
 // POST /api/machines/:machine/cales/report { height, kind: MISSING | DAMAGED | FOUND, count: 1 | 2 }
 export async function handleCalesReport(ctx: Ctx): Promise<Response> {
   const machine = await userMachine(ctx);
@@ -31,13 +41,14 @@ export async function handleCalesReport(ctx: Ctx): Promise<Response> {
   const user = ctx.user!.username;
   if (body.kind === 'FOUND') {
     // Only a missing pair can turn up again; a damaged one stays damaged until it is replaced.
-    const [, removed] = await db.batch([
+    const [, , removed] = await db.batch([
       db
         .prepare(
           `INSERT INTO cales_events (machine_id, height, kind, count, username, shift_key, at)
            SELECT machine_id, height, 'FOUND', count, ?, ?, ? FROM cales_state WHERE machine_id = ? AND height = ? AND status = 'MISSING'`,
         )
         .bind(user, shift.key, now, machine, h),
+      closeRequest(db, machine, h, now, "AND EXISTS (SELECT 1 FROM cales_state WHERE machine_id = ?1 AND height = ?2 AND status = 'MISSING')"),
       db.prepare("DELETE FROM cales_state WHERE machine_id = ? AND height = ? AND status = 'MISSING'").bind(machine, h),
       bumpStmt(ctx.env, 'machines'),
     ]);
@@ -141,6 +152,7 @@ export async function handleCalesSetOnMachine(ctx: Ctx): Promise<Response> {
   const missing = 2 - present;
   if (missing === 0 ? !before : before?.status === 'MISSING' && before.count === missing) return json({ ok: true });
   await db.batch([
+    ...(missing === 0 ? [closeRequest(db, machine, h, now)] : []),
     missing === 0
       ? db.prepare('DELETE FROM cales_state WHERE machine_id = ? AND height = ?').bind(machine, h)
       : db
