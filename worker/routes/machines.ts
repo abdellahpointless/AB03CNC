@@ -1,5 +1,6 @@
 import { getHiddenUsers } from './analytics';
-import { machineProblemAlert, missedTaskAlert, notifyLater } from '../alerts';
+import { machineProblemAlert, missedTaskAlert, notifyLater, viseDamagedAlert } from '../alerts';
+import { viseId } from '../../src/lib/cales';
 import { HttpError, json, optStr, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
 import { FREQUENCIES, type Frequency } from '../fleet';
@@ -295,6 +296,35 @@ export async function handleReportIssue(ctx: Ctx): Promise<Response> {
   ]);
   const a = machineProblemAlert(ctx.env.REGION, await machineName(ctx, machine), note, ctx.user!.username, stops);
   await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:${id}`);
+  return json({ ok: true, id });
+}
+
+// POST /api/machines/:machine/vise { note? } -> the machine's vise is damaged (see viseId)
+export async function handleReportVise(ctx: Ctx): Promise<Response> {
+  const machine = await machineParam(ctx);
+  await assertMayUpdate(ctx, machine);
+  const body = await readJson<{ note?: unknown }>(ctx.request, 2000);
+  const extra = optStr(body.note, 'Note', 300);
+  const id = viseId(machine);
+  const db = ctx.env.DB;
+  if (await db.prepare('SELECT 1 FROM machine_checks WHERE id = ?').bind(id).first()) throw new HttpError(409, 'The vise is already reported damaged');
+  // Stored in the country's language, like everything people type there.
+  const title = regionById(ctx.env.REGION)?.language === 'tr' ? 'Mengene hasarlı' : 'Vise damaged';
+  const note = extra ? `${title}: ${extra}` : title;
+  const now = Date.now();
+  const user = ctx.user!.username;
+  await db.batch([
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops)
+         VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, 0)`,
+      )
+      .bind(id, machine, title, note, now, user, now),
+    eventStmt(ctx, machine, { id, title }, 'PROBLEM', note),
+    bumpStmt(ctx.env, 'machines'),
+  ]);
+  const a = viseDamagedAlert(ctx.env.REGION, await machineName(ctx, machine), extra, user);
+  await notifyLater(ctx, 'machineProblem', a.message, a.call, `${machine}:vise`);
   return json({ ok: true, id });
 }
 

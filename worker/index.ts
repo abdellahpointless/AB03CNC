@@ -72,6 +72,7 @@ import {
   handleListMachines,
   handleReportIssue,
   handleReportMissed,
+  handleReportVise,
   handleRequired,
   handleMachinesReport,
   handleSetOwners,
@@ -178,6 +179,7 @@ route('POST', '/machines/:machine/cales/report', 'user', handleCalesReport);
 route('POST', '/machines/:machine/cales/confirm', 'user', handleCalesConfirm);
 route('POST', '/machines/:machine/cales/request', 'user', handleCalesRequest);
 route('POST', '/machines/:machine/issues', 'user', handleReportIssue);
+route('POST', '/machines/:machine/vise', 'user', handleReportVise);
 route('POST', '/machines/:machine/checks/:id/action', 'user', handleCheckAction);
 route('POST', '/machines/:machine/checks/:id/missed', 'user', handleReportMissed);
 route('POST', '/machines/:machine/checks', 'admin', handleCreateCheck);

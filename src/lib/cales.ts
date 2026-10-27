@@ -6,6 +6,12 @@
  * uses the machine. Only pairs that are missing or damaged are listed; every other pair is in place.
  */
 
+/**
+ * The machine vise (mengene) next to the box: good until someone reports it damaged. The report is an
+ * open problem on the machine with this fixed id, so it can only be open once and is fixed like any other.
+ */
+export const viseId = (machine: string) => `vise-${machine}`;
+
 /** Heights in mm, in slot order (left → right as the box is seen from the front). */
 export const CALE_HEIGHTS = [43, 42, 41, 40, 38, 35, 33, 30, 28, 25, 22, 20, 15, 8] as const;
 export type CaleHeight = (typeof CALE_HEIGHTS)[number];

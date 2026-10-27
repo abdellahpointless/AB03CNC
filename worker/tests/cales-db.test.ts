@@ -4,7 +4,7 @@ import { ensureSchema } from '../schema';
 import { HttpError } from '../http';
 import type { AuthedUser, Ctx } from '../context';
 import { handleCalesConfirm, handleCalesDecide, handleCalesReport, handleCalesRequest, handleCalesSetOnMachine, handleCalesSetStock } from '../routes/cales';
-import { handleCheckAction, handleListMachines, handleRequired } from '../routes/machines';
+import { handleCheckAction, handleListMachines, handleReportVise, handleRequired } from '../routes/machines';
 
 // A real (local) D1 database: approvals must be all-or-nothing, so this is tested on SQLite itself.
 let mf: Miniflare;
@@ -116,6 +116,18 @@ describe('new cales: requests and approval', () => {
   it('never lets the stock go below zero', async () => {
     await expect(DB.prepare("UPDATE cales_stock SET qty = qty - 10 WHERE machine_id = 'HAAS-1' AND height = 25").run()).rejects.toThrow(/CHECK/);
     expect(await status(call(handleCalesSetStock, admin, { machine: 'HAAS-1', height: '25' }, { qty: -1 }, 'PUT'))).toBe(400);
+  });
+});
+
+describe('the vise', () => {
+  it('is good until reported, can only be open once, and is fixed like any problem', async () => {
+    expect(await status(call(handleReportVise, karim, { machine: 'HAAS-1' }, {}))).toBe(403);
+    expect(await status(call(handleReportVise, ali, { machine: 'HAAS-1' }, { note: 'jaw chipped' }))).toBe(200);
+    const row = await DB.prepare("SELECT kind, status, note FROM machine_checks WHERE id = 'vise-HAAS-1'").first();
+    expect(row).toEqual({ kind: 'ISSUE', status: 'PROBLEM', note: 'Vise damaged: jaw chipped' });
+    expect(await status(call(handleReportVise, ali, { machine: 'HAAS-1' }, {}))).toBe(409);
+    expect(await status(call(handleCheckAction, ali, { machine: 'HAAS-1', id: 'vise-HAAS-1' }, { action: 'RESOLVE' }))).toBe(200);
+    expect(await status(call(handleReportVise, ali, { machine: 'HAAS-1' }, {}))).toBe(200);
   });
 });
 

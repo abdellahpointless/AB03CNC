@@ -102,14 +102,17 @@ interface BoxProps {
   requested: number[];
   /** Something was saved: reload. */
   onChanged: () => Promise<unknown> | void;
+  /** The 3D box opened or closed (the hover bubble that holds it stays while it is open). */
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function CalesBox({ machine, canAct, state, checked: checkedByMe, requested, onChanged }: BoxProps) {
+export default function CalesBox({ machine, canAct, state, checked: checkedByMe, requested, onChanged, onOpenChange }: BoxProps) {
   const { t } = useT('preventive');
   const theme = useDocTheme();
   const picKey = `${machine.name}|${theme}|${i18n.language}`;
   const [pic, setPic] = useState<Pic | null>(() => cachedPic(picKey));
   const [open, setOpen] = useState(false);
+  useEffect(() => onOpenChange?.(open), [open, onOpenChange]);
   const thumbRef = useRef<HTMLButtonElement>(null);
   const artRef = useRef<HTMLSpanElement>(null);
   const engine = useRef<Engine | null>(null);

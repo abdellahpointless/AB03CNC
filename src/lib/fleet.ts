@@ -215,6 +215,9 @@ export function isLockedFor(machineId: string, user: { id: string; role: string 
 export const checkAction = (machine: string, id: string, action: 'DONE' | 'PROBLEM' | 'RESOLVE', note?: string, stops?: boolean) =>
   api(`/machines/${encodeURIComponent(machine)}/checks/${encodeURIComponent(id)}/action`, { method: 'POST', body: { action, note, stops } });
 
+/** The machine's vise is damaged (fixed again with checkAction RESOLVE on viseId). */
+export const reportVise = (machine: string, note?: string) => api(`/machines/${encodeURIComponent(machine)}/vise`, { method: 'POST', body: { note } });
+
 export const reportIssue = (machine: string, note: string, stops = false) =>
   api(`/machines/${encodeURIComponent(machine)}/issues`, { method: 'POST', body: { note, stops } });
 

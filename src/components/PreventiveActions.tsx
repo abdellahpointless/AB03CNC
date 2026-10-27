@@ -23,6 +23,7 @@ import {
 import StatusBoard from './StatusBoard';
 import MachineQrSheet from './MachineQrSheet';
 import CalesBox from './CalesBox';
+import ViseCheck from './ViseCheck';
 import { fmtDuration } from '../i18n/format';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
@@ -70,7 +71,8 @@ export default function PreventiveActions() {
   const { t } = useT('preventive');
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const { versions, machines, machinesLoaded, connection, lastSyncAt } = useSync();
+  const { versions, machines, machinesLoaded, connection, lastSyncAt, features } = useSync();
+  const shifts = features.shiftChecks;
   const [board, setBoard] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   // The TV board takes the whole screen (full screen when the browser allows it).
@@ -233,6 +235,13 @@ export default function PreventiveActions() {
               setHover(null);
               setSelected(m.id);
             }}
+            checks={byMachine.get(m.id) || []}
+            cales={
+              shifts
+                ? { state: calesOf(mine.cales, m.id), checked: mine.calesChecked.includes(m.id), requested: mine.calesRequests.filter((r) => r.machine_id === m.id).map((r) => r.height) }
+                : null
+            }
+            onChanged={load}
           />
         ))}
       </div>
@@ -252,9 +261,6 @@ export default function PreventiveActions() {
                 locked={isLockedFor(selectedMachine.id, user, owners)}
                 now={now}
                 myDone={mine.myDone}
-                cales={calesOf(mine.cales, selectedMachine.id)}
-                calesChecked={mine.calesChecked.includes(selectedMachine.id)}
-                calesRequested={mine.calesRequests.filter((r) => r.machine_id === selectedMachine.id).map((r) => r.height)}
                 prevShift={mine.prevShift}
                 onChanged={load}
                 onClose={() => setSelected(null)}
@@ -283,6 +289,8 @@ export default function PreventiveActions() {
 // Machine card on the floor
 // ---------------------------------------------------------------------------------------------
 
+const CAN_HOVER = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+
 function MachineCard({
   index,
   machine,
@@ -296,6 +304,9 @@ function MachineCard({
   hovered,
   onHover,
   onOpen,
+  checks,
+  cales,
+  onChanged,
 }: {
   index: number;
   machine: FleetMachine;
@@ -309,17 +320,35 @@ function MachineCard({
   hovered: { id: string; above: boolean } | null;
   onHover: (h: { id: string; above: boolean } | null) => void;
   onOpen: () => void;
+  /** This machine's checks and open problems (the vise report is one of them). */
+  checks: MachineCheck[];
+  /** The cales box, when shift checks are on. */
+  cales: { state: CalesState; checked: boolean; requested: number[] } | null;
+  onChanged: () => Promise<void>;
 }) {
   const { t } = useT('preventive');
   const ref = useRef<HTMLDivElement>(null);
   const state = loading ? 'loading' : summary.down ? 'down' : summary.state;
-
+  // The vise and the cales come out of the machine's side when it is pointed at; they stay while one is open.
+  const [left, setLeft] = useState(false);
+  const [viseOpen, setViseOpen] = useState(false);
+  const [calesOpen, setCalesOpen] = useState(false);
+  const sideShown = !loading && (!!hovered || viseOpen || calesOpen);
 
   const enter = () => {
     const r = ref.current?.getBoundingClientRect();
     const above = r ? window.innerHeight - r.bottom < 300 && r.top > 300 : false;
+    if (r) setLeft(r.right + 190 > window.innerWidth);
     onHover({ id: machine.id, above });
   };
+  const side = (
+    <>
+      <ViseCheck machine={machine} checks={checks} canAct={!locked} onChanged={onChanged} onOpenChange={setViseOpen} />
+      {cales && (
+        <CalesBox machine={machine} canAct={!locked} state={cales.state} checked={cales.checked} requested={cales.requested} onChanged={onChanged} onOpenChange={setCalesOpen} />
+      )}
+    </>
+  );
 
   const label =
     state === 'down'
@@ -335,9 +364,13 @@ function MachineCard({
   return (
     <motion.div
       {...waveItem(index)}
-      className="relative machine-slot"
-      onMouseEnter={enter}
+      className={`relative machine-slot ${sideShown ? 'is-active' : ''}`}
+      // A tap on a phone also sends a mouse "enter": only devices that can point open the pop-up.
+      onMouseEnter={CAN_HOVER ? enter : undefined}
       onMouseLeave={() => onHover(null)}
+      // Keyboard focus opens it like pointing does; a tap (phones) and the vise / cales windows do not.
+      onFocus={(e) => e.currentTarget.contains(e.target) && e.target.matches(':focus-visible') && enter()}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHover(null)}
     >
       <motion.div
         ref={ref}
@@ -351,8 +384,6 @@ function MachineCard({
         whileHover={{ y: -10, scale: 1.035 }}
         whileTap={{ scale: 0.985 }}
         transition={SPRING_POP}
-        onFocus={enter}
-        onBlur={() => onHover(null)}
         onClick={onOpen}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -399,6 +430,23 @@ function MachineCard({
           </div>
         )}
       </motion.div>
+
+      {/* Phones and tablets cannot point: the vise and the cales sit under the machine instead. */}
+      {!CAN_HOVER && !loading && <div className="machine-side-row">{side}</div>}
+      <AnimatePresence>
+        {CAN_HOVER && sideShown && (
+          <motion.div
+            key="side"
+            initial={{ opacity: 0, x: left ? 14 : -14, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: left ? 14 : -14, scale: 0.9, transition: { duration: 0.14, ease: EASE_OUT } }}
+            transition={SPRING_POP}
+            className={`machine-side ${left ? 'on-left' : 'on-right'}`}
+          >
+            {side}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* "What's going on" pop-up */}
       <AnimatePresence>
@@ -451,13 +499,13 @@ function MachinePopContent({
           {summary.problems.slice(0, 3).map((p) => (
             <div key={p.id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--rose-500)]/10 border border-[var(--rose-500)]/25">
               {!!p.stops && (
-                <div className="text-xs font-bold uppercase tracking-wide text-[var(--rose-500)] flex items-center gap-1 mb-0.5">
+                <div className="text-xs font-bold uppercase tracking-wide text-[var(--rose-text)] flex items-center gap-1 mb-0.5">
                   <OctagonX size={11} /> {t('stop.badge')}
                 </div>
               )}
               <div className="font-semibold text-[var(--text-primary)]">{p.kind === 'ISSUE' ? p.note : p.title}</div>
-              {p.kind === 'CHECK' && p.note && <div className="text-[var(--rose-500)] mt-0.5">{p.note}</div>}
-              <div className="text-[var(--text-tertiary)] mt-0.5">
+              {p.kind === 'CHECK' && p.note && <div className="text-[var(--rose-text)] mt-0.5">{p.note}</div>}
+              <div className="text-[var(--text-secondary)] mt-0.5">
                 {p.status_by} · {timeAgo(p.status_at, now)}
               </div>
             </div>
@@ -514,9 +562,6 @@ function MachineSheet({
   locked,
   now,
   myDone,
-  cales,
-  calesChecked,
-  calesRequested,
   prevShift,
   onChanged,
   onClose,
@@ -532,11 +577,6 @@ function MachineSheet({
   now: number;
   /** Checks I did myself in their current period. */
   myDone: string[];
-  cales: CalesState;
-  /** I confirmed the cales box this shift. */
-  calesChecked: boolean;
-  /** Heights with new cales asked for. */
-  calesRequested: number[];
   prevShift: Mine['prevShift'];
   onChanged: () => Promise<void>;
   onClose: () => void;
@@ -720,7 +760,6 @@ function MachineSheet({
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.6, bounce: 0.25 }}
             />
-            {shifts && <CalesBox machine={machine} canAct={canAct} state={cales} checked={calesChecked} requested={calesRequested} onChanged={onChanged} />}
           </div>
           <div className="self-stretch space-y-2">
             {summary.down && (

@@ -290,6 +290,23 @@ export function machineProblemAlert(region: string | undefined, machine: string,
   };
 }
 
+/** Someone reported the machine's vise (mengene) damaged. */
+export function viseDamagedAlert(region: string | undefined, machine: string, note: string | null, user: string) {
+  const c = countryLabel(region);
+  const s = countrySpoken(region);
+  const more = note ? `: ${note}` : '';
+  return {
+    message: {
+      en: `🗜️ ${c.en} · ${machine}\n❗ Vise damaged${more}\n👤 ${user}`,
+      tr: `🗜️ ${c.tr} · ${machine}\n❗ Mengene hasarlı${more}\n👤 ${user}`,
+    },
+    call: {
+      en: `Alert. ${s.en}, machine ${machine}. ${user} reports the vise is damaged${more}.`,
+      tr: `Uyarı. ${s.tr}, tezgah ${machine}. ${user} mengenenin hasarlı olduğunu bildirdi${more}.`,
+    },
+  };
+}
+
 /** The next shift reported that a start / end of shift task was not done. */
 export function missedTaskAlert(region: string | undefined, machine: string, task: string, notDoneBy: string, reporter: string) {
   const c = countryLabel(region);
