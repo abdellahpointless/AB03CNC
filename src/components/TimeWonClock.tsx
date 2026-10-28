@@ -71,11 +71,11 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
           onClick={onClick}
           title={t('clock.openTitle')}
           aria-describedby={showTooltip ? 'time-saved-tip' : undefined}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--green-500)]/30 bg-[rgba(22,163,74,0.12)] hover:bg-[rgba(22,163,74,0.18)] transition-colors cursor-pointer shadow-xs shrink-0 select-none"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.04)] hover:bg-[rgba(var(--ov),0.08)] transition-colors cursor-pointer shrink-0 select-none"
         >
           {/* Mini Analog Clock Icon */}
           <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--green-500)]">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--text-secondary)]">
               <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
               <line
                 x1="12"
@@ -103,7 +103,7 @@ export const TimeWonClock: React.FC<TimeWonClockProps> = ({ onClick, compact = f
 
           <div className="flex items-baseline gap-1 text-xs whitespace-nowrap">
             <span className="text-[var(--text-tertiary)] font-medium hidden sm:inline uppercase text-xs tracking-wider">{t('clock.won')}</span>
-            <span className="font-mono font-bold text-[var(--green-500)] tabular-nums">
+            <span className="font-semibold text-[var(--text-primary)] tabular-nums">
               {timeWon.formatted}
             </span>
           </div>

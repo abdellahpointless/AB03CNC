@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Boxes, CheckCircle2, Download, FileSpreadsheet, FileText, History, X } from 'lucide-react';
+import { Boxes, CheckCircle2, ChevronDown, Download, FileSpreadsheet, FileText, History, X } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { CALE_HEIGHTS, MIN_SPARE, lowStock, orderRows } from '../lib/cales';
 import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet, type CaleTaken } from '../lib/fleet';
@@ -30,6 +30,7 @@ export default function CalesStock() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [view, setView] = useState<'machine' | 'stock'>('machine');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -133,14 +134,53 @@ ${low.map((r) => `<tr>${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.ne
               </label>
             </>
           )}
-          <button
-            className="btn-primary text-xs py-2 px-4 whitespace-nowrap"
-            disabled={!data || !!busy || (period === 'custom' && (!from || !to || from > to))}
-            onClick={() => data && exportOrder(data)}
+          {/* One Export button for the three files (the period above is for the Excel order only). */}
+          <div
+            className="relative"
+            onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setExportOpen(false)}
+            onKeyDown={(e) => e.key === 'Escape' && setExportOpen(false)}
           >
-            <Download size={14} />
-            <span>{busy === 'export' ? '...' : t('stock.export')}</span>
-          </button>
+            <button
+              type="button"
+              className="btn-primary text-xs py-2 px-4 whitespace-nowrap"
+              disabled={!data || !!busy}
+              aria-haspopup="menu"
+              aria-expanded={exportOpen}
+              onClick={() => setExportOpen((o) => !o)}
+            >
+              <Download size={14} />
+              <span>{busy ? '...' : t('stock.exportMenu')}</span>
+              <ChevronDown size={13} className={`opacity-70 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportOpen && data && (
+              <div role="menu" aria-label={t('stock.exportMenu')} className="export-menu glass-modal">
+                <button type="button" role="menuitem" className="no-glass" disabled={!low.length} onClick={() => (setExportOpen(false), exportPdf())}>
+                  <FileText size={15} />
+                  <span>{t('stock.exportPdf')}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="no-glass"
+                  disabled={period === 'custom' && (!from || !to || from > to)}
+                  onClick={() => (setExportOpen(false), exportOrder(data))}
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{t('stock.exportExcel')}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="no-glass"
+                  disabled={!data.taken.length}
+                  onClick={() => (setExportOpen(false), void run('taken', async () => (await import('../lib/calesExport')).exportCalesTaken(data.taken, fleet)))}
+                >
+                  <FileSpreadsheet size={15} />
+                  <span>{t('stock.takenExport')}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -162,15 +202,11 @@ ${low.map((r) => `<tr>${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.ne
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">{t('stock.toOrderHelp', { min: MIN_SPARE })}</p>
               </div>
-              <button type="button" className="btn-primary text-xs py-2 px-4" disabled={!low.length} onClick={exportPdf}>
-                <FileText size={14} />
-                <span>{t('stock.pdf')}</span>
-              </button>
             </div>
             {low.length === 0 ? (
               <p className="text-xs text-[var(--text-secondary)]">{t('stock.nothingToOrder', { min: MIN_SPARE })}</p>
             ) : (
-              <table className="w-full max-w-xl border-collapse text-xs">
+              <table className="w-full max-w-xl border-collapse text-sm">
                 <thead>
                   <tr className="text-left">
                     <th scope="col" className="p-2 section-label">{t('stock.size')}</th>
@@ -251,7 +287,7 @@ ${low.map((r) => `<tr>${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.ne
             <p className="text-xs text-[var(--text-tertiary)]">{t(view === 'machine' ? 'stock.onMachineHelp' : 'stock.gridHelp')}</p>
             {view === 'machine' ? (
               <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t('stock.onMachine')}>
-                <table className="border-collapse text-xs">
+                <table className="border-collapse text-sm">
                   <thead>
                     <tr>
                       <th scope="col" className="p-2 section-label text-left">
@@ -300,16 +336,7 @@ ${low.map((r) => `<tr>${cell(`${r.height} mm`)}${cell(r.stock, true)}${cell(r.ne
               </div>
             ) : (
               <>
-                <button
-                  type="button"
-                  className="btn-secondary text-xs py-2 px-3.5"
-                  disabled={!!busy || !data.taken.length}
-                  onClick={() => run('taken', async () => (await import('../lib/calesExport')).exportCalesTaken(data.taken, fleet))}
-                >
-                  <FileSpreadsheet size={14} className="text-[var(--green-500)]" />
-                  <span>{t('stock.takenExport')}</span>
-                </button>
-                <table className="w-full max-w-xl border-collapse text-xs">
+                <table className="w-full max-w-xl border-collapse text-sm">
                   <thead>
                     <tr className="text-left">
                       <th scope="col" className="p-2 section-label">{t('stock.size')}</th>

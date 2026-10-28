@@ -1,6 +1,7 @@
 /* English texts: preventive actions (machine floor, checklists, problems, responsible people). */
 const preventive = {
   header: {
+    filterTitle: 'Show only these machines (press again for all)',
     title: 'Preventive actions',
     subtitle: 'Point at a machine to see how it is doing. Click it to open its checklist.',
     myMachinesTitle: 'You can only update the machines you look after',
@@ -31,6 +32,7 @@ const preventive = {
     stopped: 'Machine stopped',
   },
   card: {
+    kit: { ok: 'all in place', warn: 'damaged pair', bad: 'missing pair' },
     ariaLabel: '{{name}}, {{subtitle}}: {{status}}. Open checklist',
     lockedTitle: 'Locked for you',
     you: 'You',
@@ -185,6 +187,9 @@ const preventive = {
     saidOk: '{{user}} said it was OK earlier',
   },
   stock: {
+    exportMenu: 'Export',
+    exportPdf: 'Order list (PDF)',
+    exportExcel: 'Order + reports of the period (Excel)',
     takenExport: 'Export history (Excel)',
     lastTaken: 'Last taken',
     lastTakenBy: '{{machine}} took {{count}} · {{time}}',

@@ -239,9 +239,10 @@ function Workspace() {
   }, [activeTab, locked, features]);
 
   const [showPasswordModal, setShowPasswordModal] = useState<false | 'password' | 'mfa'>(false);
+  // Closed, the two-step sign-in reminder stays away for 30 days on this device (it was back at every visit).
   const [mfaNudgeHidden, setMfaNudgeHidden] = useState(() => {
     try {
-      return sessionStorage.getItem(scopedKey('cnc-mfa-nudge-hidden')) === '1';
+      return Date.now() - Number(localStorage.getItem(scopedKey('cnc-mfa-nudge-hidden-at')) || 0) < 30 * 86_400_000;
     } catch {
       return false;
     }
@@ -249,7 +250,7 @@ function Workspace() {
   const hideMfaNudge = () => {
     setMfaNudgeHidden(true);
     try {
-      sessionStorage.setItem(scopedKey('cnc-mfa-nudge-hidden'), '1');
+      localStorage.setItem(scopedKey('cnc-mfa-nudge-hidden-at'), String(Date.now()));
     } catch {
       /* storage unavailable */
     }
@@ -531,9 +532,7 @@ function Workspace() {
               aria-expanded={canReview ? partMenu.open : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 partTabActive
-                  ? activeTab === 'PART_REVIEW'
-                    ? 'text-[var(--green-500)]'
-                    : 'text-[var(--accent-primary)]'
+                  ? 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
@@ -548,8 +547,8 @@ function Workspace() {
               {canReview && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${partMenu.open ? 'rotate-180' : ''}`} />}
               {partTabActive && (
                 <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: activeTab === 'PART_REVIEW' ? 'rgba(22,163,74,0.12)' : 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className={`absolute bottom-0 left-3 right-3 h-[2.5px] rounded-full pointer-events-none ${activeTab === 'PART_REVIEW' ? 'bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)]' : 'bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]'}`} />
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
                 </>
               )}
             </button>
@@ -581,9 +580,7 @@ function Workspace() {
               aria-expanded={canReports ? prevMenu.open : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 prevTabActive
-                  ? activeTab === 'PREVENTIVE_REPORTS'
-                    ? 'text-[var(--rose-500)]'
-                    : 'text-[var(--accent-primary)]'
+                  ? 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
@@ -604,8 +601,8 @@ function Workspace() {
               {canReports && <ChevronDown size={12} className={`opacity-60 transition-transform duration-200 ${prevMenu.open ? 'rotate-180' : ''}`} />}
               {prevTabActive && (
                 <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: activeTab === 'PREVENTIVE_REPORTS' ? 'rgba(244,63,94,0.12)' : 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
-                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className={`absolute bottom-0 left-3 right-3 h-[2.5px] rounded-full pointer-events-none ${activeTab === 'PREVENTIVE_REPORTS' ? 'bg-[var(--rose-500)]' : 'bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]'}`} />
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
                 </>
               )}
             </button>
@@ -618,7 +615,7 @@ function Workspace() {
             aria-current={activeTab === 'ADMIN' ? 'page' : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
                 activeTab === 'ADMIN'
-                  ? 'text-[var(--green-500)]'
+                  ? 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
@@ -626,8 +623,8 @@ function Workspace() {
               <span>{t('tabs.admin')}</span>
               {activeTab === 'ADMIN' && (
                 <>
-                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(22,163,74,0.12)' }} transition={SPRING_PILL} />
-              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--green-500)] shadow-[0_0_8px_var(--green-glow)] rounded-full pointer-events-none" />
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+              <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
                 </>
               )}
             </button>

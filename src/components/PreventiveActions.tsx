@@ -53,7 +53,7 @@ import {
   updateCheck,
 } from '../lib/fleet';
 import { EASE_OUT, SPRING_POP, iosBackdrop, iosSurface, waveItem } from '../lib/motion';
-import { calesOf, type CalesState } from '../lib/cales';
+import { calesOf, viseId, type CalesState } from '../lib/cales';
 import { currentRegion } from '../lib/instance';
 import { periodKey, shiftOf, shiftStart } from '../lib/shifts';
 import i18n, { useT } from '../i18n';
@@ -91,6 +91,7 @@ export default function PreventiveActions() {
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<{ id: string; above: boolean } | null>(null);
+  const [show, setShow] = useState<'down' | 'problem' | 'due' | 'ok' | null>(null);
   const [now, setNow] = useState(Date.now());
 
   const load = useCallback(async () => {
@@ -176,20 +177,29 @@ export default function PreventiveActions() {
               <Wrench size={13} /> {t('header.myMachines', { names: myMachines.map(nameOf).join(', ') })}
             </span>
           )}
-          {counts.down > 0 && (
-            <span className="badge-danger">
-              <OctagonX size={13} /> {t('header.stopped', { count: counts.down })}
-            </span>
-          )}
-          <span className={counts.problem ? 'badge-danger' : 'badge-neutral'}>
-            <AlertTriangle size={13} /> {t('header.withProblem', { count: counts.problem })}
-          </span>
-          <span className={counts.due ? 'badge-warning' : 'badge-neutral'}>
-            <Clock size={13} /> {t('header.checksToDo', { count: counts.due })}
-          </span>
-          <span className="badge-positive">
-            <CheckCircle2 size={13} /> {t('header.allGood', { count: counts.ok })}
-          </span>
+          {/* Each count also filters the floor to those machines (pressed again: all machines). */}
+          {(
+            [
+              ['down', counts.down, 'badge-danger', <OctagonX size={13} />, t('header.stopped', { count: counts.down })],
+              ['problem', counts.problem, counts.problem ? 'badge-warning' : 'badge-neutral', <AlertTriangle size={13} />, t('header.withProblem', { count: counts.problem })],
+              ['due', counts.due, 'badge-neutral', <Clock size={13} />, t('header.checksToDo', { count: counts.due })],
+              ['ok', counts.ok, 'badge-positive', <CheckCircle2 size={13} />, t('header.allGood', { count: counts.ok })],
+            ] as const
+          )
+            .filter(([k, n]) => k !== 'down' || n > 0)
+            .map(([k, n, cls, icon, label]) => (
+              <button
+                key={k}
+                type="button"
+                className={`${cls} chip-filter no-glass`}
+                aria-pressed={show === k}
+                disabled={!n}
+                title={t('header.filterTitle')}
+                onClick={() => setShow(show === k ? null : k)}
+              >
+                {icon} {label}
+              </button>
+            ))}
           <span className="w-px h-4 bg-[var(--border-subtle)] mx-0.5" aria-hidden="true" />
           <button onClick={openBoard} className="pill-action no-glass" title={t('header.boardTitle')} disabled={!fleet.length}>
             <Monitor size={13} />
@@ -201,7 +211,7 @@ export default function PreventiveActions() {
               <span className="pill-label">{t('header.qr')}</span>
             </button>
           )}
-          <button onClick={load} className="pill-action no-glass">
+          <button onClick={load} className="pill-action icon-pill no-glass">
             <RefreshCw size={13} />
             <span className="pill-label">{t('common:actions.refresh')}</span>
           </button>
@@ -217,7 +227,12 @@ export default function PreventiveActions() {
             {t('empty.none')} {isAdmin ? t('empty.adminHint') : t('empty.userHint')}
           </div>
         )}
-        {fleet.map((m, i) => (
+        {fleet
+          .filter((m) => {
+            const s = summaries.get(m.id)!;
+            return !show || (show === 'down' ? s.down : s.state === show);
+          })
+          .map((m, i) => (
           <MachineCard
             key={m.id}
             index={i}
@@ -350,6 +365,12 @@ function MachineCard({
     </>
   );
 
+  // At rest the card already says whether the vise and the cales box are fine.
+  const viseBad = checks.some((c) => c.id === viseId(machine.id));
+  const calesPairs = cales ? Object.values(cales.state) : [];
+  const calesTone = !cales ? null : calesPairs.some((p) => p.status === 'missing') ? 'bad' : calesPairs.length ? 'warn' : 'ok';
+  const kit = `${t('vise.title')}: ${viseBad ? t('vise.damaged') : t('vise.good')}${calesTone ? `, ${t('cales.title')}: ${t(`card.kit.${calesTone}`)}` : ''}`;
+
   const label =
     state === 'down'
       ? t('status.stopped')
@@ -378,7 +399,7 @@ function MachineCard({
         ref={ref}
         role="button"
         tabIndex={0}
-        aria-label={t('card.ariaLabel', { name: machine.name, subtitle: machineSubtitle(machine), status: label })}
+        aria-label={`${t('card.ariaLabel', { name: machine.name, subtitle: machineSubtitle(machine), status: label })}. ${kit}`}
         data-state={state}
         data-locked={locked ? 'true' : undefined}
         className="machine-card"
@@ -402,7 +423,7 @@ function MachineCard({
             </span>
           )}
           {(state === 'problem' || state === 'down') && (
-            <span className="machine-alert" aria-hidden>
+            <span className={`machine-alert ${state === 'problem' ? 'is-problem' : ''}`} aria-hidden>
               {state === 'down' ? <OctagonX size={14} /> : <AlertTriangle size={14} />}
             </span>
           )}
@@ -416,12 +437,26 @@ function MachineCard({
           </div>
           <span
             className={`shrink-0 text-xs py-0.5 px-2 ${
-              state === 'problem' || state === 'down' ? 'badge-danger' : state === 'due' ? 'badge-warning' : state === 'ok' ? 'badge-positive' : 'badge-neutral'
+              state === 'down' ? 'badge-danger' : state === 'problem' ? 'badge-warning' : state === 'ok' ? 'badge-positive' : 'badge-neutral'
             }`}
           >
             {label}
           </span>
         </div>
+        {!loading && (
+          <div className="machine-kit" aria-hidden>
+            <span className={viseBad ? 'tone-bad' : 'tone-ok'}>
+              <i className="cales-dot" />
+              {t('vise.title')}
+            </span>
+            {calesTone && (
+              <span className={`tone-${calesTone}`}>
+                <i className="cales-dot" />
+                {t('cales.title')}
+              </span>
+            )}
+          </div>
+        )}
         {(owners.length > 0 || locked) && (
           <div className="machine-owners">
             {locked ? <Lock size={11} className="shrink-0" /> : <Users size={11} className="shrink-0" />}

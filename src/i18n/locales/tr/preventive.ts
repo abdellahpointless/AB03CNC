@@ -4,6 +4,7 @@ import type en from '../en/preventive';
 /* Türkçe metinler: önleyici bakım (tezgah alanı, kontrol listeleri, arızalar, sorumlular). */
 const preventive: Translation<typeof en> = {
   header: {
+    filterTitle: 'Yalnızca bu tezgahları göster (hepsi için tekrar basın)',
     title: 'Önleyici bakım',
     subtitle: 'Durumunu görmek için imleci bir tezgahın üzerine getirin. Kontrol listesini açmak için tezgaha tıklayın.',
     myMachinesTitle: 'Yalnızca sorumlu olduğunuz tezgahları güncelleyebilirsiniz',
@@ -34,6 +35,7 @@ const preventive: Translation<typeof en> = {
     stopped: 'Tezgah duruyor',
   },
   card: {
+    kit: { ok: 'hepsi yerinde', warn: 'hasarlı çift', bad: 'eksik çift' },
     ariaLabel: '{{name}}, {{subtitle}}: {{status}}. Kontrol listesini aç',
     lockedTitle: 'Sizin için kilitli',
     you: 'Siz',
@@ -185,6 +187,9 @@ const preventive: Translation<typeof en> = {
     saidOk: '{{user}} daha önce sorun yok demişti',
   },
   stock: {
+    exportMenu: 'Dışa aktar',
+    exportPdf: 'Sipariş listesi (PDF)',
+    exportExcel: 'Sipariş + dönemin raporları (Excel)',
     takenExport: 'Geçmişi dışa aktar (Excel)',
     lastTaken: 'Son alınan',
     lastTakenBy: '{{machine}} {{count}} aldı · {{time}}',
