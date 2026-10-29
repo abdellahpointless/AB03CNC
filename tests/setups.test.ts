@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
-import { analyseProgram, analyseSetups, partSizes, readInstructions } from '../src/lib/setups';
+import { analyseProgram, analyseSetups, partSizes, readInstructions, spacerAt } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 
 const S = { rapid: 30_000, toolChange: 2 };
@@ -144,5 +144,47 @@ describe('setups', () => {
     // Nothing is cut by a rapid move.
     const rapids = new Set(tp.moves.flatMap((m, i) => (m.kind === 'rapid' ? [i] : [])));
     expect(Array.from(g.removed).some((r) => rapids.has(r))).toBe(false);
+  });
+  it('reads the other ways the shop writes sizes and supports', () => {
+    // Raw block after "//" instead of ZUSCHNITT (O0164578); a lone size after "//" is the finished part (O0169538).
+    expect(partSizes(['TOP PLATE POM / 100X50X30 // 104X54X40'])).toMatchObject({ finished: [100, 50, 30], raw: [104, 54, 40] });
+    expect(partSizes([' INSERT (TOP PLATE FH // 150X100X30 ) '])).toMatchObject({ finished: [150, 100, 30], raw: null });
+    expect(readInstructions(['TEIL MIT 104 UM X UND 54 UM Y EINSPANNEN']).sizes).toEqual({ x: 104, y: 54 });
+    expect(readInstructions(['36 MM UNTERLAGE IN 21MM'])).toMatchObject({ support: 36, restDepth: 21 });
+    expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-']).spacer).toEqual({ mm: 15, side: 'Y-' });
+  });
+
+  it('turns the part over when a later clamping first says it is the back side (O0162220)', () => {
+    // First side: raw 154x104x60 faced in layers; the outline cut 20 deep. Then "RUECKS." with no
+    // turn written: the first side was the front, so the part lies upside down now.
+    const face = (zs: number[]) => zs.flatMap((z) => ['G0 X206.5 Y-17.833', `G1 Z${z} F600`, 'G1 X-56.5', 'G0 Z10.', 'G0 X206.5 Y-82.167', `G1 Z${z}`, 'G1 X-56.5', 'G0 Z10.']);
+    const code = [
+      '%', 'O0220', '(TOP PLATE POM / 150X100X50 / ZUSCHNITT:154X104X60)',
+      'M0 (TEIL MIT 154 IN X UND 104 IN Y EINSPANNEN)', 'M0 (40 MM UNTERLAGE)', 'G52 X-48. Y48. Z40.',
+      'T3 M6 (MESSERKOPF D93 / MK_93.00_030_000_KS)', '(DIAMETER 93.00 MM/LENGTH 30.00 MM)', 'G0 G90 X206.5 Y-17.833 S2500 M3', 'G43 H3 Z10.',
+      ...face([3.333, 1.667, 0]),
+      'T20 M6 (20MM FRAESER / SF_20.00_065_000_KS)', '(DIAMETER 20.00 MM/LENGTH 65.00 MM)', 'G0 X-10. Y10.', 'G43 H20 Z5.', 'G1 Z-20. F500', 'G1 X160.', 'G1 Y-110.', 'G1 X-10.', 'G1 Y10.', 'G0 Z50.',
+      'T3 M6 (MESSERKOPF D93 / MK_93.00_030_000_KS)', '(DIAMETER 93.00 MM/LENGTH 30.00 MM)',
+      'M0 (MOD. SPANNEN F. RUECKS. / 150 IN X / RAFI X+ Y- )', 'M0 (15 MM UNTERLAGE)', 'G52 X-50. Y50. Z8.', 'G0 G90 X206.5 Y-17.833 S2500 M3', 'G43 H3 Z10.',
+      ...face([3.5, 0]),
+      'M30', '%',
+    ].join('\n');
+    const { setups } = analyseProgram(parseToolpath(code, S), { jawHeight: 45 });
+    expect(setups[1].orient).toEqual([1, 0, 0, 0, -1, 0, 0, 0, -1]);
+    // The faced top (Z0) is now underneath; 7 mm of raw stock is left above Z0 to face off.
+    expect(setups[1].stock!.max[2]).toBeCloseTo(7, 1);
+    expect(setups[1].stock!.min[2]).toBeCloseTo(-50, 1);
+    expect(setups[1].floorZ! + 8).toBeCloseTo(-57, 5);
+  });
+
+  it('moves the jaw out by a spacer: a cut just past the part touches the spacer, not the jaw', () => {
+    const toFront = program(-30);
+    expect(analyseSetups(parseToolpath(toFront, S), { jawHeight: 60 })[0].collisions).toHaveLength(1);
+    const spaced = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (15 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
+    expect(spacerAt(spaced, 'Y-')).toBe(15);
+    expect(spaced.collisions).toEqual([]);
+    // A thin spacer is not enough: the D10 reaches 13 mm past the part.
+    const thin = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (5 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
+    expect(thin.collisions).toHaveLength(1);
   });
 });

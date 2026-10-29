@@ -411,9 +411,66 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
  * along the outermost layer of material, each voxel is bisected against the move that cut the
  * voxel beyond it (or reaches the raw face when nothing did).
  */
+/**
+ * Cutting moves of each setup binned by where they pass on the machine table (X/Y; a tool also
+ * clears everything above it, so height does not narrow it down). Lets a point be tested against
+ * only the moves that can reach it.
+ */
+interface MoveIndex {
+  bins: { lo: [number, number]; cell: number; nx: number; ny: number; lists: Map<number, number[]> }[];
+  /** Per move, on the machine: X and Y it reaches (tool radius included) and its lowest point. */
+  reach: Float64Array;
+}
+const indexes = new WeakMap<SimInput, MoveIndex>();
+function moveIndex(input: SimInput): MoveIndex {
+  const known = indexes.get(input);
+  if (known) return known;
+  const radius = new Map(input.tools.map((t) => [t.tool, t.radius]));
+  const reach = new Float64Array(input.moves.length * 5);
+  input.moves.forEach((mv, i) => {
+    const r = (radius.get(mv.tool) ?? 3) + 0.01;
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity, z = Infinity;
+    for (const p of mv.points) { a = Math.min(a, p[0] - r); b = Math.min(b, p[1] - r); c = Math.max(c, p[0] + r); d = Math.max(d, p[1] + r); z = Math.min(z, p[2]); }
+    reach.set([a, c, b, d, z - 0.01], i * 5);
+  });
+  const bins = input.setups.map((_, s) => {
+    const own = input.moves.map((m, i) => (m.setup === s && m.points.length > 1 ? i : -1)).filter((i) => i >= 0);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const i of own) {
+      const r = (radius.get(input.moves[i].tool) ?? 3) + 0.01;
+      for (const p of input.moves[i].points) {
+        x0 = Math.min(x0, p[0] - r); y0 = Math.min(y0, p[1] - r); x1 = Math.max(x1, p[0] + r); y1 = Math.max(y1, p[1] + r);
+      }
+    }
+    const cell = Math.max(2, Math.max(x1 - x0, y1 - y0) / 48);
+    const nx = Math.max(1, Math.ceil((x1 - x0) / cell) + 1);
+    const ny = Math.max(1, Math.ceil((y1 - y0) / cell) + 1);
+    const lists = new Map<number, number[]>();
+    for (const i of own) {
+      const mv = input.moves[i];
+      const r = (radius.get(mv.tool) ?? 3) + 0.01;
+      let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+      for (const p of mv.points) { a = Math.min(a, p[0] - r); b = Math.min(b, p[1] - r); c = Math.max(c, p[0] + r); d = Math.max(d, p[1] + r); }
+      const i0 = Math.max(0, Math.floor((a - x0) / cell)), i1 = Math.min(nx - 1, Math.floor((c - x0) / cell));
+      const j0 = Math.max(0, Math.floor((b - y0) / cell)), j1 = Math.min(ny - 1, Math.floor((d - y0) / cell));
+      for (let j = j0; j <= j1; j++) for (let k = i0; k <= i1; k++) {
+        const key = j * nx + k;
+        const l = lists.get(key);
+        if (l) l.push(i);
+        else lists.set(key, [i]);
+      }
+    }
+    return { lo: [x0, y0] as [number, number], cell, nx, ny, lists };
+  });
+  const ix = { bins, reach };
+  indexes.set(input, ix);
+  return ix;
+}
+
 export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 0 | 1 | 2, sign: 1 | -1, keep?: (p: Vec) => boolean): number | null {
   const { n, step, origin, removed } = g;
   const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
+  const index = moveIndex(input);
   const cutBy = (m: number, p: Vec) => {
     const mv = input.moves[m];
     const s = mv && input.setups[mv.setup];
@@ -426,6 +483,36 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
     const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
     for (let q = 1; q < mv.points.length; q++) if (sweeps(mx, my, mz, mv.points[q - 1], mv.points[q], tool.radius, tool.slope)) return true;
     return false;
+  };
+  /**
+   * Every move before `before` that cuts part point p, the one that cut it first (`first`) leading.
+   * Several moves cut the same place (face-mill layers, roughing then finishing): the deepest decides
+   * where the material ends. A tool clears everything above it, so the moves that cut a point next to
+   * the material are also the ones that cut between it and the material (sideways, only a hole thinner
+   * than one sample step could slip between; the grid cannot see that anyway).
+   */
+  const cutters = (p: Vec, first: number) => {
+    const found = [first];
+    const box = index.reach;
+    for (let s = 0; s < input.setups.length; s++) {
+      const R = input.setups[s].orient;
+      const t = input.setups[s].offset;
+      const b = index.bins[s];
+      const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
+      const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
+      const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
+      const k = Math.floor((mx - b.lo[0]) / b.cell);
+      const j = Math.floor((my - b.lo[1]) / b.cell);
+      if (k < 0 || j < 0 || k >= b.nx || j >= b.ny) continue;
+      for (const m of b.lists.get(j * b.nx + k) ?? []) {
+        if (m >= before) break;
+        // Cheap first: outside the move's reach, or below its lowest point, it cannot cut there.
+        const o = m * 5;
+        if (m === first || mx < box[o] || mx > box[o + 1] || my < box[o + 2] || my > box[o + 3] || mz < box[o + 4]) continue;
+        if (cutBy(m, p)) found.push(m);
+      }
+    }
+    return found;
   };
   const [u, w] = axis === 0 ? [1, 2] : axis === 1 ? [0, 2] : [0, 1];
   const id = (c: number[]) => (c[2] * n[1] + c[1]) * n[0] + c[0];
@@ -440,7 +527,7 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
         if (removed[id(c)] < before) continue;
         const p: Vec = [origin[0] + (c[0] + 0.5) * step[0], origin[1] + (c[1] + 0.5) * step[1], origin[2] + (c[2] + 0.5) * step[2]];
         if (keep && !keep(p)) continue;
-        // Beyond this voxel: the raw face, or material cut by the move that took the next voxel.
+        // Beyond this voxel: the raw face, or material cut by the moves before (the deepest of them).
         const out = L + sign;
         let reach = 0;
         if (out >= 0 && out < n[axis]) {
@@ -448,13 +535,15 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
           const m = removed[id(c)];
           reach = step[axis];
           if (m < before) {
+            const q: Vec = [p[0], p[1], p[2]];
+            q[axis] = p[axis] + sign * step[axis];
+            const by = cutters(q, m);
             let lo = 0;
             let hi = step[axis];
-            const q: Vec = [p[0], p[1], p[2]];
             for (let it = 0; it < 10; it++) {
               const mid = (lo + hi) / 2;
               q[axis] = p[axis] + sign * mid;
-              if (cutBy(m, q)) hi = mid;
+              if (by.some((mm) => cutBy(mm, q))) hi = mid;
               else lo = mid;
             }
             reach = lo;

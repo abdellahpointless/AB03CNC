@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, calesKey, parallelWidth, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, instant, tipSlope, type ChunkMesh } from '../lib/stockSim';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
@@ -90,6 +90,8 @@ function box(min: Vec, max: Vec, color: number, opacity: number, edges = 0x00000
 // Brushed steel: moderate metalness, so it picks up the studio surroundings without going dark.
 const STEEL = { color: 0xc9d1dc, metalness: 0.3, roughness: 0.42 };
 const STEEL_DARK = { color: 0x98a3b3, metalness: 0.35, roughness: 0.45 };
+/** A spacer plate (ZWISCHENLAGE): soft aluminium, lighter and duller than the steel. */
+const ALU = { color: 0xe4e8ee, metalness: 0.12, roughness: 0.62 };
 
 /** A box of a given steel finish with dark edges (machine coordinates). */
 function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; roughness: number }): THREE.Group {
@@ -106,10 +108,13 @@ function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; r
  * jaw at the front (Y-) with its screw, and the stop on the left that the part is pushed against.
  * The jaw plates and the stop touch the part's real faces (grip), so nothing cuts into it.
  */
-function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip']) {
+function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip'], spacer: SetupInfo['spacer']) {
   const g = new THREE.Group();
   const [x0, x1] = jawX;
-  const cb = { min: [hold.min[0], grip?.front ?? hold.min[1]], max: [hold.max[0], grip?.back ?? hold.max[1]] };
+  const front = grip?.front ?? hold.min[1];
+  const back = grip?.back ?? hold.max[1];
+  // The jaw plates stand a spacer's thickness off the part on the side it is written.
+  const cb = { min: [hold.min[0], front - spacerAt({ spacer }, 'Y-')], max: [hold.max[0], back + spacerAt({ spacer }, 'Y+')] };
   const cx = (x0 + x1) / 2;
   const body = floorZ - 34;
   // Body and the bed the jaws run on.
@@ -133,6 +138,10 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   hex.rotation.x = Math.PI / 2;
   hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
   moving.add(hex);
+  // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
+  if (spacer?.side === 'Y-') moving.add(steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU));
+  if (spacer?.side === 'Y+') g.add(steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU));
+  if (spacer?.side === 'X-') g.add(steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + spacer.mm, back, jawTop], ALU));
   g.add(moving);
   // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
@@ -562,7 +571,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (setup.jawTopZ !== null) {
         const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
         const cx = (cb.min[0] + cb.max[0]) / 2;
-        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip);
+        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacer);
         fixture.add(vise.group);
         jaws.push(...vise.jawMats);
         a.jaw = { obj: vise.moving, travel: 14 };

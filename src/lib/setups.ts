@@ -12,6 +12,8 @@ import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose
  *   M0 (TEIL 180 GRAD UM Y DREHEN)                  turn the part 180° around Y (second side)
  *   M0 (MOD. SPANNEN F. RUECKS./50 IN XY)           modular fixture, back side, 50 in X and Y
  *   M0 (... /RAFI X+ Y-)                            the RAFI cut-out faces X+ and Y-
+ *   M0 (15 MM ZWISCHENLAGE IN Y-)                   a 15 mm spacer between the part and the front jaw
+ *   M0 (36 MM UNTERLAGE IN 21MM)                    36 mm parallels, holding the part 21 mm below its top
  *   G52 X.. Y.. Z..                                 zero point of this setup
  *
  * Everything is in the setup's own program coordinates (the coordinates the moves use).
@@ -53,6 +55,7 @@ export interface SetupInfo {
   support: number | null;
   /** "UNTERLAGE IN EP 5 MM": the part rests on the parallels this far below its top (Z0). */
   restDepth: number | null;
+  /** "15 MM ZWISCHENLAGE IN Y-": a plate between the part and the jaw (or the stop) on that side. */
   spacer: { mm: number; side: Face } | null;
   /** vise; module: the shop's modular clamp (a vise too, same 45 mm jaws); fixture: held in a fixture. */
   clamp: 'vise' | 'module' | 'fixture' | null;
@@ -102,6 +105,9 @@ export interface SetupOptions {
   jawHeight: number;
 }
 
+/** Thickness of the spacer on that side of the part (0 when there is none there). */
+export const spacerAt = (s: { spacer: SetupInfo['spacer'] }, side: Face) => (s.spacer?.side === side ? s.spacer.mm : 0);
+
 /** Floor to top of the vise jaws: the same on every vise in the shop. */
 export const DEFAULT_JAW_HEIGHT = 45;
 
@@ -114,13 +120,24 @@ function triple(text: string | undefined): [number, number, number] | null {
   return m ? [num(m[1]), num(m[2]), num(m[3])] : null;
 }
 
-/** Finished and raw sizes from the header, e.g. "(CONTOUR INSERT ALU / 24X26.5X10 / ZUSCHNITT:28X30X20)". */
+/**
+ * Finished and raw sizes from the header, e.g. "(CONTOUR INSERT ALU / 24X26.5X10 / ZUSCHNITT:28X30X20)",
+ * or without the word: "(TOP PLATE POM / 100X50X30 // 104X54X40)" (two sizes: finished, then raw).
+ */
 export function partSizes(header: string[]): { finished: [number, number, number] | null; raw: [number, number, number] | null; name: string | null } {
   for (const h of header) {
     const parts = h.split(/ZUSCHNITT\s*:?/i);
     const finished = triple(parts[0]);
+    let raw = parts.length > 1 ? triple(parts[1]) : null;
+    if (finished && parts.length === 1) {
+      // A second size is the raw block when it is at least as big on every side.
+      const second = [...h.matchAll(new RegExp(`${NUM}\\s*X\\s*${NUM}\\s*X\\s*${NUM}`, 'gi'))][1];
+      const sorted = (v: number[]) => [...v].sort((a, b) => a - b);
+      const after = second ? ([num(second[1]), num(second[2]), num(second[3])] as [number, number, number]) : null;
+      if (after && sorted(after).every((v, i) => v >= sorted(finished)[i])) raw = after;
+    }
     if (finished || parts.length > 1) {
-      return { finished, raw: parts.length > 1 ? triple(parts[1]) : null, name: h.split('/')[0].trim() || null };
+      return { finished, raw, name: h.split('/')[0].trim() || null };
     }
   }
   return { finished: null, raw: null, name: null };
@@ -133,7 +150,8 @@ function faces(text: string): Face[] {
 /** Reads one setup's instructions. */
 export function readInstructions(notes: string[]) {
   const t = notes.join(' / ').toUpperCase();
-  const both = t.match(new RegExp(`${NUM}\\s*IN\\s*X\\s*UND\\s*${NUM}\\s*IN\\s*Y`));
+  // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y".
+  const both = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*X\\s*UND\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
   const xy = t.match(new RegExp(`${NUM}\\s*IN\\s*XY\\b`));
   let sizes: { x: number; y: number } | null = both ? { x: num(both[1]), y: num(both[2]) } : xy ? { x: num(xy[1]), y: num(xy[1]) } : null;
   let onlyX: number | null = null;
@@ -162,7 +180,8 @@ export function readInstructions(notes: string[]) {
   if (found.length) rotation = { axis: found[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
   const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE`));
-  const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:IN|SUR|AUF)?\\s*(?:EP(?:AISSEUR|AISEUR)?\\.?)\\s*${NUM}`));
+  // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM".
+  const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
   const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
   const marker = t.match(/(RAFI|TASTER)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
@@ -187,10 +206,8 @@ export function readInstructions(notes: string[]) {
   };
 }
 
-const percentile = (values: number[], p: number) => {
-  const s = [...values].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * p)))];
-};
+/** The value at share p of numbers already sorted. */
+const percentile = (sorted: Float64Array, p: number) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)))];
 
 /** Points of a move, every ~2 mm along straight segments, the hole bottom for drilling. */
 function samples(m: Move): Vec[] {
@@ -252,6 +269,20 @@ function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, 
     .sort((a, b) => a.score - b.score)
     .map((x) => x.m);
   return fits.length ? fits : [prev];
+}
+
+/**
+ * "150 IN X": of the orientations left, keep those that put the part's side nearest that size
+ * along X (the part may still carry raw stock, so nearest, not equal).
+ */
+function bySize(options: Mat3[], part: { min: Vec; max: Vec } | null, sizes: { x: number; y: number } | null): Mat3[] {
+  if (options.length < 2 || !part || !sizes) return options;
+  const off = (m: Mat3) => {
+    const b = turnedBox(m, part.min, part.max);
+    return Math.abs(b.max[0] - b.min[0] - sizes.x) + (Number.isFinite(sizes.y) ? Math.abs(b.max[1] - b.min[1] - sizes.y) : 0);
+  };
+  const best = Math.min(...options.map(off));
+  return options.filter((m) => off(m) <= best + 1);
 }
 
 function frontDir(ins: ReturnType<typeof readInstructions>): Vec | null {
@@ -372,7 +403,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
       for (const s of out.setups) {
         s.cales = placeCales(s, input, g);
         s.grip = gripOf(s, input, g);
-        if (s.grip) s.jawX = [s.grip.stop - STOP_PLATE, s.grip.stop - STOP_PLATE + s.jawHalfWidth * 2];
+        if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + s.jawHalfWidth * 2];
       }
       return out;
     }
@@ -526,7 +557,12 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const idx = tp.moves.map((m, i) => (m.setup === k ? i : -1)).filter((i) => i >= 0);
     const moves = idx.map((i) => tp.moves[i]);
     const prev = out[k - 1];
-    const alternatives = k === 0 ? [IDENTITY] : solveOrientation(orient, ins, known);
+    // The first time a flat clamping says which side is up (RUECKS. / FRONTSEITE), the flat
+    // clamping before it had the other side up: the part was turned over in between.
+    if (k > 0 && ins.side && !ins.onEdge && !ins.turns.length && !known.has('front') && prev && !prev.onEdge) {
+      known.set('front', apply(transpose(orient), [0, 0, ins.side === 'back' ? 1 : -1]));
+    }
+    const alternatives = k === 0 ? [IDENTITY] : bySize(solveOrientation(orient, ins, known), part, ins.sizes);
     orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {
@@ -575,8 +611,8 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       pts.push(...add);
       for (let n = 0; n < add.length; n++) slack.push((diameter.get(m.tool ?? -1) ?? 0) / 2 + 3);
     }
-    const xs = pts.map((p) => p[0]);
-    const ys = pts.map((p) => p[1]);
+    const xs = Float64Array.from(pts, (p) => p[0]).sort();
+    const ys = Float64Array.from(pts, (p) => p[1]).sort();
     const measured = pts.length
       ? { cx: (percentile(xs, 0.05) + percentile(xs, 0.95)) / 2, cy: (percentile(ys, 0.05) + percentile(ys, 0.95)) / 2, w: percentile(xs, 0.95) - percentile(xs, 0.05), h: percentile(ys, 0.95) - percentile(ys, 0.05) }
       : { cx: 0, cy: 0, w: 0, h: 0 };
@@ -625,9 +661,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     let cy = measured.cy;
     let placed = false;
     if (s.shift && notes.length) {
-      const spacer = ins.spacer?.side === 'X-' ? ins.spacer.mm : 0;
-      const x = STOP_X - s.shift[0] + spacer + hold[0] / 2;
-      const y = STOP_Y - s.shift[1] - hold[1] / 2;
+      // A spacer against the stop (X-) or the fixed jaw (Y+) pushes the part away from it.
+      const x = STOP_X - s.shift[0] + spacerAt(ins, 'X-') + hold[0] / 2;
+      const y = STOP_Y - s.shift[1] - spacerAt(ins, 'Y+') - hold[1] / 2;
       if (!pts.length || inside(x, y, size[0], size[1]) >= 0.6) {
         [cx, cy] = [x, y];
         placed = true;
@@ -715,8 +751,10 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     // jaw height.
     const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
-    info.jawHalfWidth = Math.max(62.5, hold[0] / 2 + 15);
-    info.jawX = [jaw.min[0] - STOP_PLATE, jaw.min[0] - STOP_PLATE + info.jawHalfWidth * 2];
+    info.jawHalfWidth = Math.max(62.5, (hold[0] + spacerAt(ins, 'X-')) / 2 + 15);
+    info.jawX = [jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE, jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE + info.jawHalfWidth * 2];
+    // The steel jaw plates: a spacer (soft, may be touched) stands between them and the part.
+    const jawY: [number, number] = [jaw.min[1] - spacerAt(ins, 'Y-'), jaw.max[1] + spacerAt(ins, 'Y+')];
     let clearance = Infinity;
     let open: Collision | null = null;
     idx.forEach((mi) => {
@@ -724,7 +762,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       const r = (diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
       let hitHere: Collision | null = null;
       for (const p of samples(m)) {
-        const overJaw = (p[1] - r < jaw.min[1] || p[1] + r > jaw.max[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
+        const overJaw = (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
         if (!overJaw) continue;
         const above = p[2] - info.jawTopZ!;
         clearance = Math.min(clearance, above);

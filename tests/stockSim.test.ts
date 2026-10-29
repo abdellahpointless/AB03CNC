@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, eigenSym, instant, KEPT, mesher, sweeps, touch, type SimInput } from '../src/lib/stockSim';
+import { carve, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, touch, type SimInput } from '../src/lib/stockSim';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -143,5 +143,24 @@ describe('playback', () => {
     expect(toolAlong(drill, path, r, 0.8).p[2]).toBeCloseTo(-8);
     expect(toolAlong(drill, path, r, 0.8).cut).toBe(1);
     expect(toolAlong(drill, path, r, 1).p[2]).toBeCloseTo(2);
+  });
+});
+
+describe('the real face of the part between setups', () => {
+  it('is where the deepest pass went, not the first pass that reached a sample (face-mill layers)', () => {
+    // Three face-mill layers on a coarse grid: the last one (Z0) never takes a sample first.
+    const passes = [3.333, 1.667, 0].map((z) => ({ setup: 0, tool: 1, points: [[-40, 10, z], [80, 10, z]] as Vec[] }));
+    const input: SimInput = {
+      moves: passes,
+      setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+      part: { min: [0, 0, -10.2], max: [40, 20, 3] },
+      tools: [{ tool: 1, radius: 30, slope: null }],
+      maxVoxels: 1000,
+    };
+    const g = carve(input);
+    // The case that went wrong: no sample lies between Z0 and the 1.667 layer.
+    const centres = Array.from({ length: g.n[2] }, (_, k) => g.origin[2] + (k + 0.5) * g.step[2]);
+    expect(centres.some((z) => z >= 0 && z < 1.667)).toBe(false);
+    expect(materialExtreme(input, g, passes.length, 2, 1)).toBeCloseTo(0, 2);
   });
 });
