@@ -8,6 +8,8 @@ import { downloadBlob } from '../lib/download';
 import { fmtDateTime } from '../i18n/format';
 import { useT } from '../i18n';
 import PeriodPicker from './PeriodPicker';
+import DailyReport from './DailyReport';
+import { reportPeople, reportRows, type ReportKind } from '../lib/preventiveReport';
 
 /*
  * Preventive actions → Reports (admins): only what did not go well in the period (problems,
@@ -15,21 +17,7 @@ import PeriodPicker from './PeriodPicker';
  * confirms their checks the most. Everything can be downloaded as an Excel file.
  */
 
-type Kind = 'PROBLEM' | 'MACHINE_DOWN' | 'MISSED' | 'CALES_MISSING' | 'CALES_DAMAGED';
-interface Row {
-  at: number;
-  machine: string;
-  kind: Kind;
-  details: string;
-  notDoneBy: string;
-  by: string;
-}
-interface Person {
-  username: string;
-  done: number;
-  problems: number;
-  notDone: number;
-}
+type Kind = ReportKind;
 
 const KIND_ICON: Record<Kind, typeof AlertTriangle> = {
   PROBLEM: AlertTriangle,
@@ -57,6 +45,7 @@ export default function PreventiveReports() {
   const [data, setData] = useState<MachinesReport | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<'overview' | 'daily'>('overview');
 
   useEffect(() => {
     let alive = true;
@@ -74,42 +63,8 @@ export default function PreventiveReports() {
     };
   }, [period, versions.machines]);
 
-  const rows = useMemo<Row[]>(() => {
-    if (!data) return [];
-    const out: Row[] = data.events.map((e) => ({
-      at: e.at,
-      machine: nameOf(e.machine_id),
-      kind: e.action,
-      details: e.action === 'PROBLEM' ? [e.check_title, e.note].filter(Boolean).join(' · ') : e.check_title ?? e.note ?? '',
-      notDoneBy: e.action === 'MISSED' ? e.note ?? '' : '',
-      by: e.username,
-    }));
-    for (const c of data.cales)
-      out.push({
-        at: c.at,
-        machine: nameOf(c.machine_id),
-        kind: c.kind === 'MISSING' ? 'CALES_MISSING' : 'CALES_DAMAGED',
-        details: t('reports.caleDetails', { h: c.height, count: c.count }),
-        notDoneBy: '',
-        by: c.username,
-      });
-    return out.sort((a, b) => b.at - a.at);
-  }, [data, nameOf, t]);
-
-  const people = useMemo<Person[]>(() => {
-    if (!data) return [];
-    const map = new Map<string, Person>();
-    const get = (u: string) => {
-      const k = u.toLowerCase();
-      if (!map.has(k)) map.set(k, { username: u, done: 0, problems: 0, notDone: 0 });
-      return map.get(k)!;
-    };
-    for (const p of data.people) Object.assign(get(p.username), { done: p.done, problems: p.problems });
-    for (const r of rows)
-      if (r.kind === 'MISSED')
-        for (const u of r.notDoneBy.split(',').map((s) => s.trim()).filter(Boolean)) if (!data.hidden.includes(u.toLowerCase())) get(u).notDone++;
-    return [...map.values()].sort((a, b) => b.done - a.done || a.notDone - b.notDone);
-  }, [data, rows]);
+  const rows = useMemo(() => (data ? reportRows(data, nameOf, (h, count) => t('reports.caleDetails', { h, count })) : []), [data, nameOf, t]);
+  const people = useMemo(() => (data ? reportPeople(data, rows) : []), [data, rows]);
 
   const count = (k: Kind) => rows.filter((r) => r.kind === k).length;
   const best = Math.max(1, ...people.map((p) => p.done));
@@ -153,8 +108,33 @@ export default function PreventiveReports() {
     }
   };
 
+  const tabs = (
+    <div role="tablist" aria-label={t('reports.views')} className="inline-flex self-start rounded-full border border-[var(--border-subtle)] p-1 gap-1">
+      {(['overview', 'daily'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={view === v}
+          onClick={() => setView(v)}
+          className={`no-glass rounded-full px-4 py-2 text-xs font-semibold ${view === v ? 'bg-[var(--blue-500)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+        >
+          {t(v === 'overview' ? 'reports.viewOverview' : 'reports.viewDaily')}
+        </button>
+      ))}
+    </div>
+  );
+  if (view === 'daily')
+    return (
+      <div className="flex flex-col space-y-6 max-w-6xl mx-auto w-full pb-16">
+        {tabs}
+        <DailyReport />
+      </div>
+    );
+
   return (
     <div className="flex flex-col space-y-6 max-w-6xl mx-auto w-full pb-16">
+      {tabs}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--rose-500)]/12 border border-[var(--rose-500)]/30 flex items-center justify-center text-[var(--rose-500)] shrink-0">

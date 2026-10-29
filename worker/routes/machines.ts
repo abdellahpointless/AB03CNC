@@ -418,7 +418,7 @@ export async function handleMachinesReport(ctx: Ctx): Promise<Response> {
   const to = Number(ctx.url.searchParams.get('to'));
   if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to || to - from > 400 * 86_400_000) throw new HttpError(400, 'Invalid date range');
   const db = ctx.env.DB;
-  const [events, cales, people, hidden] = await Promise.all([
+  const [events, cales, people, hidden, perMachine, taken] = await Promise.all([
     db
       .prepare(
         `SELECT machine_id, check_title, action, note, username, at FROM machine_events
@@ -443,14 +443,43 @@ export async function handleMachinesReport(ctx: Ctx): Promise<Response> {
       .bind(from, to)
       .all<{ username: string; done: number; problems: number }>(),
     getHiddenUsers(ctx.env),
+    // Per machine and person (hidden accounts are left out below): checks and cales boxes confirmed.
+    db
+      .prepare(
+        `SELECT machine_id, username, SUM(c) AS checks, SUM(p) AS problems, SUM(k) AS cales FROM (
+           SELECT machine_id, username, 1 AS c, result = 'PROBLEM' AS p, 0 AS k FROM check_completions WHERE at >= ?1 AND at < ?2
+           UNION ALL SELECT machine_id, username, 0, 0, 1 FROM cales_checks WHERE at >= ?1 AND at < ?2
+         ) GROUP BY machine_id, username COLLATE NOCASE`,
+      )
+      .bind(from, to)
+      .all<{ machine_id: string; username: string; checks: number; problems: number; cales: number }>(),
+    // Cales the machines took from the general stock (approved requests).
+    db
+      .prepare(
+        `SELECT machine_id, height, count, requested_by, decided_by, decided_at AS at FROM cales_requests
+         WHERE status = 'APPROVED' AND decided_at >= ? AND decided_at < ? ORDER BY decided_at LIMIT ${REPORT_LIMIT}`,
+      )
+      .bind(from, to)
+      .all<{ machine_id: string; height: number; count: number; requested_by: string; decided_by: string; at: number }>(),
   ]);
   const shown = (u: string) => !hidden.includes(u.toLowerCase());
+  const machines = new Map<string, { machine_id: string; checks: number; problems: number; cales: number }>();
+  for (const r of perMachine.results) {
+    if (!shown(r.username)) continue;
+    const m = machines.get(r.machine_id) ?? { machine_id: r.machine_id, checks: 0, problems: 0, cales: 0 };
+    m.checks += r.checks;
+    m.problems += r.problems;
+    m.cales += r.cales;
+    machines.set(r.machine_id, m);
+  }
   return json({
     events: events.results.slice(0, REPORT_LIMIT),
     cales: cales.results.slice(0, REPORT_LIMIT),
     // The list is the newest rows only; the screen says so instead of looking complete.
     truncated: events.results.length > REPORT_LIMIT || cales.results.length > REPORT_LIMIT,
     people: people.results.filter((p) => shown(p.username)),
+    machines: [...machines.values()],
+    taken: taken.results,
     hidden,
   });
 }

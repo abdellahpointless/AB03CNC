@@ -64,6 +64,9 @@ describe('preventive report', () => {
       { username: 'ali', done: 3, problems: 0 },
       { username: 'karim', done: 0, problems: 1 },
     ]);
+    // per machine, without the hidden test account: 3 checks (one a problem) and 1 cales box
+    expect(r.machines).toEqual([{ machine_id: 'HAAS-1', checks: 3, problems: 1, cales: 1 }]);
+    expect(r.taken).toEqual([]);
     const a = await call(handleAnalytics);
     expect(a.totalExtractions).toBe(5);
     expect(a.users.find((u: { username: string }) => u.username === 'test').hidden).toBe(true);

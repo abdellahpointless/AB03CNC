@@ -288,6 +288,10 @@ export interface MachinesReport {
   hidden: string[];
   /** More events than the list holds: only the newest are in it. */
   truncated: boolean;
+  /** Per machine: checks and cales boxes confirmed in the period (hidden accounts left out). */
+  machines: { machine_id: string; checks: number; problems: number; cales: number }[];
+  /** Cales taken from the general stock in the period (approved requests). */
+  taken: CaleTaken[];
 }
 export const fetchMachinesReport = (from: number, to: number) => api<MachinesReport>(`/machines/report?from=${from}&to=${to}`);
 /** Admin: how many single cales of a pair are really in the machine's box (0, 1 or 2). */

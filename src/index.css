@@ -2542,3 +2542,7 @@ html:not(.light) .badge-positive { color: #1fb257; }
 .export-menu button:hover:not(:disabled), .export-menu button:focus-visible { background: rgba(var(--ov), 0.08); }
 .export-menu button:disabled { opacity: 0.45; cursor: not-allowed; }
 .export-menu svg { color: var(--text-secondary); flex-shrink: 0; }
+
+/* Reports → Daily report: the printable page on a grey desk; scrolls sideways on phones instead of squashing. */
+.daily-paper { overflow-x: auto; padding: 20px 12px; border-radius: var(--radius-md); background: rgba(var(--ov), 0.06); border: 1px solid var(--border-subtle); }
+.daily-paper:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
