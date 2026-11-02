@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown } from 'lucide-react';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock } from 'lucide-react';
 import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -7,6 +7,18 @@ import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConvert
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { useT } from '../i18n';
+import { useSync } from '../contexts/SyncContext';
+import { scopedKey } from '../lib/instance';
+
+// "NEW" on the toolpath button until it is first opened on this PC.
+const TOOLPATH_SEEN = scopedKey('cnc-toolpath-seen');
+const toolpathSeen = () => {
+  try {
+    return localStorage.getItem(TOOLPATH_SEEN) === '1';
+  } catch {
+    return true;
+  }
+};
 
 interface CodeEditorPairProps {
   inputLabel: string;
@@ -202,6 +214,9 @@ export default function CodeEditorPair({
   machineBrand,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
+  // Off for a country until a master admin switches it on: the button shows a padlock.
+  const toolpathOn = useSync().features.toolpath;
+  const [toolpathNew, setToolpathNew] = useState(() => !toolpathSeen());
   const { t } = useT('remapper');
   const [confirmingExport, setConfirmingExport] = useState(false);
   const outputScrollRef = useRef<HTMLDivElement>(null);
@@ -569,13 +584,25 @@ export default function CodeEditorPair({
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowToolpath(true)}
-                disabled={!outputCode && !sourceCode.trim()}
-                className="btn-secondary text-xs py-1 px-2.5"
-                title={t('toolpath.openTitle')}
+                onClick={() => {
+                  if (!toolpathOn) return;
+                  setShowToolpath(true);
+                  setToolpathNew(false);
+                  try {
+                    localStorage.setItem(TOOLPATH_SEEN, '1');
+                  } catch {
+                    /* the tag just stays */
+                  }
+                }}
+                disabled={toolpathOn && !outputCode && !sourceCode.trim()}
+                aria-disabled={!toolpathOn || undefined}
+                className={`btn-secondary text-xs py-1 px-2.5 ${toolpathOn ? '' : 'opacity-60 cursor-not-allowed'}`}
+                title={toolpathOn ? t('toolpath.openTitle') : t('toolpath.locked')}
               >
-                <Route size={13} />
+                {toolpathOn ? <Route size={13} /> : <Lock size={13} />}
                 <span className="hidden sm:inline">{t('toolpath.open')}</span>
+                {toolpathOn && toolpathNew && <span className="rounded-full bg-[var(--accent-primary)] px-1.5 py-px text-[10px] font-bold leading-4 text-white">{t('toolpath.new')}</span>}
+                {!toolpathOn && <span className="sr-only">{t('toolpath.locked')}</span>}
               </button>
               <button 
                 onClick={copyToClipboard}

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
@@ -325,7 +325,7 @@ function disposeTree(o: THREE.Object3D) {
 interface Api {
   invalidate: () => void;
   camera: THREE.PerspectiveCamera;
-  controls: OrbitControls;
+  controls: TrackballControls;
   scene: THREE.Scene;
   world: THREE.Group;
   solid: THREE.Group;
@@ -393,9 +393,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
     // Lit from every side and from the viewer: no face turns black, whichever way it is turned.
     const disposeLights = addLights(scene, renderer, camera);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.15;
+    // Free rotation in every direction (no face held as the bottom), gently damped.
+    const controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 2.5;
+    controls.dynamicDampingFactor = 0.15;
     const world = new THREE.Group();
     scene.add(world);
     const solid = new THREE.Group();
@@ -417,6 +418,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       renderer.domElement.style.height = '100%';
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      controls.handleResize();
       dirty = true;
     };
     const ro = new ResizeObserver(resize);
@@ -885,6 +887,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const c = bb.getCenter(new THREE.Vector3());
       const size = bb.getSize(new THREE.Vector3()).length();
       controls.target.copy(c);
+      camera.up.set(0, 1, 0);
       camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.25));
       camera.near = size / 200;
       camera.far = size * 40;
@@ -1194,6 +1197,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         const c = bb.getCenter(new THREE.Vector3());
         const size = bb.getSize(new THREE.Vector3()).length();
         a.controls.target.copy(c);
+        a.camera.up.set(0, 1, 0);
         a.camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.35));
         a.controls.update();
       }

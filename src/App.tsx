@@ -22,6 +22,7 @@ import { TimeWonClock } from './components/TimeWonClock';
 import { SyncStatus } from './components/SyncStatus';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { AccountMenu } from './components/AccountMenu';
+import { WhatsNewButton } from './components/WhatsNew';
 import { useUserSessionStorage } from './hooks/useUserSessionStorage';
 import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
@@ -395,6 +396,7 @@ function Workspace() {
               <TimeWonClock compact={true} onClick={() => user.role === 'ADMIN' && openTab('ADMIN')} />
             </div>
 
+            <WhatsNewButton />
             <AccountMenu
               onSecurity={() => setShowPasswordModal('password')}
               onSync={handleGlobalRefresh}

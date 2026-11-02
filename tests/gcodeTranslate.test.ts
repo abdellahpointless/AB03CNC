@@ -70,9 +70,9 @@ describe('features per country', async () => {
   });
   it('Türkiye only has the G-code remapper; Morocco keeps everything', () => {
     const [ma, tr] = REGIONS;
-    expect(ma.features).toEqual({ partTracking: true, preventive: true, shiftChecks: true });
+    expect(ma.features).toEqual({ partTracking: true, preventive: true, shiftChecks: true, toolpath: true });
     expect(ma.gcodeComments).toBe('fr');
-    expect(tr.features).toEqual({ partTracking: false, preventive: false, shiftChecks: false });
+    expect(tr.features).toEqual({ partTracking: false, preventive: false, shiftChecks: false, toolpath: false });
     expect(tr.gcodeComments).toBe('en');
   });
 });

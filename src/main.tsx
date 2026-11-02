@@ -6,6 +6,7 @@ import { installPressFeedback } from './lib/pressFeedback';
 import { INSTANCE, countryPath, homeCountry, rememberCountry, wantsCountryPicker } from './lib/instance';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { UpdateBanner } from './components/UpdateBanner';
 
 installPressFeedback();
 
@@ -50,6 +51,7 @@ if (!redirecting) createRoot(document.getElementById('root')!).render(
       <Suspense fallback={null}>
         <Root />
       </Suspense>
+      <UpdateBanner />
     </MotionConfig>
   </StrictMode>,
 );

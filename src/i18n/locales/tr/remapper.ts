@@ -248,6 +248,8 @@ const remapper: Translation<typeof en> = {
   toolpath: {
     title: 'Takım yolu',
     open: 'Takım yolu',
+    new: 'YENİ',
+    locked: 'Bu ülke için kilitli: bir ana yönetici açabilir',
     openTitle: 'Programın her hareketini, her takım ayrı renkte, ve tahmini çevrim süresini görün',
     tools: 'Takımlar',
     lowestZ: 'En derin nokta',

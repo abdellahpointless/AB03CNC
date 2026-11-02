@@ -14,6 +14,16 @@ const app: Translation<typeof en> = {
     signOut: 'Çıkış yap',
   },
 
+  whatsNew: {
+    title: 'Yenilikler',
+    unread: 'Yenilikler (yeni güncelleme)',
+  },
+
+  update: {
+    ready: 'Uygulamanın yeni bir sürümü hazır.',
+    refresh: 'Yenile',
+  },
+
   account: {
     open: 'Hesap menüsü ({{name}})',
     security: 'Şifre ve iki adımlı doğrulama',

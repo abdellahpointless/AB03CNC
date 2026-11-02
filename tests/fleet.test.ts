@@ -27,7 +27,7 @@ describe('preventive checks', () => {
   });
   it('with shift checks off, keeps the old rule: daily from midnight, the others by days since done', async () => {
     const { rememberFeatures } = await import('../src/lib/features');
-    rememberFeatures({ partTracking: true, preventive: true, shiftChecks: false });
+    rememberFeatures({ partTracking: true, preventive: true, shiftChecks: false, toolpath: true });
     try {
       const now = new Date(2026, 9, 19, 10).getTime(); // Monday 10:00, this computer's clock
       expect(isDue({ ...base, last_done_at: new Date(2026, 9, 18, 23).getTime() }, now)).toBe(true);
@@ -35,7 +35,7 @@ describe('preventive checks', () => {
       expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: new Date(2026, 9, 18, 20).getTime() }, now)).toBe(false); // Sunday, < 7 days
       expect(isDue({ ...base, frequency: 'WEEKLY', last_done_at: new Date(2026, 9, 12, 9).getTime() }, now)).toBe(true);
     } finally {
-      rememberFeatures({ partTracking: true, preventive: true, shiftChecks: true });
+      rememberFeatures({ partTracking: true, preventive: true, shiftChecks: true, toolpath: true });
     }
   });
   it('a problem makes the machine red even if checks are due', () => {

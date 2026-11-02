@@ -382,6 +382,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
     { key: 'partTracking', label: t('features.partTracking'), hint: t('features.partTrackingHint') },
     { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
     { key: 'shiftChecks', label: t('features.shiftChecks'), hint: t('features.shiftChecksHint') },
+    { key: 'toolpath', label: t('features.toolpath'), hint: t('features.toolpathHint') },
   ];
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">

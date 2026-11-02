@@ -41,6 +41,21 @@ describe('machine identity given to the G-code engine', () => {
     expect(turkish).not.toMatch(/G49/);
   });
 
+  it('HAAS-2 and HAAS-4 (air) get M83 for every M08, in code only; other machines keep M08', () => {
+    const program = ['%', 'O1000', 'N10 T1 M6', 'N11 (PUNTA D6 / M08 COOLANT)', 'N20 G0 G43 H1 Z50. M08', 'N30 M8', 'N40 M80 M88 M09', 'N50 M30', '%'].join('\n');
+    for (const id of ['HAAS-2', 'HAAS-4']) {
+      const out = run(id, FANUC_TOOLS, program);
+      expect(out).toMatch(/G43 H\d+ Z50\. M83/);
+      expect(out).toMatch(/N30 M83/);
+      // Not inside the comment, and not M80, M88 or M09.
+      expect(out).toMatch(/\(PUNTA D6 \/ M08 COOLANT\)/);
+      expect(out).toMatch(/M80 M88 M09/);
+    }
+    expect(run('HAAS-1', FANUC_TOOLS, program)).toMatch(/Z50\. M08/);
+    // A Turkish machine named HAAS-2 is not the Moroccan HAAS-2.
+    expect(run(engineMachineId('tr', { id: 'HAAS-2', brand: 'HAAS' }), FANUC_TOOLS, program)).toMatch(/Z50\. M08/);
+  });
+
   it('pocket limits match the old hard-coded values for Morocco', () => {
     expect(maxPocketsFor({ brand: 'HAAS', pockets: 41 })).toBe(41); // HAAS-1
     expect(maxPocketsFor({ brand: 'FANUC', pockets: null })).toBe(21);

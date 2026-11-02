@@ -13,9 +13,16 @@ function commit(): string {
   }
 }
 
+const version = commit().slice(0, 7);
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  define: { __APP_VERSION__: JSON.stringify(commit().slice(0, 7)) },
+  plugins: [
+    react(),
+    tailwindcss(),
+    // /version.json: open pages compare it with the version they run and offer to refresh (UpdateBanner).
+    { name: 'version-file', generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) }); } },
+  ],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

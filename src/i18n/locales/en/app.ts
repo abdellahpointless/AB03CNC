@@ -11,6 +11,18 @@ const app = {
     signOut: 'Sign out',
   },
 
+  /** What the latest updates added (header button and sheet). */
+  whatsNew: {
+    title: 'What’s new',
+    unread: 'What’s new (new update)',
+  },
+
+  /** The message when a newer version of the app is live. */
+  update: {
+    ready: 'A new version of the app is ready.',
+    refresh: 'Refresh',
+  },
+
   /** The menu behind the user chip in the header. */
   account: {
     open: 'Account menu ({{name}})',

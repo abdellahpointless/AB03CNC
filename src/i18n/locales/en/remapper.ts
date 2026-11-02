@@ -257,6 +257,8 @@ const remapper = {
   toolpath: {
     title: 'Toolpath',
     open: 'Toolpath',
+    new: 'NEW',
+    locked: 'Locked for this country: a master admin can switch it on',
     openTitle: 'See every move of the program, one colour per tool, and the estimated cycle time',
     tools: 'Tools',
     lowestZ: 'Deepest point',

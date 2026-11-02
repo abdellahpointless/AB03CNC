@@ -45,6 +45,8 @@ const master = {
     preventiveHint: 'Machine checklists, problem reports, machine responsibility',
     shiftChecks: 'Shift checks & cales box',
     shiftChecksHint: 'With preventive actions: own checks per person, cales box every shift, lock, cales stock',
+    toolpath: 'Toolpath viewer',
+    toolpathHint: '3D simulation of programs in the remapper; when off, the button shows a padlock',
   },
   compare: {
     title: 'Comparison',

@@ -51,6 +51,8 @@ export interface RegionFeatures {
    * checked every shift, people are locked until it is done, and the admin keeps a cales stock.
    */
   shiftChecks: boolean;
+  /** The 3D toolpath viewer in the remapper (locked, with a padlock, where it is off). */
+  toolpath: boolean;
 }
 
 export const REGIONS: RegionInfo[] = [
@@ -66,7 +68,7 @@ export const REGIONS: RegionInfo[] = [
     publicSetup: true,
     totpIssuer: 'CNC Process Pro',
     timeZone: 'Africa/Casablanca',
-    features: { partTracking: true, preventive: true, shiftChecks: true },
+    features: { partTracking: true, preventive: true, shiftChecks: true, toolpath: true },
     gcodeComments: 'fr',
   },
   {
@@ -81,7 +83,7 @@ export const REGIONS: RegionInfo[] = [
     totpIssuer: 'CNC Process Pro TR',
     timeZone: 'Europe/Istanbul',
     // Türkiye uses the G-code remapper and what comes with it (tool inventory, history).
-    features: { partTracking: false, preventive: false, shiftChecks: false },
+    features: { partTracking: false, preventive: false, shiftChecks: false, toolpath: false },
     gcodeComments: 'en',
   },
 ];

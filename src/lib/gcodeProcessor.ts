@@ -612,6 +612,11 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     outputLines = addG49AfterM6(outputLines);
   }
 
+  // HAAS-2 and HAAS-4 cool with air, not coolant: M08 (or M8) becomes M83, never inside a (comment).
+  if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
+    outputLines = outputLines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+  }
+
   // In FANUC, if the app detects M98 P7999 then it should be deleted
   const isFanuc = (machineId && machineId.toUpperCase().includes('FANUC')) || 
                   outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(l));
