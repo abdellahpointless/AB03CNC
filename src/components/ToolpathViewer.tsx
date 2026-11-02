@@ -1,11 +1,11 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info } from 'lucide-react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
-import type { SolidState } from './Toolpath3D';
+import { WEAK_MM, type SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
@@ -85,6 +85,8 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   mode3dRef.current = mode3d;
   const [fitKey, setFitKey] = useState(0);
   const [isolate, setIsolate] = useState(false);
+  // Weak spots: the finished part coloured by wall thickness.
+  const [heat, setHeat] = useState(false);
   // The setup shown is the one of the current move, so playing goes through the setups.
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
@@ -374,11 +376,23 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
                 {/* The cales (parallels) the part stands on; while the part turns, the change. */}
+                {mode3d && heat && (
+                  <div className="absolute right-3 bottom-3 z-10 w-64 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5" role="note">
+                    <div className="text-[11px] font-semibold text-[var(--text-primary)]">{t('toolpath.heatTitle')}</div>
+                    <div className="h-2 rounded-full" style={{ background: 'linear-gradient(90deg, #ff3b3b 0%, #ff3b3b 33%, #ff9a2e 66%, #f5d547 100%)' }} aria-hidden="true" />
+                    <div className="flex justify-between text-[10px] font-mono text-[var(--text-secondary)]">
+                      <span>≤{fmtNumber(WEAK_MM[0])} mm</span>
+                      <span>{fmtNumber(WEAK_MM[1])} mm</span>
+                      <span>≥{fmtNumber(WEAK_MM[2])} mm</span>
+                    </div>
+                    <p className="text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.heatNote')}</p>
+                  </div>
+                )}
                 {mode3d && !isolate && sel?.cales?.length && sel.support !== null ? (() => {
                   const before = turning !== null ? setups[turning - 1] : null;
                   const change = before && calesKey(before) !== calesKey(sel) && before.support !== null && before.support !== sel.support;
@@ -415,6 +429,21 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     >
                       <Box size={12} />
                       {t('toolpath.isolate')}
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => {
+                        // The colours are the finished part's: show it.
+                        if (!heat) seek(total);
+                        setHeat((x) => !x);
+                      }}
+                      aria-pressed={heat}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${heat ? 'border-[#ff9a2e] bg-[#ff9a2e] text-[#1a1206]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.heatHelp')}
+                    >
+                      <Flame size={12} />
+                      {t('toolpath.heat')}
                     </button>
                   )}
                   <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>

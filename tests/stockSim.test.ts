@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, touch, type SimInput } from '../src/lib/stockSim';
+import { carve, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -162,5 +162,24 @@ describe('the real face of the part between setups', () => {
     const centres = Array.from({ length: g.n[2] }, (_, k) => g.origin[2] + (k + 0.5) * g.step[2]);
     expect(centres.some((z) => z >= 0 && z < 1.667)).toBe(false);
     expect(materialExtreme(input, g, passes.length, 2, 1)).toBeCloseTo(0, 2);
+  });
+});
+
+describe('weak spots: wall thickness of the finished part', () => {
+  it('finds the 1 mm wall left between two slots, and thick material elsewhere', () => {
+    // Two slots 8 deep in a 20 x 10 x 10 block, a 4 mm end mill: they leave a 1 mm wall at X 6..7.
+    const slot = (x: number) => ({ setup: 0, tool: 1, points: [[x, -5, -8], [x, 15, -8]] as Vec[] });
+    const input: SimInput = {
+      moves: [slot(4), slot(9)],
+      setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+      part: { min: [0, 0, -10], max: [20, 10, 0] },
+      tools: [{ tool: 1, radius: 2, slope: null }],
+      maxVoxels: 200_000,
+    };
+    const g = carve(input);
+    const th = wallThickness(g);
+    const at = (x: number, y: number, z: number) => thicknessAt(g, th, new Float32Array([x, y, z]))[0];
+    expect(Math.abs(at(6.5, 5, -4) - 1)).toBeLessThan(g.step[0] * 1.5);
+    expect(at(16, 5, -4)).toBeGreaterThan(5);
   });
 });

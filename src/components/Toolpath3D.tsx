@@ -19,6 +19,16 @@ const v3 = (p: Vec) => new THREE.Vector3(p[0], p[2], -p[1]);
 const FACE_DIR: Record<Face, Vec> = { 'X+': [1, 0, 0], 'X-': [-1, 0, 0], 'Y+': [0, 1, 0], 'Y-': [0, -1, 0], 'Z+': [0, 0, 1], 'Z-': [0, 0, -1] };
 const RAW = new THREE.Color(0x7d8aa3);
 const CUT = new THREE.Color(0xd5deea);
+
+/** Weak-spot colours by wall thickness: red under 1 mm, orange at 2, yellow at 3, plain above. */
+export const WEAK_MM = [1, 2, 3] as const;
+const HEAT = [new THREE.Color(0xff3b3b), new THREE.Color(0xff9a2e), new THREE.Color(0xf5d547)];
+const heatColor = (mm: number, plain: THREE.Color, out: THREE.Color) => {
+  if (!(mm < WEAK_MM[2])) return out.copy(plain);
+  if (mm <= WEAK_MM[0]) return out.copy(HEAT[0]);
+  if (mm <= WEAK_MM[1]) return out.copy(HEAT[0]).lerp(HEAT[1], mm - WEAK_MM[0]);
+  return out.copy(HEAT[1]).lerp(HEAT[2], mm - WEAK_MM[1]);
+};
 /** Machine coordinates -> three.js coordinates. */
 const MACHINE = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1);
 
@@ -49,6 +59,8 @@ interface Props {
   onSolid?: (s: SolidState) => void;
   /** Show only the part (no vise, supports, toolpath or tool). */
   isolate?: boolean;
+  /** Colour the part by wall thickness: thin, weak spots stand out (see WEAK_MM). */
+  heat?: boolean;
 }
 
 function label(text: string, color: string): THREE.Sprite {
@@ -269,6 +281,8 @@ interface Api {
   solid: THREE.Group;
   solidReady: boolean;
   requestMesh: (step: number) => void;
+  /** Colour the part again (weak spots on or off). */
+  repaint: () => void;
   fit: () => void;
   progress: (step: number) => void;
   /** Objects hidden while the part turns. */
@@ -287,7 +301,9 @@ interface Api {
   meshAt: number;
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false }: Props) {
+  const heatRef = useRef(heat);
+  heatRef.current = heat;
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const clockRef = useRef(clock);
@@ -370,6 +386,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       solid,
       solidReady: false,
       requestMesh: () => undefined,
+      repaint: () => undefined,
       fit: () => undefined,
       progress: () => undefined,
       setupObjects: [],
@@ -418,6 +435,25 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       worker.postMessage({ type: 'mesh', step: s });
     };
     a.requestMesh = ask;
+    // Raw or cut colour, or the weak-spot colour of each point's wall thickness.
+    const paint = (geo: THREE.BufferGeometry) => {
+      const { cut, thick } = geo.userData as { cut: Uint8Array; thick?: Float32Array };
+      const col = new Float32Array(cut.length * 3);
+      const c = new THREE.Color();
+      for (let i = 0; i < cut.length; i++) {
+        const plain = cut[i] ? CUT : RAW;
+        if (heatRef.current && thick) heatColor(thick[i], plain, c);
+        else c.copy(plain);
+        col[i * 3] = c.r;
+        col[i * 3 + 1] = c.g;
+        col[i * 3 + 2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    };
+    a.repaint = () => {
+      for (const mesh of chunks.values()) paint(mesh.geometry);
+      a.invalidate();
+    };
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
@@ -444,14 +480,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const geo = new THREE.BufferGeometry();
           geo.setAttribute('position', new THREE.BufferAttribute(c.positions, 3));
           geo.setAttribute('normal', new THREE.BufferAttribute(c.normals, 3));
-          const col = new Float32Array(c.cut.length * 3);
-          for (let i = 0; i < c.cut.length; i++) {
-            const k = c.cut[i] ? CUT : RAW;
-            col[i * 3] = k.r;
-            col[i * 3 + 1] = k.g;
-            col[i * 3 + 2] = k.b;
-          }
-          geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+          geo.userData = { cut: c.cut, thick: c.thick };
+          paint(geo);
           if (mesh) {
             mesh.geometry.dispose();
             mesh.geometry = geo;
@@ -475,6 +505,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       worker.terminate();
       a.solidReady = false;
       a.requestMesh = () => undefined;
+      a.repaint = () => undefined;
       for (const m of chunks.values()) {
         a.solid.remove(m);
         m.geometry.dispose();
@@ -736,6 +767,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   useEffect(() => {
     if (fitKey) api.current?.fit();
   }, [fitKey]);
+
+  useEffect(() => api.current?.repaint(), [heat]);
 
   // Part only: hide the vise, supports, toolpath and tool.
   useEffect(() => {

@@ -558,6 +558,60 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
   return null;
 }
 
+/**
+ * Wall thickness of the finished part at every sample (mm; Infinity where cut away): the shortest
+ * run of solid samples through it along X, Y or Z. Thin walls, skins, bridges between holes and
+ * thin ribs come out small: the places that can break or chip.
+ * shortcut: along the axes only, so a thin wall at 45° reads up to 1.4× thicker, and it is only as
+ * fine as one sample step; a true local thickness (largest ball inside) is the upgrade if that misleads.
+ */
+export function wallThickness(g: Grid): Float32Array {
+  const [nx, ny, nz] = g.n;
+  const th = new Float32Array(nx * ny * nz).fill(Infinity);
+  const stride = [1, nx, nx * ny];
+  for (let a = 0; a < 3; a++) {
+    const [b, c] = a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
+    for (let j = 0; j < g.n[b]; j++)
+      for (let k = 0; k < g.n[c]; k++) {
+        const base = j * stride[b] + k * stride[c];
+        for (let i = 0; i < g.n[a]; ) {
+          if (g.removed[base + i * stride[a]] !== KEPT) {
+            i++;
+            continue;
+          }
+          let e = i;
+          while (e < g.n[a] && g.removed[base + e * stride[a]] === KEPT) e++;
+          const len = (e - i) * g.step[a];
+          for (let q = i; q < e; q++) {
+            const v = base + q * stride[a];
+            if (len < th[v]) th[v] = len;
+          }
+          i = e;
+        }
+      }
+  }
+  return th;
+}
+
+/** Thinnest wall at each surface point (positions x, y, z, …): the least of the samples around it. */
+export function thicknessAt(g: Grid, th: Float32Array, positions: Float32Array): Float32Array {
+  const [nx, ny, nz] = g.n;
+  const out = new Float32Array(positions.length / 3);
+  for (let p = 0; p < out.length; p++) {
+    const f = [0, 1, 2].map((a) => Math.floor((positions[p * 3 + a] - g.origin[a]) / g.step[a] - 0.5));
+    let best = Infinity;
+    for (let dz = 0; dz < 2; dz++)
+      for (let dy = 0; dy < 2; dy++)
+        for (let dx = 0; dx < 2; dx++) {
+          const x = f[0] + dx, y = f[1] + dy, z = f[2] + dz;
+          if (x < 0 || y < 0 || z < 0 || x >= nx || y >= ny || z >= nz) continue;
+          best = Math.min(best, th[(z * ny + y) * nx + x]);
+        }
+    out[p] = best;
+  }
+  return out;
+}
+
 export const CHUNK = 24;
 
 export interface ChunkMesh {
@@ -566,6 +620,8 @@ export interface ChunkMesh {
   normals: Float32Array;
   /** 1 = a cut surface, 0 = an outside surface of the raw part. */
   cut: Uint8Array;
+  /** Wall thickness of the finished part at each point (mm, see wallThickness). */
+  thick?: Float32Array;
 }
 
 export interface Mesher {
