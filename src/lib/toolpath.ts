@@ -30,6 +30,9 @@ export interface Move {
   setup: number;
   /** Cutter compensation (G41 left / G42 right of the path by r); start/end: the move that ramps it on/off. */
   comp?: { side: 1 | -1; r: number; start?: boolean; end?: boolean };
+  /** The length and diameter stated for the tool in the spindle at its tool change (one T number can be another tool later on). */
+  reach?: number | null;
+  dia?: number | null;
 }
 
 /** A clamping of the part: the operator instructions before a G52, and its shift. */
@@ -138,6 +141,8 @@ function toolLabel(lines: string[], i: number): string {
 /** Diameter and length from the comment lines right after a tool change. */
 function toolSize(lines: string[], i: number): { diameter: number | null; length: number | null } {
   for (let j = i; j < Math.min(lines.length, i + 6); j++) {
+    // Not past the next tool change: its comment describes that tool.
+    if (j > i && /\bM0?6\b/i.test(lines[j].replace(/\([^)]*\)/g, ''))) break;
     const d = lines[j].match(/DIAMETER\s*([\d.]+)\s*MM/i);
     if (d) {
       const l = lines[j].match(/LENGTH\s*([\d.]+)\s*MM/i);
@@ -173,6 +178,8 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   let absolute = true;
   let feed = 0;
   let tool: number | null = null;
+  let reach: number | null = null;
+  let dia: number | null = null;
   let pendingTool: number | null = null;
   let toolChanges = 0;
   let cycle: number | null = null;
@@ -252,6 +259,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if (v.has('T')) pendingTool = v.get('T')!;
     if (has(m, 6)) {
       tool = pendingTool;
+      ({ length: reach, diameter: dia } = toolSize(lines, i));
       toolChanges++;
       if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
       addTime(speeds.toolChange);
@@ -321,8 +329,8 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       const hole: Vec = [x, y, cycleZ];
       grow([x, y, cycleR]);
       grow(hole);
-      moves.push({ kind: 'rapid', tool, line: i, points: [from, top], seconds: rapidTime(dist(from, top)), length: dist(from, top), setup });
-      moves.push({ kind: 'drill', tool, line: i, points: [[x, y, cycleR]], depth: cycleZ, seconds: seconds - rapidTime(dist(from, top)), length: depth, setup });
+      moves.push({ kind: 'rapid', tool, line: i, points: [from, top], seconds: rapidTime(dist(from, top)), length: dist(from, top), setup , reach, dia });
+      moves.push({ kind: 'drill', tool, line: i, points: [[x, y, cycleR]], depth: cycleZ, seconds: seconds - rapidTime(dist(from, top)), length: depth, setup , reach, dia });
       addTime(seconds);
       pos = [x, y, back];
       return;
@@ -390,7 +398,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       }
       const length = Math.hypot(r * Math.abs(sweep), end[wa] - from[wa]);
       const seconds = feedTime(length);
-      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() });
+      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() , reach, dia });
       compDone();
       addTime(seconds);
     } else {
@@ -398,7 +406,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       const seconds = motion === 0 ? rapidTime(length) : feedTime(length);
       grow(from);
       grow(end);
-      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() });
+      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() , reach, dia });
       compDone();
       addTime(seconds);
     }

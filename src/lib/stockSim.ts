@@ -805,6 +805,106 @@ export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
   });
 }
 
+/**
+ * The holder above a tool: a steel cylinder from where the tool's length (as the program states it)
+ * ends, upward. Face mills sit on a narrower arbor than the cutter.
+ * shortcut: one standard holder per tool size; a real holder per tool in the inventory is the upgrade
+ * if checks warn about holders that are in fact slimmer.
+ */
+export function holderOf(diameter: number): { radius: number; height: number } {
+  const r = diameter / 2;
+  return r >= 12 ? { radius: Math.max(r * 0.38, 14), height: 40 } : { radius: Math.max(r + 6, 10), height: 40 };
+}
+
+/** Where a tool's holder runs into the part (machine coordinates of the holder's bottom centre). */
+export interface HolderHit {
+  move: number;
+  tool: number | null;
+  setup: number;
+  point: Vec;
+  /** How far into the material the holder goes (mm). */
+  depth: number;
+}
+
+/**
+ * The holders against the part: for every move (rapids too: `paths` are all the moves' paths on the
+ * machine, `reach` the length stated for the tool in the spindle at each move), the holder (holderOf)
+ * against the material still there when the move runs. Moves without a stated length are not
+ * checked. Moves of one tool close together are one hit (the deepest).
+ */
+export function holderHits(input: SimInput, g: Grid, paths: Vec[][], reach: (number | null | undefined)[], dia: (number | null | undefined)[] = []): HolderHit[] {
+  const diameter = new Map(input.tools.map((t) => [t.tool, t.radius * 2]));
+  const [nx, ny, nz] = g.n;
+  // The part's highest point on each setup's machine (higher holders cannot touch it).
+  const tops = input.setups.map((s) => {
+    let top = -Infinity;
+    for (let c = 0; c < 8; c++) {
+      const p = [c & 1 ? input.part.max[0] : input.part.min[0], c & 2 ? input.part.max[1] : input.part.min[1], c & 4 ? input.part.max[2] : input.part.min[2]];
+      top = Math.max(top, s.orient[6] * p[0] + s.orient[7] * p[1] + s.orient[8] * p[2] + s.offset[2]);
+    }
+    return top;
+  });
+  const hits: HolderHit[] = [];
+  let open: HolderHit | null = null;
+  let openLast = -Infinity;
+  paths.forEach((path, i) => {
+    const mv = input.moves[i];
+    const L = reach[i];
+    const s = mv && input.setups[mv.setup];
+    if (!s || !L || path.length < 1) return;
+    const R = s.orient;
+    const t = s.offset;
+    const top = tops[mv.setup];
+    const { radius, height } = holderOf(dia[i] ?? diameter.get(mv.tool) ?? 6);
+    // Material when this move runs: not cut by this move or any before it.
+    const solid = (mx: number, my: number, mz: number) => {
+      const d0 = mx - t[0], d1 = my - t[1], d2 = mz - t[2];
+      const i0 = Math.round((R[0] * d0 + R[3] * d1 + R[6] * d2 - g.origin[0]) / g.step[0] - 0.5);
+      const i1 = Math.round((R[1] * d0 + R[4] * d1 + R[7] * d2 - g.origin[1]) / g.step[1] - 0.5);
+      const i2 = Math.round((R[2] * d0 + R[5] * d1 + R[8] * d2 - g.origin[2]) / g.step[2] - 0.5);
+      if (i0 < 0 || i1 < 0 || i2 < 0 || i0 >= nx || i1 >= ny || i2 >= nz) return false;
+      return g.removed[(i2 * ny + i1) * nx + i0] > i;
+    };
+    let worst: HolderHit | null = null;
+    const st = g.size;
+    // Inside the holder by at least half a sample, so a holder just grazing a wall is not a hit.
+    const inner = radius - st * 0.5;
+    const check = (p: Vec) => {
+      const zb = p[2] + L;
+      if (zb >= top - st * 0.5) return;
+      const zTop = Math.min(zb + height, top);
+      for (let dx = -inner; dx <= inner; dx += st)
+        for (let dy = -inner; dy <= inner; dy += st) {
+          if (dx * dx + dy * dy > inner * inner) continue;
+          // From the top down: the highest material in this column under the holder's top.
+          for (let z = zTop - st * 0.5; z > zb + st * 0.5; z -= st)
+            if (solid(p[0] + dx, p[1] + dy, z)) {
+              if (!worst || z - zb > worst.depth) worst = { move: i, tool: mv.tool, setup: mv.setup, point: [p[0], p[1], zb], depth: z - zb };
+              break;
+            }
+        }
+    };
+    // Along the move, about every half holder radius.
+    check(path[0]);
+    for (let k = 1; k < path.length; k++) {
+      const a = path[k - 1];
+      const b = path[k];
+      const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / (radius / 2)));
+      for (let q = 1; q <= n; q++) check([a[0] + ((b[0] - a[0]) * q) / n, a[1] + ((b[1] - a[1]) * q) / n, a[2] + ((b[2] - a[2]) * q) / n]);
+    }
+    const hit = worst as HolderHit | null;
+    if (!hit) return;
+    if (open && open.tool === hit.tool && hit.move - openLast <= 3) {
+      if (hit.depth > open.depth) Object.assign(open, { depth: hit.depth, point: hit.point });
+    } else {
+      open = hit;
+      hits.push(hit);
+    }
+    openLast = hit.move;
+  });
+  return hits;
+}
+
 export const CHUNK = 24;
 
 export interface ChunkMesh {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, drilledHoles, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { carve, drilledHoles, eigenSym, holderHits, holderOf, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -239,6 +239,39 @@ describe('bores from circles and helixes', () => {
     expect(bores).toEqual([[10, 10, 9], [30, 11, 6], [40, 10.4, 4]].map(([x, d, depth]) => [expect.closeTo(x, 6), expect.closeTo(d, 6), depth]));
     // The plunge at (30,15) is inside the Ø11 bore: no Ø6 hole of its own.
     expect(holes.filter((h) => h.r === 3)).toEqual([]);
+  });
+});
+
+describe('tool holders against the part', () => {
+  // 60 x 40 x 30 block, top at Z0. Tool 1: Ø6, 10 mm long (holder Ø20 from 10 mm above the tip).
+  // Tool 2: Ø40 face mill, 50 long. Tool 3: no length stated.
+  const base = (moves: SimInput['moves']): SimInput => ({
+    moves,
+    setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+    part: { min: [0, 0, -30], max: [60, 40, 0] },
+    tools: [{ tool: 1, radius: 3, slope: null }, { tool: 2, radius: 20, slope: null }, { tool: 3, radius: 3, slope: null }],
+    maxVoxels: 300_000,
+  });
+  const lengths = new Map<number | null, number>([[1, 10], [2, 50]]);
+  const run = (input: SimInput) => holderHits(input, carve(input), input.moves.map((m) => m.points), input.moves.map((m) => lengths.get(m.tool)));
+
+  it('finds a holder going into the part, about how deep, at that move', () => {
+    // Tool 1 plunges 15 deep at (20,20): its holder ends 5 mm inside the material.
+    const hits = run(base([{ setup: 0, tool: 1, points: [[20, 20, 5], [20, 20, -15]] }]));
+    expect(hits.length).toBe(1);
+    expect(hits[0].move).toBe(0);
+    expect(hits[0].depth).toBeGreaterThan(4);
+    expect(hits[0].depth).toBeLessThan(5.6);
+    expect(holderOf(6).radius).toBe(10);
+  });
+
+  it('no hit where earlier moves cleared room for the holder, nor for a tool without a length', () => {
+    // The face mill clears a Ø40+ pocket 15 deep first; then tool 1 plunges in its middle.
+    const pocket = [{ setup: 0, tool: 2, points: [[20, 20, 5], [20, 20, -15]] as Vec[] }];
+    expect(run(base([...pocket, { setup: 0, tool: 1, points: [[20, 20, 5], [20, 20, -15]] }]))).toEqual([]);
+    // The same plunge before the pocket is cut does hit.
+    expect(run(base([{ setup: 0, tool: 1, points: [[20, 20, 5], [20, 20, -15]] }, ...pocket])).length).toBe(1);
+    expect(run(base([{ setup: 0, tool: 3, points: [[20, 20, 5], [20, 20, -15]] }]))).toEqual([]);
   });
 });
 

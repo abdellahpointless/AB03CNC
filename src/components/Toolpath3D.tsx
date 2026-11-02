@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, FLIP_MS, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
+import { buildInput, FLIP_MS, holderOf, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { between, holeAt, holeAxis, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
@@ -805,7 +805,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const sizeOf = new Map(path.tools.map((t) => [t.tool, t]));
     const hitMoves = new Set((setup?.collisions ?? []).map((c) => c.move));
 
-    let toolOn: number | null | undefined;
+    let toolOn: string | undefined;
     a.progress = (pos: number) => {
       // The move in progress (or the last one, once the setup is done) and the share of its time.
       const started = moves.length > 0 && pos > first;
@@ -838,13 +838,14 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           trailMat.opacity = rapid ? 0.5 : 0.85;
         }
         // The tool's shape only changes with the tool.
-        if (toolOn !== cur.tool) {
-          toolOn = cur.tool;
+        if (toolOn !== `${cur.tool}|${cur.reach}`) {
+          toolOn = `${cur.tool}|${cur.reach}`;
           const info = sizeOf.get(cur.tool ?? -1);
           const r = Math.max(0.5, (info?.diameter ?? 6) / 2);
-          // Cutting length as written; a face mill (tourteau) is a wide flat disk.
+          // The length the program states for this tool change (the holder starts there, as the
+          // collision check has it); without one, a likely length. A face mill is a wide flat disk.
           const big = r >= 12;
-          const len = big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80);
+          const len = cur.reach ?? (big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80));
           const slope = tipSlope(info?.label ?? '');
           const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
           tipMesh.visible = tipH > 0;
@@ -854,8 +855,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           }
           cutter.scale.set(r, len - tipH, r);
           cutter.position.set(0, tipH + (len - tipH) / 2, 0);
-          const hr = big ? Math.max(r * 0.38, 14) : Math.max(r * 1.25, 9);
-          const hh = big ? 40 : 28;
+          const { radius: hr, height: hh } = holderOf(r * 2);
           holder.scale.set(hr, hh, hr);
           holder.position.set(0, len + hh / 2, 0);
         }

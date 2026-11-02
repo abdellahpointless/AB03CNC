@@ -17,6 +17,27 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-02-beta-holders',
+    date: '2026-11-02',
+    feature: 'toolpath',
+    en: {
+      title: 'Toolpath beta and tool holder check',
+      items: [
+        'While the toolpath viewer is in beta, an admin picks who may use it (Admin › users › “Toolpath beta”); admins always may.',
+        'Each tool’s holder is checked against the part and the vise jaws, from the length the program states for the tool.',
+        'A program with a collision cannot be downloaded or copied until it is fixed.',
+      ],
+    },
+    tr: {
+      title: 'Takım yolu beta ve tutucu kontrolü',
+      items: [
+        'Takım yolu görüntüleyici beta aşamasındayken onu kimin kullanabileceğini bir yönetici seçer (Yönetim › kullanıcılar › “Takım yolu beta”); yöneticiler her zaman kullanabilir.',
+        'Her takımın tutucusu, programın takım için belirttiği uzunluğa göre parçaya ve mengene çenelerine karşı kontrol edilir.',
+        'Çarpışması olan bir program düzeltilene kadar indirilemez veya kopyalanamaz.',
+      ],
+    },
+  },
+  {
     id: '2026-11-02-toolpath',
     date: '2026-11-02',
     feature: 'toolpath',

@@ -331,6 +331,11 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
       `INSERT OR IGNORE INTO cales_spare (height, qty, updated_at) SELECT height, SUM(qty), MAX(updated_at) FROM cales_stock GROUP BY height`,
     ],
   },
+  {
+    // The toolpath viewer is in beta: an admin picks who may use it (admins always may).
+    version: 9,
+    statements: [`ALTER TABLE users ADD COLUMN toolpath_beta INTEGER NOT NULL DEFAULT 0`],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

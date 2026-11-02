@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
-import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
+import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type SolidState } from './Toolpath3D';
 import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
@@ -12,16 +12,6 @@ import { useT } from '../i18n';
 import { fmtDuration, fmtNumber, locale } from '../i18n/format';
 
 const Toolpath3D = lazy(() => import('./Toolpath3D'));
-// v2: the shop's jaws are 45 mm (the first default, 42, was a guess).
-const JAW_KEY = 'cnc-toolpath-jaw-height-v2';
-function readJaw(): number {
-  try {
-    const v = Number(localStorage.getItem(JAW_KEY));
-    return v > 0 && v < 400 ? v : DEFAULT_JAW_HEIGHT;
-  } catch {
-    return DEFAULT_JAW_HEIGHT;
-  }
-}
 const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
 
 const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
@@ -64,7 +54,8 @@ const fmt2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
-export default function ToolpathViewer({ code, title, brand, onClose }: { code: string; title: string; brand?: string; onClose: () => void }) {
+/** holderHits: holders found going into the part (the remapper's collision check, for this code). */
+export default function ToolpathViewer({ code, title, brand, onClose, holderHits }: { code: string; title: string; brand?: string; onClose: () => void; holderHits?: Collision[] }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
@@ -79,11 +70,17 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
     clock.current = n;
     setStep(n);
   };
-  const [jawHeight, setJawHeight] = useState(readJaw);
+  const [jawHeight, setJawHeight] = useState(readJawHeight);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
   // The jaw height only changes the jaw check, not where the part is: keep the program (and the
   // cut part) when it changes.
-  const setups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }).setups), [program, path, jawHeight]);
+  const jawSetups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }).setups), [program, path, jawHeight]);
+  // With the holders that go into the part, each in its setup.
+  const setups = useMemo(
+    () => (holderHits?.length ? jawSetups.map((s) => ({ ...s, collisions: [...s.collisions, ...holderHits.filter((h) => path.moves[h.move]?.setup === s.index)] })) : jawSetups),
+    [jawSetups, holderHits, path],
+  );
+  const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
   const [solid, setSolid] = useState<SolidState>({ state: 'off', share: 0 });
   /** While the part turns between setups, the new setup is shown before its first move. */
   const [turning, setTurning] = useState<number | null>(null);
@@ -371,7 +368,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                 <ArrowDownToLine size={13} /> Z{fmtNumber(path.lowestZ, 2)}
               </span>
             )}
-            {setups.some((x) => x.jawTopZ !== null) && (
+            {(totalHits > 0 || setups.some((x) => x.jawTopZ !== null)) && (
               <span className={`${totalHits ? 'badge-danger' : 'badge-positive'} text-xs py-1 px-2.5 inline-flex items-center gap-1.5`}>
                 {totalHits ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
                 {totalHits ? t('toolpath.jawHits', { count: totalHits }) : t('toolpath.jawClear')}
@@ -686,18 +683,19 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     <summary className="cursor-pointer select-none">{t('toolpath.original')}</summary>
                     <div className="font-mono mt-1 space-y-0.5 break-words">{sel.notes.map((n, i) => <div key={i}>({n})</div>)}</div>
                   </details>
+                  {sel.collisions.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-[var(--border-subtle)]">
+                      <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
+                      {sel.collisions.slice(0, 8).map((c, i) => (
+                        <button key={i} type="button" onClick={() => { setPlaying(false); seek(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
+                          #{c.line + 1} · {hitText(c)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {sel.jawTopZ !== null ? (
                     <div className="space-y-2 pt-1 border-t border-[var(--border-subtle)]">
-                      {sel.collisions.length ? (
-                        <div className="space-y-1">
-                          <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
-                          {sel.collisions.slice(0, 8).map((c, i) => (
-                            <button key={i} type="button" onClick={() => { setPlaying(false); seek(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
-                              #{c.line + 1} · {t('toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) })}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
+                      {sel.collisions.length ? null : (
                         <div className="badge-positive text-xs py-1 px-2.5 inline-flex items-center gap-1.5">
                           <ShieldCheck size={13} />
                           {sel.jawClearance !== null ? t('toolpath.jawClearBy', { mm: mm(sel.jawClearance) }) : t('toolpath.jawClear')}

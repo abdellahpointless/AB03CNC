@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth, Role } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { api } from '../lib/api';
-import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText, Route } from 'lucide-react';
 import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';
@@ -14,6 +14,7 @@ interface AccountRow {
   role: Role;
   created_at: number;
   mfa_enabled?: number;
+  toolpath_beta?: number;
 }
 
 interface AuditEvent {
@@ -210,6 +211,12 @@ export default function UserManagement() {
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { resetMfa: true } }), t('users.mfaReset', { name: u.username }));
   };
 
+  // Toolpath beta: only the people picked here (and every admin) can open the toolpath viewer.
+  const handleToolpathBeta = (u: AccountRow) => {
+    const on = !u.toolpath_beta;
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { toolpathBeta: on } }), t(on ? 'users.toolpathOn' : 'users.toolpathOff', { name: u.username }));
+  };
+
   const handleRoleChange = (u: AccountRow, role: Role) => {
     if (role === u.role) return;
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { role } }), role === 'ADMIN' ? t('users.nowAdmin', { name: u.username }) : t('users.nowMachinist', { name: u.username }));
@@ -327,6 +334,20 @@ export default function UserManagement() {
                           <span className="badge-positive text-xs py-0 px-1.5 inline-flex items-center gap-1" title={t('users.mfaOnTitle')}>
                             <ShieldCheck size={10} /> {t('users.twoStep')}
                           </span>
+                        )}
+                        {u.role !== 'ADMIN' && (
+                          <button
+                            type="button"
+                            aria-pressed={!!u.toolpath_beta}
+                            disabled={busyId !== null}
+                            onClick={() => handleToolpathBeta(u)}
+                            title={t('users.toolpathTitle')}
+                            className={`text-xs py-0.5 px-2 rounded-full border inline-flex items-center gap-1 transition-colors ${
+                              u.toolpath_beta ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                          >
+                            <Route size={11} /> {t('users.toolpathBeta')}
+                          </button>
                         )}
                       </div>
                     </td>

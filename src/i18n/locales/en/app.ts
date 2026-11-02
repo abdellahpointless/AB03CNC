@@ -216,6 +216,10 @@ const app = {
     you: 'you',
     mfaOnTitle: 'Two-step sign-in is on',
     twoStep: '2-step',
+    toolpathBeta: 'Toolpath beta',
+    toolpathTitle: 'Toolpath viewer (beta): only the people switched on here can open it; admins always can',
+    toolpathOn: '"{{name}}" can now use the toolpath viewer (after reloading the app).',
+    toolpathOff: '"{{name}}" can no longer use the toolpath viewer.',
     ownRoleTitle: 'You cannot change your own role',
     changeRoleTitle: 'Change role',
     /** Role names in the role drop-down of the accounts table (shown in capitals). */

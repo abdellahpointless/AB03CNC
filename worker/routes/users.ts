@@ -14,7 +14,7 @@ const KEEPS_AN_ADMIN = "(role != 'ADMIN' OR (SELECT COUNT(*) FROM users WHERE ro
 // GET /api/users  (admin)
 export async function handleListUsers(ctx: Ctx): Promise<Response> {
   const { results } = await ctx.env.DB.prepare(
-    'SELECT id, username, role, created_at, mfa_enabled FROM users ORDER BY role, username COLLATE NOCASE',
+    'SELECT id, username, role, created_at, mfa_enabled, toolpath_beta FROM users ORDER BY role, username COLLATE NOCASE',
   ).all();
   return json({ users: results });
 }
@@ -42,14 +42,23 @@ export async function handleCreateUser(ctx: Ctx): Promise<Response> {
   return json({ user: { id, username, role } });
 }
 
-// PATCH /api/users/:id { password?, role?, resetMfa? }  (admin)
+// PATCH /api/users/:id { password?, role?, resetMfa? } or { toolpathBeta }  (admin)
 export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   const id = ctx.params.id;
-  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown }>(ctx.request, 10_000);
+  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown; toolpathBeta?: unknown }>(ctx.request, 10_000);
   const target = await ctx.env.DB.prepare('SELECT id, username, role FROM users WHERE id = ?')
     .bind(id)
     .first<{ id: string; username: string; role: Role }>();
   if (!target) throw new HttpError(404, 'User not found');
+  // Toolpath beta access alone: no sign-out (it takes effect when the person reloads the app).
+  if (body.toolpathBeta !== undefined) {
+    if (typeof body.toolpathBeta !== 'boolean' || body.password !== undefined || body.role !== undefined || body.resetMfa !== undefined) {
+      throw new HttpError(400, 'toolpathBeta must be true or false, on its own');
+    }
+    await ctx.env.DB.batch([ctx.env.DB.prepare('UPDATE users SET toolpath_beta = ? WHERE id = ?').bind(body.toolpathBeta ? 1 : 0, id), bumpStmt(ctx.env, 'users')]);
+    await auditCtx(ctx, 'user_updated', `${target.username}: toolpath beta ${body.toolpathBeta ? 'on' : 'off'}`);
+    return json({ ok: true });
+  }
   const self = id === ctx.user!.id;
   const db = ctx.env.DB;
 

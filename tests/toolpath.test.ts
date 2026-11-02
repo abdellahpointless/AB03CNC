@@ -121,3 +121,18 @@ describe('arcs and codes the shop machines read differently', () => {
     expect(parseToolpath('T1 M6\nG54 G0 X0 Y0 Z0\nG1 X5', S).unsupported).toEqual([]);
   });
 });
+
+describe('tool length at each tool change', () => {
+  it('follows the tool in the spindle, also when a T number comes back as another tool', () => {
+    const tp = parseToolpath(
+      ['%', 'O1', 'N1 T16 M6', 'N2 (DIAMETER 4.80 MM/LENGTH 35.00 MM)', 'N3 G0 X0 Y0 Z5', 'N4 G1 Z-5 F100', 'N5 T3 M6', 'N6 G0 X1', 'N7 T16 M6', 'N8 (DIAMETER 4.80 MM/LENGTH 55.00 MM)', 'N9 G0 X2 Y0 Z5', 'N10 G1 Z-40', 'N11 M30', '%'].join('\n'),
+      speedsFor('HAAS'),
+    );
+    const t16 = tp.moves.filter((m) => m.tool === 16).map((m) => m.reach);
+    expect([...new Set(t16)]).toEqual([35, 55]);
+    expect(t16[t16.length - 1]).toBe(55);
+    expect(tp.moves.find((m) => m.tool === 16)!.dia).toBe(4.8);
+    // A tool change without a stated length: not known (not the length of the tool before).
+    expect(tp.moves.find((m) => m.tool === 3)!.reach).toBeNull();
+  });
+});

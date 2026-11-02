@@ -8,6 +8,9 @@ import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConvert
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { useT } from '../i18n';
 import { useSync } from '../contexts/SyncContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useCollisionCheck } from '../lib/useCollisionCheck';
+import { locale } from '../i18n/format';
 import { scopedKey } from '../lib/instance';
 
 // "NEW" on the toolpath button until it is first opened on this PC.
@@ -214,8 +217,11 @@ export default function CodeEditorPair({
   machineBrand,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
-  // Off for a country until a master admin switches it on: the button shows a padlock.
-  const toolpathOn = useSync().features.toolpath;
+  // Off for a country until a master admin switches it on, and in beta: only admins and the
+  // people an admin picked. Otherwise the button shows a padlock and says why.
+  const { user } = useAuth();
+  const countryOn = useSync().features.toolpath;
+  const toolpathOn = countryOn && (user?.role === 'ADMIN' || !!user?.toolpathBeta);
   const [toolpathNew, setToolpathNew] = useState(() => !toolpathSeen());
   const { t } = useT('remapper');
   const [confirmingExport, setConfirmingExport] = useState(false);
@@ -240,8 +246,15 @@ export default function CodeEditorPair({
   const sourceCode: string = getSafeString(rawSourceCode);
   const outputCode: string = getSafeString(rawOutputCode);
 
+  // Collisions (tools and holders into the jaws, holders into the part): with the toolpath viewer
+  // (beta), the output is checked and cannot be copied or downloaded until there is none.
+  const [checkAgain, setCheckAgain] = useState(0);
+  const collisions = useCollisionCheck(toolpathOn && outputCode && !isOutputStale ? outputCode : '', machineBrand, checkAgain);
+  const exportBlocked = collisions.checking || collisions.hits.length > 0;
+  const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);
+
   const copyToClipboard = async () => {
-    if (!outputCode || isOutputStale) return;
+    if (!outputCode || isOutputStale || exportBlocked) return;
     const { lines: processedLines } = applyG53BeforeG52(outputCode.split('\n'));
     try {
       await navigator.clipboard.writeText(processedLines.join('\n'));
@@ -287,7 +300,7 @@ export default function CodeEditorPair({
   };
 
   const handleExportClick = (confirmed = false) => {
-    if (!outputCode || isOutputStale) return;
+    if (!outputCode || isOutputStale || exportBlocked) return;
     // Red safety findings: show them and ask before exporting.
     if (!confirmed && safety && safety.errors > 0) {
       setConfirmingExport(true);
@@ -597,18 +610,18 @@ export default function CodeEditorPair({
                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
                 aria-disabled={!toolpathOn || undefined}
                 className={`btn-secondary text-xs py-1 px-2.5 ${toolpathOn ? '' : 'opacity-60 cursor-not-allowed'}`}
-                title={toolpathOn ? t('toolpath.openTitle') : t('toolpath.locked')}
+                title={toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
               >
                 {toolpathOn ? <Route size={13} /> : <Lock size={13} />}
                 <span className="hidden sm:inline">{t('toolpath.open')}</span>
                 {toolpathOn && toolpathNew && <span className="rounded-full bg-[var(--accent-primary)] px-1.5 py-px text-[10px] font-bold leading-4 text-white">{t('toolpath.new')}</span>}
-                {!toolpathOn && <span className="sr-only">{t('toolpath.locked')}</span>}
+                {!toolpathOn && <span className="sr-only">{t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}</span>}
               </button>
               <button 
                 onClick={copyToClipboard}
-                disabled={!outputCode || isOutputStale}
+                disabled={!outputCode || isOutputStale || exportBlocked}
                 className="btn-secondary text-xs py-1 px-2.5"
-                title={t('editor.copyTitle')}
+                title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : t('editor.copyTitle')}
               >
                 {isCopied ? <Check size={13} className="text-[var(--green-500)]" /> : <Copy size={13} />}
                 <span>{isCopied ? t('editor.copied') : t('editor.copy')}</span>
@@ -616,8 +629,8 @@ export default function CodeEditorPair({
               {onExport && (
                 <button 
                   onClick={() => handleExportClick()}
-                  disabled={!outputCode || isOutputStale}
-                  title={`${t('editor.extractTitle')} (Ctrl+S)`}
+                  disabled={!outputCode || isOutputStale || exportBlocked}
+                  title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : `${t('editor.extractTitle')} (Ctrl+S)`}
                   className="btn-warning text-xs py-1.5 px-3 font-semibold"
                 >
                   <Download size={13} />
@@ -627,6 +640,39 @@ export default function CodeEditorPair({
             </div>
           </div>
 
+          {outputCode && !isOutputStale && (collisions.checking || collisions.hits.length > 0) && (
+            <div
+              role={collisions.checking ? 'status' : 'alert'}
+              className={`px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs flex flex-wrap items-center gap-x-3 gap-y-1.5 ${collisions.checking ? 'text-[var(--text-secondary)]' : 'bg-[var(--rose-500)]/10'}`}
+            >
+              {collisions.checking ? (
+                <span className="inline-flex items-center gap-2">
+                  <RefreshCw size={13} className="animate-spin motion-reduce:animate-none" /> {t('editor.collisionChecking')}
+                </span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-2 font-semibold text-[var(--rose-500)]">
+                    <ShieldAlert size={14} /> {t('editor.collisionBlocked', { count: collisions.hits.length })}
+                  </span>
+                  <span className="flex flex-wrap gap-1.5">
+                    {collisions.hits.slice(0, 6).map((h, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => outputScrollRef.current?.querySelector(`[data-line="${h.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                        className="badge-danger font-mono hover:underline"
+                      >
+                        #{h.line + 1} · {t(h.what === 'holder' ? 'toolpath.holderJawHit' : h.what === 'holderPart' ? 'toolpath.holderPartHit' : 'toolpath.jawHit', { t: h.tool ?? '?', mm: (Math.round(h.depth * 10) / 10).toLocaleString(locale()) })}
+                      </button>
+                    ))}
+                  </span>
+                  <button type="button" onClick={() => setShowToolpath(true)} className="btn-secondary text-xs py-1 px-2.5 ml-auto">
+                    <Route size={13} /> {t('editor.collisionOpen')}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {safety && outputCode && !isOutputStale && (
             <SafetyPanel
               report={safety}
@@ -706,7 +752,12 @@ export default function CodeEditorPair({
             code={outputCode && !isOutputStale ? outputCode : sourceCode}
             title={fileName || 'program'}
             brand={machineBrand}
-            onClose={() => setShowToolpath(false)}
+            onClose={() => {
+              setShowToolpath(false);
+              // The jaw height may have changed in the viewer.
+              setCheckAgain((n) => n + 1);
+            }}
+            holderHits={outputCode && !isOutputStale ? holderHits : undefined}
           />
         </Suspense>
       )}

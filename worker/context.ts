@@ -37,6 +37,8 @@ export interface AuthedUser {
   id: string;
   username: string;
   role: Role;
+  /** May use the toolpath viewer while it is in beta (admins always may). */
+  toolpathBeta?: boolean;
 }
 
 export interface Ctx {

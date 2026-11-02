@@ -210,6 +210,10 @@ const app: Translation<typeof en> = {
     you: 'siz',
     mfaOnTitle: 'İki adımlı doğrulama açık',
     twoStep: '2 adımlı',
+    toolpathBeta: 'Takım yolu beta',
+    toolpathTitle: 'Takım yolu görüntüleyici (beta): yalnızca burada açılan kişiler kullanabilir; yöneticiler her zaman kullanabilir',
+    toolpathOn: '"{{name}}" artık takım yolu görüntüleyiciyi kullanabilir (uygulamayı yeniledikten sonra).',
+    toolpathOff: '"{{name}}" artık takım yolu görüntüleyiciyi kullanamaz.',
     ownRoleTitle: 'Kendi rolünüzü değiştiremezsiniz',
     changeRoleTitle: 'Rolü değiştir',
     roleUpper: {

@@ -1,5 +1,5 @@
 import type { Move, Toolpath, Vec } from './toolpath';
-import { buildInput, carve, FLIP_MS, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
+import { buildInput, carve, FLIP_MS, holderOf, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
 
 /*
@@ -29,8 +29,10 @@ export interface Collision {
   line: number;
   tool: number | null;
   point: Vec;
-  /** How far below the top of the jaws the tool goes (mm). */
+  /** How far below the top of the jaws the tool goes (mm); for a holder in the part, how far into it. */
   depth: number;
+  /** What hits: the tool (into the jaws, the default), its holder into the jaws, or its holder into the part. */
+  what?: 'holder' | 'holderPart';
 }
 
 export interface SetupInfo {
@@ -110,6 +112,17 @@ export const spacerAt = (s: { spacer: SetupInfo['spacer'] }, side: Face) => (s.s
 
 /** Floor to top of the vise jaws: the same on every vise in the shop. */
 export const DEFAULT_JAW_HEIGHT = 45;
+// v2: the shop's jaws are 45 mm (the first default, 42, was a guess).
+export const JAW_KEY = 'cnc-toolpath-jaw-height-v2';
+/** The jaw height set in the toolpath viewer (kept on this PC), or the default. */
+export function readJawHeight(): number {
+  try {
+    const v = Number(localStorage.getItem(JAW_KEY));
+    return v > 0 && v < 400 ? v : DEFAULT_JAW_HEIGHT;
+  } catch {
+    return DEFAULT_JAW_HEIGHT;
+  }
+}
 
 const NUM = '(\\d+(?:[.,]\\d+)?)';
 const num = (s: string) => Number(s.replace(',', '.'));
@@ -756,26 +769,39 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     // The steel jaw plates: a spacer (soft, may be touched) stands between them and the part.
     const jawY: [number, number] = [jaw.min[1] - spacerAt(ins, 'Y-'), jaw.max[1] + spacerAt(ins, 'Y+')];
     let clearance = Infinity;
-    let open: Collision | null = null;
+    // Consecutive hits of one tool (or of its holder) are one collision, the deepest.
+    const open: Record<'tool' | 'holder', Collision | null> = { tool: null, holder: null };
+    const add = (kind: 'tool' | 'holder', hit: Collision | null, mi: number) => {
+      if (!hit) return;
+      const o = open[kind];
+      if (o && o.tool === hit.tool && mi - o.move <= 3) {
+        if (hit.depth > o.depth) Object.assign(o, { depth: hit.depth, point: hit.point });
+      } else {
+        open[kind] = hit;
+        info.collisions.push(hit);
+      }
+    };
+    const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
     idx.forEach((mi) => {
       const m = tp.moves[mi];
-      const r = (diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
+      const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
+      // The holder from where the tool's stated length ends (tools without a length are not checked).
+      const length = m.reach ?? 0;
+      const holder = length ? holderOf(r * 2).radius : 0;
       let hitHere: Collision | null = null;
+      let holderHere: Collision | null = null;
       for (const p of samples(m)) {
-        const overJaw = (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
-        if (!overJaw) continue;
+        if (length && over(p, holder)) {
+          const below = info.jawTopZ! - (p[2] + length);
+          if (below > 0.01 && (!holderHere || below > holderHere.depth)) holderHere = { move: mi, line: m.line, tool: m.tool, point: [p[0], p[1], p[2] + length], depth: below, what: 'holder' };
+        }
+        if (!over(p, r)) continue;
         const above = p[2] - info.jawTopZ!;
         clearance = Math.min(clearance, above);
         if (above < -0.01 && (!hitHere || -above > hitHere.depth)) hitHere = { move: mi, line: m.line, tool: m.tool, point: p, depth: -above };
       }
-      if (hitHere) {
-        if (open && open.tool === hitHere.tool && mi - open.move <= 3) {
-          if (hitHere.depth > open.depth) Object.assign(open, { depth: hitHere.depth, point: hitHere.point });
-        } else {
-          open = hitHere;
-          info.collisions.push(open);
-        }
-      }
+      add('tool', hitHere, mi);
+      add('holder', holderHere, mi);
     });
     info.jawClearance = Number.isFinite(clearance) ? clearance : null;
   });
