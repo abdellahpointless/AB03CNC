@@ -646,32 +646,69 @@ export interface Hole {
   move: number;
   /** The face round the rim is flat (the same height all round). */
   flat: boolean;
+  /** Wall all the way round at every depth (not opened into a pocket or an edge). */
+  closed: boolean;
+}
+
+/** The circle a move's path follows in XY (an arc or a helix), with how far round it goes (radians); null if not one. */
+export function circleOfPath(pts: Vec[]): { x: number; y: number; r: number; sweep: number } | null {
+  if (pts.length < 4) return null;
+  // Three points well apart in XY (on a helix of whole turns, points at fixed shares of the path fall on top of each other).
+  const far = (from: Vec[]) => pts.reduce((best, p) => (Math.min(...from.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1]))) > Math.min(...from.map((q) => Math.hypot(best[0] - q[0], best[1] - q[1]))) ? p : best), pts[0]);
+  const a = pts[0];
+  const b = far([a]);
+  const c = far([a, b]);
+  const d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+  if (Math.abs(d) < 1e-9) return null;
+  const q = (p: Vec) => p[0] * p[0] + p[1] * p[1];
+  const x = (q(a) * (b[1] - c[1]) + q(b) * (c[1] - a[1]) + q(c) * (a[1] - b[1])) / d;
+  const y = (q(a) * (c[0] - b[0]) + q(b) * (a[0] - c[0]) + q(c) * (b[0] - a[0])) / d;
+  const r = Math.hypot(a[0] - x, a[1] - y);
+  if (r < 0.05 || pts.some((p) => Math.abs(Math.hypot(p[0] - x, p[1] - y) - r) > 0.01)) return null;
+  let sweep = 0;
+  for (let i = 1; i < pts.length; i++) {
+    let da = Math.atan2(pts[i][1] - y, pts[i][0] - x) - Math.atan2(pts[i - 1][1] - y, pts[i - 1][0] - x);
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    sweep += Math.abs(da);
+  }
+  return { x, y, r, sweep };
 }
 
 /**
- * The holes in the part after the moves before `before`: every pure vertical plunge (Z only, no X
- * or Y) makes one of exactly the tool's Ø, so it is known without reading it off the samples. Pecks
- * and repeats at one spot are one hole. The samples only say where it has walls: from the highest
- * to the lowest level with material nearly all round it (a hole later opened up by a bigger tool,
- * or milled away, has none there and is dropped).
+ * The round holes in the part after the moves before `before`, known from the moves, not read off
+ * the samples:
+ * - every pure vertical plunge (Z only, no X or Y) makes one of exactly the tool's Ø (pecks and
+ *   repeats at one spot are one hole);
+ * - a flat tool going all the way round one centre (full circles or a helix, in one move or several)
+ *   makes a bore of the circle's Ø plus the tool's, when it cleared the middle (not a boss or a groove).
+ * The samples only say where it has walls: from the highest to the lowest level with material nearly
+ * all round it (a hole later opened up by a bigger tool, or milled away, has none there and is dropped).
  */
 export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
   const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
-  const plunges = new Map<string, { setup: number; tool: number | null; x: number; y: number; lo: number; hi: number; move: number }>();
+  type Cand = { setup: number; tool: number | null; x: number; y: number; lo: number; hi: number; move: number; path: number; sweep: number };
+  const plunges = new Map<string, Cand>();
+  const rounds = new Map<string, Cand>();
+  const add = (into: Map<string, Cand>, key: string, c: Cand) => {
+    const h = into.get(key);
+    if (h) Object.assign(h, { lo: Math.min(h.lo, c.lo), hi: Math.max(h.hi, c.hi), move: c.move, sweep: h.sweep + c.sweep });
+    else into.set(key, c);
+  };
   input.moves.forEach((mv, i) => {
     if (i >= before || mv.points.length < 2) return;
-    const [x, y] = mv.points[0];
     let lo = Infinity, hi = -Infinity;
     for (const p of mv.points) {
-      if (Math.abs(p[0] - x) > 1e-4 || Math.abs(p[1] - y) > 1e-4) return;
       lo = Math.min(lo, p[2]);
       hi = Math.max(hi, p[2]);
     }
-    if (hi - lo < 0.05) return;
-    const key = `${mv.setup}|${x.toFixed(3)}|${y.toFixed(3)}|${mv.tool}`;
-    const h = plunges.get(key);
-    if (h) Object.assign(h, { lo: Math.min(h.lo, lo), hi: Math.max(h.hi, hi), move: i });
-    else plunges.set(key, { setup: mv.setup, tool: mv.tool, x, y, lo, hi, move: i });
+    const [x, y] = mv.points[0];
+    if (mv.points.every((p) => Math.abs(p[0] - x) <= 1e-4 && Math.abs(p[1] - y) <= 1e-4)) {
+      if (hi - lo >= 0.05) add(plunges, `${mv.setup}|${x.toFixed(3)}|${y.toFixed(3)}|${mv.tool}`, { setup: mv.setup, tool: mv.tool, x, y, lo, hi, move: i, path: 0, sweep: 0 });
+      return;
+    }
+    const c = circleOfPath(mv.points);
+    if (c) add(rounds, `${mv.setup}|${c.x.toFixed(2)}|${c.y.toFixed(2)}|${c.r.toFixed(2)}|${mv.tool}`, { setup: mv.setup, tool: mv.tool, x: c.x, y: c.y, lo, hi, move: i, path: c.r, sweep: c.sweep });
   });
   const solid = (p: Vec) => {
     const c = [0, 1, 2].map((a) => Math.round((p[a] - g.origin[a]) / g.step[a] - 0.5));
@@ -680,25 +717,42 @@ export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
   };
   const holes: Hole[] = [];
   let reachOf: ReturnType<typeof faceFinder> | undefined;
-  for (const h of plunges.values()) {
+  const bores = [...rounds.values()].filter((h) => h.sweep >= Math.PI * 2 * 0.97 && toolOf.get(h.tool)?.slope === null);
+  for (const h of [...plunges.values(), ...bores]) {
     const s = input.setups[h.setup];
     const tool = toolOf.get(h.tool);
     if (!s || !tool) continue;
     const R = s.orient;
     const t = s.offset;
     const toPart = (m: Vec): Vec => [0, 1, 2].map((k) => R[k] * (m[0] - t[0]) + R[3 + k] * (m[1] - t[1]) + R[6 + k] * (m[2] - t[2])) as Vec;
+    const bore = h.path > 0;
+    const radius = h.path + tool.radius;
+    // A bore: the middle cleared (a circle round material is a boss or a groove, not a hole).
+    if (bore && solid(toPart([h.x, h.y, h.lo + g.size]))) continue;
     // Around the hole, just past its wall (one sample beyond, so the nearest sample is outside it).
-    const ring = tool.radius + g.size;
-    const walled = (z: number) => {
+    const ring = radius + g.size;
+    const wallAt = (z: number) => {
       let n = 0;
       for (let k = 0; k < 8; k++) if (solid(toPart([h.x + ring * Math.cos((k * Math.PI) / 4), h.y + ring * Math.sin((k * Math.PI) / 4), z]))) n++;
-      return n >= 6;
+      return n;
+    };
+    // A plunge needs wall nearly all round (one beside a pocket wall is not a hole); a bore is known
+    // round from its moves, so half its wall is enough (one breaking into a pocket still counts).
+    let closed = true;
+    const walled = (z: number) => {
+      const n = wallAt(z);
+      if (n < (bore ? 4 : 6)) return false;
+      if (n < 8) closed = false;
+      return true;
     };
     // Full Ø only above a pointed tool's cone.
     const floor = h.lo + (tool.slope ? tool.radius / tool.slope : 0);
+    // A plunge starts above the part; a bore's wall goes up to the top of the part (the tool clears all above it).
+    let start = h.hi;
+    if (bore) for (let c = 0; c < 8; c++) start = Math.max(start, R[6] * (c & 1 ? input.part.max : input.part.min)[0] + R[7] * (c & 2 ? input.part.max : input.part.min)[1] + R[8] * (c & 4 ? input.part.max : input.part.min)[2] + t[2]);
     let top: number | null = null;
     let bottom = floor;
-    for (let z = h.hi; z >= floor; z -= g.size / 2)
+    for (let z = start; z >= floor; z -= g.size / 2)
       if (walled(z)) {
         top ??= z;
         bottom = z;
@@ -728,9 +782,27 @@ export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
     faces.sort((x, y) => x - y);
     if (faces.length) rim[a] = faces[faces.length >> 1];
     const flat = faces.length === 8 && faces[7] - faces[0] < 0.05;
-    holes.push({ top: rim, bottom: toPart([h.x, h.y, bottom]), r: tool.radius, tool: h.tool, move: h.move, flat });
+    holes.push({ top: rim, bottom: toPart([h.x, h.y, bottom]), r: radius, tool: h.tool, move: h.move, flat, closed });
   }
-  return holes;
+  // Roughed then finished (or finished twice) on one axis at the same depths: the material ends at the biggest.
+  const along = (h: Hole) => {
+    const d = [0, 1, 2].map((k) => h.bottom[k] - h.top[k]);
+    const l = Math.hypot(d[0], d[1], d[2]) || 1;
+    return d.map((x) => x / l);
+  };
+  return holes.filter((h) => {
+    const u = along(h);
+    const at = (p: Vec) => p[0] * u[0] + p[1] * u[1] + p[2] * u[2];
+    return !holes.some((o) => {
+      if (o === h || o.r < h.r || (o.r === h.r && holes.indexOf(o) > holes.indexOf(h))) return false;
+      const w = [0, 1, 2].map((k) => o.top[k] - h.top[k]);
+      const t = w[0] * u[0] + w[1] * u[1] + w[2] * u[2];
+      if (Math.abs(Math.abs(along(o).reduce((s, x, k) => s + x * u[k], 0)) - 1) > 0.01 || Math.hypot(w[0] - u[0] * t, w[1] - u[1] * t, w[2] - u[2] * t) > 0.05) return false;
+      const [h0, h1] = [at(h.top), at(h.bottom)];
+      const [o0, o1] = [at(o.top), at(o.bottom)].sort((x, y) => x - y);
+      return Math.min(h1, o1) - Math.max(h0, o0) > 0.5;
+    });
+  });
 }
 
 export const CHUNK = 24;

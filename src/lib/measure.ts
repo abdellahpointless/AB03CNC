@@ -2,13 +2,14 @@ import type { Vec } from './toolpath';
 import type { Hole } from './stockSim';
 
 /*
- * Measuring on the simulated part (part frame, mm). A click picks a feature, never a loose point:
- * a flat face square to an axis (its exact height on the cut surface) or a plunged hole (the tool's
- * Ø). One feature measures itself (a face to the opposite side of the part, a hole's Ø and depth);
- * two measure the distance between them.
+ * Measuring on the simulated part (part frame, mm). What a click picks depends on the mode: a flat
+ * face square to an axis (its exact height on the cut surface), a hole (plunged or bored: its Ø is
+ * known from the moves), or a point on the surface. Two picks measure the distance between them.
  */
 
-export type Feature = { kind: 'face'; axis: 0 | 1 | 2; at: number; sign: 1 | -1; p: Vec } | { kind: 'hole'; hole: Hole };
+export type MeasureMode = 'faces' | 'points' | 'diameter' | 'axes';
+
+export type Feature = { kind: 'face'; axis: 0 | 1 | 2; at: number; sign: 1 | -1; p: Vec } | { kind: 'hole'; hole: Hole } | { kind: 'point'; p: Vec };
 
 const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: Vec, b: Vec) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -43,25 +44,19 @@ export function holeAt(holes: Hole[], p: Vec): Hole | null {
   return best;
 }
 
-/** What one feature measures: a face, to the opposite side of the part (box: the part's extent). */
-export function own(f: Feature, box: { min: Vec; max: Vec }): { mm: number; from: Vec; to: Vec; dir: Vec } {
-  if (f.kind === 'hole') {
-    const { u, depth } = holeAxis(f.hole);
-    return { mm: f.hole.r * 2, from: f.hole.top, to: add(f.hole.top, scale(u, depth)), dir: u };
-  }
-  const to: Vec = [...f.p];
-  to[f.axis] = f.sign > 0 ? box.min[f.axis] : box.max[f.axis];
-  const dir: Vec = [0, 0, 0];
-  dir[f.axis] = 1;
-  return { mm: Math.abs(f.at - to[f.axis]), from: f.p, to, dir };
-}
-
 /**
  * Distance between two features, or null when they do not face the same way (two faces on
  * different axes, holes not parallel). Faces and a face with a hole: along the face's axis. Two
- * parallel holes: between their axes.
+ * parallel holes: between their axes. Two points: straight from one to the other.
  */
 export function between(a: Feature, b: Feature): { mm: number; from: Vec; to: Vec; dir: Vec } | null {
+  if (a.kind === 'point' || b.kind === 'point') {
+    const pa = a.kind === 'point' ? a.p : a.kind === 'face' ? a.p : a.hole.top;
+    const pb = b.kind === 'point' ? b.p : b.kind === 'face' ? b.p : b.hole.top;
+    const d = sub(pb, pa);
+    const mm = len(d);
+    return { mm, from: pa, to: pb, dir: scale(d, 1 / (mm || 1)) };
+  }
   if (a.kind === 'face' || b.kind === 'face') {
     const face = (a.kind === 'face' ? a : b) as Extract<Feature, { kind: 'face' }>;
     const other = face === a ? b : a;

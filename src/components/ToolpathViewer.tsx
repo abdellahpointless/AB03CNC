@@ -6,6 +6,7 @@ import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type SolidState } from './Toolpath3D';
+import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber, locale } from '../i18n/format';
@@ -96,6 +97,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const [heat, setHeat] = useState(false);
   // Measuring on the part (its faces and holes) and what the last clicks measured.
   const [measure, setMeasure] = useState(false);
+  const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   // A jump the 3D view hides the part for (to the end, or to a setup change, which then turns).
   const [jump, setJump] = useState<Jump | null>(null);
@@ -430,7 +432,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} onMeasure={setMeasured} jump={jump} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -470,6 +472,13 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                 })() : null}
                 {mode3d && measure && solid.state === 'ready' && (
                   <div className="absolute left-3 bottom-3 z-10 w-72 max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5">
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.measure')}>
+                      {(['faces', 'points', 'diameter', 'axes'] as const).map((m) => (
+                        <button key={m} role="radio" aria-checked={measureMode === m} onClick={() => setMeasureMode(m)} className={`px-2.5 h-6 rounded-full text-[11px] font-bold ${measureMode === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
+                          {t(`toolpath.measureMode.${m}`)}
+                        </button>
+                      ))}
+                    </div>
                     <div aria-live="polite" className="text-[11px] text-[var(--text-secondary)] space-y-1">
                       {measured?.kind === 'hole' ? (
                         <>
@@ -479,15 +488,19 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                             {measured.tool && <span className="font-mono"> · {measured.tool}</span>}
                           </div>
                         </>
-                      ) : measured?.kind === 'face' || measured?.kind === 'distance' ? (
+                      ) : measured?.kind === 'distance' ? (
                         <>
                           <div className="font-mono text-base font-bold text-[var(--text-primary)]">{fmt2(measured.mm)} mm</div>
-                          <div>{measured.kind === 'face' ? t('toolpath.measureFace', { axis: measured.axis }) : t('toolpath.measureBetween')}</div>
+                          {measured.d && (
+                            <div className="font-mono">
+                              ΔX {fmt2(Math.abs(measured.d[0]))} · ΔY {fmt2(Math.abs(measured.d[1]))} · ΔZ {fmt2(Math.abs(measured.d[2]))}
+                            </div>
+                          )}
                         </>
                       ) : measured?.kind === 'none' || measured?.kind === 'notParallel' ? (
                         <div className="text-[#FFD27A]">{t(measured.kind === 'none' ? 'toolpath.measureNone' : 'toolpath.measureNotParallel')}</div>
                       ) : null}
-                      <div>{t(!measured || measured.kind === 'distance' ? 'toolpath.measureHint' : 'toolpath.measureHintSecond')}</div>
+                      <div>{measured?.kind === 'picked' || measured?.kind === 'notParallel' ? t('toolpath.measureSecond') : t(`toolpath.measureHint.${measureMode}`)}</div>
                       <p className="text-[10px] text-[var(--text-tertiary)]">{t('toolpath.measureNote')}</p>
                     </div>
                   </div>

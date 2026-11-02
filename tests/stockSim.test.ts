@@ -199,6 +199,49 @@ describe('holes from pure plunges', () => {
   });
 });
 
+describe('bores from circles and helixes', () => {
+  // A circle or helix as a polyline (start angle a0, turns, from z0 to z1).
+  const arc = (cx: number, cy: number, r: number, a0: number, turns: number, z0: number, z1: number): Vec[] => {
+    const n = Math.ceil(turns * 64);
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const f = i / n;
+      const a = a0 + f * turns * Math.PI * 2;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a), z0 + (z1 - z0) * f] as Vec;
+    });
+  };
+  it('finds a helix bore and a two-half circle bore at circle + tool Ø, not a boss or a part arc', () => {
+    // 60 x 30 x 15 block, top Z0, a 6 mm end mill.
+    const input: SimInput = {
+      moves: [
+        // Helix down 3 turns at (10,15) in one move, path radius 2, and a last circle at the bottom: a Ø10 bore 9 deep.
+        { setup: 0, tool: 1, points: arc(10, 15, 2, 0, 3, 0, -9) },
+        { setup: 0, tool: 1, points: arc(10, 15, 2, 0, 1, -9, -9) },
+        // Plunge at (30,15), then two half circles of radius 2.5 at -6: a Ø11 bore 6 deep.
+        { setup: 0, tool: 1, points: [[30, 15, 1], [30, 15, -6]] },
+        { setup: 0, tool: 1, points: arc(30, 15, 2.5, 0, 0.5, -6, -6) },
+        { setup: 0, tool: 1, points: arc(30, 15, 2.5, Math.PI, 0.5, -6, -6) },
+        // Round the outside of a Ø8 boss at (50,15): a circle of radius 7 at -5 (the middle stays).
+        { setup: 0, tool: 1, points: arc(50, 15, 7, 0, 1, -5, -5) },
+        // The same bore roughed (path radius 2) then finished 0.2 larger: one Ø10.4 bore, at (40,25).
+        { setup: 0, tool: 1, points: arc(40, 25, 2, 0, 1, -4, -4) },
+        { setup: 0, tool: 1, points: arc(40, 25, 2.2, 0, 1, -4, -4) },
+        // A quarter arc: not a hole.
+        { setup: 0, tool: 1, points: arc(10, 5, 3, 0, 0.25, -2, -2) },
+      ],
+      setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+      part: { min: [0, 0, -15], max: [60, 30, 0] },
+      tools: [{ tool: 1, radius: 3, slope: null }],
+      maxVoxels: 400_000,
+    };
+    const g = carve(input);
+    const holes = drilledHoles(input, g, input.moves.length);
+    const bores = holes.filter((h) => h.r > 3).map((h) => [h.top[0], h.r * 2, Math.round(h.top[2] - h.bottom[2])]);
+    expect(bores).toEqual([[10, 10, 9], [30, 11, 6], [40, 10.4, 4]].map(([x, d, depth]) => [expect.closeTo(x, 6), expect.closeTo(d, 6), depth]));
+    // The plunge at (30,15) is inside the Ø11 bore: no Ø6 hole of its own.
+    expect(holes.filter((h) => h.r === 3)).toEqual([]);
+  });
+});
+
 describe('weak spots: wall thickness of the finished part', () => {
   it('finds the 1 mm wall left between two slots, and thick material elsewhere', () => {
     // Two slots 8 deep in a 20 x 10 x 10 block, a 4 mm end mill: they leave a 1 mm wall at X 6..7.

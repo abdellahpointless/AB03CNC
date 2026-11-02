@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
-import { between, holeAt, holeAxis, own, placeDimension, type Feature } from '../lib/measure';
+import { between, holeAt, holeAxis, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
@@ -73,18 +73,19 @@ interface Props {
   heat?: boolean;
   /** Playing: setup changes are animated (turn, cales). Otherwise (scrubbing) the part jumps there. */
   playing?: boolean;
-  /** Measuring: the part is analysed, then clicks pick its faces and holes. */
+  /** Measuring: the part is analysed, then clicks pick its faces, holes or points (see mode). */
   measure?: boolean;
+  /** What a click picks: two faces, two points, one hole's Ø, or two holes' axes. */
+  mode?: MeasureMode;
   onMeasure?: (result: Measurement) => void;
   jump?: Jump | null;
 }
 
-/** What the clicked features measure (mm): one face or hole, the distance between two, or why not. */
+/** What the clicks measure (mm): a hole's Ø, the distance between two picks (with its X/Y/Z parts), the first of two picked, or why not. */
 export type Measurement =
-  | { kind: 'face'; mm: number; axis: string; second: boolean }
   | { kind: 'hole'; mm: number; depth: number; tool: string }
-  | { kind: 'distance'; mm: number }
-  | { kind: 'none' | 'notParallel' }
+  | { kind: 'distance'; mm: number; d?: Vec }
+  | { kind: 'picked' | 'none' | 'notParallel' }
   | null;
 
 function label(text: string, color: string): THREE.Sprite {
@@ -359,7 +360,10 @@ interface Api {
   afterRender: (() => void) | null;
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, onMeasure, jump = null }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null }: Props) {
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const resetMeasure = useRef<(() => void) | null>(null);
   const jumpRef = useRef(jump);
   jumpRef.current = jump;
   const onMeasureRef = useRef(onMeasure);
@@ -542,7 +546,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     };
     const buildLiners = (holes: Hole[]) => {
       const up = new THREE.Vector3(0, 1, 0);
-      for (const h of holes) {
+      // Only holes with wall all round: a smooth wall over one opened into a pocket would close the opening.
+      for (const h of holes.filter((x) => x.closed)) {
         const top = new THREE.Vector3(...h.top);
         const along = new THREE.Vector3(...h.bottom).sub(top);
         const len = along.length();
@@ -1021,6 +1026,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       return out;
     };
     const mark = (f: Feature) => {
+      if (f.kind === 'point') {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.3, extent().size * 0.005), 16, 12), fresh(new THREE.MeshBasicMaterial({ color: ACCENT, depthTest: false }), 1));
+        dot.position.set(...f.p);
+        marked.add(dot);
+        return;
+      }
       if (f.kind === 'hole') {
         const { u } = holeAxis(f.hole);
         const mat = fresh(new THREE.LineBasicMaterial({ color: ACCENT, depthTest: false }), 1);
@@ -1041,9 +1052,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       tag(text, d.label);
     };
     const feats: Feature[] = [];
+    // What a click picks in this mode: a point as it is, a hole, or a flat face.
     const pick = (p: Vec, n: Vec): Feature | null => {
-      const h = holeAt(holes!, p);
-      if (h) return { kind: 'hole', hole: h };
+      if (modeRef.current === 'points') return { kind: 'point', p };
+      if (modeRef.current !== 'faces') {
+        const h = holeAt(holes!, p);
+        return h ? { kind: 'hole', hole: h } : null;
+      }
       const axis = [0, 1, 2].reduce((b, k) => (Math.abs(n[k]) > Math.abs(n[b]) ? k : b), 0) as 0 | 1 | 2;
       if (Math.abs(n[axis]) < 0.97) return null;
       const sign = n[axis] > 0 ? 1 : -1;
@@ -1076,38 +1091,47 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const f = pick([q.x, q.y, q.z], [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z]);
       if (!f) return onMeasureRef.current?.({ kind: 'none' });
       const ext = extent();
-      // A hole straight into the face picked first has no distance to it along that face: a new measurement.
-      const along = feats.length === 1 && feats[0].kind === 'face' && f.kind === 'hole' && Math.abs(holeAxis(f.hole).u[feats[0].axis]) > 0.9;
-      if (feats.length !== 1 || along) {
-        // A new first feature: it measures itself.
+      const reset = () => {
         feats.length = 0;
         clear(marked);
         clear(dims);
         clearTags();
+      };
+      if (f.kind === 'hole' && modeRef.current === 'diameter') {
+        // Each hole by itself: its Ø on a leader from the rim, out past the part.
+        reset();
+        mark(f);
+        const { u, depth } = holeAxis(f.hole);
+        const out = placeDimension(f.hole.top, f.hole.top, u, ext, 0).a;
+        const side = new THREE.Vector3().subVectors(v(out), v(f.hole.top));
+        const rim: Vec = side.lengthSq() > 1e-9 ? (v(f.hole.top).addScaledVector(side.normalize(), f.hole.r).toArray() as Vec) : f.hole.top;
+        dimension({ from: rim, to: rim, dir: u }, `Ø ${mm(f.hole.r * 2)}`, ext, true);
+        onMeasureRef.current?.({ kind: 'hole', mm: f.hole.r * 2, depth, tool: toolName(f.hole.tool) });
+        return;
+      }
+      // Two picks measure: the first is marked, the second gives the distance; a third starts again.
+      if (feats.length !== 1) {
+        reset();
         feats.push(f);
         mark(f);
-        const m = own(f, ext);
-        if (f.kind === 'hole') {
-          // The Ø on a leader from the rim, out past the part.
-          const out = placeDimension(f.hole.top, f.hole.top, m.dir, ext, 0).a;
-          const side = new THREE.Vector3().subVectors(v(out), v(f.hole.top));
-          const rim: Vec = side.lengthSq() > 1e-9 ? v(f.hole.top).addScaledVector(side.normalize(), f.hole.r).toArray() as Vec : f.hole.top;
-          dimension({ from: rim, to: rim, dir: m.dir }, `Ø ${mm(m.mm)}`, ext, true);
-          onMeasureRef.current?.({ kind: 'hole', mm: m.mm, depth: holeAxis(f.hole).depth, tool: toolName(f.hole.tool) });
-        } else {
-          dimension(m, mm(m.mm), ext);
-          onMeasureRef.current?.({ kind: 'face', mm: m.mm, axis: 'XYZ'[f.axis], second: false });
-        }
-        return;
+        return onMeasureRef.current?.({ kind: 'picked' });
       }
       const m = between(feats[0], f);
       if (!m) return onMeasureRef.current?.({ kind: 'notParallel' });
       feats.push(f);
-      clear(dims);
-      clearTags();
       mark(f);
       dimension(m, mm(m.mm), ext);
-      onMeasureRef.current?.({ kind: 'distance', mm: m.mm });
+      // Points and axes: also how far apart along X, Y and Z of the part.
+      const d: Vec = [m.to[0] - m.from[0], m.to[1] - m.from[1], m.to[2] - m.from[2]];
+      onMeasureRef.current?.({ kind: 'distance', mm: m.mm, d: f.kind === 'face' ? undefined : d });
+    };
+    resetMeasure.current = () => {
+      feats.length = 0;
+      clear(marked);
+      clear(dims);
+      clearTags();
+      onMeasureRef.current?.(null);
+      a.invalidate();
     };
 
     // Analyse: the part at this instant, then its holes; their rims drawn so they can be picked.
@@ -1140,12 +1164,15 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       el.style.cursor = '';
       clearTags();
       a.afterRender = null;
+      resetMeasure.current = null;
       disposeTree(marks);
       a.solid.remove(marks);
       a.invalidate();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [measure]);
+  // Another mode: start again (the part stays analysed).
+  useEffect(() => resetMeasure.current?.(), [mode]);
 
   useEffect(() => {
     const a = api.current;
