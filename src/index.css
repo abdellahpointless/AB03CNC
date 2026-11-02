@@ -894,6 +894,14 @@ html.light .aurora-input {
   border-color: rgba(15, 23, 42, 0.14);
 }
 html.light .aurora-input:focus { box-shadow: 0 0 0 3px rgba(47, 98, 214, 0.18); }
+/* The toolpath viewer keeps its dark 3D scene in light mode: its controls stay dark too. */
+html.light .always-dark .btn-icon {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+html.light .always-dark .aurora-input { background: var(--bg-input); border-color: var(--border-subtle); }
 
 html.light .skeleton-shimmer { background: rgba(15, 23, 42, 0.05); }
 html.light .skeleton-shimmer::after {

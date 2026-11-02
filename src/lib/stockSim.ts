@@ -249,7 +249,8 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, to
 export function carve(input: SimInput, onProgress?: (share: number) => void): Grid {
   const { part } = input;
   const ext: Vec = [part.max[0] - part.min[0], part.max[1] - part.min[1], part.max[2] - part.min[2]];
-  const maxVoxels = input.maxVoxels ?? 2_500_000;
+  // About 0.55 mm on the largest top plates, finer on smaller parts: hole rims and small chamfers stay clean.
+  const maxVoxels = input.maxVoxels ?? 5_000_000;
   const target = Math.max(0.12, Math.cbrt((ext[0] * ext[1] * ext[2]) / maxVoxels));
   const n: [number, number, number] = [Math.max(2, Math.round(ext[0] / target)), Math.max(2, Math.round(ext[1] / target)), Math.max(2, Math.round(ext[2] / target))];
   // Samples sit in the middle of equal slices of the part box, so its faces fall halfway between.
@@ -708,6 +709,28 @@ export function mesher(g: Grid, input: SimInput): Mesher {
     p[0] >= boxes[m * 6] && p[0] <= boxes[m * 6 + 3] && p[1] >= boxes[m * 6 + 1] && p[1] <= boxes[m * 6 + 4] && p[2] >= boxes[m * 6 + 2] && p[2] <= boxes[m * 6 + 5];
   /** Moves before the current one that still count as fresh. */
   const RECENT = 24;
+  const index = moveIndex(input);
+  /** Every move up to `now` that can reach part point p (from the moves binned by place). */
+  const reaching = (p: Vec, now: number) => {
+    const out: number[] = [];
+    for (let s = 0; s < input.setups.length; s++) {
+      const R = input.setups[s].orient;
+      const t = input.setups[s].offset;
+      const b = index.bins[s];
+      const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
+      const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
+      const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
+      const k = Math.floor((mx - b.lo[0]) / b.cell);
+      const j = Math.floor((my - b.lo[1]) / b.cell);
+      if (k < 0 || j < 0 || k >= b.nx || j >= b.ny) continue;
+      for (const m of b.lists.get(j * b.nx + k) ?? []) {
+        if (m > now) break;
+        const o = m * 5;
+        if (mx >= index.reach[o] && mx <= index.reach[o + 1] && my >= index.reach[o + 2] && my <= index.reach[o + 3] && mz >= index.reach[o + 4]) out.push(m);
+      }
+    }
+    return out;
+  };
 
   // Running shares of every cutting move, for cutting a move short at the current instant.
   const runs = new Map<number, Float64Array>();
@@ -842,6 +865,12 @@ export function mesher(g: Grid, input: SimInput): Mesher {
     const pb: Vec = [...pa];
     pb[axis] += dir * h[axis];
     let hit = covering(pb);
+    // Where two cuts meet (a hole drilled from one side into a pocket from the other), the move
+    // that shapes the edge may not have cut any sample here first: look up every move reaching it.
+    if (!hit) {
+      for (const m of reaching(pb, now)) if (!moves.includes(m)) moves.push(m);
+      hit = covering(pb);
+    }
     if (!hit || covering(pa)) return half(true);
     const along = (t: number): Vec => [pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t];
     let t0 = 0;

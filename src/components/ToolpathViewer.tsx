@@ -1,11 +1,11 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
-import { WEAK_COLORS, WEAK_MM, type SolidState } from './Toolpath3D';
+import { WEAK_COLORS, WEAK_MM, type Measurement, type SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
@@ -34,6 +34,10 @@ const DARK_VARS = {
   '--border-strong': 'rgba(255,255,255,0.18)',
   '--bg-input': '#0A0F19',
   '--ov': '255,255,255',
+  '--blue-500': '#3b6fd4',
+  '--green-500': '#16a34a',
+  '--orange-500': '#e08a4d',
+  '--rose-500': '#ff6679',
 } as React.CSSProperties;
 
 type View = { x: number; y: number; w: number; h: number };
@@ -87,6 +91,9 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const [isolate, setIsolate] = useState(false);
   // Weak spots: the finished part coloured by wall thickness.
   const [heat, setHeat] = useState(false);
+  // Measuring on the part: the mode, how many points are picked and what they measure.
+  const [measure, setMeasure] = useState<'distance' | 'diameter' | null>(null);
+  const [measured, setMeasured] = useState<{ picked: number; result: Measurement }>({ picked: 0, result: null });
   // The setup shown is the one of the current move, so playing goes through the setups.
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
@@ -306,7 +313,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
 
   return createPortal(
     <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-6 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
-      <motion.div className="w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border border-[var(--border-subtle)] bg-[#0E1421] text-[var(--text-primary)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]" style={DARK_VARS} {...iosSurface} role="dialog" aria-label={t('toolpath.title')}>
+      <motion.div className="always-dark w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border border-[var(--border-subtle)] bg-[#0E1421] text-[var(--text-primary)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]" style={DARK_VARS} {...iosSurface} role="dialog" aria-label={t('toolpath.title')}>
         {/* Header: title and the program's key figures as symbols */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-[var(--border-subtle)] flex-wrap">
           <Route size={18} className="text-[var(--accent-primary)]" />
@@ -328,6 +335,15 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <span className={`${totalHits ? 'badge-danger' : 'badge-positive'} text-xs py-1 px-2.5 inline-flex items-center gap-1.5`}>
                 {totalHits ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
                 {totalHits ? t('toolpath.jawHits', { count: totalHits }) : t('toolpath.jawClear')}
+              </span>
+            )}
+            {path.unsupported.length > 0 && (
+              <span
+                className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5"
+                title={path.unsupported.map((u) => t(`toolpath.unsupported.${u.kind}`, { line: u.line + 1, count: u.count })).join('\n')}
+              >
+                <Info size={13} />
+                {t('toolpath.unsupported.title', { count: path.unsupported.length })}
               </span>
             )}
             <button onClick={onClose} className="btn-icon w-8 h-8" title={t('common:actions.close')} aria-label={t('common:actions.close')}>
@@ -370,13 +386,13 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
         {total === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm text-[var(--text-secondary)]">{t('toolpath.noMoves')}</div>
         ) : (
-          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_300px]">
+          <div className="flex-1 min-h-0 grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-1 lg:grid-cols-[1fr_300px]">
             <div className="min-h-0 flex flex-col">
               {/* Top view */}
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} playing={playing} measure={solid.state === 'ready' ? measure : null} onMeasure={(picked, result) => setMeasured({ picked, result })} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -398,7 +414,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                         </span>
                       ))}
                     </div>
-                    <p className="text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.heatNote')}</p>
+                    <p className="sr-only sm:not-sr-only text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.heatNote')}</p>
                   </div>
                 )}
                 {mode3d && !isolate && sel?.cales?.length && sel.support !== null ? (() => {
@@ -414,12 +430,66 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     </div>
                   );
                 })() : null}
-                {mode3d && solid.state === 'carving' && (
-                  <div className="absolute left-3 top-2 z-10 inline-flex items-center gap-2 rounded-full bg-[#0E1421]/85 border border-[var(--border-subtle)] px-3 py-1 text-[11px] text-[var(--text-secondary)]">
-                    <span className="w-16 h-1 rounded-full bg-[rgba(var(--ov),0.1)] overflow-hidden"><span className="block h-full bg-[var(--accent-primary)]" style={{ width: `${Math.round(solid.share * 100)}%` }} /></span>
-                    {t('toolpath.carving')}
+                {mode3d && measure && (
+                  <div className="absolute left-3 top-12 lg:top-2 z-10 w-72 max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-2">
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.measure')}>
+                      {(['distance', 'diameter'] as const).map((m) => (
+                        <button key={m} role="radio" aria-checked={measure === m} onClick={() => setMeasure(m)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${measure === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
+                          {t(m === 'distance' ? 'toolpath.measureDistance' : 'toolpath.measureDiameter')}
+                        </button>
+                      ))}
+                    </div>
+                    <div aria-live="polite" className="text-[11px] text-[var(--text-secondary)] space-y-1">
+                      {measured.result?.kind === 'distance' ? (
+                        <>
+                          <div className="font-mono text-base font-bold text-[var(--text-primary)]">{fmtNumber(measured.result.mm, 2)} mm</div>
+                          <div className="font-mono">
+                            ΔX {fmtNumber(Math.abs(measured.result.d[0]), 2)} · ΔY {fmtNumber(Math.abs(measured.result.d[1]), 2)} · ΔZ {fmtNumber(Math.abs(measured.result.d[2]), 2)}
+                          </div>
+                        </>
+                      ) : measured.result?.kind === 'diameter' ? (
+                        <div className="font-mono text-base font-bold text-[var(--text-primary)]">Ø {fmtNumber(measured.result.mm, 2)} mm</div>
+                      ) : measure === 'diameter' && measured.picked === 3 ? (
+                        <div>{t('toolpath.measureNoCircle')}</div>
+                      ) : (
+                        <div>
+                          {t(measure === 'distance' ? 'toolpath.measureHintDistance' : 'toolpath.measureHintDiameter')} ({measured.picked}/{measure === 'distance' ? 2 : 3})
+                        </div>
+                      )}
+                      <p className="text-[10px] text-[var(--text-tertiary)]">{t('toolpath.measureNote')}</p>
+                    </div>
                   </div>
                 )}
+                {/* The part stays veiled until it is cut and shown, and while its walls are measured. */}
+                <AnimatePresence>
+                  {mode3d && (solid.state === 'carving' || solid.state === 'meshing' || solid.state === 'measuring') && (
+                    <motion.div
+                      key="veil"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, scale: 1.02, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
+                      className="absolute inset-0 z-[5] flex items-center justify-center bg-[#0E1421]/70 backdrop-blur-xl"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="flex flex-col items-center gap-3">
+                        <span className="relative w-12 h-12" aria-hidden="true">
+                          <span className="absolute inset-0 rounded-full border-2 border-[rgba(var(--ov),0.12)]" />
+                          <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-[var(--accent-primary)] animate-spin motion-reduce:animate-none" />
+                          <Box size={18} className="absolute inset-0 m-auto text-[var(--accent-primary)]" />
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--text-primary)]">{t(`toolpath.${solid.state}`)}</span>
+                        <span className="w-40 h-1 rounded-full bg-[rgba(var(--ov),0.1)] overflow-hidden" aria-hidden="true">
+                          <motion.span
+                            className="block h-full bg-[var(--accent-primary)]"
+                            animate={{ width: `${Math.round((solid.state === 'carving' ? solid.share * 0.8 : solid.state === 'meshing' ? 0.9 : 0.95) * 100)}%` }}
+                            transition={{ duration: 0.3 }}
+                          />
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <div className="absolute right-3 top-2 z-10 flex items-center gap-2">
                   <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label="3D / 2D">
                     {[true, false].map((m) => (
@@ -436,7 +506,18 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       title={t('toolpath.isolateHelp')}
                     >
                       <Box size={12} />
-                      {t('toolpath.isolate')}
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.isolate')}</span>
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => setMeasure((m) => (m ? null : 'distance'))}
+                      aria-pressed={!!measure}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${measure ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.measureHelp')}
+                    >
+                      <Ruler size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.measure')}</span>
                     </button>
                   )}
                   {mode3d && (
@@ -451,7 +532,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                       title={t('toolpath.heatHelp')}
                     >
                       <Flame size={12} />
-                      {t('toolpath.heat')}
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
                     </button>
                   )}
                   <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
@@ -644,11 +725,11 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
 
         {/* Player */}
         {total > 0 && (
-          <div className="flex items-center gap-3 px-5 py-3 border-t border-[var(--border-subtle)]">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 border-t border-[var(--border-subtle)]">
             <button onClick={() => seek(0)} className="btn-icon w-8 h-8" aria-label={t('toolpath.start')} title={t('toolpath.start')}>
               <SkipBack size={14} />
             </button>
-            <button onClick={() => setPlaying((p) => !p)} className="btn-primary w-10 h-10 !p-0 rounded-full justify-center" aria-label={playing ? t('toolpath.pause') : t('toolpath.play')} title={playing ? t('toolpath.pause') : t('toolpath.play')}>
+            <button onClick={() => setPlaying((p) => !p)} className="btn-primary shrink-0 w-10 h-10 !p-0 rounded-full justify-center" aria-label={playing ? t('toolpath.pause') : t('toolpath.play')} title={playing ? t('toolpath.pause') : t('toolpath.play')}>
               {playing ? <Pause size={16} /> : <Play size={16} />}
             </button>
             <button onClick={() => seek(total)} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
@@ -663,13 +744,13 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                 setPlaying(false);
                 seek(Number(e.target.value));
               }}
-              className="flex-1 accent-[var(--accent-primary)]"
+              className="order-first basis-full sm:order-none sm:basis-0 flex-1 accent-[var(--accent-primary)]"
               aria-label={t('toolpath.position')}
             />
-            <span className="font-mono text-xs text-[var(--text-secondary)] w-28 text-right">
+            <span className="font-mono text-xs text-[var(--text-secondary)] sm:w-28 text-right">
               {fmtClock(elapsed)} / {fmtClock(path.totalSeconds)}
             </span>
-            <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.speed')}>
+            <div className="ml-auto sm:ml-0 inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.speed')}>
               {SPEEDS.map((s, i) => (
                 <button key={s} role="radio" aria-checked={speed === i} onClick={() => setSpeed(i)} className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold ${speed === i ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
                   {s}×

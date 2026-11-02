@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseToolpath, speedsFor } from '../src/lib/toolpath';
+import { ARC_TOLERANCE, parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 const S = { rapid: 30_000, toolChange: 2 };
 
@@ -77,5 +77,47 @@ describe('cutter compensation', () => {
     expect(tipSlope('4.2MM BOHRER/55MM LANG')).toBeCloseTo(Math.tan((59 * Math.PI) / 180), 5);
     expect(tipSlope('GEWINDEBOHRER_M4 / GB_04.00_040_000_FH')).toBeNull();
     expect(tipSlope('8MM FRAESER/44MM LANG')).toBeNull();
+  });
+});
+
+describe('arcs and codes the shop machines read differently', () => {
+  const S = { rapid: 30_000, toolChange: 2 };
+  const arcOf = (code: string) => parseToolpath(code, S).moves.filter((m) => m.kind === 'feed').pop()!;
+
+  it('keeps every drawn point of an arc on the circle, within the arc tolerance between points', () => {
+    const arc = arcOf('T1 M6\nG0 G90 X50 Y0 Z0\nG3 X-50 Y0 I-50 J0 F500');
+    for (const p of arc.points) expect(Math.hypot(p[0], p[1])).toBeCloseTo(50, 9);
+    // The middle of each piece is no further than the tolerance inside the circle.
+    for (let k = 1; k < arc.points.length; k++) {
+      const a = arc.points[k - 1], b = arc.points[k];
+      expect(50 - Math.hypot((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)).toBeLessThanOrEqual(ARC_TOLERANCE + 1e-9);
+    }
+  });
+
+  it('reads R arcs like I/J arcs, including R- for more than half a circle', () => {
+    const ij = arcOf('T1 M6\nG0 G90 X10 Y0 Z0\nG2 X0 Y-10 I-10 J0 F500');
+    const r = arcOf('T1 M6\nG0 G90 X10 Y0 Z0\nG2 X0 Y-10 R10 F500');
+    expect(r.points[Math.floor(r.points.length / 2)][0]).toBeCloseTo(ij.points[Math.floor(ij.points.length / 2)][0], 6);
+    // Three quarters of a circle the long way round: passes through X-10.
+    const long = arcOf('T1 M6\nG0 G90 X10 Y0 Z0\nG2 X0 Y10 R-10 F500');
+    expect(Math.min(...long.points.map((p) => p[0]))).toBeCloseTo(-10, 3);
+  });
+
+  it('draws G18 arcs in the XZ plane and G19 arcs in the YZ plane', () => {
+    const xz = arcOf('T1 M6\nG0 G90 X10 Y5 Z0\nG18 G3 X-10 Z0 I-10 K0 F500');
+    for (const p of xz.points) {
+      expect(p[1]).toBeCloseTo(5, 9);
+      expect(Math.hypot(p[0], p[2])).toBeCloseTo(10, 9);
+    }
+    const yz = arcOf('T1 M6\nG0 G90 X3 Y10 Z0\nG19 G2 Y-10 Z0 J-10 K0 F500');
+    for (const p of yz.points) expect(Math.hypot(p[1], p[2])).toBeCloseTo(10, 9);
+    expect(yz.points.every((p) => p[0] === 3)).toBe(true);
+  });
+
+  it('lists what it does not simulate: subprograms, macros, other work offsets, rotation, Haas pocket cycles', () => {
+    const tp = parseToolpath(['T1 M6', 'G55 G0 X0 Y0 Z0', 'M98 P1000', '#100=5', 'G68 X0 Y0 R45', 'G12 I5 D1 Z-2', 'M98 P1001'].join('\n'), S);
+    expect(tp.unsupported.map((u) => u.kind).sort()).toEqual(['cycle', 'macro', 'offset', 'subprogram', 'transform']);
+    expect(tp.unsupported.find((u) => u.kind === 'subprogram')).toEqual({ kind: 'subprogram', line: 2, count: 2 });
+    expect(parseToolpath('T1 M6\nG54 G0 X0 Y0 Z0\nG1 X5', S).unsupported).toEqual([]);
   });
 });

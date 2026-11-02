@@ -67,7 +67,19 @@ export interface Toolpath {
   setups: SetupRaw[];
   /** The program's header comments (part name and sizes). */
   header: string[];
+  /** Codes the simulation does not follow (first line and how many), so the view may differ from the machine. */
+  unsupported: { kind: UnsupportedKind; line: number; count: number }[];
 }
+
+/**
+ * subprogram: M98/M97/M99 (Fanuc and Haas call them differently); macro: #variables, G65, IF/WHILE/GOTO;
+ * offset: work offsets other than G54 (their values live in the machine); transform: G68 rotation,
+ * G51 scaling/mirror; cycle: Haas pocket and circle cycles (G12/G13/G150).
+ */
+export type UnsupportedKind = 'subprogram' | 'macro' | 'offset' | 'transform' | 'cycle';
+
+/** Largest gap between an arc and the straight pieces drawn for it (mm). */
+export const ARC_TOLERANCE = 0.005;
 
 export interface MachineSpeeds {
   /** Rapid rate in mm/min. */
@@ -150,6 +162,14 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
 
   let pos: [number | null, number | null, number | null] = [null, null, null];
   let motion = 0;
+  /** Arc plane as [first, second, normal] axes: G17 XY, G18 ZX, G19 YZ. */
+  let plane: [number, number, number] = [0, 1, 2];
+  const unsupported = new Map<UnsupportedKind, { kind: UnsupportedKind; line: number; count: number }>();
+  const flag = (kind: UnsupportedKind, line: number) => {
+    const u = unsupported.get(kind);
+    if (u) u.count++;
+    else unsupported.set(kind, { kind, line, count: 1 });
+  };
   let absolute = true;
   let feed = 0;
   let tool: number | null = null;
@@ -202,8 +222,16 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       if (!/CHECK TOOL/i.test(comments.join(' '))) pendingNotes.push({ line: i, text: comments.join(' / ') });
     }
     if (commentOnly) return;
-    const { g, m, v } = readWords(line);
+    const { g, m, v, raw: codeText } = readWords(line);
     const has = (list: number[], ...c: number[]) => list.some((x) => c.includes(x));
+    if (has(m, 97, 98, 99)) flag('subprogram', i);
+    if (/#|\bIF\b|\bWHILE\b|\bGOTO/.test(codeText) || has(g, 65, 66)) flag('macro', i);
+    if (g.some((c) => c >= 54.1 && c <= 59 && c !== 54) || has(g, 110, 154)) flag('offset', i);
+    if (has(g, 68, 51, 51.1)) flag('transform', i);
+    if (has(g, 12, 13, 150)) flag('cycle', i);
+    if (has(g, 17)) plane = [0, 1, 2];
+    if (has(g, 18)) plane = [2, 0, 1];
+    if (has(g, 19)) plane = [1, 2, 0];
 
     // G52: the part was clamped again (new setup) and the zero point moves. Not a move.
     if (has(g, 52)) {
@@ -313,46 +341,54 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     const end = to as Vec;
 
     if (motion === 2 || motion === 3) {
-      // Arc in the XY plane, centre from I/J (incremental from the start) or from R.
-      let cx: number;
-      let cy: number;
-      if (v.has('I') || v.has('J')) {
-        cx = from[0] + (v.get('I') ?? 0);
-        cy = from[1] + (v.get('J') ?? 0);
+      // Arc in the active plane (u, v) with the third axis (w) moving straight: helix. Centre from
+      // I/J/K (incremental from the start) or from R. Clockwise (G2) as seen from +w.
+      const [ua, va, wa] = plane;
+      const IJK = ['I', 'J', 'K'];
+      let cu: number;
+      let cv: number;
+      if (v.has(IJK[ua]) || v.has(IJK[va])) {
+        cu = from[ua] + (v.get(IJK[ua]) ?? 0);
+        cv = from[va] + (v.get(IJK[va]) ?? 0);
       } else if (v.has('R')) {
         const r = v.get('R')!;
-        const mx = (from[0] + end[0]) / 2;
-        const my = (from[1] + end[1]) / 2;
-        const dx = end[0] - from[0];
-        const dy = end[1] - from[1];
-        const d = Math.hypot(dx, dy) || 1e-9;
+        const mu = (from[ua] + end[ua]) / 2;
+        const mv = (from[va] + end[va]) / 2;
+        const du = end[ua] - from[ua];
+        const dv = end[va] - from[va];
+        const d = Math.hypot(du, dv) || 1e-9;
         const h = Math.sqrt(Math.max(0, r * r - (d / 2) ** 2));
-        // G2 with positive R: centre on the right of the chord; G3 on the left; negative R flips.
+        // G2 with positive R: centre on the right of the chord; G3 on the left; negative R (more than a half circle) flips.
         const side = (motion === 2 ? 1 : -1) * (r >= 0 ? 1 : -1);
-        cx = mx + (side * h * dy) / d;
-        cy = my - (side * h * dx) / d;
+        cu = mu + (side * h * dv) / d;
+        cv = mv - (side * h * du) / d;
       } else {
-        cx = from[0];
-        cy = from[1];
+        cu = from[ua];
+        cv = from[va];
       }
-      const r = Math.hypot(from[0] - cx, from[1] - cy);
-      const a0 = Math.atan2(from[1] - cy, from[0] - cx);
-      let a1 = Math.atan2(end[1] - cy, end[0] - cx);
+      const r = Math.hypot(from[ua] - cu, from[va] - cv);
+      const a0 = Math.atan2(from[va] - cv, from[ua] - cu);
+      let a1 = Math.atan2(end[va] - cv, end[ua] - cu);
       if (motion === 2) {
         while (a1 >= a0 - 1e-9) a1 -= 2 * Math.PI;
       } else {
         while (a1 <= a0 + 1e-9) a1 += 2 * Math.PI;
       }
       const sweep = a1 - a0;
-      const steps = Math.max(4, Math.ceil(Math.abs(sweep) / (Math.PI / 36)));
+      // Pieces short enough that the arc never strays more than ARC_TOLERANCE from them.
+      const dA = r > ARC_TOLERANCE ? 2 * Math.acos(1 - ARC_TOLERANCE / r) : Math.PI / 2;
+      const steps = Math.min(2000, Math.max(4, Math.ceil(Math.abs(sweep) / dA)));
       const points: Vec[] = [];
       for (let s = 0; s <= steps; s++) {
         const a = a0 + (sweep * s) / steps;
-        const p: Vec = [cx + r * Math.cos(a), cy + r * Math.sin(a), from[2] + ((end[2] - from[2]) * s) / steps];
+        const p: Vec = [0, 0, 0];
+        p[ua] = cu + r * Math.cos(a);
+        p[va] = cv + r * Math.sin(a);
+        p[wa] = from[wa] + ((end[wa] - from[wa]) * s) / steps;
         points.push(p);
         grow(p);
       }
-      const length = Math.hypot(r * Math.abs(sweep), end[2] - from[2]);
+      const length = Math.hypot(r * Math.abs(sweep), end[wa] - from[wa]);
       const seconds = feedTime(length);
       moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() });
       compDone();
@@ -387,6 +423,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     lowestZ: finite ? min[2] : null,
     setups,
     header,
+    unsupported: [...unsupported.values()],
   };
 }
 

@@ -30,7 +30,10 @@ self.onmessage = (e: MessageEvent) => {
   if (msg.type === 'mesh' && m) {
     // The first time weak spots are asked for: measure, and send every chunk again with them.
     const measure = !!msg.heat && !th;
-    if (measure) th = wallThickness(g!, input!);
+    if (measure) {
+      self.postMessage({ type: 'measuring' });
+      th = wallThickness(g!, input!, 1.5);
+    }
     const full = last < 0 || measure;
     const ids = full ? Array.from({ length: m.chunks }, (_, i) => i) : m.dirty(last, msg.step);
     const chunks = ids.map((id) => {

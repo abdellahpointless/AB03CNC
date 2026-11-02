@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, instant, tipSlope, type ChunkMesh } from '../lib/stockSim';
+import { circleOf, distance } from '../lib/measure';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
 
@@ -20,8 +21,8 @@ const FACE_DIR: Record<Face, Vec> = { 'X+': [1, 0, 0], 'X-': [-1, 0, 0], 'Y+': [
 const RAW = new THREE.Color(0x7d8aa3);
 const CUT = new THREE.Color(0xd5deea);
 
-/** Weak-spot colours by wall thickness (mm): blue at 0.4 and less, red at 1, orange at 2, yellow at 3, plain above. */
-export const WEAK_MM = [0.4, 1, 2, 3] as const;
+/** Weak-spot colours by wall thickness (mm): blue at 0.2 and less, red at 0.5 (0.2 to 0.5: check these), orange, yellow at 1, plain above. */
+export const WEAK_MM = [0.2, 0.5, 0.75, 1] as const;
 export const WEAK_COLORS = ['#2f6bff', '#ff3b3b', '#ff9a2e', '#f5d547'] as const;
 const HEAT = WEAK_COLORS.map((c) => new THREE.Color(c));
 const heatColor = (mm: number, plain: THREE.Color, out: THREE.Color) => {
@@ -41,7 +42,8 @@ function poseOf(s: SetupInfo): THREE.Matrix4 {
   return MACHINE.clone().multiply(m);
 }
 
-export type SolidState = { state: 'off' | 'carving' | 'ready'; share: number };
+/** carving: cutting (share done); meshing: building the surfaces; measuring: weak spots; ready: shown. */
+export type SolidState = { state: 'off' | 'carving' | 'meshing' | 'measuring' | 'ready'; share: number };
 
 interface Props {
   path: Toolpath;
@@ -62,7 +64,15 @@ interface Props {
   isolate?: boolean;
   /** Colour the part by wall thickness: thin, weak spots stand out (see WEAK_MM). */
   heat?: boolean;
+  /** Playing: setup changes are animated (turn, cales). Otherwise (scrubbing) the part jumps there. */
+  playing?: boolean;
+  /** Measuring on the part: clicks pick points (two for a distance, three on a round wall for a diameter). */
+  measure?: 'distance' | 'diameter' | null;
+  onMeasure?: (picked: number, result: Measurement) => void;
 }
+
+/** What the picked points measure (mm), once there are enough of them. */
+export type Measurement = { kind: 'distance'; mm: number; d: Vec } | { kind: 'diameter'; mm: number } | null;
 
 function label(text: string, color: string): THREE.Sprite {
   const c = document.createElement('canvas');
@@ -303,9 +313,13 @@ interface Api {
   meshAt: number;
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = null, onMeasure }: Props) {
+  const onMeasureRef = useRef(onMeasure);
+  onMeasureRef.current = onMeasure;
   const heatRef = useRef(heat);
   heatRef.current = heat;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const clockRef = useRef(clock);
@@ -466,10 +480,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         if (setupRef.current) a.solid.matrix.copy(poseOf(setupRef.current));
         a.solid.matrixWorldNeedsUpdate = true;
         if (a.stockFill) a.stockFill.visible = false;
-        onSolidRef.current?.({ state: 'ready', share: 1 });
+        onSolidRef.current?.({ state: 'meshing', share: 1 });
         ask(a.meshAt);
       }
+      if (msg.type === 'measuring') onSolidRef.current?.({ state: 'measuring', share: 1 });
       if (msg.type === 'mesh') {
+        if (msg.full) onSolidRef.current?.({ state: 'ready', share: 1 });
         for (const c of msg.chunks as ChunkMesh[]) {
           let mesh = chunks.get(c.id);
           if (!c.positions.length) {
@@ -663,10 +679,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const tool = new THREE.Group();
     const cutterMat = new THREE.MeshStandardMaterial({ color: 0xe8edf5, metalness: 0.8, roughness: 0.25, transparent: true, opacity: 0.9 });
     const holderMat = new THREE.MeshStandardMaterial({ color: 0x55627a, metalness: 0.6, roughness: 0.4 });
-    const cutter = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), cutterMat);
-    const holder = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), holderMat);
+    const cutter = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), cutterMat);
+    const holder = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), holderMat);
     // Pointed tools (chamfer, spot drill, drill) get their tip: a cone under the cutter.
-    const tipMesh = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 32), cutterMat);
+    const tipMesh = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 64), cutterMat);
     tipMesh.rotation.x = Math.PI;
     tool.add(cutter, holder, tipMesh);
     world.add(tool);
@@ -771,6 +787,93 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (fitKey) api.current?.fit();
   }, [fitKey]);
 
+  // Measuring: a click (not a drag) on the part picks a point there, in the part's own frame (mm).
+  useEffect(() => {
+    const a = api.current;
+    const el = host.current;
+    if (!a || !el || !measure) return;
+    const need = measure === 'distance' ? 2 : 3;
+    const marks = new THREE.Group();
+    a.solid.add(marks);
+    const picks: { p: Vec; n: Vec }[] = [];
+    const size = new THREE.Box3().setFromObject(a.solid).getSize(new THREE.Vector3()).length() || 100;
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, depthTest: false });
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, depthTest: false });
+    const local = (p: Vec) => new THREE.Vector3(p[0], p[1], p[2]);
+    const redraw = (result: Measurement, circle?: { centre: Vec; axis: Vec; r: number }) => {
+      disposeTree(marks);
+      marks.clear();
+      for (const k of picks) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.25, size * 0.004), 16, 12), dotMat);
+        m.position.copy(local(k.p));
+        m.renderOrder = 20;
+        marks.add(m);
+      }
+      if (result?.kind === 'distance') {
+        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(picks.map((k) => local(k.p))), lineMat);
+        l.renderOrder = 20;
+        marks.add(l);
+      }
+      if (circle) {
+        const ax = local(circle.axis);
+        const u = new THREE.Vector3(1, 0, 0).cross(ax).lengthSq() > 0.01 ? new THREE.Vector3(1, 0, 0).cross(ax).normalize() : new THREE.Vector3(0, 1, 0).cross(ax).normalize();
+        const w = ax.clone().cross(u);
+        const pts = Array.from({ length: 97 }, (_, i) => {
+          const t = (i / 96) * Math.PI * 2;
+          return local(circle.centre).addScaledVector(u, circle.r * Math.cos(t)).addScaledVector(w, circle.r * Math.sin(t));
+        });
+        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat);
+        l.renderOrder = 20;
+        marks.add(l);
+      }
+      a.invalidate();
+    };
+    const raycaster = new THREE.Raycaster();
+    let down: { x: number; y: number; t: number } | null = null;
+    const onDown = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY, t: performance.now() });
+    const onUp = (e: PointerEvent) => {
+      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || performance.now() - down.t > 600) return;
+      const r = el.getBoundingClientRect();
+      raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), a.camera);
+      a.solid.updateMatrixWorld(true);
+      const hit = raycaster.intersectObjects(a.solid.children.filter((c) => c !== marks), false)[0];
+      if (!hit?.face) return;
+      if (picks.length >= need) picks.length = 0;
+      const p = a.solid.worldToLocal(hit.point.clone());
+      const n = hit.face.normal;
+      picks.push({ p: [p.x, p.y, p.z], n: [n.x, n.y, n.z] });
+      let result: Measurement = null;
+      let circle: { centre: Vec; axis: Vec; r: number } | undefined;
+      if (picks.length === need && measure === 'distance') {
+        const [a0, b0] = picks.map((k) => k.p);
+        result = { kind: 'distance', mm: distance(a0, b0), d: [b0[0] - a0[0], b0[1] - a0[1], b0[2] - a0[2]] };
+      }
+      if (picks.length === need && measure === 'diameter') {
+        const c = circleOf(picks.map((k) => k.p) as [Vec, Vec, Vec], picks.map((k) => k.n) as [Vec, Vec, Vec]);
+        if (c) {
+          result = { kind: 'diameter', mm: c.diameter };
+          circle = { centre: c.centre, axis: c.axis, r: c.diameter / 2 };
+        }
+      }
+      redraw(result, circle);
+      onMeasureRef.current?.(picks.length, result);
+    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointerup', onUp);
+    el.style.cursor = 'crosshair';
+    onMeasureRef.current?.(0, null);
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointerup', onUp);
+      el.style.cursor = '';
+      disposeTree(marks);
+      a.solid.remove(marks);
+      dotMat.dispose();
+      lineMat.dispose();
+      a.invalidate();
+    };
+  }, [measure]);
+
   useEffect(() => {
     const a = api.current;
     if (!a) return;
@@ -815,10 +918,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (jaw) jaw.obj.position.set(0, 0, open * jaw.travel); // three Z = machine -Y (towards the front)
     };
     const ease = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
-    if (!prev || prev.index >= setup.index || !a.solidReady || reduce) {
+    // Scrubbing (not playing): straight to the new setup, no turn or cale change to wait for.
+    const jump = !playingRef.current;
+    if (!prev || prev.index >= setup.index || !a.solidReady || reduce || jump) {
       a.solid.matrix.copy(end);
       a.solid.matrixWorldNeedsUpdate = true;
-      if (reduce || !jaw) {
+      if (reduce || !jaw || jump) {
+        a.anim = null;
         setJaw(0);
         a.invalidate();
         return;
