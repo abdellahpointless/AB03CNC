@@ -267,7 +267,7 @@ const remapper: Translation<typeof en> = {
     heat: 'Zayıf noktalar',
     heatHelp: 'Bitmiş parçayı et kalınlığına göre renklendir: ince duvarlar, zarlar ve köprüler kırılabilir veya kopabilir',
     heatTitle: 'Bitmiş parçanın et kalınlığı',
-    heatNote: 'Kırmızı ve turuncu: orada malzeme az, işlerken, bağlarken veya kullanırken kırılabilir ya da kopabilir. Yalnızca kalınlık, gerilme hesabı değil.',
+    heatNote: 'Mavi, kırmızı ve turuncu (mm): orada malzeme az, işlerken, bağlarken veya kullanırken kırılabilir ya da kopabilir. Yalnızca kalınlık, gerilme hesabı değil.',
     view2d: '2B',
     setup: 'Bağlama {{n}}',
     setupOf: 'Bağlama {{n}} / {{total}}',

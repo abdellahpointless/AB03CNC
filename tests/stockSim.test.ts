@@ -177,9 +177,14 @@ describe('weak spots: wall thickness of the finished part', () => {
       maxVoxels: 200_000,
     };
     const g = carve(input);
-    const th = wallThickness(g);
+    const th = wallThickness(g, input);
     const at = (x: number, y: number, z: number) => thicknessAt(g, th, new Float32Array([x, y, z]))[0];
-    expect(Math.abs(at(6.5, 5, -4) - 1)).toBeLessThan(g.step[0] * 1.5);
+    // Measured on the exact faces: 1 mm to a tenth, though a sample step is ~0.4 mm here.
+    expect(at(6.5, 5, -4)).toBeCloseTo(1, 1);
     expect(at(16, 5, -4)).toBeGreaterThan(5);
+    // A 0.4 mm wall (slots 4.4 mm apart) reads 0.4, not a whole sample step.
+    const thin = { ...input, moves: [slot(4), slot(8.4)] };
+    const g2 = carve(thin);
+    expect(thicknessAt(g2, wallThickness(g2, thin), new Float32Array([6.2, 5, -4]))[0]).toBeCloseTo(0.4, 1);
   });
 });

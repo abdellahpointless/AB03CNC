@@ -276,7 +276,7 @@ const remapper = {
     heat: 'Weak spots',
     heatHelp: 'Colour the finished part by wall thickness: thin walls, skins and bridges can break or chip',
     heatTitle: 'Wall thickness of the finished part',
-    heatNote: 'Red and orange: little material there, it can break or chip when cut, clamped or used. Thickness only, not a stress calculation.',
+    heatNote: 'Blue, red and orange (mm): little material there, it can break or chip when cut, clamped or used. Thickness only, not a stress calculation.',
     view2d: '2D',
     setup: 'Setup {{n}}',
     setupOf: 'Setup {{n}} of {{total}}',

@@ -467,8 +467,12 @@ function moveIndex(input: SimInput): MoveIndex {
   return ix;
 }
 
-export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 0 | 1 | 2, sign: 1 | -1, keep?: (p: Vec) => boolean): number | null {
-  const { n, step, origin, removed } = g;
+/**
+ * Where the material really ends past a solid sample: from its centre p, along `axis` towards
+ * `sign`, the distance (0..len) to the face left by the deepest of the moves before `before` that
+ * cut there (`first`: the move that cut the next sample first).
+ */
+function faceFinder(input: SimInput, before: number) {
   const toolOf = new Map(input.tools.map((t) => [t.tool, t]));
   const index = moveIndex(input);
   const cutBy = (m: number, p: Vec) => {
@@ -514,6 +518,25 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
     }
     return found;
   };
+  return (p: Vec, first: number, axis: 0 | 1 | 2, sign: 1 | -1, len: number) => {
+    const q: Vec = [p[0], p[1], p[2]];
+    q[axis] = p[axis] + sign * len;
+    const by = cutters(q, first);
+    let lo = 0;
+    let hi = len;
+    for (let it = 0; it < 10; it++) {
+      const mid = (lo + hi) / 2;
+      q[axis] = p[axis] + sign * mid;
+      if (by.some((mm) => cutBy(mm, q))) hi = mid;
+      else lo = mid;
+    }
+    return lo;
+  };
+}
+
+export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 0 | 1 | 2, sign: 1 | -1, keep?: (p: Vec) => boolean): number | null {
+  const { n, step, origin, removed } = g;
+  const reachOf = faceFinder(input, before);
   const [u, w] = axis === 0 ? [1, 2] : axis === 1 ? [0, 2] : [0, 1];
   const id = (c: number[]) => (c[2] * n[1] + c[1]) * n[0] + c[0];
   const c = [0, 0, 0];
@@ -534,20 +557,7 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
           c[axis] = out;
           const m = removed[id(c)];
           reach = step[axis];
-          if (m < before) {
-            const q: Vec = [p[0], p[1], p[2]];
-            q[axis] = p[axis] + sign * step[axis];
-            const by = cutters(q, m);
-            let lo = 0;
-            let hi = step[axis];
-            for (let it = 0; it < 10; it++) {
-              const mid = (lo + hi) / 2;
-              q[axis] = p[axis] + sign * mid;
-              if (by.some((mm) => cutBy(mm, q))) hi = mid;
-              else lo = mid;
-            }
-            reach = lo;
-          }
+          if (m < before) reach = reachOf(p, m, axis, sign, step[axis]);
         }
         // Untouched raw face: exactly the block's face (no voxel arithmetic).
         const v = out < 0 || out >= n[axis] ? (sign > 0 ? input.part.max[axis] : input.part.min[axis]) : p[axis] + sign * reach;
@@ -560,17 +570,22 @@ export function materialExtreme(input: SimInput, g: Grid, before: number, axis: 
 
 /**
  * Wall thickness of the finished part at every sample (mm; Infinity where cut away): the shortest
- * run of solid samples through it along X, Y or Z. Thin walls, skins, bridges between holes and
- * thin ribs come out small: the places that can break or chip.
- * shortcut: along the axes only, so a thin wall at 45° reads up to 1.4× thicker, and it is only as
- * fine as one sample step; a true local thickness (largest ball inside) is the upgrade if that misleads.
+ * run of solid material through it along X, Y or Z. Thin walls, skins, bridges between holes and
+ * thin ribs come out small: the places that can break or chip. Runs shorter than `exactBelow` mm
+ * end on the exact faces the tools left (not on the samples), so thin walls read to a tenth of a
+ * millimetre; a wall thinner than one sample step can still be missed where no sample lies in it.
+ * shortcut: along the axes only, so a thin wall at 45° reads up to 1.4× thicker; a true local
+ * thickness (largest ball inside) is the upgrade if that misleads.
  */
-export function wallThickness(g: Grid): Float32Array {
+export function wallThickness(g: Grid, input?: SimInput, exactBelow = 4): Float32Array {
   const [nx, ny, nz] = g.n;
   const th = new Float32Array(nx * ny * nz).fill(Infinity);
   const stride = [1, nx, nx * ny];
-  for (let a = 0; a < 3; a++) {
+  const reachOf = input ? faceFinder(input, KEPT) : null;
+  const centre = (v: number): Vec => [g.origin[0] + ((v % nx) + 0.5) * g.step[0], g.origin[1] + ((Math.floor(v / nx) % ny) + 0.5) * g.step[1], g.origin[2] + (Math.floor(v / (nx * ny)) + 0.5) * g.step[2]];
+  for (let a = 0 as 0 | 1 | 2; a < 3; a++) {
     const [b, c] = a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
+    const h = g.step[a];
     for (let j = 0; j < g.n[b]; j++)
       for (let k = 0; k < g.n[c]; k++) {
         const base = j * stride[b] + k * stride[c];
@@ -581,7 +596,15 @@ export function wallThickness(g: Grid): Float32Array {
           }
           let e = i;
           while (e < g.n[a] && g.removed[base + e * stride[a]] === KEPT) e++;
-          const len = (e - i) * g.step[a];
+          let len = (e - i) * h;
+          if (reachOf && len < exactBelow) {
+            // From the end samples' centres to the faces: half a step at a raw face (the grid fills the block).
+            const first = base + i * stride[a];
+            const last = base + (e - 1) * stride[a];
+            const lo = i > 0 ? reachOf(centre(first), g.removed[first - stride[a]], a, -1, h) : h / 2;
+            const hi = e < g.n[a] ? reachOf(centre(last), g.removed[last + stride[a]], a, 1, h) : h / 2;
+            len = (e - i - 1) * h + lo + hi;
+          }
           for (let q = i; q < e; q++) {
             const v = base + q * stride[a];
             if (len < th[v]) th[v] = len;

@@ -20,14 +20,15 @@ const FACE_DIR: Record<Face, Vec> = { 'X+': [1, 0, 0], 'X-': [-1, 0, 0], 'Y+': [
 const RAW = new THREE.Color(0x7d8aa3);
 const CUT = new THREE.Color(0xd5deea);
 
-/** Weak-spot colours by wall thickness: red under 1 mm, orange at 2, yellow at 3, plain above. */
-export const WEAK_MM = [1, 2, 3] as const;
-const HEAT = [new THREE.Color(0xff3b3b), new THREE.Color(0xff9a2e), new THREE.Color(0xf5d547)];
+/** Weak-spot colours by wall thickness (mm): blue at 0.4 and less, red at 1, orange at 2, yellow at 3, plain above. */
+export const WEAK_MM = [0.4, 1, 2, 3] as const;
+export const WEAK_COLORS = ['#2f6bff', '#ff3b3b', '#ff9a2e', '#f5d547'] as const;
+const HEAT = WEAK_COLORS.map((c) => new THREE.Color(c));
 const heatColor = (mm: number, plain: THREE.Color, out: THREE.Color) => {
-  if (!(mm < WEAK_MM[2])) return out.copy(plain);
+  if (!(mm < WEAK_MM[3])) return out.copy(plain);
   if (mm <= WEAK_MM[0]) return out.copy(HEAT[0]);
-  if (mm <= WEAK_MM[1]) return out.copy(HEAT[0]).lerp(HEAT[1], mm - WEAK_MM[0]);
-  return out.copy(HEAT[1]).lerp(HEAT[2], mm - WEAK_MM[1]);
+  const k = mm <= WEAK_MM[1] ? 1 : mm <= WEAK_MM[2] ? 2 : 3;
+  return out.copy(HEAT[k - 1]).lerp(HEAT[k], (mm - WEAK_MM[k - 1]) / (WEAK_MM[k] - WEAK_MM[k - 1]));
 };
 /** Machine coordinates -> three.js coordinates. */
 const MACHINE = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1);
@@ -280,7 +281,8 @@ interface Api {
   world: THREE.Group;
   solid: THREE.Group;
   solidReady: boolean;
-  requestMesh: (step: number) => void;
+  /** Ask the worker for the part at an instant; force: again even if shown (e.g. weak spots measured). */
+  requestMesh: (step: number, force?: boolean) => void;
   /** Colour the part again (weak spots on or off). */
   repaint: () => void;
   fit: () => void;
@@ -428,11 +430,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     let shown = -1;
     onSolidRef.current?.({ state: 'carving', share: 0 });
 
-    const ask = (s: number) => {
+    const ask = (s: number, force = false) => {
       wanted = s;
+      if (force) shown = -1;
       if (busy || !a.solidReady || s === shown) return;
       busy = true;
-      worker.postMessage({ type: 'mesh', step: s });
+      worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current });
     };
     a.requestMesh = ask;
     // Raw or cut colour, or the weak-spot colour of each point's wall thickness.
@@ -768,7 +771,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (fitKey) api.current?.fit();
   }, [fitKey]);
 
-  useEffect(() => api.current?.repaint(), [heat]);
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    a.repaint();
+    // The first time: the worker measures the walls and sends the part again with them.
+    if (heat) a.requestMesh(a.meshAt, true);
+  }, [heat]);
 
   // Part only: hide the vise, supports, toolpath and tool.
   useEffect(() => {

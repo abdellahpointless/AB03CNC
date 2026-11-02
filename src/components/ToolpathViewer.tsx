@@ -5,7 +5,7 @@ import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wren
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
-import { WEAK_MM, type SolidState } from './Toolpath3D';
+import { WEAK_COLORS, WEAK_MM, type SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDuration, fmtNumber } from '../i18n/format';
@@ -384,11 +384,19 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                 {mode3d && heat && (
                   <div className="absolute right-3 bottom-3 z-10 w-64 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5" role="note">
                     <div className="text-[11px] font-semibold text-[var(--text-primary)]">{t('toolpath.heatTitle')}</div>
-                    <div className="h-2 rounded-full" style={{ background: 'linear-gradient(90deg, #ff3b3b 0%, #ff3b3b 33%, #ff9a2e 66%, #f5d547 100%)' }} aria-hidden="true" />
-                    <div className="flex justify-between text-[10px] font-mono text-[var(--text-secondary)]">
-                      <span>≤{fmtNumber(WEAK_MM[0])} mm</span>
-                      <span>{fmtNumber(WEAK_MM[1])} mm</span>
-                      <span>≥{fmtNumber(WEAK_MM[2])} mm</span>
+                    {/* The scale from 0 to 3 mm, each colour where its thickness is. */}
+                    <div
+                      className="h-2 rounded-full"
+                      style={{ background: `linear-gradient(90deg, ${WEAK_COLORS[0]} 0%, ${WEAK_MM.map((mm, i) => `${WEAK_COLORS[i]} ${(mm / WEAK_MM[3]) * 100}%`).join(', ')})` }}
+                      aria-hidden="true"
+                    />
+                    <div className="relative h-3 text-[10px] font-mono text-[var(--text-secondary)]">
+                      {WEAK_MM.map((mm, i) => (
+                        <span key={mm} className="absolute -translate-x-1/2 first:translate-x-0 last:-translate-x-full whitespace-nowrap" style={{ left: `${(mm / WEAK_MM[3]) * 100}%` }}>
+                          {i === 0 ? '≤' : i === WEAK_MM.length - 1 ? '≥' : ''}
+                          {fmtNumber(mm)}
+                        </span>
+                      ))}
                     </div>
                     <p className="text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.heatNote')}</p>
                   </div>
