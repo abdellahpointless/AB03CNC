@@ -3,8 +3,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, FLIP_MS, instant, tipSlope, type ChunkMesh } from '../lib/stockSim';
-import { circleOf, distance } from '../lib/measure';
+import { buildInput, FLIP_MS, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
+import { between, holeAt, holeAxis, own, placeDimension, type Feature } from '../lib/measure';
+import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
 
@@ -42,8 +43,14 @@ function poseOf(s: SetupInfo): THREE.Matrix4 {
   return MACHINE.clone().multiply(m);
 }
 
-/** carving: cutting (share done); meshing: building the surfaces; measuring: weak spots; ready: shown. */
-export type SolidState = { state: 'off' | 'carving' | 'meshing' | 'measuring' | 'ready'; share: number };
+/**
+ * carving: cutting (share done); meshing: building the surfaces; measuring: weak spots; analysing:
+ * finding faces and holes to measure; jumping: cutting up to where the slider jumped; ready: shown.
+ */
+export type SolidState = { state: 'off' | 'carving' | 'meshing' | 'measuring' | 'analysing' | 'jumping' | 'ready'; share: number };
+
+/** A jump the part is hidden for: to the end (the finished part, no turn) or to a setup change (then the turn plays). */
+export type Jump = { kind: 'end' | 'flip'; from: SetupInfo | null; key: number };
 
 interface Props {
   path: Toolpath;
@@ -66,13 +73,19 @@ interface Props {
   heat?: boolean;
   /** Playing: setup changes are animated (turn, cales). Otherwise (scrubbing) the part jumps there. */
   playing?: boolean;
-  /** Measuring on the part: clicks pick points (two for a distance, three on a round wall for a diameter). */
-  measure?: 'distance' | 'diameter' | null;
-  onMeasure?: (picked: number, result: Measurement) => void;
+  /** Measuring: the part is analysed, then clicks pick its faces and holes. */
+  measure?: boolean;
+  onMeasure?: (result: Measurement) => void;
+  jump?: Jump | null;
 }
 
-/** What the picked points measure (mm), once there are enough of them. */
-export type Measurement = { kind: 'distance'; mm: number; d: Vec } | { kind: 'diameter'; mm: number } | null;
+/** What the clicked features measure (mm): one face or hole, the distance between two, or why not. */
+export type Measurement =
+  | { kind: 'face'; mm: number; axis: string; second: boolean }
+  | { kind: 'hole'; mm: number; depth: number; tool: string }
+  | { kind: 'distance'; mm: number }
+  | { kind: 'none' | 'notParallel' }
+  | null;
 
 function label(text: string, color: string): THREE.Sprite {
   const c = document.createElement('canvas');
@@ -200,6 +213,31 @@ function engraved(text: string, aspect: number): THREE.Texture {
   return tex;
 }
 
+/** How far the moving jaw opens to let the part out (mm). */
+const JAW_TRAVEL = 35;
+
+/** How a setup holds the part: the vise (its moving jaw apart, to open) with the jaw-top line, or a fixture block with its stop. */
+function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number) {
+  const group = new THREE.Group();
+  if (setup.jawTopZ !== null) {
+    const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
+    const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacer);
+    group.add(vise.group);
+    // The top of the jaws as a thin red line, for the jaw check.
+    const line = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(setup.jawX[1] - setup.jawX[0], 0.01, cb.max[1] - cb.min[1] + 60)),
+      new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.5 }),
+    );
+    line.position.copy(v3([(setup.jawX[0] + setup.jawX[1]) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
+    group.add(line);
+    return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats };
+  }
+  // A fixture: a steel block under the part, with the stop on the left.
+  group.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
+  group.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
+  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[] };
+}
+
 /**
  * The two cales (parallels) of a setup, along X under the held part near its Y faces, each up to
  * the part's real underside above it, with their height engraved ("40 MM").
@@ -260,7 +298,7 @@ function turnArrow(axis: THREE.Vector3, angle: number, radius: number, text: str
   head.rotation.z = arc; // cone points along +Y; turned to the arc's direction of travel
   g.add(head);
   const tag = label(text, '#9DB8FF');
-  const h = Math.max(5, radius * 0.25);
+  const h = Math.max(6, radius * 0.34);
   tag.scale.set(h * tag.userData.aspect, h, 1);
   tag.position.set(radius * Math.cos(arc / 2) * 1.25, radius * Math.sin(arc / 2) * 1.25, 0);
   g.add(tag);
@@ -311,9 +349,19 @@ interface Api {
   shownPos: number;
   /** Instant of the program the solid should show (see stockSim SUB). */
   meshAt: number;
+  /** The setup's clamping (vise or fixture), hidden while the part turns out of the old one. */
+  clamp: THREE.Object3D | null;
+  /** Called once, when the part shown is the part at meshAt (after a jump). */
+  settle: (() => void) | null;
+  /** The round holes plunged before a move (the worker finds them on the cut part). */
+  holesBefore: (move: number) => Promise<Hole[]>;
+  /** Called after each drawn frame (labels that follow the part on screen). */
+  afterRender: (() => void) | null;
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = null, onMeasure }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, onMeasure, jump = null }: Props) {
+  const jumpRef = useRef(jump);
+  jumpRef.current = jump;
   const onMeasureRef = useRef(onMeasure);
   onMeasureRef.current = onMeasure;
   const heatRef = useRef(heat);
@@ -387,6 +435,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
       if (dirty) {
         renderer.render(scene, camera);
+        a?.afterRender?.();
         dirty = false;
       }
       raf = requestAnimationFrame(loop);
@@ -413,6 +462,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       cales: null,
       shownPos: NaN,
       meshAt: 0,
+      clamp: null,
+      settle: null,
+      holesBefore: () => Promise.resolve([]),
+      afterRender: null,
     };
     return () => {
       cancelAnimationFrame(raf);
@@ -444,9 +497,17 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     let shown = -1;
     onSolidRef.current?.({ state: 'carving', share: 0 });
 
+    // After a jump: once the part shown is the part asked for.
+    const settled = () => {
+      if (!a.settle || busy || shown !== a.meshAt) return;
+      const f = a.settle;
+      a.settle = null;
+      f();
+    };
     const ask = (s: number, force = false) => {
       wanted = s;
       if (force) shown = -1;
+      if (s === shown) settled();
       if (busy || !a.solidReady || s === shown) return;
       busy = true;
       worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current });
@@ -467,8 +528,57 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     };
+    // Plunged holes as true cylinders: the samples leave their walls and rims a little rough, so a
+    // smooth wall (and a flat rim where the face round it is flat) is drawn over them once drilled.
+    // Not with weak spots on: those colour the walls.
+    const liners = new THREE.Group();
+    a.solid.add(liners);
+    const look = { metalness: 0.3, roughness: 0.55 };
+    const wallMat = new THREE.MeshStandardMaterial({ ...look, color: CUT, side: THREE.BackSide });
+    const rimMat = { raw: new THREE.MeshStandardMaterial({ ...look, color: RAW }), cut: new THREE.MeshStandardMaterial({ ...look, color: CUT }) };
+    const showLiners = () => {
+      const done = Math.floor(shown / SUB);
+      for (const l of liners.children) l.visible = !heatRef.current && shown >= 0 && l.userData.move < done;
+    };
+    const buildLiners = (holes: Hole[]) => {
+      const up = new THREE.Vector3(0, 1, 0);
+      for (const h of holes) {
+        const top = new THREE.Vector3(...h.top);
+        const along = new THREE.Vector3(...h.bottom).sub(top);
+        const len = along.length();
+        along.normalize();
+        const g = new THREE.Group();
+        g.userData.move = h.move;
+        // Just inside the true wall, so it is drawn over the sampled one.
+        const wall = new THREE.Mesh(new THREE.CylinderGeometry(h.r - 0.04, h.r - 0.04, len, 64, 1, true), wallMat);
+        wall.position.copy(top).addScaledVector(along, len / 2);
+        wall.quaternion.setFromUnitVectors(up, along);
+        g.add(wall);
+        if (h.flat) {
+          // On the raw block face, the raw colour; on a machined face, the cut colour.
+          const a3 = [0, 1, 2].find((k) => Math.abs(along.getComponent(k)) > 0.9) ?? 2;
+          const raw = Math.abs(h.top[a3] - input.part.min[a3]) < 0.01 || Math.abs(h.top[a3] - input.part.max[a3]) < 0.01;
+          const rim = new THREE.Mesh(new THREE.RingGeometry(h.r - 0.04, h.r + 0.6, 64), raw ? rimMat.raw : rimMat.cut);
+          rim.position.copy(top).addScaledVector(along, -0.01);
+          rim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), along.clone().negate());
+          g.add(rim);
+        }
+        liners.add(g);
+      }
+      showLiners();
+      a.invalidate();
+    };
+    const holeAsks = new Map<number, ((h: Hole[]) => void)[]>();
+    a.holesBefore = (move) =>
+      new Promise((done) => {
+        const l = holeAsks.get(move);
+        if (l) return l.push(done);
+        holeAsks.set(move, [done]);
+        worker.postMessage({ type: 'holes', before: move });
+      });
     a.repaint = () => {
       for (const mesh of chunks.values()) paint(mesh.geometry);
+      showLiners();
       a.invalidate();
     };
 
@@ -482,6 +592,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         if (a.stockFill) a.stockFill.visible = false;
         onSolidRef.current?.({ state: 'meshing', share: 1 });
         ask(a.meshAt);
+        a.holesBefore(input.moves.length).then(buildLiners);
+      }
+      if (msg.type === 'holes') {
+        holeAsks.get(msg.before)?.forEach((f) => f(msg.holes));
+        holeAsks.delete(msg.before);
       }
       if (msg.type === 'measuring') onSolidRef.current?.({ state: 'measuring', share: 1 });
       if (msg.type === 'mesh') {
@@ -507,15 +622,18 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           } else {
             mesh = new THREE.Mesh(geo, material);
             mesh.matrixAutoUpdate = false;
+            mesh.userData.chunk = true;
             chunks.set(c.id, mesh);
             a.solid.add(mesh);
           }
         }
         shown = msg.step;
         busy = false;
+        showLiners();
         a.solid.matrixWorldNeedsUpdate = true;
         a.invalidate();
         if (wanted !== shown) ask(wanted);
+        settled();
       }
     };
     worker.postMessage({ type: 'init', input });
@@ -530,6 +648,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         m.geometry.dispose();
       }
       material.dispose();
+      disposeTree(liners);
+      a.solid.remove(liners);
+      wallMat.dispose();
+      a.holesBefore = () => Promise.resolve([]);
+      a.settle = null;
       onSolidRef.current?.({ state: 'off', share: 0 });
     };
   }, [path, program]);
@@ -617,26 +740,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
 
       a.cales = buildCales(setup);
       if (a.cales) fixture.add(a.cales);
-      a.jaw = null;
-      if (setup.jawTopZ !== null) {
-        const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
-        const cx = (cb.min[0] + cb.max[0]) / 2;
-        const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacer);
-        fixture.add(vise.group);
-        jaws.push(...vise.jawMats);
-        a.jaw = { obj: vise.moving, travel: 14 };
-        // The top of the jaws as a thin red line, for the jaw check.
-        const line = new THREE.LineSegments(
-          new THREE.EdgesGeometry(new THREE.BoxGeometry(setup.jawX[1] - setup.jawX[0], 0.01, cb.max[1] - cb.min[1] + 60)),
-          new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.5 }),
-        );
-        line.position.copy(v3([(setup.jawX[0] + setup.jawX[1]) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
-        fixture.add(line);
-      } else {
-        // A fixture: a steel block under the part, with the stop on the left.
-        fixture.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
-        fixture.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
-      }
+      const clamp = buildClamp(setup, s, floorZ);
+      fixture.add(clamp.group);
+      jaws.push(...clamp.jawMats);
+      a.clamp = clamp.group;
+      a.jaw = clamp.moving && { obj: clamp.moving, travel: JAW_TRAVEL };
 
       // RAFI / TASTER: an arrow from the part toward the faces the program names, and a label.
       if (setup.marker && setup.marker.faces.length) {
@@ -787,91 +895,256 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (fitKey) api.current?.fit();
   }, [fitKey]);
 
-  // Measuring: a click (not a drag) on the part picks a point there, in the part's own frame (mm).
+  // Measuring. Pressing Measure hides the part while it is analysed: the part shown must be the part
+  // at this instant, then its plunged holes are found. A click (not a drag) then picks a feature: a
+  // flat face (its exact height on the cut surface) or a hole (the tool's Ø). One feature measures
+  // itself, a second the distance between the two; the dimension stands off the part with its label.
   useEffect(() => {
     const a = api.current;
     const el = host.current;
     if (!a || !el || !measure) return;
-    const need = measure === 'distance' ? 2 : 3;
+    let alive = true;
+    let holes: Hole[] | null = null;
     const marks = new THREE.Group();
     a.solid.add(marks);
-    const picks: { p: Vec; n: Vec }[] = [];
-    const size = new THREE.Box3().setFromObject(a.solid).getSize(new THREE.Vector3()).length() || 100;
-    const dotMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, depthTest: false });
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, depthTest: false });
-    const local = (p: Vec) => new THREE.Vector3(p[0], p[1], p[2]);
-    const redraw = (result: Measurement, circle?: { centre: Vec; axis: Vec; r: number }) => {
-      disposeTree(marks);
-      marks.clear();
-      for (const k of picks) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.25, size * 0.004), 16, 12), dotMat);
-        m.position.copy(local(k.p));
-        m.renderOrder = 20;
-        marks.add(m);
+    const rims = new THREE.Group();
+    const marked = new THREE.Group();
+    const dims = new THREE.Group();
+    marks.add(rims, marked, dims);
+    const ACCENT = 0x22d3ee;
+    const rimMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.45 });
+    const tags: { el: HTMLDivElement; at: THREE.Vector3 }[] = [];
+    const chunks = () => a.solid.children.filter((c) => c.userData.chunk) as THREE.Mesh[];
+    const v = (p: Vec) => new THREE.Vector3(p[0], p[1], p[2]);
+    // The part's extent, in its own frame: its outermost flat faces (exact), not the outermost
+    // vertex (a corner of the sampled surface can stick out a little).
+    const extent = () => {
+      const min: Vec = [Infinity, Infinity, Infinity];
+      const max: Vec = [-Infinity, -Infinity, -Infinity];
+      for (const c of chunks()) {
+        const P = c.geometry.getAttribute('position').array as Float32Array;
+        for (let i = 0; i < P.length; i += 9)
+          for (let k = 0; k < 3; k++) {
+            const z = P[i + k];
+            if (Math.abs(P[i + 3 + k] - z) > 0.005 || Math.abs(P[i + 6 + k] - z) > 0.005) continue;
+            // Flat and square to axis k: which way it faces.
+            const e1 = [P[i + 3] - P[i], P[i + 4] - P[i + 1], P[i + 5] - P[i + 2]];
+            const e2 = [P[i + 6] - P[i], P[i + 7] - P[i + 1], P[i + 8] - P[i + 2]];
+            const n = e1[(k + 1) % 3] * e2[(k + 2) % 3] - e1[(k + 2) % 3] * e2[(k + 1) % 3];
+            if (n > 0) max[k] = Math.max(max[k], z);
+            else if (n < 0) min[k] = Math.min(min[k], z);
+          }
       }
-      if (result?.kind === 'distance') {
-        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(picks.map((k) => local(k.p))), lineMat);
-        l.renderOrder = 20;
-        marks.add(l);
+      const bb = new THREE.Box3();
+      for (const c of chunks()) {
+        c.geometry.computeBoundingBox();
+        bb.union(c.geometry.boundingBox!);
       }
-      if (circle) {
-        const ax = local(circle.axis);
-        const u = new THREE.Vector3(1, 0, 0).cross(ax).lengthSq() > 0.01 ? new THREE.Vector3(1, 0, 0).cross(ax).normalize() : new THREE.Vector3(0, 1, 0).cross(ax).normalize();
-        const w = ax.clone().cross(u);
-        const pts = Array.from({ length: 97 }, (_, i) => {
-          const t = (i / 96) * Math.PI * 2;
-          return local(circle.centre).addScaledVector(u, circle.r * Math.cos(t)).addScaledVector(w, circle.r * Math.sin(t));
-        });
-        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat);
-        l.renderOrder = 20;
-        marks.add(l);
+      for (let k = 0; k < 3; k++) {
+        if (!Number.isFinite(min[k])) min[k] = bb.min.getComponent(k);
+        if (!Number.isFinite(max[k])) max[k] = bb.max.getComponent(k);
       }
+      return { min, max, size: bb.getSize(new THREE.Vector3()).length() || 100 };
+    };
+    // Lines and faces fade in fast: each pick gets its own materials.
+    const fresh = <M extends THREE.Material>(m: M, to: number) => {
+      m.transparent = true;
+      m.opacity = 0;
+      const t0 = performance.now();
+      const step = (now: number) => {
+        if (!alive) return;
+        const k = Math.min(1, (now - t0) / 180);
+        m.opacity = to * k;
+        a.invalidate();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      return m;
+    };
+    const line = (pts: Vec[], mat: THREE.Material) => new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts.map(v)), mat);
+    const circle = (centre: Vec, u: Vec, r: number, mat: THREE.Material) => {
+      const ax = v(u);
+      const e1 = new THREE.Vector3(Math.abs(ax.x) < 0.9 ? 1 : 0, Math.abs(ax.x) < 0.9 ? 0 : 1, 0).cross(ax).normalize();
+      const e2 = ax.clone().cross(e1);
+      const pts = Array.from({ length: 97 }, (_, i) => v(centre).addScaledVector(e1, r * Math.cos((i / 96) * Math.PI * 2)).addScaledVector(e2, r * Math.sin((i / 96) * Math.PI * 2)));
+      return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    };
+    const clear = (g: THREE.Group) => {
+      disposeTree(g);
+      g.clear();
+    };
+    const clearTags = () => {
+      tags.forEach((t) => t.el.remove());
+      tags.length = 0;
+    };
+    // The label: off the part, following it on screen, popping in.
+    const tag = (text: string, at: Vec) => {
+      const d = document.createElement('div');
+      d.className = 'pointer-events-none absolute left-0 top-0 whitespace-nowrap rounded-md bg-[#22d3ee] px-2 py-0.5 font-mono text-[13px] font-bold text-[#062a33] shadow-[0_4px_16px_rgba(0,0,0,0.45)]';
+      d.textContent = text;
+      d.style.opacity = '0';
+      d.style.scale = '0.8';
+      d.style.transition = 'opacity 160ms ease-out, scale 240ms cubic-bezier(0.22, 1, 0.36, 1)';
+      el.appendChild(d);
+      tags.push({ el: d, at: v(at) });
+      requestAnimationFrame(() => {
+        d.style.opacity = '1';
+        d.style.scale = '1';
+      });
       a.invalidate();
     };
+    a.afterRender = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      for (const t of tags) {
+        const p = t.at.clone().applyMatrix4(a.solid.matrixWorld).project(a.camera);
+        t.el.style.transform = `translate(${((p.x + 1) / 2) * w}px, ${((1 - p.y) / 2) * h}px) translate(-50%, -50%)`;
+        t.el.style.visibility = p.z < 1 ? 'visible' : 'hidden';
+      }
+    };
+    // Always two decimals, as on a drawing (30,00 mm).
+    const mm = (x: number) => `${x.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mm`;
+    // A flat face's triangles on the cut surface (all three corners on it, facing the same way).
+    const faceTris = (axis: number, at: number, sign: number, tol: number) => {
+      const out: number[] = [];
+      for (const c of chunks()) {
+        const P = c.geometry.getAttribute('position').array as Float32Array;
+        for (let i = 0; i < P.length; i += 9) {
+          if (Math.abs(P[i + axis] - at) > tol || Math.abs(P[i + 3 + axis] - at) > tol || Math.abs(P[i + 6 + axis] - at) > tol) continue;
+          const e1 = [P[i + 3] - P[i], P[i + 4] - P[i + 1], P[i + 5] - P[i + 2]];
+          const e2 = [P[i + 6] - P[i], P[i + 7] - P[i + 1], P[i + 8] - P[i + 2]];
+          const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+          const l = Math.hypot(n[0], n[1], n[2]);
+          if (l > 0 && (sign * n[axis]) / l > 0.97) for (let k = 0; k < 9; k++) out.push(P[i + k]);
+        }
+      }
+      return out;
+    };
+    const mark = (f: Feature) => {
+      if (f.kind === 'hole') {
+        const { u } = holeAxis(f.hole);
+        const mat = fresh(new THREE.LineBasicMaterial({ color: ACCENT, depthTest: false }), 1);
+        marked.add(circle(f.hole.top, u, f.hole.r, mat), circle(f.hole.bottom, u, f.hole.r, mat));
+        return;
+      }
+      const tris = faceTris(f.axis, f.at, f.sign, 0.03);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(tris, 3));
+      const mat = fresh(new THREE.MeshBasicMaterial({ color: ACCENT, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.4);
+      marked.add(new THREE.Mesh(geo, mat));
+    };
+    // The dimension: extension lines from the features out to a line parallel to what is measured.
+    const dimension = (m: { from: Vec; to: Vec; dir: Vec }, text: string, ext: ReturnType<typeof extent>, leader = false) => {
+      const d = placeDimension(m.from, m.to, m.dir, ext, ext.size * 0.1);
+      const mat = fresh(new THREE.LineBasicMaterial({ color: ACCENT, depthTest: false }), 1);
+      dims.add(line(leader ? [m.from, d.a] : [m.from, d.a, m.to, d.b, d.a, d.b], mat));
+      tag(text, d.label);
+    };
+    const feats: Feature[] = [];
+    const pick = (p: Vec, n: Vec): Feature | null => {
+      const h = holeAt(holes!, p);
+      if (h) return { kind: 'hole', hole: h };
+      const axis = [0, 1, 2].reduce((b, k) => (Math.abs(n[k]) > Math.abs(n[b]) ? k : b), 0) as 0 | 1 | 2;
+      if (Math.abs(n[axis]) < 0.97) return null;
+      const sign = n[axis] > 0 ? 1 : -1;
+      // The face's exact height: the cut surface's triangles there, not the clicked point.
+      const near = faceTris(axis, p[axis], sign, 0.15);
+      let at = p[axis];
+      if (near.length) {
+        let sum = 0;
+        for (let i = axis; i < near.length; i += 3) sum += near[i];
+        at = sum / (near.length / 3);
+      }
+      return { kind: 'face', axis, at, sign, p };
+    };
+    const toolName = (tool: number | null) => {
+      const tl = path.tools.find((x) => x.tool === tool);
+      return tl ? `T${tl.tool} ${tl.label}`.trim() : '';
+    };
+
     const raycaster = new THREE.Raycaster();
     let down: { x: number; y: number; t: number } | null = null;
     const onDown = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY, t: performance.now() });
     const onUp = (e: PointerEvent) => {
-      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || performance.now() - down.t > 600) return;
+      if (!holes || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || performance.now() - down.t > 600) return;
       const r = el.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), a.camera);
       a.solid.updateMatrixWorld(true);
-      const hit = raycaster.intersectObjects(a.solid.children.filter((c) => c !== marks), false)[0];
+      const hit = raycaster.intersectObjects(chunks(), false)[0];
       if (!hit?.face) return;
-      if (picks.length >= need) picks.length = 0;
-      const p = a.solid.worldToLocal(hit.point.clone());
-      const n = hit.face.normal;
-      picks.push({ p: [p.x, p.y, p.z], n: [n.x, n.y, n.z] });
-      let result: Measurement = null;
-      let circle: { centre: Vec; axis: Vec; r: number } | undefined;
-      if (picks.length === need && measure === 'distance') {
-        const [a0, b0] = picks.map((k) => k.p);
-        result = { kind: 'distance', mm: distance(a0, b0), d: [b0[0] - a0[0], b0[1] - a0[1], b0[2] - a0[2]] };
-      }
-      if (picks.length === need && measure === 'diameter') {
-        const c = circleOf(picks.map((k) => k.p) as [Vec, Vec, Vec], picks.map((k) => k.n) as [Vec, Vec, Vec]);
-        if (c) {
-          result = { kind: 'diameter', mm: c.diameter };
-          circle = { centre: c.centre, axis: c.axis, r: c.diameter / 2 };
+      const q = a.solid.worldToLocal(hit.point.clone());
+      const f = pick([q.x, q.y, q.z], [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z]);
+      if (!f) return onMeasureRef.current?.({ kind: 'none' });
+      const ext = extent();
+      // A hole straight into the face picked first has no distance to it along that face: a new measurement.
+      const along = feats.length === 1 && feats[0].kind === 'face' && f.kind === 'hole' && Math.abs(holeAxis(f.hole).u[feats[0].axis]) > 0.9;
+      if (feats.length !== 1 || along) {
+        // A new first feature: it measures itself.
+        feats.length = 0;
+        clear(marked);
+        clear(dims);
+        clearTags();
+        feats.push(f);
+        mark(f);
+        const m = own(f, ext);
+        if (f.kind === 'hole') {
+          // The Ø on a leader from the rim, out past the part.
+          const out = placeDimension(f.hole.top, f.hole.top, m.dir, ext, 0).a;
+          const side = new THREE.Vector3().subVectors(v(out), v(f.hole.top));
+          const rim: Vec = side.lengthSq() > 1e-9 ? v(f.hole.top).addScaledVector(side.normalize(), f.hole.r).toArray() as Vec : f.hole.top;
+          dimension({ from: rim, to: rim, dir: m.dir }, `Ø ${mm(m.mm)}`, ext, true);
+          onMeasureRef.current?.({ kind: 'hole', mm: m.mm, depth: holeAxis(f.hole).depth, tool: toolName(f.hole.tool) });
+        } else {
+          dimension(m, mm(m.mm), ext);
+          onMeasureRef.current?.({ kind: 'face', mm: m.mm, axis: 'XYZ'[f.axis], second: false });
         }
+        return;
       }
-      redraw(result, circle);
-      onMeasureRef.current?.(picks.length, result);
+      const m = between(feats[0], f);
+      if (!m) return onMeasureRef.current?.({ kind: 'notParallel' });
+      feats.push(f);
+      clear(dims);
+      clearTags();
+      mark(f);
+      dimension(m, mm(m.mm), ext);
+      onMeasureRef.current?.({ kind: 'distance', mm: m.mm });
     };
+
+    // Analyse: the part at this instant, then its holes; their rims drawn so they can be picked.
+    onSolidRef.current?.({ state: 'analysing', share: 1 });
+    a.shownPos = clockRef.current.current;
+    a.progress(a.shownPos);
+    a.settle = () => {
+      a.holesBefore(Math.floor(a.meshAt / SUB)).then((found) => {
+        if (!alive) return;
+        holes = found;
+        for (const h of found) {
+          const { u } = holeAxis(h);
+          rims.add(circle([h.top[0] - u[0] * 0.02, h.top[1] - u[1] * 0.02, h.top[2] - u[2] * 0.02], u, h.r, rimMat));
+        }
+        el.style.cursor = 'crosshair';
+        onSolidRef.current?.({ state: 'ready', share: 1 });
+        onMeasureRef.current?.(null);
+        a.invalidate();
+      });
+    };
+    a.requestMesh(a.meshAt);
     el.addEventListener('pointerdown', onDown);
     el.addEventListener('pointerup', onUp);
-    el.style.cursor = 'crosshair';
-    onMeasureRef.current?.(0, null);
     return () => {
+      alive = false;
+      a.settle = null;
+      if (!holes) onSolidRef.current?.({ state: 'ready', share: 1 });
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointerup', onUp);
       el.style.cursor = '';
+      clearTags();
+      a.afterRender = null;
       disposeTree(marks);
       a.solid.remove(marks);
-      dotMat.dispose();
-      lineMat.dispose();
       a.invalidate();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [measure]);
 
   useEffect(() => {
@@ -903,12 +1176,31 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
 
   // Turning the part between setups: the jaw opens, the part lifts, turns (an arrow shows the
   // way) and sets down, then the jaw closes. Opening a setup directly just clamps it.
+  // A jump (see Jump) hides the part until the part there is shown; a jump to a setup change then
+  // plays the turn from the setup before.
   const lastSetup = useRef<SetupInfo | null>(null);
+  const lastJump = useRef<Jump | null>(null);
+  const turnLater = useRef(0);
   useEffect(() => {
     const a = api.current;
-    const prev = lastSetup.current;
+    clearTimeout(turnLater.current);
+    const fresh = jump && jump !== lastJump.current ? jump : null;
+    lastJump.current = jump;
+    if (setup === lastSetup.current && !fresh) return;
+    let prev = lastSetup.current;
     lastSetup.current = setup;
     if (!a || !setup) return;
+    if (fresh?.kind === 'flip') prev = fresh.from;
+    // Wait for the part at the new instant (the 3D view follows the clock on the next frame: now).
+    const whenShown = (then: () => void) => {
+      a.shownPos = clockRef.current.current;
+      a.progress(a.shownPos);
+      a.settle = then;
+      a.requestMesh(a.meshAt);
+    };
+    if (fresh) onSolidRef.current?.({ state: 'jumping', share: 1 });
+    const shown = () => onSolidRef.current?.({ state: 'ready', share: 1 });
+    if (a.clamp) a.clamp.visible = true;
     const end = poseOf(setup);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     disposeTree(a.overlay);
@@ -918,12 +1210,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (jaw) jaw.obj.position.set(0, 0, open * jaw.travel); // three Z = machine -Y (towards the front)
     };
     const ease = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
-    // Scrubbing (not playing): straight to the new setup, no turn or cale change to wait for.
-    const jump = !playingRef.current;
-    if (!prev || prev.index >= setup.index || !a.solidReady || reduce || jump) {
+    // Scrubbing (not playing) and jumping to the end: straight to the new setup, no turn or cale change.
+    const instant = !playingRef.current && fresh?.kind !== 'flip';
+    if (!prev || prev.index >= setup.index || !a.solidReady || reduce || instant) {
       a.solid.matrix.copy(end);
       a.solid.matrixWorldNeedsUpdate = true;
-      if (reduce || !jaw || jump) {
+      if (fresh) whenShown(shown);
+      if (reduce || !jaw || instant) {
         a.anim = null;
         setJaw(0);
         a.invalidate();
@@ -1006,17 +1299,41 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
     };
     placeCales(0);
-    const start = performance.now();
+    // The old clamping holds the part until it is lifted out; then the new one is there, open.
+    const s0 = prev.stock;
+    const oldClamp = s0 ? buildClamp(prev, s0, prev.floorZ ?? s0.min[2]) : null;
+    if (oldClamp) a.overlay.add(oldClamp.group);
+    const swapAt = tTurn + TURN * 0.3;
+    const newClamp = a.clamp;
     const hide = a.setupObjects;
     hide.forEach((o) => (o.visible = false));
     const q = new THREE.Quaternion();
     const p = new THREE.Vector3();
     const one = new THREE.Vector3(1, 1, 1);
     a.solid.matrix.compose(p0, q0, one);
+    a.solid.matrixWorldNeedsUpdate = true;
+    if (newClamp && oldClamp) newClamp.visible = false;
     setJaw(0);
-    a.anim = (now) => {
+    let start = 0;
+    let target = new THREE.Vector3();
+    let off = new THREE.Vector3();
+    const run = (now: number) => {
+      // The camera steps back while the part turns, so the turn and its arrow are seen whole.
+      if (!start) {
+        start = now;
+        target = a.controls.target.clone();
+        off = a.camera.position.clone().sub(target);
+      }
       const ms = now - start;
-      setJaw(ms < tTurn ? ease(ms / UNCLAMP) : ms >= tClamp ? 1 - ease(part(ms, tClamp, CLAMP)) : 1);
+      const open = ms < tTurn ? ease(ms / UNCLAMP) : ms >= tClamp ? 1 - ease(part(ms, tClamp, CLAMP)) : 1;
+      setJaw(open);
+      oldClamp?.moving?.position.set(0, 0, open * JAW_TRAVEL);
+      if (oldClamp) {
+        oldClamp.group.visible = ms < swapAt;
+        if (newClamp) newClamp.visible = ms >= swapAt;
+      }
+      const back = ease(Math.min(1, ms / (tTurn + TURN * 0.25))) * (1 - ease(part(ms, tDown, DOWN + CLAMP)));
+      a.camera.position.copy(target).addScaledVector(off, 1 + 0.45 * back);
       // Up in the first part of the turn, turning, waiting up there while the cales change, down.
       const up = part(ms, tTurn, TURN);
       const lift = ease(Math.min(1, up / 0.4)) * (1 - ease(part(ms, tDown, DOWN)));
@@ -1032,6 +1349,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (ms >= total) {
         a.solid.matrix.copy(end);
         setJaw(0);
+        a.camera.position.copy(target).add(off);
+        if (newClamp) newClamp.visible = true;
         if (newCales) {
           newCales.position.x = 0;
           newCales.visible = true;
@@ -1044,8 +1363,19 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
       return true;
     };
+    // After a jump the part is hidden until it is cut up to here; it turns once the veil is gone.
+    if (fresh)
+      whenShown(() => {
+        shown();
+        turnLater.current = window.setTimeout(() => {
+          a.anim = run;
+          a.invalidate();
+        }, 450);
+      });
+    else a.anim = run;
     a.invalidate();
-  }, [setup]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup, jump]);
 
   return <div ref={host} className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none" />;
 }

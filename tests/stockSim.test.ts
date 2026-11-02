@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { carve, drilledHoles, eigenSym, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -162,6 +162,40 @@ describe('the real face of the part between setups', () => {
     const centres = Array.from({ length: g.n[2] }, (_, k) => g.origin[2] + (k + 0.5) * g.step[2]);
     expect(centres.some((z) => z >= 0 && z < 1.667)).toBe(false);
     expect(materialExtreme(input, g, passes.length, 2, 1)).toBeCloseTo(0, 2);
+  });
+});
+
+describe('holes from pure plunges', () => {
+  it('finds each plunged hole once at the tool Ø, and drops one a bigger tool opened up', () => {
+    // 20 x 20 x 10 block, top at Z0. A 3 mm drill (118°) pecks twice at (5,5); a 6 mm end mill
+    // plunges 4 deep at (15,15); a 2 mm mill plunges at (15,15) too (inside the 6 mm hole: gone);
+    // a side move at Y 5 is not a hole.
+    const input: SimInput = {
+      moves: [
+        { setup: 0, tool: 1, points: [[5, 5, 2], [5, 5, -3]] },
+        { setup: 0, tool: 1, points: [[5, 5, -3], [5, 5, -8]] },
+        { setup: 0, tool: 2, points: [[15, 15, 2], [15, 15, -4]] },
+        { setup: 0, tool: 3, points: [[15, 15, 2], [15, 15, -3]] },
+        { setup: 0, tool: 2, points: [[0, 15, -1], [10, 15, -1]] },
+      ],
+      setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+      part: { min: [0, 0, -10], max: [20, 20, 0] },
+      tools: [{ tool: 1, radius: 1.5, slope: Math.tan((59 * Math.PI) / 180) }, { tool: 2, radius: 3, slope: null }, { tool: 3, radius: 1, slope: null }],
+      maxVoxels: 300_000,
+    };
+    const g = carve(input);
+    const holes = drilledHoles(input, g, input.moves.length);
+    expect(holes.map((h) => [h.tool, h.r])).toEqual([[1, 1.5], [2, 3]]);
+    const [drill, mill] = holes;
+    expect(drill.top[0]).toBeCloseTo(5, 6);
+    // The rims exactly on the top face (the side cut only touches the mill's hole on 3 of 8 sides).
+    expect(drill.top[2]).toBeCloseTo(0, 6);
+    expect(mill.top[2]).toBeCloseTo(0, 6);
+    // Full Ø down to where the 118° point starts: 8 - 1.5 / tan 59° = 7.1 deep.
+    expect(drill.bottom[2]).toBeCloseTo(-8 + 1.5 / Math.tan((59 * Math.PI) / 180), 1);
+    expect(mill.bottom[2]).toBeCloseTo(-4, 6);
+    // Before the mill plunged: only the drilled hole.
+    expect(drilledHoles(input, g, 2).length).toBe(1);
   });
 });
 

@@ -1,4 +1,4 @@
-import { carve, mesher, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
+import { carve, drilledHoles, mesher, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
 
 /*
  * Cuts the part away from the UI thread. Messages:
@@ -8,6 +8,7 @@ import { carve, mesher, thicknessAt, wallThickness, type Grid, type Mesher, type
  * heat is asked for (it takes a second on big parts), then sent with every chunk.
  * step is an instant of the program (move × SUB + share of the move, see stockSim), so the cut
  * follows the tool along a move. Only the chunks that change between two instants are sent again.
+ *   { type: 'holes', before } -> { type: 'holes', before, holes }: the round holes plunged before move `before`.
  */
 
 let m: Mesher | null = null;
@@ -17,7 +18,11 @@ let th: Float32Array | null = null;
 let last = -1;
 
 self.onmessage = (e: MessageEvent) => {
-  const msg = e.data as { type: 'init'; input: SimInput } | { type: 'mesh'; step: number; heat?: boolean };
+  const msg = e.data as { type: 'init'; input: SimInput } | { type: 'mesh'; step: number; heat?: boolean } | { type: 'holes'; before: number };
+  if (msg.type === 'holes' && g) {
+    self.postMessage({ type: 'holes', before: msg.before, holes: drilledHoles(input!, g, msg.before) });
+    return;
+  }
   if (msg.type === 'init') {
     input = msg.input;
     g = carve(msg.input, (share) => self.postMessage({ type: 'progress', share }));

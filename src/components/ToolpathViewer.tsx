@@ -5,10 +5,10 @@ import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wren
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { toolAt } from '../lib/playback';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, spacerAt, turnMs, type SetupInfo } from '../lib/setups';
-import { WEAK_COLORS, WEAK_MM, type Measurement, type SolidState } from './Toolpath3D';
+import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type SolidState } from './Toolpath3D';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
-import { fmtDuration, fmtNumber } from '../i18n/format';
+import { fmtDuration, fmtNumber, locale } from '../i18n/format';
 
 const Toolpath3D = lazy(() => import('./Toolpath3D'));
 // v2: the shop's jaws are 45 mm (the first default, 42, was a guess).
@@ -57,6 +57,9 @@ function fitView(minA: number, maxA: number, minB: number, maxB: number): View {
   return { x: minA - pad, y: minB - pad, w: w + pad * 2, h: h + pad * 2 };
 }
 
+/** Measurements: always two decimals, as on a drawing. */
+const fmt2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
@@ -91,9 +94,11 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const [isolate, setIsolate] = useState(false);
   // Weak spots: the finished part coloured by wall thickness.
   const [heat, setHeat] = useState(false);
-  // Measuring on the part: the mode, how many points are picked and what they measure.
-  const [measure, setMeasure] = useState<'distance' | 'diameter' | null>(null);
-  const [measured, setMeasured] = useState<{ picked: number; result: Measurement }>({ picked: 0, result: null });
+  // Measuring on the part (its faces and holes) and what the last clicks measured.
+  const [measure, setMeasure] = useState(false);
+  const [measured, setMeasured] = useState<Measurement>(null);
+  // A jump the 3D view hides the part for (to the end, or to a setup change, which then turns).
+  const [jump, setJump] = useState<Jump | null>(null);
   // The setup shown is the one of the current move, so playing goes through the setups.
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
@@ -284,8 +289,41 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
   const goSetup = (s: SetupInfo) => {
     if (!s.moves) return;
     setPlaying(false);
+    setMeasure(false);
     seek(s.moves[1] + 1);
   };
+  // Jumps the 3D view hides the part for: to the end (the finished part, no turn), or to the start
+  // of a setup (the part as the setup before left it, then the turn and the cale change play).
+  const jumpEnd = () => {
+    setPlaying(false);
+    setMeasure(false);
+    if (mode3d) setJump({ kind: 'end', from: null, key: Date.now() });
+    seek(total);
+  };
+  const jumpFlip = (s: SetupInfo) => {
+    if (!s.moves) return;
+    setPlaying(false);
+    setMeasure(false);
+    if (mode3d) setJump({ kind: 'flip', from: setups[s.index - 1] ?? null, key: Date.now() });
+    seek(s.moves[0] + 1);
+  };
+  // Measuring: the part just turned (nothing cut yet in this setup) is measured as it is; otherwise
+  // the part at the end of this setup (the finished part on the last one).
+  const startMeasure = () => {
+    setPlaying(false);
+    setMeasured(null);
+    if (sel?.moves) {
+      const [first, last] = sel.moves;
+      let cut = false;
+      for (let i = first; i < Math.min(Math.ceil(clock.current), last + 1) && !cut; i++) cut = path.moves[i].kind !== 'rapid';
+      if (cut) seek(last + 1);
+    }
+    setMeasure(true);
+  };
+  // Playing ends measuring (the part changes).
+  useEffect(() => {
+    if (playing) setMeasure(false);
+  }, [playing]);
   // Instructions in the user's language (the original text is shown under them).
   const instructions = (s: SetupInfo): string[] => {
     const out: string[] = [];
@@ -392,7 +430,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} playing={playing} measure={solid.state === 'ready' ? measure : null} onMeasure={(picked, result) => setMeasured({ picked, result })} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} onMeasure={setMeasured} jump={jump} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -417,7 +455,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     <p className="sr-only sm:not-sr-only text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.heatNote')}</p>
                   </div>
                 )}
-                {mode3d && !isolate && sel?.cales?.length && sel.support !== null ? (() => {
+                {mode3d && !isolate && !measure && sel?.cales?.length && sel.support !== null ? (() => {
                   const before = turning !== null ? setups[turning - 1] : null;
                   const change = before && calesKey(before) !== calesKey(sel) && before.support !== null && before.support !== sel.support;
                   return (
@@ -430,39 +468,33 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                     </div>
                   );
                 })() : null}
-                {mode3d && measure && (
-                  <div className="absolute left-3 top-12 lg:top-2 z-10 w-72 max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-2">
-                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.measure')}>
-                      {(['distance', 'diameter'] as const).map((m) => (
-                        <button key={m} role="radio" aria-checked={measure === m} onClick={() => setMeasure(m)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${measure === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
-                          {t(m === 'distance' ? 'toolpath.measureDistance' : 'toolpath.measureDiameter')}
-                        </button>
-                      ))}
-                    </div>
+                {mode3d && measure && solid.state === 'ready' && (
+                  <div className="absolute left-3 bottom-3 z-10 w-72 max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5">
                     <div aria-live="polite" className="text-[11px] text-[var(--text-secondary)] space-y-1">
-                      {measured.result?.kind === 'distance' ? (
+                      {measured?.kind === 'hole' ? (
                         <>
-                          <div className="font-mono text-base font-bold text-[var(--text-primary)]">{fmtNumber(measured.result.mm, 2)} mm</div>
-                          <div className="font-mono">
-                            ΔX {fmtNumber(Math.abs(measured.result.d[0]), 2)} · ΔY {fmtNumber(Math.abs(measured.result.d[1]), 2)} · ΔZ {fmtNumber(Math.abs(measured.result.d[2]), 2)}
+                          <div className="font-mono text-base font-bold text-[var(--text-primary)]">Ø {fmt2(measured.mm)} mm</div>
+                          <div>
+                            {t('toolpath.measureHoleDepth', { depth: fmt2(measured.depth) })}
+                            {measured.tool && <span className="font-mono"> · {measured.tool}</span>}
                           </div>
                         </>
-                      ) : measured.result?.kind === 'diameter' ? (
-                        <div className="font-mono text-base font-bold text-[var(--text-primary)]">Ø {fmtNumber(measured.result.mm, 2)} mm</div>
-                      ) : measure === 'diameter' && measured.picked === 3 ? (
-                        <div>{t('toolpath.measureNoCircle')}</div>
-                      ) : (
-                        <div>
-                          {t(measure === 'distance' ? 'toolpath.measureHintDistance' : 'toolpath.measureHintDiameter')} ({measured.picked}/{measure === 'distance' ? 2 : 3})
-                        </div>
-                      )}
+                      ) : measured?.kind === 'face' || measured?.kind === 'distance' ? (
+                        <>
+                          <div className="font-mono text-base font-bold text-[var(--text-primary)]">{fmt2(measured.mm)} mm</div>
+                          <div>{measured.kind === 'face' ? t('toolpath.measureFace', { axis: measured.axis }) : t('toolpath.measureBetween')}</div>
+                        </>
+                      ) : measured?.kind === 'none' || measured?.kind === 'notParallel' ? (
+                        <div className="text-[#FFD27A]">{t(measured.kind === 'none' ? 'toolpath.measureNone' : 'toolpath.measureNotParallel')}</div>
+                      ) : null}
+                      <div>{t(!measured || measured.kind === 'distance' ? 'toolpath.measureHint' : 'toolpath.measureHintSecond')}</div>
                       <p className="text-[10px] text-[var(--text-tertiary)]">{t('toolpath.measureNote')}</p>
                     </div>
                   </div>
                 )}
                 {/* The part stays veiled until it is cut and shown, and while its walls are measured. */}
                 <AnimatePresence>
-                  {mode3d && (solid.state === 'carving' || solid.state === 'meshing' || solid.state === 'measuring') && (
+                  {mode3d && (solid.state === 'carving' || solid.state === 'meshing' || solid.state === 'measuring' || solid.state === 'analysing' || solid.state === 'jumping') && (
                     <motion.div
                       key="veil"
                       initial={{ opacity: 0 }}
@@ -511,7 +543,7 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
                   )}
                   {mode3d && (
                     <button
-                      onClick={() => setMeasure((m) => (m ? null : 'distance'))}
+                      onClick={() => (measure ? setMeasure(false) : startMeasure())}
                       aria-pressed={!!measure}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${measure ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
                       title={t('toolpath.measureHelp')}
@@ -732,21 +764,57 @@ export default function ToolpathViewer({ code, title, brand, onClose }: { code: 
             <button onClick={() => setPlaying((p) => !p)} className="btn-primary shrink-0 w-10 h-10 !p-0 rounded-full justify-center" aria-label={playing ? t('toolpath.pause') : t('toolpath.play')} title={playing ? t('toolpath.pause') : t('toolpath.play')}>
               {playing ? <Pause size={16} /> : <Play size={16} />}
             </button>
-            <button onClick={() => seek(total)} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
+            <button onClick={jumpEnd} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
               <SkipForward size={14} />
             </button>
-            <input
-              type="range"
-              min={0}
-              max={total}
-              value={step}
-              onChange={(e) => {
-                setPlaying(false);
-                seek(Number(e.target.value));
-              }}
-              className="order-first basis-full sm:order-none sm:basis-0 flex-1 accent-[var(--accent-primary)]"
-              aria-label={t('toolpath.position')}
-            />
+            <div className="order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative sm:pt-7">
+              {/* Where the part turns, with its new cales: a click goes there and plays the turn. */}
+              {multi &&
+                setups.slice(1).map((s) => {
+                  if (!s.moves) return null;
+                  const f = s.moves[0] / total;
+                  return (
+                    <button
+                      key={s.index}
+                      onClick={() => jumpFlip(s)}
+                      aria-label={t('toolpath.jumpTo', { n: s.index + 1 })}
+                      title={t('toolpath.jumpTo', { n: s.index + 1 })}
+                      className="hidden sm:inline-flex absolute top-0 -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:h-1.5 after:w-px after:bg-[var(--border-strong)]"
+                      style={{ left: `calc(${f * 100}% + ${(0.5 - f) * 16}px)` }}
+                    >
+                      <span className="font-bold text-[var(--text-primary)]">{s.index + 1}</span>
+                      {s.rotation && (
+                        <span className="inline-flex items-center gap-0.5">
+                          <RotateCw size={10} aria-hidden="true" />
+                          {s.rotation.deg}° {s.rotation.axis}
+                        </span>
+                      )}
+                      {s.support !== null && <span>▭{fmtNumber(s.support)}</span>}
+                    </button>
+                  );
+                })}
+              <input
+                type="range"
+                min={0}
+                max={total}
+                value={step}
+                onChange={(e) => {
+                  setPlaying(false);
+                  setMeasure(false);
+                  const n = Number(e.target.value);
+                  if (n === total) jumpEnd();
+                  else seek(n);
+                }}
+                onPointerUp={(e) => {
+                  // Let go next to a setup change: go to it and play the turn.
+                  const n = Number((e.target as HTMLInputElement).value);
+                  const near = setups.slice(1).find((s) => s.moves && n !== total && Math.abs(n - s.moves[0]) <= Math.max(1, total * 0.006));
+                  if (near) jumpFlip(near);
+                }}
+                className="w-full h-6 accent-[var(--accent-primary)]"
+                aria-label={t('toolpath.position')}
+              />
+            </div>
             <span className="font-mono text-xs text-[var(--text-secondary)] sm:w-28 text-right">
               {fmtClock(elapsed)} / {fmtClock(path.totalSeconds)}
             </span>

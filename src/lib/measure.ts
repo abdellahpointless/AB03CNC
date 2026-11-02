@@ -1,46 +1,113 @@
 import type { Vec } from './toolpath';
+import type { Hole } from './stockSim';
 
 /*
- * Measuring on the simulated part (part frame, mm): the distance between two picked points, and the
- * diameter of a hole or a round boss from three points picked on its wall.
+ * Measuring on the simulated part (part frame, mm). A click picks a feature, never a loose point:
+ * a flat face square to an axis (its exact height on the cut surface) or a plunged hole (the tool's
+ * Ø). One feature measures itself (a face to the opposite side of the part, a hole's Ø and depth);
+ * two measure the distance between them.
  */
+
+export type Feature = { kind: 'face'; axis: 0 | 1 | 2; at: number; sign: 1 | -1; p: Vec } | { kind: 'hole'; hole: Hole };
 
 const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: Vec, b: Vec) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a: Vec, b: Vec): Vec => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const len = (a: Vec) => Math.hypot(a[0], a[1], a[2]);
+const scale = (a: Vec, k: number): Vec => [a[0] * k, a[1] * k, a[2] * k];
+const add = (a: Vec, b: Vec): Vec => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
-export const distance = (a: Vec, b: Vec) => len(sub(b, a));
+/** Unit direction into the hole (rim to bottom) and its depth at full Ø. */
+export function holeAxis(h: Hole): { u: Vec; depth: number } {
+  const d = sub(h.bottom, h.top);
+  const depth = len(d);
+  return { u: scale(d, 1 / (depth || 1)), depth };
+}
+
+/** The hole a point on the surface belongs to: on its wall, or on the face just round its rim. */
+export function holeAt(holes: Hole[], p: Vec): Hole | null {
+  let best: Hole | null = null;
+  let err = Infinity;
+  for (const h of holes) {
+    const { u, depth } = holeAxis(h);
+    const w = sub(p, h.top);
+    const t = dot(w, u);
+    if (t < -0.6 || t > depth + 0.6) continue;
+    const radial = len(sub(w, scale(u, t)));
+    // On the wall: at the radius. On the rim's face: a little outside it.
+    const e = t < 0.4 && radial >= h.r - 0.6 && radial < h.r + 1.2 ? Math.max(0, radial - h.r) * 0.5 : Math.abs(radial - h.r);
+    if (e < 0.6 && e < err) {
+      err = e;
+      best = h;
+    }
+  }
+  return best;
+}
+
+/** What one feature measures: a face, to the opposite side of the part (box: the part's extent). */
+export function own(f: Feature, box: { min: Vec; max: Vec }): { mm: number; from: Vec; to: Vec; dir: Vec } {
+  if (f.kind === 'hole') {
+    const { u, depth } = holeAxis(f.hole);
+    return { mm: f.hole.r * 2, from: f.hole.top, to: add(f.hole.top, scale(u, depth)), dir: u };
+  }
+  const to: Vec = [...f.p];
+  to[f.axis] = f.sign > 0 ? box.min[f.axis] : box.max[f.axis];
+  const dir: Vec = [0, 0, 0];
+  dir[f.axis] = 1;
+  return { mm: Math.abs(f.at - to[f.axis]), from: f.p, to, dir };
+}
 
 /**
- * The circle through three points on a round wall: its centre, axis and diameter. The wall's
- * normals give the axis (a cylinder's normals are all square to it), so the points may lie at
- * different depths; on a flat face (normals all alike) the circle through the points themselves.
- * Null when the points are in a line.
+ * Distance between two features, or null when they do not face the same way (two faces on
+ * different axes, holes not parallel). Faces and a face with a hole: along the face's axis. Two
+ * parallel holes: between their axes.
  */
-export function circleOf(p: [Vec, Vec, Vec], n: [Vec, Vec, Vec]): { centre: Vec; axis: Vec; diameter: number } | null {
-  const pairs = [cross(n[0], n[1]), cross(n[1], n[2]), cross(n[0], n[2])];
-  let axis = pairs.reduce((a, b) => (len(b) > len(a) ? b : a));
-  if (len(axis) < 0.2) axis = cross(sub(p[1], p[0]), sub(p[2], p[0]));
-  const l = len(axis);
-  if (l < 1e-9) return null;
-  axis = [axis[0] / l, axis[1] / l, axis[2] / l];
-  // Onto the plane square to the axis through the first point.
-  const flat = p.map((q) => {
-    const d = dot(sub(q, p[0]), axis);
-    return [q[0] - axis[0] * d, q[1] - axis[1] * d, q[2] - axis[2] * d] as Vec;
-  });
-  const a = sub(flat[1], flat[0]);
-  const b = sub(flat[2], flat[0]);
-  const axb = cross(a, b);
-  const d = 2 * dot(axb, axb);
-  if (d < 1e-12) return null;
-  // Circumcentre of the triangle (flat[0] + ...).
-  const t1 = cross(axb, a);
-  const t2 = cross(b, axb);
-  const aa = dot(a, a);
-  const bb = dot(b, b);
-  const off: Vec = [(t2[0] * aa + t1[0] * bb) / d, (t2[1] * aa + t1[1] * bb) / d, (t2[2] * aa + t1[2] * bb) / d];
-  const centre: Vec = [flat[0][0] + off[0], flat[0][1] + off[1], flat[0][2] + off[2]];
-  return { centre, axis, diameter: 2 * len(off) };
+export function between(a: Feature, b: Feature): { mm: number; from: Vec; to: Vec; dir: Vec } | null {
+  if (a.kind === 'face' || b.kind === 'face') {
+    const face = (a.kind === 'face' ? a : b) as Extract<Feature, { kind: 'face' }>;
+    const other = face === a ? b : a;
+    if (other.kind === 'face' && other.axis !== face.axis) return null;
+    const at = other.kind === 'face' ? other.at : other.hole.top[face.axis];
+    const from = other.kind === 'face' ? other.p : other.hole.top;
+    const to: Vec = [...from];
+    to[face.axis] = face.at;
+    const dir: Vec = [0, 0, 0];
+    dir[face.axis] = 1;
+    return face === a ? { mm: Math.abs(at - face.at), from: to, to: from, dir } : { mm: Math.abs(at - face.at), from, to, dir };
+  }
+  const ua = holeAxis(a.hole).u;
+  const ub = holeAxis(b.hole).u;
+  if (Math.abs(dot(ua, ub)) < 0.99) return null;
+  const d = sub(b.hole.top, a.hole.top);
+  const across = sub(d, scale(ua, dot(d, ua)));
+  const mm = len(across);
+  return { mm, from: a.hole.top, to: add(a.hole.top, across), dir: scale(across, 1 / (mm || 1)) };
+}
+
+/**
+ * Where to draw a dimension so it stands clear of the part: a line parallel to `dir` through the
+ * ends' projections, moved out of the box (part extent) square to `dir`, away from its middle.
+ * Returns the two ends of the dimension line and where its label goes.
+ */
+export function placeDimension(from: Vec, to: Vec, dir: Vec, box: { min: Vec; max: Vec }, margin: number): { a: Vec; b: Vec; label: Vec } {
+  const mid = scale(add(from, to), 0.5);
+  const centre = scale(add(box.min, box.max), 0.5);
+  let out = sub(mid, centre);
+  out = sub(out, scale(dir, dot(out, dir)));
+  if (len(out) < 1e-6) {
+    // Straight through the middle: out along the box's widest axis square to the line.
+    const k = [0, 1, 2].filter((i) => Math.abs(dir[i]) < 0.9).sort((i, j) => box.max[j] - box.min[j] - (box.max[i] - box.min[i]))[0] ?? 0;
+    out = [0, 0, 0];
+    out[k] = 1;
+  }
+  out = scale(out, 1 / len(out));
+  // How far from the middle until out of the box.
+  let s = Infinity;
+  for (let k = 0; k < 3; k++) {
+    if (Math.abs(out[k]) < 1e-9) continue;
+    s = Math.min(s, ((out[k] > 0 ? box.max[k] : box.min[k]) - mid[k]) / out[k]);
+  }
+  const line = add(mid, scale(out, Math.max(0, Number.isFinite(s) ? s : 0) + margin));
+  const a = add(line, scale(dir, dot(sub(from, mid), dir)));
+  const b = add(line, scale(dir, dot(sub(to, mid), dir)));
+  return { a, b, label: add(line, scale(out, margin * 0.35)) };
 }
