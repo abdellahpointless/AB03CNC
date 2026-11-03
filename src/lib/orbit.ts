@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 /**
  * Turning the 3D view the way CAD software does:
- *  - drag: turns around the point under the pointer: left/right around the vertical, up/down over
- *    the top and on underneath (the part can be seen from below), never rolling sideways;
+ *  - drag: turns around the middle of the view (the part stays in view whatever the angle, also
+ *    from underneath): left/right around the vertical, up/down over the top, never rolling sideways;
  *  - right-drag, middle-drag or Shift+drag: moves the view;
  *  - wheel: zooms toward the pointer; double-click: turns around the point clicked from then on.
  * Nothing keeps spinning once let go.
@@ -13,7 +13,7 @@ export class Orbit {
   readonly target = new THREE.Vector3();
   /** What a drag, zoom or double-click aims at (the part, the vise): picked under the pointer. */
   pickables: () => (THREE.Object3D | null)[] = () => [];
-  private drag: { id: number; x: number; y: number; pan: boolean; pivot: THREE.Vector3 } | null = null;
+  private drag: { id: number; x: number; y: number; pan: boolean } | null = null;
   private fly: { t0: number; ms: number; from: { pos: THREE.Vector3; target: THREE.Vector3; up: THREE.Vector3 }; to: { pos: THREE.Vector3; target: THREE.Vector3; up: THREE.Vector3 } } | null = null;
   private ray = new THREE.Raycaster();
   private off: () => void;
@@ -29,7 +29,7 @@ export class Orbit {
       if (e.button !== 0 && !pan) return;
       this.fly = null;
       el.setPointerCapture(e.pointerId);
-      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, pan, pivot: pan ? this.target.clone() : this.pick(e) ?? this.target.clone() };
+      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, pan };
     };
     const move = (e: PointerEvent) => {
       const d = this.drag;
@@ -39,7 +39,7 @@ export class Orbit {
       d.x = e.clientX;
       d.y = e.clientY;
       if (d.pan) this.pan(dx, dy);
-      else this.rotate(dx, dy, d.pivot);
+      else this.rotate(dx, dy);
     };
     const up = (e: PointerEvent) => {
       if (this.drag?.id === e.pointerId) this.drag = null;

@@ -252,10 +252,14 @@ export default function CodeEditorPair({
   // (beta), the output is checked and cannot be copied or downloaded until there is none.
   const [checkAgain, setCheckAgain] = useState(0);
   const collisions = useCollisionCheck(toolpathOn && outputCode && !isOutputStale ? outputCode : '', machineBrand, checkAgain);
-  const exportBlocked = collisions.checking || collisions.hits.length > 0;
+  // A tool into a cale is a warning (move the cale), not a reason to stop the export.
+  const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale'), [collisions.hits]);
+  const caleHits = useMemo(() => collisions.hits.filter((h) => h.what === 'cale'), [collisions.hits]);
+  const exportBlocked = collisions.checking || blocking.length > 0;
   const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);
   // A collision in the code shown: the toolpath button turns red and opens where it happens.
-  const hitShown = toolpathOn && !!outputCode && !isOutputStale && collisions.hits.length > 0;
+  const hitShown = toolpathOn && !!outputCode && !isOutputStale && blocking.length > 0;
+  const caleShown = toolpathOn && !!outputCode && !isOutputStale && !hitShown && caleHits.length > 0;
 
   const copyToClipboard = async () => {
     if (!outputCode || isOutputStale || exportBlocked) return;
@@ -618,10 +622,10 @@ export default function CodeEditorPair({
                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
                 aria-disabled={(countryOn && !toolpathOn) || undefined}
                 aria-haspopup={countryOn ? undefined : 'dialog'}
-                className={`btn-secondary text-xs py-1 px-2.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
-                title={hitShown ? t('toolpath.openHitTitle') : toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
+                className={`btn-secondary text-xs py-1 px-2.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : caleShown ? '!border-[#f5b942] !text-[var(--orange-text)] !bg-[#f5b942]/10' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
+                title={hitShown ? t('toolpath.openHitTitle') : caleShown ? t('toolpath.openCaleTitle') : toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
               >
-                {hitShown ? <ShieldAlert size={13} /> : toolpathOn ? <Route size={13} /> : <Lock size={13} />}
+                {hitShown || caleShown ? <ShieldAlert size={13} /> : toolpathOn ? <Route size={13} /> : <Lock size={13} />}
                 <span className="hidden sm:inline">{t('toolpath.open')}</span>
                 {toolpathOn && toolpathNew && <span className="rounded-full bg-[var(--accent-primary)] px-1.5 py-px text-[10px] font-bold leading-4 text-white">{t('toolpath.new')}</span>}
                 {!toolpathOn && <span className="sr-only">{t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}</span>}
@@ -649,7 +653,7 @@ export default function CodeEditorPair({
             </div>
           </div>
 
-          {outputCode && !isOutputStale && (collisions.checking || collisions.hits.length > 0) && (
+          {outputCode && !isOutputStale && (collisions.checking || blocking.length > 0) && (
             <div
               role={collisions.checking ? 'status' : 'alert'}
               className={`px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs flex flex-wrap items-center gap-x-3 gap-y-1.5 ${collisions.checking ? 'text-[var(--text-secondary)]' : 'bg-[var(--rose-500)]/10'}`}
@@ -661,10 +665,10 @@ export default function CodeEditorPair({
               ) : (
                 <>
                   <span className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)]">
-                    <ShieldAlert size={14} /> {t('editor.collisionBlocked', { count: collisions.hits.length })}
+                    <ShieldAlert size={14} /> {t('editor.collisionBlocked', { count: blocking.length })}
                   </span>
                   <span className="flex flex-wrap gap-1.5">
-                    {collisions.hits.slice(0, 6).map((h, i) => (
+                    {blocking.slice(0, 6).map((h, i) => (
                       <button
                         key={i}
                         type="button"
@@ -680,6 +684,28 @@ export default function CodeEditorPair({
                   </button>
                 </>
               )}
+            </div>
+          )}
+          {outputCode && !isOutputStale && !collisions.checking && caleHits.length > 0 && (
+            <div role="status" className="px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs flex flex-wrap items-center gap-x-3 gap-y-1.5 bg-[rgba(224,138,77,0.12)]">
+              <span className="inline-flex items-center gap-2 font-semibold text-[var(--orange-text)]">
+                <ShieldAlert size={14} /> {t('editor.caleWarning', { count: caleHits.length })}
+              </span>
+              <span className="flex flex-wrap gap-1.5">
+                {caleHits.slice(0, 6).map((h, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => outputScrollRef.current?.querySelector(`[data-line="${h.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                    className="badge-warning font-mono hover:underline"
+                  >
+                    #{h.line + 1} · {t('toolpath.caleHit', { t: h.tool ?? '?', mm: (Math.round(h.depth * 10) / 10).toLocaleString(locale()) })}
+                  </button>
+                ))}
+              </span>
+              <button type="button" onClick={() => setShowToolpath(true)} className="btn-secondary text-xs py-1 px-2.5 ml-auto">
+                <Route size={13} /> {t('editor.collisionOpen')}
+              </button>
             </div>
           )}
           {safety && outputCode && !isOutputStale && (
@@ -772,7 +798,7 @@ export default function CodeEditorPair({
               setCheckAgain((n) => n + 1);
             }}
             holderHits={outputCode && !isOutputStale ? holderHits : undefined}
-            focusHit={hitShown}
+            focusHit={hitShown || caleShown}
           />
         </Suspense>
       )}

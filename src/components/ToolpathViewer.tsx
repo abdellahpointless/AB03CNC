@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine } from 'lucide-react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine, Eye } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
 import { partLook } from '../lib/partLook';
@@ -81,7 +81,10 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     () => (holderHits?.length ? jawSetups.map((s) => ({ ...s, collisions: [...s.collisions, ...holderHits.filter((h) => path.moves[h.move]?.setup === s.index)] })) : jawSetups),
     [jawSetups, holderHits, path],
   );
-  const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
+  const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : c.what === 'cale' ? 'toolpath.caleHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
+  // Setups whose written turn and position disagree: an error first, then a caution once inspected.
+  const conflicts = setups.filter((x) => x.conflict);
+  const [inspectFlip, setInspectFlip] = useState(false);
   const [solid, setSolid] = useState<SolidState>({ state: 'off', share: 0 });
   /** While the part turns between setups, the new setup is shown before its first move. */
   const [turning, setTurning] = useState<number | null>(null);
@@ -100,6 +103,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   // The part's material; outlines (on by default for black POM), a section, camera views, a collision to fly to.
   const look = useMemo(() => partLook(code), [code]);
   const [outline, setOutline] = useState(look === 'pom');
+  const [seeThrough, setSeeThrough] = useState(false);
   const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number } | null>(null);
   const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
   const [focus, setFocus] = useState<{ point: Vec; key: number } | null>(null);
@@ -109,7 +113,11 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
-  const totalHits = setups.reduce((n, x) => n + x.collisions.length, 0);
+  // A tool into a cale is a warning (yellow), the rest are collisions (red).
+  const hardOf = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale');
+  const calesOf = (x: SetupInfo) => x.collisions.filter((c) => c.what === 'cale');
+  const totalHits = setups.reduce((n, x) => n + hardOf(x).length, 0);
+  const totalCales = setups.reduce((n, x) => n + calesOf(x).length, 0);
   const hitByMove = useMemo(() => new Map(setups.flatMap((x) => x.collisions).map((c) => [c.move, c])), [setups]);
   const firstHit = useMemo(() => setups.flatMap((x) => x.collisions).sort((p, q) => p.move - q.move)[0] ?? null, [setups]);
   useEffect(() => {
@@ -358,6 +366,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     if (s.topToward) out.push(t('toolpath.ins.topToward', { face: s.topToward }));
     if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
     if (s.restDepth !== null) out.push(t('toolpath.ins.restDepth', { mm: fmtNumber(s.restDepth) }));
+    if (s.restAbove !== null) out.push(t('toolpath.ins.restAbove', { mm: fmtNumber(s.restAbove) }));
     if (s.spacer) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(s.spacer.mm), side: s.spacer.side }));
     if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));
     if (s.marker) out.push(t('toolpath.ins.marker', { name: s.marker.name, faces: s.marker.faces.join(' ') }));
@@ -405,6 +414,18 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                 {totalHits ? t('toolpath.jawHits', { count: totalHits }) : t('toolpath.jawClear')}
               </span>
             )}
+            {totalCales > 0 && (
+              <span className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5">
+                <ShieldAlert size={13} />
+                {t('toolpath.caleHits', { count: totalCales })}
+              </span>
+            )}
+            {inspectFlip && conflicts.length > 0 && (
+              <span className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5" role="status">
+                <ShieldAlert size={13} />
+                {t('toolpath.conflict.caution', { n: conflicts.map((x) => x.index + 1).join(', ') })}
+              </span>
+            )}
             {path.unsupported.length > 0 && (
               <span
                 className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5"
@@ -444,7 +465,9 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                   )}
                   {s.support !== null && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">▭{fmtNumber(s.support)}</span>}
                   {s.marker && <span className="font-mono text-[10px] font-bold text-[#FFB869]">{s.marker.name}</span>}
-                  {s.jawTopZ !== null && (s.collisions.length ? <span className="badge-danger text-[10px] px-1.5 py-0 font-bold">{s.collisions.length}</span> : <ShieldCheck size={12} className="text-[var(--emerald-500,#3FB97A)]" />)}
+                  {s.conflict && <ShieldAlert size={12} className="text-[#f5b942]" aria-label={t('toolpath.conflict.caution', { n: s.index + 1 })} />}
+                  {calesOf(s).length > 0 && <span className="badge-warning text-[10px] px-1.5 py-0 font-bold">{calesOf(s).length}</span>}
+                  {s.jawTopZ !== null && (hardOf(s).length ? <span className="badge-danger text-[10px] px-1.5 py-0 font-bold">{hardOf(s).length}</span> : <ShieldCheck size={12} className="text-[var(--emerald-500,#3FB97A)]" />)}
                 </button>
               );
             })}
@@ -460,7 +483,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -530,6 +553,27 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                       ) : null}
                       <div>{measured?.kind === 'picked' || measured?.kind === 'notParallel' ? t('toolpath.measureSecond') : t(`toolpath.measureHint.${measureMode}`)}</div>
                       <p className="text-[10px] text-[var(--text-tertiary)]">{t('toolpath.measureNote')}</p>
+                    </div>
+                  </div>
+                )}
+                {/* A flip the program writes in two ways that disagree: not possible as written. */}
+                {conflicts.length > 0 && !inspectFlip && (
+                  <div role="alertdialog" aria-labelledby="flip-conflict-title" aria-describedby="flip-conflict-body" className="absolute inset-0 z-20 flex items-center justify-center bg-[#0E1421]/80 backdrop-blur-md p-6">
+                    <div className="max-w-md w-full rounded-[var(--radius-md,12px)] border border-[#ff4d4d] bg-[#1a0b0e] p-4 space-y-3 shadow-[0_0_40px_rgba(255,60,60,0.25)]">
+                      <div id="flip-conflict-title" className="flex items-center gap-2 text-sm font-semibold text-[#ffc2c2]">
+                        <ShieldAlert size={16} aria-hidden="true" />
+                        {t('toolpath.conflict.title')}
+                      </div>
+                      <p id="flip-conflict-body" className="text-xs text-[var(--text-secondary)]">{t('toolpath.conflict.body')}</p>
+                      {conflicts.map((x) => (
+                        <div key={x.index} className="text-xs space-y-0.5">
+                          <div className="font-semibold text-[var(--text-primary)]">{t('toolpath.conflict.line', { n: x.index + 1, line: x.line + 1 })}</div>
+                          <div className="font-mono text-[11px] text-[#ffa3a3] break-words">{x.notes.map((n) => `(${n})`).join(' ')}</div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setInspectFlip(true)} className="btn-secondary text-xs py-1.5 px-3">
+                        {t('toolpath.conflict.inspect')}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -630,6 +674,17 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                       <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
                     </button>
                   )}
+                  {mode3d && !(isolate || measure) && (
+                    <button
+                      onClick={() => setSeeThrough((x) => !x)}
+                      aria-pressed={seeThrough}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${seeThrough ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.seeThroughHelp')}
+                    >
+                      <Eye size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.seeThrough')}</span>
+                    </button>
+                  )}
                   <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
                     <Maximize2 size={13} />
                   </button>
@@ -660,7 +715,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                   </div>
                 )}
                 {mode3d && current && hitByMove.get(step - 1) && (
-                  <div className="absolute left-1/2 -translate-x-1/2 top-[4.5rem] z-10 inline-flex items-center gap-2 rounded-full border border-[#ff4d4d] bg-[#3a0d10]/95 px-3 py-1.5 text-xs font-semibold text-[#ffc2c2] shadow-[0_0_24px_rgba(255,60,60,0.35)] whitespace-nowrap">
+                  <div className={`absolute left-1/2 -translate-x-1/2 top-[4.5rem] z-10 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap ${hitByMove.get(step - 1)!.what === 'cale' ? 'border-[#f5b942] bg-[#2e2208]/95 text-[#ffe2a3] shadow-[0_0_24px_rgba(245,185,66,0.3)]' : 'border-[#ff4d4d] bg-[#3a0d10]/95 text-[#ffc2c2] shadow-[0_0_24px_rgba(255,60,60,0.35)]'}`}>
                     <ShieldAlert size={14} aria-hidden="true" />#{hitByMove.get(step - 1)!.line + 1} · {hitText(hitByMove.get(step - 1)!)}
                   </div>
                 )}
@@ -715,7 +770,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     );
                   })}
                   {sel?.collisions.map((c, i) => (
-                    <circle key={`hit${i}`} cx={c.point[0]} cy={-c.point[1]} r={holeR * 1.6} fill="#FF4D4D" fillOpacity={0.85} />
+                    <circle key={`hit${i}`} cx={c.point[0]} cy={-c.point[1]} r={holeR * 1.6} fill={c.what === 'cale' ? '#F5B942' : '#FF4D4D'} fillOpacity={0.85} />
                   ))}
                   {here && (
                     <g>
@@ -767,11 +822,21 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     <summary className="cursor-pointer select-none">{t('toolpath.original')}</summary>
                     <div className="font-mono mt-1 space-y-0.5 break-words">{sel.notes.map((n, i) => <div key={i}>({n})</div>)}</div>
                   </details>
-                  {sel.collisions.length > 0 && (
+                  {hardOf(sel).length > 0 && (
                     <div className="space-y-1 pt-1 border-t border-[var(--border-subtle)]">
-                      <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
-                      {sel.collisions.slice(0, 8).map((c, i) => (
+                      <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: hardOf(sel).length })}</div>
+                      {hardOf(sel).slice(0, 8).map((c, i) => (
                         <button key={i} type="button" onClick={() => goHit(c)} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
+                          #{c.line + 1} · {hitText(c)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {calesOf(sel).length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-[var(--border-subtle)]">
+                      <div className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.caleHits', { count: calesOf(sel).length })}</div>
+                      {calesOf(sel).slice(0, 8).map((c, i) => (
+                        <button key={i} type="button" onClick={() => goHit(c)} className="w-full text-left text-[11px] font-mono text-[#FFD27A] hover:underline">
                           #{c.line + 1} · {hitText(c)}
                         </button>
                       ))}
@@ -779,7 +844,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                   )}
                   {sel.jawTopZ !== null ? (
                     <div className="space-y-2 pt-1 border-t border-[var(--border-subtle)]">
-                      {sel.collisions.length ? null : (
+                      {hardOf(sel).length ? null : (
                         <div className="badge-positive text-xs py-1 px-2.5 inline-flex items-center gap-1.5">
                           <ShieldCheck size={13} />
                           {sel.jawClearance !== null ? t('toolpath.jawClearBy', { mm: mm(sel.jawClearance) }) : t('toolpath.jawClear')}

@@ -265,6 +265,16 @@ describe('tool holders against the part', () => {
     expect(holderOf(6).radius).toBe(10);
   });
 
+  it('finds a holder that runs into the part partway along a cut, not only on a plunge', () => {
+    // Tool 1 comes in from the side 12 deep: from x -20 it reaches the part (x 0) partway along the
+    // move, where its holder (from 2 below the top) runs into the material above the slot.
+    const hits = run(base([{ setup: 0, tool: 1, points: [[-20, 20, -12], [30, 20, -12]] }]));
+    expect(hits.length).toBe(1);
+    expect(hits[0].point[0]).toBeGreaterThan(-12);
+    expect(hits[0].point[0]).toBeLessThan(30);
+    expect(hits[0].depth).toBeGreaterThan(1.4);
+  });
+
   it('no hit where earlier moves cleared room for the holder, nor for a tool without a length', () => {
     // The face mill clears a Ø40+ pocket 15 deep first; then tool 1 plunges in its middle.
     const pocket = [{ setup: 0, tool: 2, points: [[20, 20, 5], [20, 20, -15]] as Vec[] }];

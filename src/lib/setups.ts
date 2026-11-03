@@ -31,8 +31,12 @@ export interface Collision {
   point: Vec;
   /** How far below the top of the jaws the tool goes (mm); for a holder in the part, how far into it. */
   depth: number;
-  /** What hits: the tool (into the jaws, the default), its holder into the jaws, or its holder into the part. */
-  what?: 'holder' | 'holderPart';
+  /**
+   * What hits: the tool (into the jaws, the default), its holder into the jaws, its holder into the
+   * part, or the tool into a cale (a parallel under the part or a spacer beside it). A cale hit is a
+   * warning (move the cale), not a reason to stop the export.
+   */
+  what?: 'holder' | 'holderPart' | 'cale';
 }
 
 export interface SetupInfo {
@@ -57,6 +61,13 @@ export interface SetupInfo {
   support: number | null;
   /** "UNTERLAGE IN EP 5 MM": the part rests on the parallels this far below its top (Z0). */
   restDepth: number | null;
+  /** "UNTER MASS 5 MM": the part rests on the parallels this far above its bottom. */
+  restAbove: number | null;
+  /**
+   * The written turn and the written position (RAFI, side up, PERS.) do not agree: the turn cannot
+   * be done as written. The position is followed; the user is warned to check the flip.
+   */
+  conflict: boolean;
   /** "15 MM ZWISCHENLAGE IN Y-": a plate between the part and the jaw (or the stop) on that side. */
   spacer: { mm: number; side: Face } | null;
   /** vise; module: the shop's modular clamp (a vise too, same 45 mm jaws); fixture: held in a fixture. */
@@ -100,6 +111,8 @@ export interface ProgramSetups {
   setups: SetupInfo[];
   /** The raw part as a box in the part's own frame (the first setup's program coordinates). */
   part: { min: Vec; max: Vec } | null;
+  /** Which way the white face of a top plate points in the part frame (FRONTSEITE, PERS.), when written. */
+  white?: Vec | null;
 }
 
 export interface SetupOptions {
@@ -164,15 +177,16 @@ function faces(text: string): Face[] {
 export function readInstructions(notes: string[]) {
   const t = notes.join(' / ').toUpperCase();
   // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y".
-  const both = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*X\\s*UND\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
-  const xy = t.match(new RegExp(`${NUM}\\s*IN\\s*XY\\b`));
+  // "36 IN X AND 41 IN Y", "30 IN X 20.5 IN Y"; "30 IN X UND Y" and "100 IN XY": the same both ways.
+  const both = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*X\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
+  const xy = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b)`));
   let sizes: { x: number; y: number } | null = both ? { x: num(both[1]), y: num(both[2]) } : xy ? { x: num(xy[1]), y: num(xy[1]) } : null;
   let onlyX: number | null = null;
   let rotation: SetupInfo['rotation'] = null;
   // Turns in the order they are written: "180 GRAD UM Y", "MIT/90 IN X", "MIT 180 IN Y".
   const found: { at: number; axis: Axis; deg: number }[] = [];
   for (const m of t.matchAll(/(\d+)\s*GRAD\s*UM\s*([XYZ])/g)) found.push({ at: m.index!, axis: m[2] as Axis, deg: Number(m[1]) });
-  for (const m of t.matchAll(new RegExp(`${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*UND)`, 'g'))) {
+  for (const m of t.matchAll(new RegExp(`${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*(?:UND|AND|ET|\\d))`, 'g'))) {
     const v = num(m[1]);
     if ([90, 180, 270].includes(v)) found.push({ at: m.index!, axis: m[2] as Axis, deg: v });
     else if (m[2] === 'X' && !sizes) onlyX = v;
@@ -196,7 +210,10 @@ export function readInstructions(notes: string[]) {
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM".
   const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
   const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
-  const marker = t.match(/(RAFI|TASTER)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
+  // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
+  const marker = t.match(/(RAFI|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
+  // "UNTER MASS 5 MM": the part rests on a step 5 mm above its bottom (it hangs 5 mm below the parallels).
+  const above = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
   const pers = t.match(/PERS\.?\s*(?:IN\s*)?([XYZ]\s*[+-])/);
   const topAt = t.match(new RegExp(`Z\\+\\s*IN\\s*${NUM}\\s*MM`));
@@ -207,15 +224,17 @@ export function readInstructions(notes: string[]) {
     pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
     support: sup ? num(sup[1]) : null,
     restDepth: thick ? num(thick[1]) : null,
+    restAbove: above ? num(above[1]) : null,
     spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
-    clamp: /VORRICHT|VORRI\b/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
+    // "FIXATION AVEC LES BRIDES": strap clamps on the table, no vise.
+    clamp: /VORRICHT|VORRI\b|BRIDES/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,
     topAt: topAt ? num(topAt[1]) : null,
-    marker: marker ? { name: marker[1] === 'TASTER' ? 'TASTER' : 'RAFI', faces: faces(marker[2]) } : null,
+    marker: marker ? { name: marker[1] === 'TASTER' ? 'TASTER' : marker[1] === 'RAFI' ? 'RAFI' : 'ID WINDOW', faces: faces(marker[2]) } : null,
   };
 }
 
@@ -260,28 +279,44 @@ export const STOP_PLATE = 8;
 
 /**
  * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
- * setup. Otherwise the side that is up (RUECKS. / FRONTSEITE / PERS. on edge) and where the RAFI
- * or TASTER points must match: the orientation that agrees with what is known, nearest to the
- * previous one, wins.
+ * setup; the side that is up (RUECKS. / FRONTSEITE / PERS. on edge) and where the RAFI, TASTER or
+ * ID window points must agree with them. Without a turn, the orientation that agrees with what is
+ * known, nearest to the previous one, wins. When they disagree (a turn that cannot give the written
+ * position), the position wins and `conflict` is set.
  */
-function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>): Mat3[] {
-  if (ins.turns.length) return [ins.turns.reduce((m, r) => mul(turn(r.axis, r.deg), m), prev)];
+function solveOrientation(prev: Mat3, ins: ReturnType<typeof readInstructions>, known: Map<string, Vec>): { options: Mat3[]; conflict: boolean } {
   const wants: [string, Vec][] = [];
   const front = frontDir(ins);
   if (front) wants.push(['front', front]);
   if (ins.marker) wants.push([ins.marker.name, direction(ins.marker.faces)]);
   const usable = wants.filter(([k]) => known.has(k));
-  if (!usable.length) return [prev];
+  const agrees = (m: Mat3, list: [string, Vec][]) => list.every(([k, v]) => same(apply(m, known.get(k)!), v));
   // Every orientation that agrees with what is known; nearest turn first, then turning around X
   // (the usual back-to-front flip). When several agree, the cuts decide (see analyseProgram).
-  const fits = ALL.map((m, order) => {
-    const d = mul(m, transpose(prev));
-    return { m, score: turnSize(m, prev) * 100 + (d[0] === 1 ? 0 : d[4] === 1 ? 1 : 2) * 10 + order / 100 };
-  })
-    .filter(({ m }) => usable.every(([k, v]) => same(apply(m, known.get(k)!), v)))
-    .sort((a, b) => a.score - b.score)
-    .map((x) => x.m);
-  return fits.length ? fits : [prev];
+  const fitting = (list: [string, Vec][]) =>
+    ALL.map((m, order) => {
+      const d = mul(m, transpose(prev));
+      return { m, score: turnSize(m, prev) * 100 + (d[0] === 1 ? 0 : d[4] === 1 ? 1 : 2) * 10 + order / 100 };
+    })
+      .filter(({ m }) => agrees(m, list))
+      .sort((a, b) => a.score - b.score)
+      .map((x) => x.m);
+  // Where the written turn and position disagree, the RAFI (or TASTER, ID window) wins, then the side up.
+  const byPosition = () => {
+    const fits = fitting(usable);
+    return fits.length ? fits : fitting(usable.filter(([k]) => k !== 'front'));
+  };
+  if (ins.turns.length) {
+    const byTurn = ins.turns.reduce((m, r) => mul(turn(r.axis, r.deg), m), prev);
+    if (agrees(byTurn, usable)) return { options: [byTurn], conflict: false };
+    const fits = byPosition();
+    return { options: fits.length ? fits : [byTurn], conflict: true };
+  }
+  if (!usable.length) return { options: [prev], conflict: false };
+  const fits = fitting(usable);
+  if (fits.length) return { options: fits, conflict: false };
+  const fallback = byPosition();
+  return { options: fallback.length ? fallback : [prev], conflict: true };
 }
 
 /**
@@ -405,7 +440,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     const nextLedges = new Map<number, number>();
     for (const s of out.setups) {
       // Only where cales are written (the part stands on them).
-      if (s.index === 0 || s.restDepth !== null || s.support === null) continue;
+      if (s.index === 0 || s.restDepth !== null || s.restAbove !== null || s.support === null) continue;
       const low = lowest(s);
       if (!low || !s.stock) continue;
       const l = Math.min(...low);
@@ -415,6 +450,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     if (settled || pass === out.setups.length) {
       for (const s of out.setups) {
         s.cales = placeCales(s, input, g);
+        s.collisions.push(...caleHits(tp, s));
         s.grip = gripOf(s, input, g);
         if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + s.jawHalfWidth * 2];
       }
@@ -423,6 +459,36 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     boxes = nextBoxes;
     ledges = nextLedges;
     out = analyseWith(tp, opts, chosen, ledges, boxes);
+  }
+  return out;
+}
+
+/**
+ * Tools that go into a cale (a parallel) under the part: below its top, over its width, along the
+ * length of the jaws. One hit per run of moves of one tool, the deepest.
+ */
+function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
+  if (!s.cales?.length || !s.moves || !s.clampBox) return [];
+  const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
+  const x: [number, number] = s.jawTopZ !== null ? s.jawX : [s.clampBox.min[0], s.clampBox.max[0]];
+  const out: Collision[] = [];
+  let open: Collision | null = null;
+  for (let mi = s.moves[0]; mi <= s.moves[1]; mi++) {
+    const m = tp.moves[mi];
+    if (m.setup !== s.index || m.kind === 'rapid') continue;
+    const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
+    let here: Collision | null = null;
+    for (const p of samples(m)) {
+      if (p[0] + r <= x[0] || p[0] - r >= x[1]) continue;
+      for (const c of s.cales) {
+        const depth = c.top - p[2];
+        if (depth > 0.01 && p[1] + r > c.y[0] && p[1] - r < c.y[1] && (!here || depth > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: p, depth, what: 'cale' };
+      }
+    }
+    if (!here) continue;
+    if (open && open.tool === here.tool && mi - open.move <= 3) {
+      if (here.depth > open.depth) Object.assign(open, { depth: here.depth, point: here.point });
+    } else out.push((open = here));
   }
   return out;
 }
@@ -575,7 +641,8 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     if (k > 0 && ins.side && !ins.onEdge && !ins.turns.length && !known.has('front') && prev && !prev.onEdge) {
       known.set('front', apply(transpose(orient), [0, 0, ins.side === 'back' ? 1 : -1]));
     }
-    const alternatives = k === 0 ? [IDENTITY] : bySize(solveOrientation(orient, ins, known), part, ins.sizes);
+    const solved = k === 0 ? { options: [IDENTITY], conflict: false } : solveOrientation(orient, ins, known);
+    const alternatives = bySize(solved.options, part, ins.sizes);
     orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {
@@ -584,6 +651,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       notes,
       ...ins,
       clamp: ins.clamp ?? (notes.length ? prev?.clamp ?? 'vise' : null),
+      conflict: solved.conflict,
       orient,
       alternatives,
       offset: [0, 0, 0],
@@ -725,7 +793,10 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const trusted = floorRule !== null && Math.abs(floorRule - (min[2] - support)) <= FLOOR_TRUST && floorRule <= min[2] + 1;
     let rest = min[2];
     let floor = rest - support;
-    if (ins.restDepth !== null && ins.restDepth < max[2] - min[2]) {
+    if (ins.restAbove !== null && ins.restAbove < max[2] - min[2]) {
+      rest = min[2] + ins.restAbove;
+      floor = trusted ? floorRule! : rest - support;
+    } else if (ins.restDepth !== null && ins.restDepth < max[2] - min[2]) {
       rest = Math.max(min[2], -ins.restDepth);
       floor = trusted ? floorRule! : rest - support;
     } else if (trusted) {
@@ -782,6 +853,19 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       }
     };
     const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
+    // The spacer ("ZWISCHENLAGE") between the part and a jaw or the stop, as high as the jaws.
+    const sp = ins.spacer;
+    const spacerBox: [number, number, number, number] | null = !sp
+      ? null
+      : sp.side === 'Y-'
+        ? [info.jawX[0], info.jawX[1], jawY[0], jaw.min[1]]
+        : sp.side === 'Y+'
+          ? [info.jawX[0], info.jawX[1], jaw.max[1], jawY[1]]
+          : sp.side === 'X-'
+            ? [jaw.min[0] - sp.mm, jaw.min[0], jaw.min[1], jaw.max[1]]
+            : null;
+    const inSpacer = (p: Vec, r: number) => !!spacerBox && p[0] + r > spacerBox[0] && p[0] - r < spacerBox[1] && p[1] + r > spacerBox[2] && p[1] - r < spacerBox[3];
+    let caleOpen: Collision | null = null;
     idx.forEach((mi) => {
       const m = tp.moves[mi];
       const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
@@ -790,7 +874,10 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       const holder = length ? holderOf(r * 2).radius : 0;
       let hitHere: Collision | null = null;
       let holderHere: Collision | null = null;
+      let caleHere: Collision | null = null;
       for (const p of samples(m)) {
+        if (spacerBox && inSpacer(p, r) && p[2] < info.jawTopZ! - 0.01 && (!caleHere || info.jawTopZ! - p[2] > caleHere.depth))
+          caleHere = { move: mi, line: m.line, tool: m.tool, point: p, depth: info.jawTopZ! - p[2], what: 'cale' };
         if (length && over(p, holder)) {
           const below = info.jawTopZ! - (p[2] + length);
           if (below > 0.01 && (!holderHere || below > holderHere.depth)) holderHere = { move: mi, line: m.line, tool: m.tool, point: [p[0], p[1], p[2] + length], depth: below, what: 'holder' };
@@ -802,10 +889,15 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       }
       add('tool', hitHere, mi);
       add('holder', holderHere, mi);
+      if (caleHere) {
+        if (caleOpen && caleOpen.tool === caleHere.tool && mi - caleOpen.move <= 3) {
+          if (caleHere.depth > caleOpen.depth) Object.assign(caleOpen, { depth: caleHere.depth, point: caleHere.point });
+        } else info.collisions.push((caleOpen = caleHere));
+      }
     });
     info.jawClearance = Number.isFinite(clearance) ? clearance : null;
   });
-  return { setups: out, part: rawPart };
+  return { setups: out, part: rawPart, white: known.get('front') ?? null };
 }
 
 export function analyseSetups(tp: Toolpath, opts: SetupOptions): SetupInfo[] {

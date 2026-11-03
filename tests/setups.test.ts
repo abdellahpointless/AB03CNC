@@ -108,8 +108,10 @@ describe('setups', () => {
     setup(['MOD. HOCHKANT/PERS. Y+/RAFI X- Z+'], 'G52 X-50. Y50. Z43.', 25, -15);
     setup(['MOD. HOCHKANT/PERS. Y+/RAFI X+ Z-'], 'G52 X-50. Y50. Z43.', 25, -15);
     lines.push('M30', '%');
-    const { setups, part } = analyseProgram(parseToolpath(lines.join('\n'), S), { jawHeight: 42 });
+    const { setups, part, white } = analyseProgram(parseToolpath(lines.join('\n'), S), { jawHeight: 42 });
     expect(part).toEqual({ min: [0, -50, -30], max: [100, 0, 0] });
+    // Back side up first: the white face (front, where the RAFI is) is underneath in the part frame.
+    expect(white!.map((v) => v + 0)).toEqual([0, 0, -1]);
     const size = (i: number) => setups[i].stock!.max.map((v, k) => v - setups[i].stock!.min[k]);
     expect(setups.map((x) => size(setups.indexOf(x)))).toEqual([[100, 50, 30], [100, 50, 30], [100, 30, 50], [50, 30, 100], [50, 30, 100]]);
     // Back -> front: turned around X. On edge: front face toward Y+.
@@ -125,6 +127,52 @@ describe('setups', () => {
     expect(readInstructions(['38 MM UNTERLAGE IN EPAISEUR 20']).restDepth).toBe(20);
     expect(readInstructions(['41 MM UNTERLAGE IN EP 4.5 MM']).restDepth).toBe(4.5);
     expect(readInstructions(['40 MM UNTERLAGE']).restDepth).toBeNull();
+  });
+
+  it('reads every way the CAM programmers describe a setup', () => {
+    const r = (line: string) => readInstructions([line]);
+    expect(r('TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y+/30 IN X 20.5 IN Y')).toMatchObject({ turns: [{ axis: 'X', deg: -90 }], sizes: { x: 30, y: 20.5 } });
+    expect(r('TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y-').turns).toEqual([{ axis: 'X', deg: 90 }]);
+    expect(r('TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+/30 IN X UND Y')).toMatchObject({ turns: [{ axis: 'Y', deg: 90 }], sizes: { x: 30, y: 30 } });
+    expect(r('TEIL 90 GRAD UM Z DREHEN/X+ WIRD Y+/36 IN X AND 41 IN Y')).toMatchObject({ turns: [{ axis: 'Z', deg: 90 }], sizes: { x: 36, y: 41 } });
+    expect(r('TEIL 180 GRAD UM Z DREHEN/36 IN X 41 IN Y')).toMatchObject({ turns: [{ axis: 'Z', deg: 180 }], sizes: { x: 36, y: 41 } });
+    expect(r('TEIL 180 GRAD UM Y DREHEN/24 IN X UND 20.4 IN Y')).toMatchObject({ turns: [{ axis: 'Y', deg: 180 }], sizes: { x: 24, y: 20.4 } });
+    expect(r('MOD. SPANNEN F. RUECKS./ 100 UM X UND 100 UM Y ')).toMatchObject({ clamp: 'module', side: 'back', sizes: { x: 100, y: 100 }, turns: [] });
+    expect(r('MOD. SPANNEN F. FRONTSEITE/ 100 IN XY/RAFI IN X-Y-')).toMatchObject({ side: 'front', sizes: { x: 100, y: 100 }, marker: { name: 'RAFI', faces: ['X-', 'Y-'] } });
+    expect(r('MOD. HOCHKANT/PERS. Y+/90 GRAD UM Y DREHEN/Z+ WIRD X-')).toMatchObject({ onEdge: true, pers: 'Y+', turns: [{ axis: 'Y', deg: -90 }] });
+    expect(r('MOD. HOCHKANT/PERS. Y+/ID WINDOW IN Z+')).toMatchObject({ pers: 'Y+', marker: { name: 'ID WINDOW', faces: ['Z+'] } });
+    expect(r('F. RUECKS./60 UM X UND 66 UM Y /RAFI IN X+Y-')).toMatchObject({ side: 'back', sizes: { x: 60, y: 66 }, marker: { faces: ['X+', 'Y-'] } });
+    expect(r(' 41  MM UNTERLAGE  / UNTER MASS 5 MM')).toMatchObject({ support: 41, restAbove: 5, restDepth: null });
+    expect(r('36 MM UNTERLAGE IN EP 16 MM')).toMatchObject({ support: 36, restDepth: 16, restAbove: null });
+    expect(r('15 MM ZWISCHENLAGE IN Y- IN EP 18.55 POUR LE BON FIXATION').spacer).toEqual({ mm: 15, side: 'Y-' });
+    expect(r('MISE EN POSITION SUR LA TABLE 8 MM UNTERLAGE').support).toBe(8);
+    expect(r('FIXATION AVEC LES BRIDES SENS Y ET DEMONTER LES BRIDES SEN X').clamp).toBe('fixture');
+    expect(r('TEIL MIT 60 UM X UND 66 UM Y EINSPANNEN')).toMatchObject({ clamp: 'vise', sizes: { x: 60, y: 66 }, turns: [] });
+  });
+
+  it('follows the RAFI when the written turn cannot give the written position, and says so', () => {
+    const lines = ['%', 'O0835', '(TOP PLATE FH / 100X50X30)'];
+    const setup = (notes: string[]) => {
+      lines.push(...notes.map((n) => `M0 (${n})`), 'G52 X-50. Y50. Z3.', 'T2 M6 (FRAESER D6)', '(DIAMETER 6.00 MM/LENGTH 30.00 MM)', 'G0 G90 X50 Y-25 S5000 M3', 'G43 H2 Z5.', 'G1 Z-2. F300', 'G1 X51.', 'G0 Z50.');
+    };
+    setup(['MOD. SPANNEN F. FRONTSEITE/100 IN X/RAFI IN X+Y-', '30 MM UNTERLAGE']);
+    // Turned 180 around X the RAFI would point X+ Y+: as written it cannot point X- Y-.
+    setup(['MOD. SPANNEN F. RUECKS./180 GRAD UM X DREHEN/RAFI IN X-Y-', '30 MM UNTERLAGE']);
+    // Agreeing: 180 around X puts the RAFI at X+ Y+ (from the first side).
+    setup(['MOD. SPANNEN F. FRONTSEITE/RAFI IN X+Y-', '30 MM UNTERLAGE']);
+    setup(['MOD. SPANNEN F. RUECKS./180 GRAD UM X DREHEN/RAFI IN X+Y+', '30 MM UNTERLAGE']);
+    lines.push('M30', '%');
+    const { setups } = analyseProgram(parseToolpath(lines.join('\n'), S), { jawHeight: 42 });
+    expect(setups.map((s) => s.conflict)).toEqual([false, true, false, false]);
+    // The RAFI and the back side up win: turned 180 around Y.
+    expect(setups[1].orient).toEqual([-1, 0, 0, 0, 1, 0, 0, 0, -1]);
+    expect(setups[3].orient).toEqual([1, 0, 0, 0, -1, 0, 0, 0, -1]);
+  });
+
+  it('rests the part on a step above its bottom (UNTER MASS)', () => {
+    const tp = parseToolpath(program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (38 MM UNTERLAGE / UNTER MASS 5 MM / Z+ IN 15MM)'), S);
+    const s = analyseProgram(tp, { jawHeight: 42 }).setups[1];
+    expect(s.restZ! - s.stock!.min[2]).toBeCloseTo(5, 5);
   });
 
   it('turns 180 around Y then 90 around Z when the instruction says X+ becomes Y+', () => {
@@ -182,9 +230,10 @@ describe('setups', () => {
     expect(analyseSetups(parseToolpath(toFront, S), { jawHeight: 60 })[0].collisions).toHaveLength(1);
     const spaced = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (15 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
     expect(spacerAt(spaced, 'Y-')).toBe(15);
-    expect(spaced.collisions).toEqual([]);
-    // A thin spacer is not enough: the D10 reaches 13 mm past the part.
+    // Not the jaw (export goes on), but the spacer: a cale warning there.
+    expect(spaced.collisions.map((c) => c.what)).toEqual(['cale']);
+    // A thin spacer is not enough: the D10 reaches 13 mm past the part, into the jaw too.
     const thin = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (5 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
-    expect(thin.collisions).toHaveLength(1);
+    expect(thin.collisions.filter((c) => c.what !== 'cale')).toHaveLength(1);
   });
 });

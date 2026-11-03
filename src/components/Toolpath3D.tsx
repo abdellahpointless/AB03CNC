@@ -88,6 +88,8 @@ interface Props {
   view?: { kind: 'top' | 'front' | 'iso'; key: number } | null;
   /** A point (machine coordinates) to fly the camera to: where a collision is. */
   focus?: { point: Vec; key: number } | null;
+  /** The vise, clamp and cales drawn see-through (the part shows through them). */
+  seeThrough?: boolean;
 }
 
 /** What the clicks measure (mm): a hole's Ø, the distance between two picks (with its X/Y/Z parts), the first of two picked, or why not. */
@@ -231,6 +233,21 @@ function engraved(text: string, aspect: number): THREE.Texture {
   return tex;
 }
 
+/** Draws what holds the part see-through (or as it was): every material keeps its own look to go back to. */
+function showThrough(group: THREE.Object3D, on: boolean) {
+  group.traverse((o) => {
+    const mat = (o as THREE.Mesh | THREE.LineSegments).material;
+    if (!mat) return;
+    for (const m of Array.isArray(mat) ? mat : [mat]) {
+      const was = (m.userData.solid ??= { transparent: m.transparent, opacity: m.opacity, depthWrite: m.depthWrite });
+      m.transparent = on || was.transparent;
+      m.opacity = on ? was.opacity * 0.2 : was.opacity;
+      m.depthWrite = on ? false : was.depthWrite;
+      m.needsUpdate = true;
+    }
+  });
+}
+
 /** How far the moving jaw opens to let the part out (mm). */
 const JAW_TRAVEL = 35;
 
@@ -359,7 +376,10 @@ const SECTION = new THREE.Color(0xe07a5f);
  * rim light, and with a section the faces seen from inside (where it is cut open) hatched. The
  * uniforms are in `userData.u`.
  */
-function partMaterial(look: PartLook, topZ: number, env: THREE.Texture | null) {
+function partMaterial(look: PartLook, part: { min: Vec; max: Vec }, white: Vec | null | undefined, env: THREE.Texture | null) {
+  // The white plate on the face the program calls the front (where the RAFI is), the layers under it.
+  const dir: Vec = white ?? [0, 0, 1];
+  const top = [0, 1, 2].reduce((t, k) => t + Math.max(dir[k] * part.min[k], dir[k] * part.max[k]), 0);
   const L = LOOKS[look];
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: L.metalness, roughness: L.roughness, side: THREE.DoubleSide });
   // Metals reflect the studio round them fully (the scene's own reflections are kept faint).
@@ -369,7 +389,8 @@ function partMaterial(look: PartLook, topZ: number, env: THREE.Texture | null) {
   }
   const u = {
     uFH: { value: look === 'fh' ? 1 : 0 },
-    uTopZ: { value: topZ },
+    uTopZ: { value: top },
+    uDir: { value: new THREE.Vector3(...dir) },
     uRim: { value: L.rim },
     uCut: { value: 0 },
     uCap: { value: SECTION },
@@ -385,7 +406,7 @@ function partMaterial(look: PartLook, topZ: number, env: THREE.Texture | null) {
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;\nuniform float uFH;\nuniform float uTopZ;\nuniform float uRim;\nuniform float uCut;\nuniform vec3 uCap;\nuniform vec3 uWood;\nuniform vec3 uWood2;\nuniform vec3 uPlate;',
+        '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;\nuniform float uFH;\nuniform float uTopZ;\nuniform vec3 uDir;\nuniform float uRim;\nuniform float uCut;\nuniform vec3 uCap;\nuniform vec3 uWood;\nuniform vec3 uWood2;\nuniform vec3 uPlate;',
       )
       .replace(
         '#include <clipping_planes_fragment>',
@@ -400,13 +421,15 @@ if (uCut > 0.5 && dot(normalize(vViewN), normalize(vViewPosition)) < -0.02) {
         '#include <color_fragment>',
         `#include <color_fragment>
 if (uFH > 0.5) {
-  if (vPart.z > uTopZ - 0.8 && vPartN.z > -0.5) diffuseColor.rgb = uPlate;
-  else if (vPartN.z < 0.7) {
+  float along = dot(vPart, uDir);
+  float facing = dot(vPartN, uDir);
+  if (along > uTopZ - 0.8 && facing > -0.5) diffuseColor.rgb = uPlate;
+  else if (facing < 0.7) {
     // Pressed layers about 1 mm thick (drawn a little coarser than real so they show), fading to their mean when too fine to draw.
-    float k = vPart.z / 1.1;
+    float k = along / 1.1;
     float s = smoothstep(0.15, 0.85, 0.5 + 0.5 * sin(k * 6.2832));
     s = mix(s, 0.5, clamp(fwidth(k) * 1.2, 0.0, 1.0));
-    float slow = 0.8 + 0.2 * sin(vPart.z * 0.37 + vPart.x * 0.05);
+    float slow = 0.8 + 0.2 * sin(along * 0.37 + vPart.x * 0.05);
     diffuseColor.rgb = mix(uWood, uWood2, (0.15 + 0.75 * s) * slow);
   }
 }`,
@@ -560,6 +583,9 @@ interface Api {
   meshAt: number;
   /** The setup's clamping (vise or fixture), hidden while the part turns out of the old one. */
   clamp: THREE.Object3D | null;
+  /** Everything that holds the part (vise or fixture, cales), for drawing it see-through. */
+  fixture: THREE.Group | null;
+  seeThrough: boolean;
   /** Called once, when the part shown is the part at meshAt (after a jump). */
   settle: (() => void) | null;
   /** The round holes plunged before a move (the worker finds them on the cut part). */
@@ -579,7 +605,7 @@ interface Api {
   frame: () => { c: THREE.Vector3; size: number };
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false }: Props) {
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const resetMeasure = useRef<(() => void) | null>(null);
@@ -690,6 +716,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       shownPos: NaN,
       meshAt: 0,
       clamp: null,
+      fixture: null,
+      seeThrough: false,
       settle: null,
       holesBefore: () => Promise.resolve([]),
       afterRender: null,
@@ -725,7 +753,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     }
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     const L = LOOKS[look];
-    const material = partMaterial(look, input.part.max[2], a.scene.environment);
+    const material = partMaterial(look, input.part, program.white, a.scene.environment);
     const RAWC = new THREE.Color(L.raw);
     const CUTC = new THREE.Color(L.cut);
     const chunks = new Map<number, THREE.Mesh>();
@@ -969,6 +997,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       fixture.add(clamp.group);
       jaws.push(...clamp.jawMats);
       a.clamp = clamp.group;
+      a.fixture = fixture;
+      showThrough(fixture, a.seeThrough);
       a.jaw = clamp.moving && { obj: clamp.moving, travel: JAW_TRAVEL };
 
       // RAFI / TASTER: an arrow from the part toward the faces the program names, and a label.
@@ -1006,7 +1036,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     for (const c of setup?.collisions ?? []) {
       const g = new THREE.Group();
       g.userData.move = c.move;
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(hitR, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff4d4d, transparent: true, depthTest: false }));
+      g.userData.cale = c.what === 'cale';
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(hitR, 20, 14), new THREE.MeshBasicMaterial({ color: g.userData.cale ? 0xf5b942 : 0xff4d4d, transparent: true, depthTest: false }));
       dot.renderOrder = 12;
       dot.position.copy(v3(c.point));
       g.add(dot);
@@ -1052,7 +1083,14 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const hitAt = new Map<number, (typeof hitList)[number]>();
     for (const c of hitList) if (!hitAt.has(c.move)) hitAt.set(c.move, c);
     // A tool (or holder) into the jaws turns the jaws red.
-    const jawHitMoves = hitList.filter((c) => c.what !== 'holderPart').map((c) => c.move);
+    const jawHitMoves = hitList.filter((c) => c.what !== 'holderPart' && c.what !== 'cale').map((c) => c.move);
+    // A tool into a cale turns the cales yellow (a warning: move them).
+    const caleHitMoves = hitList.filter((c) => c.what === 'cale').map((c) => c.move);
+    const caleMats = new Set<THREE.MeshStandardMaterial>();
+    a.cales?.traverse((o) => {
+      const m = (o as THREE.Mesh).material;
+      if ((o as THREE.Mesh).isMesh) for (const x of Array.isArray(m) ? m : [m]) caleMats.add(x as THREE.MeshStandardMaterial);
+    });
     const red = (m: THREE.MeshStandardMaterial, on: boolean, base: number) => {
       m.color.set(on ? 0xff4040 : base);
       m.emissive.set(on ? 0x8a0000 : 0x000000);
@@ -1109,7 +1147,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         // At a collision: what hits turns red, the tool into the jaws or its holder.
         const hit = hitAt.get(first + k);
         red(cutterMat, !!hit && !hit.what, 0xe8edf5);
-        red(holderMat, !!hit && !!hit.what, 0x55627a);
+        red(holderMat, !!hit && (hit.what === 'holder' || hit.what === 'holderPart'), 0x55627a);
+        if (hit?.what === 'cale') {
+          cutterMat.color.set(0xf5b942);
+          cutterMat.emissive.set(0x5a3c00);
+        }
         // The solid as it is with the tool right here.
         a.meshAt = instant(first + k + at.cut);
       }
@@ -1118,11 +1160,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       hits.children.forEach((h) =>
         h.traverse((o) => {
           const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
-          if (m && (o as THREE.Mesh).isMesh) m.color.set(h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a);
+          if (m && (o as THREE.Mesh).isMesh) m.color.set(h.userData.cale ? (h.userData.move <= reached ? 0xf5b942 : 0x7a6a3a) : h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a);
         }),
       );
       const jawHit = jawHitMoves.some((m) => m <= reached);
       jaws.forEach((j) => red(j, jawHit, j.userData.base ?? STEEL_DARK.color));
+      const caleHit = caleHitMoves.some((m) => m <= reached);
+      caleMats.forEach((m) => m.emissive.set(caleHit ? 0x6a4a00 : 0x000000));
       a.requestMesh(a.meshAt);
       a.invalidate();
     };
@@ -1674,6 +1718,15 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     a.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup, jump]);
+
+  // The vise, clamp and cales see-through, or solid again.
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    a.seeThrough = seeThrough;
+    if (a.fixture) showThrough(a.fixture, seeThrough);
+    a.invalidate();
+  }, [seeThrough]);
 
   // Outlines (in a colour that stands out on this material) and the section.
   useEffect(() => {

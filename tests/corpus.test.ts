@@ -49,9 +49,10 @@ describe('real programs against their drawings', () => {
       const sorted = (v: number[]) => [...v].sort((a, b) => a - b);
       sorted(size).forEach((v, i) => expect(Math.abs(v - sorted(want.size)[i])).toBeLessThan(0.1));
       for (const s of setups) {
-        // Every clamping stands on the machine table (G54 Z-57), and no tool goes into the jaws.
+        // Every clamping stands on the machine table (G54 Z-57), and no tool goes into the jaws (a
+        // cale in the way is only a warning: the operator moves it).
         if (s.clamp === 'vise' || s.clamp === 'module') expect(s.floorZ! + tp.setups[s.index].shift![2]).toBeCloseTo(TABLE_Z, 1);
-        expect(s.collisions).toEqual([]);
+        expect(s.collisions.filter((c) => c.what !== 'cale')).toEqual([]);
       }
     }, 60_000);
   }
