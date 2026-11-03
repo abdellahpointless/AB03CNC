@@ -211,7 +211,8 @@ export function readInstructions(notes: string[]) {
   const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
   const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
-  const marker = t.match(/(RAFI|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
+  // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
+  const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   // "UNTER MASS 5 MM": the part rests on a step 5 mm above its bottom (it hangs 5 mm below the parallels).
   const above = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
@@ -234,7 +235,7 @@ export function readInstructions(notes: string[]) {
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,
     topAt: topAt ? num(topAt[1]) : null,
-    marker: marker ? { name: marker[1] === 'TASTER' ? 'TASTER' : marker[1] === 'RAFI' ? 'RAFI' : 'ID WINDOW', faces: faces(marker[2]) } : null,
+    marker: marker ? { name: marker[1] === 'TASTER' ? 'TASTER' : marker[1].startsWith('RAF') ? 'RAFI' : 'ID WINDOW', faces: faces(marker[2]) } : null,
   };
 }
 

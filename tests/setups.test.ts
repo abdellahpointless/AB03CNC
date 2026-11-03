@@ -147,6 +147,7 @@ describe('setups', () => {
     expect(r('15 MM ZWISCHENLAGE IN Y- IN EP 18.55 POUR LE BON FIXATION').spacer).toEqual({ mm: 15, side: 'Y-' });
     expect(r('MISE EN POSITION SUR LA TABLE 8 MM UNTERLAGE').support).toBe(8);
     expect(r('FIXATION AVEC LES BRIDES SENS Y ET DEMONTER LES BRIDES SEN X').clamp).toBe('fixture');
+    expect(r('MOD. SPANNEN F. RUECKS./100 IN X/RAF X+Y-').marker).toEqual({ name: 'RAFI', faces: ['X+', 'Y-'] });
     expect(r('TEIL MIT 60 UM X UND 66 UM Y EINSPANNEN')).toMatchObject({ clamp: 'vise', sizes: { x: 60, y: 66 }, turns: [] });
   });
 
