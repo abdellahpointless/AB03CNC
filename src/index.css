@@ -883,6 +883,10 @@ html.light .always-dark .btn-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.25);
 }
 html.light .always-dark .aurora-input { background: var(--bg-input); border-color: var(--border-subtle); }
+/* Its status badges keep their dark-mode colours (light-mode text is too dark on the dark panel). */
+html.light .always-dark .badge-positive { background: rgba(22, 163, 74, 0.18); border-color: rgba(22, 163, 74, 0.3); color: #1fb257; }
+html.light .always-dark .badge-danger { background: rgba(255, 102, 121, 0.15); border-color: rgba(255, 102, 121, 0.3); color: #ff6679; }
+html.light .always-dark .badge-warning { background: rgba(224, 138, 77, 0.18); border-color: rgba(224, 138, 77, 0.3); color: #e08a4d; }
 
 html.light .skeleton-shimmer { background: rgba(15, 23, 42, 0.05); }
 html.light .skeleton-shimmer::after {

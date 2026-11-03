@@ -220,7 +220,8 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, to
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
-  let u = l2 > 1e-12 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+  // A plunge leaves the tool's shape where it ends (its tip at the bottom), as in sweeps.
+  let u = l2 > 1e-12 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : b[2] < a[2] ? 1 : 0;
   u = Math.min(1, Math.max(0, u));
   const cx = a[0] + u * dx;
   const cy = a[1] + u * dy;
@@ -931,6 +932,10 @@ interface Cross {
   cut: boolean;
   /** +1: solid on the low side of the edge (surface faces +axis), -1: the other way. */
   dir: number;
+  /** The point and normal are the true surface's (false: a stand-in, square to the edge). */
+  exact: boolean;
+  /** On a sliver too narrow to draw (see crossing): it places the surface but does not shade it. */
+  minor?: boolean;
 }
 
 export function mesher(g: Grid, input: SimInput): Mesher {
@@ -1060,16 +1065,16 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   };
   /**
    * Is part point p inside what move m sweeps up to share `upTo` of it (1 = the whole move)?
-   * Returns the segment that covers it and where that segment ends (cut short for the move in
-   * progress), or null.
+   * Returns the first segment from `from` on that covers it and where that segment ends (cut short
+   * for the move in progress), or null.
    */
-  const inMove = (m: number, p: Vec, upTo: number): { seg: number; end: Vec } | null => {
+  const inMove = (m: number, p: Vec, upTo: number, from = 1): { seg: number; end: Vec } | null => {
     const mv = input.moves[m];
     const s = input.setups[mv.setup];
     const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
     const q = toMachine(s, p);
     const run = upTo < 1 ? runOf(m) : null;
-    for (let i = 1; i < mv.points.length; i++) {
+    for (let i = from; i < mv.points.length; i++) {
       const a = mv.points[i - 1];
       let b = mv.points[i];
       if (run) {
@@ -1085,6 +1090,21 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   };
 
   /**
+   * Which way the surface that segment c of move c.m leaves at part point p faces (part frame), and
+   * the setup and tool that left it. Which part of the tool (floor, wall, cone) is told apart to 0.01 mm.
+   */
+  const surfaceAt = (c: { m: number; seg: number; end: Vec }, p: Vec) => {
+    const mv = input.moves[c.m];
+    const s = input.setups[mv.setup];
+    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
+    const nm = sweepNormal(toMachine(s, p), mv.points[c.seg - 1], c.end, tool.radius, tool.slope, 0.01);
+    return { s, tool, nm, n: toPart(s, nm) };
+  };
+  /** Is part point q cut by instant (now, upToNow): by these moves, or any other move reaching it? */
+  const cutBy = (q: Vec, moves: number[], now: number, upToNow: number) =>
+    moves.some((m) => !!inMove(m, q, m === now ? upToNow : 1)) || reaching(q, now).some((m) => !!inMove(m, q, m === now ? upToNow : 1));
+
+  /**
    * Where the surface crosses the edge from sample A (solid) to sample B (cut or outside), and
    * which way it faces. dir: +1 if B is the next sample along the axis, -1 if the previous.
    * The cut surface is the edge of everything cut near B so far (roughing and finishing passes
@@ -1097,7 +1117,8 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       p[axis] += (dir * h[axis]) / 2;
       const n: Vec = [0, 0, 0];
       n[axis] = dir;
-      return { p, n, cut, dir };
+      // A face of the raw block lies exactly there; a cut surface only roughly.
+      return { p, n, cut, dir, exact: !cut };
     };
     if (!inGrid(B[0], B[1], B[2])) return half(false);
     // Moves that cut B or the samples next to it before this instant; the move in progress
@@ -1153,17 +1174,49 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       } else t0 = tm;
     }
     const p = along((t0 + t1) / 2);
-    const mv = input.moves[hit.m];
-    const s = input.setups[mv.setup];
-    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
-    const nm = sweepNormal(toMachine(s, p), mv.points[hit.seg - 1], hit.end, tool.radius, tool.slope, Math.max(h[0], h[1], h[2]) * 0.75);
-    let n = toPart(s, nm);
-    // The normal must face out of the material along this edge.
-    if (n[axis] * dir < 0.05) {
-      n = [0, 0, 0];
-      n[axis] = dir;
+    // The crossing lies on the tool's surface within a few µm.
+    let found = surfaceAt(hit, p);
+    // Several passes (and segments of one pass) can reach the crossing; it lies on the one with solid
+    // material right behind it (a pass whose rim just touches a floor the next one cut is not that floor).
+    // Only a normal that this edge barely crosses (mostly square to it) can be another surface's.
+    if (found.n[axis] * dir < 0.5) {
+      const q = along(t1);
+      const solidBehind = (n: Vec) => !cutBy([q[0] - n[0] * 0.01, q[1] - n[1] * 0.01, q[2] - n[2] * 0.01], moves, now, upToNow);
+      if (!solidBehind(found.n))
+        search: for (const m of new Set([hit.m, ...moves, ...reaching(q, now)])) {
+          const upTo = m === now ? upToNow : 1;
+          for (let c = inMove(m, q, upTo); c; c = inMove(m, q, upTo, c.seg + 1)) {
+            const o = surfaceAt({ m, seg: c.seg, end: c.end }, p);
+            if (solidBehind(o.n)) {
+              found = o;
+              break search;
+            }
+          }
+        }
     }
-    return { p, n, cut: true, dir };
+    const { s, tool, nm, n } = found;
+    // A normal facing into the material along this edge is not this surface's: stand in for it.
+    // (One nearly along the edge is right: a slope or a curve that the edge just grazes.)
+    if (n[axis] * dir < -0.3) return { ...half(true), p };
+    // A pointed tool's cone that leaves only a sliver (a deburr, a spot drill's rim a little wider
+    // than the hole), narrower than half a sample: too fine to draw, and shaded in patches it glints
+    // like teeth along the edge. It still places the surface; the faces either side shade it.
+    if (tool.slope !== null && nm[2] > 1e-6 && nm[2] < 0.999) {
+      const cell = Math.max(h[0], h[1], h[2]);
+      // Down the cone's slope (in the plane of its axis), both ways from the crossing.
+      const k = Math.hypot(nm[0], nm[1]) || 1;
+      const down = toPart(s, [(nm[0] / k) * nm[2], (nm[1] / k) * nm[2], -k]);
+      const onCone = (t: number) => {
+        const q: Vec = [p[0] + down[0] * t, p[1] + down[1] * t, p[2] + down[2] * t];
+        const solidSide: Vec = [q[0] - n[0] * 0.01, q[1] - n[1] * 0.01, q[2] - n[2] * 0.01];
+        const inPart = solidSide.every((x, a) => x >= origin[a] && x <= origin[a] + g.n[a] * h[a]);
+        return inPart && !cutBy(solidSide, moves, now, upToNow) && cutBy([q[0] + n[0] * 0.01, q[1] + n[1] * 0.01, q[2] + n[2] * 0.01], moves, now, upToNow);
+      };
+      let width = 0;
+      for (const sign of [1, -1]) for (let t = cell / 8; t <= cell / 2 && width < cell / 2 && onCone(sign * t); t += cell / 8) width += cell / 8;
+      if (width < cell / 2) return { p, n, cut: true, dir, exact: true, minor: true };
+    }
+    return { p, n, cut: true, dir, exact: true };
   };
 
   return {
@@ -1202,7 +1255,9 @@ export function mesher(g: Grid, input: SimInput): Mesher {
       // One vertex per cell that the surface passes through: the point that best fits the
       // planes of its crossings (sharp edges and corners), kept inside the cell.
       const vertCache = new Map<number, Vec>();
-      const smoothAt = new Map<number, Vec>();
+      const surfacesAt = new Map<number, Vec[]>();
+      // Each surface's plane through the cell (a point on it): which one a point sits on.
+      const planesAt = new Map<number, { n: Vec; p: Vec }[]>();
       const vertex = (i: number, j: number, k: number): Vec => {
         const key = ((k + 1) * (ny + 2) + (j + 1)) * (nx + 2) + (i + 1);
         const hit = vertCache.get(key);
@@ -1219,24 +1274,23 @@ export function mesher(g: Grid, input: SimInput): Mesher {
           }
         const lo3 = sampleAt(i, j, k);
         const hi3 = sampleAt(i + 1, j + 1, k + 1);
-        const v = solveQef(cs, lo3, hi3);
+        // Stand-in crossings only where nothing better is known: their square normals would bend a slope.
+        const exact = cs.filter((c) => c.exact);
+        const use = exact.length ? exact : cs;
+        const faces = surfacesOf(use);
+        const v = solveQef(faces, lo3, hi3);
         vertCache.set(key, v);
-        // Where all crossings face nearly the same way (a flat face or a round wall), the exact
-        // surface normal shades it: holes and curves come out smooth instead of faceted.
-        if (cs.length) {
-          let nx2 = 0;
-          let ny2 = 0;
-          let nz2 = 0;
-          for (const c of cs) {
-            nx2 += c.n[0];
-            ny2 += c.n[1];
-            nz2 += c.n[2];
-          }
-          const l = Math.hypot(nx2, ny2, nz2);
-          if (l > 1e-9) {
-            const avg: Vec = [nx2 / l, ny2 / l, nz2 / l];
-            if (cs.every((c) => c.n[0] * avg[0] + c.n[1] * avg[1] + c.n[2] * avg[2] > 0.9)) smoothAt.set(key, avg);
-          }
+        const shaded = use.filter((c) => !c.minor);
+        // The true normal of each surface through the cell shades the triangles lying on it: one
+        // surface (a flat face, a round wall) comes out smooth, two (a chamfer and the top face)
+        // keep a crisp edge between them.
+        if (faces.length) {
+          const shown = shaded.length && shaded.length < use.length ? surfacesOf(shaded) : faces;
+          surfacesAt.set(key, shown.map((f) => f.n));
+          planesAt.set(
+            key,
+            shown.map((f) => ({ n: f.n, p: [0, 1, 2].map((a) => f.members.reduce((x, c) => x + c.p[a], 0) / f.members.length) as Vec })),
+          );
         }
         return v;
       };
@@ -1273,6 +1327,25 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         }
       };
 
+      /**
+       * How well triangle a, b, c lies on one of the surfaces through its corners' cells (the best
+       * cosine); -1 when it has no area or is folded over (faces well against n, the crossing's normal).
+       */
+      const fit = (ka: number, kb: number, kc: number, n: Vec) => {
+        const a = vertCache.get(ka)!;
+        const b = vertCache.get(kb)!;
+        const c = vertCache.get(kc)!;
+        const fx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
+        const fy = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]);
+        const fz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        const l = Math.hypot(fx, fy, fz);
+        // A wall meeting a floor stands square to the floor's crossing: only well past that is folded.
+        if (l < 1e-12 || (fx * n[0] + fy * n[1] + fz * n[2]) / l < -0.25) return -1;
+        let best = -1;
+        for (const k of [ka, kb, kc]) for (const sn of surfacesAt.get(k) ?? []) best = Math.max(best, (fx * sn[0] + fy * sn[1] + fz * sn[2]) / l);
+        return best;
+      };
+
       // Cells owned by this chunk; each emits the quads of the three edges at its low corner.
       const i0 = ca * CHUNK - 1;
       const j0 = cb * CHUNK - 1;
@@ -1296,19 +1369,23 @@ export function mesher(g: Grid, input: SimInput): Mesher {
               const v10 = cell(0, 1);
               const v11 = cell(0, 0);
               const v01 = cell(1, 0);
-              // Wound so the face points out of the material (from the solid sample to the cut one).
-              if (e.dir > 0) {
-                tri(v00, v10, v11, e.cut);
-                tri(v00, v11, v01, e.cut);
+              // Wound so the face points out of the material (from the solid sample to the cut one),
+              // split along the diagonal whose two triangles each lie on a true surface: along an edge
+              // or an inside corner, not across it (a bevel); on a slope, not folded over.
+              const [q0, q1, q2, q3] = e.dir > 0 ? [v00, v10, v11, v01] : [v00, v01, v11, v10];
+              if (Math.min(fit(q0, q1, q2, e.n), fit(q0, q2, q3, e.n)) >= Math.min(fit(q0, q1, q3, e.n), fit(q1, q2, q3, e.n))) {
+                tri(q0, q1, q2, e.cut);
+                tri(q0, q2, q3, e.cut);
               } else {
-                tri(v00, v11, v10, e.cut);
-                tri(v00, v01, v11, e.cut);
+                tri(q0, q1, q3, e.cut);
+                tri(q1, q2, q3, e.cut);
               }
             }
           }
 
-      // Shading: average with the neighbouring faces that bend less than ~35° (round walls look
-      // round), keep the face's own normal across sharper bends (edges stay crisp).
+      // Shading: the true normal of the surface the triangle lies on (of the surfaces through its
+      // corners' cells, the closest to the triangle's own), at each corner as that corner's cell has
+      // it (a round wall stays round); failing that, the neighbouring faces that bend less than ~35°.
       const CREASE = Math.cos((35 * Math.PI) / 180);
       const nTri = triCut.length;
       const pos = new Float32Array(nTri * 9);
@@ -1318,17 +1395,52 @@ export function mesher(g: Grid, input: SimInput): Mesher {
         const fx = triNormal[t * 3];
         const fy = triNormal[t * 3 + 1];
         const fz = triNormal[t * 3 + 2];
+        // A chamfer narrower than a cell can miss from a corner's cell: look at all three.
+        let on: Vec | null = null;
+        let onDot = 0.5;
+        for (let c = 0; c < 3; c++)
+          for (const sn of surfacesAt.get(triKeys[t * 3 + c]) ?? []) {
+            const d = sn[0] * fx + sn[1] * fy + sn[2] * fz;
+            if (d > onDot) {
+              onDot = d;
+              on = sn;
+            }
+          }
         for (let c = 0; c < 3; c++) {
           const kk = triKeys[t * 3 + c];
           const v = vertCache.get(kk)!;
           let sx = 0;
           let sy = 0;
           let sz = 0;
-          const exact = smoothAt.get(kk);
-          if (exact && exact[0] * fx + exact[1] * fy + exact[2] * fz > 0.5) {
-            sx = exact[0];
-            sy = exact[1];
-            sz = exact[2];
+          let best: Vec | null = on;
+          let bestDot = SAME_SURFACE;
+          // Where surfaces meet (an edge, a chamfer, a sliver too fine to draw): each corner shades
+          // as the surface it sits on, so the shading turns at the true edge, not along the
+          // triangles (a row of teeth); a corner on the edge itself, as the triangle leans.
+          const planes = planesAt.get(kk);
+          if (planes && planes.length > 1) {
+            let near = Infinity;
+            for (const pl of planes) {
+              const d = Math.abs(pl.n[0] * (v[0] - pl.p[0]) + pl.n[1] * (v[1] - pl.p[1]) + pl.n[2] * (v[2] - pl.p[2]));
+              const lean = pl.n[0] * fx + pl.n[1] * fy + pl.n[2] * fz;
+              // Clearly nearer (by more than the points' own error, a few hundredths) wins; else the lean.
+              if (d < near - 0.05 || (d < near + 0.05 && (!best || lean > best[0] * fx + best[1] * fy + best[2] * fz))) {
+                near = Math.min(near, d);
+                best = pl.n;
+              }
+            }
+          } else if (on)
+            for (const sn of surfacesAt.get(kk) ?? []) {
+              const d = sn[0] * on[0] + sn[1] * on[1] + sn[2] * on[2];
+              if (d > bestDot) {
+                bestDot = d;
+                best = sn;
+              }
+            }
+          if (best) {
+            sx = best[0];
+            sy = best[1];
+            sz = best[2];
           } else for (const o of facesAt.get(kk)!) {
             const ox = triNormal[o * 3];
             const oy = triNormal[o * 3 + 1];
@@ -1393,39 +1505,94 @@ export function eigenSym(M: number[]): { values: Vec; vectors: Vec[] } {
   return { values: [a[0], a[4], a[8]], vectors: [0, 1, 2].map((k) => [v[k], v[3 + k], v[6 + k]] as Vec) };
 }
 
-function solveQef(cs: Cross[], lo: Vec, hi: Vec): Vec {
-  if (!cs.length) return [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+/** Two crossing normals closer than this (cos 25°) belong to one surface: a round wall's facets, not an edge. */
+const SAME_SURFACE = Math.cos((25 * Math.PI) / 180);
+
+/**
+ * The surfaces through a cell: its crossings grouped by which way they face, each with its mean
+ * normal. A 45° chamfer and the top face are two; the facets of a round hole wall are one.
+ */
+export function surfacesOf(cs: Cross[]): { n: Vec; members: Cross[] }[] {
+  const groups: { n: Vec; members: Cross[] }[] = [];
+  for (const c of cs) {
+    const g = groups.find((x) => x.members[0].n[0] * c.n[0] + x.members[0].n[1] * c.n[1] + x.members[0].n[2] * c.n[2] > SAME_SURFACE);
+    if (g) g.members.push(c);
+    else groups.push({ n: [0, 0, 0], members: [c] });
+  }
+  for (const g of groups) {
+    for (const c of g.members) for (let a = 0; a < 3; a++) g.n[a] += c.n[a];
+    const l = Math.hypot(g.n[0], g.n[1], g.n[2]) || 1;
+    for (let a = 0; a < 3; a++) g.n[a] /= l;
+  }
+  return groups;
+}
+
+/**
+ * The point that best fits the planes of a cell's crossings, kept in the cell. Every surface
+ * weighs the same however many crossings it has, so whether an edge stays sharp does not change
+ * from one cell to the next with how the samples fall.
+ */
+function solveQef(surfaces: { members: Cross[] }[], lo: Vec, hi: Vec): Vec {
+  if (!surfaces.length) return [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
   const m: Vec = [0, 0, 0];
-  for (const c of cs) for (let a = 0; a < 3; a++) m[a] += c.p[a] / cs.length;
+  for (const g of surfaces) for (const c of g.members) for (let a = 0; a < 3; a++) m[a] += c.p[a] / g.members.length;
+  for (let a = 0; a < 3; a++) m[a] /= surfaces.length;
   // Least squares for the crossing planes, in coordinates relative to m.
   const A = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   const B = [0, 0, 0];
-  for (const c of cs) {
-    const d = c.n[0] * (c.p[0] - m[0]) + c.n[1] * (c.p[1] - m[1]) + c.n[2] * (c.p[2] - m[2]);
-    for (let r = 0; r < 3; r++) {
-      for (let s = 0; s < 3; s++) A[r * 3 + s] += c.n[r] * c.n[s];
-      B[r] += c.n[r] * d;
+  for (const g of surfaces) {
+    const wc = 1 / g.members.length;
+    for (const c of g.members) {
+      const d = c.n[0] * (c.p[0] - m[0]) + c.n[1] * (c.p[1] - m[1]) + c.n[2] * (c.p[2] - m[2]);
+      for (let r = 0; r < 3; r++) {
+        for (let s = 0; s < 3; s++) A[r * 3 + s] += wc * c.n[r] * c.n[s];
+        B[r] += wc * c.n[r] * d;
+      }
     }
   }
-  // Truncated pseudo-inverse: directions the normals barely pin down (nearly parallel faces,
-  // e.g. neighbouring facets of a hole wall) stay at the crossings' middle instead of shooting off
-  // along a near-degenerate intersection line; real corners and edges keep their sharp point.
+  // Truncated pseudo-inverse: a direction the surfaces barely pin down (one surface: along it)
+  // stays at their middle; two surfaces 25° or more apart pin their edge, three a corner.
   const { values, vectors } = eigenSym(A);
   const top = Math.max(values[0], values[1], values[2], 1e-12);
-  const x: Vec = [0, 0, 0];
-  for (let k = 0; k < 3; k++) {
-    if (values[k] < top * 0.08) continue;
-    const e = vectors[k];
-    const t = (e[0] * B[0] + e[1] * B[1] + e[2] * B[2]) / values[k];
-    for (let r = 0; r < 3; r++) x[r] += e[r] * t;
+  const order = [0, 1, 2].sort((p, q) => values[q] - values[p]).filter((k) => values[k] >= top * 0.04);
+  // A fit outside its cell (surfaces meeting at odd angles where a hole, its chamfer and the top
+  // face meet) would make a spike: give up the least pinned direction first (a corner becomes a
+  // point on the edge, an edge a point on the face), down to the middle of the crossings. An edge
+  // through the cell keeps its point on the edge: slid along it into the cell.
+  const pad: Vec = [(hi[0] - lo[0]) * 0.15, (hi[1] - lo[1]) * 0.15, (hi[2] - lo[2]) * 0.15];
+  for (let keep = order.length; keep >= 0; keep--) {
+    const out: Vec = [m[0], m[1], m[2]];
+    for (let i = 0; i < keep; i++) {
+      const e = vectors[order[i]];
+      const t = (e[0] * B[0] + e[1] * B[1] + e[2] * B[2]) / values[order[i]];
+      for (let r = 0; r < 3; r++) out[r] += e[r] * t;
+    }
+    if (keep === 2) {
+      // The edge's direction: the one the two kept surfaces leave free (indices 0 + 1 + 2 = 3).
+      const e = vectors[3 - order[0] - order[1]];
+      let s0 = -Infinity;
+      let s1 = Infinity;
+      for (let a = 0; a < 3; a++) {
+        const a0 = lo[a] - pad[a] - out[a];
+        const a1 = hi[a] + pad[a] - out[a];
+        if (Math.abs(e[a]) < 1e-12) {
+          if (a0 > 0 || a1 < 0) s0 = Infinity;
+        } else {
+          s0 = Math.max(s0, Math.min(a0 / e[a], a1 / e[a]));
+          s1 = Math.min(s1, Math.max(a0 / e[a], a1 / e[a]));
+        }
+      }
+      if (s0 <= s1) {
+        const sl = Math.min(s1, Math.max(s0, 0));
+        for (let r = 0; r < 3; r++) out[r] += e[r] * sl;
+      }
+    }
+    let inside = true;
+    for (let a = 0; a < 3; a++) if (out[a] < lo[a] - pad[a] - 1e-9 || out[a] > hi[a] + pad[a] + 1e-9) inside = false;
+    if (inside || keep === 0) {
+      for (let a = 0; a < 3; a++) out[a] = Math.min(hi[a], Math.max(lo[a], out[a]));
+      return out;
+    }
   }
-  const out: Vec = [m[0] + x[0], m[1] + x[1], m[2] + x[2]];
-  // A fit far outside its cell (several surfaces meeting at odd angles, e.g. where a hole, its
-  // chamfer and the top face meet) would make a spike: use the crossings' middle instead.
-  for (let a = 0; a < 3; a++) {
-    const pad = (hi[a] - lo[a]) * 0.15;
-    if (out[a] < lo[a] - pad || out[a] > hi[a] + pad) return [Math.min(hi[0], Math.max(lo[0], m[0])), Math.min(hi[1], Math.max(lo[1], m[1])), Math.min(hi[2], Math.max(lo[2], m[2]))];
-  }
-  for (let a = 0; a < 3; a++) out[a] = Math.min(hi[a], Math.max(lo[a], out[a]));
-  return out;
+  return [...m];
 }

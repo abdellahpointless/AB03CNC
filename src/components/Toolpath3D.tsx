@@ -767,50 +767,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     };
-    // Plunged holes as true cylinders: the samples leave their walls and rims a little rough, so a
-    // smooth wall (and a flat rim where the face round it is flat) is drawn over them once drilled.
-    // Not with weak spots on: those colour the walls.
-    const liners = new THREE.Group();
-    a.solid.add(liners);
-    const env = L.env && a.scene.environment ? { envMap: a.scene.environment, envMapIntensity: L.env } : {};
-    const finish = { metalness: L.metalness, roughness: L.roughness, ...env };
-    // FH: a hole's wall is the wood, its rim on the raw top the white plate.
-    const wallMat = new THREE.MeshStandardMaterial({ ...finish, color: look === 'fh' ? 0x4e3324 : L.cut, side: THREE.BackSide });
-    const rimMat = { raw: new THREE.MeshStandardMaterial({ ...finish, color: look === 'fh' ? 0xe8e5de : L.raw }), cut: new THREE.MeshStandardMaterial({ ...finish, color: L.cut }) };
-    const showLiners = () => {
-      const done = Math.floor(shown / SUB);
-      for (const l of liners.children) l.visible = !heatRef.current && shown >= 0 && l.userData.move < done;
-    };
-    const buildLiners = (holes: Hole[]) => {
-      const up = new THREE.Vector3(0, 1, 0);
-      // Only holes with wall all round: a smooth wall over one opened into a pocket would close the opening.
-      for (const h of holes.filter((x) => x.closed)) {
-        const top = new THREE.Vector3(...h.top);
-        const along = new THREE.Vector3(...h.bottom).sub(top);
-        const len = along.length();
-        along.normalize();
-        const g = new THREE.Group();
-        g.userData.move = h.move;
-        // Just inside the true wall, so it is drawn over the sampled one.
-        const wall = new THREE.Mesh(new THREE.CylinderGeometry(h.r - 0.04, h.r - 0.04, len, 64, 1, true), wallMat);
-        wall.position.copy(top).addScaledVector(along, len / 2);
-        wall.receiveShadow = true;
-        wall.quaternion.setFromUnitVectors(up, along);
-        g.add(wall);
-        if (h.flat) {
-          // On the raw block face, the raw colour; on a machined face, the cut colour.
-          const a3 = [0, 1, 2].find((k) => Math.abs(along.getComponent(k)) > 0.9) ?? 2;
-          const raw = Math.abs(h.top[a3] - input.part.min[a3]) < 0.01 || Math.abs(h.top[a3] - input.part.max[a3]) < 0.01;
-          const rim = new THREE.Mesh(new THREE.RingGeometry(h.r - 0.04, h.r + 0.6, 64), raw ? rimMat.raw : rimMat.cut);
-          rim.position.copy(top).addScaledVector(along, -0.01);
-          rim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), along.clone().negate());
-          g.add(rim);
-        }
-        liners.add(g);
-      }
-      showLiners();
-      a.invalidate();
-    };
     const holeAsks = new Map<number, ((h: Hole[]) => void)[]>();
     a.holesBefore = (move) =>
       new Promise((done) => {
@@ -821,12 +777,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       });
     a.repaint = () => {
       for (const mesh of chunks.values()) paint(mesh.geometry);
-      showLiners();
       a.invalidate();
     };
     // A section: a plane across the part, square to a machine axis, the side facing the camera
     // (right, front, top) cut away; what is seen from inside is the cut face (hatched).
-    const clipped = [material, wallMat, rimMat.raw, rimMat.cut];
+    const clipped = [material];
     a.applySection = () => {
       const sec = a.section;
       if (sec) {
@@ -863,7 +818,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         if (a.stockFill) a.stockFill.visible = false;
         onSolidRef.current?.({ state: 'meshing', share: 1 });
         ask(a.meshAt);
-        a.holesBefore(input.moves.length).then(buildLiners);
       }
       if (msg.type === 'holes') {
         holeAsks.get(msg.before)?.forEach((f) => f(msg.holes));
@@ -902,7 +856,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         }
         shown = msg.step;
         busy = false;
-        showLiners();
         if (a.section) a.applySection();
         a.solid.matrixWorldNeedsUpdate = true;
         a.invalidate();
@@ -923,11 +876,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         m.geometry.dispose();
       }
       material.dispose();
-      disposeTree(liners);
-      a.solid.remove(liners);
-      wallMat.dispose();
-      rimMat.raw.dispose();
-      rimMat.cut.dispose();
       a.holesBefore = () => Promise.resolve([]);
       a.settle = null;
       onSolidRef.current?.({ state: 'off', share: 0 });
