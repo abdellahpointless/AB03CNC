@@ -260,6 +260,11 @@ const remapper = {
   },
   /** Toolpath preview (components/ToolpathViewer). */
   toolpath: {
+    soon: {
+      badge: 'Coming soon',
+      title: 'The toolpath viewer is coming soon',
+      text: 'It is not available in your country yet. It shows each program cutting the part in 3D, setup by setup, before it reaches the machine: measurements, thin walls and tool or holder collisions included.',
+    },
     title: 'Toolpath',
     open: 'Toolpath',
     new: 'NEW',

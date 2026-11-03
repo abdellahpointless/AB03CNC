@@ -251,6 +251,11 @@ const remapper: Translation<typeof en> = {
   },
   /** Takım yolu önizlemesi (components/ToolpathViewer). */
   toolpath: {
+    soon: {
+      badge: 'Yakında',
+      title: 'Takım yolu görüntüleyici yakında geliyor',
+      text: 'Ülkenizde henüz kullanılamıyor. Her programın parçayı, makineye gitmeden önce bağlama bağlama 3B olarak işlediğini gösterir: ölçüler, ince duvarlar ve takım ya da tutucu çarpışmaları dahil.',
+    },
     title: 'Takım yolu',
     open: 'Takım yolu',
     new: 'YENİ',

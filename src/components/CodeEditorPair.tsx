@@ -3,6 +3,7 @@ import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, 
 import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
+const ToolpathSoon = lazy(() => import('./ToolpathSoon'));
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
@@ -217,6 +218,7 @@ export default function CodeEditorPair({
   machineBrand,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
+  const [showSoon, setShowSoon] = useState(false);
   // Off for a country until a master admin switches it on, and in beta: only admins and the
   // people an admin picked. Otherwise the button shows a padlock and says why.
   const { user } = useAuth();
@@ -598,7 +600,11 @@ export default function CodeEditorPair({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  if (!toolpathOn) return;
+                  // Switched off for the country: show what is coming. Beta-locked people only get the title.
+                  if (!toolpathOn) {
+                    if (!countryOn) setShowSoon(true);
+                    return;
+                  }
                   setShowToolpath(true);
                   setToolpathNew(false);
                   try {
@@ -608,8 +614,9 @@ export default function CodeEditorPair({
                   }
                 }}
                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
-                aria-disabled={!toolpathOn || undefined}
-                className={`btn-secondary text-xs py-1 px-2.5 ${toolpathOn ? '' : 'opacity-60 cursor-not-allowed'}`}
+                aria-disabled={(countryOn && !toolpathOn) || undefined}
+                aria-haspopup={countryOn ? undefined : 'dialog'}
+                className={`btn-secondary text-xs py-1 px-2.5 ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
                 title={toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
               >
                 {toolpathOn ? <Route size={13} /> : <Lock size={13} />}
@@ -746,6 +753,11 @@ export default function CodeEditorPair({
           </div>
         </div>
       </div>
+      {showSoon && (
+        <Suspense fallback={null}>
+          <ToolpathSoon onClose={() => setShowSoon(false)} />
+        </Suspense>
+      )}
       {showToolpath && (
         <Suspense fallback={null}>
           <ToolpathViewer
