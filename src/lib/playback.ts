@@ -71,3 +71,31 @@ export function toolAt(moves: Move[], pos: number): (ToolAt & { move: number }) 
   const pts = movePath(m);
   return { ...toolAlong(m, pts, runShares(pts), pos - k), move: k };
 }
+
+/**
+ * The instant a collision happens in its move: where the tool passes over the hit point (closest in
+ * X/Y; the holder's point is above the tip), or the bottom of a drilling cycle.
+ */
+export function hitInstant(moves: Move[], move: number, point: Vec): number {
+  const m = moves[move];
+  if (!m) return move;
+  if (m.kind === 'drill') return move + DRILL_DOWN;
+  const pts = movePath(m);
+  const run = runShares(pts);
+  let best = Infinity;
+  let at = 1;
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy;
+    const t = l2 > 1e-12 ? Math.min(1, Math.max(0, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / l2)) : 1;
+    const d = Math.hypot(a[0] + dx * t - point[0], a[1] + dy * t - point[1]);
+    if (d < best - 1e-9) {
+      best = d;
+      at = run[i - 1] + (run[i] - run[i - 1]) * t;
+    }
+  }
+  // Inside the move (its very end would already be the next move).
+  return move + Math.min(at, 0.999);
+}

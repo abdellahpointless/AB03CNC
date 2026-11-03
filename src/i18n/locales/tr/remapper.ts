@@ -251,6 +251,16 @@ const remapper: Translation<typeof en> = {
   },
   /** Takım yolu önizlemesi (components/ToolpathViewer). */
   toolpath: {
+    section: 'Kesit',
+    sectionHelp: 'Deliklerin ve duvarların içini görmek için parçayı X, Y veya Z boyunca kesin',
+    sectionAxis: 'Kesit ekseni',
+    sectionAt: 'Kesilip atılan kısım',
+    outline: 'Kenarlar',
+    outlineHelp: 'Parçanın, mengenenin ve takımın kenarlarını çiz',
+    views: 'Kamera görünümleri',
+    viewKind: { top: 'Üst', front: 'Ön', iso: '3/4' },
+    material: { plain: '', alu: 'Alüminyum', steel: 'Çelik', brass: 'Pirinç (MS)', pom: 'POM', fh: 'FH (katmanlı ahşap)' },
+    openHitTitle: 'Bir çarpışma: takım yolunda nerede olduğunu görün',
     soon: {
       badge: 'Yakında',
       title: 'Takım yolu görüntüleyici yakında geliyor',

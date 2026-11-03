@@ -33,6 +33,7 @@
   --orange-500: #e08a4d;
   --orange-text: #e08a4d;    /* orange text: on dark surfaces the 500 itself reads well */
   --rose-text: #ff6679;      /* rose text: the 500 reads well on dark */
+  --green-text: #16a34a;     /* green text on a green tint */
   --orange-600: #c27f5e;
   --orange-glow: rgba(224, 138, 77, 0.35);
 
@@ -98,6 +99,7 @@ html.light {
   --orange-500: #c2620f;
   --orange-text: #9a4a08;    /* #c2620f text is only 4.2:1 on white */
   --rose-text: #be123c;      /* #e11d48 is under 4.5:1 on a rose tint */
+  --green-text: #166534;     /* #15803d is 3.8:1 on a green tint */
   --orange-600: #a4520c;
   --orange-glow: rgba(194, 98, 15, 0.2);
   --rose-500:  #e11d48;

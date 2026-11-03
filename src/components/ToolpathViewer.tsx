@@ -1,9 +1,10 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler } from 'lucide-react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
-import { toolAt } from '../lib/playback';
+import { hitInstant, toolAt } from '../lib/playback';
+import { partLook } from '../lib/partLook';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type SolidState } from './Toolpath3D';
 import type { MeasureMode } from '../lib/measure';
@@ -54,8 +55,8 @@ const fmt2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
-/** holderHits: holders found going into the part (the remapper's collision check, for this code). */
-export default function ToolpathViewer({ code, title, brand, onClose, holderHits }: { code: string; title: string; brand?: string; onClose: () => void; holderHits?: Collision[] }) {
+/** holderHits: holders found going into the part (the remapper's collision check, for this code); focusHit: open at the first collision. */
+export default function ToolpathViewer({ code, title, brand, onClose, holderHits, focusHit }: { code: string; title: string; brand?: string; onClose: () => void; holderHits?: Collision[]; focusHit?: boolean }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
@@ -96,6 +97,12 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const [measure, setMeasure] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
+  // The part's material; outlines (on by default for black POM), a section, camera views, a collision to fly to.
+  const look = useMemo(() => partLook(code), [code]);
+  const [outline, setOutline] = useState(look === 'pom');
+  const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number } | null>(null);
+  const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
+  const [focus, setFocus] = useState<{ point: Vec; key: number } | null>(null);
   // A jump the 3D view hides the part for (to the end, or to a setup change, which then turns).
   const [jump, setJump] = useState<Jump | null>(null);
   // The setup shown is the one of the current move, so playing goes through the setups.
@@ -103,6 +110,8 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const totalHits = setups.reduce((n, x) => n + x.collisions.length, 0);
+  const hitByMove = useMemo(() => new Map(setups.flatMap((x) => x.collisions).map((c) => [c.move, c])), [setups]);
+  const firstHit = useMemo(() => setups.flatMap((x) => x.collisions).sort((p, q) => p.move - q.move)[0] ?? null, [setups]);
   useEffect(() => {
     try {
       localStorage.setItem(JAW_KEY, String(jawHeight));
@@ -306,6 +315,22 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     if (mode3d) setJump({ kind: 'flip', from: setups[s.index - 1] ?? null, key: Date.now() });
     seek(s.moves[0] + 1);
   };
+  // A collision: the part cut up to it, the tool where it hits, the camera close to it.
+  const goHit = (c: Collision) => {
+    setPlaying(false);
+    setMeasure(false);
+    setIsolate(false);
+    setHeat(false);
+    const at = hitInstant(path.moves, c.move, c.point);
+    if (mode3d) setJump({ kind: 'end', from: null, key: Date.now() });
+    clock.current = at;
+    setStep(Math.min(total, Math.ceil(at)));
+    setFocus({ point: c.point, key: Date.now() });
+  };
+  useEffect(() => {
+    if (focusHit && firstHit) goHit(firstHit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Measuring: the part just turned (nothing cut yet in this setup) is measured as it is; otherwise
   // the part at the end of this setup (the finished part on the last one).
   const startMeasure = () => {
@@ -350,10 +375,16 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
 
   return createPortal(
     <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-6 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
-      <motion.div className="always-dark w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border border-[var(--border-subtle)] bg-[#0E1421] text-[var(--text-primary)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]" style={DARK_VARS} {...iosSurface} role="dialog" aria-label={t('toolpath.title')}>
+      <motion.div
+        className={`always-dark w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border bg-[#0E1421] text-[var(--text-primary)] ${totalHits ? 'border-[#ff4d4d] shadow-[0_0_0_1px_rgba(255,77,77,0.5),0_0_60px_rgba(255,60,60,0.25),0_30px_90px_rgba(0,0,0,0.6)]' : 'border-[var(--border-subtle)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]'}`}
+        style={DARK_VARS}
+        {...iosSurface}
+        role="dialog"
+        aria-label={t('toolpath.title')}
+      >
         {/* Header: title and the program's key figures as symbols */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-[var(--border-subtle)] flex-wrap">
-          <Route size={18} className="text-[var(--accent-primary)]" />
+          {totalHits ? <ShieldAlert size={18} className="text-[#ff6b6b]" /> : <Route size={18} className="text-[var(--accent-primary)]" />}
           <h3 className="font-bold text-[var(--text-primary)]">{t('toolpath.title')}</h3>
           <span className="font-mono text-xs text-[var(--text-tertiary)] truncate max-w-[30ch]">{title}</span>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
@@ -429,7 +460,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -577,10 +608,62 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                       <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
                     </button>
                   )}
+                  {mode3d && (
+                    <button
+                      onClick={() => setSection((x) => (x ? null : { axis: 1, at: 0.5 }))}
+                      aria-pressed={!!section}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${section ? 'border-[#e07a5f] bg-[#e07a5f] text-[#2a0f08]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.sectionHelp')}
+                    >
+                      <Scissors size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.section')}</span>
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => setOutline((x) => !x)}
+                      aria-pressed={outline}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${outline ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.outlineHelp')}
+                    >
+                      <PenLine size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
+                    </button>
+                  )}
                   <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
                     <Maximize2 size={13} />
                   </button>
                 </div>
+                {mode3d && (
+                  <div className="absolute right-3 top-11 z-10 inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="group" aria-label={t('toolpath.views')}>
+                    {(['top', 'front', 'iso'] as const).map((k) => (
+                      <button key={k} onClick={() => setView3d({ kind: k, key: Date.now() })} className="px-2.5 h-6 rounded-full text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)]">
+                        {t(`toolpath.viewKind.${k}`)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {mode3d && section && (
+                  <div className="absolute left-3 top-2 z-10 w-60 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Scissors size={12} className="text-[#e07a5f]" aria-hidden="true" />
+                      <span className="text-[11px] font-semibold text-[var(--text-primary)]">{t('toolpath.section')}</span>
+                      <div className="ml-auto inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.sectionAxis')}>
+                        {([0, 1, 2] as const).map((ax) => (
+                          <button key={ax} role="radio" aria-checked={section.axis === ax} onClick={() => setSection({ ...section, axis: ax })} className={`w-7 h-6 rounded-full text-[11px] font-mono font-bold ${section.axis === ax ? 'bg-[#e07a5f] text-[#2a0f08]' : 'text-[var(--text-secondary)]'}`}>
+                            {'XYZ'[ax]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <input type="range" min={0} max={100} value={Math.round(section.at * 100)} onChange={(e) => setSection({ ...section, at: Number(e.target.value) / 100 })} aria-label={t('toolpath.sectionAt')} className="w-full h-5 accent-[#e07a5f]" />
+                  </div>
+                )}
+                {mode3d && current && hitByMove.get(step - 1) && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-[4.5rem] z-10 inline-flex items-center gap-2 rounded-full border border-[#ff4d4d] bg-[#3a0d10]/95 px-3 py-1.5 text-xs font-semibold text-[#ffc2c2] shadow-[0_0_24px_rgba(255,60,60,0.35)] whitespace-nowrap">
+                    <ShieldAlert size={14} aria-hidden="true" />#{hitByMove.get(step - 1)!.line + 1} · {hitText(hitByMove.get(step - 1)!)}
+                  </div>
+                )}
                 {!mode3d && <svg
                   ref={svgRef}
                   className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
@@ -675,8 +758,9 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     ))}
                   </ul>
                   {sel.stock && (
-                    <div className="text-[11px] font-mono text-[var(--text-secondary)]">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[var(--text-secondary)]">
                       {t('toolpath.part', { x: mm(sel.stock.max[0] - sel.stock.min[0]), y: mm(sel.stock.max[1] - sel.stock.min[1]), z: mm(sel.stock.max[2] - sel.stock.min[2]) })}
+                      {look !== 'plain' && <span className="badge-neutral font-sans text-[10px] py-0.5 px-2">{t(`toolpath.material.${look}`)}</span>}
                     </div>
                   )}
                   <details className="text-[11px] text-[var(--text-tertiary)]">
@@ -687,7 +771,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     <div className="space-y-1 pt-1 border-t border-[var(--border-subtle)]">
                       <div className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5"><ShieldAlert size={13} />{t('toolpath.jawHits', { count: sel.collisions.length })}</div>
                       {sel.collisions.slice(0, 8).map((c, i) => (
-                        <button key={i} type="button" onClick={() => { setPlaying(false); seek(c.move + 1); }} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
+                        <button key={i} type="button" onClick={() => goHit(c)} className="w-full text-left text-[11px] font-mono text-[#FF8A8A] hover:underline">
                           #{c.line + 1} · {hitText(c)}
                         </button>
                       ))}

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
+import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, FLIP_MS, holderOf, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
@@ -8,6 +8,7 @@ import { between, holeAt, holeAxis, placeDimension, type Feature, type MeasureMo
 import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
+import type { PartLook } from '../lib/partLook';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -19,8 +20,6 @@ import { addLights } from '../lib/lights';
 
 const v3 = (p: Vec) => new THREE.Vector3(p[0], p[2], -p[1]);
 const FACE_DIR: Record<Face, Vec> = { 'X+': [1, 0, 0], 'X-': [-1, 0, 0], 'Y+': [0, 1, 0], 'Y-': [0, -1, 0], 'Z+': [0, 0, 1], 'Z-': [0, 0, -1] };
-const RAW = new THREE.Color(0x7d8aa3);
-const CUT = new THREE.Color(0xd5deea);
 
 /** Weak-spot colours by wall thickness (mm): blue at 0.2 and less, red at 0.5 (0.2 to 0.5: check these), orange, yellow at 1, plain above. */
 export const WEAK_MM = [0.2, 0.5, 0.75, 1] as const;
@@ -79,6 +78,16 @@ interface Props {
   mode?: MeasureMode;
   onMeasure?: (result: Measurement) => void;
   jump?: Jump | null;
+  /** The part's material (see partLook). */
+  look?: PartLook;
+  /** Outlines on everything drawn (the part, the vise, the tool). */
+  outline?: boolean;
+  /** A section: the part cut open across a machine axis, `at` the share cut away from the side facing the camera (0..1). */
+  section?: { axis: 0 | 1 | 2; at: number } | null;
+  /** A view to fly the camera to (a new key flies again). */
+  view?: { kind: 'top' | 'front' | 'iso'; key: number } | null;
+  /** A point (machine coordinates) to fly the camera to: where a collision is. */
+  focus?: { point: Vec; key: number } | null;
 }
 
 /** What the clicks measure (mm): a hole's Ø, the distance between two picks (with its X/Y/Z parts), the first of two picked, or why not. */
@@ -118,6 +127,7 @@ function box(min: Vec, max: Vec, color: number, opacity: number, edges = 0x00000
     geo,
     new THREE.MeshStandardMaterial({ color, transparent: opacity < 1, opacity, metalness: 0.35, roughness: 0.55, depthWrite: opacity >= 1 }),
   );
+  mesh.castShadow = mesh.receiveShadow = opacity >= 1;
   g.add(mesh);
   if (edges) g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: edges, transparent: true, opacity: 0.7 })));
   g.position.copy(v3([(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2]));
@@ -158,12 +168,14 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   g.add(steel([x0 - 6, cb.min[1] - 70, body - 16], [x1 + 18, cb.max[1] + 34, body], STEEL_DARK));
   g.add(steel([x0 - 6, cb.min[1] - 70, body], [x1 + 18, cb.max[1] + 34, floorZ], STEEL));
   // Fixed jaw with its hardened plate.
-  g.add(steel([x0, cb.max[1] + 5, floorZ], [x1, cb.max[1] + 30, jawTop], STEEL));
+  const fixedJaw = steel([x0, cb.max[1] + 5, floorZ], [x1, cb.max[1] + 30, jawTop], STEEL);
+  g.add(fixedJaw);
   const plateBack = steel([x0 + STOP_PLATE, cb.max[1], floorZ], [x1, cb.max[1] + 5, jawTop], STEEL_DARK);
   g.add(plateBack);
   // Moving jaw (opens and closes in the animations).
   const moving = new THREE.Group();
-  moving.add(steel([x0, cb.min[1] - 30, floorZ], [x1, cb.min[1] - 5, jawTop], STEEL));
+  const movingJaw = steel([x0, cb.min[1] - 30, floorZ], [x1, cb.min[1] - 5, jawTop], STEEL);
+  moving.add(movingJaw);
   const plateFront = steel([x0 + STOP_PLATE, cb.min[1] - 5, floorZ], [x1, cb.min[1], jawTop], STEEL_DARK);
   moving.add(plateFront);
   // Screw and its hex end at the front.
@@ -183,7 +195,12 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
   g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1] + 30, jawTop], STEEL_DARK));
-  const jawMats = [plateBack, plateFront].map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial);
+  // The jaws and their plates: red when a tool or holder goes into them.
+  const jawMats = [fixedJaw, plateBack, movingJaw, plateFront].map((p) => {
+    const m = (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+    m.userData.base = m.color.getHex();
+    return m;
+  });
   return { group: g, moving, jawMats };
 }
 
@@ -265,6 +282,7 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
     const side = new THREE.MeshStandardMaterial({ map: engraved(text, len / h), metalness: 0.3, roughness: 0.5 });
     // Faces: +X, -X, +Y (top), -Y, +Z (front, machine -Y), -Z (back).
     const mesh = new THREE.Mesh(geo, [plain, plain, plain, plain, side, side]);
+    mesh.castShadow = mesh.receiveShadow = true;
     const cale = new THREE.Group();
     cale.add(mesh);
     cale.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x2a313d, transparent: true, opacity: 0.35 })));
@@ -322,10 +340,200 @@ function disposeTree(o: THREE.Object3D) {
   });
 }
 
+/** How each material looks: the raw block and its cut faces, the finish, a rim light on dark parts, the outline colour (sRGB). */
+const LOOKS: Record<PartLook, { raw: number; cut: number; metalness: number; roughness: number; env: number; rim: number; edge: [number, number, number] }> = {
+  plain: { raw: 0x7d8aa3, cut: 0xd5deea, metalness: 0.3, roughness: 0.55, env: 0, rim: 0, edge: [0.05, 0.07, 0.11] },
+  alu: { raw: 0x9aa3ae, cut: 0xdde3ea, metalness: 0.75, roughness: 0.32, env: 1.1, rim: 0, edge: [0.05, 0.07, 0.11] },
+  steel: { raw: 0x6c747f, cut: 0xb1b9c3, metalness: 0.8, roughness: 0.38, env: 1, rim: 0, edge: [0.05, 0.07, 0.11] },
+  brass: { raw: 0x86672a, cut: 0xcfa548, metalness: 0.85, roughness: 0.36, env: 0.9, rim: 0, edge: [0.12, 0.08, 0.02] },
+  // Black plastic: a light rim and light outlines keep it apart from the dark background.
+  pom: { raw: 0x2b2e34, cut: 0x3b3f46, metalness: 0, roughness: 0.35, env: 0, rim: 0.2, edge: [0.78, 0.84, 0.93] },
+  // Layered wood (the shader adds the layers and the white top plate); cut floors show light wood.
+  fh: { raw: 0x4a2f22, cut: 0xb98e6a, metalness: 0, roughness: 0.8, env: 0, rim: 0, edge: [0.1, 0.06, 0.03] },
+};
+/** The cut face of a section: hatched, in one colour for every material. */
+const SECTION = new THREE.Color(0xe07a5f);
+
+/**
+ * The part's material: its look, FH's wood layers under a 0.8 mm white plate on the raw top, a
+ * rim light, and with a section the faces seen from inside (where it is cut open) hatched. The
+ * uniforms are in `userData.u`.
+ */
+function partMaterial(look: PartLook, topZ: number, env: THREE.Texture | null) {
+  const L = LOOKS[look];
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: L.metalness, roughness: L.roughness, side: THREE.DoubleSide });
+  // Metals reflect the studio round them fully (the scene's own reflections are kept faint).
+  if (L.env && env) {
+    m.envMap = env;
+    m.envMapIntensity = L.env;
+  }
+  const u = {
+    uFH: { value: look === 'fh' ? 1 : 0 },
+    uTopZ: { value: topZ },
+    uRim: { value: L.rim },
+    uCut: { value: 0 },
+    uCap: { value: SECTION },
+    uWood: { value: new THREE.Color(0x35211a) },
+    uWood2: { value: new THREE.Color(0x67442f) },
+    uPlate: { value: new THREE.Color(0xe8e5de) },
+  };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPart = position;\nvPartN = normal;\nvViewN = normalMatrix * normal;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;\nuniform float uFH;\nuniform float uTopZ;\nuniform float uRim;\nuniform float uCut;\nuniform vec3 uCap;\nuniform vec3 uWood;\nuniform vec3 uWood2;\nuniform vec3 uPlate;',
+      )
+      .replace(
+        '#include <clipping_planes_fragment>',
+        `#include <clipping_planes_fragment>
+if (uCut > 0.5 && dot(normalize(vViewN), normalize(vViewPosition)) < -0.02) {
+  float h = step(mod(gl_FragCoord.x + gl_FragCoord.y, 10.0), 2.5);
+  gl_FragColor = linearToOutputTexel(vec4(mix(uCap, uCap * 0.45, h), 1.0));
+  return;
+}`,
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+if (uFH > 0.5) {
+  if (vPart.z > uTopZ - 0.8 && vPartN.z > -0.5) diffuseColor.rgb = uPlate;
+  else if (vPartN.z < 0.7) {
+    // Pressed layers about 1 mm thick (drawn a little coarser than real so they show), fading to their mean when too fine to draw.
+    float k = vPart.z / 1.1;
+    float s = smoothstep(0.15, 0.85, 0.5 + 0.5 * sin(k * 6.2832));
+    s = mix(s, 0.5, clamp(fwidth(k) * 1.2, 0.0, 1.0));
+    float slow = 0.8 + 0.2 * sin(vPart.z * 0.37 + vPart.x * 0.05);
+    diffuseColor.rgb = mix(uWood, uWood2, (0.15 + 0.75 * s) * slow);
+  }
+}`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        '#include <emissivemap_fragment>\ntotalEmissiveRadiance += uRim * pow(1.0 - abs(dot(normalize(vViewN), normalize(vViewPosition))), 3.0);',
+      );
+  };
+  m.userData.u = u;
+  return m;
+}
+
+type ToolShape = 'flat' | 'ball' | 'point' | 'face';
+const P2 = (x: number, y: number) => new THREE.Vector2(x, y);
+/** The cutter's outline from the tip up, as (radius, height) pairs, turned round its axis. */
+function cutterProfile(shape: ToolShape, r: number, len: number, tipH: number): THREE.Vector2[] {
+  if (shape === 'point') return [P2(0, 0), P2(r, tipH), P2(r, len), P2(0, len)];
+  if (shape === 'ball') {
+    const b = Math.min(r, len);
+    return [...Array.from({ length: 9 }, (_, i) => P2(r * Math.sin((i / 8) * (Math.PI / 2)), b - b * Math.cos((i / 8) * (Math.PI / 2)))), P2(r, len), P2(0, len)];
+  }
+  if (shape === 'face') {
+    // The cutter disk, its shoulder, then the arbor up to the holder.
+    const h = Math.min(12, len * 0.35);
+    const arbor = Math.min(r, Math.max(r * 0.42, 6));
+    return [P2(0, 0), P2(r, 0), P2(r, h), P2(arbor, h + (r - arbor) * 0.35), P2(arbor, len), P2(0, len)];
+  }
+  return [P2(0, 0), P2(r, 0), P2(r, len), P2(0, len)];
+}
+/** The holder as the collision check has it (radius hr, hh high, from where the tool sticks out): a collet nut with its chamfer and grip groove. */
+function holderProfile(hr: number, hh: number, len: number): THREE.Vector2[] {
+  return [P2(0, len), P2(hr * 0.78, len), P2(hr, len + hr * 0.2), P2(hr, len + hh * 0.42), P2(hr * 0.9, len + hh * 0.46), P2(hr * 0.9, len + hh * 0.56), P2(hr, len + hh * 0.6), P2(hr, len + hh), P2(0, len + hh)];
+}
+/** The kind of cutter, from its name: pointed (drills, chamfers, spot drills), ball nose, face mill or flat end mill. */
+function shapeOf(label: string, r: number): ToolShape {
+  if (tipSlope(label)) return 'point';
+  if (/KUGEL|BALL|BOULE|HEMISPH|\bKF_|\bKU_/i.test(label)) return 'ball';
+  if (r >= 12 || /MESSERKOPF|PLANFR/i.test(label)) return 'face';
+  return 'flat';
+}
+
+/**
+ * Outlines: the meshes' normals and depth are drawn to a target, then every pixel where the depth
+ * jumps or the surface turns sharply is drawn as a line over the picture (whatever the mesh).
+ */
+function makeOutline(renderer: THREE.WebGLRenderer) {
+  const rt = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1) });
+  const flat = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+  const cut = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tN: { value: rt.texture }, tD: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) }, color: { value: new THREE.Vector3() }, near: { value: 1 }, far: { value: 100 } },
+    vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `#include <packing>
+uniform sampler2D tN; uniform sampler2D tD; uniform vec2 texel; uniform vec3 color; uniform float near; uniform float far;
+varying vec2 vUv;
+float zAt(vec2 p) { float d = texture2D(tD, p).x; return d >= 1.0 ? 1e6 : -perspectiveDepthToViewZ(d, near, far); }
+vec3 nAt(vec2 p) { return texture2D(tN, p).xyz * 2.0 - 1.0; }
+void main() {
+  float zc = zAt(vUv);
+  vec3 nc = nAt(vUv);
+  float e = 0.0;
+  for (int i = 0; i < 4; i++) {
+    vec2 o = i == 0 ? vec2(texel.x, 0.0) : i == 1 ? vec2(-texel.x, 0.0) : i == 2 ? vec2(0.0, texel.y) : vec2(0.0, -texel.y);
+    float zo = zAt(vUv + o);
+    if (abs(zo - zc) > 0.012 * min(zc, zo) + 0.05) e = 1.0;
+    if (zc < 1e5 && zo < 1e5 && dot(nc, nAt(vUv + o)) < 0.8) e = 1.0;
+  }
+  if (e < 0.5) discard;
+  gl_FragColor = vec4(color, 0.9);
+}`,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+  quad.frustumCulled = false;
+  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const size = new THREE.Vector2();
+  return {
+    render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, color: [number, number, number], clip: THREE.Plane[]) {
+      renderer.getDrawingBufferSize(size);
+      if (rt.width !== size.x || rt.height !== size.y) rt.setSize(size.x, size.y);
+      mat.uniforms.texel.value.set(1 / size.x, 1 / size.y);
+      mat.uniforms.color.value.set(...color);
+      mat.uniforms.near.value = camera.near;
+      mat.uniforms.far.value = camera.far;
+      cut.clippingPlanes = clip;
+      // Meshes draw their normals (cut ones as cut); lines, labels and points stay out.
+      const swapped: [THREE.Mesh, THREE.Material | THREE.Material[]][] = [];
+      const hidden: THREE.Object3D[] = [];
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          const own = Array.isArray(m.material) ? m.material[0] : m.material;
+          swapped.push([m, m.material]);
+          m.material = own?.clippingPlanes?.length ? cut : flat;
+        } else if (((o as THREE.Line).isLine || (o as THREE.Sprite).isSprite || (o as THREE.Points).isPoints) && o.visible) {
+          hidden.push(o);
+          o.visible = false;
+        }
+      });
+      renderer.setRenderTarget(rt);
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(null);
+      for (const [m, own] of swapped) m.material = own;
+      for (const o of hidden) o.visible = true;
+      renderer.render(scene, camera);
+      renderer.autoClear = false;
+      renderer.render(quad, ortho);
+      renderer.autoClear = true;
+    },
+    dispose() {
+      rt.dispose();
+      rt.depthTexture?.dispose();
+      flat.dispose();
+      cut.dispose();
+      mat.dispose();
+      quad.geometry.dispose();
+    },
+  };
+}
+
 interface Api {
   invalidate: () => void;
   camera: THREE.PerspectiveCamera;
-  controls: TrackballControls;
+  controls: Orbit;
   scene: THREE.Scene;
   world: THREE.Group;
   solid: THREE.Group;
@@ -358,9 +566,20 @@ interface Api {
   holesBefore: (move: number) => Promise<Hole[]>;
   /** Called after each drawn frame (labels that follow the part on screen). */
   afterRender: (() => void) | null;
+  /** The light that casts the shadows, placed round what is framed on every fit. */
+  key: THREE.DirectionalLight;
+  /** Outlines on (their colour) or off. */
+  outline: [number, number, number] | null;
+  section: Props['section'];
+  /** The section's plane, scene coordinates. */
+  clip: THREE.Plane;
+  /** Cuts the part open (or closes it) as `section` says. */
+  applySection: () => void;
+  /** The middle and the size of what the camera frames. */
+  frame: () => { c: THREE.Vector3; size: number };
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null }: Props) {
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const resetMeasure = useRef<(() => void) | null>(null);
@@ -387,16 +606,23 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x0a0f19);
+    renderer.localClippingEnabled = true;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     el.appendChild(renderer.domElement);
     renderer.domElement.style.display = 'block';
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
     // Lit from every side and from the viewer: no face turns black, whichever way it is turned.
-    const disposeLights = addLights(scene, renderer, camera);
-    // Free rotation in every direction (no face held as the bottom), gently damped.
-    const controls = new TrackballControls(camera, renderer.domElement);
-    controls.rotateSpeed = 2.5;
-    controls.dynamicDampingFactor = 0.15;
+    const lights = addLights(scene, renderer, camera);
+    const edges = makeOutline(renderer);
+    let dirty = true;
+    const invalidate = () => {
+      dirty = true;
+    };
+    // Turning like CAD software: around the point grabbed, over the top and underneath, no roll.
+    const controls = new Orbit(camera, renderer.domElement, invalidate);
+    controls.pickables = () => [api.current?.solid ?? null, api.current?.clamp ?? null, api.current?.cales ?? null];
     const world = new THREE.Group();
     scene.add(world);
     const solid = new THREE.Group();
@@ -405,11 +631,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const overlay = new THREE.Group();
     scene.add(overlay);
 
-    let dirty = true;
-    const invalidate = () => {
-      dirty = true;
-    };
-    controls.addEventListener('change', invalidate);
     const resize = () => {
       const w = el.clientWidth || 1;
       const h = el.clientHeight || 1;
@@ -418,7 +639,6 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       renderer.domElement.style.height = '100%';
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      controls.handleResize();
       dirty = true;
     };
     const ro = new ResizeObserver(resize);
@@ -427,7 +647,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
 
     let raf = 0;
     const loop = (now: number) => {
-      controls.update();
+      controls.tick(now);
       const a = api.current;
       // Follow the clock: the tool moves on every frame while playing.
       const pos = clockRef.current.current;
@@ -440,7 +660,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         dirty = true;
       }
       if (dirty) {
-        renderer.render(scene, camera);
+        if (a?.outline) edges.render(scene, camera, a.outline, a.section ? [a.clip] : []);
+        else renderer.render(scene, camera);
         a?.afterRender?.();
         dirty = false;
       }
@@ -472,6 +693,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       settle: null,
       holesBefore: () => Promise.resolve([]),
       afterRender: null,
+      key: lights.key,
+      outline: null,
+      section: null,
+      clip: new THREE.Plane(),
+      applySection: () => undefined,
+      frame: () => ({ c: new THREE.Vector3(), size: 100 }),
     };
     return () => {
       cancelAnimationFrame(raf);
@@ -479,7 +706,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       controls.dispose();
       disposeTree(world);
       disposeTree(solid);
-      disposeLights();
+      lights.dispose();
+      edges.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       api.current = null;
@@ -496,7 +724,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       return;
     }
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.55, side: THREE.DoubleSide });
+    const L = LOOKS[look];
+    const material = partMaterial(look, input.part.max[2], a.scene.environment);
+    const RAWC = new THREE.Color(L.raw);
+    const CUTC = new THREE.Color(L.cut);
     const chunks = new Map<number, THREE.Mesh>();
     let busy = false;
     let wanted = -1;
@@ -521,11 +752,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     a.requestMesh = ask;
     // Raw or cut colour, or the weak-spot colour of each point's wall thickness.
     const paint = (geo: THREE.BufferGeometry) => {
+      // The weak-spot colours replace the wood layers.
+      material.userData.u.uFH.value = look === 'fh' && !heatRef.current ? 1 : 0;
       const { cut, thick } = geo.userData as { cut: Uint8Array; thick?: Float32Array };
       const col = new Float32Array(cut.length * 3);
       const c = new THREE.Color();
       for (let i = 0; i < cut.length; i++) {
-        const plain = cut[i] ? CUT : RAW;
+        const plain = cut[i] ? CUTC : RAWC;
         if (heatRef.current && thick) heatColor(thick[i], plain, c);
         else c.copy(plain);
         col[i * 3] = c.r;
@@ -539,9 +772,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     // Not with weak spots on: those colour the walls.
     const liners = new THREE.Group();
     a.solid.add(liners);
-    const look = { metalness: 0.3, roughness: 0.55 };
-    const wallMat = new THREE.MeshStandardMaterial({ ...look, color: CUT, side: THREE.BackSide });
-    const rimMat = { raw: new THREE.MeshStandardMaterial({ ...look, color: RAW }), cut: new THREE.MeshStandardMaterial({ ...look, color: CUT }) };
+    const env = L.env && a.scene.environment ? { envMap: a.scene.environment, envMapIntensity: L.env } : {};
+    const finish = { metalness: L.metalness, roughness: L.roughness, ...env };
+    // FH: a hole's wall is the wood, its rim on the raw top the white plate.
+    const wallMat = new THREE.MeshStandardMaterial({ ...finish, color: look === 'fh' ? 0x4e3324 : L.cut, side: THREE.BackSide });
+    const rimMat = { raw: new THREE.MeshStandardMaterial({ ...finish, color: look === 'fh' ? 0xe8e5de : L.raw }), cut: new THREE.MeshStandardMaterial({ ...finish, color: L.cut }) };
     const showLiners = () => {
       const done = Math.floor(shown / SUB);
       for (const l of liners.children) l.visible = !heatRef.current && shown >= 0 && l.userData.move < done;
@@ -559,6 +794,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         // Just inside the true wall, so it is drawn over the sampled one.
         const wall = new THREE.Mesh(new THREE.CylinderGeometry(h.r - 0.04, h.r - 0.04, len, 64, 1, true), wallMat);
         wall.position.copy(top).addScaledVector(along, len / 2);
+        wall.receiveShadow = true;
         wall.quaternion.setFromUnitVectors(up, along);
         g.add(wall);
         if (h.flat) {
@@ -588,6 +824,34 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       showLiners();
       a.invalidate();
     };
+    // A section: a plane across the part, square to a machine axis, the side facing the camera
+    // (right, front, top) cut away; what is seen from inside is the cut face (hatched).
+    const clipped = [material, wallMat, rimMat.raw, rimMat.cut];
+    a.applySection = () => {
+      const sec = a.section;
+      if (sec) {
+        const bb = new THREE.Box3();
+        for (const m of chunks.values()) {
+          if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+          bb.union(m.geometry.boundingBox!);
+        }
+        if (!bb.isEmpty()) {
+          bb.applyMatrix4(a.solid.matrix);
+          // Machine X, Y, Z are scene x, -z, y.
+          const k = (['x', 'z', 'y'] as const)[sec.axis];
+          a.clip.set(new THREE.Vector3(k === 'x' ? -1 : 0, k === 'y' ? -1 : 0, k === 'z' ? -1 : 0), bb.max[k] - sec.at * (bb.max[k] - bb.min[k]));
+        }
+      }
+      const planes = sec ? [a.clip] : [];
+      for (const m of clipped)
+        if ((m.clippingPlanes?.length ?? 0) !== planes.length) {
+          m.clippingPlanes = planes;
+          m.needsUpdate = true;
+        }
+      material.userData.u.uCut.value = sec ? 1 : 0;
+      a.invalidate();
+    };
+    a.applySection();
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
@@ -628,6 +892,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
             mesh.geometry = geo;
           } else {
             mesh = new THREE.Mesh(geo, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             mesh.matrixAutoUpdate = false;
             mesh.userData.chunk = true;
             chunks.set(c.id, mesh);
@@ -637,6 +903,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         shown = msg.step;
         busy = false;
         showLiners();
+        if (a.section) a.applySection();
         a.solid.matrixWorldNeedsUpdate = true;
         a.invalidate();
         if (wanted !== shown) ask(wanted);
@@ -650,6 +917,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       a.solidReady = false;
       a.requestMesh = () => undefined;
       a.repaint = () => undefined;
+      a.applySection = () => undefined;
       for (const m of chunks.values()) {
         a.solid.remove(m);
         m.geometry.dispose();
@@ -658,11 +926,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       disposeTree(liners);
       a.solid.remove(liners);
       wallMat.dispose();
+      rimMat.raw.dispose();
+      rimMat.cut.dispose();
       a.holesBefore = () => Promise.resolve([]);
       a.settle = null;
       onSolidRef.current?.({ state: 'off', share: 0 });
     };
-  }, [path, program]);
+  }, [path, program, look]);
 
   // The setup's scene: fixture, toolpath, tool, markers.
   useEffect(() => {
@@ -780,30 +1050,65 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     grid.position.copy(v3([center[0], center[1], floorZ - (setup?.jawTopZ !== null && s ? 50 : s ? 30 : 0)]));
     world.add(grid);
 
-    // Jaw hits: red spheres.
+    // Collisions: a red dot where it happens, seen through everything; for a holder in the part also
+    // the slice of the holder that is in the material, in red.
     const hits = new THREE.Group();
+    const sizeOf = new Map(path.tools.map((t) => [t.tool, t]));
+    const hitR = Math.max(1.8, (s ? Math.max(s.max[0] - s.min[0], s.max[1] - s.min[1]) : 60) * 0.015);
     for (const c of setup?.collisions ?? []) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff4d4d }));
-      m.position.copy(v3(c.point));
-      m.userData.move = c.move;
-      hits.add(m);
+      const g = new THREE.Group();
+      g.userData.move = c.move;
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(hitR, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff4d4d, transparent: true, depthTest: false }));
+      dot.renderOrder = 12;
+      dot.position.copy(v3(c.point));
+      g.add(dot);
+      if (c.what === 'holderPart') {
+        const { radius } = holderOf(path.moves[c.move]?.dia ?? sizeOf.get(c.tool ?? -1)?.diameter ?? 6);
+        const h = Math.max(c.depth, 0.4);
+        const geo = new THREE.CylinderGeometry(radius, radius, h, 48);
+        // Seen through the part: it is inside the material.
+        const zone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.4, depthWrite: false, depthTest: false }));
+        zone.renderOrder = 11;
+        zone.position.copy(v3([c.point[0], c.point[1], c.point[2] + h / 2]));
+        const rim = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xff8080, depthTest: false }));
+        rim.renderOrder = 11;
+        zone.add(rim);
+        g.add(zone);
+      }
+      hits.add(g);
     }
     world.add(hits);
 
     // Tool: cutter plus holder, bottom at the tool tip.
+    // The tool turned from its outline (drill tip, ball, face mill...), the holder as checked, both
+    // with their edges drawn.
     const tool = new THREE.Group();
     const cutterMat = new THREE.MeshStandardMaterial({ color: 0xe8edf5, metalness: 0.8, roughness: 0.25, transparent: true, opacity: 0.9 });
     const holderMat = new THREE.MeshStandardMaterial({ color: 0x55627a, metalness: 0.6, roughness: 0.4 });
-    const cutter = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), cutterMat);
-    const holder = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), holderMat);
-    // Pointed tools (chamfer, spot drill, drill) get their tip: a cone under the cutter.
-    const tipMesh = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 64), cutterMat);
-    tipMesh.rotation.x = Math.PI;
-    tool.add(cutter, holder, tipMesh);
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x0b1018, transparent: true, opacity: 0.6 });
+    const cutter = new THREE.Mesh(new THREE.BufferGeometry(), cutterMat);
+    const holder = new THREE.Mesh(new THREE.BufferGeometry(), holderMat);
+    const cutterEdges = new THREE.LineSegments(new THREE.BufferGeometry(), edgeMat);
+    const holderEdges = new THREE.LineSegments(new THREE.BufferGeometry(), edgeMat);
+    cutter.castShadow = holder.castShadow = true;
+    tool.add(cutter, holder, cutterEdges, holderEdges);
     world.add(tool);
     a.setupObjects.push(tool);
-    const sizeOf = new Map(path.tools.map((t) => [t.tool, t]));
-    const hitMoves = new Set((setup?.collisions ?? []).map((c) => c.move));
+    const turned = (mesh: THREE.Mesh, lines: THREE.LineSegments, outline: THREE.Vector2[]) => {
+      mesh.geometry.dispose();
+      mesh.geometry = new THREE.LatheGeometry(outline, 48);
+      lines.geometry.dispose();
+      lines.geometry = new THREE.EdgesGeometry(mesh.geometry, 25);
+    };
+    const hitList = setup?.collisions ?? [];
+    const hitAt = new Map<number, (typeof hitList)[number]>();
+    for (const c of hitList) if (!hitAt.has(c.move)) hitAt.set(c.move, c);
+    // A tool (or holder) into the jaws turns the jaws red.
+    const jawHitMoves = hitList.filter((c) => c.what !== 'holderPart').map((c) => c.move);
+    const red = (m: THREE.MeshStandardMaterial, on: boolean, base: number) => {
+      m.color.set(on ? 0xff4040 : base);
+      m.emissive.set(on ? 0x8a0000 : 0x000000);
+    };
 
     let toolOn: string | undefined;
     a.progress = (pos: number) => {
@@ -848,33 +1153,35 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const len = cur.reach ?? (big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80));
           const slope = tipSlope(info?.label ?? '');
           const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
-          tipMesh.visible = tipH > 0;
-          if (tipH > 0) {
-            tipMesh.scale.set(r, tipH, r);
-            tipMesh.position.set(0, tipH / 2, 0);
-          }
-          cutter.scale.set(r, len - tipH, r);
-          cutter.position.set(0, tipH + (len - tipH) / 2, 0);
+          turned(cutter, cutterEdges, cutterProfile(shapeOf(info?.label ?? '', r), r, len, tipH));
           const { radius: hr, height: hh } = holderOf(r * 2);
-          holder.scale.set(hr, hh, hr);
-          holder.position.set(0, len + hh / 2, 0);
+          turned(holder, holderEdges, holderProfile(hr, hh, len));
         }
         tool.position.copy(v3(at.p));
-        const hit = hitMoves.has(first + k);
-        cutterMat.color.set(hit ? 0xff5c5c : 0xe8edf5);
-        jaws.forEach((j) => j.color.set(hit ? 0xa84a4a : STEEL_DARK.color));
+        // At a collision: what hits turns red, the tool into the jaws or its holder.
+        const hit = hitAt.get(first + k);
+        red(cutterMat, !!hit && !hit.what, 0xe8edf5);
+        red(holderMat, !!hit && !!hit.what, 0x55627a);
         // The solid as it is with the tool right here.
         a.meshAt = instant(first + k + at.cut);
       }
       const reached = cur ? first + k : first - 1;
-      hits.children.forEach((h) => ((h as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a));
+      // Bright once the tool got there (dim before), and the jaws red from the first hit into them on.
+      hits.children.forEach((h) =>
+        h.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
+          if (m && (o as THREE.Mesh).isMesh) m.color.set(h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a);
+        }),
+      );
+      const jawHit = jawHitMoves.some((m) => m <= reached);
+      jaws.forEach((j) => red(j, jawHit, j.userData.base ?? STEEL_DARK.color));
       a.requestMesh(a.meshAt);
       a.invalidate();
     };
     a.shownPos = clockRef.current.current;
     a.progress(a.shownPos);
 
-    a.fit = () => {
+    a.frame = () => {
       const bb = new THREE.Box3();
       if (s) bb.expandByObject(stockGroup).expandByObject(fixture);
       if (feedPos.length) {
@@ -884,8 +1191,20 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         bb.union(pb);
       }
       if (bb.isEmpty()) bb.setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(50, 50, 50));
-      const c = bb.getCenter(new THREE.Vector3());
-      const size = bb.getSize(new THREE.Vector3()).length();
+      return { c: bb.getCenter(new THREE.Vector3()), size: bb.getSize(new THREE.Vector3()).length() };
+    };
+    a.fit = () => {
+      const { c, size } = a.frame();
+      // The shadows: the key light from above-front-right, its shadow box round what is framed.
+      a.key.position.copy(c).addScaledVector(new THREE.Vector3(120, 260, 180).normalize(), size * 1.5);
+      a.key.target.position.copy(c);
+      a.key.target.updateMatrixWorld();
+      const sc = a.key.shadow.camera;
+      sc.left = sc.bottom = -size * 0.75;
+      sc.right = sc.top = size * 0.75;
+      sc.near = size * 0.2;
+      sc.far = size * 3;
+      sc.updateProjectionMatrix();
       controls.target.copy(c);
       camera.up.set(0, 1, 0);
       camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.25));
@@ -1407,6 +1726,45 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     a.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup, jump]);
+
+  // Outlines (in a colour that stands out on this material) and the section.
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    a.outline = outline ? LOOKS[look].edge : null;
+    a.invalidate();
+  }, [outline, look]);
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    a.section = section;
+    a.applySection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section?.axis, section?.at]);
+
+  // Top, front or the usual 3/4 view, flown to (of the part alone when it is shown alone).
+  useEffect(() => {
+    const a = api.current;
+    if (!a || !view) return;
+    const box = !a.world.visible && a.solidReady ? new THREE.Box3().setFromObject(a.solid) : null;
+    const { c, size } = box && !box.isEmpty() ? { c: box.getCenter(new THREE.Vector3()), size: box.getSize(new THREE.Vector3()).length() } : a.frame();
+    const dir = view.kind === 'top' ? new THREE.Vector3(0, 1, 0) : view.kind === 'front' ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0.7, 1.05, 1).normalize();
+    // Seen from the top, machine +Y points up the screen.
+    const up = view.kind === 'top' ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+    a.controls.flyTo(c.clone().addScaledVector(dir, size * 1.25), c, up);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view?.key]);
+
+  // A collision: fly close to where it happens, from the side the camera is on.
+  useEffect(() => {
+    const a = api.current;
+    if (!a || !focus) return;
+    const p = v3(focus.point);
+    const dir = a.camera.position.clone().sub(a.controls.target).normalize();
+    const d = Math.max(a.frame().size * 0.45, 40);
+    a.controls.flyTo(p.clone().addScaledVector(dir, d), p, a.camera.up.clone(), 700);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.key]);
 
   return <div ref={host} className="absolute inset-0 cursor-grab active:cursor-grabbing touch-none" />;
 }

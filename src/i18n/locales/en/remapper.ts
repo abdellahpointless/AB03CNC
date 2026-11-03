@@ -260,6 +260,16 @@ const remapper = {
   },
   /** Toolpath preview (components/ToolpathViewer). */
   toolpath: {
+    section: 'Section',
+    sectionHelp: 'Cut the part open across X, Y or Z to see inside its holes and walls',
+    sectionAxis: 'Cut across',
+    sectionAt: 'How much is cut away',
+    outline: 'Outlines',
+    outlineHelp: 'Draw the edges of the part, the vise and the tool',
+    views: 'Camera views',
+    viewKind: { top: 'Top', front: 'Front', iso: '3/4' },
+    material: { plain: '', alu: 'Aluminium', steel: 'Steel', brass: 'Brass (MS)', pom: 'POM', fh: 'FH (layered wood)' },
+    openHitTitle: 'A collision: see where it happens in the toolpath',
     soon: {
       badge: 'Coming soon',
       title: 'The toolpath viewer is coming soon',

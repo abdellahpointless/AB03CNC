@@ -17,6 +17,31 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-03-toolpath-look',
+    date: '2026-11-03',
+    feature: 'toolpath',
+    en: {
+      title: 'Toolpath: easier to turn, real materials, collisions in red',
+      items: [
+        'Turning the part works like CAD software: it turns round the point you grab, never tips sideways, and stops when you let go. Right-drag moves the view; double-click picks a new centre; Top, Front and 3/4 views.',
+        'Materials look like the real part: POM black, FH layered wood with its white top, brass, aluminium, steel. Outlines make every edge stand out.',
+        'Section: cut the part open across X, Y or Z to look inside holes and walls.',
+        'Tools have their real shape (drill tips, chamfers, ball noses, face mills) and the holder its collet nut.',
+        'A collision turns the Toolpath button red; it opens right where it happens, with the jaws or the holder in red.',
+      ],
+    },
+    tr: {
+      title: 'Takım yolu: daha kolay döndürme, gerçek malzemeler, kırmızı çarpışmalar',
+      items: [
+        'Parçayı döndürmek CAD yazılımındaki gibi: tuttuğunuz noktanın etrafında döner, yana yatmaz ve bıraktığınızda durur. Sağ sürükleme görünümü kaydırır; çift tıklama yeni bir merkez seçer; Üst, Ön ve 3/4 görünümleri.',
+        'Malzemeler gerçek parça gibi görünür: siyah POM, beyaz üst yüzeyli katmanlı FH ahşap, pirinç, alüminyum, çelik. Kenarlar her kenarı öne çıkarır.',
+        'Kesit: deliklerin ve duvarların içine bakmak için parçayı X, Y veya Z boyunca kesin.',
+        'Takımlar gerçek şekillerinde (matkap uçları, pah takımları, küresel uçlar, tarama kafaları), tutucu da pens somunuyla.',
+        'Bir çarpışma Takım yolu düğmesini kırmızı yapar; düğme çarpışmanın olduğu yerde açılır, çeneler veya tutucu kırmızıdır.',
+      ],
+    },
+  },
+  {
     id: '2026-11-02-beta-holders',
     date: '2026-11-02',
     feature: 'toolpath',

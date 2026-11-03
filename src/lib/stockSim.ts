@@ -82,15 +82,15 @@ export function tipSlope(label: string): number | null {
   const l = label.toUpperCase();
   const half = (deg: number) => Math.tan((deg * Math.PI) / 180);
   if (/GEWINDE|REIBAHLE|\bGB_|\bRA_/.test(l)) return null;
-  if (/STICHEL|FASE|SENKER|CHAMFER|ANFAS|ENTGRAT|KEGEL|\bST_/.test(l)) {
+  if (/STICHEL|FASE|SENKER|CHAMFER|CHANFREIN|ANFAS|ENTGRAT|KEGEL|\bST_/.test(l)) {
     // "ST_04.00_025_G45": 45° per side. "90 GRAD STICHEL": 90° point.
     const code = l.match(/_G(\d{2})(?:_|\b)/);
     if (code) return half(Number(code[1]));
     const point = l.match(/(\d{2,3})\s*(?:GRAD|°)/);
     return half(point ? Number(point[1]) / 2 : 45);
   }
-  if (/ZENTRIER|ANBOHR|NC-ANB|SPOT|\bZB_|\bNC_/.test(l)) return half(45);
-  if (/BOHRER|BOHREN|\bSB_|DRILL/.test(l)) return half(59);
+  if (/ZENTRIER|ANBOHR|NC-ANB|SPOT|POINTEUR|\bZB_|\bNC_/.test(l)) return half(45);
+  if (/BOHRER|BOHREN|\bSB_|DRILL|\bFORET/.test(l)) return half(59);
   return null;
 }
 

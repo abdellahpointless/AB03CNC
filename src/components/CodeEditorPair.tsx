@@ -254,6 +254,8 @@ export default function CodeEditorPair({
   const collisions = useCollisionCheck(toolpathOn && outputCode && !isOutputStale ? outputCode : '', machineBrand, checkAgain);
   const exportBlocked = collisions.checking || collisions.hits.length > 0;
   const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);
+  // A collision in the code shown: the toolpath button turns red and opens where it happens.
+  const hitShown = toolpathOn && !!outputCode && !isOutputStale && collisions.hits.length > 0;
 
   const copyToClipboard = async () => {
     if (!outputCode || isOutputStale || exportBlocked) return;
@@ -616,10 +618,10 @@ export default function CodeEditorPair({
                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
                 aria-disabled={(countryOn && !toolpathOn) || undefined}
                 aria-haspopup={countryOn ? undefined : 'dialog'}
-                className={`btn-secondary text-xs py-1 px-2.5 ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
-                title={toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
+                className={`btn-secondary text-xs py-1 px-2.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
+                title={hitShown ? t('toolpath.openHitTitle') : toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
               >
-                {toolpathOn ? <Route size={13} /> : <Lock size={13} />}
+                {hitShown ? <ShieldAlert size={13} /> : toolpathOn ? <Route size={13} /> : <Lock size={13} />}
                 <span className="hidden sm:inline">{t('toolpath.open')}</span>
                 {toolpathOn && toolpathNew && <span className="rounded-full bg-[var(--accent-primary)] px-1.5 py-px text-[10px] font-bold leading-4 text-white">{t('toolpath.new')}</span>}
                 {!toolpathOn && <span className="sr-only">{t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}</span>}
@@ -658,7 +660,7 @@ export default function CodeEditorPair({
                 </span>
               ) : (
                 <>
-                  <span className="inline-flex items-center gap-2 font-semibold text-[var(--rose-500)]">
+                  <span className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)]">
                     <ShieldAlert size={14} /> {t('editor.collisionBlocked', { count: collisions.hits.length })}
                   </span>
                   <span className="flex flex-wrap gap-1.5">
@@ -734,12 +736,12 @@ export default function CodeEditorPair({
                   const flagged = safetyLines.get(i);
                   if (flagged) {
                     lineClass = flagged === 'error'
-                      ? 'bg-[var(--rose-500)]/15 text-[var(--rose-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--rose-500)]'
+                      ? 'bg-[var(--rose-500)]/15 text-[var(--rose-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--rose-500)]'
                       : 'bg-[var(--orange-500)]/15 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)] border-dashed';
                   } else if (isApprox) {
                     lineClass = 'bg-[var(--orange-500)]/20 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)]';
                   } else if (isChanged) {
-                    lineClass = 'bg-[var(--green-500)]/15 text-[var(--green-500)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--green-500)]';
+                    lineClass = 'bg-[var(--green-500)]/15 text-[var(--green-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--green-500)]';
                   }
                   
                   return (
@@ -770,6 +772,7 @@ export default function CodeEditorPair({
               setCheckAgain((n) => n + 1);
             }}
             holderHits={outputCode && !isOutputStale ? holderHits : undefined}
+            focusHit={hitShown}
           />
         </Suspense>
       )}
