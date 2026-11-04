@@ -68,8 +68,8 @@ export interface SetupInfo {
    * be done as written. The position is followed; the user is warned to check the flip.
    */
   conflict: boolean;
-  /** "15 MM ZWISCHENLAGE IN Y-": a plate between the part and the jaw (or the stop) on that side. */
-  spacer: { mm: number; side: Face } | null;
+  /** "15 MM ZWISCHENLAGE IN Y-": plates between the part and a jaw (or the stop), one per side written. */
+  spacers: { mm: number; side: Face }[];
   /** vise; module: the shop's modular clamp (a vise too, same 45 mm jaws); fixture: held in a fixture. */
   clamp: 'vise' | 'module' | 'fixture' | null;
   side: 'back' | 'front' | null;
@@ -121,7 +121,7 @@ export interface SetupOptions {
 }
 
 /** Thickness of the spacer on that side of the part (0 when there is none there). */
-export const spacerAt = (s: { spacer: SetupInfo['spacer'] }, side: Face) => (s.spacer?.side === side ? s.spacer.mm : 0);
+export const spacerAt = (s: { spacers: SetupInfo['spacers'] }, side: Face) => s.spacers.find((x) => x.side === side)?.mm ?? 0;
 
 /** Floor to top of the vise jaws: the same on every vise in the shop. */
 export const DEFAULT_JAW_HEIGHT = 45;
@@ -211,9 +211,10 @@ export function readInstructions(notes: string[]) {
   const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
   // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
   const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
-  const spacerA = t.match(new RegExp(`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`));
-  const spacerB = t.match(new RegExp(`${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`));
-  const spacer = spacerA ?? spacerB;
+  // Every one written counts ("IN Y-" and "IN Y+": one plate on each side); the last one per side wins.
+  const spacers = new Map<Face, number>();
+  for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`])
+    for (const m of t.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
@@ -230,7 +231,7 @@ export function readInstructions(notes: string[]) {
     support: sup ? num(sup[1]) : null,
     restDepth: thick ? num(thick[1]) : null,
     restAbove: above ? num(above[1]) : null,
-    spacer: spacer ? { mm: num(spacer[1]), side: spacer[2].replace(/\s/g, '') as Face } : null,
+    spacers: [...spacers].map(([side, mm]) => ({ mm, side })),
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
     // "FIXATION AVEC LES BRIDES": strap clamps on the table, no vise.
@@ -859,17 +860,16 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     };
     const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
     // The spacer ("ZWISCHENLAGE") between the part and a jaw or the stop, as high as the jaws.
-    const sp = ins.spacer;
-    const spacerBox: [number, number, number, number] | null = !sp
-      ? null
-      : sp.side === 'Y-'
+    const spacerBoxes = ins.spacers.map((sp): [number, number, number, number] =>
+      sp.side === 'Y-'
         ? [info.jawX[0], info.jawX[1], jawY[0], jaw.min[1]]
         : sp.side === 'Y+'
           ? [info.jawX[0], info.jawX[1], jaw.max[1], jawY[1]]
           : sp.side === 'X-'
             ? [jaw.min[0] - sp.mm, jaw.min[0], jaw.min[1], jaw.max[1]]
-            : null;
-    const inSpacer = (p: Vec, r: number) => !!spacerBox && p[0] + r > spacerBox[0] && p[0] - r < spacerBox[1] && p[1] + r > spacerBox[2] && p[1] - r < spacerBox[3];
+            : [0, 0, 0, 0],
+    );
+    const inSpacer = (p: Vec, r: number) => spacerBoxes.some((b) => p[0] + r > b[0] && p[0] - r < b[1] && p[1] + r > b[2] && p[1] - r < b[3]);
     let caleOpen: Collision | null = null;
     idx.forEach((mi) => {
       const m = tp.moves[mi];
@@ -881,7 +881,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       let holderHere: Collision | null = null;
       let caleHere: Collision | null = null;
       for (const p of samples(m)) {
-        if (spacerBox && inSpacer(p, r) && p[2] < info.jawTopZ! - 0.01 && (!caleHere || info.jawTopZ! - p[2] > caleHere.depth))
+        if (inSpacer(p, r) && p[2] < info.jawTopZ! - 0.01 && (!caleHere || info.jawTopZ! - p[2] > caleHere.depth))
           caleHere = { move: mi, line: m.line, tool: m.tool, point: p, depth: info.jawTopZ! - p[2], what: 'spacer' };
         if (length && over(p, holder)) {
           const below = info.jawTopZ! - (p[2] + length);

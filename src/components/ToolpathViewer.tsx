@@ -368,7 +368,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
     if (s.restDepth !== null) out.push(t('toolpath.ins.restDepth', { mm: fmtNumber(s.restDepth) }));
     if (s.restAbove !== null) out.push(t('toolpath.ins.restAbove', { mm: fmtNumber(s.restAbove) }));
-    if (s.spacer) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(s.spacer.mm), side: s.spacer.side }));
+    for (const sp of s.spacers) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(sp.mm), side: sp.side }));
     if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));
     if (s.marker) out.push(t('toolpath.ins.marker', { name: s.marker.name, faces: s.marker.faces.join(' ') }));
     return out;
@@ -744,14 +744,14 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                         [[sel.stock.max[1] + spacerAt(sel, 'Y+'), sel.stock.max[1] + spacerAt(sel, 'Y+') + 24], [sel.stock.min[1] - spacerAt(sel, 'Y-') - 24, sel.stock.min[1] - spacerAt(sel, 'Y-')]].map(([a, b], i) => (
                           <rect key={i} x={sel.jawX[0]} y={-b} width={sel.jawX[1] - sel.jawX[0]} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                         ))}
-                      {sel.jawTopZ !== null && sel.spacer && (() => {
-                        // The spacer plate between the part and the jaw or the stop.
-                        const { mm, side } = sel.spacer;
-                        const st = sel.stock;
-                        const [x0, x1, y0, y1] =
-                          side === 'Y-' ? [sel.jawX[0], sel.jawX[1], st.min[1] - mm, st.min[1]] : side === 'Y+' ? [sel.jawX[0], sel.jawX[1], st.max[1], st.max[1] + mm] : side === 'X-' ? [st.min[0] - mm, st.min[0], st.min[1], st.max[1]] : [0, 0, 0, 0];
-                        return x1 > x0 && <rect x={x0} y={-y1} width={x1 - x0} height={y1 - y0} fill="#C9D3E0" fillOpacity={0.25} stroke="#C9D3E0" strokeOpacity={0.6} strokeDasharray="3 2" strokeWidth={1} vectorEffect="non-scaling-stroke" />;
-                      })()}
+                      {sel.jawTopZ !== null &&
+                        sel.spacers.map(({ mm, side }) => {
+                          // A spacer plate between the part and a jaw or the stop.
+                          const st = sel.stock!;
+                          const [x0, x1, y0, y1] =
+                            side === 'Y-' ? [sel.jawX[0], sel.jawX[1], st.min[1] - mm, st.min[1]] : side === 'Y+' ? [sel.jawX[0], sel.jawX[1], st.max[1], st.max[1] + mm] : side === 'X-' ? [st.min[0] - mm, st.min[0], st.min[1], st.max[1]] : [0, 0, 0, 0];
+                          return x1 > x0 && <rect key={side} x={x0} y={-y1} width={x1 - x0} height={y1 - y0} fill="#C9D3E0" fillOpacity={0.25} stroke="#C9D3E0" strokeOpacity={0.6} strokeDasharray="3 2" strokeWidth={1} vectorEffect="non-scaling-stroke" />;
+                        })}
                       <rect x={sel.stock.min[0]} y={-sel.stock.max[1]} width={sel.stock.max[0] - sel.stock.min[0]} height={sel.stock.max[1] - sel.stock.min[1]} fill="#B9C6DA" fillOpacity={0.08} stroke="#B9C6DA" strokeOpacity={0.6} strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
                     </g>
                   )}

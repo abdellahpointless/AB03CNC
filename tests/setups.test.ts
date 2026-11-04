@@ -53,7 +53,7 @@ describe('setups', () => {
     expect(readInstructions(['TEIL MIT/90 IN X /Z+ IN Y-/ 21.5 IN X UND 24.5 IN Y EINSPANNEN'])).toMatchObject({ rotation: { axis: 'X', deg: 90 }, topToward: 'Y-', sizes: { x: 21.5, y: 24.5 } });
     expect(readInstructions(['MOD. SPANNEN F. RUECKS./50 IN XY'])).toMatchObject({ clamp: 'module', side: 'back', sizes: { x: 50, y: 50 } });
     expect(readInstructions(['MOD. HOCHKANT/PERS. Y+/RAFI X- Z-', '8 MM UNTERLAGE'])).toMatchObject({ onEdge: true, marker: { name: 'RAFI', faces: ['X-', 'Z-'] }, support: 8 });
-    expect(readInstructions(['MOD.SPANNEN F. FRONTSEITE /50 IN X /TASTER IN X+ Y-', '50 MM ZWISCHENLAGE IN X-'])).toMatchObject({ side: 'front', marker: { name: 'TASTER', faces: ['X+', 'Y-'] }, spacer: { mm: 50, side: 'X-' } });
+    expect(readInstructions(['MOD.SPANNEN F. FRONTSEITE /50 IN X /TASTER IN X+ Y-', '50 MM ZWISCHENLAGE IN X-'])).toMatchObject({ side: 'front', marker: { name: 'TASTER', faces: ['X+', 'Y-'] }, spacers: [{ mm: 50, side: 'X-' }] });
   });
 
   it('places the part and the jaws in each setup', () => {
@@ -144,7 +144,7 @@ describe('setups', () => {
     expect(r('F. RUECKS./60 UM X UND 66 UM Y /RAFI IN X+Y-')).toMatchObject({ side: 'back', sizes: { x: 60, y: 66 }, marker: { faces: ['X+', 'Y-'] } });
     expect(r(' 41  MM UNTERLAGE  / UNTER MASS 5 MM')).toMatchObject({ support: 41, restAbove: 5, restDepth: null });
     expect(r('36 MM UNTERLAGE IN EP 16 MM')).toMatchObject({ support: 36, restDepth: 16, restAbove: null });
-    expect(r('15 MM ZWISCHENLAGE IN Y- IN EP 18.55 POUR LE BON FIXATION').spacer).toEqual({ mm: 15, side: 'Y-' });
+    expect(r('15 MM ZWISCHENLAGE IN Y- IN EP 18.55 POUR LE BON FIXATION').spacers).toEqual([{ mm: 15, side: 'Y-' }]);
     expect(r('MISE EN POSITION SUR LA TABLE 8 MM UNTERLAGE').support).toBe(8);
     expect(r('FIXATION AVEC LES BRIDES SENS Y ET DEMONTER LES BRIDES SEN X').clamp).toBe('fixture');
     expect(r('MOD. SPANNEN F. RUECKS./100 IN X/RAF X+Y-').marker).toEqual({ name: 'RAFI', faces: ['X+', 'Y-'] });
@@ -200,12 +200,14 @@ describe('setups', () => {
     expect(partSizes([' INSERT (TOP PLATE FH // 150X100X30 ) '])).toMatchObject({ finished: [150, 100, 30], raw: null });
     expect(readInstructions(['TEIL MIT 104 UM X UND 54 UM Y EINSPANNEN']).sizes).toEqual({ x: 104, y: 54 });
     expect(readInstructions(['36 MM UNTERLAGE IN 21MM'])).toMatchObject({ support: 36, restDepth: 21 });
-    expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-']).spacer).toEqual({ mm: 15, side: 'Y-' });
+    expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-']).spacers).toEqual([{ mm: 15, side: 'Y-' }]);
     // The same plate under its other names, number before or after.
-    expect(readInstructions(['10 MM INTERCALE EN Y+']).spacer).toEqual({ mm: 10, side: 'Y+' });
-    expect(readInstructions(['INTERCALLE 20MM X-']).spacer).toEqual({ mm: 20, side: 'X-' });
-    expect(readInstructions(['UNTERCALE 15 MM IN Y-']).spacer).toEqual({ mm: 15, side: 'Y-' });
-    expect(readInstructions(['36 MM UNTERLAGE']).spacer).toBeNull();
+    expect(readInstructions(['10 MM INTERCALE EN Y+']).spacers).toEqual([{ mm: 10, side: 'Y+' }]);
+    expect(readInstructions(['INTERCALLE 20MM X-']).spacers).toEqual([{ mm: 20, side: 'X-' }]);
+    expect(readInstructions(['UNTERCALE 15 MM IN Y-']).spacers).toEqual([{ mm: 15, side: 'Y-' }]);
+    expect(readInstructions(['36 MM UNTERLAGE']).spacers).toEqual([]);
+    // One on each side: both plates, the part held between them.
+    expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-', '15 MM ZWISCHENLAGE IN Y+']).spacers).toEqual([{ mm: 15, side: 'Y-' }, { mm: 15, side: 'Y+' }]);
   });
 
   it('turns the part over when a later clamping first says it is the back side (O0162220)', () => {
@@ -236,6 +238,12 @@ describe('setups', () => {
     expect(analyseSetups(parseToolpath(toFront, S), { jawHeight: 60 })[0].collisions).toHaveLength(1);
     const spaced = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (15 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
     expect(spacerAt(spaced, 'Y-')).toBe(15);
+    // With a spacer on the back too, both are kept: the one against the fixed back jaw pushes the
+    // part 15 mm toward the operator, so this cut now stays inside the part.
+    const both = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (15 MM ZWISCHENLAGE IN Y-)\nM0 (15 MM ZWISCHENLAGE IN Y+)'), S), { jawHeight: 60 })[0];
+    expect([spacerAt(both, 'Y-'), spacerAt(both, 'Y+')]).toEqual([15, 15]);
+    expect(both.stock!.max[1]).toBeCloseTo(spaced.stock!.max[1] - 15, 5);
+    expect(both.collisions).toEqual([]);
     // Not the jaw (export goes on), but the spacer: fine, it is there to be cut into (green).
     expect(spaced.collisions.map((c) => c.what)).toEqual(['spacer']);
     // A thin spacer is not enough: the D10 reaches 13 mm past the part, into the jaw too.

@@ -157,13 +157,13 @@ function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; r
  * jaw at the front (Y-) with its screw, and the stop on the left that the part is pushed against.
  * The jaw plates and the stop touch the part's real faces (grip), so nothing cuts into it.
  */
-function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip'], spacer: SetupInfo['spacer']) {
+function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip'], spacers: SetupInfo['spacers']) {
   const g = new THREE.Group();
   const [x0, x1] = jawX;
   const front = grip?.front ?? hold.min[1];
   const back = grip?.back ?? hold.max[1];
   // The jaw plates stand a spacer's thickness off the part on the side it is written.
-  const cb = { min: [hold.min[0], front - spacerAt({ spacer }, 'Y-')], max: [hold.max[0], back + spacerAt({ spacer }, 'Y+')] };
+  const cb = { min: [hold.min[0], front - spacerAt({ spacers }, 'Y-')], max: [hold.max[0], back + spacerAt({ spacers }, 'Y+')] };
   const cx = (x0 + x1) / 2;
   const body = floorZ - 34;
   // Body and the bed the jaws run on.
@@ -190,14 +190,16 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
   moving.add(hex);
   // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
-  const plate =
-    spacer?.side === 'Y-' ? steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU)
-    : spacer?.side === 'Y+' ? steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU)
-    : spacer?.side === 'X-' ? steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + spacer.mm, back, jawTop], ALU)
-    : null;
-  if (plate) (spacer!.side === 'Y-' ? moving : g).add(plate);
-  // Its edges turn green once a tool has cut into it (fine: that is what it is there for).
-  const spacerEdges = plate ? { lines: (plate.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial, face: (plate.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial } : null;
+  const plates = spacers.map((sp) => {
+    const plate =
+      sp.side === 'Y-' ? steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU)
+      : sp.side === 'Y+' ? steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU)
+      : steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + sp.mm, back, jawTop], ALU);
+    (sp.side === 'Y-' ? moving : g).add(plate);
+    return plate;
+  });
+  // Their edges turn green once a tool has cut into one (fine: that is what they are there for).
+  const spacerEdges = plates.length ? { lines: plates.map((p) => (p.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial), face: plates.map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial) } : null;
   g.add(moving);
   // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
@@ -261,7 +263,7 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
   const group = new THREE.Group();
   if (setup.jawTopZ !== null) {
     const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
-    const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacer);
+    const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacers);
     group.add(vise.group);
     // The top of the jaws as a thin red line, for the jaw check.
     const line = new THREE.LineSegments(
@@ -275,7 +277,7 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
   // A fixture: a steel block under the part, with the stop on the left.
   group.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
   group.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
-  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[], spacerEdges: null as { lines: THREE.LineBasicMaterial; face: THREE.MeshStandardMaterial } | null };
+  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[], spacerEdges: null as { lines: THREE.LineBasicMaterial[]; face: THREE.MeshStandardMaterial[] } | null };
 }
 
 /**
@@ -583,7 +585,7 @@ interface Api {
   /** The cales (parallels) of the setup shown. */
   cales: THREE.Group | null;
   /** The spacer plate's edges (green once a tool cut into it). */
-  spacerEdges: { lines: THREE.LineBasicMaterial; face: THREE.MeshStandardMaterial } | null;
+  spacerEdges: { lines: THREE.LineBasicMaterial[]; face: THREE.MeshStandardMaterial[] } | null;
   /** Instant last drawn (see clock). */
   shownPos: number;
   /** Instant of the program the solid should show (see stockSim SUB). */
@@ -1180,9 +1182,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       caleMats.forEach((m) => m.emissive.set(caleHit ? 0x6a4a00 : 0x000000));
       const spacerHit = spacerHitMoves.some((m) => m <= reached);
       if (a.spacerEdges) {
-        a.spacerEdges.lines.color.set(spacerHit ? 0x34d399 : 0x2a313d);
-        a.spacerEdges.lines.opacity = spacerHit ? 1 : 0.35;
-        a.spacerEdges.face.emissive.set(spacerHit ? 0x0e5a3a : 0x000000);
+        for (const l of a.spacerEdges.lines) {
+          l.color.set(spacerHit ? 0x34d399 : 0x2a313d);
+          l.opacity = spacerHit ? 1 : 0.35;
+        }
+        for (const f of a.spacerEdges.face) f.emissive.set(spacerHit ? 0x0e5a3a : 0x000000);
       }
       a.requestMesh(a.meshAt);
       a.invalidate();
