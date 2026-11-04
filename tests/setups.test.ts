@@ -201,6 +201,11 @@ describe('setups', () => {
     expect(readInstructions(['TEIL MIT 104 UM X UND 54 UM Y EINSPANNEN']).sizes).toEqual({ x: 104, y: 54 });
     expect(readInstructions(['36 MM UNTERLAGE IN 21MM'])).toMatchObject({ support: 36, restDepth: 21 });
     expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-']).spacer).toEqual({ mm: 15, side: 'Y-' });
+    // The same plate under its other names, number before or after.
+    expect(readInstructions(['10 MM INTERCALE EN Y+']).spacer).toEqual({ mm: 10, side: 'Y+' });
+    expect(readInstructions(['INTERCALLE 20MM X-']).spacer).toEqual({ mm: 20, side: 'X-' });
+    expect(readInstructions(['UNTERCALE 15 MM IN Y-']).spacer).toEqual({ mm: 15, side: 'Y-' });
+    expect(readInstructions(['36 MM UNTERLAGE']).spacer).toBeNull();
   });
 
   it('turns the part over when a later clamping first says it is the back side (O0162220)', () => {
@@ -231,10 +236,10 @@ describe('setups', () => {
     expect(analyseSetups(parseToolpath(toFront, S), { jawHeight: 60 })[0].collisions).toHaveLength(1);
     const spaced = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (15 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
     expect(spacerAt(spaced, 'Y-')).toBe(15);
-    // Not the jaw (export goes on), but the spacer: a cale warning there.
-    expect(spaced.collisions.map((c) => c.what)).toEqual(['cale']);
+    // Not the jaw (export goes on), but the spacer: fine, it is there to be cut into (green).
+    expect(spaced.collisions.map((c) => c.what)).toEqual(['spacer']);
     // A thin spacer is not enough: the D10 reaches 13 mm past the part, into the jaw too.
     const thin = analyseSetups(parseToolpath(toFront.replace('M0 (38 MM UNTERLAGE)', 'M0 (38 MM UNTERLAGE)\nM0 (5 MM ZWISCHENLAGE IN Y-)'), S), { jawHeight: 60 })[0];
-    expect(thin.collisions.filter((c) => c.what !== 'cale')).toHaveLength(1);
+    expect(thin.collisions.filter((c) => c.what !== 'spacer')).toHaveLength(1);
   });
 });

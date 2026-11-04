@@ -33,10 +33,10 @@ export interface Collision {
   depth: number;
   /**
    * What hits: the tool (into the jaws, the default), its holder into the jaws, its holder into the
-   * part, or the tool into a cale (a parallel under the part or a spacer beside it). A cale hit is a
-   * warning (move the cale), not a reason to stop the export.
+   * part, the tool into a cale (a parallel under the part: a warning, move the cale), or the tool
+   * into the spacer beside it (fine: the spacer is there to be cut into; shown in green only).
    */
-  what?: 'holder' | 'holderPart' | 'cale';
+  what?: 'holder' | 'holderPart' | 'cale' | 'spacer';
 }
 
 export interface SetupInfo {
@@ -209,7 +209,11 @@ export function readInstructions(notes: string[]) {
   const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM".
   const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
-  const spacer = t.match(new RegExp(`${NUM}\\s*MM\\s*ZWISCHENLAGE\\s*IN\\s*([XYZ]\\s*[+-])`));
+  // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
+  const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
+  const spacerA = t.match(new RegExp(`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`));
+  const spacerB = t.match(new RegExp(`${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`));
+  const spacer = spacerA ?? spacerB;
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
@@ -878,7 +882,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       let caleHere: Collision | null = null;
       for (const p of samples(m)) {
         if (spacerBox && inSpacer(p, r) && p[2] < info.jawTopZ! - 0.01 && (!caleHere || info.jawTopZ! - p[2] > caleHere.depth))
-          caleHere = { move: mi, line: m.line, tool: m.tool, point: p, depth: info.jawTopZ! - p[2], what: 'cale' };
+          caleHere = { move: mi, line: m.line, tool: m.tool, point: p, depth: info.jawTopZ! - p[2], what: 'spacer' };
         if (length && over(p, holder)) {
           const below = info.jawTopZ! - (p[2] + length);
           if (below > 0.01 && (!holderHere || below > holderHere.depth)) holderHere = { move: mi, line: m.line, tool: m.tool, point: [p[0], p[1], p[2] + length], depth: below, what: 'holder' };

@@ -253,7 +253,7 @@ export default function CodeEditorPair({
   const [checkAgain, setCheckAgain] = useState(0);
   const collisions = useCollisionCheck(toolpathOn && outputCode && !isOutputStale ? outputCode : '', machineBrand, checkAgain);
   // A tool into a cale is a warning (move the cale), not a reason to stop the export.
-  const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale'), [collisions.hits]);
+  const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer'), [collisions.hits]);
   const caleHits = useMemo(() => collisions.hits.filter((h) => h.what === 'cale'), [collisions.hits]);
   const exportBlocked = collisions.checking || blocking.length > 0;
   const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);

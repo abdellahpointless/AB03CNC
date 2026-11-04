@@ -54,7 +54,7 @@ describe('real programs against their drawings', () => {
         // Every clamping stands on the machine table (G54 Z-57), and no tool goes into the jaws (a
         // cale in the way is only a warning: the operator moves it).
         if (s.clamp === 'vise' || s.clamp === 'module') expect(s.floorZ! + tp.setups[s.index].shift![2]).toBeCloseTo(TABLE_Z, 1);
-        expect(s.collisions.filter((c) => c.what !== 'cale')).toEqual([]);
+        expect(s.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer')).toEqual([]);
       }
     }, 60_000);
   }

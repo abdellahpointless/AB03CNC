@@ -190,9 +190,14 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
   moving.add(hex);
   // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
-  if (spacer?.side === 'Y-') moving.add(steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU));
-  if (spacer?.side === 'Y+') g.add(steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU));
-  if (spacer?.side === 'X-') g.add(steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + spacer.mm, back, jawTop], ALU));
+  const plate =
+    spacer?.side === 'Y-' ? steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU)
+    : spacer?.side === 'Y+' ? steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU)
+    : spacer?.side === 'X-' ? steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + spacer.mm, back, jawTop], ALU)
+    : null;
+  if (plate) (spacer!.side === 'Y-' ? moving : g).add(plate);
+  // Its edges turn green once a tool has cut into it (fine: that is what it is there for).
+  const spacerEdges = plate ? { lines: (plate.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial, face: (plate.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial } : null;
   g.add(moving);
   // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
@@ -203,7 +208,7 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
     m.userData.base = m.color.getHex();
     return m;
   });
-  return { group: g, moving, jawMats };
+  return { group: g, moving, jawMats, spacerEdges };
 }
 
 /** Steel with the cale's height engraved on it (for its long sides). */
@@ -265,12 +270,12 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
     );
     line.position.copy(v3([(setup.jawX[0] + setup.jawX[1]) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
     group.add(line);
-    return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats };
+    return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats, spacerEdges: vise.spacerEdges };
   }
   // A fixture: a steel block under the part, with the stop on the left.
   group.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
   group.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
-  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[] };
+  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[], spacerEdges: null as { lines: THREE.LineBasicMaterial; face: THREE.MeshStandardMaterial } | null };
 }
 
 /**
@@ -577,6 +582,8 @@ interface Api {
   overlay: THREE.Group;
   /** The cales (parallels) of the setup shown. */
   cales: THREE.Group | null;
+  /** The spacer plate's edges (green once a tool cut into it). */
+  spacerEdges: { lines: THREE.LineBasicMaterial; face: THREE.MeshStandardMaterial } | null;
   /** Instant last drawn (see clock). */
   shownPos: number;
   /** Instant of the program the solid should show (see stockSim SUB). */
@@ -713,6 +720,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       jaw: null,
       overlay,
       cales: null,
+      spacerEdges: null,
       shownPos: NaN,
       meshAt: 0,
       clamp: null,
@@ -996,6 +1004,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const clamp = buildClamp(setup, s, floorZ);
       fixture.add(clamp.group);
       jaws.push(...clamp.jawMats);
+      a.spacerEdges = clamp.spacerEdges;
       a.clamp = clamp.group;
       a.fixture = fixture;
       showThrough(fixture, a.seeThrough);
@@ -1037,7 +1046,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const g = new THREE.Group();
       g.userData.move = c.move;
       g.userData.cale = c.what === 'cale';
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(hitR, 20, 14), new THREE.MeshBasicMaterial({ color: g.userData.cale ? 0xf5b942 : 0xff4d4d, transparent: true, depthTest: false }));
+      g.userData.spacer = c.what === 'spacer';
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(hitR, 20, 14), new THREE.MeshBasicMaterial({ color: g.userData.spacer ? 0x34d399 : g.userData.cale ? 0xf5b942 : 0xff4d4d, transparent: true, depthTest: false }));
       dot.renderOrder = 12;
       dot.position.copy(v3(c.point));
       g.add(dot);
@@ -1083,9 +1093,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const hitAt = new Map<number, (typeof hitList)[number]>();
     for (const c of hitList) if (!hitAt.has(c.move)) hitAt.set(c.move, c);
     // A tool (or holder) into the jaws turns the jaws red.
-    const jawHitMoves = hitList.filter((c) => c.what !== 'holderPart' && c.what !== 'cale').map((c) => c.move);
+    const jawHitMoves = hitList.filter((c) => c.what !== 'holderPart' && c.what !== 'cale' && c.what !== 'spacer').map((c) => c.move);
     // A tool into a cale turns the cales yellow (a warning: move them).
     const caleHitMoves = hitList.filter((c) => c.what === 'cale').map((c) => c.move);
+    const spacerHitMoves = hitList.filter((c) => c.what === 'spacer').map((c) => c.move);
     const caleMats = new Set<THREE.MeshStandardMaterial>();
     a.cales?.traverse((o) => {
       const m = (o as THREE.Mesh).material;
@@ -1160,13 +1171,19 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       hits.children.forEach((h) =>
         h.traverse((o) => {
           const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
-          if (m && (o as THREE.Mesh).isMesh) m.color.set(h.userData.cale ? (h.userData.move <= reached ? 0xf5b942 : 0x7a6a3a) : h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a);
+          if (m && (o as THREE.Mesh).isMesh) m.color.set(h.userData.spacer ? (h.userData.move <= reached ? 0x34d399 : 0x2f6b55) : h.userData.cale ? (h.userData.move <= reached ? 0xf5b942 : 0x7a6a3a) : h.userData.move <= reached ? 0xff4d4d : 0x7a3a3a);
         }),
       );
       const jawHit = jawHitMoves.some((m) => m <= reached);
       jaws.forEach((j) => red(j, jawHit, j.userData.base ?? STEEL_DARK.color));
       const caleHit = caleHitMoves.some((m) => m <= reached);
       caleMats.forEach((m) => m.emissive.set(caleHit ? 0x6a4a00 : 0x000000));
+      const spacerHit = spacerHitMoves.some((m) => m <= reached);
+      if (a.spacerEdges) {
+        a.spacerEdges.lines.color.set(spacerHit ? 0x34d399 : 0x2a313d);
+        a.spacerEdges.lines.opacity = spacerHit ? 1 : 0.35;
+        a.spacerEdges.face.emissive.set(spacerHit ? 0x0e5a3a : 0x000000);
+      }
       a.requestMesh(a.meshAt);
       a.invalidate();
     };
