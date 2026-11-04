@@ -2,8 +2,10 @@ import * as THREE from 'three';
 
 /**
  * Turning the 3D view the way CAD software does:
- *  - drag: turns around the middle of the view (the part stays in view whatever the angle, also
- *    from underneath): left/right around the vertical, up/down over the top, never rolling sideways;
+ *  - drag: turns around the middle of the part (it stays in view whatever the angle, also from
+ *    underneath): left/right around the vertical, up/down over the top, never rolling sideways. The
+ *    pivot is not the point the camera looks at: zooming toward the pointer moves that onto an edge
+ *    and the turn would get stuck there;
  *  - right-drag, middle-drag or Shift+drag: moves the view;
  *  - wheel: zooms toward the pointer; double-click: turns around the point clicked from then on.
  * Nothing keeps spinning once let go.
@@ -11,6 +13,9 @@ import * as THREE from 'three';
 export class Orbit {
   /** The point the camera looks at. */
   readonly target = new THREE.Vector3();
+  /** The middle of the part: what a drag turns around (until a double-click picks another point). */
+  center: () => THREE.Vector3 | null = () => null;
+  private picked: THREE.Vector3 | null = null;
   /** What a drag, zoom or double-click aims at (the part, the vise): picked under the pointer. */
   pickables: () => (THREE.Object3D | null)[] = () => [];
   private drag: { id: number; x: number; y: number; pan: boolean } | null = null;
@@ -52,6 +57,7 @@ export class Orbit {
     const dbl = (e: MouseEvent) => {
       const p = this.pick(e);
       if (!p) return;
+      this.picked = p.clone();
       const shift = p.clone().sub(this.target);
       this.flyTo(this.camera.position.clone().add(shift), p, this.camera.up.clone(), 450);
     };
@@ -83,8 +89,13 @@ export class Orbit {
     return hit ? hit.point.clone() : null;
   }
 
+  /** Forgets a double-clicked pivot: turning goes round the middle of the part again. */
+  resetPivot() {
+    this.picked = null;
+  }
+
   /** Turns the camera and what it looks at around a point, by a drag of dx, dy pixels. */
-  rotate(dx: number, dy: number, pivot = this.target) {
+  rotate(dx: number, dy: number, pivot = this.picked ?? this.center() ?? this.target) {
     const k = (Math.PI * 1.2) / Math.max(200, this.el.clientHeight);
     const cam = this.camera;
     const { right } = this.frame();

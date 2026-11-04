@@ -658,6 +658,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     // Turning like CAD software: around the point grabbed, over the top and underneath, no roll.
     const controls = new Orbit(camera, renderer.domElement, invalidate);
     controls.pickables = () => [api.current?.solid ?? null, api.current?.clamp ?? null, api.current?.cales ?? null];
+    // Turn round the middle of the part (its real shape once built, else what is framed).
+    controls.center = () => {
+      const a = api.current;
+      if (!a) return null;
+      const bb = a.solidReady ? new THREE.Box3().setFromObject(a.solid) : null;
+      return bb && !bb.isEmpty() ? bb.getCenter(new THREE.Vector3()) : a.frame().c;
+    };
     const world = new THREE.Group();
     scene.add(world);
     const solid = new THREE.Group();
@@ -1218,6 +1225,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       sc.near = size * 0.2;
       sc.far = size * 3;
       sc.updateProjectionMatrix();
+      controls.resetPivot();
       controls.target.copy(c);
       camera.up.set(0, 1, 0);
       camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.25));
@@ -1528,6 +1536,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (!bb.isEmpty()) {
         const c = bb.getCenter(new THREE.Vector3());
         const size = bb.getSize(new THREE.Vector3()).length();
+        a.controls.resetPivot();
         a.controls.target.copy(c);
         a.camera.up.set(0, 1, 0);
         a.camera.position.copy(c).add(new THREE.Vector3(0.7, 1.05, 1).normalize().multiplyScalar(size * 1.35));
@@ -1773,6 +1782,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const dir = view.kind === 'top' ? new THREE.Vector3(0, 1, 0) : view.kind === 'front' ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0.7, 1.05, 1).normalize();
     // Seen from the top, machine +Y points up the screen.
     const up = view.kind === 'top' ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+    a.controls.resetPivot();
     a.controls.flyTo(c.clone().addScaledVector(dir, size * 1.25), c, up);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view?.key]);
