@@ -367,6 +367,33 @@ function bySize(options: Mat3[], part: { min: Vec; max: Vec } | null, sizes: { x
   return options.filter((m) => off(m) <= best + 1);
 }
 
+/**
+ * The setup's own cuts must fit on the part: a turn that leaves the part narrower (along machine X
+ * or Y) than what the setup cuts on it cannot be the one (O1705013: cuts 95 mm long in X, so the
+ * 100 × 50 plate keeps its 100 along X). `radius` gives each move's tool radius, null for facing.
+ */
+function byCuts(options: Mat3[], part: { min: Vec; max: Vec } | null, moves: Move[], radius: (m: Move) => number | null): Mat3[] {
+  if (options.length < 2 || !part) return options;
+  const lo: [number, number] = [Infinity, Infinity];
+  const hi: [number, number] = [-Infinity, -Infinity];
+  for (const m of moves) {
+    const r = m.kind === 'rapid' ? null : radius(m);
+    if (r === null) continue;
+    for (const p of m.kind === 'drill' ? [m.points[0]] : m.points)
+      for (const a of [0, 1] as const) {
+        // The material the tool touches lies at least its radius inside its path.
+        lo[a] = Math.min(lo[a], p[a] + r);
+        hi[a] = Math.max(hi[a], p[a] - r);
+      }
+  }
+  if (!Number.isFinite(lo[0])) return options;
+  const fits = options.filter((o) => {
+    const b = turnedBox(o, part.min, part.max);
+    return [0, 1].every((a) => hi[a] - lo[a] <= b.max[a] - b.min[a] + 2);
+  });
+  return fits.length ? fits : options;
+}
+
 function frontDir(ins: ReturnType<typeof readInstructions>): Vec | null {
   if (ins.pers) return direction([ins.pers]);
   if (ins.side === 'back') return [0, 0, -1];
@@ -743,8 +770,25 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     if (k > 0 && ins.side && !ins.onEdge && !ins.turns.length && !known.has('front') && prev && !prev.onEdge) {
       known.set('front', apply(transpose(orient), [0, 0, ins.side === 'back' ? 1 : -1]));
     }
+    // The button (RAFI / TASTER) written here for the first time, its hole already cut in a setup
+    // before: where that hole was cut says where the button is (O1342013: cut at X- Y+, then
+    // "RAFI X+ Y+" means turned around Y). Not when another marker is in use (O1036013 writes TASTER
+    // and RAFI for two different things: its TASTER hole is not the RAFI).
+    const marker = ins.marker;
+    if (k > 0 && marker && /RAFI|TASTER/.test(marker.name) && !known.has(marker.name) && ![...known.keys()].some((n) => n !== marker.name && /RAFI|TASTER|WINDOW/.test(n))) {
+      for (const e of out.slice(0, k)) {
+        // The first button operation only (a finishing pass named after it may run round the whole part).
+        const own = tp.moves.filter((m) => m.setup === e.index && m.kind !== 'rapid' && /TASTER|RAFI/i.test(m.op ?? ''));
+        const pts = own.filter((m) => m.op === own[0]?.op).flatMap((m) => m.points);
+        if (!pts.length || !e.stock) continue;
+        const c = [0, 1].map((a) => (Math.min(...pts.map((p) => p[a])) + Math.max(...pts.map((p) => p[a]))) / 2 - (e.stock!.min[a] + e.stock!.max[a]) / 2);
+        const v: Vec = [Math.abs(c[0]) > 1 ? Math.sign(c[0]) : 0, Math.abs(c[1]) > 1 ? Math.sign(c[1]) : 0, 0];
+        if (v[0] || v[1]) known.set(marker.name, apply(transpose(e.orient), v));
+        break;
+      }
+    }
     const solved = k === 0 ? { options: [IDENTITY], conflict: false } : solveOrientation(orient, ins, known);
-    const alternatives = bySize(solved.options, part, ins.sizes);
+    const alternatives = byCuts(bySize(solved.options, part, ins.sizes), part, moves, (m) => (isFaceMill(m.tool) ? null : (diameter.get(m.tool ?? -1) ?? 0) / 2));
     orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {

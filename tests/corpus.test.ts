@@ -34,6 +34,8 @@ const EXPECTED: Record<string, { size: number[]; turns: string[] }> = {
   'O2586508.000.txt': { size: [40, 30, 10], turns: ['1,0,0,0,1,0,0,0,1', '1,0,0,0,-1,0,0,0,-1'] },
   'O0106607.X20.txt': { size: [20.5, 16.25, 24.5], turns: ['1,0,0,0,1,0,0,0,1', '1,0,0,0,-1,0,0,0,-1'] },
   'O0106625.X20.txt': { size: [200, 150, 40], turns: ['1,0,0,0,1,0,0,0,1', '1,0,0,0,-1,0,0,0,-1', '1,0,0,0,0,-1,0,1,0', '0,1,0,0,0,-1,-1,0,0', '-1,0,0,0,0,-1,0,-1,0', '0,-1,0,0,0,-1,1,0,0'] },
+  // "RAFI X+ Y+" first written in setup 2; its button hole (TASTER_8MM) was cut in setup 1 at X- Y+: turned around Y. Checked against its STL.
+  'O1342013.C96.txt': { size: [50, 50, 40], turns: ['1,0,0,0,1,0,0,0,1', '-1,0,0,0,1,0,0,0,-1', '0,-1,0,0,0,1,-1,0,0', '0,1,0,0,0,1,1,0,0'] },
   'O2437557.000.txt': { size: [100, 50, 50], turns: ['1,0,0,0,1,0,0,0,1', '1,0,0,0,-1,0,0,0,-1'] },
   // "TOP 14X AND 22 IN Y": the raw 22X14X23 lies 14 along X. After the turn the jaws hold the cut base
   // (10 × 17.8, header written 17.8X13X10), resting on its ledge ("41 MM UNTERLAGE MASS 5 MM").
