@@ -374,6 +374,10 @@ const LOOKS: Record<PartLook, { raw: number; cut: number; metalness: number; rou
   pom: { raw: 0x2b2e34, cut: 0x3b3f46, metalness: 0, roughness: 0.35, env: 0, rim: 0.2, edge: [0.78, 0.84, 0.93] },
   // Layered wood (the shader adds the layers and the white top plate); cut floors show light wood.
   fh: { raw: 0x4a2f22, cut: 0xb98e6a, metalness: 0, roughness: 0.8, env: 0, rim: 0, edge: [0.1, 0.06, 0.03] },
+  // FH under 10 mm: pressed wood all through, no white top.
+  fhThin: { raw: 0x4a2f22, cut: 0xb98e6a, metalness: 0, roughness: 0.8, env: 0, rim: 0, edge: [0.1, 0.06, 0.03] },
+  // PC GF: greenish white, matt, a fifth see-through (cloudy, not clear).
+  pcgf: { raw: 0xd3dfcb, cut: 0xe6eedf, metalness: 0, roughness: 0.9, env: 0, rim: 0.08, edge: [0.1, 0.14, 0.1] },
 };
 /** The cut face of a section: hatched, in one colour for every material. */
 const SECTION = new THREE.Color(0xe07a5f);
@@ -395,7 +399,8 @@ function partMaterial(look: PartLook, part: { min: Vec; max: Vec }, white: Vec |
     m.envMapIntensity = L.env;
   }
   const u = {
-    uFH: { value: look === 'fh' ? 1 : 0 },
+    uFH: { value: look === 'fh' || look === 'fhThin' ? 1 : 0 },
+    uPlateOn: { value: look === 'fh' ? 1 : 0 },
     uTopZ: { value: top },
     uDir: { value: new THREE.Vector3(...dir) },
     uRim: { value: L.rim },
@@ -413,7 +418,7 @@ function partMaterial(look: PartLook, part: { min: Vec; max: Vec }, white: Vec |
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;\nuniform float uFH;\nuniform float uTopZ;\nuniform vec3 uDir;\nuniform float uRim;\nuniform float uCut;\nuniform vec3 uCap;\nuniform vec3 uWood;\nuniform vec3 uWood2;\nuniform vec3 uPlate;',
+        '#include <common>\nvarying vec3 vPart;\nvarying vec3 vPartN;\nvarying vec3 vViewN;\nuniform float uFH;\nuniform float uPlateOn;\nuniform float uTopZ;\nuniform vec3 uDir;\nuniform float uRim;\nuniform float uCut;\nuniform vec3 uCap;\nuniform vec3 uWood;\nuniform vec3 uWood2;\nuniform vec3 uPlate;',
       )
       .replace(
         '#include <clipping_planes_fragment>',
@@ -430,7 +435,7 @@ if (uCut > 0.5 && dot(normalize(vViewN), normalize(vViewPosition)) < -0.02) {
 if (uFH > 0.5) {
   float along = dot(vPart, uDir);
   float facing = dot(vPartN, uDir);
-  if (along > uTopZ - 0.8 && facing > -0.5) diffuseColor.rgb = uPlate;
+  if (uPlateOn > 0.5 && along > uTopZ - 0.8 && facing > -0.5) diffuseColor.rgb = uPlate;
   else if (facing < 0.7) {
     // Pressed layers about 1 mm thick (drawn a little coarser than real so they show), fading to their mean when too fine to draw.
     float k = along / 1.1;
@@ -446,6 +451,10 @@ if (uFH > 0.5) {
         '#include <emissivemap_fragment>\ntotalEmissiveRadiance += uRim * pow(1.0 - abs(dot(normalize(vViewN), normalize(vViewPosition))), 3.0);',
       );
   };
+  if (look === 'pcgf') {
+    m.transparent = true;
+    m.opacity = 0.8;
+  }
   m.userData.u = u;
   return m;
 }
@@ -798,7 +807,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     // Raw or cut colour, or the weak-spot colour of each point's wall thickness.
     const paint = (geo: THREE.BufferGeometry) => {
       // The weak-spot colours replace the wood layers.
-      material.userData.u.uFH.value = look === 'fh' && !heatRef.current ? 1 : 0;
+      material.userData.u.uFH.value = (look === 'fh' || look === 'fhThin') && !heatRef.current ? 1 : 0;
       const { cut, thick } = geo.userData as { cut: Uint8Array; thick?: Float32Array };
       const col = new Float32Array(cut.length * 3);
       const c = new THREE.Color();
@@ -1614,24 +1623,35 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     end.decompose(p1, q1, sc);
     const height = setup.stock ? Math.max(setup.stock.max[2] - setup.stock.min[2], 20) : 30;
 
-    // The arrow: the turn from the old pose to the new one, around the part's middle.
-    let arrow: THREE.Group | null = null;
-    const turn = q1.clone().multiply(q0.clone().invert());
-    const angle = 2 * Math.acos(Math.min(1, Math.abs(turn.w))) * (turn.w < 0 ? -1 : 1);
-    const axis = new THREE.Vector3(turn.x, turn.y, turn.z);
-    if (axis.lengthSq() > 1e-9 && Math.abs(angle) > 0.1 && setup.stock) {
+    // The poses the part goes through: every written turn alone, in the order written, around the
+    // machine's axes (three X/Y/Z = machine X/Z/-Y), when together they give the new pose; else one turn.
+    const machineAxis = { X: new THREE.Vector3(1, 0, 0), Y: new THREE.Vector3(0, 0, -1), Z: new THREE.Vector3(0, 1, 0) };
+    let poses = [q0.clone()];
+    for (const r of setup.turns) poses.push(new THREE.Quaternion().setFromAxisAngle(machineAxis[r.axis], (r.deg * Math.PI) / 180).multiply(poses[poses.length - 1]));
+    if (poses.length < 3 || Math.abs(poses[poses.length - 1].dot(q1)) < 0.999) poses = [q0.clone(), q1.clone()];
+    else poses[poses.length - 1] = q1.clone();
+    const steps = poses.length - 1;
+
+    // The arrows: one per turn, around the part's middle.
+    const arrows: (THREE.Group | null)[] = poses.slice(1).map((qb, k) => {
+      const turn = qb.clone().multiply(poses[k].clone().invert());
+      const angle = 2 * Math.acos(Math.min(1, Math.abs(turn.w))) * (turn.w < 0 ? -1 : 1);
+      const axis = new THREE.Vector3(turn.x, turn.y, turn.z);
+      if (axis.lengthSq() <= 1e-9 || Math.abs(angle) <= 0.1 || !setup.stock) return null;
       axis.normalize();
       const st = setup.stock;
       const size = Math.max(st.max[0] - st.min[0], st.max[1] - st.min[1], st.max[2] - st.min[2]);
-      // Name the machine axis it turns around (three X/Y/Z = machine X/Z/-Y).
+      // Name the machine axis it turns around.
       const m = [axis.x, -axis.z, axis.y];
       const big = m.map(Math.abs).indexOf(Math.max(...m.map(Math.abs)));
       const deg = Math.round(Math.abs((angle * 180) / Math.PI));
-      arrow = turnArrow(axis, angle, size * 0.5, `${deg}° ${'XYZ'[big]}`);
+      const arrow = turnArrow(axis, angle, size * 0.5, steps > 1 ? `${k + 1}/${steps} · ${deg}° ${'XYZ'[big]}` : `${deg}° ${'XYZ'[big]}`);
       // Around the part's middle, a little above the jaws.
       arrow.position.copy(v3([(st.min[0] + st.max[0]) / 2, (st.min[1] + st.max[1]) / 2, st.max[2] + height * 0.35]));
+      arrow.visible = false;
       a.overlay.add(arrow);
-    }
+      return arrow;
+    });
 
     // Changing cales, slowly enough to see which ones: with the part up, the old pair slides out to
     // the right and the new pair slides in with its height shown; then the part sets down on them.
@@ -1649,7 +1669,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const CLAMP = FLIP_MS * 0.15;
     const SWAP = changing ? CALE_MS : 0;
     const tTurn = UNCLAMP;
-    const tSwap = tTurn + TURN;
+    // Turning starts once the part is a little up; each written turn gets the same time.
+    const tRot = tTurn + TURN * 0.2;
+    const STEP = (TURN * steps - TURN * 0.2) / steps;
+    const tSwap = tTurn + TURN * steps;
     const tDown = tSwap + SWAP;
     const tClamp = tDown + DOWN;
     const total = tClamp + CLAMP;
@@ -1706,18 +1729,20 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
       const back = ease(Math.min(1, ms / (tTurn + TURN * 0.25))) * (1 - ease(part(ms, tDown, DOWN + CLAMP)));
       a.camera.position.copy(target).addScaledVector(off, 1 + 0.45 * back);
-      // Up in the first part of the turn, turning, waiting up there while the cales change, down.
-      const up = part(ms, tTurn, TURN);
-      const lift = ease(Math.min(1, up / 0.4)) * (1 - ease(part(ms, tDown, DOWN)));
-      const e = ease(Math.min(1, Math.max(0, (up - 0.2) / 0.8)));
-      q.slerpQuaternions(q0, q1, e);
-      p.lerpVectors(p0, p1, e);
+      // Up in the first part of the turn, turning (one written turn after the other), waiting up
+      // there while the cales change, down.
+      const lift = ease(part(ms, tTurn, TURN * 0.4)) * (1 - ease(part(ms, tDown, DOWN)));
+      const k = Math.min(steps - 1, Math.max(0, Math.floor((ms - tRot) / STEP)));
+      q.slerpQuaternions(poses[k], poses[k + 1], ease(part(ms, tRot + k * STEP, STEP)));
+      p.lerpVectors(p0, p1, ease(part(ms, tRot, STEP * steps)));
       p.y += lift * height * 1.3;
       a.solid.matrix.compose(p, q, one);
       a.solid.matrixWorldNeedsUpdate = true;
       placeCales(ms);
-      // The turn arrow while it turns (and until it sets down when nothing else happens).
-      if (arrow) arrow.visible = changing ? ms < tSwap : ms < tClamp;
+      // Each turn's arrow while it turns (the last one until it sets down when nothing else happens).
+      arrows.forEach((ar, i) => {
+        if (ar) ar.visible = i === k && (i < steps - 1 || (changing ? ms < tSwap : ms < tClamp));
+      });
       if (ms >= total) {
         a.solid.matrix.copy(end);
         setJaw(0);

@@ -255,7 +255,7 @@ export default function CodeEditorPair({
   // A tool into a cale is a warning (move the cale), not a reason to stop the export.
   const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer'), [collisions.hits]);
   const caleHits = useMemo(() => collisions.hits.filter((h) => h.what === 'cale'), [collisions.hits]);
-  const exportBlocked = collisions.checking || blocking.length > 0;
+  const exportBlocked = collisions.checking || blocking.length > 0 || collisions.rejects.length > 0;
   const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);
   // A collision in the code shown: the toolpath button turns red and opens where it happens.
   const hitShown = toolpathOn && !!outputCode && !isOutputStale && blocking.length > 0;
@@ -684,6 +684,35 @@ export default function CodeEditorPair({
                   </button>
                 </>
               )}
+            </div>
+          )}
+          {outputCode && !isOutputStale && !collisions.checking && collisions.rejects.length > 0 && (
+            <div role="alert" className="px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs space-y-2 bg-[var(--rose-500)]/10">
+              {collisions.rejects.map((b, i) => {
+                const all = outputCode.split('\n');
+                const from = Math.max(0, b.line - 2);
+                return (
+                  <div key={i} className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => outputScrollRef.current?.querySelector(`[data-line="${b.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                      className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)] hover:underline text-left"
+                    >
+                      <ShieldAlert size={14} className="shrink-0" />{' '}
+                      {b.kind === 'cale'
+                        ? t('editor.reject.cale', { mm: b.mm.toLocaleString(locale()), line: b.line + 1 })
+                        : t('editor.reject.size', { want: b.want.toLocaleString(locale()), axis: b.axis, found: b.found.toLocaleString(locale()), line: b.line + 1 })}
+                    </button>
+                    <pre className="font-mono text-[11px] leading-5 rounded-md bg-[var(--bg-base)] border border-[var(--border-subtle)] px-2 py-1 overflow-x-auto">
+                      {all.slice(from, b.line + 3).map((l, j) => (
+                        <div key={j} className={from + j === b.line ? 'text-[var(--rose-text)] font-semibold' : 'text-[var(--text-secondary)]'}>
+                          {String(from + j + 1).padStart(5, ' ')}  {l}
+                        </div>
+                      ))}
+                    </pre>
+                  </div>
+                );
+              })}
             </div>
           )}
           {outputCode && !isOutputStale && !collisions.checking && caleHits.length > 0 && (

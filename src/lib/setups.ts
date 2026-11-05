@@ -1,3 +1,4 @@
+import { CALE_HEIGHTS } from './cales';
 import type { Move, Toolpath, Vec } from './toolpath';
 import { buildInput, carve, FLIP_MS, holderOf, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
@@ -39,6 +40,8 @@ export interface Collision {
   what?: 'holder' | 'holderPart' | 'cale' | 'spacer';
 }
 
+export type Reject = { kind: 'cale'; mm: number; line: number } | { kind: 'size'; axis: 'X' | 'Y'; want: number; found: number; line: number };
+
 export interface SetupInfo {
   index: number;
   line: number;
@@ -63,6 +66,17 @@ export interface SetupInfo {
   restDepth: number | null;
   /** "UNTER MASS 5 MM": the part rests on the parallels this far above its bottom. */
   restAbove: number | null;
+  /**
+   * "3 MM SUR L'ETAU": no cales, the part rests on the jaw tops with this much of it above them
+   * (its narrower lower part gripped between the jaws).
+   */
+  onJaw: number | null;
+  /**
+   * Why the program is rejected at this setup (the export is blocked): a cale height the cales box
+   * does not have, or a written clamping size ("18 IN X UND 8 IN Y") the part as cut does not have.
+   * `line` is the program line that asks for it.
+   */
+  rejects: Reject[];
   /**
    * The written turn and the written position (RAFI, side up, PERS.) do not agree: the turn cannot
    * be done as written. The position is followed; the user is warned to check the flip.
@@ -186,14 +200,17 @@ export function readInstructions(notes: string[]) {
   // Turns in the order they are written: "180 GRAD UM Y", "MIT/90 IN X", "MIT 180 IN Y".
   const found: { at: number; axis: Axis; deg: number }[] = [];
   for (const m of t.matchAll(/(\d+)\s*GRAD\s*UM\s*([XYZ])/g)) found.push({ at: m.index!, axis: m[2] as Axis, deg: Number(m[1]) });
-  for (const m of t.matchAll(new RegExp(`${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*(?:UND|AND|ET|\\d))`, 'g'))) {
+  // English: "ROTATE ON X, Z+ TO Y-" (a quarter turn, the direction from the hint), "ROTATE ON X 180".
+  for (const m of t.matchAll(/ROTATE\s*(?:ON|AROUND|ABOUT|IN)?\s*([XYZ])\b(?:\s*,?\s*(\d+)\s*(?:DEG\w*|°|GRAD)?)?/g)) found.push({ at: m.index!, axis: m[1] as Axis, deg: m[2] ? Number(m[2]) : 90 });
+  // Not "D4.8 IN X-" (a hole's diameter and the side it is on).
+  for (const m of t.matchAll(new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*(?:UND|AND|ET|\\d|[+-]))`, 'g'))) {
     const v = num(m[1]);
     if ([90, 180, 270].includes(v)) found.push({ at: m.index!, axis: m[2] as Axis, deg: v });
     else if (m[2] === 'X' && !sizes) onlyX = v;
   }
   found.sort((a, b) => a.at - b.at);
   // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-).
-  const hint = t.match(/([XYZ])\s*([+-])\s*(?:WIRD|IN)\s*([XYZ])\s*([+-])/);
+  const hint = t.match(/([XYZ])\s*([+-])\s*(?:WIRD|IN|TO)\s*([XYZ])\s*([+-])/);
   const turns = found.map(({ axis, deg }) => {
     if (deg % 180 !== 0 && hint) {
       const from: Vec = [0, 0, 0];
@@ -220,6 +237,8 @@ export function readInstructions(notes: string[]) {
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   // "UNTER MASS 5 MM": the part rests on a step 5 mm above its bottom (it hangs 5 mm below the parallels).
   const above = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
+  // "EPAISSEUR DE 3 MM SUR L'ETAU" (also "EPESSEUR ... MMSUR L'ETEAU"): on the jaw tops, 3 mm above them.
+  const onJaw = t.match(new RegExp(`${NUM}\\s*MM\\s*SUR\\s*L\\W?\\s*ET[EÉ]?AU`));
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
   const pers = t.match(/PERS\.?\s*(?:IN\s*)?([XYZ]\s*[+-])/);
   const topAt = t.match(new RegExp(`Z\\+\\s*IN\\s*${NUM}\\s*MM`));
@@ -231,6 +250,7 @@ export function readInstructions(notes: string[]) {
     support: sup ? num(sup[1]) : null,
     restDepth: thick ? num(thick[1]) : null,
     restAbove: above ? num(above[1]) : null,
+    onJaw: onJaw ? num(onJaw[1]) : null,
     spacers: [...spacers].map(([side, mm]) => ({ mm, side })),
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
@@ -388,9 +408,9 @@ export const CALE_MS = 2600;
 export const calesKey = (s: SetupInfo | null): string =>
   s?.cales?.length ? `${s.support}|${s.cales.map((c) => `${c.y[0].toFixed(1)}:${c.top.toFixed(1)}`).join('/')}` : '';
 
-/** How long the 3D view takes to turn the part from one setup to the next (ms). */
+/** How long the 3D view takes to turn the part from one setup to the next (ms); several written turns are shown one after the other. */
 export const turnMs = (prev: SetupInfo | null, next: SetupInfo | null): number =>
-  FLIP_MS + (prev && next && calesKey(prev) !== calesKey(next) ? CALE_MS : 0);
+  FLIP_MS + FLIP_MS * 0.55 * Math.max(0, (next?.turns.length ?? 1) - 1) + (prev && next && calesKey(prev) !== calesKey(next) ? CALE_MS : 0);
 
 /** Width of the parallels drawn and checked under the held part (mm). */
 export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
@@ -458,6 +478,8 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
         s.cales = placeCales(s, input, g);
         s.collisions.push(...caleHits(tp, s));
         s.grip = gripOf(s, input, g);
+        const miss = sizeMiss(s, input, g);
+        if (miss) s.rejects.push({ ...miss, line: tp.setups[s.index].notes.find((n) => /IN\s*[XY]\b/i.test(n.text))?.line ?? s.line });
         if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + s.jawHalfWidth * 2];
       }
       return out;
@@ -599,6 +621,38 @@ function gripOf(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['grip'] {
   return { stop: stop ?? cb.min[0], front: front ?? cb.min[1], back: back ?? cb.max[1] };
 }
 
+/**
+ * "18 IN X UND 8 IN Y" after a turn: the part as it is then (cut by the setups before, turned) must be
+ * that wide along machine X and Y at some height (the jaws may grip a narrower lower part). The
+ * widths are measured slice by slice up its height; the closest one within the sim's accuracy counts.
+ */
+function sizeMiss(s: SetupInfo, input: SimInput, g: Grid): { kind: 'size'; axis: 'X' | 'Y'; want: number; found: number } | null {
+  if (s.index === 0 || !s.sizes || !s.moves || !s.stock) return null;
+  const R = s.orient;
+  const t = s.offset;
+  const dz = Math.max(g.size, 0.5);
+  const tol = Math.max(1, g.size * 1.5);
+  const widths: Record<'X' | 'Y', number[]> = { X: [], Y: [] };
+  for (let z = s.stock.min[2]; z < s.stock.max[2]; z += dz) {
+    const keep = (p: Vec) => {
+      const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
+      return mz >= z && mz < z + dz;
+    };
+    for (const [row, name] of [[0, 'X'], [1, 'Y']] as const) {
+      const a = ([0, 1, 2] as const).find((x) => R[row * 3 + x] !== 0)!;
+      const lo = materialExtreme(input, g, s.moves[0], a, -1, keep);
+      const hi = materialExtreme(input, g, s.moves[0], a, 1, keep);
+      if (lo !== null && hi !== null) widths[name].push(hi - lo);
+    }
+  }
+  for (const [axis, want] of [['X', s.sizes.x], ['Y', s.sizes.y]] as const) {
+    if (!Number.isFinite(want) || !widths[axis].length) continue;
+    const found = widths[axis].reduce((b, w) => (Math.abs(w - want) < Math.abs(b - want) ? w : b));
+    if (Math.abs(found - want) > tol) return { kind: 'size', axis, want, found: Math.round(found * 10) / 10 };
+  }
+  return null;
+}
+
 const sameBoxes = (a: Map<number, Box>, b: Map<number, Box>) =>
   a.size === b.size && [...b].every(([k, v]) => {
     const o = a.get(k);
@@ -658,6 +712,10 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       ...ins,
       clamp: ins.clamp ?? (notes.length ? prev?.clamp ?? 'vise' : null),
       conflict: solved.conflict,
+      rejects:
+        ins.support !== null && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
+          ? [{ kind: 'cale', mm: ins.support, line: s.notes.find((n) => /UNTERLAGE/i.test(n.text))?.line ?? s.line }]
+          : [],
       orient,
       alternatives,
       offset: [0, 0, 0],
@@ -799,7 +857,11 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const trusted = floorRule !== null && Math.abs(floorRule - (min[2] - support)) <= FLOOR_TRUST && floorRule <= min[2] + 1;
     let rest = min[2];
     let floor = rest - support;
-    if (ins.restAbove !== null && ins.restAbove < max[2] - min[2]) {
+    if (ins.onJaw !== null) {
+      // On the jaw tops, Z0 (the finished top) that far above them; the floor is a jaw height lower.
+      rest = -ins.onJaw;
+      floor = rest - opts.jawHeight;
+    } else if (ins.restAbove !== null && ins.restAbove < max[2] - min[2]) {
       rest = min[2] + ins.restAbove;
       floor = trusted ? floorRule! : rest - support;
     } else if (ins.restDepth !== null && ins.restDepth < max[2] - min[2]) {

@@ -154,7 +154,7 @@ function toolSize(lines: string[], i: number): { diameter: number | null; length
 }
 
 /** Operator instructions that describe how the part is clamped. */
-const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]/i;
+const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|INTERCAL|UNTERCAL|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]|L'?\s*ET[EÉ]?AU/i;
 
 export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   const lines = code.split('\n');
@@ -220,7 +220,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   lines.forEach((raw, i) => {
     const line = raw.trim();
     if (!line || line === '%') return;
-    const comments = (line.match(/\(([^)]*)\)/g) ?? []).map((c) => c.slice(1, -1).trim()).filter(Boolean);
+    const comments = (line.match(/\(([^)]*)\)/g) ?? []).map((c) => c.slice(1, -1).replace(/^[\s(]+|[\s)]+$/g, '')).filter(Boolean);
     const commentOnly = line.replace(/^N\d+\s*/i, '').startsWith('(');
     if ((commentOnly || /^O\d+/i.test(line)) && i < 12 && !moves.length && tools.size === 0) header.push(...comments);
     // Operator instructions: comments on an M0 stop, or note lines about the support / spacer.

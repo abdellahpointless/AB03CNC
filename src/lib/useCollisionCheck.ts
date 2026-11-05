@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { movePath } from './playback';
-import { analyseProgram, readJawHeight, type Collision } from './setups';
+import { analyseProgram, readJawHeight, type Collision, type Reject } from './setups';
 import { buildInput, type HolderHit } from './stockSim';
 import { parseToolpath, speedsFor } from './toolpath';
 
@@ -12,29 +12,31 @@ const CHECK_VOXELS = 1_000_000;
  * part (in a worker). `code` empty: nothing to check. `again` changes to check once more (the jaw
  * height may have changed in the viewer).
  */
-export function useCollisionCheck(code: string, brand: string | undefined, again: number): { checking: boolean; hits: Collision[] } {
-  const [done, setDone] = useState<{ key: string; hits: Collision[] } | null>(null);
+export function useCollisionCheck(code: string, brand: string | undefined, again: number): { checking: boolean; hits: Collision[]; rejects: Reject[] } {
+  const [done, setDone] = useState<{ key: string; hits: Collision[]; rejects: Reject[] } | null>(null);
   const key = `${again}|${brand}|${code}`;
   useEffect(() => {
     if (!code) return;
     const tp = parseToolpath(code, speedsFor(brand));
     const an = analyseProgram(tp, { jawHeight: readJawHeight() });
     const jaws = an.setups.flatMap((s) => s.collisions);
+    // Why the program is rejected (a cale the box does not have, a clamping size the part does not have).
+    const rejects = an.setups.flatMap((s) => s.rejects);
     const input = buildInput(tp, an);
     if (!input) {
-      setDone({ key, hits: jaws });
+      setDone({ key, hits: jaws, rejects });
       return;
     }
     const worker = new Worker(new URL('./holderCheck.worker.ts', import.meta.url), { type: 'module' });
     worker.onmessage = (e: MessageEvent<{ hits: HolderHit[] }>) => {
       const part: Collision[] = e.data.hits.map((h) => ({ move: h.move, line: tp.moves[h.move].line, tool: h.tool, point: h.point, depth: h.depth, what: 'holderPart' }));
-      setDone({ key, hits: [...jaws, ...part] });
+      setDone({ key, hits: [...jaws, ...part], rejects });
       worker.terminate();
     };
     worker.postMessage({ input: { ...input, maxVoxels: CHECK_VOXELS, surfaceMoves: false }, paths: tp.moves.map(movePath), reach: tp.moves.map((m) => m.reach), dia: tp.moves.map((m) => m.dia) });
     return () => worker.terminate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  if (!code) return { checking: false, hits: [] };
-  return done?.key === key ? { checking: false, hits: done.hits } : { checking: true, hits: [] };
+  if (!code) return { checking: false, hits: [], rejects: [] };
+  return done?.key === key ? { checking: false, hits: done.hits, rejects: done.rejects } : { checking: true, hits: [], rejects: [] };
 }

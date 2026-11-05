@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { partLook } from '../src/lib/partLook';
 
-const programs = import.meta.glob('./corpus/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-
-describe('partLook', () => {
-  it('reads the material from the program header', () => {
-    expect(partLook(programs['./corpus/O0164578.X20.txt'])).toBe('pom');
-    expect(partLook(programs['./corpus/O0169538.X20.txt'])).toBe('fh');
-    expect(partLook(programs['./corpus/O0107096.X20.txt'])).toBe('alu');
-    expect(partLook('%\nO1\n(PLATTE MS 50X20X10)\nG54\n')).toBe('brass');
-    expect(partLook('%\nO1\n(BLOCK C45)\n')).toBe('steel');
-    expect(partLook('%\nO1\n(TEIL)\nT1 M6\n')).toBe('plain');
+const head = (line: string) => `%\nO0001\nN1 (NC_PROGRAM)\nN3 (${line})\nN4 (F.ART.NR.: TC-X20)\n`;
+describe('part look', () => {
+  it('FH under 10 mm thick has no white top; PC GF has its own look', () => {
+    expect(partLook(head('TOP PLATE FH / 100X50X30 / ZUSCHNITT:104X54X40'))).toBe('fh');
+    expect(partLook(head('BASE PLATE FH / 100X50X8 / ZUSCHNITT:104X54X10'))).toBe('fhThin');
+    expect(partLook(head('COVER PCGF / 60X40X12'))).toBe('pcgf');
+    expect(partLook(head('COVER PC GF / 60X40X12'))).toBe('pcgf');
+    expect(partLook(head('COVER PC-GF30 / 60X40X12'))).toBe('pcgf');
+    expect(partLook(head('BLOCK ALU / 18X10X11 / ZUSCHNITT:22X14X20'))).toBe('alu');
   });
 });

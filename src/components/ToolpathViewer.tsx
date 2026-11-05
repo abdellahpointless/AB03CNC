@@ -84,7 +84,12 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : c.what === 'cale' ? 'toolpath.caleHit' : c.what === 'spacer' ? 'toolpath.spacerHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
   // Setups whose written turn and position disagree: an error first, then a caution once inspected.
   const conflicts = setups.filter((x) => x.conflict);
+  // Why the program is rejected: a cale the box does not have, a clamping size the part does not have.
+  const rejects = setups.flatMap((x) => x.rejects.map((r) => ({ ...r, setup: x.index })));
+  const rejectText = (r: (typeof rejects)[number]) =>
+    r.kind === 'cale' ? t('toolpath.reject.cale', { mm: fmtNumber(r.mm) }) : t('toolpath.reject.size', { want: fmtNumber(r.want), axis: r.axis, found: fmtNumber(r.found) });
   const [inspectFlip, setInspectFlip] = useState(false);
+  const [inspectCale, setInspectCale] = useState(false);
   const [solid, setSolid] = useState<SolidState>({ state: 'off', share: 0 });
   /** While the part turns between setups, the new setup is shown before its first move. */
   const [turning, setTurning] = useState<number | null>(null);
@@ -368,6 +373,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
     if (s.restDepth !== null) out.push(t('toolpath.ins.restDepth', { mm: fmtNumber(s.restDepth) }));
     if (s.restAbove !== null) out.push(t('toolpath.ins.restAbove', { mm: fmtNumber(s.restAbove) }));
+    if (s.onJaw !== null) out.push(t('toolpath.ins.onJaw', { mm: fmtNumber(s.onJaw) }));
     for (const sp of s.spacers) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(sp.mm), side: sp.side }));
     if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));
     if (s.marker) out.push(t('toolpath.ins.marker', { name: s.marker.name, faces: s.marker.faces.join(' ') }));
@@ -421,6 +427,12 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                 {t('toolpath.caleHits', { count: totalCales })}
               </span>
             )}
+            {rejects.map((r, i) => (
+              <span key={`rej${i}`} className="badge-danger text-xs py-1 px-2.5 inline-flex items-center gap-1.5" role="status">
+                <ShieldAlert size={13} />
+                {r.kind === 'cale' ? t('toolpath.reject.badgeCale', { mm: fmtNumber(r.mm) }) : t('toolpath.reject.badgeSize', { n: r.setup + 1, want: fmtNumber(r.want), axis: r.axis })}
+              </span>
+            ))}
             {inspectFlip && conflicts.length > 0 && (
               <span className="badge-warning text-xs py-1 px-2.5 inline-flex items-center gap-1.5" role="status">
                 <ShieldAlert size={13} />
@@ -557,8 +569,38 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     </div>
                   </div>
                 )}
+                {/* Rejected (a cale the box does not have, a size the part does not have): each with its line and two lines either side. */}
+                {rejects.length > 0 && !inspectCale && (
+                  <div role="alertdialog" aria-labelledby="reject-title" className="absolute inset-0 z-20 flex items-center justify-center bg-[#0E1421]/80 backdrop-blur-md p-6">
+                    <div className="max-w-lg w-full max-h-full overflow-y-auto rounded-[var(--radius-md,12px)] border border-[#ff4d4d] bg-[#1a0b0e] p-4 space-y-3 shadow-[0_0_40px_rgba(255,60,60,0.25)]">
+                      <div id="reject-title" className="flex items-center gap-2 text-sm font-semibold text-[#ffc2c2]">
+                        <ShieldAlert size={16} aria-hidden="true" />
+                        {t('toolpath.reject.title')}
+                      </div>
+                      {rejects.map((r, k) => {
+                        const from = Math.max(0, r.line - 2);
+                        return (
+                          <div key={k} className="text-xs space-y-1">
+                            <p className="text-[var(--text-secondary)]">{rejectText(r)}</p>
+                            <div className="font-semibold text-[var(--text-primary)]">{t('toolpath.reject.line', { n: r.setup + 1, line: r.line + 1 })}</div>
+                            <pre className="font-mono text-[11px] leading-5 rounded bg-black/40 px-2 py-1 overflow-x-auto">
+                              {lines.slice(from, r.line + 3).map((l, i) => (
+                                <div key={i} className={from + i === r.line ? 'text-[#ffc2c2] bg-[#ff4d4d]/20' : 'text-[var(--text-secondary)]'}>
+                                  {String(from + i + 1).padStart(5, ' ')}  {l}
+                                </div>
+                              ))}
+                            </pre>
+                          </div>
+                        );
+                      })}
+                      <button type="button" onClick={() => setInspectCale(true)} className="btn-secondary text-xs py-1.5 px-3">
+                        {t('toolpath.conflict.inspect')}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* A flip the program writes in two ways that disagree: not possible as written. */}
-                {conflicts.length > 0 && !inspectFlip && (
+                {conflicts.length > 0 && !inspectFlip && (rejects.length === 0 || inspectCale) && (
                   <div role="alertdialog" aria-labelledby="flip-conflict-title" aria-describedby="flip-conflict-body" className="absolute inset-0 z-20 flex items-center justify-center bg-[#0E1421]/80 backdrop-blur-md p-6">
                     <div className="max-w-md w-full rounded-[var(--radius-md,12px)] border border-[#ff4d4d] bg-[#1a0b0e] p-4 space-y-3 shadow-[0_0_40px_rgba(255,60,60,0.25)]">
                       <div id="flip-conflict-title" className="flex items-center gap-2 text-sm font-semibold text-[#ffc2c2]">

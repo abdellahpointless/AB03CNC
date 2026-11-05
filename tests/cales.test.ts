@@ -3,7 +3,7 @@ import { CALE_HEIGHTS, calesOf, calesSummary, lowStock, orderRows, statusOf } fr
 
 describe('cales box', () => {
   it('has the 14 heights of the real box, tallest first', () => {
-    expect([...CALE_HEIGHTS]).toEqual([43, 42, 41, 40, 38, 35, 33, 30, 28, 25, 22, 20, 15, 8]);
+    expect([...CALE_HEIGHTS]).toEqual([43, 42, 41, 40, 38, 36, 35, 33, 30, 28, 25, 22, 20, 15, 8]);
   });
 
   it('reads one machine from the server rows; every other pair is in place', () => {
@@ -47,7 +47,7 @@ describe('cales to order', () => {
   it('lists every size under 4 in the general stock, with what brings it back to 4', () => {
     const stock = CALE_HEIGHTS.map((h) => ({ height: h as number, qty: 4 }));
     stock[0] = { height: 43, qty: 1 };
-    stock[13] = { height: 8, qty: 9 };
+    stock[stock.length - 1] = { height: 8, qty: 9 };
     expect(lowStock(stock)).toEqual([{ height: 43, stock: 1, need: 3 }]);
     // nothing counted yet: 4 of every size
     expect(lowStock([]).map((r) => r.need)).toEqual(CALE_HEIGHTS.map(() => 4));

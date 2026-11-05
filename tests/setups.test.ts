@@ -251,3 +251,39 @@ describe('setups', () => {
     expect(thin.collisions.filter((c) => c.what !== 'spacer')).toHaveLength(1);
   });
 });
+
+describe('cales and the jaw tops', () => {
+  const programs = import.meta.glob('./programs/*.txt', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
+  it('reads "3 MM SUR L\'ETAU": on the jaw tops, 3 mm above them, no cales', () => {
+    expect(readInstructions(['TEIL 180 GRAD UM Y DREHEN/18 IN X UND 8 IN Y', 'EPESSEUR DE 3 MMSUR L\'ETEAU']).onJaw).toBe(3);
+    expect(readInstructions(['EPAISSEUR DE 8 MM SUR L\'ETAU']).onJaw).toBe(8);
+    expect(readInstructions(['40 MM UNTERLAGE']).onJaw).toBeNull();
+    // O0171898, side 2: G52 Z-9 puts the floor at Z-48, the jaw tops at Z-3, the finished top 3 mm above.
+    const { setups } = analyseProgram(parseToolpath(programs['./programs/O0171898.X20.txt'], S), { jawHeight: 45 });
+    expect(setups[1].onJaw).toBe(3);
+    expect(setups[1].floorZ).toBeCloseTo(-48, 5);
+    expect(setups[1].jawTopZ).toBeCloseTo(-3, 5);
+    expect(setups[1].collisions).toEqual([]);
+  });
+
+  it('rejects a cale height the cales box does not have, with its line', () => {
+    const code = program(-10);
+    expect(analyseProgram(parseToolpath(code, S), { jawHeight: 45 }).setups[0].rejects).toEqual([]);
+    const bad = analyseProgram(parseToolpath(code.replace('M0 (38 MM UNTERLAGE)', 'M0 (37 MM UNTERLAGE)'), S), { jawHeight: 45 }).setups[0].rejects;
+    expect(bad).toEqual([{ kind: 'cale', mm: 37, line: code.split('\n').indexOf('M0 (38 MM UNTERLAGE)') }]);
+    // 36 mm is in the box.
+    expect(analyseProgram(parseToolpath(code.replace('M0 (38 MM UNTERLAGE)', 'M0 (36 MM UNTERLAGE)'), S), { jawHeight: 45 }).setups[0].rejects).toEqual([]);
+  });
+
+  it('rejects a flip whose written clamping size the part does not have', () => {
+    const code = programs['./programs/O0171898.X20.txt'];
+    // As written: the part is 8 mm wide in Y where the jaws grip it.
+    expect(analyseProgram(parseToolpath(code, S), { jawHeight: 45 }).setups[1].rejects).toEqual([]);
+    const wrong = code.replace('18 IN X UND 8 IN Y', '18 IN X UND 3 IN Y');
+    const r = analyseProgram(parseToolpath(wrong, S), { jawHeight: 45 }).setups[1].rejects;
+    expect(r).toMatchObject([{ kind: 'size', axis: 'Y', want: 3, line: wrong.split('\n').findIndex((l) => l.includes('3 IN Y')) }]);
+    // "D4.8 IN X-" is a hole and the side it is on, not a size.
+    expect(readInstructions(['TEIL 180 GRAD UM X DREHEN/D4.8 IN X-']).sizes).toBeNull();
+  });
+});
