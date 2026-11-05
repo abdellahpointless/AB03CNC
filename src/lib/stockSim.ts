@@ -46,6 +46,8 @@ export interface SimInput {
   maxVoxels?: number;
   /** Also find, on the finished surface, the move reaching furthest past each sample (for drawing it); default on. */
   surfaceMoves?: boolean;
+  /** Let material cut free fall away (default on; off to see exactly what some moves cut). */
+  dropLoose?: boolean;
 }
 
 export interface Grid {
@@ -377,7 +379,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
       }
     }
   });
-  dropLoose(n, removed, share, (input.moves.length + 1) * SUB);
+  if (input.dropLoose !== false) dropLoose(n, removed, share, (input.moves.length + 1) * SUB);
 
   // On the finished surface, also the move that reaches furthest past each cut sample. A later
   // pass that only skims a little more off (a finishing pass, a second circle a bit wider) may take
