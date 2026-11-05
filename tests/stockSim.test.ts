@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, drilledHoles, eigenSym, holderHits, holderOf, instant, KEPT, materialExtreme, mesher, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { carve, drilledHoles, dropLoose, dropRadius, eigenSym, holderHits, holderOf, instant, isBall, KEPT, materialExtreme, mesher, simTools, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -19,6 +19,57 @@ describe('eigenSym', () => {
         for (let i = 0; i < 3; i++) expect(M[i * 3] * e[0] + M[i * 3 + 1] * e[1] + M[i * 3 + 2] * e[2]).toBeCloseTo(values[k] * e[i], 8);
       }
     }
+  });
+});
+
+describe('the eyedrop ball cutter', () => {
+  it('is a ball at the tip that tapers smoothly into a thinner neck', () => {
+    expect(dropRadius(0, 3)).toBe(0);
+    expect(dropRadius(3, 3)).toBeCloseTo(3);
+    expect(dropRadius(-0.1, 3)).toBe(-1);
+    expect(dropRadius(10, 3)).toBeCloseTo(1.65);
+    // No jump anywhere along it, and never wider than the ball.
+    for (let h = 0; h < 12; h += 0.01) {
+      expect(Math.abs(dropRadius(h + 0.01, 3) - dropRadius(h, 3))).toBeLessThan(0.3);
+      expect(dropRadius(h, 3)).toBeLessThanOrEqual(3 + 1e-9);
+    }
+  });
+  it('is the shape of every ball tool', () => {
+    expect(isBall('FRAISE BOULE D6') && isBall('KUGELFRAESER 4MM') && isBall('KF_06.00_030')).toBe(true);
+    expect(isBall('SF_12.00_075_000')).toBe(false);
+    expect(simTools({ tools: [{ tool: 7, label: 'KUGELFRAESER 6MM', firstLine: 0, seconds: 0, diameter: 6, length: 30 }] } as never)[0].slope).toBe('drop');
+  });
+  it('cuts with its shape: the round floor, the full width at the ball, not past the neck above it', () => {
+    const a: Vec = [0, 0, 0];
+    const b: Vec = [20, 0, 0];
+    expect(sweeps(10, 0, 0.01, a, b, 3, 'drop')).toBe(true); // the tip
+    expect(sweeps(10, 2.9, 0.2, a, b, 3, 'drop')).toBe(false); // beside the tip: the ball is round there
+    expect(sweeps(10, 2.9, 3, a, b, 3, 'drop')).toBe(true); // the widest, a ball radius up
+    expect(sweeps(10, 2.5, 9, a, b, 3, 'drop')).toBe(false); // well above: only the thin neck passes
+    expect(sweeps(10, 2.5, 9, a, b, 3, null)).toBe(true); // a flat end mill clears everything above it
+    // Plunging down through the part, it clears the ball's full width all the way.
+    expect(sweeps(0, 2.9, 9, [0, 0, 20], [0, 0, 0], 3, 'drop')).toBe(true);
+  });
+});
+
+describe('material cut free falls away', () => {
+  it('drops a ring round the part at the instant its last bridge is cut, and keeps the part', () => {
+    const n: [number, number, number] = [16, 16, 2];
+    const removed = new Int32Array(16 * 16 * 2).fill(KEPT);
+    const share = new Uint16Array(removed.length);
+    const at = (i: number, j: number, k: number) => (k * 16 + j) * 16 + i;
+    const ring = (i: number, j: number) => Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5));
+    for (let k = 0; k < 2; k++)
+      for (let j = 0; j < 16; j++)
+        for (let i = 0; i < 16; i++) if (ring(i, j) === 6.5) removed[at(i, j, k)] = j === 1 ? 3 : 1; // the moat; one side cut last
+    // The outer ring (60 samples a layer) falls; the part (12 × 12) stays.
+    expect(dropLoose(n, removed, share, 6 * 1024)).toBe(2 * 60);
+    // With the bridge, at the start of move 3.
+    expect(removed[at(0, 0, 0)]).toBe(3);
+    expect(share[at(0, 0, 0)]).toBe(0);
+    expect(removed[at(7, 7, 1)]).toBe(KEPT);
+    // One piece only: nothing falls.
+    expect(dropLoose(n, new Int32Array(removed.length).fill(KEPT), share, 6 * 1024)).toBe(0);
   });
 });
 

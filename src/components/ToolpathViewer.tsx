@@ -16,7 +16,8 @@ const Toolpath3D = lazy(() => import('./Toolpath3D'));
 const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
 
 const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
-const SPEEDS = [10, 50, 250];
+const SPEEDS = [5, 10, 50, 250];
+const DETAILS_KEY = 'cnc-toolpath-details-v1';
 /** The viewer is always dark (like CAM software), also when the app is in light mode. */
 const DARK_VARS = {
   '--text-primary': '#EEF1F6',
@@ -97,6 +98,25 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const [mode3d, setMode3d] = useState(true);
   const mode3dRef = useRef(mode3d);
   mode3dRef.current = mode3d;
+  // Performance (light, the part catches up with the tool) or details (finer, the tool waits for the cut).
+  const [details, setDetails] = useState(() => {
+    try {
+      return localStorage.getItem(DETAILS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const detailsRef = useRef(details);
+  detailsRef.current = details;
+  const behind = useRef(false);
+  const chooseDetails = (on: boolean) => {
+    setDetails(on);
+    try {
+      localStorage.setItem(DETAILS_KEY, on ? '1' : '0');
+    } catch {
+      /* private window: the choice lasts until the viewer closes */
+    }
+  };
   const [fitKey, setFitKey] = useState(0);
   const [isolate, setIsolate] = useState(false);
   // Weak spots: the finished part coloured by wall thickness.
@@ -134,7 +154,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     }
   }, [jawHeight]);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(2);
   const colorOf = useMemo(() => {
     const map = new Map<number | null, string>();
     path.tools.forEach((tl, i) => map.set(tl.tool, COLORS[i % COLORS.length]));
@@ -171,6 +191,12 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
         return;
       }
       if (holdUntil) holdUntil = 0;
+      // Details: the clock waits for the part, so the cut is always shown right where the tool is.
+      if (detailsRef.current && mode3dRef.current && behind.current) {
+        last = now;
+        raf = requestAnimationFrame(tick);
+        return;
+      }
       sim += ((now - last) / 1000) * SPEEDS[speed];
       last = now;
       const before = k;
@@ -280,6 +306,16 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  // The run of moves of the tool at work (tool change to tool change) in this setup: only its path is drawn.
+  const run = useMemo(() => {
+    const k = Math.min(Math.max(step - 1, range[0]), range[1]);
+    const tool = path.moves[k]?.tool;
+    let a = k;
+    let b = k;
+    while (a > range[0] && path.moves[a - 1].tool === tool) a--;
+    while (b < range[1] && path.moves[b + 1].tool === tool) b++;
+    return [a, b] as const;
+  }, [step, path, range[0], range[1]]);
   // Done part grouped by tool and kind, so a long program stays a handful of SVG paths.
   const done = useMemo(() => {
     const feeds = new Map<number | null, string[]>();
@@ -288,7 +324,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     const sideRapids: string[] = [];
     const holes: Move[] = [];
     if (mode3d) return { feeds, rapids, sideFeeds, sideRapids, holes };
-    for (let i = range[0]; i < Math.min(step, range[1] + 1); i++) {
+    for (let i = run[0]; i < Math.min(step, range[1] + 1); i++) {
       const m = path.moves[i];
       if (m.kind === 'drill') {
         holes.push(m);
@@ -305,9 +341,9 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
       }
     }
     return { feeds, rapids, sideFeeds, sideRapids, holes };
-  }, [step, path, topPaths, sidePaths, range[0], range[1], mode3d]);
-  const ghost = useMemo(() => topPaths.slice(range[0], range[1] + 1).join(''), [topPaths, range[0], range[1]]);
-  const sideGhost = useMemo(() => sidePaths.slice(range[0], range[1] + 1).join(''), [sidePaths, range[0], range[1]]);
+  }, [step, path, topPaths, sidePaths, run[0], range[1], mode3d]);
+  const ghost = useMemo(() => topPaths.slice(run[0], run[1] + 1).join(''), [topPaths, run[0], run[1]]);
+  const sideGhost = useMemo(() => sidePaths.slice(run[0], run[1] + 1).join(''), [sidePaths, run[0], run[1]]);
   const goSetup = (s: SetupInfo) => {
     if (!s.moves) return;
     setPlaying(false);
@@ -496,7 +532,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -733,12 +769,21 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                   </button>
                 </div>
                 {mode3d && (
-                  <div className="absolute right-3 top-11 z-10 inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="group" aria-label={t('toolpath.views')}>
-                    {(['top', 'front', 'iso'] as const).map((k) => (
-                      <button key={k} onClick={() => setView3d({ kind: k, key: Date.now() })} className="px-2.5 h-6 rounded-full text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)]">
-                        {t(`toolpath.viewKind.${k}`)}
-                      </button>
-                    ))}
+                  <div className="absolute right-3 top-11 z-10 flex items-center gap-2">
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label={t('toolpath.quality.label')} title={t('toolpath.quality.help')}>
+                      {[false, true].map((d) => (
+                        <button key={String(d)} role="radio" aria-checked={details === d} onClick={() => chooseDetails(d)} className={`px-2.5 h-6 rounded-full text-[11px] font-semibold ${details === d ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                          {d ? t('toolpath.quality.details') : t('toolpath.quality.performance')}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="group" aria-label={t('toolpath.views')}>
+                      {(['top', 'front', 'iso'] as const).map((k) => (
+                        <button key={k} onClick={() => setView3d({ kind: k, key: Date.now() })} className="px-2.5 h-6 rounded-full text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)]">
+                          {t(`toolpath.viewKind.${k}`)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {mode3d && section && (
@@ -937,12 +982,17 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                         const k = path.moves.findIndex((m) => m.tool === tl.tool);
                         seek(k >= 0 ? k + 1 : step);
                       }}
-                      className={`w-full flex items-center gap-2.5 text-left rounded-[var(--radius-sm)] px-2.5 py-2 border transition-colors ${active ? 'border-[var(--border-strong)] bg-[rgba(var(--ov),0.06)]' : 'border-transparent hover:bg-[rgba(var(--ov),0.04)]'}`}
+                      className={`w-full block text-left rounded-[var(--radius-sm)] px-2.5 py-2 border transition-colors ${active ? 'border-[var(--border-strong)] bg-[rgba(var(--ov),0.06)]' : 'border-transparent hover:bg-[rgba(var(--ov),0.04)]'}`}
                     >
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: colorOf(tl.tool) }} />
-                      <span className="font-mono text-xs font-bold text-[var(--text-primary)] shrink-0">T{tl.tool}</span>
-                      <span className="text-xs text-[var(--text-secondary)] truncate flex-1">{tl.label}</span>
-                      <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">{fmtClock(tl.seconds)}</span>
+                      <span className="flex items-center gap-2.5">
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ background: colorOf(tl.tool) }} />
+                        <span className="font-mono text-xs font-bold text-[var(--text-primary)] flex-1">T{tl.tool}</span>
+                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">{fmtClock(tl.seconds)}</span>
+                      </span>
+                      <span className="block pl-[22px] mt-0.5 text-xs text-[var(--text-secondary)] break-words">{tl.label}</span>
+                      <span className="block pl-[22px] font-mono text-[11px] text-[var(--text-tertiary)]">
+                        {t('toolpath.toolSize', { d: tl.diameter === null ? '—' : fmt2(tl.diameter), l: tl.length === null ? '—' : fmt2(tl.length) })}
+                      </span>
                     </button>
                   );
                 })}

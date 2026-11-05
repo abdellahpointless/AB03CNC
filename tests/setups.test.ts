@@ -182,6 +182,14 @@ describe('setups', () => {
     expect(readInstructions(['TEIL MIT/90 IN X /Z+ IN Y-/ 21.5 IN X UND 24.5 IN Y EINSPANNEN']).turns).toEqual([{ axis: 'X', deg: 90 }]);
   });
 
+  it('gives each written turn the direction written right after it (Z+ WIRD Y-, then Z+ WIRD X-)', () => {
+    const r = readInstructions(['TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y-', 'TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X-', '22 MM UNTERLAGE']);
+    // Z+ goes to Y- (a quarter turn around X), then the top goes to X- (back a quarter around Y).
+    expect(r.turns).toEqual([{ axis: 'X', deg: 90 }, { axis: 'Y', deg: -90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
+  });
+
   it('cuts the part away move by move', () => {
     const tp = parseToolpath(program(10), S);
     const an = analyseProgram(tp, { jawHeight: 42 });

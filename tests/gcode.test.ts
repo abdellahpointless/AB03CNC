@@ -162,6 +162,29 @@ describe('code generation', () => {
     expect(remap(src, haas2, 'HAAS-2').code).not.toMatch(/G49/);
   });
 
+  it('FANUC-2 keeps the HAAS code: H of the tool instead of H#513 D#513 M254, M98 P7999 stays', () => {
+    const src = 'O1\nN16 T3 M6\nN17 (2MM BOHRER / SB_02.00_030_000_FH)\nN18 G00 G43 H#513 D#513 M254 Z50.\nN19 M98 P7999\nN20 M30';
+    const f2 = remap(src, fanuc1, 'FANUC-2').code;
+    const t = f2.match(/^N16 T(\d+) M6 G49/m)?.[1];
+    expect(t).toBeDefined();
+    expect(f2).toMatch(new RegExp(`^N18 G00 G43 H${t} Z50\\.`, 'm'));
+    expect(f2).not.toMatch(/H#513|D#513|M254/);
+    expect(f2).toContain('M98 P7999');
+    // A HAAS program on FANUC-2 gets no FANUC offsets either.
+    expect(remap('O1\nN16 T3 M6\nN17 (MESSERKOPF D93 / MK_93.00_030_000_FH)\nN18 G43 H3 Z50.\nN19 M30', fanuc1, 'FANUC-2').code).not.toMatch(/H#513/);
+    // FANUC-1 is unchanged.
+    expect(remap(src, fanuc1, 'FANUC-1').code).toMatch(/H#513 D#513/);
+  });
+
+  it('caps the passes (Q) of FH programs at 5, leaving smaller ones and other materials alone', () => {
+    const body = 'N3 T13 M6\nN4 (2.5MM BOHRER/45MM LANG / SB_02.50_045_000_FH)\nN5 G43 H13 Z50.\nN6 G98 G83 Z-9.5 R2. Q8. F300.\nN7 G83 Z-6. R2. Q3.5 F300.\nN8 G83 Z-6. R2. Q12.5 F300. (Q8 IN THE COMMENT)\nN9 M30';
+    const fh = remap(`O1 (FH)\n${body}`, haas1, 'HAAS-1').code;
+    expect(fh).toMatch(/^N6 G98 G83 Z-9\.5 R2\. Q5\. F300\./m);
+    expect(fh).toMatch(/^N7 G83 Z-6\. R2\. Q3\.5 F300\./m);
+    expect(fh).toMatch(/^N8 G83 Z-6\. R2\. Q5\. F300\. \(Q8 IN THE COMMENT\)/m);
+    expect(remap(`O1 (POM)\n${body}`, haas1, 'HAAS-1').code).toMatch(/Q8\./);
+  });
+
   it('addG49AfterM6 skips comments and lines that already have G49', () => {
     expect(addG49AfterM6(['N16 T3 M6 (APPROX-REMAP: T3 tourteau)', 'N17 (TARAUD M6)', 'N20 T4 M06 G49', 'T5 M6'])).toEqual([
       'N16 T3 M6 G49 (APPROX-REMAP: T3 tourteau)',

@@ -15,6 +15,15 @@ describe('toolpath reader', () => {
     expect(p.max).toEqual([60, 0, 10]);
   });
 
+  it('names a tool by the CAM comment after the change, also on its M01 check stop, with the remapped shop tool first', () => {
+    const cam = ['N168 (TOOLPATH CAVITY_SCHLICHT)', 'N169 T6 M6', 'N170 M01 (KUGELFRAESER R3/30MM LANG / KF_06.00_030_R03_ALHS)', 'N171 (DIAMETER  6.00 MM/LENGTH 30.00 MM)', 'G0 X0 Y0 Z10.'];
+    expect(parseToolpath(cam.join('\n'), S).tools[0]).toMatchObject({ tool: 6, label: 'KUGELFRAESER R3/30MM LANG / KF_06.00_030_R03_ALHS', diameter: 6, length: 30 });
+    cam[1] = 'N169 T37 M6 (AUTO-REMAP: T37 fraise boule)';
+    expect(parseToolpath(cam.join('\n'), S).tools[0].label).toBe('fraise boule · KUGELFRAESER R3/30MM LANG / KF_06.00_030_R03_ALHS');
+    // Only the operation's name before it: that one.
+    expect(parseToolpath(['(TOOLPATH BOHREN)', 'T3 M6', 'G0 X0 Y0 Z10.'].join('\n'), S).tools[0].label).toBe('TOOLPATH BOHREN');
+  });
+
   it('follows incremental moves', () => {
     const p = parseToolpath(['G0 G90 X10. Y10. Z5.', 'G91 G1 X5. Y-5. F100', 'G90'].join('\n'), S);
     expect(p.moves[0].points[1]).toEqual([15, 5, 5]);

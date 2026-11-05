@@ -220,6 +220,7 @@ const remapper: Translation<typeof en> = {
     percentWrapped: 'Başa ve sona % eklendi',
     toFanuc: 'FANUC’a dönüştürüldü: {{details}}',
     toFanucPlain: 'Kod HAAS formatından FANUC formatına dönüştürüldü',
+    fanuc2KeepsHaas: 'FANUC-2 HAAS kodu çalıştırır: program olduğu gibi kalır (kod oluşturulurken her M6\'nın arkasına G49 eklenir)',
   },
   /** Bitmiş programın güvenlik kontrolü (lib/safetyCheck). */
   safety: {
@@ -301,6 +302,13 @@ const remapper: Translation<typeof en> = {
     fit: 'Ekrana sığdır',
     noMoves: 'Bu programda gösterilecek hareket yok.',
     estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
+    toolSize: 'Ø {{d}} mm · boy {{l}} mm',
+    quality: {
+      label: 'Simülasyon kalitesi',
+      performance: 'Performans',
+      details: 'Detay',
+      help: 'Performans: akıcı ve hafif, parça takımı arkadan takip eder. Detay: daha ince parça, kesim takımın olduğu yerde canlı gösterilir (bilgisayarı ve ekran kartını daha çok kullanır).',
+    },
     play: 'Oynat',
     pause: 'Duraklat',
     start: 'Başa dön',

@@ -209,15 +209,22 @@ export function readInstructions(notes: string[]) {
     else if (m[2] === 'X' && !sizes) onlyX = v;
   }
   found.sort((a, b) => a.at - b.at);
-  // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-).
-  const hint = t.match(/([XYZ])\s*([+-])\s*(?:WIRD|IN|TO)\s*([XYZ])\s*([+-])/);
-  const turns = found.map(({ axis, deg }) => {
-    if (deg % 180 !== 0 && hint) {
-      const from: Vec = [0, 0, 0];
-      const to: Vec = [0, 0, 0];
-      from['XYZ'.indexOf(hint[1])] = hint[2] === '-' ? -1 : 1;
-      to['XYZ'.indexOf(hint[3])] = hint[4] === '-' ? -1 : 1;
-      if (same(apply(turn(axis, -deg), from), to)) return { axis, deg: -deg };
+  // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-). Each turn
+  // reads the hint written after it (before the next turn), else any hint that fits its axis.
+  const hints = [...t.matchAll(/([XYZ])\s*([+-])\s*(?:WIRD|IN|TO)\s*([XYZ])\s*([+-])/g)].map((h) => {
+    const from: Vec = [0, 0, 0];
+    const to: Vec = [0, 0, 0];
+    from['XYZ'.indexOf(h[1])] = h[2] === '-' ? -1 : 1;
+    to['XYZ'.indexOf(h[3])] = h[4] === '-' ? -1 : 1;
+    return { at: h.index!, from, to };
+  });
+  const turns = found.map(({ at, axis, deg }, i) => {
+    if (deg % 180 === 0) return { axis, deg };
+    const end = found[i + 1]?.at ?? Infinity;
+    const own = hints.filter((h) => h.at > at && h.at < end);
+    for (const h of [...own, ...hints]) {
+      if (same(apply(turn(axis, deg), h.from), h.to)) return { axis, deg };
+      if (same(apply(turn(axis, -deg), h.from), h.to)) return { axis, deg: -deg };
     }
     return { axis, deg };
   });

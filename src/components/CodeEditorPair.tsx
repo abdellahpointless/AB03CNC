@@ -44,6 +44,8 @@ interface CodeEditorPairProps {
   onSafetyOverride?: (errors: number) => void;
   /** Brand of the target machine (rapid speed and tool change time of the toolpath estimate). */
   machineBrand?: string;
+  /** FANUC-2 runs HAAS code: the HAAS → FANUC button leaves the program as it is. */
+  haasOnly?: boolean;
 }
 
 /** Symbol and short code of each check: readable without knowing the app's language. */
@@ -216,6 +218,7 @@ export default function CodeEditorPair({
   safety = null,
   onSafetyOverride,
   machineBrand,
+  haasOnly = false,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
   const [showSoon, setShowSoon] = useState(false);
@@ -383,6 +386,11 @@ export default function CodeEditorPair({
 
   const handleSwitchHaasToFanuc = () => {
     if (!sourceCode.trim()) return;
+    if (haasOnly) {
+      setConversionNotification(t('convert.fanuc2KeepsHaas'));
+      setTimeout(() => setConversionNotification(null), 6000);
+      return;
+    }
     
     const { lines: processedSource, addedCount: sourceAdded } = applyG53BeforeG52(sourceCode.split('\n'));
     const cleanSource = processedSource.join('\n');

@@ -32,8 +32,8 @@ export const FLIP_MS = 2200;
 export interface SimTool {
   tool: number | null;
   radius: number;
-  /** Pointed tip: how fast the radius grows per mm above the tip (tan of half the point angle); null = flat. */
-  slope: number | null;
+  /** Pointed tip: how fast the radius grows per mm above the tip (tan of half the point angle); 'drop': the eyedrop ball cutter; null = flat. */
+  slope: number | 'drop' | null;
 }
 
 export interface SimInput {
@@ -73,8 +73,26 @@ export function simTools(tp: Toolpath): SimTool[] {
   return tp.tools.map((t) => ({
     tool: t.tool,
     radius: Math.max(0.3, (t.diameter ?? guessDiameter(t.label)) / 2),
-    slope: tipSlope(t.label),
+    slope: tipSlope(t.label) ?? (isBall(t.label) ? 'drop' : null),
   }));
+}
+
+/** Ball cutters (fraise boule, KUGEL, BALL): drawn and cut as an eyedrop. */
+export const isBall = (label: string) => /KUGEL|BALL|BOULE|HEMISPH|\bKF_|\bKU_/i.test(label);
+
+// The eyedrop cutter, in ball radii: a ball, then a taper tangent to it up into a thinner neck.
+const DROP_NECK = 0.55;
+export const DROP_TOP = 2.4;
+const DROP_PHI = Math.atan2(DROP_TOP - 1, DROP_NECK) - Math.acos(1 / Math.hypot(DROP_NECK, DROP_TOP - 1));
+const DROP_TX = Math.cos(DROP_PHI);
+const DROP_TY = 1 + Math.sin(DROP_PHI);
+/** Radius of the eyedrop cutter (ball radius r) at height h above its tip; -1 below the tip. */
+export function dropRadius(h: number, r: number): number {
+  const u = h / r;
+  if (u < 0) return -1;
+  if (u <= DROP_TY) return r * Math.sqrt(Math.max(0, 1 - (1 - u) * (1 - u)));
+  if (u <= DROP_TOP) return r * (DROP_TX + ((u - DROP_TY) / (DROP_TOP - DROP_TY)) * (DROP_NECK - DROP_TX));
+  return r * DROP_NECK;
 }
 
 /** tan(half point angle) of a pointed tool, from its name; null for flat end mills and taps. */
@@ -118,7 +136,7 @@ export function buildInput(tp: Toolpath, an: ProgramSetups): SimInput | null {
  * point the deepest tool position that covers it counts, so plunges, ramps and helixes cut to
  * their full depth.
  */
-export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): boolean {
+export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): boolean {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const dz = b[2] - a[2];
@@ -139,6 +157,26 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
     if (u1 > u2) return false;
     return z >= a[2] + Math.min(u1 * dz, u2 * dz) - 1e-9;
   }
+  if (slope === 'drop') {
+    // A plunge: the widest the drop gets between where its tip starts and ends.
+    if (l2 < 1e-12) {
+      const h2 = z - Math.min(a[2], b[2]);
+      if (h2 < -1e-9) return false;
+      const h1 = Math.max(0, z - Math.max(a[2], b[2]));
+      const w = h1 <= r && r <= h2 ? r : Math.max(dropRadius(h1, r), dropRadius(h2, r));
+      return wx * wx + wy * wy <= w * w + 1e-9;
+    }
+    // Level: the drop's radius at this height, at the nearest point of the move. A ramp: along it.
+    // shortcut: a ramp is checked at 17 points along it, fine for chords of arcs and short ramps; refine if long steep ramps show steps.
+    const near = Math.min(1, Math.max(0, (wx * dx + wy * dy) / l2));
+    const us = Math.abs(dz) < 1e-9 ? [near] : [near, ...Array.from({ length: 17 }, (_, i) => i / 16)];
+    for (const u of us) {
+      const ex = wx - u * dx;
+      const ey = wy - u * dy;
+      if (Math.sqrt(ex * ex + ey * ey) <= dropRadius(z - (a[2] + u * dz), r) + 1e-9) return true;
+    }
+    return false;
+  }
   // Pointed tip: radius at height h above the tip is min(r, h · slope). Check the likely positions.
   const us = l2 < 1e-12 ? [dz < 0 ? 1 : 0] : [0, 1, Math.min(1, Math.max(0, (wx * dx + wy * dy) / l2))];
   for (const u of us) {
@@ -156,7 +194,7 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
  * move, or -1 when it never does. Same rule as `sweeps`: the point goes once the tool's disc is
  * over it with its bottom at or below it.
  */
-export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): number {
+export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): number {
   if (slope !== null) {
     if (!sweeps(x, y, z, a, b, r, slope)) return -1;
     // Pointed tip: the shares that reach the point form one stretch; find where it starts.
@@ -205,18 +243,19 @@ export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number
  * the distance to the tool's edge there (sideways to its rim, or up from its bottom); 0 or less
  * when the tool does not reach it there.
  */
-export function depthIn(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | null): number {
+export function depthIn(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
   const u = l2 > 1e-12 ? Math.min(1, Math.max(0, ((x - a[0]) * dx + (y - a[1]) * dy) / l2)) : b[2] < a[2] ? 1 : 0;
   const d = Math.hypot(x - a[0] - u * dx, y - a[1] - u * dy);
   const h = z - (a[2] + u * (b[2] - a[2]));
+  if (slope === 'drop') return h < 0 ? h : dropRadius(h, r) - d;
   return slope === null ? Math.min(r - d, h) : Math.min(r, h * slope) - d;
 }
 
 /** Which way the surface left by a sweep faces at machine point p (out of the material). */
-function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, tol: number): Vec {
+function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | 'drop' | null, tol: number): Vec {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
@@ -231,6 +270,16 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | null, to
   if (d > 1e-9) {
     ix /= d;
     iy /= d;
+  }
+  if (slope === 'drop') {
+    if (d < 1e-6) return [0, 0, 1];
+    // Square to the drop's outline at this height: its radius grows by g per mm up.
+    const h = p[2] - (a[2] + u * (b[2] - a[2]));
+    const lo = Math.max(0, h - r * 1e-3);
+    const hi = Math.max(lo + r * 1e-3, h + r * 1e-3);
+    const g = (dropRadius(hi, r) - dropRadius(lo, r)) / (hi - lo);
+    const n = Math.hypot(1, g);
+    return [ix / n, iy / n, g / n];
   }
   if (slope !== null) {
     if (d < 1e-6) return [0, 0, 1];
@@ -328,6 +377,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
       }
     }
   });
+  dropLoose(n, removed, share, (input.moves.length + 1) * SUB);
 
   // On the finished surface, also the move that reaches furthest past each cut sample. A later
   // pass that only skims a little more off (a finishing pass, a second circle a bit wider) may take
@@ -403,6 +453,84 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
   }
   onProgress?.(1);
   return { n, step, size: Math.cbrt(step[0] * step[1] * step[2]), origin, removed, share, outer };
+}
+
+/**
+ * Material cut free from the part (a ring left round a contour, an offcut) falls away in the
+ * machine: it goes at the instant the last bit holding it to the part is cut. The part is the
+ * largest piece left at the end; a piece touching it, even at a corner (26 neighbours), stays.
+ * Returns how many samples fell. `end`: an instant after the last move.
+ */
+export function dropLoose(n: [number, number, number], removed: Int32Array, share: Uint16Array, end: number): number {
+  const [nx, ny, nz] = n;
+  const inst = (v: number) => (removed[v] === KEPT ? Infinity : removed[v] * SUB + (share[v] >> 6));
+  const label = new Int32Array(removed.length).fill(-1);
+  const seen = new Int32Array(removed.length);
+  const queue = new Int32Array(removed.length);
+  let stamp = 0;
+  // Breadth-first from v over samples that `pass`; stops (true) as soon as `stop` holds for one.
+  const spread = (v: number, pass: (w: number) => boolean, reach: (w: number) => boolean | void): boolean => {
+    stamp++;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = v;
+    seen[v] = stamp;
+    if (reach(v)) return true;
+    while (head < tail) {
+      const c = queue[head++];
+      const i = c % nx;
+      const j = Math.floor(c / nx) % ny;
+      const k = Math.floor(c / (nx * ny));
+      for (let kk = Math.max(0, k - 1); kk <= Math.min(nz - 1, k + 1); kk++)
+        for (let jj = Math.max(0, j - 1); jj <= Math.min(ny - 1, j + 1); jj++)
+          for (let ii = Math.max(0, i - 1); ii <= Math.min(nx - 1, i + 1); ii++) {
+            const w = (kk * ny + jj) * nx + ii;
+            if (seen[w] === stamp || !pass(w)) continue;
+            seen[w] = stamp;
+            queue[tail++] = w;
+            if (reach(w)) return true;
+          }
+    }
+    return false;
+  };
+  // The pieces left at the end.
+  const sizes: number[] = [];
+  const seeds: number[] = [];
+  for (let v = 0; v < removed.length; v++) {
+    if (removed[v] !== KEPT || label[v] >= 0) continue;
+    const c = sizes.length;
+    let count = 0;
+    spread(v, (w) => removed[w] === KEPT, (w) => {
+      label[w] = c;
+      count++;
+    });
+    sizes.push(count);
+    seeds.push(v);
+  }
+  if (sizes.length < 2) return 0;
+  const main = sizes.indexOf(Math.max(...sizes));
+  let fell = 0;
+  for (let c = 0; c < sizes.length; c++) {
+    if (c === main || removed[seeds[c]] !== KEPT) continue;
+    // Still held to the part at instant `at` (through material not cut yet)?
+    const held = (at: number) => spread(seeds[c], (w) => inst(w) >= at, (w) => label[w] === main);
+    let lo = 0;
+    let hi = end;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (held(mid)) lo = mid;
+      else hi = mid;
+    }
+    // Everything still joined to it then falls with it, just before that instant.
+    const r = Math.floor((hi - 1) / SUB);
+    const sh = ((hi - 1) % SUB) << 6;
+    spread(seeds[c], (w) => inst(w) >= hi, (w) => {
+      removed[w] = r;
+      share[w] = sh;
+      fell++;
+    });
+  }
+  return fell;
 }
 
 /* ---------- Surfaces ---------- */
@@ -747,7 +875,7 @@ export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
       return true;
     };
     // Full Ø only above a pointed tool's cone.
-    const floor = h.lo + (tool.slope ? tool.radius / tool.slope : 0);
+    const floor = h.lo + (typeof tool.slope === 'number' ? tool.radius / tool.slope : 0);
     // A plunge starts above the part; a bore's wall goes up to the top of the part (the tool clears all above it).
     let start = h.hi;
     if (bore) for (let c = 0; c < 8; c++) start = Math.max(start, R[6] * (c & 1 ? input.part.max : input.part.min)[0] + R[7] * (c & 2 ? input.part.max : input.part.min)[1] + R[8] * (c & 4 ? input.part.max : input.part.min)[2] + t[2]);
@@ -1201,7 +1329,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
     // A pointed tool's cone that leaves only a sliver (a deburr, a spot drill's rim a little wider
     // than the hole), narrower than half a sample: too fine to draw, and shaded in patches it glints
     // like teeth along the edge. It still places the surface; the faces either side shade it.
-    if (tool.slope !== null && nm[2] > 1e-6 && nm[2] < 0.999) {
+    if (typeof tool.slope === 'number' && nm[2] > 1e-6 && nm[2] < 0.999) {
       const cell = Math.max(h[0], h[1], h[2]);
       // Down the cone's slope (in the plane of its axis), both ways from the crossing.
       const k = Math.hypot(nm[0], nm[1]) || 1;

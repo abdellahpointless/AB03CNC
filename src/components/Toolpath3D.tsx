@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, FLIP_MS, holderOf, instant, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
+import { buildInput, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { between, holeAt, holeAxis, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
@@ -90,6 +90,10 @@ interface Props {
   focus?: { point: Vec; key: number } | null;
   /** The vise, clamp and cales drawn see-through (the part shows through them). */
   seeThrough?: boolean;
+  /** Details mode: a finer part (more samples), drawn as it is cut. */
+  details?: boolean;
+  /** Set while the part shown is behind the instant asked for (details mode lets playback wait for it). */
+  behind?: React.MutableRefObject<boolean>;
 }
 
 /** What the clicks measure (mm): a hole's Ø, the distance between two picks (with its X/Y/Z parts), the first of two picked, or why not. */
@@ -465,8 +469,12 @@ const P2 = (x: number, y: number) => new THREE.Vector2(x, y);
 function cutterProfile(shape: ToolShape, r: number, len: number, tipH: number): THREE.Vector2[] {
   if (shape === 'point') return [P2(0, 0), P2(r, tipH), P2(r, len), P2(0, len)];
   if (shape === 'ball') {
-    const b = Math.min(r, len);
-    return [...Array.from({ length: 9 }, (_, i) => P2(r * Math.sin((i / 8) * (Math.PI / 2)), b - b * Math.cos((i / 8) * (Math.PI / 2)))), P2(r, len), P2(0, len)];
+    // The eyedrop, exactly as the simulation cuts with it (denser near the tip, where the ball turns fastest).
+    const top = Math.min(len, r * DROP_TOP);
+    return [...Array.from({ length: 33 }, (_, i) => {
+      const h = top * (i / 32) ** 1.6;
+      return P2(dropRadius(h, r), h);
+    }), P2(dropRadius(len, r), len), P2(0, len)];
   }
   if (shape === 'face') {
     // The cutter disk, its shoulder, then the arbor up to the holder.
@@ -483,7 +491,7 @@ function holderProfile(hr: number, hh: number, len: number): THREE.Vector2[] {
 /** The kind of cutter, from its name: pointed (drills, chamfers, spot drills), ball nose, face mill or flat end mill. */
 function shapeOf(label: string, r: number): ToolShape {
   if (tipSlope(label)) return 'point';
-  if (/KUGEL|BALL|BOULE|HEMISPH|\bKF_|\bKU_/i.test(label)) return 'ball';
+  if (isBall(label)) return 'ball';
   if (r >= 12 || /MESSERKOPF|PLANFR/i.test(label)) return 'face';
   return 'flat';
 }
@@ -623,7 +631,9 @@ interface Api {
   frame: () => { c: THREE.Vector3; size: number };
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind }: Props) {
+  const behindRef = useRef(behind);
+  behindRef.current = behind;
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const resetMeasure = useRef<(() => void) | null>(null);
@@ -772,11 +782,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   useEffect(() => {
     const a = api.current;
     if (!a) return;
-    const input = buildInput(path, program);
-    if (!input) {
+    const plain = buildInput(path, program);
+    if (!plain) {
       onSolidRef.current?.({ state: 'off', share: 0 });
       return;
     }
+    // Details: twice the samples (finer walls, holes and chamfers), more memory and time to cut.
+    const input = details ? { ...plain, maxVoxels: 10_000_000 } : plain;
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     const L = LOOKS[look];
     const material = partMaterial(look, input.part, program.white, a.scene.environment);
@@ -795,13 +807,18 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       a.settle = null;
       f();
     };
+    const lag = () => {
+      if (behindRef.current) behindRef.current.current = a.solidReady && (busy || wanted !== shown);
+    };
     const ask = (s: number, force = false) => {
       wanted = s;
       if (force) shown = -1;
       if (s === shown) settled();
-      if (busy || !a.solidReady || s === shown) return;
-      busy = true;
-      worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current });
+      if (!busy && a.solidReady && s !== shown) {
+        busy = true;
+        worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current });
+      }
+      lag();
     };
     a.requestMesh = ask;
     // Raw or cut colour, or the weak-spot colour of each point's wall thickness.
@@ -915,6 +932,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         a.invalidate();
         if (wanted !== shown) ask(wanted);
         settled();
+        lag();
       }
     };
     worker.postMessage({ type: 'init', input });
@@ -922,6 +940,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     return () => {
       worker.terminate();
       a.solidReady = false;
+      if (behindRef.current) behindRef.current.current = false;
       a.requestMesh = () => undefined;
       a.repaint = () => undefined;
       a.applySection = () => undefined;
@@ -934,7 +953,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       a.settle = null;
       onSolidRef.current?.({ state: 'off', share: 0 });
     };
-  }, [path, program, look]);
+  }, [path, program, look, details]);
 
   // The setup's scene: fixture, toolpath, tool, markers.
   useEffect(() => {
@@ -973,6 +992,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       }
     }
     const feedAttr = new THREE.Float32BufferAttribute(feedPos, 3);
+    // Each move's run of one tool (tool change to tool change): only the tool at work shows its path.
+    const runFrom = moves.map((m, n) => (n > 0 && moves[n - 1].tool === m.tool ? -1 : n));
+    for (let n = 1; n < moves.length; n++) if (runFrom[n] < 0) runFrom[n] = runFrom[n - 1];
+    const runTo = moves.map((m, n) => (n < moves.length - 1 && moves[n + 1].tool === m.tool ? -1 : n));
+    for (let n = moves.length - 2; n >= 0; n--) if (runTo[n] < 0) runTo[n] = runTo[n + 1];
+    const feedEnd = (n: number) => (n + 1 < moves.length ? feedStart[n + 1] : feedPos.length / 3);
     const ghostGeo = new THREE.BufferGeometry();
     ghostGeo.setAttribute('position', feedAttr);
     const ghost = new THREE.LineSegments(ghostGeo, new THREE.LineBasicMaterial({ color: 0x33415e, transparent: true, opacity: 0.55 }));
@@ -1133,6 +1158,9 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const cur = k >= 0 ? moves[k] : null;
       tool.userData.has = !!cur;
       tool.visible = !!cur && !a.anim;
+      // The ghost: the whole path of the tool at work (the first tool before the setup starts).
+      const r = Math.max(0, k);
+      if (moves.length) ghostGeo.setDrawRange(feedStart[runFrom[r]], feedEnd(runTo[r]) - feedStart[runFrom[r]]);
       if (!cur) {
         feedGeo.setDrawRange(0, 0);
         rapidGeo.setDrawRange(0, 0);
@@ -1145,8 +1173,9 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         const segs = Math.max(0, paths[k].length - 1);
         const done = Math.min(at.done, segs);
         const rapid = cur.kind === 'rapid';
-        feedGeo.setDrawRange(0, feedStart[k] + (rapid ? 0 : done * 2));
-        rapidGeo.setDrawRange(0, rapidStart[k] + (rapid ? done * 2 : 0));
+        const r0 = runFrom[k];
+        feedGeo.setDrawRange(feedStart[r0], feedStart[k] - feedStart[r0] + (rapid ? 0 : done * 2));
+        rapidGeo.setDrawRange(rapidStart[r0], rapidStart[k] - rapidStart[r0] + (rapid ? done * 2 : 0));
         trail.visible = done < segs;
         if (trail.visible) {
           const from = paths[k][done];

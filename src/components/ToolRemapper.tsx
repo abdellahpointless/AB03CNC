@@ -211,7 +211,6 @@ N190 M30`;
     }
     const toolsForMachine = toolbox[selectedMachine] || [];
     const analysis = analyzeGCode(currentSource, toolsForMachine, engineId);
-    setAnalyzedSignature?.(signatureOf(selectedMachine, currentSource));
     setBlocks(analysis.blocks);
     setLines(analysis.lines);
     setDetectedMat(analysis.detectedMaterial);
@@ -318,6 +317,8 @@ N190 M30`;
     if (addedFanucOffsets) {
        alert(t('alerts.fanucOffsetsAdded'));
     }
+    // Only now is the output the program on the left (Back or Cancel keeps the old output stale).
+    setAnalyzedSignature?.(signatureOf(selectedMachine, sourceCode));
     // Countries whose operators do not read French get the program's comments in English.
     setOutputCode(currentRegion().gcodeComments === 'en' ? translateGcodeComments(finalCode) : finalCode);
     setShowConfirm(false);
@@ -331,7 +332,7 @@ N190 M30`;
       .map((b) => ({ tool: b, used: resolutions[b.blockId] || b.matchedTool }))
       .filter((x) => x.used)
       .map(({ tool: b, used }) => ({ tool: used!.number, length: used!.length, depth: Math.abs(b.minZDepth || 0) }));
-    return checkProgram(outputCode, { fanuc: isFanucMachine || engineId.startsWith('FANUC'), toolDepths });
+    return checkProgram(outputCode, { fanuc: engineId !== 'FANUC-2' && (isFanucMachine || engineId.startsWith('FANUC')), toolDepths });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outputCode]);
 
@@ -803,6 +804,7 @@ N190 M30`;
       <CodeEditorPair
         safety={safety}
         machineBrand={machine?.brand}
+        haasOnly={engineId === 'FANUC-2'}
         onSafetyOverride={(errors) => {
           // Tells the master admins (Telegram alert) that a program left with red safety problems.
           api('/alerts/safety-override', { method: 'POST', body: { machine: machine?.name ?? selectedMachine, program: fileName || 'program', errors } }).catch(() => undefined);

@@ -19,7 +19,7 @@ export function codeOnly(line: string): string {
 }
 
 /** Applies a regex replacement to the code parts of a line only, never inside (comments). */
-export function replaceInCode(line: string, pattern: RegExp, replacement: string): string {
+export function replaceInCode(line: string, pattern: RegExp, replacement: string | ((match: string, ...groups: string[]) => string)): string {
   let out = '';
   let replaced = false;
   const global = pattern.flags.includes('g');
@@ -28,7 +28,7 @@ export function replaceInCode(line: string, pattern: RegExp, replacement: string
   let m: RegExpExecArray | null;
   const doReplace = (segment: string) => {
     if (replaced && !global) return segment;
-    const next = segment.replace(pattern, replacement);
+    const next = typeof replacement === 'string' ? segment.replace(pattern, replacement) : segment.replace(pattern, replacement);
     if (next !== segment) replaced = true;
     return next;
   };
@@ -539,7 +539,8 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
         outputLines[block.lineIndex] = replaceInCode(block.originalLine, /(?<![A-Z])M0*6(?![0-9.])/i, `T${toolToUse.number} M6`) + ` (${remapTypeStr}: T${toolToUse.number} ${toolToUse.category})`;
       }
 
-      const isFanuc = machineId && machineId.startsWith('FANUC');
+      // FANUC-2 runs the HAAS code: plain H<tool> offsets, never H#513 D#513.
+      const isFanuc = machineId && machineId.startsWith('FANUC') && machineId !== 'FANUC-2';
       const isPureCommentLine = (l: string) => /^(N\d+\s*)?\(.*?\)\s*$/i.test(l.trim());
 
       if (isFanuc) {
@@ -594,6 +595,11 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
           // Ignore lines that are comments
           if (outputLines[j] !== '__REMOVE_ME__' && !isPureCommentLine(outputLines[j])) {
             const codePart = codeOnly(outputLines[j]);
+            if (machineId === 'FANUC-2' && /(?<![A-Z])H#513/i.test(codePart)) {
+              const l = replaceInCode(outputLines[j], /(?<![A-Z])H#513(?:\s+D#513)?/i, `H${toolToUse.number}`);
+              outputLines[j] = replaceInCode(l, /\s*(?<![A-Z0-9])M254(?![0-9.])/i, '') + ` (AI-MOD: OFFSET H${toolToUse.number})`;
+              break;
+            }
             if (/(?<![A-Z])H\d+/i.test(codePart)) {
               outputLines[j] = replaceInCode(outputLines[j], /(?<![A-Z])H\d+/i, `H${toolToUse.number}`) + ` (AI-MOD: OFFSET H${toolToUse.number})`;
               break; 
@@ -617,9 +623,19 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     outputLines = outputLines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
   }
 
+  // FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
+  // subprogram calls keep their Q (an argument there, not a pass).
+  if (detectMaterial(lines.join('\n')) === 'FH') {
+    outputLines = outputLines.map((l) =>
+      l === '__REMOVE_ME__' || /(?<![A-Z])(?:G65|M98|M97)(?![0-9])/i.test(codeOnly(l))
+        ? l
+        : replaceInCode(l, /(?<![A-Z])Q(\d+\.?\d*|\.\d+)/gi, (w: string, v: string) => (Number(v) > 5 ? 'Q5.' : w)),
+    );
+  }
+
   // In FANUC, if the app detects M98 P7999 then it should be deleted
-  const isFanuc = (machineId && machineId.toUpperCase().includes('FANUC')) || 
-                  outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(l));
+  const isFanuc = machineId !== 'FANUC-2' && ((machineId && machineId.toUpperCase().includes('FANUC')) ||
+                  outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(l)));
   if (isFanuc) {
     outputLines = outputLines.map(l => {
       if (l === '__REMOVE_ME__') return l;

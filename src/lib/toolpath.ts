@@ -121,14 +121,16 @@ const dist = (a: Vec, b: Vec) => Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2
 /** The tool's description from comments on its tool-change line or right after it. */
 function toolLabel(lines: string[], i: number): string {
   const grab = (l: string) => (l.match(/\(([^)]*)\)/g) ?? []).map((c) => c.slice(1, -1).trim()).filter(Boolean);
-  const own = grab(lines[i]).map((c) => c.replace(/^(AUTO|APPROX|MANUAL)-REMAP:\s*T\d+\s*/i, ''));
-  if (own.some(Boolean)) return own.filter(Boolean)[0];
-  for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
-    const t = lines[j].trim();
-    if (!t.replace(/^N\d+\s*/i, '').startsWith('(')) break;
-    const c = grab(t)[0];
-    if (c) return c;
+  // The remapper's note on the tool change ("AUTO-REMAP: T6 fraise boule"): the shop's tool.
+  const own = grab(lines[i]).map((c) => c.replace(/^(AUTO|APPROX|MANUAL)-REMAP:\s*T\d+\s*/i, '')).filter(Boolean)[0] ?? '';
+  // The CAM's name of the tool: the comment just after the change, also on its "M01 (...)" check stop.
+  let cam = '';
+  for (let j = i + 1; j < Math.min(lines.length, i + 4) && !cam; j++) {
+    const t = lines[j].trim().replace(/^N\d+\s*/i, '').replace(/^M0?1\s*/i, '');
+    if (!t.startsWith('(')) break;
+    cam = grab(t).find((c) => !/^DIAMETER\b/i.test(c)) ?? '';
   }
+  if (own || cam) return own && cam ? `${own} · ${cam}` : own || cam;
   for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
     const t = lines[j].trim();
     if (!t.replace(/^N\d+\s*/i, '').startsWith('(')) break;

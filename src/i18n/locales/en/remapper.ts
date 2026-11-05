@@ -229,6 +229,7 @@ const remapper = {
     percentWrapped: '% wrapped',
     toFanuc: 'Switched to FANUC: {{details}}',
     toFanucPlain: 'Switched code from HAAS to FANUC dialect',
+    fanuc2KeepsHaas: 'FANUC-2 runs HAAS code: the program stays as it is (G49 is added after each M6 when the code is generated)',
   },
   /** Safety check of the finished program (lib/safetyCheck). */
   safety: {
@@ -310,6 +311,13 @@ const remapper = {
     fit: 'Fit to screen',
     noMoves: 'No moves to show in this program.',
     estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
+    toolSize: 'Ø {{d}} mm · length {{l}} mm',
+    quality: {
+      label: 'Simulation quality',
+      performance: 'Performance',
+      details: 'Details',
+      help: 'Performance: smooth and light, the part catches up with the tool. Details: a finer part, cut live right where the tool is (uses more of the computer and graphics card).',
+    },
     play: 'Play',
     pause: 'Pause',
     start: 'Start',
