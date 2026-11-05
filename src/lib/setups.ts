@@ -709,7 +709,16 @@ function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
 }
 
 function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>, boxes?: Map<number, Box>, helds?: Map<number, Held>): ProgramSetups {
-  const { finished, raw } = partSizes(tp.header);
+  const { raw } = partSizes(tp.header);
+  let { finished } = partSizes(tp.header);
+  // A side written 0 ("TOP PLATE FH / 100X50X0"): the height the first clamping shows. Z0 is the top,
+  // the part stands on its supports on the table (G52 Z), so it reaches down to the supports.
+  if (finished?.some((v) => v <= 0)) {
+    const first = tp.setups.find((s) => s.shift && s.notes.length);
+    const support = first ? readInstructions(first.notes.map((n) => n.text)).support : null;
+    const h = first && support !== null ? -(TABLE_Z - first.shift![2] + support) : NaN;
+    finished = h > 0 ? (finished.map((v) => (v <= 0 ? h : v)) as [number, number, number]) : null;
+  }
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
     const info = tp.tools.find((t) => t.tool === tool);

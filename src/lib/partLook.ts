@@ -17,7 +17,8 @@ export function partLook(code: string): PartLook {
   if (m === 'POM') return 'pom';
   if (m === 'FH') {
     const size = partSizes(lines).finished;
-    return size && Math.min(...size) < 10 ? 'fhThin' : 'fh';
+    // A side written 0 is a typo in the header, not a thin plate.
+    return size && Math.min(...size.filter((v) => v > 0)) < 10 ? 'fhThin' : 'fh';
   }
   if (m === 'ALU') return 'alu';
   if (m) return 'plain';

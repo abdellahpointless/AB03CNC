@@ -106,16 +106,19 @@ function blame(programPath: string, stlPath: string) {
     for (let v = 0; v < occ.length; v++) if (cut.removed[v] !== KEPT) occ[v] ? bad++ : good++;
     return { mm3: bad * vol, waste: good * vol };
   };
-  /** Better is less finished material cut, then more waste cut. */
-  const worse = (p: { mm3: number; waste: number }, q: { mm3: number; waste: number }) => p.mm3 > q.mm3 + NOISE || (p.mm3 <= q.mm3 + NOISE && p.waste < q.waste - Math.max(NOISE, q.waste * 0.05));
+  /** Waste cut is the job, finished material cut is ten times as bad (a way cutting only air scores nothing). */
+  const score = (w: { mm3: number; waste: number }) => w.waste - 10 * w.mm3;
+  const worse = (p: { mm3: number; waste: number }, q: { mm3: number; waste: number }) => score(p) < score(q) - Math.max(10 * NOISE, Math.abs(score(q)) * 0.05);
 
-  // The STL turned every way that has the simulated part's size; laid where it best overlaps the simulated part.
+  // The STL turned every way that has the simulated part's size. Setup 1 is the part's own frame, so it
+  // must be right: of the ways where it is, the one where the STL best overlaps the simulated part.
   const fits = ALL.filter((R) => {
     const b = turnedBox(R, lo, hi);
     return [0, 1, 2].every((k) => Math.abs(b.max[k] - b.min[k] - size[k]) < Math.max(1.5, size[k] * 0.05));
   });
   if (!fits.length) return console.log(`${programPath}: the STL (${hi.map((v, k) => (v - lo[k]).toFixed(1)).join(' × ')}) is not the simulated part (${size.map((v) => v.toFixed(1)).join(' × ')})`);
-  let lay: { R: Mat3; occ: Uint8Array; iou: number } | null = null;
+  const setups = an.setups.filter((s) => s.stock && s.moves);
+  let lay: { R: Mat3; occ: Uint8Array; iou: number; first: { mm3: number; waste: number } } | null = null;
   for (const R of fits) {
     const c = apply(R, stlMid);
     const occ = inside(tris, R, [mid[0] - c[0], mid[1] - c[1], mid[2] - c[2]], g);
@@ -126,11 +129,12 @@ function blame(programPath: string, stlPath: string) {
       if (sim && occ[v]) both++;
       if (sim || occ[v]) either++;
     }
-    if (!lay || both / either > lay.iou) lay = { R, occ, iou: both / either };
+    const first = setups.length ? cutInto(occ, setups[0], setups[0].orient) : { mm3: 0, waste: 0 };
+    const iou = both / either;
+    if (!lay || worse(lay.first, first) || (!worse(first, lay.first) && iou > lay.iou)) lay = { R, occ, iou, first };
   }
-  const setups = an.setups.filter((s) => s.stock && s.moves);
   const rows = setups.map((s) => {
-    const ways = ALL.map((O) => ({ O, ...cutInto(lay!.occ, s, O) })).sort((p, q) => (worse(p, q) ? 1 : worse(q, p) ? -1 : p.mm3 - q.mm3));
+    const ways = ALL.map((O) => ({ O, ...cutInto(lay!.occ, s, O) })).sort((p, q) => score(q) - score(p));
     return { s, app: ways.find((w) => w.O.join() === s.orient.join())!, ways };
   });
   const best = { R: lay!.R, occ: lay!.occ, rows };
@@ -148,8 +152,10 @@ function blame(programPath: string, stlPath: string) {
     const ties = ways.filter((w) => !worse(w, right)).length;
     let verdict: string;
     if (right.mm3 > 4 * NOISE && right.mm3 > right.waste * 0.25) {
-      // No way of lying avoids the finished part: the STL is not what this program makes.
-      verdict = `NO WAY FITS: even the best way ${said(right)}. The STL and the program may not belong together (another revision?): fix nothing from this one.`;
+      // No way of lying avoids the finished part: the STL is not what this program makes, or the part sits elsewhere.
+      // Every setup after it starts from there, so it counts as the first problem.
+      if (first === null) first = s.index;
+      verdict = `NO WAY FITS: the app's way ${said(app)}; even the best way ${said(right)}. The STL and the program may not belong together (another revision?), or the part is placed more than 2 mm off: fix nothing from this one alone.`;
     } else if (!worse(app, right)) verdict = `OK: ${said(app)}${ties > 1 ? ` (${ties} ways do as well: the STL cannot tell them apart)` : ''}`;
     else {
       const prev = n > 0 ? best.rows[n - 1] : null;
@@ -169,11 +175,15 @@ function blame(programPath: string, stlPath: string) {
             const m = cutInto(best.occ, s, s.orient, dd);
             if (!shift && worse(app, m) && !worse(m, right)) shift = ` Or the app's turn, moved ${d > 0 ? '+' : ''}${d} mm in ${'XYZ'[k]}: ${said(m)}.`;
           }
-        verdict = `WRONG: ${said(app)}. Turned ${right.O.join(',')} it ${said(right)}.${shift}`;
+          // Strong: the app's way cuts a real chunk of the part and the other way almost none. Small
+        // setups (a chamfer) give small numbers a slightly misplaced part can explain.
+        const strong = app.mm3 >= 200 && right.mm3 <= app.mm3 * 0.2;
+        verdict = `WRONG (${strong ? 'strong' : 'weak: check by hand'}): ${said(app)}. Turned ${right.O.join(',')} it ${said(right)}.${shift}`;
       }
     }
     console.log(`  setup ${s.index + 1}  [${note}]  (program line ${s.line + 1})`);
     console.log(`    app ${s.orient.join(',')} -> ${verdict}`);
+    if (verdict.startsWith('WRONG') || verdict.startsWith('NO WAY')) console.log(`    best ways: ${ways.slice(0, 4).map((w) => `${w.O.join(',')} (${w.mm3.toFixed(0)} / ${w.waste.toFixed(0)})`).join('  ')}`);
   });
   console.log(first === null ? '  => no setup is wrong' : `  => cause: setup ${first + 1}`);
 }

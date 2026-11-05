@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
+import { partLook } from '../src/lib/partLook';
 import { analyseProgram, analyseSetups, partSizes, readInstructions, spacerAt } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 
@@ -188,6 +189,13 @@ describe('setups', () => {
     expect(r.turns).toEqual([{ axis: 'X', deg: 90 }, { axis: 'Y', deg: -90 }]);
     expect(readInstructions(['TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
     expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
+  });
+
+  it('reads a header side written 0 ("100X50X0") as the height the first clamping shows', () => {
+    const code = ['%', 'O1013', 'N3 (TOP PLATE FH / 100X50X0)', 'N9 G54', 'N10 M0 (MOD. SPANNEN F. RUECKS./100 IN X )', 'N11 M0 (36 MM UNTERLAGE)', 'N12 G52 X0.000 Y25.000 Z19.000', 'N13 T3 M6 (MESSERKOPF D80)', 'N14 G0 X-60. Y-25. Z1.', 'N15 G1 Z0. F500', 'N16 G1 X60.', 'N17 M30'].join('\n');
+    const { part } = analyseProgram(parseToolpath(code, S), { jawHeight: 45 });
+    expect(part!.max[2] - part!.min[2]).toBeCloseTo(40, 1);
+    expect(partLook(code)).toBe('fh');
   });
 
   it('cuts the part away move by move', () => {
