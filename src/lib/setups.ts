@@ -231,14 +231,16 @@ export function readInstructions(notes: string[]) {
   });
   if (found.length) rotation = { axis: found[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
-  const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE`));
+  // An UNTERLAGE written with a side ("15 MM UNTERLAGE/ IN Y-") stands beside the part: a spacer, not a support.
+  const SIDE = '\\s*\\/?\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
+  const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM".
   const thick = t.match(new RegExp(`UNTERLAGE\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN|SUR|AUF)\\s*${NUM}`));
   // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
   const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
   // Every one written counts ("IN Y-" and "IN Y+": one plate on each side); the last one per side wins.
   const spacers = new Map<Face, number>();
-  for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`])
+  for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${NUM}\\s*MM\\s*UNTERLAGE${SIDE}`])
     for (const m of t.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.

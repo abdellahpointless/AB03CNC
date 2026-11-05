@@ -198,6 +198,15 @@ describe('setups', () => {
     expect(partLook(code)).toBe('fh');
   });
 
+  it('reads "15 MM UNTERLAGE/ IN Y-" as a spacer on the Y- side, not a second support (O1233043)', () => {
+    const r = readInstructions(['TEIL 180 GRAD UM Y DREHEN/24 IN X UND 14 IN Y', '38 MM UNTERLAGE', '15  MM UNTERLAGE/ IN Y-']);
+    expect(r.support).toBe(38);
+    expect(r.spacers).toEqual([{ mm: 15, side: 'Y-' }]);
+    // Written the other way round, the support is still the one without a side.
+    expect(readInstructions(['15 MM UNTERLAGE IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, spacers: [{ mm: 15, side: 'Y-' }] });
+    expect(readInstructions(['41 MM UNTERLAGE IN EP 4.5 MM'])).toMatchObject({ support: 41, restDepth: 4.5, spacers: [] });
+  });
+
   it('cuts the part away move by move', () => {
     const tp = parseToolpath(program(10), S);
     const an = analyseProgram(tp, { jawHeight: 42 });
