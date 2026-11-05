@@ -185,6 +185,17 @@ describe('code generation', () => {
     expect(remap(`O1 (POM)\n${body}`, haas1, 'HAAS-1').code).toMatch(/Q8\./);
   });
 
+  it('starts a tap\'s spindle with its tapping cycle: the S... M03 on the move before goes', () => {
+    const tap = 'N1556 (TOOLPATH GEWINDE_M4_1)\nN1557 T23 M6\nN1558 (GEWINDEBOHRER_M4 / GB_04.00_040_000_FH)\nN1560 G43 H23 Z50.\nN1562 G00 G90 X-8. Y-23.5 S300 M03\nN1563 Z2.\n';
+    const code = remap(`O1\n${tap}N1564 G98 G84 Z-7. R2. F280. S300 M03\nN1565 G80\nN1566 M30`, haas1, 'HAAS-1').code;
+    expect(code).toMatch(/^N1562 G00 G90 X-8\. Y-23\.5(?! S)/m);
+    expect(code).toMatch(/^N1564 G98 G84 Z-7\. R2\. F280\. S300 M03/m);
+    // A cycle without its own speed keeps the one on the move (the tap must not turn at the last tool's speed).
+    expect(remap(`O1\n${tap}N1564 G98 G84 Z-7. R2. F280.\nN1565 G80\nN1566 M30`, haas1, 'HAAS-1').code).toMatch(/^N1562 G00 G90 X-8\. Y-23\.5 S300 M03/m);
+    // Other tools keep theirs.
+    expect(remap('O1\nN3 T13 M6\nN4 (2.5MM BOHRER/45MM LANG / SB_02.50_045_000_FH)\nN5 G43 H13 Z50.\nN6 G00 X1. Y1. S5800 M03\nN7 M30', haas1, 'HAAS-1').code).toMatch(/S5800 M03/);
+  });
+
   it('addG49AfterM6 skips comments and lines that already have G49', () => {
     expect(addG49AfterM6(['N16 T3 M6 (APPROX-REMAP: T3 tourteau)', 'N17 (TARAUD M6)', 'N20 T4 M06 G49', 'T5 M6'])).toEqual([
       'N16 T3 M6 G49 (APPROX-REMAP: T3 tourteau)',

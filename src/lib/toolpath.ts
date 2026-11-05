@@ -49,6 +49,8 @@ export interface SetupRaw {
 export interface ToolInfo {
   tool: number;
   label: string;
+  /** The operation's name written before the tool change ("TOOLPATH PLAN_16MM"), '' when none. */
+  op: string;
   firstLine: number;
   seconds: number;
   /** From the "(DIAMETER 40.00 MM/LENGTH 40.00 MM)" comment, when present. */
@@ -131,10 +133,15 @@ function toolLabel(lines: string[], i: number): string {
     cam = grab(t).find((c) => !/^DIAMETER\b/i.test(c)) ?? '';
   }
   if (own || cam) return own && cam ? `${own} · ${cam}` : own || cam;
+  return toolOp(lines, i);
+}
+
+/** The comment just before a tool change: the operation's name ("TOOLPATH PLAN_16MM"). */
+function toolOp(lines: string[], i: number): string {
   for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
     const t = lines[j].trim();
     if (!t.replace(/^N\d+\s*/i, '').startsWith('(')) break;
-    const c = grab(t)[0];
+    const c = (t.match(/\(([^)]*)\)/) ?? [])[1]?.trim();
     if (c) return c;
   }
   return '';
@@ -263,7 +270,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       tool = pendingTool;
       ({ length: reach, diameter: dia } = toolSize(lines, i));
       toolChanges++;
-      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
+      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), op: toolOp(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
       addTime(speeds.toolChange);
     }
     if (v.has('F')) feed = v.get('F')!;

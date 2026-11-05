@@ -192,7 +192,8 @@ export function readInstructions(notes: string[]) {
   const t = notes.join(' / ').toUpperCase();
   // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y".
   // "36 IN X AND 41 IN Y", "30 IN X 20.5 IN Y"; "30 IN X UND Y" and "100 IN XY": the same both ways.
-  const both = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*X\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
+  // Also "TOP 14X AND 22 IN Y" (14 along X, 22 along Y).
+  const both = t.match(new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:(?:IN|UM)\\s*)?X\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
   const xy = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b)`));
   let sizes: { x: number; y: number } | null = both ? { x: num(both[1]), y: num(both[2]) } : xy ? { x: num(xy[1]), y: num(xy[1]) } : null;
   let onlyX: number | null = null;
@@ -423,6 +424,8 @@ export const turnMs = (prev: SetupInfo | null, next: SetupInfo | null): number =
 export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
 
 type Box = { min: Vec; max: Vec };
+/** What the jaws and the stop really hold after a turn: the part's extent between the vise floor and the jaw tops, from its box's corner (X, Y). */
+type Held = { x: [number, number]; y: [number, number] };
 
 /**
  * The part as it really is at each setup: after a turn, its box is the material left by the
@@ -436,7 +439,9 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
   let out = result;
   let boxes = new Map<number, Box>();
   let ledges = new Map<number, number>();
-  for (let pass = 0; pass <= out.setups.length; pass++) {
+  let helds = new Map<number, Held>();
+  let measured = false;
+  for (let pass = 0; pass <= out.setups.length + 1; pass++) {
     const full = buildInput(tp, out);
     if (!full) return out;
     // Only what is cut before the last setup shapes any box or ledge.
@@ -480,7 +485,22 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
       if (Number.isFinite(l) && l > s.stock.min[2] + 1.5 && l < s.stock.max[2] - 0.5) nextLedges.set(s.index, Math.round(l * 10) / 10);
     }
     const settled = sameBoxes(boxes, nextBoxes) && nextLedges.size === ledges.size && [...nextLedges].every(([k, v]) => Math.abs((ledges.get(k) ?? NaN) - v) < 0.05);
-    if (settled || pass === out.setups.length) {
+    // Once the part rests where it really does: after a turn the header's finished size may be written
+    // in any order, so the jaws and the stop hold what is there between the rest and the jaw tops.
+    if (settled && !measured) {
+      measured = true;
+      for (const s of out.setups) {
+        if (s.index === 0 || !s.stock || s.sizes || s.restZ === null) continue;
+        const r = jawReach(s, input, g, s.restZ);
+        if (!r || r.stop === null || r.far === null || r.front === null || r.back === null) continue;
+        helds.set(s.index, { x: [r.stop - s.stock.min[0], r.far - s.stock.min[0]], y: [r.front - s.stock.min[1], r.back - s.stock.min[1]] });
+      }
+      if (helds.size) {
+        out = analyseWith(tp, opts, chosen, ledges, boxes, helds);
+        continue;
+      }
+    }
+    if (settled || pass === out.setups.length + 1) {
       for (const s of out.setups) {
         s.cales = placeCales(s, input, g);
         s.collisions.push(...caleHits(tp, s));
@@ -493,7 +513,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     }
     boxes = nextBoxes;
     ledges = nextLedges;
-    out = analyseWith(tp, opts, chosen, ledges, boxes);
+    out = analyseWith(tp, opts, chosen, ledges, boxes, helds);
   }
   return out;
 }
@@ -602,12 +622,12 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['cales'] 
   });
 }
 
-/** The part's real faces against the stop and the jaws (see SetupInfo.grip), at the start of setup s. */
-function gripOf(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['grip'] {
-  if (s.jawTopZ === null || s.floorZ === null || !s.clampBox || !s.moves) return null;
+/** How far the part reaches along machine X (stop side, far side) and Y (front, back) between `from` (default the vise floor) and the jaw tops, at the start of setup s. */
+function jawReach(s: SetupInfo, input: SimInput, g: Grid, from = s.floorZ): { stop: number | null; far: number | null; front: number | null; back: number | null } | null {
+  if (s.jawTopZ === null || from === null || !s.moves) return null;
   const R = s.orient;
   const t = s.offset;
-  const lo = s.floorZ - 0.01;
+  const lo = from - 0.01;
   const hi = s.jawTopZ;
   // Only the part between the floor and the jaw tops touches them.
   const inJaws = (p: Vec) => {
@@ -621,11 +641,16 @@ function gripOf(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['grip'] {
     const v = materialExtreme(input, g, s.moves![0], a, (sign * dir) as 1 | -1, inJaws);
     return v === null ? null : dir * v + t[row];
   };
-  const stop = reach(0, -1);
-  const front = reach(1, -1);
-  const back = reach(1, 1);
+  return { stop: reach(0, -1), far: reach(0, 1), front: reach(1, -1), back: reach(1, 1) };
+}
+
+/** The part's real faces against the stop and the jaws (see SetupInfo.grip), at the start of setup s. */
+function gripOf(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['grip'] {
+  if (!s.clampBox) return null;
+  const r = jawReach(s, input, g);
+  if (!r) return null;
   const cb = s.clampBox;
-  return { stop: stop ?? cb.min[0], front: front ?? cb.min[1], back: back ?? cb.max[1] };
+  return { stop: r.stop ?? cb.min[0], front: r.front ?? cb.min[1], back: r.back ?? cb.max[1] };
 }
 
 /**
@@ -683,12 +708,13 @@ function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
   return cut ? both / cut : 0;
 }
 
-function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>, boxes?: Map<number, Box>): ProgramSetups {
+function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>, boxes?: Map<number, Box>, helds?: Map<number, Held>): ProgramSetups {
   const { finished, raw } = partSizes(tp.header);
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
   const isFaceMill = (tool: number | null) => {
     const info = tp.tools.find((t) => t.tool === tool);
-    return !!info && ((info.diameter ?? 0) >= 25 || /MESSERKOPF|\bMK_|PLAN/i.test(info.label));
+    // The operation's name says facing too ("TOOLPATH PLAN_16MM": an end mill facing).
+    return !!info && ((info.diameter ?? 0) >= 25 || /MESSERKOPF|\bMK_|PLAN/i.test(`${info.label} ${info.op}`));
   };
   const out: SetupInfo[] = [];
   const known = new Map<string, Vec>();
@@ -802,20 +828,25 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
 
     // The part held by the clamp: the sizes in the instruction, or the finished part on a later side.
     let hold: [number, number] = [size[0], size[1]];
+    // After a turn without written sizes: the part as it really is between the floor and the jaw tops.
+    const held = k > 0 && !(ins.sizes && Number.isFinite(ins.sizes.y)) ? helds?.get(k) : undefined;
     if (ins.sizes && Number.isFinite(ins.sizes.y)) hold = [ins.sizes.x, ins.sizes.y];
+    else if (held) hold = [held.x[1] - held.x[0], held.y[1] - held.y[0]];
     else if (k > 0 && finished) {
       const f = turnedBox(orient, [0, 0, 0], finished);
       hold = [Math.min(size[0], f.max[0] - f.min[0]), Math.min(size[1], f.max[1] - f.min[1])];
     }
 
     // Where it sits: against the stops (from the G52 shift), else zero in the middle or on a corner.
+    // The held part's middle, from the middle of the part's box (0 unless the real hold says otherwise).
+    const hc: [number, number] = held ? [(held.x[0] + held.x[1] - size[0]) / 2, (held.y[0] + held.y[1] - size[1]) / 2] : [0, 0];
     let cx = measured.cx;
     let cy = measured.cy;
     let placed = false;
     if (s.shift && notes.length) {
       // A spacer against the stop (X-) or the fixed jaw (Y+) pushes the part away from it.
-      const x = STOP_X - s.shift[0] + spacerAt(ins, 'X-') + hold[0] / 2;
-      const y = STOP_Y - s.shift[1] - spacerAt(ins, 'Y+') - hold[1] / 2;
+      const x = STOP_X - s.shift[0] + spacerAt(ins, 'X-') + hold[0] / 2 - hc[0];
+      const y = STOP_Y - s.shift[1] - spacerAt(ins, 'Y+') - hold[1] / 2 - hc[1];
       if (!pts.length || inside(x, y, size[0], size[1]) >= 0.6) {
         [cx, cy] = [x, y];
         placed = true;
@@ -838,7 +869,14 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     let topZ = faceLevels.length ? faceLevels[0] + step : 0;
     if (k > 0 && finished) {
       const f = turnedBox(orient, [0, 0, 0], finished);
-      const left = size[2] - (f.max[2] - f.min[2]);
+      let left = size[2] - (f.max[2] - f.min[2]);
+      // The header may write the finished size in any order: when the facing clearly disagrees
+      // (O2613002: "17.8X13X10", 13 high), the finished height that leaves what the facing takes off.
+      if (faceLevels.length) {
+        const faced = faceLevels[0] + step;
+        const fit = finished.map((h) => size[2] - h).find((l) => l >= -0.01 && Math.abs(l - faced) <= Math.max(step, 0.5));
+        if (Math.abs(left - faced) > 1.5 && fit !== undefined) left = fit;
+      }
       if (left >= -0.01 && left < 20) topZ = Math.max(0, left);
     }
     if (ins.topAt !== null) topZ = ins.topAt;
@@ -856,7 +894,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const min: Vec = [cx - size[0] / 2, cy - size[1] / 2, topZ - size[2]];
     const max: Vec = [cx + size[0] / 2, cy + size[1] / 2, topZ];
     info.stock = { min, max };
-    info.clampBox = { min: [cx - hold[0] / 2, cy - hold[1] / 2], max: [cx + hold[0] / 2, cy + hold[1] / 2] };
+    info.clampBox = { min: [cx + hc[0] - hold[0] / 2, cy + hc[1] - hold[1] / 2], max: [cx + hc[0] + hold[0] / 2, cy + hc[1] + hold[1] / 2] };
     // The parallels hold the part under its bottom, or under a ledge ("IN EP 5 MM": 5 mm below
     // Z0, e.g. a flange, with a boss hanging between the parallels).
     // Order of trust: "IN EP" from the program, then the floor (G52 shift), then the shape.

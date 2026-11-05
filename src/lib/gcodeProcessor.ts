@@ -613,6 +613,23 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     }
   }
 
+  // Taps: the spindle starts with the tapping cycle ("G84 ... S400 M03"), not on the move before it.
+  // Only when the cycle line has its own speed (else the tap would turn at the tool before's speed).
+  blocks.forEach((block, b) => {
+    const tool = resolutions[block.blockId] || block.matchedTool;
+    if (!(block.parsedCategory === 'taraud' || tool?.category === 'taraud' || /taraud|GEWINDE|\bGB_/i.test(block.contextStr))) return;
+    const end = b + 1 < blocks.length ? blocks[b + 1].lineIndex : outputLines.length;
+    const lines = Array.from({ length: end - block.lineIndex }, (_, n) => block.lineIndex + n).filter((j) => outputLines[j] !== '__REMOVE_ME__');
+    const speedWord = /\s*(?<![A-Z])S\d+\.?\d*\s+M0?3(?![0-9.])/i;
+    if (!lines.some((j) => /(?<![A-Z])G84(?![0-9])/i.test(codeOnly(outputLines[j])) && /(?<![A-Z])S\d/i.test(codeOnly(outputLines[j])))) return;
+    for (const j of lines) {
+      const code = codeOnly(outputLines[j]);
+      if (/(?<![A-Z])G84(?![0-9])/i.test(code) || !speedWord.test(code)) continue;
+      const l = replaceInCode(outputLines[j], speedWord, '');
+      outputLines[j] = /^\s*(N\d+)?\s*$/i.test(l) ? '__REMOVE_ME__' : l;
+    }
+  });
+
   // FANUC-2 only: cancel the tool length offset right on the tool change line ("T3 M6 G49").
   if (machineId === 'FANUC-2') {
     outputLines = addG49AfterM6(outputLines);

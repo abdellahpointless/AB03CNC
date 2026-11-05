@@ -37,7 +37,7 @@ describe('the eyedrop ball cutter', () => {
   it('is the shape of every ball tool', () => {
     expect(isBall('FRAISE BOULE D6') && isBall('KUGELFRAESER 4MM') && isBall('KF_06.00_030')).toBe(true);
     expect(isBall('SF_12.00_075_000')).toBe(false);
-    expect(simTools({ tools: [{ tool: 7, label: 'KUGELFRAESER 6MM', firstLine: 0, seconds: 0, diameter: 6, length: 30 }] } as never)[0].slope).toBe('drop');
+    expect(simTools({ tools: [{ tool: 7, label: 'KUGELFRAESER 6MM', op: '', firstLine: 0, seconds: 0, diameter: 6, length: 30 }] } as never)[0].slope).toBe('drop');
   });
   it('cuts with its shape: the round floor, the full width at the ball, not past the neck above it', () => {
     const a: Vec = [0, 0, 0];
