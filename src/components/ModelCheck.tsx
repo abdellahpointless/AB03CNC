@@ -36,6 +36,7 @@ export default function ModelCheck({
   onSimulate,
   onFocus,
   onUseFix,
+  record = true,
 }: {
   model: { name: string; bytes: Uint8Array };
   state: ModelState | null;
@@ -48,6 +49,8 @@ export default function ModelCheck({
   onSimulate: (orients: Mat3[] | null) => void;
   /** Fly the camera to this point of the part (part frame). */
   onFocus: (p: Vec) => void;
+  /** Save a part record (false: the page that made the program saved it already, CAM AI). */
+  record?: boolean;
   /** Put the corrected comments into the program in the editor; false when they could not be placed. */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
 }) {
@@ -72,12 +75,12 @@ export default function ModelCheck({
   // A part record (lib/lessons): this program with its model, once per model. Best effort.
   const recorded = useRef<object | null>(null);
   useEffect(() => {
-    if (!ready || using || recorded.current === model) return;
+    if (!record || !ready || using || recorded.current === model) return;
     recorded.current = model;
     void partLessonOf({ code, tp: path, model, match: ready.match, pieces: ready.pieces, brand, source: 'program' })
       .then((data) => api('/toolpath/lessons', { body: { kind: 'part', fileName, start: ready.match, match: ready.match, data }, timeoutMs: 120_000 }))
       .catch(() => {});
-  }, [ready, using, model, code, path, brand, fileName]);
+  }, [record, ready, using, model, code, path, brand, fileName]);
 
   // Not alike enough with the program's own turns: try every turn, once per model.
   useEffect(() => {

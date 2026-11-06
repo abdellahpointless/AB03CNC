@@ -58,6 +58,7 @@ const app: Translation<typeof en> = {
   },
 
   tabs: {
+    camAi: 'CAM AI',
     toolInventory: 'Takım Listesi',
     remapper: 'Takım Eşleştirici',
     history: 'Geçmiş',

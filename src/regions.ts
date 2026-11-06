@@ -149,6 +149,11 @@ export interface MachineInfo {
   /** Has a tool inventory and appears in the remapper. */
   hasTools: boolean;
   sort: number;
+  /** CAM AI limits (empty: learned values, the brand's usual speeds): rpm, mm/min, mm/min, seconds. */
+  maxRpm?: number | null;
+  maxFeed?: number | null;
+  rapid?: number | null;
+  toolChange?: number | null;
 }
 
 /** The machines the Moroccan installation had before machines became editable. */

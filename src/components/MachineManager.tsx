@@ -7,6 +7,8 @@ import { useT } from '../i18n';
 import { currentRegion } from '../lib/instance';
 import { MACHINE_BRANDS, MACHINE_IMAGES, type MachineBrand, type MachineInfo } from '../regions';
 import { machineSubtitle } from '../lib/fleet';
+import { speedsFor } from '../lib/toolpath';
+import { DEFAULT_LIMITS } from '../lib/cam/limits';
 
 interface Form {
   name: string;
@@ -15,9 +17,19 @@ interface Form {
   image: string;
   pockets: string;
   hasTools: boolean;
+  maxRpm: string;
+  maxFeed: string;
+  rapid: string;
+  toolChange: string;
 }
 
-const EMPTY: Form = { name: '', brand: 'HAAS', model: '', image: '', pockets: '', hasTools: true };
+const EMPTY: Form = { name: '', brand: 'HAAS', model: '', image: '', pockets: '', hasTools: true, maxRpm: '', maxFeed: '', rapid: '', toolChange: '' };
+const LIMITS = ['maxRpm', 'maxFeed', 'rapid', 'toolChange'] as const;
+const num = (v: string) => (v.trim() ? Number(v) : null);
+/** What the server accepts (worker/routes/fleet.ts). */
+const LIMIT_RANGE: Record<(typeof LIMITS)[number], [number, number]> = { maxRpm: [100, 100_000], maxFeed: [10, 100_000], rapid: [1_000, 200_000], toolChange: [0.5, 60] };
+/** What CAM AI uses when the field is empty. */
+const limitDefault = (k: (typeof LIMITS)[number], brand: MachineBrand) => (k === 'maxRpm' || k === 'maxFeed' ? DEFAULT_LIMITS[k] : speedsFor(brand)[k]);
 
 /** Admin: the machines of this country (add, edit, remove, order on the floor). */
 export default function MachineManager() {
@@ -54,7 +66,15 @@ export default function MachineManager() {
   };
 
   const openEdit = (m: MachineInfo) => {
-    setForm({ name: m.name, brand: m.brand, model: m.model, image: m.image ?? '', pockets: m.pockets ? String(m.pockets) : '', hasTools: m.hasTools });
+    setForm({
+      name: m.name,
+      brand: m.brand,
+      model: m.model,
+      image: m.image ?? '',
+      pockets: m.pockets ? String(m.pockets) : '',
+      hasTools: m.hasTools,
+      ...Object.fromEntries(LIMITS.map((k) => [k, m[k] == null ? '' : String(m[k])])),
+    } as Form);
     setEditing(m.id);
     setError('');
   };
@@ -68,6 +88,7 @@ export default function MachineManager() {
       image: form.image || null,
       pockets: form.pockets ? Number(form.pockets) : null,
       hasTools: form.hasTools,
+      ...Object.fromEntries(LIMITS.map((k) => [k, num(form[k])])),
     };
     const ok = await run(
       () => (editing === 'new' ? api('/fleet', { method: 'POST', body }) : api(`/fleet/${encodeURIComponent(editing!)}`, { method: 'PATCH', body })),
@@ -176,6 +197,28 @@ export default function MachineManager() {
                   {t('form.hasTools')}
                 </label>
               </div>
+              <fieldset className="md:col-span-3 space-y-2">
+                <legend className="section-label">{t('form.limits')}</legend>
+                <p className="text-xs text-[var(--text-tertiary)]">{t('form.limitsHint')}</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {LIMITS.map((k) => (
+                    <label key={k} className="space-y-1">
+                      <span className="text-xs text-[var(--text-secondary)] block">{t(`form.${k}`)}</span>
+                      <input
+                        className="aurora-input w-full text-xs"
+                        type="number"
+                        inputMode="decimal"
+                        min={LIMIT_RANGE[k][0]}
+                        max={LIMIT_RANGE[k][1]}
+                        step={k === 'toolChange' ? 0.1 : 1}
+                        value={form[k]}
+                        placeholder={String(limitDefault(k, form.brand))}
+                        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <div className="md:col-span-3 flex justify-end gap-2">
                 <button type="button" onClick={() => setEditing(null)} className="btn-secondary text-xs py-2 px-4">
                   {t('common:actions.cancel')}

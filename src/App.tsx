@@ -28,7 +28,7 @@ import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
 import { fetchCalesStock, fetchRequired, type RequiredItem } from './lib/fleet';
-import { Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Boxes, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
+import { Cpu, Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Boxes, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
 import { ring, unlockSound } from './lib/alarm';
 import { fmtTime } from './i18n/format';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,11 +37,14 @@ import { useT } from './i18n';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
+// CAM AI (beta): its planner and learned data load only when the tab is opened.
+const CamAi = lazy(() => import('./components/CamAi'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS' | 'PREVENTIVE_CALES';
+type Tab = 'DATABASE' | 'REMAP' | 'CAM_AI' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS' | 'PREVENTIVE_CALES';
 const TAB_NAME = {
   DATABASE: 'tabs.toolInventory',
   REMAP: 'tabs.remapper',
+  CAM_AI: 'tabs.camAi',
   ADMIN: 'tabs.admin',
   RECENT_CODES: 'tabs.recentCodes',
   PART_ENTRY: 'tabs.partEntry',
@@ -193,12 +196,14 @@ function Workspace() {
     };
   }, [calesOn, versions.machines]);
 
+  // CAM AI goes with the toolpath (beta): on for the country, and for admins and the people picked.
+  const camOn = features.toolpath && (user.role === 'ADMIN' || !!user.toolpathBeta);
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
-    if ((!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
+    if ((!camOn && activeTab === 'CAM_AI') || (!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
       setActiveTab('REMAP');
     }
-  }, [features, activeTab, calesOn]);
+  }, [features, activeTab, calesOn, camOn]);
   // History (admins) opens from a button inside the Tool Remapper, in place of the remapper.
   const [remapView, setRemapView] = useState<'main' | 'history' | 'back'>('main');
   const openTab = (tab: Tab) => {
@@ -485,6 +490,28 @@ function Workspace() {
               </>
             )}
           </button>
+
+          {/* Tab: CAM AI (toolpath beta) */}
+          {camOn && (
+            <button
+              onClick={() => openTab('CAM_AI')}
+              aria-current={activeTab === 'CAM_AI' ? 'page' : undefined}
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+                activeTab === 'CAM_AI'
+                  ? 'text-[var(--accent-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
+              }`}
+            >
+              <Cpu size={15} />
+              <span>{t('tabs.camAi')}</span>
+              {activeTab === 'CAM_AI' && (
+                <>
+                <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
+                <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
+                </>
+              )}
+            </button>
+          )}
 
           {/* Tab 3: Recent Codes (MACHINIST) */}
           {user.role === 'MACHINIST' && (
@@ -776,6 +803,20 @@ function Workspace() {
                 setAnalyzedSignature={setAnalyzedSignature}
               />
               </motion.div>
+            )}
+            {activeTab === 'CAM_AI' && camOn && (
+              <Suspense fallback={null}>
+                <CamAi
+                  onSend={(code, name, machine) => {
+                    // Into the remapper for that machine, as if imported: remap, check, export as usual.
+                    setRemapperMachine(machine);
+                    setSourceCode(code);
+                    setFileName(name);
+                    setOutputCode('');
+                    openTab('REMAP');
+                  }}
+                />
+              </Suspense>
             )}
             {activeTab === 'RECENT_CODES' && user.role === 'MACHINIST' && (
               <RecentCodes />

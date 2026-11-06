@@ -32,6 +32,10 @@ const FIELD: Record<string, string> = {
   Model: 'Model',
   Pockets: 'Cep sayısı',
   Sort: 'Sıra',
+  'Max rpm': 'Azami devir',
+  'Max feed': 'Azami ilerleme',
+  Rapid: 'Hızlı hareket',
+  'Tool change': 'Takım değiştirme süresi',
   // analytics
   seconds: 'Kazanılan süre (saniye)',
   // tools

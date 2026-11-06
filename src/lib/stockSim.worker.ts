@@ -1,8 +1,7 @@
 import { carve, drilledHoles, mesher, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
-import { readModel } from './model';
-import { PrcError } from './prc';
+import { readTris } from './model';
 import { differences, layModel, placeModel, type Placed } from './modelCompare';
-import { MODEL_MAX_BYTES, MODEL_MAX_TRIS, type ModelError } from './modelLimits';
+import type { ModelError } from './modelLimits';
 import { rewriteTurns, searchTurns } from './fixTurns';
 import { parseToolpath, speedsFor } from './toolpath';
 import { analyseProgram, DEFAULT_JAW_HEIGHT } from './setups';
@@ -25,21 +24,6 @@ import { lessonOf } from './lessons';
  *   the model (fixTurns.ts), and the program with its M0 comments rewritten for them.
  */
 
-
-/** The model's triangles (mm), or why it cannot be used. */
-async function readTris(bytes: Uint8Array): Promise<Float32Array | { error: ModelError }> {
-  if (bytes.length > MODEL_MAX_BYTES) return { error: 'tooBig' };
-  let tris: Float32Array;
-  try {
-    tris = await readModel(bytes);
-  } catch (e) {
-    if (!(e instanceof PrcError) && !(e instanceof RangeError)) throw e;
-    return { error: /no 3D model/.test(e.message) ? 'noModel' : /compressed/.test(e.message) ? 'compressed' : 'unreadable' };
-  }
-  if (tris.length > MODEL_MAX_TRIS * 9) return { error: 'tooBig' };
-  if (tris.length < 9 || tris.some((v) => !Number.isFinite(v))) return { error: 'unreadable' };
-  return tris;
-}
 
 async function model(bytes: Uint8Array, input: SimInput, setups: Placed[]) {
   const tris = await readTris(bytes);

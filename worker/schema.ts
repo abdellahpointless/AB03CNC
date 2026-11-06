@@ -359,6 +359,12 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 11,
     statements: [`ALTER TABLE turn_lessons ADD COLUMN kind TEXT NOT NULL DEFAULT 'turns'`],
   },
+  {
+    // CAM AI: each machine's limits (highest rpm and feed, rapid, tool change seconds). Empty:
+    // the shop's learned values and the brand's usual speeds.
+    version: 12,
+    statements: ['max_rpm', 'max_feed', 'rapid'].map((c) => `ALTER TABLE machines ADD COLUMN ${c} INTEGER`).concat(['ALTER TABLE machines ADD COLUMN tool_change REAL']),
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

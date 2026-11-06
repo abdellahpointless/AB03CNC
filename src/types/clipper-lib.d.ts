@@ -15,6 +15,10 @@ declare module 'clipper-lib' {
     static CleanPolygons(paths: Paths, distance?: number): Paths;
     static SimplifyPolygons(paths: Paths, fillType?: number): Paths;
     static PointInPolygon(pt: IntPoint, path: Path): number;
+    static OpenPathsFromPolyTree(tree: PolyTree): Paths;
+  }
+  export class PolyTree {
+    constructor();
   }
   export class ClipperOffset {
     constructor(miterLimit?: number, arcTolerance?: number);
@@ -28,6 +32,7 @@ declare module 'clipper-lib' {
   export const EndType: { etOpenSquare: number; etOpenRound: number; etOpenButt: number; etClosedLine: number; etClosedPolygon: number };
   const ClipperLib: {
     Clipper: typeof Clipper;
+    PolyTree: typeof PolyTree;
     ClipperOffset: typeof ClipperOffset;
     ClipType: typeof ClipType;
     PolyType: typeof PolyType;

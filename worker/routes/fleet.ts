@@ -17,6 +17,10 @@ export interface MachineRow {
   model: string;
   image: string | null;
   pockets: number | null;
+  max_rpm: number | null;
+  max_feed: number | null;
+  rapid: number | null;
+  tool_change: number | null;
   has_tools: number;
   active: number;
   sort: number;
@@ -24,7 +28,7 @@ export interface MachineRow {
 }
 
 export function rowToMachine(r: MachineRow) {
-  return { id: r.id, name: r.name, brand: r.brand, model: r.model, image: r.image, pockets: r.pockets, hasTools: !!r.has_tools, sort: r.sort };
+  return { id: r.id, name: r.name, brand: r.brand, model: r.model, image: r.image, pockets: r.pockets, hasTools: !!r.has_tools, sort: r.sort, maxRpm: r.max_rpm ?? null, maxFeed: r.max_feed ?? null, rapid: r.rapid ?? null, toolChange: r.tool_change ?? null };
 }
 
 /** Looks up an active machine of this country. `forTools` also requires a tool inventory. */
@@ -63,6 +67,10 @@ interface MachineInput {
   image: string | null;
   pockets: number | null;
   hasTools: boolean;
+  maxRpm: number | null;
+  maxFeed: number | null;
+  rapid: number | null;
+  toolChange: number | null;
 }
 
 function parseMachineInput(body: Record<string, unknown>, partial: boolean, current?: MachineRow): MachineInput {
@@ -88,10 +96,15 @@ function parseMachineInput(body: Record<string, unknown>, partial: boolean, curr
   );
   const pockets = pick('pockets', (v) => optNum(v, 'Pockets', { min: 1, max: 999, integer: true }), current?.pockets ?? null);
   const hasTools = pick('hasTools', (v) => v === undefined || v === null ? true : v === true, current ? !!current.has_tools : true);
-  return { name, brand, model, image, pockets, hasTools };
+  // CAM AI limits: rpm, feeds in mm/min, tool change in seconds.
+  const maxRpm = pick('maxRpm', (v) => optNum(v, 'Max rpm', { min: 100, max: 100_000, integer: true }), current?.max_rpm ?? null);
+  const maxFeed = pick('maxFeed', (v) => optNum(v, 'Max feed', { min: 10, max: 100_000, integer: true }), current?.max_feed ?? null);
+  const rapid = pick('rapid', (v) => optNum(v, 'Rapid', { min: 1_000, max: 200_000, integer: true }), current?.rapid ?? null);
+  const toolChange = pick('toolChange', (v) => optNum(v, 'Tool change', { min: 0.5, max: 60 }), current?.tool_change ?? null);
+  return { name, brand, model, image, pockets, hasTools, maxRpm, maxFeed, rapid, toolChange };
 }
 
-// Admin: POST /api/fleet { name, brand, model?, image?, pockets?, hasTools? }
+// Admin: POST /api/fleet { name, brand, model?, image?, pockets?, hasTools?, maxRpm?, maxFeed?, rapid?, toolChange? }
 export async function handleCreateMachine(ctx: Ctx): Promise<Response> {
   const body = await readJson<Record<string, unknown>>(ctx.request, 5_000);
   const m = parseMachineInput(body, false);
@@ -111,9 +124,9 @@ export async function handleCreateMachine(ctx: Ctx): Promise<Response> {
 
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      `INSERT INTO machines (id, name, brand, model, image, pockets, has_tools, active, sort, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-    ).bind(id, m.name, m.brand, m.model, m.image, m.pockets, m.hasTools ? 1 : 0, sort, now),
+      `INSERT INTO machines (id, name, brand, model, image, pockets, has_tools, active, sort, created_at, max_rpm, max_feed, rapid, tool_change)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+    ).bind(id, m.name, m.brand, m.model, m.image, m.pockets, m.hasTools ? 1 : 0, sort, now, m.maxRpm, m.maxFeed, m.rapid, m.toolChange),
     ...checks.map((c, i) =>
       ctx.env.DB.prepare(
         `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, sort, created_at) VALUES (?, ?, 'CHECK', ?, ?, ?, ?)`,
@@ -128,7 +141,7 @@ export async function handleCreateMachine(ctx: Ctx): Promise<Response> {
   return json({ ok: true, id });
 }
 
-// Admin: PATCH /api/fleet/:machine { name?, brand?, model?, image?, pockets?, hasTools?, sort? }
+// Admin: PATCH /api/fleet/:machine { name?, brand?, model?, image?, pockets?, hasTools?, sort?, maxRpm?, maxFeed?, rapid?, toolChange? }
 export async function handleUpdateMachine(ctx: Ctx): Promise<Response> {
   const current = await requireMachine(ctx.env, ctx.params.machine);
   const body = await readJson<Record<string, unknown>>(ctx.request, 5_000);
@@ -141,16 +154,9 @@ export async function handleUpdateMachine(ctx: Ctx): Promise<Response> {
   }
   const sort = body.sort === undefined ? current.sort : optNum(body.sort, 'Sort', { min: 0, max: 100_000, integer: true }) ?? current.sort;
   await ctx.env.DB.batch([
-    ctx.env.DB.prepare('UPDATE machines SET name = ?, brand = ?, model = ?, image = ?, pockets = ?, has_tools = ?, sort = ? WHERE id = ?').bind(
-      m.name,
-      m.brand,
-      m.model,
-      m.image,
-      m.pockets,
-      m.hasTools ? 1 : 0,
-      sort,
-      current.id,
-    ),
+    ctx.env.DB.prepare(
+      'UPDATE machines SET name = ?, brand = ?, model = ?, image = ?, pockets = ?, has_tools = ?, sort = ?, max_rpm = ?, max_feed = ?, rapid = ?, tool_change = ? WHERE id = ?',
+    ).bind(m.name, m.brand, m.model, m.image, m.pockets, m.hasTools ? 1 : 0, sort, m.maxRpm, m.maxFeed, m.rapid, m.toolChange, current.id),
     bumpStmt(ctx.env, 'machines'),
     bumpStmt(ctx.env, 'tools'),
   ]);

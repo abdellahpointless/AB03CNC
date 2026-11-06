@@ -58,6 +58,7 @@ const app = {
   },
 
   tabs: {
+    camAi: 'CAM AI',
     toolInventory: 'Tool Inventory',
     remapper: 'Tool Remapper',
     history: 'History',

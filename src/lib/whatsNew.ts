@@ -17,6 +17,29 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-06-cam-ai',
+    date: '2026-11-06',
+    feature: 'toolpath',
+    en: {
+      title: 'CAM AI: the program written from the 3D model (beta)',
+      items: [
+        'New CAM AI tab: give it the part’s 3D PDF or STL, pick the machine and the material, and it writes the program with that machine’s tools, including the setups, the cales and the M0 texts in the shop’s style.',
+        'Rpm, feeds and depths per pass are learned from the shop’s own programs. An admin can set each machine’s limits in Admin › Machines.',
+        'Every program is simulated and compared with the model. Download and Send to the remapper unlock only when the part comes out 99 % like the model with no collision. Tools missing from the machine are listed.',
+        'Every program CAM AI makes, and every program compared with its model in the toolpath viewer, goes into the learning records (Admin › Backup and data), so CAM AI can learn the shop’s parts.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: 3B modelden yazılan program (beta)',
+      items: [
+        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, kaleler ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
+        'Devir, ilerleme ve paso derinlikleri atölyenin kendi programlarından öğrenilir. Bir yönetici her tezgahın sınırlarını Yönetim › Tezgahlar’dan belirleyebilir.',
+        'Her program simüle edilir ve modelle karşılaştırılır. İndirme ve Takım eşleştiriciye gönderme, ancak parça modele %99 benzediğinde ve çarpışma olmadığında açılır. Tezgahta eksik olan takımlar listelenir.',
+        'CAM AI’nin yaptığı her program ve takım yolu görüntüleyicisinde modeliyle karşılaştırılan her program öğrenme kayıtlarına (Yönetim › Yedek ve veri) eklenir; böylece CAM AI atölyenin parçalarını öğrenir.',
+      ],
+    },
+  },
+  {
     id: '2026-11-03-toolpath-look',
     date: '2026-11-03',
     feature: 'toolpath',

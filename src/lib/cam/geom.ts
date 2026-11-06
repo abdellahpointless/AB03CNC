@@ -99,37 +99,50 @@ export function slice(tris: ArrayLike<number>, z0: number): Region {
     for (let a = 0; a < 3; a++) {
       const b = (a + 1) % 3;
       if (above[a] === above[b]) continue;
-      const t = (z - p[a][2]) / (p[b][2] - p[a][2]);
-      pts.push([p[a][0] + t * (p[b][0] - p[a][0]), p[a][1] + t * (p[b][1] - p[a][1])]);
+      // The edge from its lower end, the same way in both triangles that share it: the same point.
+      const [u, v] = p[a][2] < p[b][2] || (p[a][2] === p[b][2] && (p[a][0] < p[b][0] || (p[a][0] === p[b][0] && p[a][1] < p[b][1]))) ? [p[a], p[b]] : [p[b], p[a]];
+      const t = (z - u[2]) / (v[2] - u[2]);
+      pts.push([u[0] + t * (v[0] - u[0]), u[1] + t * (v[1] - u[1])]);
     }
     if (pts.length === 2) segs.push([pts[0], pts[1]]);
   }
-  // Chain the pieces into loops by their ends.
-  const key = ([x, y]: P2) => `${Math.round(x * 1e5)},${Math.round(y * 1e5)}`;
-  const from = new Map<string, number[]>();
-  segs.forEach(([a], i) => (from.get(key(a)) ?? from.set(key(a), []).get(key(a))!).push(i));
-  const to = new Map<string, number[]>();
-  segs.forEach(([, b], i) => (to.get(key(b)) ?? to.set(key(b), []).get(key(b))!).push(i));
+  // Chain the pieces into loops by their ends. Meshes from CAD are not always watertight (an
+  // edge split on one face and not on the next): an end with no exact match joins the nearest free
+  // end within 0.05 mm, and a chain whose ends meet that close is a loop.
+  const TOL = 0.05;
+  const cellOf = ([x, y]: P2) => `${Math.floor(x / TOL)},${Math.floor(y / TOL)}`;
+  const ends = new Map<string, { s: number; end: 0 | 1 }[]>();
+  segs.forEach((sg, i) => ([0, 1] as const).forEach((e) => (ends.get(cellOf(sg[e])) ?? ends.set(cellOf(sg[e]), []).get(cellOf(sg[e]))!).push({ s: i, end: e })));
   const used = new Uint8Array(segs.length);
+  const nearest = (p: P2): { s: number; end: 0 | 1 } | null => {
+    const cx = Math.floor(p[0] / TOL);
+    const cy = Math.floor(p[1] / TOL);
+    let best: { s: number; end: 0 | 1 } | null = null;
+    let bd = TOL;
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const c of ends.get(`${cx + dx},${cy + dy}`) ?? []) {
+          if (used[c.s]) continue;
+          const q = segs[c.s][c.end];
+          const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          if (d < bd) [best, bd] = [c, d];
+        }
+    return best;
+  };
   const loops: P2[][] = [];
-  for (let s = 0; s < segs.length; s++) {
-    if (used[s]) continue;
-    used[s] = 1;
-    const loop: P2[] = [segs[s][0], segs[s][1]];
+  for (let s0 = 0; s0 < segs.length; s0++) {
+    if (used[s0]) continue;
+    used[s0] = 1;
+    const loop: P2[] = [segs[s0][0], segs[s0][1]];
     for (;;) {
-      const end = key(loop[loop.length - 1]);
-      // Triangles may wind either way: follow a piece starting or ending here.
-      let next = (from.get(end) ?? []).find((i) => !used[i]);
-      let flip = false;
-      if (next === undefined) {
-        next = (to.get(end) ?? []).find((i) => !used[i]);
-        flip = true;
-      }
-      if (next === undefined) break;
-      used[next] = 1;
-      loop.push(flip ? segs[next][0] : segs[next][1]);
+      // The next piece starts (or, wound the other way, ends) where this one ends.
+      const next = nearest(loop[loop.length - 1]);
+      if (!next) break;
+      used[next.s] = 1;
+      loop.push(segs[next.s][1 - next.end]);
     }
-    if (loop.length > 3) loops.push(loop);
+    const [a0, a1] = [loop[0], loop[loop.length - 1]];
+    if (loop.length > 3 && Math.hypot(a0[0] - a1[0], a0[1] - a1[1]) < TOL) loops.push(loop);
   }
   return evenOdd(loops);
 }

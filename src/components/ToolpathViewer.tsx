@@ -71,6 +71,7 @@ export default function ToolpathViewer({
   initialModel = null,
   onModelChange,
   onUseFix,
+  noRecord = false,
 }: {
   code: string;
   title: string;
@@ -83,6 +84,8 @@ export default function ToolpathViewer({
   onModelChange?: (m: { name: string; bytes: Uint8Array } | null) => void;
   /** Put the corrected M0 comments into the program in the editor (false: not placed). */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
+  /** No learning record from here (the program's maker saved one: CAM AI). */
+  noRecord?: boolean;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -1007,6 +1010,7 @@ export default function ToolpathViewer({
             <div className="min-h-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4">
               {model && mode3d && (
                 <ModelCheck
+                  record={!noRecord}
                   model={model}
                   state={modelState}
                   code={code}
