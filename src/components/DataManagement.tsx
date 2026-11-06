@@ -91,14 +91,26 @@ export default function DataManagement() {
 
   // The toolpath's learning records (turn searches with the 3D model), to send to the developer.
   const lessonsLog = useLog();
+  const [lessonsFrom, setLessonsFrom] = useState('');
+  const [lessonsTo, setLessonsTo] = useState('');
   const downloadLessons = async () => {
     lessonsLog.clear();
     setBusy('lessons');
     try {
-      const data = await api<{ lessons: unknown[] }>('/toolpath/lessons', { timeoutMs: 120_000 });
-      if (!data.lessons.length) return lessonsLog.log(t('lessons.none'), 'info');
-      downloadJson(`CNC_Toolpath_Lessons_${todayStamp()}.json`, data);
-      lessonsLog.log(t('lessons.done', { count: data.lessons.length }), 'ok');
+      // Page by page (part records carry the 3D model and the program), both kinds, into one file.
+      const range = `${lessonsFrom ? `&from=${new Date(`${lessonsFrom}T00:00`).getTime()}` : ''}${lessonsTo ? `&to=${new Date(`${lessonsTo}T00:00`).getTime() + 86_400_000}` : ''}`;
+      const lessons: unknown[] = [];
+      for (const kind of ['turns', 'part'] as const)
+        for (let offset = 0; ; ) {
+          const page = await api<{ lessons: unknown[]; more: boolean }>(`/toolpath/lessons?kind=${kind}&offset=${offset}${range}`, { timeoutMs: 120_000 });
+          lessons.push(...page.lessons);
+          offset += page.lessons.length;
+          lessonsLog.log(t('lessons.progress', { count: lessons.length }));
+          if (!page.more || !page.lessons.length) break;
+        }
+      if (!lessons.length) return lessonsLog.log(t('lessons.none'), 'info');
+      downloadJson(`CNC_Toolpath_Lessons_${todayStamp()}.json`, { exportedAt: new Date().toISOString(), from: lessonsFrom || null, to: lessonsTo || null, lessons });
+      lessonsLog.log(t('lessons.done', { count: lessons.length }), 'ok');
     } catch (err: any) {
       lessonsLog.log(err?.message || String(err), 'error');
     } finally {
@@ -200,10 +212,20 @@ export default function DataManagement() {
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">{t('lessons.description')}</p>
           </div>
         </div>
-        <button onClick={downloadLessons} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4">
-          {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
-          <span>{t('lessons.download')}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            {t('lessons.from')}
+            <input type="date" value={lessonsFrom} onChange={(e) => setLessonsFrom(e.target.value)} className="aurora-input text-xs py-1.5" disabled={busy !== null} />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            {t('lessons.to')}
+            <input type="date" value={lessonsTo} onChange={(e) => setLessonsTo(e.target.value)} className="aurora-input text-xs py-1.5" disabled={busy !== null} />
+          </label>
+          <button onClick={downloadLessons} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4">
+            {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
+            <span>{t('lessons.download')}</span>
+          </button>
+        </div>
         <LogView lines={lessonsLog.lines} />
       </div>
 

@@ -4,7 +4,10 @@ const data = {
   lessons: {
     title: 'Toolpath learning records',
     description:
-      'Each time the toolpath compares a program with its 3D model and searches for the right turns, it keeps what the M0 comments say, how the app read them and the turns that made the part right. Download them all and send the file to improve how the app reads the turns.',
+      'Each time a program is checked with its 3D model in the toolpath, the app keeps the model, the program, the differences and how each operation was machined; after a turn search, also what the M0 comments say and the turns that made the part right. Download them for a period and send the file to improve CAM AI and how the app reads the turns.',
+    from: 'From',
+    to: 'To',
+    progress: '{{count}} records read…',
     download: 'Download learning records',
     none: 'No learning records yet.',
     done: '{{count}} learning records downloaded.',

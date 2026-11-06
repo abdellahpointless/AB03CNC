@@ -353,6 +353,12 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS turn_lessons_created ON turn_lessons (created_at)`,
     ],
   },
+  {
+    // Part records (CAM AI learning): the 3D model, the program, the features and how each was
+    // machined, next to the turn records.
+    version: 11,
+    statements: [`ALTER TABLE turn_lessons ADD COLUMN kind TEXT NOT NULL DEFAULT 'turns'`],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

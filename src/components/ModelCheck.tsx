@@ -7,6 +7,7 @@ import { TARGET } from '../lib/fixTurns';
 import { PIECE_COLORS, type ModelState } from './Toolpath3D';
 import { chime } from '../lib/alarm';
 import { api } from '../lib/api';
+import { partLessonOf } from '../lib/lessons';
 import { downloadText } from '../lib/download';
 import { useT } from '../i18n';
 import { fmtNumber } from '../i18n/format';
@@ -66,8 +67,19 @@ export default function ModelCheck({
     return () => worker.current?.terminate();
   }, [model]);
 
-  // Not alike enough with the program's own turns: try every turn, once per model.
   const ready = state?.state === 'ready' ? state : null;
+
+  // A part record (lib/lessons): this program with its model, once per model. Best effort.
+  const recorded = useRef<object | null>(null);
+  useEffect(() => {
+    if (!ready || using || recorded.current === model) return;
+    recorded.current = model;
+    void partLessonOf({ code, tp: path, model, match: ready.match, pieces: ready.pieces, brand, source: 'program' })
+      .then((data) => api('/toolpath/lessons', { body: { kind: 'part', fileName, start: ready.match, match: ready.match, data }, timeoutMs: 120_000 }))
+      .catch(() => {});
+  }, [ready, using, model, code, path, brand, fileName]);
+
+  // Not alike enough with the program's own turns: try every turn, once per model.
   useEffect(() => {
     if (!ready || using || ready.match >= TARGET || searched.current === model) return;
     searched.current = model;

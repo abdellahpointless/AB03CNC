@@ -6,7 +6,10 @@ const data: Translation<typeof en> = {
   lessons: {
     title: 'Takım yolu öğrenme kayıtları',
     description:
-      'Takım yolu bir programı 3D modeliyle her karşılaştırıp doğru dönüşleri aradığında, M0 açıklamalarının ne dediğini, uygulamanın bunları nasıl okuduğunu ve parçayı doğru yapan dönüşleri saklar. Hepsini indirin ve uygulamanın dönüşleri daha iyi okuması için dosyayı gönderin.',
+      'Takım yolunda bir program 3D modeliyle her kontrol edildiğinde uygulama modeli, programı, farkları ve her operasyonun nasıl işlendiğini saklar; dönüş aramasından sonra ayrıca M0 açıklamalarının ne dediğini ve parçayı doğru yapan dönüşleri. CAM AI\'yı ve dönüşlerin okunmasını geliştirmek için bir dönemin kayıtlarını indirip dosyayı gönderin.',
+    from: 'Başlangıç',
+    to: 'Bitiş',
+    progress: '{{count}} kayıt okundu…',
     download: 'Öğrenme kayıtlarını indir',
     none: 'Henüz öğrenme kaydı yok.',
     done: '{{count}} öğrenme kaydı indirildi.',
