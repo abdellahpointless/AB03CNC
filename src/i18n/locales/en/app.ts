@@ -221,6 +221,10 @@ const app = {
     toolpathTitle: 'Toolpath viewer (beta): only the people switched on here can open it; admins always can',
     toolpathOn: '"{{name}}" can now use the toolpath viewer (after reloading the app).',
     toolpathOff: '"{{name}}" can no longer use the toolpath viewer.',
+    camAi: 'CAM AI',
+    camAiTitle: 'CAM AI (beta): only the people switched on here can open it; admins always can',
+    camAiOn: '"{{name}}" can now use CAM AI (after reloading the app).',
+    camAiOff: '"{{name}}" can no longer use CAM AI.',
     ownRoleTitle: 'You cannot change your own role',
     changeRoleTitle: 'Change role',
     /** Role names in the role drop-down of the accounts table (shown in capitals). */

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth, Role } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { api } from '../lib/api';
-import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText, Route } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText, Route, Cpu } from 'lucide-react';
 import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';
@@ -15,7 +15,14 @@ interface AccountRow {
   created_at: number;
   mfa_enabled?: number;
   toolpath_beta?: number;
+  cam_ai?: number;
 }
+
+/** Per-person beta switches (admins always have these). */
+const SWITCHES = [
+  { key: 'toolpathBeta', column: 'toolpath_beta', icon: Route, label: 'users.toolpathBeta', title: 'users.toolpathTitle', on: 'users.toolpathOn', off: 'users.toolpathOff' },
+  { key: 'camAi', column: 'cam_ai', icon: Cpu, label: 'users.camAi', title: 'users.camAiTitle', on: 'users.camAiOn', off: 'users.camAiOff' },
+] as const;
 
 interface AuditEvent {
   id: number;
@@ -211,10 +218,10 @@ export default function UserManagement() {
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { resetMfa: true } }), t('users.mfaReset', { name: u.username }));
   };
 
-  // Toolpath beta: only the people picked here (and every admin) can open the toolpath viewer.
-  const handleToolpathBeta = (u: AccountRow) => {
-    const on = !u.toolpath_beta;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { toolpathBeta: on } }), t(on ? 'users.toolpathOn' : 'users.toolpathOff', { name: u.username }));
+  // Beta switches: only the people picked here (and every admin) get the toolpath viewer, CAM AI.
+  const handleSwitch = (u: AccountRow, s: (typeof SWITCHES)[number]) => {
+    const on = !u[s.column];
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { [s.key]: on } }), t(on ? s.on : s.off, { name: u.username }));
   };
 
   const handleRoleChange = (u: AccountRow, role: Role) => {
@@ -335,20 +342,22 @@ export default function UserManagement() {
                             <ShieldCheck size={10} /> {t('users.twoStep')}
                           </span>
                         )}
-                        {u.role !== 'ADMIN' && (
-                          <button
-                            type="button"
-                            aria-pressed={!!u.toolpath_beta}
-                            disabled={busyId !== null}
-                            onClick={() => handleToolpathBeta(u)}
-                            title={t('users.toolpathTitle')}
-                            className={`text-xs py-0.5 px-2 rounded-full border inline-flex items-center gap-1 transition-colors ${
-                              u.toolpath_beta ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                            }`}
-                          >
-                            <Route size={11} /> {t('users.toolpathBeta')}
-                          </button>
-                        )}
+                        {u.role !== 'ADMIN' &&
+                          SWITCHES.map((s) => (
+                            <button
+                              key={s.key}
+                              type="button"
+                              aria-pressed={!!u[s.column]}
+                              disabled={busyId !== null}
+                              onClick={() => handleSwitch(u, s)}
+                              title={t(s.title)}
+                              className={`text-xs py-0.5 px-2 rounded-full border inline-flex items-center gap-1 transition-colors ${
+                                u[s.column] ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                              }`}
+                            >
+                              <s.icon size={11} /> {t(s.label)}
+                            </button>
+                          ))}
                       </div>
                     </td>
                     <td className="p-3.5">

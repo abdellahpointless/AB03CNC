@@ -365,6 +365,11 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 12,
     statements: ['max_rpm', 'max_feed', 'rapid'].map((c) => `ALTER TABLE machines ADD COLUMN ${c} INTEGER`).concat(['ALTER TABLE machines ADD COLUMN tool_change REAL']),
   },
+  {
+    // CAM AI per person, switched on by an admin (admins always may), apart from the toolpath beta.
+    version: 13,
+    statements: [`ALTER TABLE users ADD COLUMN cam_ai INTEGER NOT NULL DEFAULT 0`],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

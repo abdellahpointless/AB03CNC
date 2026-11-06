@@ -11,6 +11,8 @@ export interface User {
   role: Role;
   /** May use the toolpath viewer while it is in beta (admins always may). */
   toolpathBeta?: boolean;
+  /** May use CAM AI (admins always may). */
+  camAi?: boolean;
 }
 
 type Status = 'loading' | 'ready';

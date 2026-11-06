@@ -39,6 +39,8 @@ export interface AuthedUser {
   role: Role;
   /** May use the toolpath viewer while it is in beta (admins always may). */
   toolpathBeta?: boolean;
+  /** May use CAM AI (admins always may). */
+  camAi?: boolean;
 }
 
 export interface Ctx {

@@ -19,7 +19,8 @@ const PER_DAY: Record<Kind, number> = { turns: 200, part: 300 };
 // POST /api/toolpath/lessons  { kind?, fileName, start, match, data }
 export async function handleSaveLesson(ctx: Ctx): Promise<Response> {
   const u = ctx.user!;
-  if (u.role !== 'ADMIN' && !u.toolpathBeta) throw new HttpError(403, 'The toolpath is not switched on for you.');
+  // The toolpath viewer and CAM AI both save records.
+  if (u.role !== 'ADMIN' && !u.toolpathBeta && !u.camAi) throw new HttpError(403, 'The toolpath is not switched on for you.');
   const body = await readJson<{ kind?: unknown; fileName?: unknown; start?: unknown; match?: unknown; data?: unknown }>(ctx.request, MAX_BYTES.part + 8192);
   const kind = (body.kind ?? 'turns') as Kind;
   if (!KINDS.includes(kind)) throw new HttpError(400, 'kind must be turns or part');

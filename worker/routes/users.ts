@@ -14,7 +14,7 @@ const KEEPS_AN_ADMIN = "(role != 'ADMIN' OR (SELECT COUNT(*) FROM users WHERE ro
 // GET /api/users  (admin)
 export async function handleListUsers(ctx: Ctx): Promise<Response> {
   const { results } = await ctx.env.DB.prepare(
-    'SELECT id, username, role, created_at, mfa_enabled, toolpath_beta FROM users ORDER BY role, username COLLATE NOCASE',
+    'SELECT id, username, role, created_at, mfa_enabled, toolpath_beta, cam_ai FROM users ORDER BY role, username COLLATE NOCASE',
   ).all();
   return json({ users: results });
 }
@@ -42,21 +42,28 @@ export async function handleCreateUser(ctx: Ctx): Promise<Response> {
   return json({ user: { id, username, role } });
 }
 
-// PATCH /api/users/:id { password?, role?, resetMfa? } or { toolpathBeta }  (admin)
+const FLAGS = {
+  toolpathBeta: { key: 'toolpathBeta', column: 'toolpath_beta', label: 'toolpath beta' },
+  camAi: { key: 'camAi', column: 'cam_ai', label: 'CAM AI' },
+} as const;
+
+// PATCH /api/users/:id { password?, role?, resetMfa? } or { toolpathBeta } or { camAi }  (admin)
 export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   const id = ctx.params.id;
-  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown; toolpathBeta?: unknown }>(ctx.request, 10_000);
+  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown; toolpathBeta?: unknown; camAi?: unknown }>(ctx.request, 10_000);
   const target = await ctx.env.DB.prepare('SELECT id, username, role FROM users WHERE id = ?')
     .bind(id)
     .first<{ id: string; username: string; role: Role }>();
   if (!target) throw new HttpError(404, 'User not found');
   // Toolpath beta access alone: no sign-out (it takes effect when the person reloads the app).
-  if (body.toolpathBeta !== undefined) {
-    if (typeof body.toolpathBeta !== 'boolean' || body.password !== undefined || body.role !== undefined || body.resetMfa !== undefined) {
-      throw new HttpError(400, 'toolpathBeta must be true or false, on its own');
-    }
-    await ctx.env.DB.batch([ctx.env.DB.prepare('UPDATE users SET toolpath_beta = ? WHERE id = ?').bind(body.toolpathBeta ? 1 : 0, id), bumpStmt(ctx.env, 'users')]);
-    await auditCtx(ctx, 'user_updated', `${target.username}: toolpath beta ${body.toolpathBeta ? 'on' : 'off'}`);
+  // Beta switches an admin sets per person (toolpath viewer, CAM AI): one at a time, on its own.
+  const flag = body.toolpathBeta !== undefined ? FLAGS.toolpathBeta : body.camAi !== undefined ? FLAGS.camAi : null;
+  if (flag) {
+    const on = body[flag.key];
+    const rest = [body.password, body.role, body.resetMfa, body[flag.key === 'toolpathBeta' ? 'camAi' : 'toolpathBeta']];
+    if (typeof on !== 'boolean' || rest.some((x) => x !== undefined)) throw new HttpError(400, `${flag.key} must be true or false, on its own`);
+    await ctx.env.DB.batch([ctx.env.DB.prepare(`UPDATE users SET ${flag.column} = ? WHERE id = ?`).bind(on ? 1 : 0, id), bumpStmt(ctx.env, 'users')]);
+    await auditCtx(ctx, 'user_updated', `${target.username}: ${flag.label} ${on ? 'on' : 'off'}`);
     return json({ ok: true });
   }
   const self = id === ctx.user!.id;

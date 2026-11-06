@@ -30,6 +30,7 @@ const patch = (id: string, body: unknown) => {
   );
 };
 const beta = async () => (await DB.prepare("SELECT toolpath_beta FROM users WHERE id = 'u-ali'").first<{ toolpath_beta: number }>())!.toolpath_beta;
+const cam = async () => (await DB.prepare("SELECT cam_ai FROM users WHERE id = 'u-ali'").first<{ cam_ai: number }>())!.cam_ai;
 
 describe('toolpath beta access', () => {
   it('starts off, is switched on and off by an admin, and keeps the person signed in', async () => {
@@ -45,5 +46,17 @@ describe('toolpath beta access', () => {
     expect(await patch('u-ali', { toolpathBeta: 'yes' })).toBe(400);
     expect(await patch('u-ali', { toolpathBeta: true, role: 'ADMIN' })).toBe(400);
     expect(await patch('u-nobody', { toolpathBeta: true })).toBe(404);
+  });
+
+  it('CAM AI is its own switch: off at first, on and off apart from the toolpath beta', async () => {
+    expect(await cam()).toBe(0);
+    expect(await patch('u-ali', { camAi: true })).toBe(200);
+    expect(await cam()).toBe(1);
+    expect(await beta()).toBe(0);
+    expect(await patch('u-ali', { camAi: false })).toBe(200);
+    expect(await cam()).toBe(0);
+    expect(await patch('u-ali', { camAi: 'yes' })).toBe(400);
+    expect(await patch('u-ali', { camAi: true, toolpathBeta: true })).toBe(400);
+    expect(await patch('u-ali', { camAi: true, role: 'ADMIN' })).toBe(400);
   });
 });
