@@ -9,6 +9,7 @@ import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
 import type { PartLook } from '../lib/partLook';
+import type { ModelError } from '../lib/modelCompare';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -94,6 +95,31 @@ interface Props {
   details?: boolean;
   /** Set while the part shown is behind the instant asked for (details mode lets playback wait for it). */
   behind?: React.MutableRefObject<boolean>;
+  /** The real part (3D PDF or STL), laid on the simulated finished part and turned with it. */
+  model?: { name: string; bytes: Uint8Array } | null;
+  /** What is drawn: the simulated part, the model, or both (the model see-through). */
+  modelView?: ModelView;
+  onModel?: (s: ModelState) => void;
+}
+
+export type ModelView = 'part' | 'model' | 'both';
+/** The model being read and laid, laid (overlap: share of model and simulation that coincide), or why not. */
+export type ModelState = { state: 'reading' } | { state: 'ready'; overlap: number } | { state: 'error'; error: ModelError };
+
+/** Draw the simulated part, the model, or both (the model see-through over the part). */
+function showModel(a: Api, view: ModelView) {
+  for (const c of a.solid.children) {
+    if (c.userData.chunk) c.visible = view !== 'model';
+    if (!c.userData.model) continue;
+    const m = c as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    m.visible = view !== 'part';
+    m.castShadow = m.receiveShadow = view === 'model';
+    m.material.transparent = view === 'both';
+    m.material.opacity = view === 'both' ? 0.6 : 1;
+    m.material.depthWrite = view !== 'both';
+    m.material.needsUpdate = true;
+  }
+  a.invalidate();
 }
 
 /** What the clicks measure (mm): a hole's Ø, the distance between two picks (with its X/Y/Z parts), the first of two picked, or why not. */
@@ -631,7 +657,11 @@ interface Api {
   frame: () => { c: THREE.Vector3; size: number };
 }
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel }: Props) {
+  const modelViewRef = useRef(modelView);
+  modelViewRef.current = modelView;
+  const onModelRef = useRef(onModel);
+  onModelRef.current = onModel;
   const behindRef = useRef(behind);
   behindRef.current = behind;
   const modeRef = useRef(mode);
@@ -921,6 +951,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
             mesh.receiveShadow = true;
             mesh.matrixAutoUpdate = false;
             mesh.userData.chunk = true;
+            mesh.visible = modelViewRef.current !== 'model';
             chunks.set(c.id, mesh);
             a.solid.add(mesh);
           }
@@ -954,6 +985,54 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       onSolidRef.current?.({ state: 'off', share: 0 });
     };
   }, [path, program, look, details]);
+
+  // The real part: read and laid in its own worker, drawn in the part frame so it turns with the part.
+  useEffect(() => {
+    const a = api.current;
+    const input = model && buildInput(path, program);
+    if (!a || !model || !input) return;
+    const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
+    let mesh: THREE.Mesh | null = null;
+    onModelRef.current?.({ state: 'reading' });
+    worker.onmessage = (e: MessageEvent) => {
+      const msg = e.data as { tris?: Float32Array; overlap?: number; error?: ModelError };
+      worker.terminate();
+      if (!msg.tris) return onModelRef.current?.({ state: 'error', error: msg.error ?? 'unreadable' });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(msg.tris, 3));
+      geo.computeVertexNormals();
+      mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+          color: 0x8fb3e0,
+          metalness: 0.1,
+          roughness: 0.6,
+          side: THREE.DoubleSide,
+          // Drawn over the simulated part where their faces coincide: blue where they agree, grey where the part has more.
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -4,
+        }));
+      mesh.matrixAutoUpdate = false;
+      mesh.userData.model = true;
+      a.solid.add(mesh);
+      showModel(a, modelViewRef.current);
+      onModelRef.current?.({ state: 'ready', overlap: msg.overlap! });
+    };
+    const setups = program.setups.map(({ index, orient, offset, stock }) => ({ index, orient, offset, stock }));
+    worker.postMessage({ type: 'model', bytes: model.bytes, input, setups });
+    return () => {
+      worker.terminate();
+      if (mesh) {
+        a.solid.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+      a.invalidate();
+    };
+  }, [model, path, program]);
+
+  useEffect(() => {
+    if (api.current) showModel(api.current, modelView);
+  }, [modelView]);
 
   // The setup's scene: fixture, toolpath, tool, markers.
   useEffect(() => {
@@ -1300,7 +1379,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const ACCENT = 0x22d3ee;
     const rimMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.45 });
     const tags: { el: HTMLDivElement; at: THREE.Vector3 }[] = [];
-    const chunks = () => a.solid.children.filter((c) => c.userData.chunk) as THREE.Mesh[];
+    // Only the part drawn (in Model view the simulated part is hidden: nothing to pick).
+    const chunks = () => a.solid.children.filter((c) => c.userData.chunk && c.visible) as THREE.Mesh[];
     const v = (p: Vec) => new THREE.Vector3(p[0], p[1], p[2]);
     // The part's extent, in its own frame: its outermost flat faces (exact), not the outermost
     // vertex (a corner of the sampled surface can stick out a little).

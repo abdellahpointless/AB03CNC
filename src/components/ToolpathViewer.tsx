@@ -1,12 +1,13 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine, Eye } from 'lucide-react';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine, Eye, Upload } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
 import { partLook } from '../lib/partLook';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, type Collision, type SetupInfo } from '../lib/setups';
-import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type SolidState } from './Toolpath3D';
+import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
+import { MODEL_MAX_BYTES } from '../lib/modelCompare';
 import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
@@ -125,6 +126,25 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const [measure, setMeasure] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
+  // The real part (3D PDF or STL) laid on the simulated one: kept only while the viewer is open.
+  const [model, setModel] = useState<{ name: string; bytes: Uint8Array } | null>(null);
+  const [modelName, setModelName] = useState<string | null>(null);
+  const [modelState, setModelState] = useState<ModelState | null>(null);
+  const [modelView, setModelView] = useState<ModelView>('both');
+  const modelInput = useRef<HTMLInputElement>(null);
+  const importModel = async (file: File) => {
+    setModel(null);
+    setModelName(file.name);
+    setModelView('both');
+    if (file.size > MODEL_MAX_BYTES) return setModelState({ state: 'error', error: 'tooBig' });
+    setModelState({ state: 'reading' });
+    setModel({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+  };
+  const removeModel = () => {
+    setModel(null);
+    setModelName(null);
+    setModelState(null);
+  };
   // The part's material; outlines (on by default for black POM), a section, camera views, a collision to fly to.
   const look = useMemo(() => partLook(code), [code]);
   const [outline, setOutline] = useState(look === 'pom');
@@ -532,7 +552,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={setModelState} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -706,6 +726,30 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                     </button>
                   )}
                   {mode3d && (
+                    <>
+                      <button
+                        onClick={() => modelInput.current?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 px-2.5 h-7 text-[11px] font-semibold text-[var(--text-secondary)]"
+                        title={t('toolpath.model.importHelp')}
+                      >
+                        <Upload size={12} />
+                        <span className="sr-only sm:not-sr-only">{t('toolpath.model.import')}</span>
+                      </button>
+                      <input
+                        ref={modelInput}
+                        type="file"
+                        accept=".pdf,.stl"
+                        hidden
+                        aria-label={t('toolpath.model.import')}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (f) void importModel(f);
+                        }}
+                      />
+                    </>
+                  )}
+                  {mode3d && (
                     <button
                       onClick={() => (measure ? setMeasure(false) : startMeasure())}
                       aria-pressed={!!measure}
@@ -784,6 +828,33 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+                {mode3d && modelName && (
+                  <div className="absolute right-3 top-20 z-10 flex items-center gap-2">
+                    <div aria-live="polite" className={`inline-flex items-center gap-1.5 max-w-[34rem] rounded-full border bg-[#0E1421]/90 pl-2.5 pr-1 h-7 text-[11px] font-semibold ${modelState?.state === 'error' ? 'border-[#ff6b6b] text-[#ffb4b4]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
+                      <span className="truncate max-w-[10rem]">{modelName}</span>
+                      <span className="shrink-0">
+                        {'· '}
+                        {modelState?.state === 'error'
+                          ? t(`toolpath.model.errors.${modelState.error}`)
+                          : modelState?.state === 'ready'
+                            ? t('toolpath.model.ready', { pct: fmtNumber(Math.round(modelState.overlap * 100)) })
+                            : t('toolpath.model.reading')}
+                      </span>
+                      <button onClick={removeModel} className="btn-icon w-5 h-5 shrink-0" title={t('toolpath.model.remove')} aria-label={t('toolpath.model.remove')}>
+                        <X size={11} />
+                      </button>
+                    </div>
+                    {modelState?.state === 'ready' && (
+                      <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label={t('toolpath.model.view')}>
+                        {(['part', 'model', 'both'] as const).map((v) => (
+                          <button key={v} role="radio" aria-checked={modelView === v} onClick={() => setModelView(v)} className={`px-2.5 h-6 rounded-full text-[11px] font-semibold ${modelView === v ? 'bg-[#8fb3e0] text-[#0b1a2e]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                            {t(`toolpath.model.${v}`)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {mode3d && section && (
