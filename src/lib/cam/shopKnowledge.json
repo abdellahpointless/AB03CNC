@@ -1,0 +1,1724 @@
+{
+ "version": 1,
+ "programs": 32,
+ "cut": {
+  "ALU": {
+   "GB": [
+    {
+     "d": 3,
+     "kind": "tap",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 300,
+     "f": null,
+     "fz": 150,
+     "ap": null,
+     "ae": null,
+     "q": null
+    }
+   ],
+   "KF": [
+    {
+     "d": 6,
+     "kind": "other",
+     "n": 4,
+     "programs": 2,
+     "length": 30,
+     "s": 12000,
+     "f": 1300,
+     "fz": 780,
+     "ap": 0.15,
+     "ae": 2.9,
+     "q": null
+    }
+   ],
+   "MK": [
+    {
+     "d": 40,
+     "kind": "face",
+     "n": 15,
+     "programs": 8,
+     "length": 30,
+     "s": 8000,
+     "f": 3000,
+     "fz": 3000,
+     "ap": 1,
+     "ae": null,
+     "q": null
+    }
+   ],
+   "SB": [
+    {
+     "d": 1.4,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 26000,
+     "f": null,
+     "fz": 350,
+     "ap": null,
+     "ae": null,
+     "q": 0.6
+    },
+    {
+     "d": 1.5,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 26000,
+     "f": null,
+     "fz": 350,
+     "ap": null,
+     "ae": null,
+     "q": 0.6
+    },
+    {
+     "d": 2.2,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 17000,
+     "f": null,
+     "fz": 450,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2.5,
+     "kind": "drill",
+     "n": 4,
+     "programs": 2,
+     "length": 50,
+     "s": 15000,
+     "f": null,
+     "fz": 450,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2,
+     "kind": "drill",
+     "n": 3,
+     "programs": 3,
+     "length": 30,
+     "s": 19000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 1.5
+    },
+    {
+     "d": 3.3,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 50,
+     "s": 12000,
+     "f": null,
+     "fz": 450,
+     "ap": null,
+     "ae": null,
+     "q": 1
+    },
+    {
+     "d": 3.5,
+     "kind": "drill",
+     "n": 2,
+     "programs": 1,
+     "length": 50,
+     "s": 11000,
+     "f": null,
+     "fz": 440,
+     "ap": null,
+     "ae": null,
+     "q": 3.5
+    },
+    {
+     "d": 3,
+     "kind": "drill",
+     "n": 3,
+     "programs": 3,
+     "length": 50,
+     "s": 13000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 3
+    },
+    {
+     "d": 4.5,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 50,
+     "s": 7600,
+     "f": null,
+     "fz": 475,
+     "ap": null,
+     "ae": null,
+     "q": 5
+    },
+    {
+     "d": 4,
+     "kind": "drill",
+     "n": 2,
+     "programs": 2,
+     "length": 50,
+     "s": 9500,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 5.5,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 50,
+     "s": 6900,
+     "f": null,
+     "fz": 450,
+     "ap": null,
+     "ae": null,
+     "q": 5.5
+    },
+    {
+     "d": 5,
+     "kind": "drill",
+     "n": 4,
+     "programs": 4,
+     "length": 50,
+     "s": 7600,
+     "f": null,
+     "fz": 475,
+     "ap": null,
+     "ae": null,
+     "q": 5
+    },
+    {
+     "d": 6.4,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 50,
+     "s": 6000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 6.5
+    }
+   ],
+   "SFH": [
+    {
+     "d": 16,
+     "kind": "contour",
+     "n": 7,
+     "programs": 7,
+     "length": 55,
+     "s": 20000,
+     "f": 3000,
+     "fz": 2100,
+     "ap": 1.83,
+     "ae": 12.74,
+     "q": null
+    }
+   ],
+   "SF": [
+    {
+     "d": 1.5,
+     "kind": "contour",
+     "n": 1,
+     "programs": 1,
+     "length": 10,
+     "s": 27000,
+     "f": 900,
+     "fz": 810,
+     "ap": 0.39,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 16,
+     "kind": "contour",
+     "n": 1,
+     "programs": 1,
+     "length": 48,
+     "s": 6600,
+     "f": 850,
+     "fz": 425,
+     "ap": 2,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 16,
+     "kind": "finish",
+     "n": 6,
+     "programs": 6,
+     "length": 49,
+     "s": 6600,
+     "f": 1200,
+     "fz": 1080,
+     "ap": 3.5,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 1,
+     "kind": "contour",
+     "n": 1,
+     "programs": 1,
+     "length": 10,
+     "s": 27000,
+     "f": 700,
+     "fz": 630,
+     "ap": 0.19,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 2.5,
+     "kind": "counterbore",
+     "n": 1,
+     "programs": 1,
+     "length": 20,
+     "s": 15000,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2,
+     "kind": "contour",
+     "n": 3,
+     "programs": 3,
+     "length": 15,
+     "s": 27000,
+     "f": 1000,
+     "fz": 900,
+     "ap": 0.29,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 3,
+     "kind": "contour",
+     "n": 3,
+     "programs": 2,
+     "length": 20,
+     "s": 21000,
+     "f": 900,
+     "fz": 900,
+     "ap": 0.92,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 3,
+     "kind": "pocket",
+     "n": 1,
+     "programs": 1,
+     "length": 20,
+     "s": 21000,
+     "f": 600,
+     "fz": null,
+     "ap": 0.13,
+     "ae": 1.02,
+     "q": null
+    },
+    {
+     "d": 4,
+     "kind": "contour",
+     "n": 3,
+     "programs": 3,
+     "length": 30,
+     "s": 16000,
+     "f": 1200,
+     "fz": 1080,
+     "ap": 1.41,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 4,
+     "kind": "counterbore",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 9500,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 4,
+     "kind": "pocket",
+     "n": 2,
+     "programs": 2,
+     "length": 30,
+     "s": 16000,
+     "f": 1000,
+     "fz": 600,
+     "ap": 1.39,
+     "ae": 1.07,
+     "q": null
+    },
+    {
+     "d": 5,
+     "kind": "contour",
+     "n": 3,
+     "programs": 2,
+     "length": 30,
+     "s": 14000,
+     "f": 1080,
+     "fz": 1080,
+     "ap": 1.3,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 5,
+     "kind": "counterbore",
+     "n": 1,
+     "programs": 1,
+     "length": 30,
+     "s": 7600,
+     "f": null,
+     "fz": 250,
+     "ap": null,
+     "ae": null,
+     "q": 5
+    },
+    {
+     "d": 5,
+     "kind": "pocket",
+     "n": 4,
+     "programs": 4,
+     "length": 30,
+     "s": 14000,
+     "f": 660,
+     "fz": 660,
+     "ap": 1.5,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 6,
+     "kind": "pocket",
+     "n": 2,
+     "programs": 1,
+     "length": 30,
+     "s": 12000,
+     "f": 1200,
+     "fz": null,
+     "ap": 0.2,
+     "ae": 3,
+     "q": null
+    },
+    {
+     "d": 8,
+     "kind": "pocket",
+     "n": 4,
+     "programs": 1,
+     "length": 40,
+     "s": 12000,
+     "f": 2000,
+     "fz": 1200,
+     "ap": 2.75,
+     "ae": 6.32,
+     "q": 8
+    }
+   ],
+   "ST": [
+    {
+     "d": 4,
+     "kind": "chamfer",
+     "n": 16,
+     "programs": 8,
+     "length": 25,
+     "s": 16000,
+     "f": 920,
+     "fz": 828,
+     "ap": null,
+     "ae": 2.1,
+     "q": null
+    }
+   ],
+   "ZB": [
+    {
+     "d": 2.3,
+     "kind": "centre",
+     "n": 4,
+     "programs": 3,
+     "length": 38,
+     "s": 6500,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": null
+    }
+   ]
+  },
+  "FH": {
+   "GB": [
+    {
+     "d": 4,
+     "kind": "tap",
+     "n": 6,
+     "programs": 4,
+     "length": 40,
+     "s": 400,
+     "f": null,
+     "fz": 280,
+     "ap": null,
+     "ae": null,
+     "q": null
+    }
+   ],
+   "MK": [
+    {
+     "d": 93,
+     "kind": "face",
+     "n": 21,
+     "programs": 17,
+     "length": 30,
+     "s": 2500,
+     "f": 1000,
+     "fz": 900,
+     "ap": 1.4,
+     "ae": 64.33,
+     "q": null
+    }
+   ],
+   "SB": [
+    {
+     "d": 1.5,
+     "kind": "drill",
+     "n": 6,
+     "programs": 6,
+     "length": 35,
+     "s": 6000,
+     "f": null,
+     "fz": 150,
+     "ap": null,
+     "ae": null,
+     "q": 0.7
+    },
+    {
+     "d": 1.6,
+     "kind": "drill",
+     "n": 3,
+     "programs": 3,
+     "length": 35,
+     "s": 7800,
+     "f": null,
+     "fz": 200,
+     "ap": null,
+     "ae": null,
+     "q": 0.7
+    },
+    {
+     "d": 10,
+     "kind": "drill",
+     "n": 4,
+     "programs": 3,
+     "length": 70,
+     "s": 600,
+     "f": null,
+     "fz": 100,
+     "ap": null,
+     "ae": null,
+     "q": 5.5
+    },
+    {
+     "d": 2.5,
+     "kind": "drill",
+     "n": 4,
+     "programs": 4,
+     "length": 45,
+     "s": 5800,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 3.5
+    },
+    {
+     "d": 2.96,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 55,
+     "s": 4500,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 4.5
+    },
+    {
+     "d": 2,
+     "kind": "drill",
+     "n": 12,
+     "programs": 8,
+     "length": 35,
+     "s": 6000,
+     "f": null,
+     "fz": 200,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 3.2,
+     "kind": "drill",
+     "n": 3,
+     "programs": 3,
+     "length": 45,
+     "s": 5000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 3
+    },
+    {
+     "d": 3.3,
+     "kind": "drill",
+     "n": 26,
+     "programs": 12,
+     "length": 55,
+     "s": 4500,
+     "f": null,
+     "fz": 350,
+     "ap": null,
+     "ae": null,
+     "q": 4.5
+    },
+    {
+     "d": 3,
+     "kind": "drill",
+     "n": 11,
+     "programs": 9,
+     "length": 55,
+     "s": 4500,
+     "f": null,
+     "fz": 350,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 4.2,
+     "kind": "drill",
+     "n": 16,
+     "programs": 15,
+     "length": 55,
+     "s": 3500,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 5
+    },
+    {
+     "d": 4.5,
+     "kind": "drill",
+     "n": 2,
+     "programs": 2,
+     "length": 55,
+     "s": 3500,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 5.5
+    },
+    {
+     "d": 4.8,
+     "kind": "drill",
+     "n": 25,
+     "programs": 12,
+     "length": 55,
+     "s": 3500,
+     "f": null,
+     "fz": 600,
+     "ap": null,
+     "ae": null,
+     "q": 8.5
+    },
+    {
+     "d": 4.8,
+     "kind": "pocket",
+     "n": 1,
+     "programs": 1,
+     "length": 35,
+     "s": 3500,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 4,
+     "kind": "drill",
+     "n": 11,
+     "programs": 9,
+     "length": 55,
+     "s": 3500,
+     "f": null,
+     "fz": 320,
+     "ap": null,
+     "ae": null,
+     "q": 5
+    },
+    {
+     "d": 5.2,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 55,
+     "s": 3100,
+     "f": null,
+     "fz": 800,
+     "ap": null,
+     "ae": null,
+     "q": 6
+    },
+    {
+     "d": 5.4,
+     "kind": "drill",
+     "n": 12,
+     "programs": 9,
+     "length": 55,
+     "s": 3000,
+     "f": null,
+     "fz": 800,
+     "ap": null,
+     "ae": null,
+     "q": 8
+    },
+    {
+     "d": 5,
+     "kind": "drill",
+     "n": 6,
+     "programs": 4,
+     "length": 55,
+     "s": 3100,
+     "f": null,
+     "fz": 300,
+     "ap": null,
+     "ae": null,
+     "q": 6
+    },
+    {
+     "d": 6.4,
+     "kind": "drill",
+     "n": 12,
+     "programs": 8,
+     "length": 55,
+     "s": 4500,
+     "f": null,
+     "fz": 800,
+     "ap": null,
+     "ae": null,
+     "q": 8
+    }
+   ],
+   "SF": [
+    {
+     "d": 1.5,
+     "kind": "pocket",
+     "n": 1,
+     "programs": 1,
+     "length": 33,
+     "s": 6000,
+     "f": 75,
+     "fz": 38,
+     "ap": 0.4,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 20,
+     "kind": "contour",
+     "n": 11,
+     "programs": 10,
+     "length": 55,
+     "s": 2200,
+     "f": 650,
+     "fz": 585,
+     "ap": 9.5,
+     "ae": 11.01,
+     "q": null
+    },
+    {
+     "d": 20,
+     "kind": "pocket",
+     "n": 1,
+     "programs": 1,
+     "length": 55,
+     "s": 2200,
+     "f": 650,
+     "fz": 325,
+     "ap": 2.5,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 2,
+     "kind": "finish",
+     "n": 5,
+     "programs": 4,
+     "length": 25,
+     "s": 8000,
+     "f": 200,
+     "fz": 150,
+     "ap": 0.9,
+     "ae": 0.4,
+     "q": null
+    },
+    {
+     "d": 3,
+     "kind": "finish",
+     "n": 21,
+     "programs": 10,
+     "length": 25,
+     "s": 6000,
+     "f": 200,
+     "fz": 200,
+     "ap": 2,
+     "ae": 2,
+     "q": null
+    },
+    {
+     "d": 3,
+     "kind": "pocket",
+     "n": 2,
+     "programs": 2,
+     "length": 33,
+     "s": 8000,
+     "f": 700,
+     "fz": 150,
+     "ap": 1.27,
+     "ae": 0.24,
+     "q": null
+    },
+    {
+     "d": 4,
+     "kind": "counterbore",
+     "n": 15,
+     "programs": 6,
+     "length": 33,
+     "s": 6000,
+     "f": 450,
+     "fz": 250,
+     "ap": null,
+     "ae": 1.04,
+     "q": 3
+    },
+    {
+     "d": 4,
+     "kind": "finish",
+     "n": 23,
+     "programs": 8,
+     "length": 33,
+     "s": 7000,
+     "f": 400,
+     "fz": 360,
+     "ap": 2,
+     "ae": 2,
+     "q": 3
+    },
+    {
+     "d": 4,
+     "kind": "pocket",
+     "n": 12,
+     "programs": 7,
+     "length": 33,
+     "s": 6000,
+     "f": 350,
+     "fz": 200,
+     "ap": 2,
+     "ae": 2,
+     "q": 3
+    },
+    {
+     "d": 5,
+     "kind": "contour",
+     "n": 1,
+     "programs": 1,
+     "length": 58,
+     "s": 5000,
+     "f": 330,
+     "fz": 200,
+     "ap": 2,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 5,
+     "kind": "counterbore",
+     "n": 1,
+     "programs": 1,
+     "length": 44,
+     "s": 3100,
+     "f": null,
+     "fz": 230,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 5,
+     "kind": "finish",
+     "n": 12,
+     "programs": 6,
+     "length": 44,
+     "s": 6500,
+     "f": 450,
+     "fz": 405,
+     "ap": 2.85,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 5,
+     "kind": "pocket",
+     "n": 2,
+     "programs": 2,
+     "length": 33,
+     "s": 6500,
+     "f": 550,
+     "fz": 330,
+     "ap": 3.83,
+     "ae": 2.5,
+     "q": null
+    },
+    {
+     "d": 6,
+     "kind": "counterbore",
+     "n": 15,
+     "programs": 7,
+     "length": 33,
+     "s": 2600,
+     "f": 550,
+     "fz": 300,
+     "ap": null,
+     "ae": 5.81,
+     "q": 5
+    },
+    {
+     "d": 6,
+     "kind": "finish",
+     "n": 23,
+     "programs": 11,
+     "length": 33,
+     "s": 6500,
+     "f": 650,
+     "fz": 585,
+     "ap": 4.5,
+     "ae": 2.7,
+     "q": 5
+    },
+    {
+     "d": 6,
+     "kind": "pocket",
+     "n": 8,
+     "programs": 4,
+     "length": 33,
+     "s": 5000,
+     "f": 550,
+     "fz": 210,
+     "ap": 2.88,
+     "ae": 3,
+     "q": 5
+    },
+    {
+     "d": 8,
+     "kind": "contour",
+     "n": 3,
+     "programs": 1,
+     "length": 44,
+     "s": 5500,
+     "f": 850,
+     "fz": 350,
+     "ap": 4.75,
+     "ae": 4,
+     "q": 6
+    },
+    {
+     "d": 8,
+     "kind": "counterbore",
+     "n": 23,
+     "programs": 8,
+     "length": 44,
+     "s": 5500,
+     "f": 850,
+     "fz": 350,
+     "ap": null,
+     "ae": 4,
+     "q": 6
+    },
+    {
+     "d": 8,
+     "kind": "pocket",
+     "n": 53,
+     "programs": 16,
+     "length": 44,
+     "s": 6000,
+     "f": 850,
+     "fz": 595,
+     "ap": 3.83,
+     "ae": 4,
+     "q": 6
+    }
+   ],
+   "ST": [
+    {
+     "d": 4,
+     "kind": "chamfer",
+     "n": 44,
+     "programs": 17,
+     "length": 25,
+     "s": 8000,
+     "f": 900,
+     "fz": 630,
+     "ap": null,
+     "ae": 1.6,
+     "q": null
+    }
+   ],
+   "ZB": [
+    {
+     "d": 2.3,
+     "kind": "centre",
+     "n": 36,
+     "programs": 18,
+     "length": 38,
+     "s": 3500,
+     "f": null,
+     "fz": 200,
+     "ap": null,
+     "ae": null,
+     "q": null
+    }
+   ]
+  },
+  "FR": {
+   "SF": [
+    {
+     "d": 16,
+     "kind": "face",
+     "n": 1,
+     "programs": 1,
+     "length": 49,
+     "s": 6600,
+     "f": 1200,
+     "fz": 1080,
+     "ap": 0.67,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 16,
+     "kind": "finish",
+     "n": 1,
+     "programs": 1,
+     "length": 49,
+     "s": 6600,
+     "f": 1200,
+     "fz": 1080,
+     "ap": 6.23,
+     "ae": null,
+     "q": null
+    }
+   ]
+  },
+  "POM": {
+   "GB": [
+    {
+     "d": 4,
+     "kind": "tap",
+     "n": 1,
+     "programs": 1,
+     "length": 40,
+     "s": 400,
+     "f": null,
+     "fz": 280,
+     "ap": null,
+     "ae": null,
+     "q": null
+    }
+   ],
+   "MK": [
+    {
+     "d": 93,
+     "kind": "face",
+     "n": 20,
+     "programs": 8,
+     "length": 30,
+     "s": 2500,
+     "f": 600,
+     "fz": 600,
+     "ap": 1.5,
+     "ae": 64.33,
+     "q": null
+    }
+   ],
+   "SB": [
+    {
+     "d": 1.5,
+     "kind": "drill",
+     "n": 2,
+     "programs": 2,
+     "length": 35,
+     "s": 8000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 1
+    },
+    {
+     "d": 1.6,
+     "kind": "drill",
+     "n": 4,
+     "programs": 4,
+     "length": 35,
+     "s": 8000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 1
+    },
+    {
+     "d": 1.97,
+     "kind": "drill",
+     "n": 4,
+     "programs": 4,
+     "length": 55,
+     "s": 5000,
+     "f": null,
+     "fz": 200,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2.4,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 50,
+     "s": 5000,
+     "f": null,
+     "fz": 250,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2.6,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 35,
+     "s": 16192,
+     "f": null,
+     "fz": 450,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 2.96,
+     "kind": "drill",
+     "n": 8,
+     "programs": 6,
+     "length": 55,
+     "s": 3000,
+     "f": null,
+     "fz": 230,
+     "ap": null,
+     "ae": null,
+     "q": 2.5
+    },
+    {
+     "d": 2,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 35,
+     "s": 5000,
+     "f": null,
+     "fz": 250,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 3.3,
+     "kind": "drill",
+     "n": 10,
+     "programs": 5,
+     "length": 55,
+     "s": 5000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 3
+    },
+    {
+     "d": 3,
+     "kind": "drill",
+     "n": 3,
+     "programs": 3,
+     "length": 55,
+     "s": 5000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 2.5
+    },
+    {
+     "d": 4.2,
+     "kind": "drill",
+     "n": 5,
+     "programs": 3,
+     "length": 55,
+     "s": 4000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 3
+    },
+    {
+     "d": 4.6,
+     "kind": "drill",
+     "n": 5,
+     "programs": 3,
+     "length": 55,
+     "s": 3800,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 4.8,
+     "kind": "drill",
+     "n": 4,
+     "programs": 3,
+     "length": 99,
+     "s": 3500,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 4,
+     "kind": "drill",
+     "n": 10,
+     "programs": 6,
+     "length": 55,
+     "s": 4000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 5.4,
+     "kind": "drill",
+     "n": 6,
+     "programs": 4,
+     "length": 55,
+     "s": 2900,
+     "f": null,
+     "fz": 700,
+     "ap": null,
+     "ae": null,
+     "q": 6
+    },
+    {
+     "d": 5,
+     "kind": "drill",
+     "n": 2,
+     "programs": 2,
+     "length": 55,
+     "s": 3000,
+     "f": null,
+     "fz": 600,
+     "ap": null,
+     "ae": null,
+     "q": 4
+    },
+    {
+     "d": 6.4,
+     "kind": "drill",
+     "n": 14,
+     "programs": 5,
+     "length": 55,
+     "s": 2500,
+     "f": null,
+     "fz": 800,
+     "ap": null,
+     "ae": null,
+     "q": 6
+    }
+   ],
+   "SF": [
+    {
+     "d": 20,
+     "kind": "contour",
+     "n": 13,
+     "programs": 8,
+     "length": 65,
+     "s": 6000,
+     "f": 1200,
+     "fz": 600,
+     "ap": 6.83,
+     "ae": 6,
+     "q": null
+    },
+    {
+     "d": 2,
+     "kind": "finish",
+     "n": 9,
+     "programs": 4,
+     "length": 33,
+     "s": 8000,
+     "f": 500,
+     "fz": 450,
+     "ap": 1.67,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 3,
+     "kind": "counterbore",
+     "n": 1,
+     "programs": 1,
+     "length": 33,
+     "s": 2200,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 1
+    },
+    {
+     "d": 3,
+     "kind": "finish",
+     "n": 9,
+     "programs": 6,
+     "length": 25,
+     "s": 8000,
+     "f": 800,
+     "fz": 720,
+     "ap": 1.25,
+     "ae": 0.95,
+     "q": null
+    },
+    {
+     "d": 4,
+     "kind": "counterbore",
+     "n": 4,
+     "programs": 3,
+     "length": 33,
+     "s": 5000,
+     "f": 800,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 4,
+     "kind": "finish",
+     "n": 34,
+     "programs": 5,
+     "length": 33,
+     "s": 8000,
+     "f": 800,
+     "fz": 720,
+     "ap": 1.45,
+     "ae": 1.24,
+     "q": 2
+    },
+    {
+     "d": 4,
+     "kind": "pocket",
+     "n": 3,
+     "programs": 2,
+     "length": 33,
+     "s": 8000,
+     "f": 600,
+     "fz": 480,
+     "ap": 1.8,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 5,
+     "kind": "finish",
+     "n": 8,
+     "programs": 3,
+     "length": 33,
+     "s": 8000,
+     "f": 1100,
+     "fz": 990,
+     "ap": 3,
+     "ae": 1.61,
+     "q": 2
+    },
+    {
+     "d": 5,
+     "kind": "pocket",
+     "n": 2,
+     "programs": 2,
+     "length": 33,
+     "s": 8000,
+     "f": 560,
+     "fz": 400,
+     "ap": 1.85,
+     "ae": 2.54,
+     "q": null
+    },
+    {
+     "d": 6,
+     "kind": "counterbore",
+     "n": 2,
+     "programs": 2,
+     "length": 44,
+     "s": 1000,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 2
+    },
+    {
+     "d": 6,
+     "kind": "finish",
+     "n": 17,
+     "programs": 10,
+     "length": 33,
+     "s": 8000,
+     "f": 900,
+     "fz": 500,
+     "ap": 2.83,
+     "ae": 2.7,
+     "q": 2
+    },
+    {
+     "d": 6,
+     "kind": "pocket",
+     "n": 16,
+     "programs": 6,
+     "length": 33,
+     "s": 8000,
+     "f": 900,
+     "fz": 450,
+     "ap": 2.8,
+     "ae": 2.7,
+     "q": 2
+    },
+    {
+     "d": 8,
+     "kind": "counterbore",
+     "n": 4,
+     "programs": 2,
+     "length": 44,
+     "s": 800,
+     "f": null,
+     "fz": 500,
+     "ap": null,
+     "ae": null,
+     "q": 3
+    },
+    {
+     "d": 8,
+     "kind": "finish",
+     "n": 1,
+     "programs": 1,
+     "length": 44,
+     "s": 8000,
+     "f": 980,
+     "fz": 1120,
+     "ap": 5.25,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 8,
+     "kind": "pocket",
+     "n": 38,
+     "programs": 7,
+     "length": 44,
+     "s": 8000,
+     "f": 1200,
+     "fz": 720,
+     "ap": 4.5,
+     "ae": 4,
+     "q": 3
+    }
+   ],
+   "ST": [
+    {
+     "d": 4,
+     "kind": "chamfer",
+     "n": 23,
+     "programs": 7,
+     "length": 25,
+     "s": 8000,
+     "f": 1500,
+     "fz": 1050,
+     "ap": null,
+     "ae": 3.3,
+     "q": null
+    }
+   ],
+   "ZB": [
+    {
+     "d": 2.3,
+     "kind": "centre",
+     "n": 16,
+     "programs": 7,
+     "length": 38,
+     "s": 8000,
+     "f": null,
+     "fz": 200,
+     "ap": null,
+     "ae": null,
+     "q": null
+    },
+    {
+     "d": 2.3,
+     "kind": "drill",
+     "n": 1,
+     "programs": 1,
+     "length": 38,
+     "s": 8000,
+     "f": null,
+     "fz": 400,
+     "ap": null,
+     "ae": null,
+     "q": 1
+    }
+   ]
+  }
+ },
+ "order": [
+  "face",
+  "centre",
+  "other",
+  "drill",
+  "contour",
+  "pocket",
+  "counterbore",
+  "finish",
+  "chamfer",
+  "tap"
+ ],
+ "allowance": [
+  10,
+  4,
+  4
+ ],
+ "setups": {
+  "2": 11,
+  "3": 4,
+  "4": 10,
+  "5": 4,
+  "6": 3
+ },
+ "m0": [
+  [
+   "N MM UNTERLAGE",
+   82
+  ],
+  [
+   "TEIL MIT N IN X UND N IN Y EINSPANNEN",
+   13
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+/RAFI X+ Z-",
+   7
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+/RAFI X+ Z+",
+   7
+  ],
+  [
+   "TEIL N GRAD UM X DREHEN/N IN X UND N IN Y",
+   6
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+/RAFI X- Z-",
+   6
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+/RAFI X- Z+",
+   5
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN/N IN X UND N IN Y",
+   5
+  ],
+  [
+   "TOP / N IN X AND N IN Y",
+   4
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS./N IN X",
+   3
+  ],
+  [
+   "SIDE_N / ROTATE ON X, Z+ TO Y-",
+   3
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN/Z+ WIRD X+/N IN X N IN Y",
+   3
+  ],
+  [
+   "N MM ZWISCHENLAGE IN X-",
+   2
+  ],
+  [
+   "N MM UNTERLAGE IN EP N MM",
+   2
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS. / N IN X / RAFI X+ Y-",
+   2
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+ / RAFI X- Z+",
+   2
+  ],
+  [
+   "TEIL N GRAD UM X DREHEN",
+   2
+  ],
+  [
+   "N MM UNTERLAGEIN MASS N MM",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS./N IN X/RAFI X+Y-",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/N IN X/RAFI X+ Y+",
+   1
+  ],
+  [
+   "MOD. HOCHKANT/PERS. Y+/RAFI X+Z+",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/N IN X/Y",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS./RAFI X+ Y+",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/ RAFI IN X+ Y-",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/N IN X/RAFI IN X+ Y-",
+   1
+  ],
+  [
+   "MOD. IN ALUVORRICHTUNG SPANNEN / UNTER MASS N MM LEGEN",
+   1
+  ],
+  [
+   "TEIL N GRAD UM X DREHEN/N IN X UND N IN Y/Z+ WIRD Y+",
+   1
+  ],
+  [
+   "SIDE_N / ROTATE ON X, Z+ TO Y+",
+   1
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN/Z+ WIRD X-/N IN X N IN Y",
+   1
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN",
+   1
+  ],
+  [
+   "TEIL N GRAD UM Z DREHEN/X+ WIRD Y+",
+   1
+  ],
+  [
+   "N MM UNTERLAGE SUR EP N MM",
+   1
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN/",
+   1
+  ],
+  [
+   "TEIL N GRAD UM Y DREHEN/ RAFI IN X- Y+",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS./N IN X/RAFI IN X+Y-",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/N IN X/RAFI IN X- Y-",
+   1
+  ],
+  [
+   "MOD. HOCHKANT/PERS IN Y+/RAFI IN X-Z+",
+   1
+  ],
+  [
+   "MOD. HOCHKANT/PERS IN Y+/RAFI IN X+Z-",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. RUECKS./N IN X/RAFI X+Y+",
+   1
+  ],
+  [
+   "MOD. SPANNEN F. FRONTSEITE/N IN X/RAFI IN X+Y-",
+   1
+  ]
+ ]
+}
