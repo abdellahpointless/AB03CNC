@@ -8,30 +8,18 @@
  * any way can. The setup the app turned wrong is the one whose chosen way does worse than another,
  * however many setups there are.
  *
- *   npm run stl-blame -- <program> <part.stl> [<program> <part.stl> ...]
+ *   npm run stl-blame -- <program> <part.stl or 3D part.pdf> [...]
  */
 import { readFileSync } from 'node:fs';
 import { parseToolpath, speedsFor, type Vec } from '../src/lib/toolpath';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../src/lib/setups';
 import { buildInput, carve, KEPT, materialExtreme, type Grid, type SimInput } from '../src/lib/stockSim';
 import { ALL, apply, mul, transpose, turnedBox, type Mat3 } from '../src/lib/orient';
+import { readModel } from '../src/lib/model';
 
 const VOXELS = 300_000;
 /** Less finished material cut than this (mm³) is the sim's own roughness, not a wrong turn. */
 const NOISE = 15;
-
-/** Triangles of a binary or text STL: 9 numbers each. */
-function readStl(path: string): Float64Array {
-  const buf = readFileSync(path);
-  const count = buf.length >= 84 ? buf.readUInt32LE(80) : 0;
-  if (buf.length === 84 + count * 50) {
-    const out = new Float64Array(count * 9);
-    for (let i = 0; i < count; i++) for (let k = 0; k < 9; k++) out[i * 9 + k] = buf.readFloatLE(84 + i * 50 + 12 + k * 4);
-    return out;
-  }
-  const v = [...buf.toString('utf8').matchAll(/vertex\s+(\S+)\s+(\S+)\s+(\S+)/g)].flatMap((m) => [Number(m[1]), Number(m[2]), Number(m[3])]);
-  return Float64Array.from(v);
-}
 
 /** Which sample centres of grid g are inside the STL placed by p -> R p + t (parity of crossings along Z). */
 function inside(tris: Float64Array, R: Mat3, t: Vec, g: Grid): Uint8Array {
@@ -72,7 +60,7 @@ function inside(tris: Float64Array, R: Mat3, t: Vec, g: Grid): Uint8Array {
   return occ;
 }
 
-function blame(programPath: string, stlPath: string) {
+async function blame(programPath: string, stlPath: string) {
   const text = readFileSync(programPath, 'utf8');
   const lines = text.split('\n');
   const tp = parseToolpath(text, speedsFor('HAAS'));
@@ -85,7 +73,7 @@ function blame(programPath: string, stlPath: string) {
   const ext = ([0, 1, 2] as const).map((a) => [materialExtreme(base, g, base.moves.length, a, -1)!, materialExtreme(base, g, base.moves.length, a, 1)!]);
   const size = ext.map(([lo, hi]) => hi - lo);
   const mid = ext.map(([lo, hi]) => (lo + hi) / 2) as Vec;
-  const tris = readStl(stlPath);
+  const tris = Float64Array.from(await readModel(new Uint8Array(readFileSync(stlPath))));
   const lo: Vec = [Infinity, Infinity, Infinity];
   const hi: Vec = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < tris.length; i += 3) for (let k = 0; k < 3; k++) [lo[k], hi[k]] = [Math.min(lo[k], tris[i + k]), Math.max(hi[k], tris[i + k])];
@@ -193,4 +181,4 @@ if (args.length < 2 || args.length % 2) {
   console.log('usage: npm run stl-blame -- <program> <part.stl> [<program> <part.stl> ...]');
   process.exit(1);
 }
-for (let i = 0; i < args.length; i += 2) blame(args[i], args[i + 1]);
+for (let i = 0; i < args.length; i += 2) await blame(args[i], args[i + 1]);
