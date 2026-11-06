@@ -7,7 +7,10 @@ import { hitInstant, toolAt } from '../lib/playback';
 import { partLook } from '../lib/partLook';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
-import { MODEL_MAX_BYTES } from '../lib/modelCompare';
+import { MODEL_MAX_BYTES } from '../lib/modelLimits';
+import type { TurnFix } from '../lib/fixTurns';
+import { apply, type Mat3 } from '../lib/orient';
+import ModelCheck from './ModelCheck';
 import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
@@ -58,7 +61,29 @@ const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 6
 
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
 /** holderHits: holders found going into the part (the remapper's collision check, for this code); focusHit: open at the first collision. */
-export default function ToolpathViewer({ code, title, brand, onClose, holderHits, focusHit }: { code: string; title: string; brand?: string; onClose: () => void; holderHits?: Collision[]; focusHit?: boolean }) {
+export default function ToolpathViewer({
+  code,
+  title,
+  brand,
+  onClose,
+  holderHits,
+  focusHit,
+  initialModel = null,
+  onModelChange,
+  onUseFix,
+}: {
+  code: string;
+  title: string;
+  brand?: string;
+  onClose: () => void;
+  holderHits?: Collision[];
+  focusHit?: boolean;
+  /** The part's 3D PDF or STL given with the program (kept by the editor while it is open). */
+  initialModel?: { name: string; bytes: Uint8Array } | null;
+  onModelChange?: (m: { name: string; bytes: Uint8Array } | null) => void;
+  /** Put the corrected M0 comments into the program in the editor (false: not placed). */
+  onUseFix?: (changes: TurnFix['changes']) => boolean;
+}) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
@@ -74,10 +99,12 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
     setStep(n);
   };
   const [jawHeight, setJawHeight] = useState(readJawHeight);
-  const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
+  // The turns found by comparing with the model, simulated instead of the program's own (null: the program's).
+  const [fixed, setFixed] = useState<Mat3[] | null>(null);
+  const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }, fixed ?? undefined), [path, fixed]);
   // The jaw height only changes the jaw check, not where the part is: keep the program (and the
   // cut part) when it changes.
-  const jawSetups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }).setups), [program, path, jawHeight]);
+  const jawSetups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }, fixed ?? undefined).setups), [program, path, jawHeight, fixed]);
   // With the holders that go into the part, each in its setup.
   const setups = useMemo(
     () => (holderHits?.length ? jawSetups.map((s) => ({ ...s, collisions: [...s.collisions, ...holderHits.filter((h) => path.moves[h.move]?.setup === s.index)] })) : jawSetups),
@@ -127,8 +154,13 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   // The real part (3D PDF or STL) laid on the simulated one: kept only while the viewer is open.
-  const [model, setModel] = useState<{ name: string; bytes: Uint8Array } | null>(null);
-  const [modelName, setModelName] = useState<string | null>(null);
+  const [model, setModelOwn] = useState<{ name: string; bytes: Uint8Array } | null>(initialModel);
+  const setModel = (m: { name: string; bytes: Uint8Array } | null) => {
+    setModelOwn(m);
+    setFixed(null);
+    onModelChange?.(m);
+  };
+  const [modelName, setModelName] = useState<string | null>(initialModel?.name ?? null);
   const [modelState, setModelState] = useState<ModelState | null>(null);
   const [modelView, setModelView] = useState<ModelView>('both');
   const modelInput = useRef<HTMLInputElement>(null);
@@ -839,7 +871,7 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
                         {modelState?.state === 'error'
                           ? t(`toolpath.model.errors.${modelState.error}`)
                           : modelState?.state === 'ready'
-                            ? t('toolpath.model.ready', { pct: fmtNumber(Math.round(modelState.overlap * 100)) })
+                            ? t('toolpath.model.ready', { pct: fmtNumber(Math.floor(modelState.match * 1000) / 10) })
                             : t('toolpath.model.reading')}
                       </span>
                       <button onClick={removeModel} className="btn-icon w-5 h-5 shrink-0" title={t('toolpath.model.remove')} aria-label={t('toolpath.model.remove')}>
@@ -959,6 +991,23 @@ export default function ToolpathViewer({ code, title, brand, onClose, holderHits
 
             {/* Side panel: tools with their colour and time, the current line */}
             <div className="min-h-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4">
+              {model && mode3d && (
+                <ModelCheck
+                  model={model}
+                  state={modelState}
+                  code={code}
+                  brand={brand}
+                  fileName={title}
+                  path={path}
+                  using={!!fixed}
+                  onSimulate={(o) => {
+                    setFixed(o);
+                    seek(0);
+                  }}
+                  onFocus={(p) => sel && setFocus({ point: apply(sel.orient, p).map((v, k) => v + sel.offset[k]) as Vec, key: Date.now() })}
+                  onUseFix={onUseFix}
+                />
+              )}
               {sel && sel.notes.length > 0 ? (
                 <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)] p-3 space-y-2.5">
                   <div className="flex items-center gap-2">

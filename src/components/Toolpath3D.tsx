@@ -4,12 +4,13 @@ import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
-import { between, holeAt, holeAxis, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
+import { between, holeAt, holeAxis, holeOfMesh, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
 import { movePath, runShares, toolAlong } from '../lib/playback';
 import { addLights } from '../lib/lights';
 import type { PartLook } from '../lib/partLook';
-import type { ModelError } from '../lib/modelCompare';
+import type { Piece } from '../lib/modelCompare';
+import type { ModelError } from '../lib/modelLimits';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -103,16 +104,24 @@ interface Props {
 }
 
 export type ModelView = 'part' | 'model' | 'both';
-/** The model being read and laid, laid (overlap: share of model and simulation that coincide), or why not. */
-export type ModelState = { state: 'reading' } | { state: 'ready'; overlap: number } | { state: 'error'; error: ModelError };
+/** The model being read and laid, laid (match: how alike the simulation and the model are, pieces: where they differ), or why not. */
+export type ModelState = { state: 'reading' } | { state: 'ready'; overlap: number; match: number; pieces: Piece[] } | { state: 'error'; error: ModelError };
+
+/** Colours of the differences: material left on, material cut too much. */
+export const PIECE_COLORS = { left: '#ffb020', cut: '#ff4d6d' } as const;
 
 /** Draw the simulated part, the model, or both (the model see-through over the part). */
 function showModel(a: Api, view: ModelView) {
+  // The simulation's hole rims (measuring) go with the simulated part.
+  a.solid.traverse((o) => {
+    if (o.userData.simRims) o.visible = view !== 'model';
+  });
   for (const c of a.solid.children) {
     if (c.userData.chunk) c.visible = view !== 'model';
     if (!c.userData.model) continue;
+    c.visible = view !== 'part';
+    if (c.userData.model !== 'mesh') continue;
     const m = c as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
-    m.visible = view !== 'part';
     m.castShadow = m.receiveShadow = view === 'model';
     m.material.transparent = view === 'both';
     m.material.opacity = view === 'both' ? 0.6 : 1;
@@ -993,9 +1002,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (!a || !model || !input) return;
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     let mesh: THREE.Mesh | null = null;
+    const pieces: THREE.LineSegments[] = [];
     onModelRef.current?.({ state: 'reading' });
     worker.onmessage = (e: MessageEvent) => {
-      const msg = e.data as { tris?: Float32Array; overlap?: number; error?: ModelError };
+      const msg = e.data as { tris?: Float32Array; overlap?: number; match?: number; pieces?: Piece[]; error?: ModelError };
       worker.terminate();
       if (!msg.tris) return onModelRef.current?.({ state: 'error', error: msg.error ?? 'unreadable' });
       const geo = new THREE.BufferGeometry();
@@ -1012,19 +1022,32 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           polygonOffsetUnits: -4,
         }));
       mesh.matrixAutoUpdate = false;
-      mesh.userData.model = true;
+      mesh.userData.model = 'mesh';
       a.solid.add(mesh);
+      // Each difference outlined in its colour, seen through the part.
+      for (const pc of msg.pieces!) {
+        const size = pc.max.map((v, k) => Math.max(v - pc.min[k], 0.2));
+        const box = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(size[0], size[1], size[2])),
+          new THREE.LineBasicMaterial({ color: PIECE_COLORS[pc.kind], depthTest: false, transparent: true }),
+        );
+        box.position.set((pc.min[0] + pc.max[0]) / 2, (pc.min[1] + pc.max[1]) / 2, (pc.min[2] + pc.max[2]) / 2);
+        box.renderOrder = 9;
+        box.userData.model = 'piece';
+        pieces.push(box);
+        a.solid.add(box);
+      }
       showModel(a, modelViewRef.current);
-      onModelRef.current?.({ state: 'ready', overlap: msg.overlap! });
+      onModelRef.current?.({ state: 'ready', overlap: msg.overlap!, match: msg.match!, pieces: msg.pieces! });
     };
     const setups = program.setups.map(({ index, orient, offset, stock }) => ({ index, orient, offset, stock }));
     worker.postMessage({ type: 'model', bytes: model.bytes, input, setups });
     return () => {
       worker.terminate();
-      if (mesh) {
-        a.solid.remove(mesh);
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
+      for (const m of [...(mesh ? [mesh] : []), ...pieces]) {
+        a.solid.remove(m);
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
       }
       a.invalidate();
     };
@@ -1373,14 +1396,16 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const marks = new THREE.Group();
     a.solid.add(marks);
     const rims = new THREE.Group();
+    rims.userData.simRims = true;
+    rims.visible = modelViewRef.current !== 'model';
     const marked = new THREE.Group();
     const dims = new THREE.Group();
     marks.add(rims, marked, dims);
     const ACCENT = 0x22d3ee;
     const rimMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.45 });
     const tags: { el: HTMLDivElement; at: THREE.Vector3 }[] = [];
-    // Only the part drawn (in Model view the simulated part is hidden: nothing to pick).
-    const chunks = () => a.solid.children.filter((c) => c.userData.chunk && c.visible) as THREE.Mesh[];
+    // What is drawn: the simulated part, the model (it is the real part: measuring it is measuring the drawing), or both.
+    const chunks = () => a.solid.children.filter((c) => (c.userData.chunk || c.userData.model === 'mesh') && c.visible) as THREE.Mesh[];
     const v = (p: Vec) => new THREE.Vector3(p[0], p[1], p[2]);
     // The part's extent, in its own frame: its outermost flat faces (exact), not the outermost
     // vertex (a corner of the sampled surface can stick out a little).
@@ -1514,10 +1539,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     };
     const feats: Feature[] = [];
     // What a click picks in this mode: a point as it is, a hole, or a flat face.
-    const pick = (p: Vec, n: Vec): Feature | null => {
+    const pick = (p: Vec, n: Vec, hit: THREE.Intersection): Feature | null => {
       if (modeRef.current === 'points') return { kind: 'point', p };
       if (modeRef.current !== 'faces') {
-        const h = holeAt(holes!, p);
+        // On the model: the hole is fitted to its facets; on the simulation: the holes the tools plunged.
+        const h = hit.object.userData.model === 'mesh' ? holeOfMesh((hit.object as THREE.Mesh).geometry.getAttribute('position').array as Float32Array, hit.faceIndex ?? 0) : holeAt(holes!, p);
         return h ? { kind: 'hole', hole: h } : null;
       }
       const axis = [0, 1, 2].reduce((b, k) => (Math.abs(n[k]) > Math.abs(n[b]) ? k : b), 0) as 0 | 1 | 2;
@@ -1549,7 +1575,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const hit = raycaster.intersectObjects(chunks(), false)[0];
       if (!hit?.face) return;
       const q = a.solid.worldToLocal(hit.point.clone());
-      const f = pick([q.x, q.y, q.z], [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z]);
+      const f = pick([q.x, q.y, q.z], [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z], hit);
       if (!f) return onMeasureRef.current?.({ kind: 'none' });
       const ext = extent();
       const reset = () => {

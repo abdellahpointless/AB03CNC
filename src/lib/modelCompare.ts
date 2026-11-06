@@ -20,12 +20,6 @@ export interface Way {
 export const score = (w: Way) => w.waste - 10 * w.mm3;
 export const worse = (p: Way, q: Way) => score(p) < score(q) - Math.max(10 * NOISE, Math.abs(score(q)) * 0.05);
 
-/** Model files and meshes bigger than these are refused (memory and time on a shop PC). */
-export const MODEL_MAX_BYTES = 50 * 1024 * 1024;
-export const MODEL_MAX_TRIS = 2_000_000;
-/** Why a model was not shown (see toolpath.model.errors). */
-export type ModelError = 'tooBig' | 'noModel' | 'compressed' | 'unreadable' | 'notPart';
-
 export type Placed = Pick<SetupInfo, 'index' | 'orient' | 'offset' | 'stock'>;
 
 /** Which sample centres of grid g are inside the model placed by p -> R p + t (parity of crossings along Z). */
@@ -150,4 +144,91 @@ export function placeModel(tris: ArrayLike<number>, R: Mat3, t: Vec): Float32Arr
     out[i + 2] = q[2] + t[2];
   }
   return out;
+}
+
+/** A place where the simulated part and the model differ. */
+export interface Piece {
+  /** left: the simulation keeps material the model does not have (an operation missing or short); cut: it cuts material the model has. */
+  kind: 'left' | 'cut';
+  mm3: number;
+  /** Its box in the part frame (mm). */
+  min: Vec;
+  max: Vec;
+  /** cut: the move that cut most of it. */
+  move: number | null;
+}
+
+/**
+ * Where the simulated finished part and the laid model differ, and how alike they are (match,
+ * 0..1: the share of the model's volume not in a difference). A sample counts only where its six
+ * neighbours differ the same way: the one-sample skin where the sampled surface and the model's
+ * flat facets disagree is not a difference. Pieces under `minMm3` are dropped.
+ */
+export function differences(fit: Pick<ModelFit, 'g' | 'occ'>, minMm3 = 2): { match: number; pieces: Piece[] } {
+  const { g, occ } = fit;
+  const [nx, ny, nz] = g.n;
+  const S = nx * ny;
+  const N = S * nz;
+  const vol = g.step[0] * g.step[1] * g.step[2];
+  const cls = new Uint8Array(N);
+  let model = 0;
+  for (let v = 0; v < N; v++) {
+    const sim = g.removed[v] === KEPT;
+    if (occ[v]) model++;
+    cls[v] = sim && !occ[v] ? 1 : !sim && occ[v] ? 2 : 0;
+  }
+  const near = (v: number, f: (w: number) => void) => {
+    const i = v % nx;
+    const j = Math.floor(v / nx) % ny;
+    const k = Math.floor(v / S);
+    if (i > 0) f(v - 1);
+    if (i < nx - 1) f(v + 1);
+    if (j > 0) f(v - nx);
+    if (j < ny - 1) f(v + nx);
+    if (k > 0) f(v - S);
+    if (k < nz - 1) f(v + S);
+  };
+  const core = new Uint8Array(N);
+  for (let v = 0; v < N; v++) {
+    if (!cls[v]) continue;
+    let n = 0;
+    near(v, (w) => cls[w] === cls[v] && n++);
+    if (n === 6) core[v] = 1;
+  }
+  const seen = new Uint8Array(N);
+  const pieces: Piece[] = [];
+  for (let s = 0; s < N; s++) {
+    if (!core[s] || seen[s]) continue;
+    // The core's connected samples, then the skin round them (one sample out).
+    const list = [s];
+    seen[s] = 1;
+    for (let q = 0; q < list.length; q++)
+      near(list[q], (w) => {
+        if (core[w] && !seen[w] && cls[w] === cls[s]) {
+          seen[w] = 1;
+          list.push(w);
+        }
+      });
+    const skin = new Set<number>();
+    for (const v of list) near(v, (w) => cls[w] === cls[s] && !core[w] && skin.add(w));
+    const all = [...list, ...skin];
+    const mm3 = all.length * vol;
+    if (mm3 < minMm3) continue;
+    const min: Vec = [Infinity, Infinity, Infinity];
+    const max: Vec = [-Infinity, -Infinity, -Infinity];
+    const moves = new Map<number, number>();
+    for (const v of all) {
+      const c = [v % nx, Math.floor(v / nx) % ny, Math.floor(v / S)];
+      for (let k = 0; k < 3; k++) {
+        min[k] = Math.min(min[k], g.origin[k] + c[k] * g.step[k]);
+        max[k] = Math.max(max[k], g.origin[k] + (c[k] + 1) * g.step[k]);
+      }
+      if (cls[s] === 2) moves.set(g.removed[v], (moves.get(g.removed[v]) ?? 0) + 1);
+    }
+    const move = cls[s] === 2 ? [...moves].reduce((a, b) => (b[1] > a[1] ? b : a))[0] : null;
+    pieces.push({ kind: cls[s] === 1 ? 'left' : 'cut', mm3, min, max, move });
+  }
+  pieces.sort((a, b) => b.mm3 - a.mm3);
+  const wrong = pieces.reduce((t, p) => t + p.mm3, 0);
+  return { match: model ? Math.max(0, 1 - wrong / (model * vol)) : 0, pieces };
 }

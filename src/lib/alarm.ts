@@ -32,3 +32,21 @@ export function ring(): void {
       o.stop(t0 + start + i * 0.04 + 0.035);
     }
 }
+
+/** Found: two rising notes, soft (the right turns of a program were found). */
+export function chime(): void {
+  if (!ctx || ctx.state !== 'running') return unlockSound();
+  const t0 = ctx.currentTime;
+  [880, 1318.5].forEach((f, i) => {
+    const o = ctx!.createOscillator();
+    const g = ctx!.createGain();
+    o.type = 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + i * 0.16);
+    g.gain.exponentialRampToValueAtTime(0.2, t0 + i * 0.16 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.16 + 0.6);
+    o.connect(g).connect(ctx!.destination);
+    o.start(t0 + i * 0.16);
+    o.stop(t0 + i * 0.16 + 0.62);
+  });
+}

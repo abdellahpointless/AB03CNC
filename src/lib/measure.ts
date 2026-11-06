@@ -106,3 +106,107 @@ export function placeDimension(from: Vec, to: Vec, dir: Vec, box: { min: Vec; ma
   const b = add(line, scale(dir, dot(sub(to, mid), dir)));
   return { a, b, label: add(line, scale(out, margin * 0.35)) };
 }
+
+/** Triangles sharing a corner, per triangle of a mesh (kept per mesh: built once). */
+const touching = new WeakMap<object, Map<string, number[]>>();
+const cornerKey = (P: ArrayLike<number>, i: number) => `${Math.round(P[i] * 1000)},${Math.round(P[i + 1] * 1000)},${Math.round(P[i + 2] * 1000)}`;
+function cornersOf(P: ArrayLike<number> & object): Map<string, number[]> {
+  let m = touching.get(P);
+  if (m) return m;
+  m = new Map();
+  for (let t = 0; t < P.length / 9; t++)
+    for (let c = 0; c < 3; c++) {
+      const k = cornerKey(P, t * 9 + c * 3);
+      const l = m.get(k);
+      if (l) l.push(t);
+      else m.set(k, [t]);
+    }
+  touching.set(P, m);
+  return m;
+}
+const normalOf = (P: ArrayLike<number>, t: number): Vec => {
+  const i = t * 9;
+  const e1: Vec = [P[i + 3] - P[i], P[i + 4] - P[i + 1], P[i + 5] - P[i + 2]];
+  const e2: Vec = [P[i + 6] - P[i], P[i + 7] - P[i + 1], P[i + 8] - P[i + 2]];
+  const n: Vec = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+  return scale(n, 1 / (len(n) || 1));
+};
+
+/**
+ * The round hole (or pin) of a model whose wall triangle `tri` was clicked: the wall grown over
+ * neighbouring facets that run along the same machine axis and bend smoothly, a circle fitted
+ * square to that axis through their corners. Null when it is not round (a flat wall, a slot).
+ */
+export function holeOfMesh(P: ArrayLike<number> & object, tri: number): Hole | null {
+  const n0 = normalOf(P, tri);
+  const corners = cornersOf(P);
+  let best: { hole: Hole; err: number } | null = null;
+  for (const k of [0, 1, 2] as const) {
+    if (Math.abs(n0[k]) > 0.1) continue;
+    const seen = new Set([tri]);
+    const list = [tri];
+    for (let q = 0; q < list.length && list.length < 20000; q++) {
+      const nq = normalOf(P, list[q]);
+      for (let c = 0; c < 3; c++)
+        for (const t of corners.get(cornerKey(P, list[q] * 9 + c * 3)) ?? []) {
+          if (seen.has(t)) continue;
+          const nt = normalOf(P, t);
+          // Along the axis and bending less than 40° from its neighbour.
+          if (Math.abs(nt[k]) > 0.1 || dot(nt, nq) < 0.76) continue;
+          seen.add(t);
+          list.push(t);
+        }
+    }
+    // Circle through the corners, in the plane square to axis k (least squares: x² + y² + D x + E y + F = 0).
+    const [a, b] = ([0, 1, 2] as const).filter((i) => i !== k);
+    const pts: [number, number][] = [];
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const t of list)
+      for (let c = 0; c < 3; c++) {
+        const i = t * 9 + c * 3;
+        pts.push([P[i + a], P[i + b]]);
+        lo = Math.min(lo, P[i + k]);
+        hi = Math.max(hi, P[i + k]);
+      }
+    if (pts.length < 12) continue;
+    const S = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const R = [0, 0, 0];
+    for (const [x, y] of pts) {
+      const row = [x, y, 1];
+      const z = -(x * x + y * y);
+      for (let i = 0; i < 3; i++) {
+        R[i] += row[i] * z;
+        for (let j = 0; j < 3; j++) S[i * 3 + j] += row[i] * row[j];
+      }
+    }
+    const det = (m: number[]) => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    const d = det(S);
+    if (Math.abs(d) < 1e-12) continue;
+    const solve = (col: number) => det(S.map((v, i) => (i % 3 === col ? R[Math.floor(i / 3)] : v))) / d;
+    const [D, E, F] = [solve(0), solve(1), solve(2)];
+    const cx = -D / 2;
+    const cy = -E / 2;
+    const r = Math.sqrt(Math.max(0, cx * cx + cy * cy - F));
+    if (!(r > 0.05)) continue;
+    let err = 0;
+    const angles = new Set<number>();
+    for (const [x, y] of pts) {
+      err += (Math.hypot(x - cx, y - cy) - r) ** 2;
+      angles.add(Math.floor(((Math.atan2(y - cy, x - cx) + Math.PI) / (2 * Math.PI)) * 12));
+    }
+    err = Math.sqrt(err / pts.length) / r;
+    // Round (facets within 3 % of the circle) and round at least half the way.
+    if (err > 0.03 || angles.size < 6) continue;
+    if (best && best.err <= err) continue;
+    const centre = (z: number): Vec => {
+      const v: Vec = [0, 0, 0];
+      v[a] = cx;
+      v[b] = cy;
+      v[k] = z;
+      return v;
+    };
+    best = { err, hole: { top: centre(hi), bottom: centre(lo), r, tool: null, move: -1, flat: true, closed: angles.size === 12 } };
+  }
+  return best?.hole ?? null;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock } from 'lucide-react';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock, Box } from 'lucide-react';
 import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -13,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCollisionCheck } from '../lib/useCollisionCheck';
 import { locale } from '../i18n/format';
 import { scopedKey } from '../lib/instance';
+import { MODEL_MAX_BYTES } from '../lib/modelLimits';
+import type { TurnFix } from '../lib/fixTurns';
 
 // "NEW" on the toolpath button until it is first opened on this PC.
 const TOOLPATH_SEEN = scopedKey('cnc-toolpath-seen');
@@ -235,6 +237,18 @@ export default function CodeEditorPair({
   const [hasImported, setHasImported] = useState(false);
   const [conversionNotification, setConversionNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The part's 3D PDF or STL (for the toolpath to check the program against): kept while the page is open.
+  const [model, setModel] = useState<{ name: string; bytes: Uint8Array } | null>(null);
+  const [askModel, setAskModel] = useState(false);
+  const modelInputRef = useRef<HTMLInputElement>(null);
+  const pickModel = async (file: File) => {
+    setAskModel(false);
+    if (file.size > MODEL_MAX_BYTES) {
+      setConversionNotification(t('toolpath.model.errors.tooBig'));
+      return;
+    }
+    setModel({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+  };
 
   // Guarantee sourceCode and outputCode are always pristine strings
   const getSafeString = (val: unknown, fallback = ''): string => {
@@ -340,6 +354,9 @@ export default function CodeEditorPair({
         const { lines: processedLines, addedCount } = applyG53BeforeG52(fileLines);
         setSourceCode(processedLines.join('\n'));
         setHasImported(true);
+        // A new program: ask for its 3D model (the one given before was for another program).
+        setModel(null);
+        setAskModel(true);
         if (addedCount > 0) {
           setConversionNotification(t('editor.g53Placed', { count: addedCount }));
           setTimeout(() => setConversionNotification(null), 6000);
@@ -350,6 +367,21 @@ export default function CodeEditorPair({
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // The corrected M0 comments (found by the toolpath with the 3D model) put into the program: each
+  // line found by its comment (the output's N numbers may differ), all or nothing.
+  const useFix = (changes: TurnFix['changes']): boolean => {
+    const ls = sourceCode.split('\n');
+    const comment = (l: string) => l.match(/\(([^)]*)\)\s*$/)?.[1].trim() ?? l.trim();
+    for (const c of changes) {
+      const i = ls.findIndex((l) => comment(l) === comment(c.from));
+      const now = c.to.match(/\([^)]*\)\s*$/);
+      if (i < 0 || !now) return false;
+      ls[i] = ls[i].replace(/\([^)]*\)\s*$/, now[0]);
+    }
+    setSourceCode(ls.join('\n'));
+    return true;
   };
 
   const handleSwitchFanucToHaas = () => {
@@ -580,9 +612,52 @@ export default function CodeEditorPair({
                   </button>
                 </>
               )}
+              {toolpathOn && (
+                <>
+                  <input
+                    type="file"
+                    ref={modelInputRef}
+                    accept=".pdf,.stl"
+                    hidden
+                    aria-label={t('toolpath.model.add')}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (f) void pickModel(f);
+                    }}
+                  />
+                  {model ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-[#8fb3e0]/50 bg-[#8fb3e0]/10 pl-2.5 pr-0.5 h-7 text-xs font-semibold text-[var(--text-primary)] max-w-[14rem]">
+                      <Box size={12} className="text-[#8fb3e0] shrink-0" />
+                      <span className="truncate">{model.name}</span>
+                      <button onClick={() => setModel(null)} className="btn-icon w-6 h-6 shrink-0" title={t('toolpath.model.remove')} aria-label={t('toolpath.model.remove')}>
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => modelInputRef.current?.click()} className="btn-secondary text-xs py-1 px-2.5" title={t('toolpath.model.addHelp')}>
+                      <Box size={13} />
+                      <span>{t('toolpath.model.add')}</span>
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
+          {toolpathOn && askModel && !model && sourceCode.trim() && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] bg-[#8fb3e0]/10 px-5 py-2 text-xs text-[var(--text-primary)]" role="status">
+              <Box size={14} className="text-[#8fb3e0] shrink-0" />
+              <span className="flex-1 min-w-[12rem]">{t('toolpath.model.ask')}</span>
+              <button onClick={() => modelInputRef.current?.click()} className="btn-primary text-xs py-1 px-2.5">
+                <Upload size={12} />
+                {t('toolpath.model.add')}
+              </button>
+              <button onClick={() => setAskModel(false)} className="btn-secondary text-xs py-1 px-2.5">
+                {t('toolpath.model.skip')}
+              </button>
+            </div>
+          )}
           {/* Textarea */}
           <textarea
             value={sourceCode}
@@ -836,6 +911,9 @@ export default function CodeEditorPair({
             }}
             holderHits={outputCode && !isOutputStale ? holderHits : undefined}
             focusHit={hitShown || caleShown}
+            initialModel={model}
+            onModelChange={setModel}
+            onUseFix={useFix}
           />
         </Suspense>
       )}
