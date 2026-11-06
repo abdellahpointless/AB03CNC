@@ -61,3 +61,10 @@ describe('a written turn', () => {
     expect(turnPhrase(IDENTITY)).toBe('');
   });
 });
+
+describe('clamping sizes', () => {
+  it('a size of 90 written second is a size, not a 90° turn', () => {
+    const text = program.replace('TEIL 180 GRAD UM Y DREHEN/78 IN X UND 5.5 IN Y', 'TEIL 180 GRAD UM Y DREHEN/44 IN X UND 90 IN Y');
+    expect(analyseProgram(parseToolpath(text, speedsFor('HAAS')), opts).setups[1].orient.join()).toBe('-1,0,0,0,1,0,0,0,-1');
+  });
+});

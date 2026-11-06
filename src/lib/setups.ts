@@ -205,6 +205,8 @@ export function readInstructions(notes: string[]) {
   for (const m of t.matchAll(/ROTATE\s*(?:ON|AROUND|ABOUT|IN)?\s*([XYZ])\b(?:\s*,?\s*(\d+)\s*(?:DEG\w*|°|GRAD)?)?/g)) found.push({ at: m.index!, axis: m[1] as Axis, deg: m[2] ? Number(m[2]) : 90 });
   // Not "D4.8 IN X-" (a hole's diameter and the side it is on).
   for (const m of t.matchAll(new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*(?:UND|AND|ET|\\d|[+-]))`, 'g'))) {
+    // Not the clamping sizes ("44 IN X UND 90 IN Y": the 90 is a size, not a turn).
+    if (both && m.index! >= both.index! && m.index! < both.index! + both[0].length) continue;
     const v = num(m[1]);
     if ([90, 180, 270].includes(v)) found.push({ at: m.index!, axis: m[2] as Axis, deg: v });
     else if (m[2] === 'X' && !sizes) onlyX = v;
