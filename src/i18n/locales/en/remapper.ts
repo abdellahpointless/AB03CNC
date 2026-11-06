@@ -313,6 +313,12 @@ const remapper = {
     estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
     toolSize: 'Ø {{d}} mm · length {{l}} mm',
     model: {
+      stage: {
+        written: 'Reading the written turns every other way',
+        one: 'Turning each setup every way',
+        two: 'Turning two setups at once',
+        all: 'Trying every combination',
+      },
       check: 'Compared with the model',
       good: 'The simulated part is the model: the turns are right.',
       searching: 'Trying every turn: {{count}} simulations',

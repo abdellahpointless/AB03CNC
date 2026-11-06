@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import pdfUrl from './models/O2504411.pdf?inline';
 import program from './models/O2504411.000.txt?raw';
+import plateUrl from './models/O1042013.pdf?inline';
+import plate from './models/O1042013.C60.txt?raw';
 import { readModel } from '../src/lib/model';
 import { rewriteTurns, searchTurns, turnPhrase } from '../src/lib/fixTurns';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -27,10 +29,24 @@ describe('finding the right turns with the real part', async () => {
     const r = searchTurns(tris, tp, opts, (p) => counts.push(p.count))!;
     expect(r.start).toBeLessThan(0.99);
     expect(r.match).toBeGreaterThan(0.99);
-    expect(counts.length).toBeGreaterThan(24);
+    expect(counts.length).toBeGreaterThan(0);
     const fix = rewriteTurns(broken, tp, r.orients, opts);
     expect(fix.unresolved).toEqual([]);
     expect(fix.changes.length).toBe(1);
+    expect(orients(fix.code)).toEqual(r.orients.map((o) => o.join()));
+  }, 300_000);
+});
+
+describe('a program read wrong (O1042013: the RAFI of the setups on edge is the TASTER of setup 2)', () => {
+  it('is found among the turns that agree with what is written, and written back', async () => {
+    const tris = await readModel(bytes(plateUrl));
+    const tp = parseToolpath(plate, speedsFor('HAAS'));
+    const r = searchTurns(tris, tp, opts)!;
+    expect(r.start).toBeLessThan(0.8);
+    expect(r.match).toBeGreaterThan(0.99);
+    expect(r.stage).toBe('written');
+    const fix = rewriteTurns(plate, tp, r.orients, opts);
+    expect(fix.unresolved).toEqual([]);
     expect(orients(fix.code)).toEqual(r.orients.map((o) => o.join()));
   }, 300_000);
 });

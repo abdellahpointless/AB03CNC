@@ -5,7 +5,8 @@ import { differences, layModel, placeModel, type Placed } from './modelCompare';
 import { MODEL_MAX_BYTES, MODEL_MAX_TRIS, type ModelError } from './modelLimits';
 import { rewriteTurns, searchTurns } from './fixTurns';
 import { parseToolpath, speedsFor } from './toolpath';
-import { DEFAULT_JAW_HEIGHT } from './setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT } from './setups';
+import { lessonOf } from './lessons';
 
 /*
  * Cuts the part away from the UI thread. Messages:
@@ -20,7 +21,7 @@ import { DEFAULT_JAW_HEIGHT } from './setups';
  *   the real part (3D PDF or STL) read and laid on the simulated finished part, with how alike they
  *   are (match) and where they differ (pieces). Needs no 'init'.
  *   { type: 'search', bytes, code, brand } -> { type: 'searching', count, total, best } ...,
- *   { type: 'search', result, fix } or { type: 'search', error }: the turns that make the part like
+ *   { type: 'search', result, fix, lesson } or { type: 'search', error }: the turns that make the part like
  *   the model (fixTurns.ts), and the program with its M0 comments rewritten for them.
  */
 
@@ -56,7 +57,8 @@ async function search(bytes: Uint8Array, code: string, brand: string | undefined
   const opts = { jawHeight: DEFAULT_JAW_HEIGHT };
   const result = searchTurns(tris, tp, opts, (p) => self.postMessage({ type: 'searching', ...p }));
   if (!result) return { error: 'notPart' as ModelError };
-  return { result, fix: result.same ? null : rewriteTurns(code, tp, result.orients, opts) };
+  const fix = result.same ? null : rewriteTurns(code, tp, result.orients, opts);
+  return { result, fix, lesson: result.same ? null : lessonOf(tp, analyseProgram(tp, opts), result, fix) };
 }
 
 let m: Mesher | null = null;

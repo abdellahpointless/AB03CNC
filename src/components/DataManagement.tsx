@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Route } from 'lucide-react';
 import { api } from '../lib/api';
 import { buildFullBackup, restoreBackup, type LogKind } from '../lib/migration';
 import { fetchAllHistory } from '../lib/historyApi';
@@ -89,6 +89,23 @@ export default function DataManagement() {
     }
   };
 
+  // The toolpath's learning records (turn searches with the 3D model), to send to the developer.
+  const lessonsLog = useLog();
+  const downloadLessons = async () => {
+    lessonsLog.clear();
+    setBusy('lessons');
+    try {
+      const data = await api<{ lessons: unknown[] }>('/toolpath/lessons', { timeoutMs: 120_000 });
+      if (!data.lessons.length) return lessonsLog.log(t('lessons.none'), 'info');
+      downloadJson(`CNC_Toolpath_Lessons_${todayStamp()}.json`, data);
+      lessonsLog.log(t('lessons.done', { count: data.lessons.length }), 'ok');
+    } catch (err: any) {
+      lessonsLog.log(err?.message || String(err), 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const pruneHistory = async () => {
     const days = Math.round(pruneDays);
     if (!(days >= 1)) return;
@@ -168,6 +185,26 @@ export default function DataManagement() {
           </label>
         </div>
         <LogView lines={backupLog.lines} />
+      </div>
+
+      <div className="border-t border-[var(--border-subtle)]" />
+
+      {/* Toolpath learning records */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="p-2 rounded-[var(--radius-md)] bg-[var(--blue-500)]/15 border border-[var(--blue-500)]/30 text-[var(--blue-text)]">
+            <Route size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('lessons.title')}</h3>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">{t('lessons.description')}</p>
+          </div>
+        </div>
+        <button onClick={downloadLessons} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4">
+          {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
+          <span>{t('lessons.download')}</span>
+        </button>
+        <LogView lines={lessonsLog.lines} />
       </div>
 
       <div className="border-t border-[var(--border-subtle)]" />

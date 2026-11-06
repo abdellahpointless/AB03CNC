@@ -239,11 +239,18 @@ export async function readPrc(prc: Uint8Array): Promise<Float32Array> {
   o += 4;
   const out: number[] = [];
   let compressed = false;
+  const tables: number[][] = [];
   for (let s = 0; s < structures; s++) {
     const sections = dv.getUint32(o + 20, true);
-    const offsets = Array.from({ length: sections }, (_, k) => dv.getUint32(o + 24 + 4 * k, true));
+    tables.push(Array.from({ length: sections }, (_, k) => dv.getUint32(o + 24 + 4 * k, true)));
     o += 24 + 4 * sections;
-    const tess = await inflate(prc.subarray(offsets[3]));
+  }
+  // Each section is unpacked alone, up to where the next one starts: Chrome drops the end of a
+  // section when other data follows it.
+  const starts = [...tables.flat(), dv.getUint32(o, true), dv.getUint32(o + 4, true)].filter((v) => v > 0 && v <= prc.length).sort((a, b) => a - b);
+  const section = (at: number) => prc.subarray(at, starts.find((v) => v > at) ?? prc.length);
+  for (const offsets of tables) {
+    const tess = await inflate(section(offsets[3]));
     const r = new Bits(tess);
     if (r.ui() !== FILE_STRUCTURE_TESSELLATION) throw new PrcError('PRC: tessellation section expected');
     skipBase(r);
@@ -261,7 +268,7 @@ export async function readPrc(prc: Uint8Array): Promise<Float32Array> {
   if (!out.length) throw new PrcError(compressed ? 'PRC: compressed tessellation is not supported yet' : 'PRC: no triangles in the model');
   // The model file says how many mm one unit is (CAD exports often write metres).
   // The model file section starts with its schema (none in the exports seen), then the model file.
-  const mf = new Bits(await inflate(prc.subarray(dv.getUint32(o, true))));
+  const mf = new Bits(await inflate(section(dv.getUint32(o, true))));
   let mm = NaN;
   if (mf.ui() === 0 && mf.ui() === MODEL_FILE) {
     skipBase(mf);

@@ -6,16 +6,29 @@ import { differences, layModel, score } from './modelCompare';
 
 /*
  * When the simulated part is not the real one (the model from the part's 3D PDF or STL), the turns
- * the app read from the M0 comments may be wrong. Every way each setup can lie is tried against the
- * model, setup by setup, the whole program simulated each time. The best series is written back into the M0 comments, checked by reading the new program again.
+ * the app read from the M0 comments may be wrong. The search simulates the whole program again and
+ * again, each time with other turns, until the part is like the model (TARGET), in stages:
+ *   written: every series that agrees with what is written: the written turns read every way
+ *            (each quarter turn the other way round, in the other order, around the part's own
+ *            axes) and, where a position is written (RAFI, TASTER, PERS., side), every way that
+ *            agrees with it, also with the RAFI, TASTER and ID window taken as one same button.
+ *            The program is usually right, the app read it wrong;
+ *   one:     each setup turned every one of the 24 ways (the ones after it following);
+ *   two:     each two setups turned every way together;
+ *   all:     every combination, the cheapest MAX_STAGE of them (all of them up to three turned setups).
+ * The best series is written back into the M0 comments, checked by reading the new program again.
  */
 
 /** A part this alike the model (share of its volume) is right. */
 export const TARGET = 0.99;
-/** Times every setup is tried again while that still makes the part more like the model. */
+/** Times the one-setup stage is run again from the best series while that improves it. */
 const MAX_PASSES = 3;
+/** At most this many series per stage (the cheapest first). */
+const MAX_STAGE = 15_000;
 
 const eq = (a: Mat3, b: Mat3) => a.every((v, i) => v === b[i]);
+
+export type SearchStage = 'written' | 'one' | 'two' | 'all';
 
 export interface TurnSearch {
   /** Each setup's turn (part -> machine) in the best series found. */
@@ -28,15 +41,83 @@ export interface TurnSearch {
   same: boolean;
   /** Simulations run. */
   count: number;
+  /** The stage that found it (null: the program's own turns). */
+  stage: SearchStage | null;
 }
 
-export type SearchProgress = { count: number; total: number; best: number };
+export type SearchProgress = { count: number; total: number; best: number; stage: SearchStage };
+
+/** Ways a setup's written turns can be read: each turn either way, in either order, around the machine's or the part's axes. */
+export function readings(turns: SetupInfo['turns']): { apply: (prev: Mat3) => Mat3; changes: number }[] {
+  if (!turns.length) return [];
+  const quarter = turns.map((t, i) => (Math.abs(t.deg) % 180 === 90 ? i : -1)).filter((i) => i >= 0);
+  const out: { apply: (prev: Mat3) => Mat3; changes: number }[] = [];
+  for (let signs = 0; signs < 1 << quarter.length; signs++)
+    for (const reversed of turns.length > 1 ? [false, true] : [false])
+      for (const partAxes of [false, true]) {
+        const ts = turns.map((t, i) => ({ ...t, deg: signs & (1 << quarter.indexOf(i)) && quarter.includes(i) ? -t.deg : t.deg }));
+        if (reversed) ts.reverse();
+        const flips = quarter.filter((_, b) => signs & (1 << b)).length;
+        out.push({
+          // Around the machine's axes each turn comes before the part; around the part's own axes, after.
+          apply: (prev) => ts.reduce((m, t) => (partAxes ? mul(m, turn(t.axis, t.deg)) : mul(turn(t.axis, t.deg), m)), prev),
+          changes: flips + (reversed ? 1 : 0) + (partAxes ? 1 : 0),
+        });
+      }
+  return out;
+}
+
+const frontOf = (x: SetupInfo): Vec | null => (x.pers ? direction([x.pers]) : x.side === 'back' ? [0, 0, -1] : x.side === 'front' ? [0, 0, 1] : null);
+
+/**
+ * Every series of turns that agrees with the written instructions: a written turn read any way
+ * (see readings), else every way that puts the front face and the markers where they are written,
+ * learned where each is first written (nothing to go by: not turned). `oneButton`: RAFI, TASTER and
+ * ID window are the same button.
+ */
+export function writtenSeries(setups: SetupInfo[], first: Mat3, oneButton: boolean, max = MAX_STAGE * 4): Mat3[][] {
+  const out: Mat3[][] = [];
+  const name = (n: string) => (oneButton ? 'BUTTON' : n);
+  const walk = (k: number, s: Mat3[], known: Map<string, Vec>) => {
+    if (out.length >= max) return;
+    if (k === setups.length) return void out.push(s);
+    const x = setups[k];
+    const wants: [string, Vec][] = [];
+    const f = frontOf(x);
+    if (f) wants.push(['front', f]);
+    if (x.marker) wants.push([name(x.marker.name), direction(x.marker.faces)]);
+    const agrees = (m: Mat3) => wants.every(([n, v]) => !known.has(n) || sameVec(apply(m, known.get(n)!), v));
+    let ways: Mat3[];
+    if (k === 0) ways = [first];
+    else if (x.turns.length) {
+      const read = readings(x.turns).map((r) => r.apply(s[k - 1]));
+      // A turn that puts something where it is not written is kept only when no reading agrees.
+      ways = read.filter(agrees).length ? read.filter(agrees) : read;
+    } else ways = wants.length ? ALL.filter(agrees) : [s[k - 1]];
+    const seen = new Set<string>();
+    for (const m of ways) {
+      if (seen.has(m.join())) continue;
+      seen.add(m.join());
+      const next = new Map(known);
+      for (const [n, v] of wants) if (!next.has(n)) next.set(n, apply(transpose(m), v));
+      walk(k + 1, [...s, m], next);
+    }
+  };
+  walk(0, [], new Map());
+  return out;
+}
 
 /**
  * The series of turns that makes the part most like the model. `progress` is called after every
- * simulation. Stops early once a series reaches TARGET. Null when the model is not this part.
+ * simulation. Stops once a series reaches TARGET, else gives the closest after every stage
+ * (stopping it early: terminate the worker). Null when the model is not this part.
  */
-export function searchTurns(tris: ArrayLike<number>, tp: Toolpath, opts: SetupOptions, progress: (p: SearchProgress) => void = () => {}): TurnSearch | null {
+export function searchTurns(
+  tris: ArrayLike<number>,
+  tp: Toolpath,
+  opts: SetupOptions,
+  progress: (p: SearchProgress) => void = () => {},
+): TurnSearch | null {
   const base = analyseProgram(tp, opts);
   const input = buildInput(tp, base);
   if (!input) return null;
@@ -45,15 +126,14 @@ export function searchTurns(tris: ArrayLike<number>, tp: Toolpath, opts: SetupOp
   const own = base.setups.map((s) => s.orient);
   const start = differences(laid).match;
   let count = 1;
-  if (start >= TARGET) return { orients: own, match: start, start, same: true, count };
+  if (start >= TARGET) return { orients: own, match: start, start, same: true, count, stage: null };
 
-  // Setup by setup, every way it can lie, the whole program simulated each time; setups after it
-  // written as a turn follow it, those written as a position stay. The best way stays and the
-  // next setup is tried; again from the start while that improves things.
+  const n = own.length;
   const rel = (k: number) => mul(own[k], transpose(own[k - 1]));
+  // Setups after k written as a turn follow it; those written as a position stay where they are.
   const follow = (s: Mat3[], k: number) => {
     const out = [...s];
-    for (let j = k + 1; j < out.length; j++) if (base.setups[j].turns.length) out[j] = mul(rel(j), out[j - 1]);
+    for (let j = k + 1; j < n; j++) if (base.setups[j].turns.length) out[j] = mul(rel(j), out[j - 1]);
     return out;
   };
   const tried = new Map<string, number>([[own.join('|'), start]]);
@@ -71,27 +151,53 @@ export function searchTurns(tris: ArrayLike<number>, tp: Toolpath, opts: SetupOp
   const movable = base.setups.filter((x) => x.index > 0 && x.stock && x.moves).map((x) => x.index);
   // The cheap guess: how well each setup's own cuts fit the model lying each way.
   const guess = new Map(movable.map((k) => [k, new Map(ALL.map((O) => [O.join(), score(laid.cutInto(base.setups[k], O))]))]));
-  let cur = { s: own, match: start, cost: textCost(base.setups, own) };
-  for (let pass = 0; pass < MAX_PASSES && cur.match < TARGET; pass++) {
-    // Every one-setup change of the best series so far, those that change the fewest written
-    // instructions first; the first that makes the part right ends the search.
-    const tries = movable
-      .flatMap((k) => ALL.map((O) => ({ k, O, s: follow(cur.s.map((m, j) => (j === k ? O : m)), k) })))
-      .map((x) => ({ ...x, cost: textCost(base.setups, x.s), g: guess.get(x.k)!.get(x.O.join())! }))
-      .sort((a, b) => a.cost - b.cost || b.g - a.g);
-    let best = cur;
-    for (const t of tries) {
-      const match = simulate(t.s);
-      if (match > best.match + 1e-4 || (match > best.match - 1e-4 && t.cost < best.cost)) best = { s: t.s, match, cost: t.cost };
-      progress({ count, total: count + tries.length - tries.indexOf(t) - 1, best: Math.max(best.match, cur.match) });
-      if (best.match >= TARGET) break;
-    }
-    if (best.match <= cur.match + 1e-4) break;
-    cur = best;
+  const guessOf = (s: Mat3[]) => movable.reduce((t, k) => t + guess.get(k)!.get(s[k].join())!, 0);
+
+  let best = { s: own, match: start, cost: textCost(base.setups, own), stage: null as SearchStage | null };
+  /** Simulate a stage's series (cheapest first); true once one is right. */
+  const run = (stage: SearchStage, series: Mat3[][]) => {
+    const list = series
+      .map((s) => ({ s, cost: textCost(base.setups, s), g: guessOf(s) }))
+      .sort((a, b) => a.cost - b.cost || b.g - a.g)
+      .slice(0, MAX_STAGE);
+    list.forEach(({ s, cost }, i) => {
+      if (best.match >= TARGET) return;
+      const match = simulate(s);
+      if (match > best.match + 1e-4 || (match > best.match - 1e-4 && cost < best.cost)) best = { s, match, cost, stage };
+      progress({ count, total: count + list.length - i - 1, best: best.match, stage });
+    });
+    return best.match >= TARGET;
+  };
+
+  // Written: every series that agrees with what is written, each turn read every way.
+  if (run('written', writtenSeries(base.setups, own[0], false).concat(writtenSeries(base.setups, own[0], true)))) return result();
+
+  // One setup at a time, every way, from the best series; again while that improves it.
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    const from = best.match;
+    const at = best.s;
+    if (run('one', movable.flatMap((k) => ALL.map((O) => follow(at.map((m, j) => (j === k ? O : m)), k))))) return result();
+    if (best.match <= from + 1e-4) break;
   }
-  const r = analyseProgram(tp, opts, cur.s);
-  const same = cur.s.every((m, k) => eq(m, own[k]));
-  return { orients: r.setups.map((x) => x.orient), match: cur.match, start, same, count };
+
+  // Two setups at once, every way each.
+  const at = best.s;
+  const two = movable.flatMap((j, a) => movable.slice(a + 1).flatMap((k) => ALL.flatMap((A) => ALL.map((B) => follow(follow(at.map((m, i) => (i === j ? A : m)), j).map((m, i) => (i === k ? B : m)), k)))));
+  if (run('two', two)) return result();
+
+  // Every combination, when there are few enough setups to try them all.
+  if (movable.length <= 4) {
+    let all: Mat3[][] = [best.s];
+    for (const k of movable) all = all.flatMap((s) => ALL.map((O) => s.map((m, i) => (i === k ? O : m))));
+    run('all', all);
+  }
+  return result();
+
+  function result(): TurnSearch {
+    const r = analyseProgram(tp, opts, best.s);
+    const same = best.s.every((m, k) => eq(m, own[k]));
+    return { orients: r.setups.map((x) => x.orient), match: best.match, start, same, count, stage: best.stage };
+  }
 }
 
 /**
@@ -102,7 +208,6 @@ export function searchTurns(tris: ArrayLike<number>, tp: Toolpath, opts: SetupOp
  */
 export function textCost(setups: SetupInfo[], s: Mat3[]): number {
   const known = new Map<string, Vec>();
-  const frontOf = (x: SetupInfo): Vec | null => (x.pers ? direction([x.pers]) : x.side === 'back' ? [0, 0, -1] : x.side === 'front' ? [0, 0, 1] : null);
   let cost = 0;
   setups.forEach((x, k) => {
     const wants: [string, Vec][] = [];

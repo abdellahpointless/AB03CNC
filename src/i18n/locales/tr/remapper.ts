@@ -304,6 +304,12 @@ const remapper: Translation<typeof en> = {
     estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
     toolSize: 'Ø {{d}} mm · boy {{l}} mm',
     model: {
+      stage: {
+        written: 'Yazılı dönüşler her şekilde okunuyor',
+        one: 'Her bağlama her yöne çevriliyor',
+        two: 'İki bağlama birlikte çevriliyor',
+        all: 'Tüm kombinasyonlar deneniyor',
+      },
       check: 'Modelle karşılaştırma',
       good: 'Simüle edilen parça modelin aynısı: dönüşler doğru.',
       searching: 'Tüm dönüşler deneniyor: {{count}} simülasyon',

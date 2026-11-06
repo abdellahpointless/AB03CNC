@@ -53,6 +53,7 @@ import {
   handlePruneHistory,
 } from './routes/history';
 import { handleCreateUser, handleDeleteUser, handleListUsers, handleUpdateUser } from './routes/users';
+import { handleExportLessons, handleSaveLesson } from './routes/lessons';
 import { handleAnalytics, handleSetHiddenUsers, handleSetSavedSeconds, handleSync } from './routes/analytics';
 import {
   handleAdminExport,
@@ -125,6 +126,8 @@ route('POST', '/auth/mfa/verify', 'public', handleMfaVerify);
 route('POST', '/auth/mfa/setup', 'user', handleMfaSetup);
 route('POST', '/auth/mfa/enable', 'user', handleMfaEnable);
 route('POST', '/auth/mfa/disable', 'user', handleMfaDisable);
+route('POST', '/toolpath/lessons', 'user', handleSaveLesson);
+route('GET', '/toolpath/lessons', 'admin', handleExportLessons);
 route('GET', '/admin/audit', 'admin', handleAuditLog);
 
 // Sync + analytics

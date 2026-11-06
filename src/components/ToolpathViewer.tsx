@@ -110,6 +110,20 @@ export default function ToolpathViewer({
     () => (holderHits?.length ? jawSetups.map((s) => ({ ...s, collisions: [...s.collisions, ...holderHits.filter((h) => path.moves[h.move]?.setup === s.index)] })) : jawSetups),
     [jawSetups, holderHits, path],
   );
+  // Setup markers above the slider: one that starts too close to the one before goes a row up.
+  const markerRows = useMemo(() => {
+    let last = -Infinity;
+    let lastUp = true;
+    return setups.slice(1).map((x) => {
+      if (!x.moves) return false;
+      const f = x.moves[0] / Math.max(1, path.moves.length);
+      // shortcut: a marker is about 9 % of a desktop slider wide; measure the labels if they ever grow.
+      const up = f - last < 0.09 && !lastUp;
+      last = f;
+      lastUp = up;
+      return up;
+    });
+  }, [setups, path]);
   const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : c.what === 'cale' ? 'toolpath.caleHit' : c.what === 'spacer' ? 'toolpath.spacerHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
   // Setups whose written turn and position disagree: an error first, then a caution once inspected.
   const conflicts = setups.filter((x) => x.conflict);
@@ -1150,20 +1164,23 @@ export default function ToolpathViewer({
             <button onClick={jumpEnd} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
               <SkipForward size={14} />
             </button>
-            <div className="order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative sm:pt-7">
+            <div className={`order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative ${markerRows.some((r) => r) ? 'sm:pt-14' : 'sm:pt-7'}`}>
               {/* Where the part turns, with its new cales: a click goes there and plays the turn. */}
               {multi &&
-                setups.slice(1).map((s) => {
+                setups.slice(1).map((s, i) => {
                   if (!s.moves) return null;
                   const f = s.moves[0] / total;
+                  // A marker that would cover the one before it goes on the row above, with a longer tick.
+                  const up = markerRows[i];
                   return (
                     <button
                       key={s.index}
                       onClick={() => jumpFlip(s)}
                       aria-label={t('toolpath.jumpTo', { n: s.index + 1 })}
                       title={t('toolpath.jumpTo', { n: s.index + 1 })}
-                      className="hidden sm:inline-flex absolute top-0 -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:h-1.5 after:w-px after:bg-[var(--border-strong)]"
-                      style={{ left: `calc(${f * 100}% + ${(0.5 - f) * 16}px)` }}
+                      className={`no-glass hidden sm:inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:w-px after:bg-[var(--border-strong)] ${up || !markerRows.some((r) => r) ? 'top-0' : 'top-7'} ${up ? 'after:h-8' : 'after:h-1.5'}`}
+                      // The app's button style makes every button relative: placed here, over it.
+                      style={{ position: 'absolute', left: `calc(${f * 100}% + ${(0.5 - f) * 16}px)` }}
                     >
                       <span className="font-bold text-[var(--text-primary)]">{s.index + 1}</span>
                       {s.rotation && (
@@ -1203,7 +1220,7 @@ export default function ToolpathViewer({
             </span>
             <div className="ml-auto sm:ml-0 inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.speed')}>
               {SPEEDS.map((s, i) => (
-                <button key={s} role="radio" aria-checked={speed === i} onClick={() => setSpeed(i)} className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold ${speed === i ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
+                <button key={s} role="radio" aria-checked={speed === i} onClick={() => setSpeed(i)} className={`px-2 h-6 rounded-full text-[11px] font-mono font-bold ${speed === i ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
                   {s}×
                 </button>
               ))}

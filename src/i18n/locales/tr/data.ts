@@ -3,6 +3,14 @@ import type en from '../en/data';
 
 /* Türkçe metinler: data. */
 const data: Translation<typeof en> = {
+  lessons: {
+    title: 'Takım yolu öğrenme kayıtları',
+    description:
+      'Takım yolu bir programı 3D modeliyle her karşılaştırıp doğru dönüşleri aradığında, M0 açıklamalarının ne dediğini, uygulamanın bunları nasıl okuduğunu ve parçayı doğru yapan dönüşleri saklar. Hepsini indirin ve uygulamanın dönüşleri daha iyi okuması için dosyayı gönderin.',
+    download: 'Öğrenme kayıtlarını indir',
+    none: 'Henüz öğrenme kaydı yok.',
+    done: '{{count}} öğrenme kaydı indirildi.',
+  },
   backup: {
     title: 'Yedekleme ve geri yükleme',
     descBefore: 'Her şeyi tek bir JSON dosyası olarak indirin veya bir yedek dosyasını geri yükleyin. Eski sürüm dosyaları (',

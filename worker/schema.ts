@@ -336,6 +336,23 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 9,
     statements: [`ALTER TABLE users ADD COLUMN toolpath_beta INTEGER NOT NULL DEFAULT 0`],
   },
+  {
+    // Learning records: each time the toolpath compared a program with its 3D model and searched
+    // for the right turns, what was written, what the app read and what made the part right.
+    version: 10,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS turn_lessons (
+        id TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        start REAL NOT NULL,
+        match REAL NOT NULL,
+        data TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS turn_lessons_created ON turn_lessons (created_at)`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

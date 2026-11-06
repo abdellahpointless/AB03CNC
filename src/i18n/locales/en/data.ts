@@ -1,6 +1,14 @@
 /* English texts: data. */
 const data = {
   /** Full JSON backup / restore (DataManagement). */
+  lessons: {
+    title: 'Toolpath learning records',
+    description:
+      'Each time the toolpath compares a program with its 3D model and searches for the right turns, it keeps what the M0 comments say, how the app read them and the turns that made the part right. Download them all and send the file to improve how the app reads the turns.',
+    download: 'Download learning records',
+    none: 'No learning records yet.',
+    done: '{{count}} learning records downloaded.',
+  },
   backup: {
     title: 'Backup & restore',
     descBefore: 'Download everything as one JSON file, or restore one. Old-version files (',

@@ -6,6 +6,7 @@ import type { SearchProgress, TurnFix, TurnSearch } from '../lib/fixTurns';
 import { TARGET } from '../lib/fixTurns';
 import { PIECE_COLORS, type ModelState } from './Toolpath3D';
 import { chime } from '../lib/alarm';
+import { api } from '../lib/api';
 import { downloadText } from '../lib/download';
 import { useT } from '../i18n';
 import { fmtNumber } from '../i18n/format';
@@ -72,7 +73,7 @@ export default function ModelCheck({
     searched.current = model;
     const w = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     worker.current = w;
-    setSearch({ status: 'running', p: { count: 1, total: 1, best: ready.match } });
+    setSearch({ status: 'running', p: { count: 1, total: 1, best: ready.match, stage: 'written' } });
     w.onmessage = (e: MessageEvent) => {
       const msg = e.data;
       if (msg.type === 'searching') setSearch({ status: 'running', p: msg });
@@ -81,9 +82,11 @@ export default function ModelCheck({
       if (!msg.result) return setSearch({ status: 'error' });
       setSearch({ status: 'done', result: msg.result, fix: msg.fix });
       if (!msg.result.same) chime();
+      // The learning record (see lib/lessons): best effort, the user is not bothered if it fails.
+      if (msg.lesson) void api('/toolpath/lessons', { body: { fileName, start: msg.result.start, match: msg.result.match, data: msg.lesson } }).catch(() => {});
     };
     w.postMessage({ type: 'search', bytes: model.bytes, code, brand });
-  }, [ready, using, model, code, brand]);
+  }, [ready, using, model, code, brand, fileName]);
 
   const stop = () => {
     worker.current?.terminate();
@@ -115,6 +118,7 @@ export default function ModelCheck({
           <div className="flex items-center gap-2 text-xs text-[var(--text-primary)]" aria-live="polite">
             <span className="flex-1 min-w-0">
               {search.status === 'running' ? t('toolpath.model.searching', { count: search.p.count }) : t('toolpath.model.stopped', { count: search.p.count })}
+              {search.status === 'running' && <span className="block text-[11px] text-[var(--text-secondary)]">{t(`toolpath.model.stage.${search.p.stage}`)}</span>}
               <span className="text-[var(--text-secondary)]"> · {t('toolpath.model.best', { pct: pct(search.p.best) })}</span>
             </span>
             {search.status === 'running' && (
