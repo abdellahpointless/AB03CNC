@@ -48,7 +48,7 @@ const KINDS: [RegExp, OpKind][] = [
   [/^ABSENKUNG/, 'counterbore'],
   [/^BOHREN/, 'drill'],
   [/^(SCHLICHT|SCHL)/, 'finish'],
-  [/^(TASCHE|TASTER|EINSATZ)/, 'pocket'],
+  [/^(TASCHE|TASTER|EINSATZ|FRAESEN)/, 'pocket'],
   [/^(PROFIL|KONTUR|HALTEZYL|RUECKS)/, 'contour'],
   [/^(FASE|ENTGRATEN)/, 'chamfer'],
 ];

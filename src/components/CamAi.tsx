@@ -82,7 +82,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       if (m.type === 'error') return setRun({ state: 'error', error: m.error });
       setRun({ state: 'done', result: m.result });
       // A part record for the learning records (Admin > Data). Best effort.
-      if (m.lesson) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
+      // Only programs that passed: a failed run would teach the wrong thing.
+      if (m.lesson && m.result.match >= 0.99 && m.result.collisions === 0) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
     };
     w.onerror = () => {
       w.terminate();

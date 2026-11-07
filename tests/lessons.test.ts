@@ -19,6 +19,8 @@ describe('a part record', () => {
     expect(r.setups).toBe(3);
     expect(r.operations.length).toBeGreaterThan(5);
     expect(r.operations[0]).toMatchObject({ type: 'MK', kind: 'face' });
+    // Each operation's time joins its toolpath (the comment carries the word TOOLPATH, the operation not).
+    expect(r.operations[0].seconds).toBeGreaterThan(0);
     expect(JSON.stringify(r).length).toBeLessThan(1_900_000);
   });
 });

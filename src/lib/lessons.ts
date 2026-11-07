@@ -61,7 +61,9 @@ export async function partLessonOf(o: {
 }) {
   const read = readProgram(o.code);
   const model64 = await gzip64(o.model.bytes);
-  const seconds = new Map(o.tp.tools.map((t) => [t.op || t.label, t.seconds]));
+  // The toolpath keeps the comment as written ("TOOLPATH PLAN_MK40_1"); the operations, without the word.
+  // shortcut: one time per tool (its first operation), when a tool runs several operations only the first gets it.
+  const seconds = new Map(o.tp.tools.map((t) => [(t.op || t.label).replace(/^TOOLPATH\s+/i, ''), t.seconds]));
   return {
     version: 1,
     source: o.source,
