@@ -38,7 +38,9 @@ export interface CamSummary {
     grip: number;
     physics: SetupCheck;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
-    ops: { name: string; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
+    ops: { name: string; purpose: string; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
+    /** Where precision matters (setup frame): the contour, thin walls, engraving. */
+    zones: { kind: string; loops: [number, number][][]; lo: number; hi: number }[];
   }[];
 }
 
@@ -79,8 +81,10 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
           notes: s.notes,
           grip: s.grip,
           physics: s.physics,
+          zones: s.zones,
           ops: s.ops.map((o) => ({
             name: o.name,
+            purpose: o.purpose,
             tool: o.tool.number,
             diameter: o.tool.diameter,
             length: o.tool.length,

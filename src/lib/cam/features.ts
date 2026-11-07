@@ -1,6 +1,7 @@
 import type { Vec } from '../toolpath';
 import { ALL, apply, mul, transpose, type Mat3 } from '../orient';
-import { area, bounds, intersection, slice, turnTris, type P2 } from './geom';
+import { area, bounds, difference, intersection, offset, slice, turnTris, union, type P2, type Region } from './geom';
+import { filled } from './clear';
 
 /*
  * What CAM AI finds on a part's model, seen from each side it can be machined from (the tool comes
@@ -202,3 +203,26 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
 
 /** Back from a setup frame to the model's. */
 export const toModel = (f: SideFeatures, p: Vec) => apply(transpose(f.R), p);
+
+/**
+ * Lettering cut into the face on top (a top plate's engraving), in a setup frame: grooves open at
+ * the top, at most 1 mm deep and 2 mm wide (nothing of them over 1 mm from their edge; wider
+ * recesses are pockets for the end mills). Each with its floor's depth, from the face's own floors.
+ */
+export function engravings(P: Float32Array, top: number, floors: number[]): { depth: number; region: Region }[] {
+  const surface = slice(P, top - 0.005);
+  const open = difference(filled(surface), surface);
+  if (area(open) < 0.02) return [];
+  const narrow = difference(open, offset(offset(open, -1), 1.02));
+  const out: { depth: number; region: Region }[] = [];
+  let floored: Region = [];
+  for (const d of floors.map((z) => top - z).filter((d) => d > 0.004 && d <= 1.0001).sort((a, b) => a - b)) {
+    // Narrow grooves with material just under this depth: their floor is here (or above, done).
+    const now = intersection(narrow, slice(P, top - d - 0.005));
+    const here = difference(now, floored);
+    if (area(here) > 0.02) out.push({ depth: Math.round(d * 1000) / 1000, region: here });
+    floored = union(floored, now);
+  }
+  return out;
+}
+

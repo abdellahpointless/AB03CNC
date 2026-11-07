@@ -15,6 +15,8 @@ export interface Ring {
   closed: boolean;
   /** Around the part's outside (false: inside a pocket). */
   outside: boolean;
+  /** Along a thin wall (a seal cage's): its thickness (mm); cut gently. */
+  thin?: number;
 }
 
 const toPaths = (r: P2[][]): Paths => r.map((loop) => loop.map(([x, y]) => ({ X: Math.round(x * SCALE), Y: Math.round(y * SCALE) })));
@@ -52,14 +54,15 @@ const length = (pts: P2[]) => pts.reduce((t, p, i) => (i ? t + Math.hypot(p[0] -
  * `left`: the material still to remove here; `stock`: the outline of the raw part (rings stop
  * past it). `insideOnly`: only pockets (below the jaw tops the outside cannot be cut).
  */
-export function clearLevel(keep: Region, left: Region, r: number, ae: number, insideOnly: boolean): Ring[] {
+export function clearLevel(keep: Region, left: Region, r: number, ae: number, insideOnly: boolean, start = r - 0.02): Ring[] {
   if (area(left) < 0.05) return [];
   // The tool centre may go wherever it sweeps material without touching what stays.
   const reach = offset(left, r - 0.01);
   const rings: Ring[] = [];
   // The first ring 0.02 in: a slot exactly the tool's Ø (a Ø4 slot for a Ø4 end mill, as the shop
-  // programs it) still has a path down its middle.
-  for (let d = r - 0.02, n = 0; n < 2000; d += ae, n++) {
+  // programs it) still has a path down its middle. Precise parts start further out (`start`):
+  // the walls are left for the finishing (wallRings).
+  for (let d = start, n = 0; n < 2000; d += ae, n++) {
     const grown = offset(keep, d);
     const loops = grown.filter((l) => l.length > 2);
     if (!loops.length) break;
@@ -87,3 +90,29 @@ export function clearLevel(keep: Region, left: Region, r: number, ae: number, in
 
 /** The part's footprint with its pockets filled: inside it, the jaws are never in the way. */
 export const filled = (r: Region): Region => union(r.filter((l) => signedArea(l) > 0));
+
+/**
+ * The finishing rings of a tool at a level: round the part `d` from it (r: on the wall), only where
+ * the roughing rings ran (`rough`, `allow` further out), so it never enters what a smaller tool is
+ * left to rough. Climbing, the part on the right.
+ */
+export function wallRings(keep: Region, rough: Ring[], d: number, allow: number, insideOnly: boolean): Ring[] {
+  if (!rough.length) return [];
+  // A finishing ring lies at most `allow` from the roughing ring next to it.
+  const near = swept(rough, allow + 0.08);
+  const out: Ring[] = [];
+  for (const l of offset(keep, d).filter((x) => x.length > 2)) {
+    const outside = signedArea(l) > 0;
+    if (insideOnly && outside) continue;
+    const run = [...l].reverse();
+    const pieces = trim([run], near).filter((p) => length(p) > 0.05);
+    const whole = pieces.length === 1 && Math.abs(length(pieces[0]) - length([...run, run[0]])) < 0.05;
+    if (whole) out.push({ pts: run, closed: true, outside });
+    else for (const p of pieces) out.push({ pts: p, closed: false, outside });
+  }
+  return out;
+}
+
+/** The thin parts of what stays at a level: walls under `t` mm thick. */
+export const thinParts = (keep: Region, t: number): Region => difference(keep, offset(offset(keep, -t / 2), t / 2 + 0.01));
+

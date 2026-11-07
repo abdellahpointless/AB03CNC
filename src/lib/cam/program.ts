@@ -8,14 +8,14 @@ import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
 import { analyseProgram, OVERHANG, VISE } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
-import { SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
+import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
-import { clearLevel, filled, swept, trim, type Ring } from './clear';
+import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
-import { checkNest, checkSetup, drillThrust, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
+import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -52,8 +52,12 @@ export interface CamInput {
   noNest?: boolean;
 }
 
+/** What an operation is for, in plain words (camAi.purpose.* on the page). */
+export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave';
+
 export interface CamOp {
   kind: OpKind;
+  purpose: Purpose;
   name: string;
   tool: CamTool;
   cut: Cut;
@@ -73,8 +77,20 @@ export interface CamSetup {
   physics: SetupCheck;
   /** Held in the POM nest instead of the vise jaws (the nest in the vise). */
   nest?: Nest;
+  /** Where precision matters, to show on the part (setup frame: outlines, from lo to hi in Z). */
+  zones: Zone[];
   ops: CamOp[];
 }
+
+export interface Zone {
+  kind: 'contour' | 'thinWall' | 'engraving';
+  loops: P2[][];
+  lo: number;
+  hi: number;
+}
+
+/** Pin plates: the pins' holes are drilled a little under (Ø1, Ø2, Ø3 with the shop's 0.98, 1.97, 2.96). */
+const PIN_DRILLS: [number, number][] = [[1, 0.98], [2, 1.97], [3, 2.96]];
 
 export interface CamResult {
   code: string;
@@ -316,11 +332,11 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
     lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(a0, passes[0])}`);
   }
   void cy;
-  return { kind: 'face', name: 'PLAN', tool: fm, cut, lines };
+  return { kind: 'face', purpose: 'face', name: 'PLAN', tool: fm, cut, lines };
 }
 
 /** Centre-drill, then drill (G83 pecking), one tool after the other. */
-function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number): CamOp[] {
+function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number): CamOp[] {
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one).
@@ -333,7 +349,7 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[]
       lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)} F${cut.fz}.`);
     });
     lines.push('G80');
-    ops.push({ kind: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
+    ops.push({ kind: 'centre', purpose: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
   }
   const byTool = new Map<CamTool, { h: Hole; z: number }[]>();
   for (const { h, tool, z } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z });
@@ -344,7 +360,7 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[]
       lines.push(`G98 G83 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)} Q${n3(Math.min(cut.q, h.top - z))} F${cut.fz}.`);
     }
     lines.push('G80');
-    ops.push({ kind: 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
+    ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
   }
   return ops;
 }
@@ -387,6 +403,30 @@ interface Work {
   above: number;
   rings: Ring[];
   keep: Region;
+  /** Rings already cut at this level by an earlier operation (finishing enters from the roughing's). */
+  done?: Ring[];
+  /** Below the jaws: pockets only. Thin walls here (a seal cage's, under THIN mm). */
+  inside?: boolean;
+  thin?: Region;
+}
+
+/** Radial stock the roughing leaves on a precise part's walls for the finishing (mm). */
+const ALLOW = 0.15;
+/** A seal cage's walls thinner than this are cut gently (mm). */
+const THIN = 3;
+/** The families whose walls are finished: semi-finish, finish, spring pass. */
+const PRECISE: PartType[] = ['topPlate', 'contourInsert', 'sealCage'];
+
+/** Thickness of the thinnest wall in a region (twice the deepest it can be shrunk). */
+function thickness(region: Region): number {
+  let lo = 0;
+  let hi = THIN / 2;
+  for (let i = 0; i < 8; i++) {
+    const m = (lo + hi) / 2;
+    if (area(offset(region, -m)) > 0.01) lo = m;
+    else hi = m;
+  }
+  return Math.max(0.2, 2 * lo);
 }
 
 /**
@@ -398,7 +438,7 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
   let best: { from: P2; at: number; d: number } | null = null;
   // An open piece is entered at one of its ends (it is cut from there), a closed ring anywhere.
   const at = g.closed ? g.pts.map((_, i) => i) : [0, g.pts.length - 1];
-  for (const o of done.slice(-4))
+  for (const o of done)
     for (const p of o.pts)
       for (const i of at) {
         const d = dist2(p, g.pts[i]);
@@ -420,11 +460,25 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
  * next ring is entered from the side, out of a ring already cut to the bottom (sideEntry): down
  * in that ring's path, across, round, back.
  */
-function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region): CamOp {
-  const cut = cutData(tool, 'pocket', mat, limits);
+function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose): CamOp {
+  const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
+  const cut = cutData(tool, finish ? 'finish' : 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
-  // (much deeper than in a pocket, where the first ring is a full slot).
-  const side = cutData(tool, 'contour', mat, limits);
+  // (much deeper than in a pocket, where the first ring is a full slot). Finishing: one cut.
+  const side = finish ? cut : cutData(tool, 'contour', mat, limits);
+  // A thin wall (seal cage): half the depth, 70 % of the feed, the spindle 20 % faster (a thinner
+  // chip, less push on the wall).
+  // And the wall (t thick, the cut's depth high, as wide as the cut) must not bend over 0.01 mm
+  // under it: slower still if it would (physics.ts).
+  const gentle = (c: Cut, t: number): Cut => {
+    const ap = Math.max(0.2, Math.round(c.ap * 50) / 100);
+    const s = Math.min(limits.maxRpm, Math.round((c.s * 1.2) / 50) * 50);
+    let k = 0.7;
+    const { kc, E } = materialData(mat);
+    const bend = wallDeflection(PEAK * millForce(kc, ap, c.ae, c.f * k, s, tool.diameter), ap, t, Math.max(ap, tool.diameter), E);
+    if (bend > DEFLECTION.finish) k = Math.max(0.3 * 0.7, (k * DEFLECTION.finish) / bend);
+    return { ...c, ap, s, f: Math.max(10, Math.round((c.f * k) / 10) * 10), fz: Math.max(10, Math.round((c.fz * k) / 10) * 10) };
+  };
   const r = tool.diameter / 2;
   const airCache = new Map<string, Region>();
   const inAir = (p: P2, lo: number, hi: number) => {
@@ -437,15 +491,19 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
   const xyz = (p: P3) => `X${n3(p[0])} Y${n3(p[1])} Z${n3(p[2])}`;
   const first = work[0].rings[0].pts[0];
   const lines = [`G00 G90 X${n3(first[0])} Y${n3(first[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
+  let rpm = cut.s;
   let prevZ = stockTop;
-  for (const { z, above, rings, keep } of work) {
+  for (const { z, above, rings, keep, done: before } of work) {
     const top = Math.min(above, prevZ);
-    const done: Ring[] = [];
+    const done: Ring[] = [...(before ?? [])];
     for (const ring of rings) {
-      const c = ring.outside ? side : cut;
+      const c = ring.thin ? gentle(ring.outside ? side : cut, ring.thin) : ring.outside ? side : cut;
+      // The spindle speed of this ring's cut (a gentle one runs faster).
+      if (c.s !== rpm) lines.push(`S${(rpm = c.s)}`);
       const n = Math.max(1, Math.ceil((top - z) / c.ap - 1e-6));
       const passes = Array.from({ length: n }, (_, i) => top - ((top - z) * (i + 1)) / n);
-      const entry = done.length ? sideEntry(ring, done, r, c.ae, keep) : null;
+      // Finishing looks through all the roughing's rings at this level (its rings lie next to them).
+      const entry = done.length ? sideEntry(ring, finish ? done : done.slice(-4), r, c.ae, keep) : null;
       done.push(ring);
       if (entry) {
         // Start the ring where it is entered (an open piece from its nearer end).
@@ -517,7 +575,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
     prevZ = z;
   }
   lines.push(`G00 Z${n3(clear)}`);
-  return { kind: 'pocket', name: `FRAESEN_${mm(tool.diameter)}MM`, tool, cut, lines };
+  return { kind: finish ? 'finish' : 'pocket', purpose, name: `${finish ? 'SCHLICHTEN' : 'FRAESEN'}_${mm(tool.diameter)}MM`, tool, cut, lines };
 }
 
 /**
@@ -555,7 +613,7 @@ function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[
     pts.slice(1).forEach((p, i) => lines.push(`G01 X${n3(p[0])} Y${n3(p[1])}${i ? '' : ` F${cut.f}.`}`));
   }
   lines.push(`G00 Z${n3(clear)}`);
-  return { kind: 'chamfer', name: 'FASE', tool, cut, lines };
+  return { kind: 'chamfer', purpose: 'chamfer', name: 'FASE', tool, cut, lines };
 }
 
 /** The outline of a region (min and max X, Y). */
@@ -617,6 +675,36 @@ function slowed(op: CamOp, k: number): CamOp {
   if (k >= 0.999) return op;
   const r = (v: number) => Math.max(1, Math.round((v * k) / 10) * 10);
   return { ...op, cut: { ...op.cut, f: r(op.cut.f), fz: r(op.cut.fz) }, lines: op.lines.map((l) => l.replace(/F(\d+(?:\.\d*)?)/g, (_, v: string) => `F${r(Number(v))}.`)) };
+}
+
+/**
+ * The 90° graver along a top plate's lettering. With its tip h down, its cone is h wide each side
+ * at the face: it runs h inside each groove's edge, then rings further in until the groove is
+ * filled; strokes too thin for that are run again at half the depth.
+ */
+function engraving(tool: CamTool, grooves: { depth: number; region: Region }[], mat: string, limits: Limits, clear: number): CamOp | null {
+  const cut = cutData(tool, 'engrave', mat, limits);
+  const passes: { z: number; loop: P2[] }[] = [];
+  for (const { depth, region } of grooves)
+    for (const h of [depth, depth / 2]) {
+      // What the deeper pass already covers is not run again.
+      const covered = passes.length ? swept(passes.filter((p) => p.z === -depth).map((p) => ({ pts: p.loop, closed: true, outside: false })), depth) : [];
+      let rest = h === depth ? region : difference(region, covered);
+      for (let k = 0; k < 20 && area(rest) > 0.005; k++) {
+        const loops = offset(rest, -h).filter((l) => l.length > 2);
+        if (!loops.length) break;
+        for (const loop of loops) passes.push({ z: -h, loop });
+        rest = offset(rest, -1.6 * h);
+      }
+    }
+  if (!passes.length) return null;
+  const lines = [`G00 G90 X${n3(passes[0].loop[0][0])} Y${n3(passes[0].loop[0][1])} S${cut.s} M03`];
+  for (const { z, loop } of passes) {
+    lines.push(`G00 Z${n3(clear)}`, `G00 X${n3(loop[0][0])} Y${n3(loop[0][1])}`, 'G00 Z1.', `G01 Z${n3(z)} F${cut.fz}.`);
+    [...loop.slice(1), loop[0]].forEach((p, i) => lines.push(`G01 X${n3(p[0])} Y${n3(p[1])}${i ? '' : ` F${cut.f}.`}`));
+  }
+  lines.push(`G00 Z${n3(clear)}`);
+  return { kind: 'chamfer', purpose: 'engrave', name: 'GRAVIEREN', tool, cut, lines };
 }
 
 /** How the program does once read back and simulated like the toolpath viewer does it. */
@@ -862,9 +950,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // long enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
     const stockTop = Math.max(sb.hi[2], 0);
     const reachTo = (zEnd: number) => stockTop - zEnd + 2;
-    const drillFor = (h: Hole, zEnd: number) =>
-      drills.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12 && (x.length || 99) >= reachTo(zEnd)).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
-    const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean }[] = [];
+    const pinOf = (h: Hole) => (input.partType === 'pinPlate' ? PIN_DRILLS.find(([n]) => Math.abs(h.r * 2 - n) < 0.03)?.[1] : undefined);
+    const drillFor = (h: Hole, zEnd: number) => {
+      const long = drills.filter((x) => (x.length || 99) >= reachTo(zEnd));
+      const pin = pinOf(h);
+      const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
+      return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
+    };
+    const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[] = [];
     const keepHoles: Hole[] = [];
     for (const h of holes) {
       const k = keyOf(h);
@@ -891,7 +984,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
           z = sb.lo[2] + 0.1;
           rest = Math.max(0, z + 0.3 * d.diameter - h.bottom);
         }
-        toDrill.push({ h, tool: d, z });
+        toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005 });
         keepHoles.push(h);
         drilled.set(k, rest);
       } else {
@@ -934,6 +1027,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return k;
     };
     const perTool = new Map<CamTool, Work[]>();
+    // Precise families: the roughing leaves ALLOW on the walls for the finishing (it counts as done
+    // for the smaller tools that follow).
+    const precise = !!input.partType && PRECISE.includes(input.partType);
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(sb.hi[2], 0);
@@ -957,9 +1053,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
         let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
         for (const tool of cands) {
           const cut = cutData(tool, 'pocket', mat, limits);
-          const rings = clearLevel(keep, todo, tool.diameter / 2, cut.ae, inside);
+          const rings = clearLevel(keep, todo, tool.diameter / 2, cut.ae, inside, precise ? tool.diameter / 2 + ALLOW : undefined);
           if (!rings.length) continue;
-          const gone = swept(rings, tool.diameter / 2);
+          const gone = precise ? offset(swept(rings, tool.diameter / 2), ALLOW + 0.02) : swept(rings, tool.diameter / 2);
           const share = area(intersection(todo, gone)) / all;
           if (!pick || share > pick.share + 0.02) pick = { tool, rings, gone, share };
           if (round === 0 || share >= 0.8) break;
@@ -969,7 +1065,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined });
         todo = opened(difference(todo, pick.gone));
       }
       // What no end mill here could reach: listed once it adds up to more than slivers.
@@ -987,8 +1083,27 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const same = byDia.get(tool.diameter);
       if (!same?.includes(tool) || same.some((o) => o.length > tool.length)) continue;
       const work = same.flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z);
-      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at));
+      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough'));
     }
+    // 3b. Precise families: each roughing tool finishes the walls it roughed, from the side out of
+    // its roughing: semi-finish (0.05 left all round), finish on the wall, a spring pass (what the
+    // tool's bending left). Along a seal cage's thin walls, gently.
+    if (precise)
+      for (const op of ops.filter((o) => o.kind === 'pocket')) {
+        const tool = op.tool;
+        const r = tool.diameter / 2;
+        const work: Work[] = [];
+        let thinAny = false;
+        for (const w of (byDia.get(tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z)) {
+          const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
+          const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
+          const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
+          const fin = ring(r);
+          const rings = [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
+          if (rings.length) work.push({ z: w.z, above: w.above, rings, keep: w.keep, done: w.rings });
+        }
+        if (work.length) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+      }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
@@ -997,6 +1112,32 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const paths = graver ? chamferPaths(P, reachable, graver.diameter / 2, jawLimit) : [];
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
       else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, clear));
+    }
+    // 5. A top plate's lettering on this face: the graver along its grooves (engraving()).
+    const zones: Zone[] = [];
+    if (input.partType === 'topPlate') {
+      const grooves = engravings(P, 0, f.floors.map((x) => x.z - top));
+      const graver = usable(tools, ['ST']).find((g) => g.template?.shape === 'G45' || !g.template);
+      if (grooves.length && graver) {
+        const op = engraving(graver, grooves, mat, limits, clear);
+        if (op) ops.push(op);
+        zones.push({ kind: 'engraving', loops: union(grooves.flatMap((g) => g.region)), lo: -Math.max(...grooves.map((g) => g.depth)), hi: 0 });
+      } else if (grooves.length) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: grooves.length } });
+    }
+    // Where precision matters: the contour a top plate or contour insert takes its part in (the
+    // pockets' walls, not round holes), a seal cage's thin walls.
+    if (precise && (input.partType === 'topPlate' || input.partType === 'contourInsert')) {
+      const inner = slice(P, -0.05).filter((l) => {
+        const a = -area([l]);
+        const perim = l.reduce((t, p, i) => t + Math.hypot(p[0] - l[(i + 1) % l.length][0], p[1] - l[(i + 1) % l.length][1]), 0);
+        // A hole (clockwise) that is not round (a circle's 4πA/L² is 1).
+        return a > 10 && (4 * Math.PI * a) / (perim * perim) < 0.95;
+      });
+      if (inner.length) zones.push({ kind: 'contour', loops: inner, lo: -H, hi: 0 });
+    }
+    if (input.partType === 'sealCage') {
+      const thinLevels = [...perTool.values()].flat().filter((w) => w.thin && area(w.thin) > 0.5);
+      if (thinLevels.length) zones.push({ kind: 'thinWall', loops: union(thinLevels.flatMap((w) => w.thin!)), lo: Math.min(...thinLevels.map((w) => w.z)), hi: Math.max(...thinLevels.map((w) => w.above)) });
     }
     if (f.freeform > 20) notes.push({ key: 'surface', side: side.name, mm2: Math.round(f.freeform) });
 
@@ -1034,7 +1175,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), ops: done });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, ops: done });
     prevR = R;
     return true;
   };
