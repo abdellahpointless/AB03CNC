@@ -106,8 +106,12 @@ export interface SetupInfo {
   floorZ: number | null;
   /** Top of the vise jaws (vise setups only). */
   jawTopZ: number | null;
-  jawHalfWidth: number;
-  /** X extent of the vise jaws: they start at the stop on the left, where the part is pushed. */
+  /**
+   * Held in both vises ("MIT 2 SCHRAUBSTOECKEN", or a part too long for one): the second one stands
+   * VISE.gap to the right of the first.
+   */
+  twoVises: boolean;
+  /** X extent of the first vise's jaws: they start at the stop on the left, where the part is pushed. */
   jawX: [number, number];
   /**
    * Where the stop and the jaw plates touch the part: the machine X of its left face and the Y of
@@ -263,6 +267,7 @@ export function readInstructions(notes: string[]) {
     restDepth: thick ? num(thick[1]) : null,
     restAbove: above ? num(above[1]) : null,
     onJaw: onJaw ? num(onJaw[1]) : null,
+    twoVises: /\b2\s*SCHRAUBST/.test(t),
     spacers: [...spacers].map(([side, mm]) => ({ mm, side })),
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
@@ -314,6 +319,17 @@ export const TABLE_Z = -57;
 const FLOOR_TRUST = 15;
 /** Thickness of the stop plate at the left end of the vise jaws (mm). */
 export const STOP_PLATE = 8;
+/**
+ * The shop's vise: jaws 150 mm long (X), 45 mm high, open up to 400 mm (Y). The original one has
+ * the stop and the machine zero; the second one stands 50 mm to its right, open on both sides.
+ */
+export const VISE = { width: 150, height: DEFAULT_JAW_HEIGHT, opening: 400, gap: 50 } as const;
+/** How far a part may stick out of one vise to the right; a longer one goes in both. */
+export const OVERHANG = 50;
+/** The X extents of the jaws: the first vise, and the second one when the part is in both. */
+export const viseSpans = (s: Pick<SetupInfo, 'jawX' | 'twoVises'>): [number, number][] =>
+  s.twoVises ? [s.jawX, [s.jawX[0] + VISE.width + VISE.gap, s.jawX[0] + 2 * VISE.width + VISE.gap]] : [s.jawX];
+const inSpans = (spans: [number, number][], x: number, r: number) => spans.some(([a, b]) => x + r > a && x - r < b);
 
 /**
  * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
@@ -538,7 +554,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
         s.grip = gripOf(s, input, g);
         const miss = sizeMiss(s, input, g);
         if (miss) s.rejects.push({ ...miss, line: tp.setups[s.index].notes.find((n) => /IN\s*[XY]\b/i.test(n.text))?.line ?? s.line });
-        if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + s.jawHalfWidth * 2];
+        if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + VISE.width];
       }
       return out;
     }
@@ -556,7 +572,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
 function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
   if (!s.cales?.length || !s.moves || !s.clampBox) return [];
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
-  const x: [number, number] = s.jawTopZ !== null ? s.jawX : [s.clampBox.min[0], s.clampBox.max[0]];
+  const spans: [number, number][] = s.jawTopZ !== null ? viseSpans(s) : [[s.clampBox.min[0], s.clampBox.max[0]]];
   const out: Collision[] = [];
   let open: Collision | null = null;
   for (let mi = s.moves[0]; mi <= s.moves[1]; mi++) {
@@ -565,7 +581,7 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
     const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
     let here: Collision | null = null;
     for (const p of samples(m)) {
-      if (p[0] + r <= x[0] || p[0] - r >= x[1]) continue;
+      if (!inSpans(spans, p[0], r)) continue;
       for (const c of s.cales) {
         const depth = c.top - p[2];
         if (depth > 0.01 && p[1] + r > c.y[0] && p[1] - r < c.y[1] && (!here || depth > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: p, depth, what: 'cale' };
@@ -815,7 +831,6 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       stock: null,
       floorZ: null,
       jawTopZ: null,
-      jawHalfWidth: 0,
       jawX: [0, 0],
       grip: null,
       collisions: [],
@@ -1005,8 +1020,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     // jaw height.
     const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
-    info.jawHalfWidth = Math.max(62.5, (hold[0] + spacerAt(ins, 'X-')) / 2 + 15);
-    info.jawX = [jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE, jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE + info.jawHalfWidth * 2];
+    info.twoVises ||= hold[0] + spacerAt(ins, 'X-') > VISE.width + OVERHANG;
+    info.jawX = [jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE, jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE + VISE.width];
+    const spans = viseSpans(info);
     // The steel jaw plates: a spacer (soft, may be touched) stands between them and the part.
     const jawY: [number, number] = [jaw.min[1] - spacerAt(ins, 'Y-'), jaw.max[1] + spacerAt(ins, 'Y+')];
     let clearance = Infinity;
@@ -1022,13 +1038,13 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
         info.collisions.push(hit);
       }
     };
-    const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && p[0] + r > info.jawX[0] && p[0] - r < info.jawX[1];
+    const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && inSpans(spans, p[0], r);
     // The spacer ("ZWISCHENLAGE") between the part and a jaw or the stop, as high as the jaws.
     const spacerBoxes = ins.spacers.map((sp): [number, number, number, number] =>
       sp.side === 'Y-'
-        ? [info.jawX[0], info.jawX[1], jawY[0], jaw.min[1]]
+        ? [info.jawX[0], spans[spans.length - 1][1], jawY[0], jaw.min[1]]
         : sp.side === 'Y+'
-          ? [info.jawX[0], info.jawX[1], jaw.max[1], jawY[1]]
+          ? [info.jawX[0], spans[spans.length - 1][1], jaw.max[1], jawY[1]]
           : sp.side === 'X-'
             ? [jaw.min[0] - sp.mm, jaw.min[0], jaw.min[1], jaw.max[1]]
             : [0, 0, 0, 0],

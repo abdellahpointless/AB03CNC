@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
 import { partLook } from '../src/lib/partLook';
-import { analyseProgram, analyseSetups, partSizes, readInstructions, spacerAt } from '../src/lib/setups';
+import { analyseProgram, analyseSetups, partSizes, readInstructions, spacerAt, viseSpans } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 
 const S = { rapid: 30_000, toolChange: 2 };
@@ -311,4 +311,26 @@ describe('cales and the jaw tops', () => {
     // "D4.8 IN X-" is a hole and the side it is on, not a size.
     expect(readInstructions(['TEIL 180 GRAD UM X DREHEN/D4.8 IN X-']).sizes).toBeNull();
   });
+
+  // A bar L x 40 x 20 against the stop: a cut along it, then the tool goes down behind it at X195 (Y+10).
+  const bar = (length: number, note = '') =>
+    ['%', `O1 (BAR ALU / ${length}X40X20)`, `M0 (TEIL MIT ${length} IN X UND 40 IN Y EINSPANNEN${note})`, 'M0 (10 MM UNTERLAGE)', 'G52 X-50. Y50. Z0.',
+      'T2 M6 (FRAESER D10)', '(DIAMETER 10.00 MM/LENGTH 30.00 MM)', 'G0 G90 G54 X10. Y-20. S6000 M3', 'G43 H2 Z20.', 'G1 Z-5. F300', 'G1 X190.', 'G0 Z20.',
+      'G0 X195. Y10.', 'G1 Z-5.', 'G0 Z50.', 'M30', '%'].join('\n');
+
+  it('holds the part in the 150 mm vise, or in both vises when it is too long or the program says so', () => {
+    const one = analyseSetups(parseToolpath(bar(200), S), { jawHeight: 45 })[0];
+    expect(one.twoVises).toBe(false);
+    expect(one.jawX[1] - one.jawX[0]).toBe(150);
+    // Nothing at X195: the part sticks out of the one vise there.
+    expect(one.collisions).toEqual([]);
+    const written = analyseSetups(parseToolpath(bar(200, '/MIT 2 SCHRAUBSTOECKEN 50 MM ABSTAND'), S), { jawHeight: 45 })[0];
+    expect(written.twoVises).toBe(true);
+    expect(viseSpans(written)[1]).toEqual([written.jawX[0] + 200, written.jawX[0] + 350]);
+    // The second vise's fixed jaw is there now.
+    expect(written.collisions).toHaveLength(1);
+    expect(written.stock!.max[0] - written.stock!.min[0]).toBe(200);
+    expect(analyseSetups(parseToolpath(bar(240), S), { jawHeight: 45 })[0].twoVises).toBe(true);
+  });
 });
+

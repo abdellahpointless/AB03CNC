@@ -4,7 +4,7 @@ import { ALL, IDENTITY, apply, mul, transpose, type Mat3 } from '../orient';
 import { differences, layModel, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, KEPT, type Grid } from '../stockSim';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram } from '../setups';
+import { analyseProgram, OVERHANG, VISE } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
@@ -549,6 +549,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // "Z+ IN 2MM": the raw top that far above Z0 (what the facing takes off), as the shop writes it.
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
     const setupNotes = [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`];
+    // Too long for one vise: both, as the checker reads it back (setups.ts).
+    if (hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
 

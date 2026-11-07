@@ -5,7 +5,7 @@ import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wren
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
 import { partLook } from '../lib/partLook';
-import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, type Collision, type SetupInfo } from '../lib/setups';
+import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, viseSpans, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
 import { MODEL_MAX_BYTES } from '../lib/modelLimits';
 import type { TurnFix } from '../lib/fixTurns';
@@ -948,9 +948,11 @@ export default function ToolpathViewer({
                   {sel?.stock && (
                     <g>
                       {sel.jawTopZ !== null &&
-                        [[sel.stock.max[1] + spacerAt(sel, 'Y+'), sel.stock.max[1] + spacerAt(sel, 'Y+') + 24], [sel.stock.min[1] - spacerAt(sel, 'Y-') - 24, sel.stock.min[1] - spacerAt(sel, 'Y-')]].map(([a, b], i) => (
-                          <rect key={i} x={sel.jawX[0]} y={-b} width={sel.jawX[1] - sel.jawX[0]} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-                        ))}
+                        viseSpans(sel).flatMap(([x0, x1], v) =>
+                          [[sel.stock!.max[1] + spacerAt(sel, 'Y+'), sel.stock!.max[1] + spacerAt(sel, 'Y+') + 24], [sel.stock!.min[1] - spacerAt(sel, 'Y-') - 24, sel.stock!.min[1] - spacerAt(sel, 'Y-')]].map(([a, b], i) => (
+                            <rect key={`${v}-${i}`} x={x0} y={-b} width={x1 - x0} height={b - a} fill="#5A6A82" fillOpacity={0.35} stroke="#7F8BA0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                          )),
+                        )}
                       {sel.jawTopZ !== null &&
                         sel.spacers.map(({ mm, side }) => {
                           // A spacer plate between the part and a jaw or the stop.

@@ -3,6 +3,7 @@ import { apply, IDENTITY, mul, type Mat3 } from '../orient';
 import { SIDES, SPIN, upTurn } from './features';
 import { bounds, turnTris } from './geom';
 import { reachable } from './program';
+import { OVERHANG, VISE } from '../setups';
 
 /*
  * The ways the part can lie in the vise for its first setup: each side up, as is or turned a
@@ -11,9 +12,6 @@ import { reachable } from './program';
  * and a low, wide part sits steadier than a tall, narrow one. The operator picks one (or keeps the
  * suggestion); the planner then follows it (CamInput.orient).
  */
-
-/** The shop's vise: jaws 150 mm wide (X), 45 mm high, opening up to 400 mm (Y); a second vise 50 mm to the right. */
-export const VISE = { width: 150, height: 45, opening: 400, gap: 50 };
 
 export interface Layout {
   side: string;
@@ -25,7 +23,7 @@ export interface Layout {
   /** Share of what must be cut away that the top side reaches (0..1), and the setups needed (estimate). */
   topShare: number;
   setups: number;
-  /** Longer than one vise (X): two vises; does not fit at all. */
+  /** Too long for one vise (X): both vises; does not fit at all. */
   twoVises: boolean;
   fits: boolean;
   /** Lower is better. */
@@ -68,7 +66,7 @@ export function layouts(tris: ArrayLike<number>): Layout[] {
     for (const spin of [false, true]) {
       const R = spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d);
       const s = apply(R, size).map(Math.abs) as Vec;
-      const twoVises = s[0] > VISE.width;
+      const twoVises = s[0] > VISE.width + OVERHANG;
       const fits = s[1] <= VISE.opening && s[0] <= VISE.width * 2 + VISE.gap;
       const topShare = total ? top / total : 1;
       const score = (fits ? 0 : 1000) + setups * 10 + (twoVises ? 4 : 0) + (s[2] / Math.min(s[0], s[1])) * 3 - topShare * 6;

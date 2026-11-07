@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { between, holeAt, holeAxis, holeOfMesh, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
@@ -196,38 +196,43 @@ function steel(min: Vec, max: Vec, finish: { color: number; metalness: number; r
  * jaw at the front (Y-) with its screw, and the stop on the left that the part is pushed against.
  * The jaw plates and the stop touch the part's real faces (grip), so nothing cuts into it.
  */
-function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, jawX: [number, number], grip: SetupInfo['grip'], spacers: SetupInfo['spacers']) {
+function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, spans: [number, number][], grip: SetupInfo['grip'], spacers: SetupInfo['spacers']) {
   const g = new THREE.Group();
-  const [x0, x1] = jawX;
   const front = grip?.front ?? hold.min[1];
   const back = grip?.back ?? hold.max[1];
   // The jaw plates stand a spacer's thickness off the part on the side it is written.
   const cb = { min: [hold.min[0], front - spacerAt({ spacers }, 'Y-')], max: [hold.max[0], back + spacerAt({ spacers }, 'Y+')] };
-  const cx = (x0 + x1) / 2;
   const body = floorZ - 34;
-  // Body and the bed the jaws run on.
-  g.add(steel([x0 - 6, cb.min[1] - 70, body - 16], [x1 + 18, cb.max[1] + 34, body], STEEL_DARK));
-  g.add(steel([x0 - 6, cb.min[1] - 70, body], [x1 + 18, cb.max[1] + 34, floorZ], STEEL));
-  // Fixed jaw with its hardened plate.
-  const fixedJaw = steel([x0, cb.max[1] + 5, floorZ], [x1, cb.max[1] + 30, jawTop], STEEL);
-  g.add(fixedJaw);
-  const plateBack = steel([x0 + STOP_PLATE, cb.max[1], floorZ], [x1, cb.max[1] + 5, jawTop], STEEL_DARK);
-  g.add(plateBack);
-  // Moving jaw (opens and closes in the animations).
+  // Moving jaws (open and close together in the animations).
   const moving = new THREE.Group();
-  const movingJaw = steel([x0, cb.min[1] - 30, floorZ], [x1, cb.min[1] - 5, jawTop], STEEL);
-  moving.add(movingJaw);
-  const plateFront = steel([x0 + STOP_PLATE, cb.min[1] - 5, floorZ], [x1, cb.min[1], jawTop], STEEL_DARK);
-  moving.add(plateFront);
-  // Screw and its hex end at the front.
-  const screw = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 40, 24), new THREE.MeshStandardMaterial({ ...STEEL_DARK }));
-  screw.rotation.x = Math.PI / 2;
-  screw.position.copy(v3([cx, cb.min[1] - 50, floorZ - 14]));
-  moving.add(screw);
-  const hex = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 14, 6), new THREE.MeshStandardMaterial({ ...STEEL }));
-  hex.rotation.x = Math.PI / 2;
-  hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
-  moving.add(hex);
+  const jaws: THREE.Object3D[] = [];
+  // Each vise: the first has the stop; the second, to its right, is open on both sides.
+  spans.forEach(([x0, x1], i) => {
+    const cx = (x0 + x1) / 2;
+    const plateFrom = i === 0 ? x0 + STOP_PLATE : x0;
+    // Body and the bed the jaws run on.
+    g.add(steel([x0 - 6, cb.min[1] - 70, body - 16], [x1 + 18, cb.max[1] + 34, body], STEEL_DARK));
+    g.add(steel([x0 - 6, cb.min[1] - 70, body], [x1 + 18, cb.max[1] + 34, floorZ], STEEL));
+    // Fixed jaw with its hardened plate.
+    const fixedJaw = steel([x0, cb.max[1] + 5, floorZ], [x1, cb.max[1] + 30, jawTop], STEEL);
+    const plateBack = steel([plateFrom, cb.max[1], floorZ], [x1, cb.max[1] + 5, jawTop], STEEL_DARK);
+    g.add(fixedJaw, plateBack);
+    const movingJaw = steel([x0, cb.min[1] - 30, floorZ], [x1, cb.min[1] - 5, jawTop], STEEL);
+    const plateFront = steel([plateFrom, cb.min[1] - 5, floorZ], [x1, cb.min[1], jawTop], STEEL_DARK);
+    moving.add(movingJaw, plateFront);
+    jaws.push(fixedJaw, plateBack, movingJaw, plateFront);
+    // Screw and its hex end at the front.
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 40, 24), new THREE.MeshStandardMaterial({ ...STEEL_DARK }));
+    screw.rotation.x = Math.PI / 2;
+    screw.position.copy(v3([cx, cb.min[1] - 50, floorZ - 14]));
+    moving.add(screw);
+    const hex = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 14, 6), new THREE.MeshStandardMaterial({ ...STEEL }));
+    hex.rotation.x = Math.PI / 2;
+    hex.position.copy(v3([cx, cb.min[1] - 74, floorZ - 14]));
+    moving.add(hex);
+  });
+  const [x0] = spans[0];
+  const x1 = spans[spans.length - 1][1];
   // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
   const plates = spacers.map((sp) => {
     const plate =
@@ -244,7 +249,7 @@ function buildVise(hold: { min: [number, number]; max: [number, number] }, floor
   // sits in, level with the jaw tops. The part is slid left against it.
   g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1] + 30, jawTop], STEEL_DARK));
   // The jaws and their plates: red when a tool or holder goes into them.
-  const jawMats = [fixedJaw, plateBack, movingJaw, plateFront].map((p) => {
+  const jawMats = jaws.map((p) => {
     const m = (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     m.userData.base = m.color.getHex();
     return m;
@@ -302,15 +307,18 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
   const group = new THREE.Group();
   if (setup.jawTopZ !== null) {
     const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
-    const vise = buildVise(cb, floorZ, setup.jawTopZ, setup.jawX, setup.grip, setup.spacers);
+    const spans = viseSpans(setup);
+    const vise = buildVise(cb, floorZ, setup.jawTopZ, spans, setup.grip, setup.spacers);
     group.add(vise.group);
     // The top of the jaws as a thin red line, for the jaw check.
-    const line = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(setup.jawX[1] - setup.jawX[0], 0.01, cb.max[1] - cb.min[1] + 60)),
-      new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.5 }),
-    );
-    line.position.copy(v3([(setup.jawX[0] + setup.jawX[1]) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
-    group.add(line);
+    for (const [x0, x1] of spans) {
+      const line = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(x1 - x0, 0.01, cb.max[1] - cb.min[1] + 60)),
+        new THREE.LineBasicMaterial({ color: 0xf26d6d, transparent: true, opacity: 0.5 }),
+      );
+      line.position.copy(v3([(x0 + x1) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
+      group.add(line);
+    }
     return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats, spacerEdges: vise.spacerEdges };
   }
   // A fixture: a steel block under the part, with the stop on the left.
