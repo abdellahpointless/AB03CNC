@@ -10,7 +10,7 @@ import { turnPhrase } from '../fixTurns';
 import { SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, trim, type Ring } from './clear';
-import { cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, TYPE_OF, usable, type CamNote, type Cut, type Limits, type Need } from './tools';
+import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 
 /*
@@ -36,12 +36,15 @@ export interface CamInput {
   raw?: Vec | null;
   /** The machine's rapid and tool change time (Admin > Machines), else its brand's. */
   speeds?: MachineSpeeds;
+  /** Template tool codes the operator does not have, and the ones picked in their place. */
+  exclude?: string[];
+  prefer?: string[];
 }
 
 export interface CamOp {
   kind: OpKind;
   name: string;
-  tool: Tool;
+  tool: CamTool;
   cut: Cut;
   lines: string[];
 }
@@ -146,7 +149,6 @@ function caleFor(height: number, want: number): { cale: number; grip: number } {
 }
 
 /** One end mill per Ø (the longest), largest first. */
-const uniqueMills = (ms: Tool[]) => ms.filter((m, i) => ms.findIndex((x) => Math.abs(x.diameter - m.diameter) < 0.01) === i);
 /** Without slivers thinner than 0.3 mm (what a round tool leaves in sharp inside corners). */
 const opened = (r: Region) => offset(offset(r, -0.15), 0.15);
 const circle = (c: [number, number], r: number) => Array.from({ length: 48 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 24), c[1] + r * Math.sin((i * Math.PI) / 24)] as P2);
@@ -258,9 +260,8 @@ function remaining(input: CamInput, done: CamSetup[], size: Vec, raw: Vec, R: Ma
 }
 
 /** Face the top from the stock's top down to Z0. */
-function facing(fm: Tool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec }, cy: number, clear: number): CamOp {
-  const type = TYPE_OF[fm.category] ?? 'SF';
-  const cut = cutData(mat, type, fm.diameter, 'face', limits);
+function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec }, cy: number, clear: number): CamOp {
+  const cut = cutData(fm, 'face', mat, limits);
   const lines: string[] = [];
   const r = fm.diameter / 2;
   const levels: number[] = [];
@@ -292,12 +293,12 @@ function facing(fm: Tool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec },
 }
 
 /** Centre-drill, then drill (G83 pecking), one tool after the other. */
-function drilling(list: { h: Hole; tool: Tool; z: number; again?: boolean }[], spot: Tool | undefined, mat: string, limits: Limits, clear: number): CamOp[] {
+function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number): CamOp[] {
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre.
   const fresh = list.filter((x) => !x.again);
   if (spot && fresh.length) {
-    const cut = cutData(mat, 'ZB', spot.diameter, 'centre', limits);
+    const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     fresh.forEach(({ h }, i) => {
       const z = h.top - Math.min(h.r, spot.diameter / 2) * 0.8;
@@ -306,10 +307,10 @@ function drilling(list: { h: Hole; tool: Tool; z: number; again?: boolean }[], s
     lines.push('G80');
     ops.push({ kind: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
   }
-  const byTool = new Map<Tool, { h: Hole; z: number }[]>();
+  const byTool = new Map<CamTool, { h: Hole; z: number }[]>();
   for (const { h, tool, z } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z });
   for (const [tool, hs] of byTool) {
-    const cut = cutData(mat, 'SB', tool.diameter, 'drill', limits);
+    const cut = cutData(tool, 'drill', mat, limits);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     for (const { h, z } of hs) {
       lines.push(`G98 G83 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)} Q${n3(Math.min(cut.q, h.top - z))} F${cut.fz}.`);
@@ -324,11 +325,11 @@ function drilling(list: { h: Hole; tool: Tool; z: number; again?: boolean }[], s
  * An end mill's rings, level by level, top down. Each ring is run in passes no deeper than the
  * tool's own depth per pass (its ring is clear of the part at every height above its level).
  */
-function milling(tool: Tool, work: { z: number; above: number; rings: Ring[] }[], mat: string, limits: Limits, stockTop: number, clear: number): CamOp {
-  const cut = cutData(mat, 'SF', tool.diameter, 'pocket', limits);
+function milling(tool: CamTool, work: { z: number; above: number; rings: Ring[] }[], mat: string, limits: Limits, stockTop: number, clear: number): CamOp {
+  const cut = cutData(tool, 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
   // (much deeper than in a pocket, where the first ring is a full slot).
-  const side = cutData(mat, 'SF', tool.diameter, 'contour', limits);
+  const side = cutData(tool, 'contour', mat, limits);
   const first = work[0].rings[0].pts[0];
   const lines = [`G00 G90 X${n3(first[0])} Y${n3(first[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
   let prevZ = stockTop;
@@ -383,8 +384,8 @@ function chamferPaths(P: Float32Array, bands: { lo: number; hi: number }[], R: n
   return out;
 }
 
-function chamfering(tool: Tool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number): CamOp {
-  const cut = cutData(mat, 'ST', tool.diameter, 'chamfer', limits);
+function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number): CamOp {
+  const cut = cutData(tool, 'chamfer', mat, limits);
   const lines = [`G00 G90 X${n3(paths[0].pts[0][0])} Y${n3(paths[0].pts[0][1])} S${cut.s} M03`];
   for (const { z, pts, top } of paths) {
     // Down over the chamfer's top (clear of the corner it is about to take off), then in.
@@ -506,7 +507,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const drilled = new Map<string, number>();
   const setups: CamSetup[] = [];
   let prevR: Mat3 | null = null;
-  const mills = uniqueMills(usable(input.tools, MILLS, mat));
+  // The shop's template tools for this material, plus the machine's special ones (machine's first).
+  const tools = catalog(mat, input.tools, input);
+  const mills = usable(tools, MILLS);
   const addSetup = (si: number): boolean => {
     const side = SIDES[si];
     const f = feats[si];
@@ -542,7 +545,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
     // 1. Face the top (the face mill, else the largest end mill).
     if (sb.hi[2] > 0.01) {
-      const fm = usable(input.tools, ['tourteau'], mat)[0] ?? mills[0];
+      const fm = usable(tools, ['MK'])[0] ?? mills[0];
       if (!fm) needOnce({ category: 'tourteau', diameter: 50, minLength: 0, why: { key: 'face' } });
       else ops.push(facing(fm, mat, limits, sb, cy, clear));
     }
@@ -554,11 +557,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const axis = apply(transpose(R), [0, 0, 1]).findIndex((v) => v !== 0);
       return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
     };
-    const drills = usable(input.tools, ['foret'], mat);
+    const drills = usable(tools, ['SB']);
     // The drill of that Ø, else the nearest within 0.12 (as the shop does: Ø2.05 with Ø2, Ø3.2 with Ø3.3).
     const drillFor = (h: Hole, depth: number) =>
       drills.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12 && (x.length || 99) >= depth + 2).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
-    const toDrill: { h: Hole; tool: Tool; z: number; again?: boolean }[] = [];
+    const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean }[] = [];
     const keepHoles: Hole[] = [];
     for (const h of holes) {
       const k = keyOf(h);
@@ -598,7 +601,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         }
       }
     }
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(input.tools, ['pointeur'], mat)[0], mat, limits, clear));
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear));
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
@@ -606,7 +609,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // Also a level at the jaw limit: the outside is cut down to there, never lower.
     const jawLimit = jawTop + 0.5;
     const stops = [...new Set([...floors, bottom, ...(jawLimit < 0 && jawLimit > bottom ? [jawLimit] : [])])].sort((p, q) => q - p);
-    const maxAp = mills.length ? cutData(mat, 'SF', mills[0].diameter, 'contour', limits).ap : 2;
+    const maxAp = mills.length ? cutData(mills[0], 'contour', mat, limits).ap : 2;
     const levels: number[] = [];
     let from = Math.min(0, sb.hi[2]);
     for (const st of stops) {
@@ -627,7 +630,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (disks.length) k = union(k, disks);
       return k;
     };
-    const perTool = new Map<Tool, { z: number; above: number; rings: Ring[] }[]>();
+    const perTool = new Map<CamTool, { z: number; above: number; rings: Ring[] }[]>();
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(sb.hi[2], 0);
@@ -648,9 +651,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       let cands = mills.filter((m) => (m.length || 99) >= Math.max(0, sb.hi[2]) - z + 2);
       for (let round = 0; round < 6 && cands.length && area(todo) > 0.5; round++) {
         const all = area(todo);
-        let pick: { tool: Tool; rings: Ring[]; gone: Region; share: number } | null = null;
+        let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
         for (const tool of cands) {
-          const cut = cutData(mat, 'SF', tool.diameter, 'pocket', limits);
+          const cut = cutData(tool, 'pocket', mat, limits);
           const rings = clearLevel(keep, todo, tool.diameter / 2, cut.ae, inside);
           if (!rings.length) continue;
           const gone = swept(rings, tool.diameter / 2);
@@ -673,13 +676,19 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     if (narrow > 5) needOnce({ category: 'fraise', diameter: mills.length ? Math.max(1, Math.floor(mills[mills.length - 1].diameter / 2)) : 6, minLength: Math.ceil(narrowDepth + 2), why: { key: 'narrow', mm3: Math.round(narrow) } });
+    // One tool per Ø in a setup: the longest one needed does all the levels of that Ø (one tool
+    // change instead of two; the levels stay top down).
+    const byDia = new Map<number, CamTool[]>();
+    for (const tool of perTool.keys()) (byDia.get(tool.diameter) ?? byDia.set(tool.diameter, []).get(tool.diameter)!).push(tool);
     for (const tool of mills) {
-      const work = perTool.get(tool);
-      if (work) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear));
+      const same = byDia.get(tool.diameter);
+      if (!same?.includes(tool) || same.some((o) => o.length > tool.length)) continue;
+      const work = same.flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z);
+      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
-      const graver = usable(input.tools, ['chanfrein'], mat)[0];
+      const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
       const paths = graver ? chamferPaths(P, f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })), graver.diameter / 2, jawLimit) : [];
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
       else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, clear));
@@ -747,7 +756,7 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         'M09',
         `(TOOLPATH ${op.name})`,
         `T${t.number} M6`,
-        `(${toolComment(t, input.material)})`,
+        `(${toolComment(t)})`,
         `(DIAMETER ${t.diameter.toFixed(2)} MM/LENGTH ${(t.length || 0).toFixed(2)} MM)`,
         'M01 (CHECK TOOL)',
         `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}. M08`,

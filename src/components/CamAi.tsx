@@ -11,7 +11,7 @@ import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { convertHaasToFanuc } from '../lib/haasToFanucConverter';
 import { engineMachineId } from '../regions';
-import { MATERIALS, type Material } from '../types';
+import { CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
 import type { CamMessage, CamRequest, CamSummary } from '../lib/cam/cam.worker';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -30,7 +30,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const { toolbox, toolMachines } = useSync();
   const [model, setModel] = useState<Model | null>(null);
   const [machineId, setMachineId] = useState(() => toolMachines[0]?.id ?? '');
-  const [material, setMaterial] = useState<Material>('FH');
+  const [material, setMaterial] = useState<CamMaterial>('FH');
   const [raw, setRaw] = useState(['', '', '']);
   const [run, setRun] = useState<Run>({ state: 'idle' });
   const [viewing, setViewing] = useState(false);
@@ -158,8 +158,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             </label>
             <label className="space-y-1">
               <span className="section-label block">{t('camAi.material')}</span>
-              <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as Material)} disabled={run.state === 'busy'}>
-                {MATERIALS.map((m) => (
+              <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as CamMaterial)} disabled={run.state === 'busy'}>
+                {CAM_MATERIALS.map((m) => (
                   <option key={m} value={m} className="bg-[var(--bg-panel)]">{m}</option>
                 ))}
               </select>

@@ -1,0 +1,8398 @@
+{
+ "ALU": [
+  {
+   "code": "AB_05.50_030_G118_ALHS",
+   "type": "AB",
+   "d": 5.5,
+   "length": 30,
+   "shape": "G118",
+   "number": 250550,
+   "ops": [
+    {
+     "kind": "spot",
+     "name": "NC-ANBOHREN",
+     "ap": 0.5,
+     "ae": null,
+     "feed": 300,
+     "rpm": 6500
+    }
+   ]
+  },
+  {
+   "code": "MK_40.00_030_000_ALHS",
+   "type": "MK",
+   "d": 40,
+   "length": 30,
+   "shape": "000",
+   "number": 3,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN_MK40",
+     "ap": 2,
+     "ae": {
+      "share": 0.95
+     },
+     "feed": 3000,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "RA_12.00_050_000_ALHS",
+   "type": "RA",
+   "d": 12,
+   "length": 50,
+   "shape": "000",
+   "number": 351200,
+   "ops": [
+    {
+     "kind": "ream",
+     "name": "REIBEN_12H7",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 3200
+    }
+   ]
+  },
+  {
+   "code": "SB_00.80_030_000_ALHS",
+   "type": "SB",
+   "d": 0.8,
+   "length": 30,
+   "shape": "000",
+   "number": 230080,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_0.8MMY",
+     "ap": null,
+     "ae": null,
+     "feed": 300.024,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_030_000_ALHS",
+   "type": "SB",
+   "d": 1,
+   "length": 30,
+   "shape": "000",
+   "number": 230100,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.10_020_000_ALHS",
+   "type": "SB",
+   "d": 1.1,
+   "length": 20,
+   "shape": "000",
+   "number": 220110,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.1MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300.024,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.20_030_000_ALHS",
+   "type": "SB",
+   "d": 1.2,
+   "length": 30,
+   "shape": "000",
+   "number": 230120,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300.024,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_030_000_ALHS",
+   "type": "SB",
+   "d": 1.3,
+   "length": 30,
+   "shape": "000",
+   "number": 230130,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_030_000_ALHS",
+   "type": "SB",
+   "d": 1.5,
+   "length": 30,
+   "shape": "000",
+   "number": 230150,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 26000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_030_000_ALHS",
+   "type": "SB",
+   "d": 1.6,
+   "length": 30,
+   "shape": "000",
+   "number": 230160,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 24000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.65_030_000_ALHS",
+   "type": "SB",
+   "d": 1.65,
+   "length": 30,
+   "shape": "000",
+   "number": 230165,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.65MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350.016,
+     "rpm": 24000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.68_030_000_ALHS",
+   "type": "SB",
+   "d": 1.68,
+   "length": 30,
+   "shape": "000",
+   "number": 230168,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.68MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 24000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_030_000_ALHS",
+   "type": "SB",
+   "d": 1.8,
+   "length": 30,
+   "shape": "000",
+   "number": 230180,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 24000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_030_000_ALHS",
+   "type": "SB",
+   "d": 2,
+   "length": 30,
+   "shape": "000",
+   "number": 230200,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 19000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.10_030_000_ALHS",
+   "type": "SB",
+   "d": 2.1,
+   "length": 30,
+   "shape": "000",
+   "number": 230210,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.1MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 18000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_030_000_ALHS",
+   "type": "SB",
+   "d": 2.2,
+   "length": 30,
+   "shape": "000",
+   "number": 230220,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 450,
+     "rpm": 17000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_030_000_ALHS",
+   "type": "SB",
+   "d": 2.3,
+   "length": 30,
+   "shape": "000",
+   "number": 230230,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 450,
+     "rpm": 16192
+    }
+   ]
+  },
+  {
+   "code": "SB_02.40_050_000_ALHS",
+   "type": "SB",
+   "d": 2.4,
+   "length": 50,
+   "shape": "000",
+   "number": 250240,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 399.99,
+     "rpm": 15000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_050_000_ALHS",
+   "type": "SB",
+   "d": 2.5,
+   "length": 50,
+   "shape": "000",
+   "number": 250250,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 450,
+     "rpm": 15000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_050_000_ALHS",
+   "type": "SB",
+   "d": 2.96,
+   "length": 50,
+   "shape": "000",
+   "number": 250296,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 13000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_050_000_ALHS",
+   "type": "SB",
+   "d": 3,
+   "length": 50,
+   "shape": "000",
+   "number": 250300,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 13000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_050_000_ALHS",
+   "type": "SB",
+   "d": 3.3,
+   "length": 50,
+   "shape": "000",
+   "number": 250330,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 450,
+     "rpm": 12000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.40_050_000_ALHS",
+   "type": "SB",
+   "d": 3.4,
+   "length": 50,
+   "shape": "000",
+   "number": 250340,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 12000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_050_000_ALHS",
+   "type": "SB",
+   "d": 3.5,
+   "length": 50,
+   "shape": "000",
+   "number": 250350,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 440,
+     "rpm": 11000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_050_000_ALHS",
+   "type": "SB",
+   "d": 4,
+   "length": 50,
+   "shape": "000",
+   "number": 250400,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 9500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_050_000_ALHS",
+   "type": "SB",
+   "d": 4.1,
+   "length": 50,
+   "shape": "000",
+   "number": 250410,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 9500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_050_000_ALHS",
+   "type": "SB",
+   "d": 4.2,
+   "length": 50,
+   "shape": "000",
+   "number": 250420,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 9000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_050_000_ALHS",
+   "type": "SB",
+   "d": 4.5,
+   "length": 50,
+   "shape": "000",
+   "number": 250450,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 510,
+     "rpm": 8500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_050_000_ALHS",
+   "type": "SB",
+   "d": 4.8,
+   "length": 50,
+   "shape": "000",
+   "number": 250480,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM",
+     "ap": null,
+     "ae": null,
+     "feed": 520,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_050_000_ALHS",
+   "type": "SB",
+   "d": 4.9,
+   "length": 50,
+   "shape": "000",
+   "number": 250490,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM",
+     "ap": null,
+     "ae": null,
+     "feed": 510,
+     "rpm": 7700
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_050_000_ALHS",
+   "type": "SB",
+   "d": 5,
+   "length": 50,
+   "shape": "000",
+   "number": 250500,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 475,
+     "rpm": 7600
+    }
+   ]
+  },
+  {
+   "code": "SB_05.50_050_000_ALHS",
+   "type": "SB",
+   "d": 5.5,
+   "length": 50,
+   "shape": "000",
+   "number": 250550,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 450,
+     "rpm": 6900
+    }
+   ]
+  },
+  {
+   "code": "SB_06.40_050_000_ALHS",
+   "type": "SB",
+   "d": 6.4,
+   "length": 50,
+   "shape": "000",
+   "number": 250640,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_07.00_070_000_ALHS",
+   "type": "SB",
+   "d": 7,
+   "length": 70,
+   "shape": "000",
+   "number": 270700,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 330,
+     "rpm": 5400
+    }
+   ]
+  },
+  {
+   "code": "SB_07.60_070_000_ALHS",
+   "type": "SB",
+   "d": 7.6,
+   "length": 70,
+   "shape": "000",
+   "number": 250760,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_10.00_070_000_ALHS",
+   "type": "SB",
+   "d": 10,
+   "length": 70,
+   "shape": "000",
+   "number": 271000,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_10.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 3200
+    }
+   ]
+  },
+  {
+   "code": "SF_00.80_010_000_ALHS",
+   "type": "SF",
+   "d": 0.8,
+   "length": 10,
+   "shape": "000",
+   "number": 110080,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_0.8MM",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.994,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_010_000_ALHS",
+   "type": "SF",
+   "d": 1,
+   "length": 10,
+   "shape": "000",
+   "number": 110100,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_1.0MM",
+     "ap": 0.2,
+     "ae": null,
+     "feed": 700,
+     "rpm": 27000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.0MM",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_020_000_ALHS",
+   "type": "SF",
+   "d": 1,
+   "length": 20,
+   "shape": "000",
+   "number": 120100,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.0MM_",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.994,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.20_010_000_ALHS",
+   "type": "SF",
+   "d": 1.2,
+   "length": 10,
+   "shape": "000",
+   "number": 110120,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.2MM",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700.002,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_010_000_ALHS",
+   "type": "SF",
+   "d": 1.5,
+   "length": 10,
+   "shape": "000",
+   "number": 110150,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_1.5MM",
+     "ap": 0.4,
+     "ae": {
+      "mm": 0.1
+     },
+     "feed": 900,
+     "rpm": 27000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM",
+     "ap": 0.4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_020_000_ALHS",
+   "type": "SF",
+   "d": 1.5,
+   "length": 20,
+   "shape": "000",
+   "number": 120150,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700.002,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_015_000_ALHS",
+   "type": "SF",
+   "d": 2,
+   "length": 15,
+   "shape": "000",
+   "number": 110200,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_2.0MM",
+     "ap": 0.6,
+     "ae": null,
+     "feed": 1000,
+     "rpm": 27000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.0MM",
+     "ap": 0.6,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_025_000_ALHS",
+   "type": "SF",
+   "d": 2,
+   "length": 25,
+   "shape": "000",
+   "number": 120200,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.0MM_",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000.026,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_030_000_ALHS",
+   "type": "SF",
+   "d": 2,
+   "length": 30,
+   "shape": "000",
+   "number": 130200,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.0MM__",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700.002,
+     "rpm": 27000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_020_000_ALHS",
+   "type": "SF",
+   "d": 2.5,
+   "length": 20,
+   "shape": "000",
+   "number": 120250,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_2.5MM",
+     "ap": 0.8,
+     "ae": null,
+     "feed": 1000,
+     "rpm": 26000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM",
+     "ap": 0.8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 26000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_030_000_ALHS",
+   "type": "SF",
+   "d": 2.5,
+   "length": 30,
+   "shape": "000",
+   "number": 130250,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_",
+     "ap": 0.7,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000.012,
+     "rpm": 26000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_020_000_ALHS",
+   "type": "SF",
+   "d": 3,
+   "length": 20,
+   "shape": "000",
+   "number": 120300,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_3MM",
+     "ap": 1,
+     "ae": null,
+     "feed": 1000,
+     "rpm": 21000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 21000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_030_000_ALHS",
+   "type": "SF",
+   "d": 3,
+   "length": 30,
+   "shape": "000",
+   "number": 130300,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_",
+     "ap": 0.8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000.02,
+     "rpm": 21000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_035_000_ALHS",
+   "type": "SF",
+   "d": 3,
+   "length": 35,
+   "shape": "000",
+   "number": 130300,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM__",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000.02,
+     "rpm": 21000
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_030_000_ALHS",
+   "type": "SF",
+   "d": 4,
+   "length": 30,
+   "shape": "000",
+   "number": 130400,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_4MM",
+     "ap": 1.5,
+     "ae": null,
+     "feed": 1200,
+     "rpm": 16000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 16000
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_040_000_ALHS",
+   "type": "SF",
+   "d": 4,
+   "length": 40,
+   "shape": "000",
+   "number": 140400,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_",
+     "ap": 0.6,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 16000
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_050_000_ALHS",
+   "type": "SF",
+   "d": 4,
+   "length": 50,
+   "shape": "000",
+   "number": 150400,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM__",
+     "ap": 0.4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 16000
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_030_000_ALHS",
+   "type": "SF",
+   "d": 5,
+   "length": 30,
+   "shape": "000",
+   "number": 130500,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_5MM",
+     "ap": 1.6,
+     "ae": null,
+     "feed": 1200,
+     "rpm": 14000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM",
+     "ap": 1.6,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1100,
+     "rpm": 14000
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_050_000_ALHS",
+   "type": "SF",
+   "d": 5,
+   "length": 50,
+   "shape": "000",
+   "number": 150500,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_",
+     "ap": 0.8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 999.992,
+     "rpm": 14000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_030_000_ALHS",
+   "type": "SF",
+   "d": 6,
+   "length": 30,
+   "shape": "000",
+   "number": 130600,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_6MM",
+     "ap": 2,
+     "ae": null,
+     "feed": 1200,
+     "rpm": 12000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1200,
+     "rpm": 12000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_050_000_ALHS",
+   "type": "SF",
+   "d": 6,
+   "length": 50,
+   "shape": "000",
+   "number": 150600,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 999.994,
+     "rpm": 11500
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_040_000_ALHS",
+   "type": "SF",
+   "d": 8,
+   "length": 40,
+   "shape": "000",
+   "number": 140800,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN_8MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 2000,
+     "rpm": 12000
+    },
+    {
+     "kind": "contour",
+     "name": "KONTUR_8MM",
+     "ap": 5,
+     "ae": null,
+     "feed": 2400,
+     "rpm": 12000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 2000,
+     "rpm": 12000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_062_000_ALHS",
+   "type": "SF",
+   "d": 8,
+   "length": 62,
+   "shape": "000",
+   "number": 170800,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 999.99,
+     "rpm": 10000
+    }
+   ]
+  },
+  {
+   "code": "SF_16.00_048_000_ALHS",
+   "type": "SF",
+   "d": 16,
+   "length": 48,
+   "shape": "000",
+   "number": 151600,
+   "ops": [
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_16MM_",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 850.001,
+     "rpm": 6600
+    }
+   ]
+  },
+  {
+   "code": "SF_16.00_049_000_ALHS",
+   "type": "SF",
+   "d": 16,
+   "length": 49,
+   "shape": "000",
+   "number": 151600,
+   "ops": [
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_16MM",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1200,
+     "rpm": 6600
+    }
+   ]
+  },
+  {
+   "code": "SFH_16.00_055_000_ALHS",
+   "type": "SFH",
+   "d": 16,
+   "length": 55,
+   "shape": "000",
+   "number": 161600,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_16MM_WP",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 3000,
+     "rpm": 20000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_16MM_WP",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 2800,
+     "rpm": 20000
+    }
+   ]
+  },
+  {
+   "code": "ST_04.00_025_G45_ALHS",
+   "type": "ST",
+   "d": 4,
+   "length": 25,
+   "shape": "G45",
+   "number": 8,
+   "ops": [
+    {
+     "kind": "deburr",
+     "name": "ENTGRATEN",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 920,
+     "rpm": 16000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 920,
+     "rpm": 16000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_1",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 900,
+     "rpm": 16000
+    }
+   ]
+  },
+  {
+   "code": "ST_08.00_040_G45_ALHS",
+   "type": "ST",
+   "d": 8,
+   "length": 40,
+   "shape": "G45",
+   "number": 9,
+   "ops": [
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "ST_08.00_040_G60_ALHS",
+   "type": "ST",
+   "d": 8,
+   "length": 40,
+   "shape": "G60",
+   "number": 60,
+   "ops": [
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD__",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "ZB_02.30_038_000_ALHS",
+   "type": "ZB",
+   "d": 2.3,
+   "length": 38,
+   "shape": "000",
+   "number": 38,
+   "ops": [
+    {
+     "kind": "centre",
+     "name": "ZENTRIER-PC-GF30",
+     "ap": 0.5,
+     "ae": null,
+     "feed": 300,
+     "rpm": 6500
+    }
+   ]
+  }
+ ],
+ "POM": [
+  {
+   "code": "KF_10.00_030_R05_KS",
+   "type": "KF",
+   "d": 10,
+   "length": 30,
+   "shape": "R05",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R5",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 1200
+    }
+   ]
+  },
+  {
+   "code": "KF_14.00_030_R07_KS",
+   "type": "KF",
+   "d": 14,
+   "length": 30,
+   "shape": "R07",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R7",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 900
+    }
+   ]
+  },
+  {
+   "code": "KF_30.00_030_R15_KS",
+   "type": "KF",
+   "d": 30,
+   "length": 30,
+   "shape": "R15",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "TASCH_KUGEL_R15",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 1800
+    },
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R15",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 700
+    }
+   ]
+  },
+  {
+   "code": "KS_25.00_030_G45_KS",
+   "type": "KS",
+   "d": 25,
+   "length": 30,
+   "shape": "G45",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "countersink",
+     "name": "FASE_SENKER",
+     "ap": 5,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 400,
+     "rpm": 1800
+    }
+   ]
+  },
+  {
+   "code": "MK_93.00_030_000_KS",
+   "type": "MK",
+   "d": 93,
+   "length": 30,
+   "shape": "000",
+   "number": 3,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN-MK-93-SCHR",
+     "ap": 5,
+     "ae": {
+      "share": 0.95
+     },
+     "feed": 1200,
+     "rpm": 2500
+    },
+    {
+     "kind": "face",
+     "name": "PLAN-MK-93-SCHL",
+     "ap": 3,
+     "ae": {
+      "share": 0.95
+     },
+     "feed": 600,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "RA_12.00_050_000_KS",
+   "type": "RA",
+   "d": 12,
+   "length": 50,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "ream",
+     "name": "REIBEN_12H7_1",
+     "ap": null,
+     "ae": null,
+     "feed": 100,
+     "rpm": 200
+    }
+   ]
+  },
+  {
+   "code": "SB_00.98_035_000_KS",
+   "type": "SB",
+   "d": 0.98,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_0.98MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_035_000_KS",
+   "type": "SB",
+   "d": 1,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_045_000_KS",
+   "type": "SB",
+   "d": 1,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_055_000_KS",
+   "type": "SB",
+   "d": 1,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_035_000_KS",
+   "type": "SB",
+   "d": 1.3,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_045_000_KS",
+   "type": "SB",
+   "d": 1.3,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_055_000_KS",
+   "type": "SB",
+   "d": 1.3,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_035_000_KS",
+   "type": "SB",
+   "d": 1.5,
+   "length": 35,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_045_000_KS",
+   "type": "SB",
+   "d": 1.5,
+   "length": 45,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_055_000_KS",
+   "type": "SB",
+   "d": 1.5,
+   "length": 55,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_067_000_KS",
+   "type": "SB",
+   "d": 1.5,
+   "length": 67,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1_C",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_035_000_KS",
+   "type": "SB",
+   "d": 1.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_045_000_KS",
+   "type": "SB",
+   "d": 1.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_055_000_KS",
+   "type": "SB",
+   "d": 1.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.68_035_000_KS",
+   "type": "SB",
+   "d": 1.68,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.68MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_045_000_KS",
+   "type": "SB",
+   "d": 1.8,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_055_000_KS",
+   "type": "SB",
+   "d": 1.8,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_035_000_KS",
+   "type": "SB",
+   "d": 1.97,
+   "length": 35,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_045_000_KS",
+   "type": "SB",
+   "d": 1.97,
+   "length": 45,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_055_000_KS",
+   "type": "SB",
+   "d": 1.97,
+   "length": 55,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_035_000_KS",
+   "type": "SB",
+   "d": 2,
+   "length": 35,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_045_000_KS",
+   "type": "SB",
+   "d": 2,
+   "length": 45,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_055_000_KS",
+   "type": "SB",
+   "d": 2,
+   "length": 55,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_035_000_KS",
+   "type": "SB",
+   "d": 2.2,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_045_000_KS",
+   "type": "SB",
+   "d": 2.2,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_055_000_KS",
+   "type": "SB",
+   "d": 2.2,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_035_000_KS",
+   "type": "SB",
+   "d": 2.3,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_045_000_KS",
+   "type": "SB",
+   "d": 2.3,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_055_000_KS",
+   "type": "SB",
+   "d": 2.3,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_035_000_KS",
+   "type": "SB",
+   "d": 2.5,
+   "length": 35,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_045_000_KS",
+   "type": "SB",
+   "d": 2.5,
+   "length": 45,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_055_000_KS",
+   "type": "SB",
+   "d": 2.5,
+   "length": 55,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_089_000_KS",
+   "type": "SB",
+   "d": 2.5,
+   "length": 89,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_035_000_KS",
+   "type": "SB",
+   "d": 2.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_045_000_KS",
+   "type": "SB",
+   "d": 2.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_055_000_KS",
+   "type": "SB",
+   "d": 2.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM_C",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_035_000_KS",
+   "type": "SB",
+   "d": 2.96,
+   "length": 35,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_045_000_KS",
+   "type": "SB",
+   "d": 2.96,
+   "length": 45,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_055_000_KS",
+   "type": "SB",
+   "d": 2.96,
+   "length": 55,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_080_000_KS",
+   "type": "SB",
+   "d": 2.96,
+   "length": 80,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_035_000_KS",
+   "type": "SB",
+   "d": 3,
+   "length": 35,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_045_000_KS",
+   "type": "SB",
+   "d": 3,
+   "length": 45,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_-",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_055_000_KS",
+   "type": "SB",
+   "d": 3,
+   "length": 55,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_080_000_KS",
+   "type": "SB",
+   "d": 3,
+   "length": 80,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_035_000_KS",
+   "type": "SB",
+   "d": 3.3,
+   "length": 35,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_045_000_KS",
+   "type": "SB",
+   "d": 3.3,
+   "length": 45,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_055_000_KS",
+   "type": "SB",
+   "d": 3.3,
+   "length": 55,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_035_000_KS",
+   "type": "SB",
+   "d": 3.47,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_045_000_KS",
+   "type": "SB",
+   "d": 3.47,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_055_000_KS",
+   "type": "SB",
+   "d": 3.47,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_035_000_KS",
+   "type": "SB",
+   "d": 3.5,
+   "length": 35,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_045_000_KS",
+   "type": "SB",
+   "d": 3.5,
+   "length": 45,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_055_000_KS",
+   "type": "SB",
+   "d": 3.5,
+   "length": 55,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_035_000_KS",
+   "type": "SB",
+   "d": 4,
+   "length": 35,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_045_000_KS",
+   "type": "SB",
+   "d": 4,
+   "length": 45,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_055_000_KS",
+   "type": "SB",
+   "d": 4,
+   "length": 55,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_067_000_KS",
+   "type": "SB",
+   "d": 4,
+   "length": 67,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_035_000_KS",
+   "type": "SB",
+   "d": 4.1,
+   "length": 35,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_045_000_KS",
+   "type": "SB",
+   "d": 4.1,
+   "length": 45,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_11_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_055_000_KS",
+   "type": "SB",
+   "d": 4.1,
+   "length": 55,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_067_000_KS",
+   "type": "SB",
+   "d": 4.1,
+   "length": 67,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_035_000_KS",
+   "type": "SB",
+   "d": 4.2,
+   "length": 35,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_045_000_KS",
+   "type": "SB",
+   "d": 4.2,
+   "length": 45,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_055_000_KS",
+   "type": "SB",
+   "d": 4.2,
+   "length": 55,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_067_000_KS",
+   "type": "SB",
+   "d": 4.2,
+   "length": 67,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_035_000_KS",
+   "type": "SB",
+   "d": 4.4,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_045_000_KS",
+   "type": "SB",
+   "d": 4.4,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_055_000_KS",
+   "type": "SB",
+   "d": 4.4,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_072_000_KS",
+   "type": "SB",
+   "d": 4.4,
+   "length": 72,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_035_000_KS",
+   "type": "SB",
+   "d": 4.5,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    },
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_045_000_KS",
+   "type": "SB",
+   "d": 4.5,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_055_000_KS",
+   "type": "SB",
+   "d": 4.5,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_072_000_KS",
+   "type": "SB",
+   "d": 4.5,
+   "length": 72,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_035_000_KS",
+   "type": "SB",
+   "d": 4.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM__",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_045_000_KS",
+   "type": "SB",
+   "d": 4.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_055_000_KS",
+   "type": "SB",
+   "d": 4.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.70_035_000_KS",
+   "type": "SB",
+   "d": 4.7,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.7MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.70_045_000_KS",
+   "type": "SB",
+   "d": 4.7,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.7MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_035_000_KS",
+   "type": "SB",
+   "d": 4.8,
+   "length": 35,
+   "shape": "000",
+   "number": 16,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_045_000_KS",
+   "type": "SB",
+   "d": 4.8,
+   "length": 45,
+   "shape": "000",
+   "number": 16,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_055_000_KS",
+   "type": "SB",
+   "d": 4.8,
+   "length": 55,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_099_000_KS",
+   "type": "SB",
+   "d": 4.8,
+   "length": 99,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_035_000_KS",
+   "type": "SB",
+   "d": 4.85,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_045_000_KS",
+   "type": "SB",
+   "d": 4.85,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_055_000_KS",
+   "type": "SB",
+   "d": 4.85,
+   "length": 55,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_099_000_KS",
+   "type": "SB",
+   "d": 4.85,
+   "length": 99,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_045_000_KS",
+   "type": "SB",
+   "d": 4.9,
+   "length": 45,
+   "shape": "000",
+   "number": 21,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_055_000_KS",
+   "type": "SB",
+   "d": 4.9,
+   "length": 55,
+   "shape": "000",
+   "number": 21,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_035_000_KS",
+   "type": "SB",
+   "d": 5,
+   "length": 35,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_045_000_KS",
+   "type": "SB",
+   "d": 5,
+   "length": 45,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_055_000_KS",
+   "type": "SB",
+   "d": 5,
+   "length": 55,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.40_045_000_KS",
+   "type": "SB",
+   "d": 5.4,
+   "length": 45,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.4MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 700,
+     "rpm": 2900
+    }
+   ]
+  },
+  {
+   "code": "SB_05.40_055_000_KS",
+   "type": "SB",
+   "d": 5.4,
+   "length": 55,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 700,
+     "rpm": 2900
+    }
+   ]
+  },
+  {
+   "code": "SB_06.00_045_000_KS",
+   "type": "SB",
+   "d": 6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_06.00_055_000_KS",
+   "type": "SB",
+   "d": 6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.0MM_COPY",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_06.40_055_000_KS",
+   "type": "SB",
+   "d": 6.4,
+   "length": 55,
+   "shape": "000",
+   "number": 14,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.4MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_07.00_045_000_KS",
+   "type": "SB",
+   "d": 7,
+   "length": 45,
+   "shape": "000",
+   "number": 30,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_07.00_060_000_KS",
+   "type": "SB",
+   "d": 7,
+   "length": 60,
+   "shape": "000",
+   "number": 30,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_010_000_KS",
+   "type": "SF",
+   "d": 1,
+   "length": 10,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY_1",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_025_000_KS",
+   "type": "SF",
+   "d": 1,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_033_000_KS",
+   "type": "SF",
+   "d": 1,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY_COPY",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY_",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_040_000_KS",
+   "type": "SF",
+   "d": 1,
+   "length": 40,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY_COPY_1",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_C",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_025_000_KS",
+   "type": "SF",
+   "d": 1.5,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_2",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_1.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_033_000_KS",
+   "type": "SF",
+   "d": 1.5,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_1",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_1.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_040_000_KS",
+   "type": "SF",
+   "d": 1.5,
+   "length": 40,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_1_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_025_000_KS",
+   "type": "SF",
+   "d": 2,
+   "length": 25,
+   "shape": "000",
+   "number": 11,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_033_000_KS",
+   "type": "SF",
+   "d": 2,
+   "length": 33,
+   "shape": "000",
+   "number": 1,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_2MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_040_000_KS",
+   "type": "SF",
+   "d": 2,
+   "length": 40,
+   "shape": "000",
+   "number": 31,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_COPY_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_047_000_KS",
+   "type": "SF",
+   "d": 2,
+   "length": 47,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_COPY_1",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_COPY_1_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_025_000_KS",
+   "type": "SF",
+   "d": 2.5,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_033_000_KS",
+   "type": "SF",
+   "d": 2.5,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM_1_COP",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_047_000_KS",
+   "type": "SF",
+   "d": 2.5,
+   "length": 47,
+   "shape": "000",
+   "number": 245,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1_COPY_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM_1_COPY_",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_025_000_KS",
+   "type": "SF",
+   "d": 3,
+   "length": 25,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_2",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 2200
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_033_000_KS",
+   "type": "SF",
+   "d": 3,
+   "length": 33,
+   "shape": "000",
+   "number": 10,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 2200
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_040_000_KS",
+   "type": "SF",
+   "d": 3,
+   "length": 40,
+   "shape": "000",
+   "number": 32,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1_COPY",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1_COPY_COPY",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_047_000_KS",
+   "type": "SF",
+   "d": 3,
+   "length": 47,
+   "shape": "000",
+   "number": 32,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1_COPY_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1_COPY_1_COPY",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_033_000_KS",
+   "type": "SF",
+   "d": 4,
+   "length": 33,
+   "shape": "000",
+   "number": 4,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_4MM_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1100,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1800
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_044_000_KS",
+   "type": "SF",
+   "d": 4,
+   "length": 44,
+   "shape": "000",
+   "number": 25,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_3",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_4MM",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_4MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1800
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_053_000_KS",
+   "type": "SF",
+   "d": 4,
+   "length": 53,
+   "shape": "000",
+   "number": 33,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_3_COPY",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHTE_4MM_3_COPY_COPY",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_033_000_KS",
+   "type": "SF",
+   "d": 5,
+   "length": 33,
+   "shape": "000",
+   "number": 5,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_5MM_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1100,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1400
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_044_000_KS",
+   "type": "SF",
+   "d": 5,
+   "length": 44,
+   "shape": "000",
+   "number": 26,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_5MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1400
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_058_000_FH",
+   "type": "SF",
+   "d": 5,
+   "length": 58,
+   "shape": "000",
+   "number": 26,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_2_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_033_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 33,
+   "shape": "000",
+   "number": 7,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_6MM_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1400,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_044_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 44,
+   "shape": "000",
+   "number": 7,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_6MM",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_6MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_055_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 55,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_065_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 65,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_2_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_075_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 75,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_1_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_085_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 85,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_3",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_3_COPY_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_092_000_KS",
+   "type": "SF",
+   "d": 6,
+   "length": 92,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_3_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_3_COPY_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_044_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 44,
+   "shape": "000",
+   "number": 9,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_1",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1200,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_1",
+     "ap": 8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1400,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_8MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 800
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_055_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 55,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 800
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_065_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 65,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_COPY",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_075_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 75,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_085_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 85,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_2",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_2",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_092_000_KS",
+   "type": "SF",
+   "d": 8,
+   "length": 92,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_3",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_20.00_055_000_KS",
+   "type": "SF",
+   "d": 20,
+   "length": 55,
+   "shape": "000",
+   "number": 20,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_20MM_",
+     "ap": 15,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1200,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_20.00_065_000_KS",
+   "type": "SF",
+   "d": 20,
+   "length": 65,
+   "shape": "000",
+   "number": 20,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_20MM_1",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 4000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_20MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SF_20.00_090_000_KS",
+   "type": "SF",
+   "d": 20,
+   "length": 90,
+   "shape": "000",
+   "number": 20,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN-20MM",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1000,
+     "rpm": 4000
+    },
+    {
+     "kind": "contour",
+     "name": "KONTUR_20MM",
+     "ap": 15,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1200,
+     "rpm": 4000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_20MM",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 4000
+    },
+    {
+     "kind": "contour",
+     "name": "EINFACH_KONTUR_20MM",
+     "ap": 20,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 1000,
+     "rpm": 4000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_20MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SF_30.00_110_000_KS",
+   "type": "SF",
+   "d": 30,
+   "length": 110,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_30MM",
+     "ap": 8,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1000
+    }
+   ]
+  },
+  {
+   "code": "ST_04.00_025_G45_KS",
+   "type": "ST",
+   "d": 4,
+   "length": 25,
+   "shape": "G45",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "engrave",
+     "name": "GRAVUR",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 800,
+     "rpm": 8000
+    },
+    {
+     "kind": "deburr",
+     "name": "ENTGRATEN_1",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1500,
+     "rpm": 8000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_2",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "ST_08.00_040_G45_KS",
+   "type": "ST",
+   "d": 8,
+   "length": 40,
+   "shape": "G45",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "deburr",
+     "name": "ENTGRATEN_1_COPY",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1500,
+     "rpm": 8000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_2_COPY",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "TF_07.50_025_T1.5_KS",
+   "type": "TF",
+   "d": 7.5,
+   "length": 25,
+   "shape": "T1.5",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "tslot",
+     "name": "T-NUT",
+     "ap": 1,
+     "ae": null,
+     "feed": 120,
+     "rpm": 2000
+    }
+   ]
+  },
+  {
+   "code": "TF_63.40_030_R04_KS",
+   "type": "TF",
+   "d": 63.4,
+   "length": 30,
+   "shape": "R04",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "tslot",
+     "name": "T-NUT_R4",
+     "ap": null,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250,
+     "rpm": 800
+    }
+   ]
+  },
+  {
+   "code": "UDM_12.00_030_R03_KS",
+   "type": "UDM",
+   "d": 12,
+   "length": 30,
+   "shape": "R03",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "radius",
+     "name": "SCHL-RADIUS",
+     "ap": null,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 2000
+    }
+   ]
+  },
+  {
+   "code": "ZB_02.30_038_000_KS",
+   "type": "ZB",
+   "d": 2.3,
+   "length": 38,
+   "shape": "000",
+   "number": 38,
+   "ops": [
+    {
+     "kind": "centre",
+     "name": "ZENTRIERBOHREN",
+     "ap": 2,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  }
+ ],
+ "FH": [
+  {
+   "code": "KF_10.00_030_R05_FH",
+   "type": "KF",
+   "d": 10,
+   "length": 30,
+   "shape": "R05",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "KUGEL_R5",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 2500
+    },
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R5",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 1200
+    }
+   ]
+  },
+  {
+   "code": "KF_14.00_030_R07_FH",
+   "type": "KF",
+   "d": 14,
+   "length": 30,
+   "shape": "R07",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "KUGEL_R7",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 550,
+     "rpm": 1800
+    },
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R7",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 900
+    }
+   ]
+  },
+  {
+   "code": "KF_16.00_030_R08_FH",
+   "type": "KF",
+   "d": 16,
+   "length": 30,
+   "shape": "R08",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "KUGEL_R8",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 1500
+    }
+   ]
+  },
+  {
+   "code": "KF_30.00_030_R15_FH",
+   "type": "KF",
+   "d": 30,
+   "length": 30,
+   "shape": "R15",
+   "number": 35,
+   "ops": [
+    {
+     "kind": "ball",
+     "name": "KUGEL_R15",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 320,
+     "rpm": 800
+    },
+    {
+     "kind": "ball",
+     "name": "ABSENKUNG_KUGEL_R15",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 700
+    }
+   ]
+  },
+  {
+   "code": "KS_25.00_030_G45_FH",
+   "type": "KS",
+   "d": 25,
+   "length": 30,
+   "shape": "G45",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "countersink",
+     "name": "FASE_SENKER_1",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "MK_93.00_030_000_FH",
+   "type": "MK",
+   "d": 93,
+   "length": 30,
+   "shape": "000",
+   "number": 3,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN-MESSERKOPF",
+     "ap": 3,
+     "ae": {
+      "share": 0.95
+     },
+     "feed": 1000,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_00.98_035_000_FH",
+   "type": "SB",
+   "d": 0.98,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_0.98MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_035_000_FH",
+   "type": "SB",
+   "d": 1,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_045_000_FH",
+   "type": "SB",
+   "d": 1,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.00_055_000_FH",
+   "type": "SB",
+   "d": 1,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_035_000_FH",
+   "type": "SB",
+   "d": 1.3,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_045_000_FH",
+   "type": "SB",
+   "d": 1.3,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.30_055_000_FH",
+   "type": "SB",
+   "d": 1.3,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_035_000_FH",
+   "type": "SB",
+   "d": 1.5,
+   "length": 35,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_045_000_FH",
+   "type": "SB",
+   "d": 1.5,
+   "length": 45,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_055_000_FH",
+   "type": "SB",
+   "d": 1.5,
+   "length": 55,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.50_067_000_FH",
+   "type": "SB",
+   "d": 1.5,
+   "length": 67,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.5MM_1_C",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_035_000_FH",
+   "type": "SB",
+   "d": 1.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_045_000_FH",
+   "type": "SB",
+   "d": 1.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.60_055_000_FH",
+   "type": "SB",
+   "d": 1.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.6MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.68_035_000_FH",
+   "type": "SB",
+   "d": 1.68,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.68MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_035_000_FH",
+   "type": "SB",
+   "d": 1.8,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM_1Y",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_045_000_FH",
+   "type": "SB",
+   "d": 1.8,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_01.80_055_000_FH",
+   "type": "SB",
+   "d": 1.8,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.8MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_035_000_FH",
+   "type": "SB",
+   "d": 1.97,
+   "length": 35,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_045_000_FH",
+   "type": "SB",
+   "d": 1.97,
+   "length": 45,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_01.97_055_000_FH",
+   "type": "SB",
+   "d": 1.97,
+   "length": 55,
+   "shape": "000",
+   "number": 39,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_1.97MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_035_000_FH",
+   "type": "SB",
+   "d": 2,
+   "length": 35,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_045_000_FH",
+   "type": "SB",
+   "d": 2,
+   "length": 45,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_055_000_FH",
+   "type": "SB",
+   "d": 2,
+   "length": 55,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.00_080_000_FH",
+   "type": "SB",
+   "d": 2,
+   "length": 80,
+   "shape": "000",
+   "number": 12,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.0MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_035_000_FH",
+   "type": "SB",
+   "d": 2.2,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_045_000_FH",
+   "type": "SB",
+   "d": 2.2,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_055_000_FH",
+   "type": "SB",
+   "d": 2.2,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.20_080_000_FH",
+   "type": "SB",
+   "d": 2.2,
+   "length": 80,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.2MM__",
+     "ap": null,
+     "ae": null,
+     "feed": 200,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_035_000_FH",
+   "type": "SB",
+   "d": 2.3,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_045_000_FH",
+   "type": "SB",
+   "d": 2.3,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.30_055_000_FH",
+   "type": "SB",
+   "d": 2.3,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_035_000_FH",
+   "type": "SB",
+   "d": 2.5,
+   "length": 35,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_045_000_FH",
+   "type": "SB",
+   "d": 2.5,
+   "length": 45,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_055_000_FH",
+   "type": "SB",
+   "d": 2.5,
+   "length": 55,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.50_080_000_FH",
+   "type": "SB",
+   "d": 2.5,
+   "length": 80,
+   "shape": "000",
+   "number": 13,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_035_000_FH",
+   "type": "SB",
+   "d": 2.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_045_000_FH",
+   "type": "SB",
+   "d": 2.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.60_055_000_FH",
+   "type": "SB",
+   "d": 2.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.6MM_C",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.80_035_000_FH",
+   "type": "SB",
+   "d": 2.8,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.8MM",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.80_045_000_FH",
+   "type": "SB",
+   "d": 2.8,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.8MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.80_055_000_FH",
+   "type": "SB",
+   "d": 2.8,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_035_000_FH",
+   "type": "SB",
+   "d": 2.96,
+   "length": 35,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_045_000_FH",
+   "type": "SB",
+   "d": 2.96,
+   "length": 45,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_055_000_FH",
+   "type": "SB",
+   "d": 2.96,
+   "length": 55,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 230,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_02.96_080_000_FH",
+   "type": "SB",
+   "d": 2.96,
+   "length": 80,
+   "shape": "000",
+   "number": 40,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_2.96MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_035_000_FH",
+   "type": "SB",
+   "d": 3,
+   "length": 35,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_045_000_FH",
+   "type": "SB",
+   "d": 3,
+   "length": 45,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_-",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_055_000_FH",
+   "type": "SB",
+   "d": 3,
+   "length": 55,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.00_090_000_FH",
+   "type": "SB",
+   "d": 3,
+   "length": 90,
+   "shape": "000",
+   "number": 2,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.10_035_000_FH",
+   "type": "SB",
+   "d": 3.1,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.1MM__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.10_045_000_FH",
+   "type": "SB",
+   "d": 3.1,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.1MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.10_055_000_FH",
+   "type": "SB",
+   "d": 3.1,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.1MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.20_035_000_FH",
+   "type": "SB",
+   "d": 3.2,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.2MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.20_045_000_FH",
+   "type": "SB",
+   "d": 3.2,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.2MM__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.20_055_000_FH",
+   "type": "SB",
+   "d": 3.2,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_035_000_FH",
+   "type": "SB",
+   "d": 3.3,
+   "length": 35,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_045_000_FH",
+   "type": "SB",
+   "d": 3.3,
+   "length": 45,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.30_055_000_FH",
+   "type": "SB",
+   "d": 3.3,
+   "length": 55,
+   "shape": "000",
+   "number": 29,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_035_000_FH",
+   "type": "SB",
+   "d": 3.47,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_045_000_FH",
+   "type": "SB",
+   "d": 3.47,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.47_055_000_FH",
+   "type": "SB",
+   "d": 3.47,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.47MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_035_000_FH",
+   "type": "SB",
+   "d": 3.5,
+   "length": 35,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 5000
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_045_000_FH",
+   "type": "SB",
+   "d": 3.5,
+   "length": 45,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SB_03.50_055_000_FH",
+   "type": "SB",
+   "d": 3.5,
+   "length": 55,
+   "shape": "000",
+   "number": 15,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_3.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_035_000_FH",
+   "type": "SB",
+   "d": 4,
+   "length": 35,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_045_000_FH",
+   "type": "SB",
+   "d": 4,
+   "length": 45,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_055_000_FH",
+   "type": "SB",
+   "d": 4,
+   "length": 55,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.00_067_000_FH",
+   "type": "SB",
+   "d": 4,
+   "length": 67,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_035_000_FH",
+   "type": "SB",
+   "d": 4.1,
+   "length": 35,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_045_000_FH",
+   "type": "SB",
+   "d": 4.1,
+   "length": 45,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_11_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_055_000_FH",
+   "type": "SB",
+   "d": 4.1,
+   "length": 55,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.10_067_000_FH",
+   "type": "SB",
+   "d": 4.1,
+   "length": 67,
+   "shape": "000",
+   "number": 6,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.1MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_035_000_FH",
+   "type": "SB",
+   "d": 4.2,
+   "length": 35,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_045_000_FH",
+   "type": "SB",
+   "d": 4.2,
+   "length": 45,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_055_000_FH",
+   "type": "SB",
+   "d": 4.2,
+   "length": 55,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.20_067_000_FH",
+   "type": "SB",
+   "d": 4.2,
+   "length": 67,
+   "shape": "000",
+   "number": 37,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_035_000_FH",
+   "type": "SB",
+   "d": 4.4,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_045_000_FH",
+   "type": "SB",
+   "d": 4.4,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_055_000_FH",
+   "type": "SB",
+   "d": 4.4,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.40_072_000_FH",
+   "type": "SB",
+   "d": 4.4,
+   "length": 72,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.4MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_035_000_FH",
+   "type": "SB",
+   "d": 4.5,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_045_000_FH",
+   "type": "SB",
+   "d": 4.5,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_055_000_FH",
+   "type": "SB",
+   "d": 4.5,
+   "length": 55,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.50_072_000_FH",
+   "type": "SB",
+   "d": 4.5,
+   "length": 72,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_035_000_FH",
+   "type": "SB",
+   "d": 4.6,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM__",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_045_000_FH",
+   "type": "SB",
+   "d": 4.6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.60_055_000_FH",
+   "type": "SB",
+   "d": 4.6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.70_035_000_FH",
+   "type": "SB",
+   "d": 4.7,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.7MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_035_000_FH",
+   "type": "SB",
+   "d": 4.8,
+   "length": 35,
+   "shape": "000",
+   "number": 16,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3800
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_045_000_FH",
+   "type": "SB",
+   "d": 4.8,
+   "length": 45,
+   "shape": "000",
+   "number": 16,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1__",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_055_000_FH",
+   "type": "SB",
+   "d": 4.8,
+   "length": 55,
+   "shape": "000",
+   "number": 16,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.80_099_000_FH",
+   "type": "SB",
+   "d": 4.8,
+   "length": 99,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_035_000_FH",
+   "type": "SB",
+   "d": 4.85,
+   "length": 35,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_045_000_FH",
+   "type": "SB",
+   "d": 4.85,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_055_000_FH",
+   "type": "SB",
+   "d": 4.85,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.85_099_000_FH",
+   "type": "SB",
+   "d": 4.85,
+   "length": 99,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.85MM1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_035_000_FH",
+   "type": "SB",
+   "d": 4.9,
+   "length": 35,
+   "shape": "000",
+   "number": 21,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_11",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_045_000_FH",
+   "type": "SB",
+   "d": 4.9,
+   "length": 45,
+   "shape": "000",
+   "number": 21,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_04.90_055_000_FH",
+   "type": "SB",
+   "d": 4.9,
+   "length": 55,
+   "shape": "000",
+   "number": 21,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_4.9MM_1_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_035_000_FH",
+   "type": "SB",
+   "d": 5,
+   "length": 35,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_045_000_FH",
+   "type": "SB",
+   "d": 5,
+   "length": 45,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.00_055_000_FH",
+   "type": "SB",
+   "d": 5,
+   "length": 55,
+   "shape": "000",
+   "number": 19,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.0MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_05.20_045_000_FH",
+   "type": "SB",
+   "d": 5.2,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.2MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 3100
+    }
+   ]
+  },
+  {
+   "code": "SB_05.40_045_000_FH",
+   "type": "SB",
+   "d": 5.4,
+   "length": 45,
+   "shape": "000",
+   "number": 18,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.4MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 700,
+     "rpm": 2900
+    }
+   ]
+  },
+  {
+   "code": "SB_05.40_055_000_FH",
+   "type": "SB",
+   "d": 5.4,
+   "length": 55,
+   "shape": "000",
+   "number": 36,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_5.4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 700,
+     "rpm": 2900
+    }
+   ]
+  },
+  {
+   "code": "SB_06.00_045_000_FH",
+   "type": "SB",
+   "d": 6,
+   "length": 45,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_06.00_055_000_FH",
+   "type": "SB",
+   "d": 6,
+   "length": 55,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.0MM_COPY",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_06.20_055_000_FH",
+   "type": "SB",
+   "d": 6.2,
+   "length": 55,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.2MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SB_06.40_045_000_FH",
+   "type": "SB",
+   "d": 6.4,
+   "length": 45,
+   "shape": "000",
+   "number": 14,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_6.4MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 2500
+    }
+   ]
+  },
+  {
+   "code": "SB_07.00_045_000_FH",
+   "type": "SB",
+   "d": 7,
+   "length": 45,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.0MM",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_07.00_060_000_FH",
+   "type": "SB",
+   "d": 7,
+   "length": 60,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 600,
+     "rpm": 3000
+    }
+   ]
+  },
+  {
+   "code": "SB_07.60_045_000_FH",
+   "type": "SB",
+   "d": 7.6,
+   "length": 45,
+   "shape": "000",
+   "number": 3,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_7.6MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 800,
+     "rpm": 3500
+    }
+   ]
+  },
+  {
+   "code": "SB_10.00_050_000_FH",
+   "type": "SB",
+   "d": 10,
+   "length": 50,
+   "shape": "000",
+   "number": 3,
+   "ops": [
+    {
+     "kind": "drill",
+     "name": "BOHREN_10.0MM_",
+     "ap": null,
+     "ae": null,
+     "feed": 100,
+     "rpm": 600
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_010_000_FH",
+   "type": "SF",
+   "d": 1,
+   "length": 10,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 100,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY_1",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 100,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_025_000_FH",
+   "type": "SF",
+   "d": 1,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY_COPY_1",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY",
+     "ap": 0.3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_033_000_FH",
+   "type": "SF",
+   "d": 1,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 80,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_COPY_",
+     "ap": 0.2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.00_040_000_FH",
+   "type": "SF",
+   "d": 1,
+   "length": 40,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.MM_COPY_COPY",
+     "ap": 0.1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 60,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_1.MM_C",
+     "ap": 0.1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 300,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_025_000_FH",
+   "type": "SF",
+   "d": 1.5,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_2",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_1.5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_033_000_FH",
+   "type": "SF",
+   "d": 1.5,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_1",
+     "ap": 0.4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_1.5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_01.50_040_000_FH",
+   "type": "SF",
+   "d": 1.5,
+   "length": 40,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_1.5MM_1_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_025_000_FH",
+   "type": "SF",
+   "d": 2,
+   "length": 25,
+   "shape": "000",
+   "number": 11,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 700,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_2MM",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_033_000_FH",
+   "type": "SF",
+   "d": 2,
+   "length": 33,
+   "shape": "000",
+   "number": 1,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_2MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_040_000_FH",
+   "type": "SF",
+   "d": 2,
+   "length": 40,
+   "shape": "000",
+   "number": 31,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_COPY",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 150,
+     "rpm": 6000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_COPY_COPY",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.00_047_000_FH",
+   "type": "SF",
+   "d": 2,
+   "length": 47,
+   "shape": "000",
+   "number": 31,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2MM_COPY_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 160,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2MM_COPY_1_COPY",
+     "ap": 0.4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_2MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 180,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_025_000_FH",
+   "type": "SF",
+   "d": 2.5,
+   "length": 25,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_033_000_FH",
+   "type": "SF",
+   "d": 2.5,
+   "length": 33,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM_1_",
+     "ap": 0.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_040_000_FH",
+   "type": "SF",
+   "d": 2.5,
+   "length": 40,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1_1",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM_11",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_02.50_047_000_FH",
+   "type": "SF",
+   "d": 2.5,
+   "length": 47,
+   "shape": "000",
+   "number": 45,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1_C",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_2.5MM_",
+     "ap": 1,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 200,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_025_000_FH",
+   "type": "SF",
+   "d": 3,
+   "length": 25,
+   "shape": "000",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 270,
+     "rpm": 7500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 270,
+     "rpm": 7500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_3MM",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 2200
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_033_000_FH",
+   "type": "SF",
+   "d": 3,
+   "length": 33,
+   "shape": "000",
+   "number": 10,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250.005,
+     "rpm": 7500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250.005,
+     "rpm": 7500
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_2.5MM_1_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250.005,
+     "rpm": 7500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_3MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 400,
+     "rpm": 2200
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_040_000_FH",
+   "type": "SF",
+   "d": 3,
+   "length": 40,
+   "shape": "000",
+   "number": 32,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1_COPY",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 199.995,
+     "rpm": 7500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1_COPY_COPY",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 199.995,
+     "rpm": 7500
+    }
+   ]
+  },
+  {
+   "code": "SF_03.00_047_000_FH",
+   "type": "SF",
+   "d": 3,
+   "length": 47,
+   "shape": "000",
+   "number": 32,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_3MM_1_COPY_1",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 199.995,
+     "rpm": 7500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_3MM_1_COPY_1_COPY",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 199.995,
+     "rpm": 7500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_3MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 210,
+     "rpm": 4500
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_033_000_FH",
+   "type": "SF",
+   "d": 4,
+   "length": 33,
+   "shape": "000",
+   "number": 4,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_2",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 450.002,
+     "rpm": 7000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHTE_4MM_3_",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 7000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_4MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1800
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_044_000_FH",
+   "type": "SF",
+   "d": 4,
+   "length": 44,
+   "shape": "000",
+   "number": 25,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 7000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_4MM",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 7000
+    }
+   ]
+  },
+  {
+   "code": "SF_04.00_053_000_FH",
+   "type": "SF",
+   "d": 4,
+   "length": 53,
+   "shape": "000",
+   "number": 33,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_4MM_3",
+     "ap": 1.5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_4MM_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 350,
+     "rpm": 7000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_4MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 4000
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_033_000_FH",
+   "type": "SF",
+   "d": 5,
+   "length": 33,
+   "shape": "000",
+   "number": 5,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_1",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 550.004,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_5MM_1",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 550.004,
+     "rpm": 6500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_5MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1400
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_044_000_FH",
+   "type": "SF",
+   "d": 5,
+   "length": 44,
+   "shape": "000",
+   "number": 26,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_2",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 449.995,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_5MM",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 449.995,
+     "rpm": 6500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_5MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1400
+    }
+   ]
+  },
+  {
+   "code": "SF_05.00_058_000_FH",
+   "type": "SF",
+   "d": 5,
+   "length": 58,
+   "shape": "000",
+   "number": 26,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_5MM_2_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 600,
+     "rpm": 8000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_5MM_2",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 390,
+     "rpm": 6500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_5MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 250,
+     "rpm": 3100
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_033_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 33,
+   "shape": "000",
+   "number": 7,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_1",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 650,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_6MM_1",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 650,
+     "rpm": 6500
+    },
+    {
+     "kind": "countersink",
+     "name": "SENK_LED",
+     "ap": null,
+     "ae": null,
+     "feed": 300,
+     "rpm": 2600
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_6MM",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_044_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 44,
+   "shape": "000",
+   "number": 7,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 579.995,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_6MM",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 579.995,
+     "rpm": 6500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_6MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 1000
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_055_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 55,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 550.004,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_COPY",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 550.004,
+     "rpm": 6500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_6MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 280,
+     "rpm": 2600
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_065_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 65,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_2",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 520,
+     "rpm": 6500
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_075_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 75,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_1",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 520,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_2_COPY",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 520,
+     "rpm": 6500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_1_COPY",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 520,
+     "rpm": 6500
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_085_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 85,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_3",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 449.999,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_3_COPY_1",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 449.999,
+     "rpm": 5500
+    }
+   ]
+  },
+  {
+   "code": "SF_06.00_092_000_FH",
+   "type": "SF",
+   "d": 6,
+   "length": 92,
+   "shape": "000",
+   "number": 27,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_6MM_2_COPY_3_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 449.999,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT__6MM_2_COPY_3_COPY_COPY",
+     "ap": 2,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_044_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 44,
+   "shape": "000",
+   "number": 9,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "ZYLINDER_8MM",
+     "ap": 13,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 900,
+     "rpm": 6000
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_1",
+     "ap": 8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 900,
+     "rpm": 6000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_3",
+     "ap": 8,
+     "ae": {
+      "mm": 4
+     },
+     "feed": 900,
+     "rpm": 6000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_8MM",
+     "ap": null,
+     "ae": null,
+     "feed": 900,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_055_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 55,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500.005,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM",
+     "ap": 8,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 800.004,
+     "rpm": 6000
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_8MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 800.004,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_065_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 65,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_1",
+     "ap": 6,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 699.996,
+     "rpm": 6000
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_COPY",
+     "ap": 6,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 699.996,
+     "rpm": 6000
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_075_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 75,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500.005,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM1",
+     "ap": 5,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 500.005,
+     "rpm": 5500
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_085_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 85,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_2",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.995,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_2",
+     "ap": 4,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.995,
+     "rpm": 5500
+    }
+   ]
+  },
+  {
+   "code": "SF_08.00_092_000_FH",
+   "type": "SF",
+   "d": 8,
+   "length": 92,
+   "shape": "000",
+   "number": 28,
+   "ops": [
+    {
+     "kind": "pocket",
+     "name": "TASCHE_8MM_2_COPY_3",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.995,
+     "rpm": 5500
+    },
+    {
+     "kind": "finish",
+     "name": "SCHLICHT_8MM_",
+     "ap": 3,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 599.995,
+     "rpm": 5500
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_8MM_2",
+     "ap": null,
+     "ae": null,
+     "feed": 350,
+     "rpm": 2000
+    }
+   ]
+  },
+  {
+   "code": "SF_20.00_055_000_FH",
+   "type": "SF",
+   "d": 20,
+   "length": 55,
+   "shape": "000",
+   "number": 20,
+   "ops": [
+    {
+     "kind": "face",
+     "name": "PLAN-20MM",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1000,
+     "rpm": 4000
+    },
+    {
+     "kind": "contour",
+     "name": "PROFIL_20MM",
+     "ap": 10,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 650,
+     "rpm": 2200
+    },
+    {
+     "kind": "contour",
+     "name": "KONTUR_20MM_",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 650.003,
+     "rpm": 2200
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_20MM",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 650.003,
+     "rpm": 2200
+    }
+   ]
+  },
+  {
+   "code": "SF_20.00_065_000_FH",
+   "type": "SF",
+   "d": 20,
+   "length": 65,
+   "shape": "000",
+   "number": 20,
+   "ops": [
+    {
+     "kind": "contour",
+     "name": "KONTUR_20MM_1",
+     "ap": 10,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 650.003,
+     "rpm": 2200
+    },
+    {
+     "kind": "pocket",
+     "name": "TASCHE_20MM_1",
+     "ap": 10,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 650,
+     "rpm": 2200
+    },
+    {
+     "kind": "counterbore",
+     "name": "ABSENKUNG_20MM_1",
+     "ap": null,
+     "ae": null,
+     "feed": 500,
+     "rpm": 500
+    }
+   ]
+  },
+  {
+   "code": "ST_04.00_025_G45_FH",
+   "type": "ST",
+   "d": 4,
+   "length": 25,
+   "shape": "G45",
+   "number": 8,
+   "ops": [
+    {
+     "kind": "chamfer",
+     "name": "FASE_MS-UU",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 900,
+     "rpm": 8000
+    },
+    {
+     "kind": "engrave",
+     "name": "GRAVUR_TSKU",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 900,
+     "rpm": 8000
+    },
+    {
+     "kind": "deburr",
+     "name": "ENTGRATEN_1",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1500,
+     "rpm": 8000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_2",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "ST_08.00_040_G60_FH",
+   "type": "ST",
+   "d": 8,
+   "length": 40,
+   "shape": "G60",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "deburr",
+     "name": "ENTGRATEN_1_COPY",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 1500,
+     "rpm": 8000
+    },
+    {
+     "kind": "chamfer",
+     "name": "FASE_45_GRAD_2_COPY",
+     "ap": null,
+     "ae": {
+      "share": 0.75
+     },
+     "feed": 600,
+     "rpm": 8000
+    }
+   ]
+  },
+  {
+   "code": "UDM_12.00_030_R03_FH",
+   "type": "UDM",
+   "d": 12,
+   "length": 30,
+   "shape": "R03",
+   "number": 22,
+   "ops": [
+    {
+     "kind": "radius",
+     "name": "SCHL-RADIUS",
+     "ap": null,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 400,
+     "rpm": 2000
+    },
+    {
+     "kind": "radius",
+     "name": "SCHL-RADIUS_1",
+     "ap": null,
+     "ae": {
+      "share": 0.5
+     },
+     "feed": 250,
+     "rpm": 2500
+    }
+   ]
+  }
+ ]
+}

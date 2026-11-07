@@ -26,7 +26,12 @@ export interface CamSummary {
   raw: number[];
   missing: Need[];
   notes: CamNote[];
-  setups: { side: string; notes: string[]; ops: { name: string; tool: number; diameter: number; learned: boolean }[] }[];
+  setups: {
+    side: string;
+    notes: string[];
+    /** learned: cutting data from the shop's templates or programs (false: a careful default). */
+    ops: { name: string; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
+  }[];
 }
 
 export type CamMessage =
@@ -62,7 +67,16 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
         setups: r.setups.map((s) => ({
           side: s.side,
           notes: s.notes,
-          ops: s.ops.map((o) => ({ name: o.name, tool: o.tool.number, diameter: o.tool.diameter, learned: o.cut.from !== 'default' })),
+          ops: s.ops.map((o) => ({
+            name: o.name,
+            tool: o.tool.number,
+            diameter: o.tool.diameter,
+            length: o.tool.length,
+            code: o.tool.code,
+            type: o.tool.type,
+            inMachine: o.tool.inMachine,
+            learned: o.cut.from !== 'default',
+          })),
         })),
       },
     });
