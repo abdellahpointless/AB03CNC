@@ -2,7 +2,8 @@ import type { Tool } from '../../types';
 import type { Vec } from '../toolpath';
 import { ALL, IDENTITY, apply, mul, transpose, type Mat3 } from '../orient';
 import { differences, layModel, voxelize, type Piece } from '../modelCompare';
-import { buildInput, carve, KEPT, type Grid } from '../stockSim';
+import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
+import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
 import { analyseProgram, OVERHANG, VISE } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
@@ -13,7 +14,8 @@ import { clearLevel, filled, swept, trim, type Ring } from './clear';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
-import { checkSetup, drillThrust, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
+import { NEST, nestFor, type Nest } from './nest';
+import { checkNest, checkSetup, drillThrust, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -45,6 +47,9 @@ export interface CamInput {
   /** Template tool codes the operator does not have, and the ones picked in their place. */
   exclude?: string[];
   prefer?: string[];
+  /** Sides held in the POM nest (set by camProgram when nothing else holds them), or none ever (the nest's own program). */
+  nestSides?: string[];
+  noNest?: boolean;
 }
 
 export interface CamOp {
@@ -66,6 +71,8 @@ export interface CamSetup {
   /** How deep the jaws grip (mm), and what the vise does to the part with it (physics.ts). */
   grip: number;
   physics: SetupCheck;
+  /** Held in the POM nest instead of the vise jaws (the nest in the vise). */
+  nest?: Nest;
   ops: CamOp[];
 }
 
@@ -79,6 +86,8 @@ export interface CamResult {
   raw: Vec;
   /** Where the model lies in setup 1's program coordinates (p -> R p + t): how it was planned. */
   pose: { R: Mat3; t: Vec } | null;
+  /** The POM nests the part needs (the last way to hold it), each with its own program. */
+  nests?: { side: string; nest: Nest; code: string; check: CamCheck }[];
 }
 
 const TABLE_Z = -57;
@@ -157,6 +166,13 @@ function caleFor(height: number, want: number, least = 3): { cale: number; grip:
     if (!best || score < (best.grip <= target + 1e-6 ? target - best.grip : 100 + best.grip - target)) best = { cale: c, grip };
   }
   return best ?? { cale: 42, grip: 3 };
+}
+
+/** The cale under the nest in the vise: the jaws grip its floor and the foot of its walls (about 8 mm). */
+function nestCale(depth: number): number {
+  const most = depth + NEST.floor - 2;
+  const fits = CALE_HEIGHTS.filter((c) => JAW - c >= 5 && JAW - c <= most);
+  return fits.length ? fits.reduce((b, c) => (Math.abs(JAW - c - 8) < Math.abs(JAW - b - 8) ? c : b)) : CALE_HEIGHTS[CALE_HEIGHTS.length - 1];
 }
 
 /** One end mill per Ø (the longest), largest first. */
@@ -304,10 +320,11 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
 }
 
 /** Centre-drill, then drill (G83 pecking), one tool after the other. */
-function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number): CamOp[] {
+function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number): CamOp[] {
   const ops: CamOp[] = [];
-  // Holes already there (finished from this side) need no centre.
-  const fresh = list.filter((x) => !x.again);
+  // Holes already there (finished from this side) need no centre; nor do holes too deep down for
+  // the centre drill's holder to stay above the stock's top (drilled without one).
+  const fresh = list.filter((x) => !x.again && (!spot || (spot.length || 99) >= stockTop - (x.h.top - Math.min(x.h.r, spot.diameter / 2)) + 2));
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
@@ -609,8 +626,11 @@ export interface CamCheck {
   pieces: Piece[];
   minutes: number;
   toolChanges: number;
-  /** Tools or holders into the jaws or the part, by the app's own check (these block it). */
+  /** Tools or holders into the jaws or the part, rapids into material (all block it). */
   collisions: number;
+  /** Of those: the shop's holder (Ø50 then Ø63 from the typed length) into material, rapids through material. */
+  holders: number;
+  rapids: number;
   /** Spots where a tool goes into a cale under the part (move that cale: a warning). */
   cales: number;
 }
@@ -630,13 +650,31 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     diff = 'mismatch' in laid ? null : differences(laid);
   }
   const hits = an.setups.flatMap((x) => x.collisions);
+  // Check 1, geometric, on every move against the stock as it is then: the shop's holder above the
+  // typed length; and a rapid must not take any material (cut as if it were a feed: what it would
+  // remove first is a crash).
+  let holders = 0;
+  let rapids = 0;
+  if (sim) {
+    const g = carve({ ...sim, maxVoxels: 600_000, surfaceMoves: false });
+    holders = holderHits(sim, g, tp.moves.map(movePath), tp.moves.map((m) => m.reach), tp.moves.map((m) => m.dia), shopHolder).length;
+    const all = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: 300_000, surfaceMoves: false, dropLoose: false });
+    const into = new Set<number>();
+    for (let v = 0; v < all.removed.length; v++) {
+      const i = all.removed[v];
+      if (i !== KEPT && tp.moves[i]?.kind === 'rapid') into.add(i);
+    }
+    rapids = into.size;
+  }
   return {
     match: diff?.match ?? 0,
     pieces: diff?.pieces ?? [],
     minutes: tp.totalSeconds / 60,
     toolChanges: tp.toolChanges,
     // As the remapper: a tool into a cale is a warning (the operator moves the cale), not a hit.
-    collisions: hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer').length,
+    collisions: hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer').length + holders + rapids,
+    holders,
+    rapids,
     cales: hits.filter((h) => h.what === 'cale').length,
   };
 }
@@ -653,14 +691,37 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let best: (CamResult & { check: CamCheck }) | null = null;
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
   const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.setups.every((x) => x.physics.ok);
+  let bestAxis = order[0];
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
     const now = { ...r, check: checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose) };
     progress(i + 1, order.length);
     const better = !best || (good(now) && (!good(best) || now.check.minutes < best.check.minutes)) || (!good(now) && !good(best) && now.check.match > best.check.match);
-    if (better) best = now;
+    if (better) [best, bestAxis] = [now, axis];
   });
-  return best!;
+  // The last way (shop rule, rare): the setups no way of holding in the vise passes, in a POM nest.
+  // Planned again with them nested; each nest gets its own program (POM, held in the vise).
+  const kept = best!;
+  const fails = (x: CamResult) => x.setups.filter((st) => !st.physics.ok).map((st) => st.side);
+  if (input.noNest || !fails(kept).length) return kept;
+  // Planned again with the failing sides nested, and again with any side that then fails.
+  let sides = fails(kept);
+  let nested: CamResult & { check: CamCheck } = kept;
+  for (let round = 0; round < 3; round++) {
+    const r = planFor({ ...input, nestSides: sides }, bestAxis);
+    nested = { ...r, check: checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose) };
+    const more = fails(nested).filter((x) => !sides.includes(x));
+    if (!more.length) break;
+    sides = [...sides, ...more];
+  }
+  if (!good(nested) && !(nested.check.match >= kept.check.match - 0.002 && fails(nested).length < fails(kept).length)) return kept;
+  nested.nests = nested.setups
+    .filter((x) => x.nest)
+    .map((x) => {
+      const own = camProgram({ tris: x.nest!.tris, material: 'POM', tools: input.tools, brand: input.brand, limits: input.limits, speeds: input.speeds, name: `${input.name ?? 'TEIL'} NEST`, noNest: true });
+      return { side: x.side, nest: x.nest!, code: own.code, check: own.check };
+    });
+  return nested;
 }
 
 /** The program with the part's `vertical` model axis as its height in the first two setups. */
@@ -749,20 +810,30 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const H = f.max[2] - f.min[2];
     const stockH = sb.hi[2] - sb.lo[2];
     // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
-    const { cale, grip } = caleFor(stockH, -H - 0.5 - sb.lo[2], least);
+    // In the POM nest the pocket's walls stand where the jaws would: cut down to the nest's top only.
+    const nested = !!input.nestSides?.includes(side.name) && stockH >= NEST.minDepth + 1;
+    // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
+    // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
+    const nestDepth = Math.min(stockH - 1, 30, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
+    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     const hold: [number, number] = [sb.hi[0] - sb.lo[0], sb.hi[1] - sb.lo[1]];
     const cx = (sb.lo[0] + sb.hi[0]) / 2;
     const cy = (sb.lo[1] + sb.hi[1]) / 2;
-    const shift: Vec = [STOP_X + hold[0] / 2 - cx, STOP_Y - hold[1] / 2 - cy, TABLE_Z - floor];
+    // In the nest the part is the nest's wall off the stop and the fixed jaw, and on its floor.
+    const shift: Vec = nested
+      ? [STOP_X + NEST.wall + 2 * NEST.clearance + hold[0] / 2 - cx, STOP_Y - NEST.wall - hold[1] / 2 - cy, TABLE_Z - (floor - NEST.floor)]
+      : [STOP_X + hold[0] / 2 - cx, STOP_Y - hold[1] / 2 - cy, TABLE_Z - floor];
     const turn = prevR ? turnPhrase(mul(R, transpose(prevR))) : '';
     const sizes = `${mm(hold[0])} IN X UND ${mm(hold[1])} IN Y`;
     // "Z+ IN 2MM": the raw top that far above Z0 (what the facing takes off), as the shop writes it.
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
-    const setupNotes = [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`];
+    const setupNotes = nested
+      ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
+      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`];
     // Too long for one vise: both, as the checker reads it back (setups.ts).
-    if (hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
+    if (!nested && hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
 
@@ -781,9 +852,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
     };
     const drills = usable(tools, ['SB']);
-    // The drill of that Ø, else the nearest within 0.12 (as the shop does: Ø2.05 with Ø2, Ø3.2 with Ø3.3).
-    const drillFor = (h: Hole, depth: number) =>
-      drills.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12 && (x.length || 99) >= depth + 2).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
+    // The drill of that Ø, else the nearest within 0.12 (as the shop does: Ø2.05 with Ø2, Ø3.2 with Ø3.3),
+    // long enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
+    const stockTop = Math.max(sb.hi[2], 0);
+    const reachTo = (zEnd: number) => stockTop - zEnd + 2;
+    const drillFor = (h: Hole, zEnd: number) =>
+      drills.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12 && (x.length || 99) >= reachTo(zEnd)).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
     const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean }[] = [];
     const keepHoles: Hole[] = [];
     for (const h of holes) {
@@ -794,14 +868,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
         keepHoles.push(h);
         // The far end the setup before left narrow (its drill stopped in the stock, over the
         // cales): finished from this side, into the hole already there.
-        const d = lip > 0 && h.through ? drillFor(h, lip + h.r + 1) : undefined;
+        const d = lip > 0 && h.through ? drillFor(h, h.top - lip - h.r - 1) : undefined;
         if (d) {
           toDrill.push({ h, tool: d, z: h.top - lip - 0.3 * d.diameter - 0.5, again: true });
           drilled.set(k, 0);
         }
         continue;
       }
-      const d = drillFor(h, depth);
+      const d = drillFor(h, h.top - depth);
       if (d) {
         // Through the part but not through the stock under it: the cales are there. What that
         // leaves narrow at the far end is drilled from the other side.
@@ -817,14 +891,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
       } else {
         // No drill: milled when an end mill fits (slower); the drill is listed either way.
         const millable = mills.length && mills[mills.length - 1].diameter <= h.r * 2 - 0.2;
-        needOnce({ category: 'foret', diameter: Math.round(h.r * 200) / 100, minLength: Math.ceil(depth + 2), why: { key: millable ? 'holeMilled' : 'hole', d: Math.round(h.r * 200) / 100, depth: Math.round((h.top - h.bottom) * 10) / 10 } });
+        needOnce({ category: 'foret', diameter: Math.round(h.r * 200) / 100, minLength: Math.ceil(reachTo(h.top - depth)), why: { key: millable ? 'holeMilled' : 'hole', d: Math.round(h.r * 200) / 100, depth: Math.round((h.top - h.bottom) * 10) / 10 } });
         if (!millable) {
           keepHoles.push(h);
           drilled.set(k, 0);
         }
       }
     }
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear));
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear, stockTop));
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
@@ -912,7 +986,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
-      const paths = graver ? chamferPaths(P, f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })), graver.diameter / 2, jawLimit) : [];
+      // Only the chamfers the graver reaches with its holder above the stock's top.
+      const reachable = f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })).filter((c) => !graver || (graver.length || 99) >= stockTop - (c.lo - 0.3) + 2);
+      const paths = graver ? chamferPaths(P, reachable, graver.diameter / 2, jawLimit) : [];
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
       else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, clear));
     }
@@ -932,8 +1008,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], width || hold[1], limits));
       return checkSetup({ material: mat, length: hold[0], width: width || hold[1], height: stockH, grip: g, thin, contact, loads, squeeze });
     };
-    const physics = physicsAt(grip);
-    if (least === 3 && (physics.feed < 1 || !physics.ok)) {
+    const nest = nested ? nestFor([sb.lo[0], sb.lo[1]], [sb.hi[0], sb.hi[1]], sb.lo[2], nestDepth) : undefined;
+    const physics = nest
+      ? checkNest({ material: mat, loads: ops.map((op) => loadOf(op, mat, sb.lo[0], hold[1], limits)), screws: nest.screws.length })
+      : physicsAt(grip);
+    if (!nested && least === 3 && (physics.feed < 1 || !physics.ok)) {
       const deeper = CALE_HEIGHTS.map((c) => JAW - c)
         .filter((g) => g > grip && g <= stockH - 1)
         .sort((p, q) => p - q)
@@ -949,7 +1028,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ops: done });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), ops: done });
     prevR = R;
     return true;
   };

@@ -963,7 +963,33 @@ export interface HolderHit {
  * against the material still there when the move runs. Moves without a stated length are not
  * checked. Moves of one tool close together are one hit (the deepest).
  */
-export function holderHits(input: SimInput, g: Grid, paths: Vec[][], reach: (number | null | undefined)[], dia: (number | null | undefined)[] = []): HolderHit[] {
+/** A body round the spindle axis: cylinders from `from` to `to` mm above the tool's tip. */
+export type Body = { from: number; to: number; radius: number }[];
+
+/**
+ * The shop's holder as CAM AI checks it (it does not know which holder is used): from the typed
+ * length up, the Ø50 nut for 30 mm, then Ø63 to the spindle.
+ * shortcut: the nut height is taken from the holder photo by eye; the real holders per machine are the upgrade.
+ */
+export const shopHolder = (_diameter: number, length: number): Body => [
+  { from: length, to: length + 30, radius: 25 },
+  { from: length + 30, to: length + 180, radius: 31.5 },
+];
+
+/** The tool itself up to its typed length, then the shop's holder: what must not touch material in a rapid. */
+export const shopToolBody = (diameter: number, length: number): Body => [{ from: 0, to: length, radius: diameter / 2 }, ...shopHolder(diameter, length)];
+
+export function holderHits(
+  input: SimInput,
+  g: Grid,
+  paths: Vec[][],
+  reach: (number | null | undefined)[],
+  dia: (number | null | undefined)[] = [],
+  /** What is checked round the spindle axis (default: the app's holder above the typed length). */
+  body: (diameter: number, length: number) => Body = (d, L) => [{ from: L, to: L + holderOf(d).height, radius: holderOf(d).radius }],
+  /** Which moves, by index (default: all). */
+  only: (index: number) => boolean = () => true,
+): HolderHit[] {
   const diameter = new Map(input.tools.map((t) => [t.tool, t.radius * 2]));
   const [nx, ny, nz] = g.n;
   // The part's highest point on each setup's machine (higher holders cannot touch it).
@@ -982,11 +1008,12 @@ export function holderHits(input: SimInput, g: Grid, paths: Vec[][], reach: (num
     const mv = input.moves[i];
     const L = reach[i];
     const s = mv && input.setups[mv.setup];
-    if (!s || !L || path.length < 1) return;
+    if (!s || !L || path.length < 1 || !only(i)) return;
     const R = s.orient;
     const t = s.offset;
     const top = tops[mv.setup];
-    const { radius, height } = holderOf(dia[i] ?? diameter.get(mv.tool) ?? 6);
+    const parts = body(dia[i] ?? diameter.get(mv.tool) ?? 6, L);
+    const radius = Math.max(...parts.map((b) => b.radius));
     // Material when this move runs: not cut by this move or any before it.
     const solid = (mx: number, my: number, mz: number) => {
       const d0 = mx - t[0], d1 = my - t[1], d2 = mz - t[2];
@@ -998,22 +1025,25 @@ export function holderHits(input: SimInput, g: Grid, paths: Vec[][], reach: (num
     };
     let worst: HolderHit | null = null;
     const st = g.size;
-    // Inside the holder by at least half a sample, so a holder just grazing a wall is not a hit.
-    const inner = radius - st * 0.5;
     const check = (p: Vec) => {
-      const zb = p[2] + L;
-      if (zb >= top - st * 0.5) return;
-      const zTop = Math.min(zb + height, top);
-      for (let dx = -inner; dx <= inner; dx += st)
-        for (let dy = -inner; dy <= inner; dy += st) {
-          if (dx * dx + dy * dy > inner * inner) continue;
-          // From the top down: the highest material in this column under the holder's top.
-          for (let z = zTop - st * 0.5; z > zb + st * 0.5; z -= st)
-            if (solid(p[0] + dx, p[1] + dy, z)) {
-              if (!worst || z - zb > worst.depth) worst = { move: i, tool: mv.tool, setup: mv.setup, point: [p[0], p[1], zb], depth: z - zb };
-              break;
-            }
-        }
+      for (const b of parts) {
+        const zb = p[2] + b.from;
+        if (zb >= top - st * 0.5) continue;
+        const zTop = Math.min(p[2] + b.to, top);
+        // Inside by at least half a sample, so a body just grazing a wall is not a hit.
+        const inner = b.radius - st * 0.5;
+        if (inner <= 0) continue;
+        for (let dx = -inner; dx <= inner; dx += st)
+          for (let dy = -inner; dy <= inner; dy += st) {
+            if (dx * dx + dy * dy > inner * inner) continue;
+            // From the top down: the highest material in this column under the body's top.
+            for (let z = zTop - st * 0.5; z > zb + st * 0.5; z -= st)
+              if (solid(p[0] + dx, p[1] + dy, z)) {
+                if (!worst || z - zb > worst.depth) worst = { move: i, tool: mv.tool, setup: mv.setup, point: [p[0], p[1], zb], depth: z - zb };
+                break;
+              }
+          }
+      }
     };
     // Along the move, about every half holder radius.
     check(path[0]);

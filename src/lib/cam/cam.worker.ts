@@ -27,6 +27,8 @@ export interface CamSummary {
   raw: number[];
   missing: Need[];
   notes: CamNote[];
+  /** The POM nests the part needs (rare): block size, pocket depth, screws, and the block's own program and check. */
+  nests: { side: string; size: number[]; depth: number; screws: number; code: string; match: number; collisions: number; minutes: number }[];
   setups: {
     side: string;
     notes: string[];
@@ -68,6 +70,7 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
         raw: r.raw,
         missing: r.missing,
         notes: r.notes,
+        nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),
         setups: r.setups.map((s) => ({
           side: s.side,
           notes: s.notes,

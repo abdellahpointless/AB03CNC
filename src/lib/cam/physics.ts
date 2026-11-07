@@ -118,7 +118,9 @@ export type PhysicsIssue =
   | { key: 'span'; mm: number }
   | { key: 'jawContact'; mm: number }
   | { key: 'restContact' }
-  | { key: 'stopContact' };
+  | { key: 'stopContact' }
+  /** Held in the POM nest (the last way): the pocket holds it all round, the set screws keep it down. */
+  | { key: 'nest'; screws: number };
 
 export interface SetupCheck {
   /** Clamping force: least that holds, most the part takes, and the one to use (N). */
@@ -207,5 +209,34 @@ export function checkSetup(l: SetupLoad): SetupCheck {
     opFeed: opFeed.map((k) => Math.round(k * 100) / 100),
     issues,
     ok: !issues.some((i) => i.key !== 'slowed'),
+  };
+}
+
+/** What one hand-tight M4 set screw presses with into a POM thread (N). */
+export const SET_SCREW = 500;
+
+/**
+ * A setup in the POM nest: the pocket's walls take the cut's side force and its floor the down
+ * force (nothing slips, tips or bends); only the helix's pull up must be held by the set screws'
+ * friction (screw side and the wall opposite). Slower cuts when the screws cannot.
+ */
+export function checkNest(l: { material: string; loads: OpLoad[]; screws: number }): SetupCheck {
+  const m = materialData(l.material);
+  const side = Math.max(0, ...l.loads.map((o) => o.side));
+  const lift = side / 2;
+  const hold = 2 * m.mu * l.screws * SET_SCREW;
+  const feed = lift > 0 ? Math.min(1, hold / (SAFETY.hold * lift)) : 1;
+  const issues: PhysicsIssue[] = [{ key: 'nest', screws: l.screws }];
+  if (feed < 1) issues.push(feed >= MIN_FEED ? { key: 'slowed', share: Math.round(feed * 100) / 100 } : { key: 'cannotHold', need: Math.round(SAFETY.hold * lift), most: Math.round(hold) });
+  return {
+    clamp: { min: Math.round(SAFETY.hold * lift), max: l.screws * SET_SCREW, use: l.screws * SET_SCREW },
+    pressure: 0,
+    pressureShare: 0,
+    squeeze: 0,
+    force: { side: Math.round(side), down: Math.round(Math.max(0, ...l.loads.map((o) => o.down))) },
+    feed: Math.round(Math.max(MIN_FEED, feed) * 100) / 100,
+    opFeed: l.loads.map(() => Math.round(Math.max(MIN_FEED, feed) * 100) / 100),
+    issues,
+    ok: !issues.some((i) => i.key !== 'slowed' && i.key !== 'nest'),
   };
 }

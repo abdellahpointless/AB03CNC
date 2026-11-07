@@ -54,3 +54,28 @@ describe('the POM nest (last way to hold a part)', () => {
     expect(y.holes.filter((h) => Math.abs(h.r * 2 - NEST.tapDrill) < 0.05)).toHaveLength(2);
   });
 });
+
+describe('CAM AI falls back on the nest only when no way of holding passes', () => {
+  it('a POM pin 8 x 8 standing 60 tall: held in a nest, read back and simulated right', async () => {
+    const { camProgram } = await import('../src/lib/cam/program');
+    const { heightPart } = await import('./heightPart');
+    const pin = heightPart(Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 60)));
+    const r = camProgram({ tris: pin, material: 'POM', tools: [], brand: 'HAAS', raw: [10, 10, 62], orient: { side: 'Z+', spin: false } });
+    const nested = r.setups.filter((s) => s.nest);
+    expect(nested.length).toBeGreaterThan(0);
+    for (const s of nested) {
+      expect(s.notes.join(' / ')).toMatch(/TEIL IN POM-NEST LEGEN/);
+      expect(s.physics.ok).toBe(true);
+      expect(s.physics.issues[0]).toMatchObject({ key: 'nest' });
+    }
+    // The checker reads the nest (walls off the stop and the fixed jaw, its floor) and the part comes out right.
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    // The nest has its own program, right too.
+    expect(r.nests?.length).toBe(nested.length);
+    for (const n of r.nests!) {
+      expect(n.check.match).toBeGreaterThanOrEqual(0.99);
+      expect(n.check.collisions).toBe(0);
+    }
+  }, 900_000);
+});
