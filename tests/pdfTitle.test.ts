@@ -20,7 +20,9 @@ describe('part name from the 3D PDF', () => {
     expect(partTypeOf('Top plate 100201637205')).toBe('topPlate');
     expect(partTypeOf('Contact pin plate')).toBe('pinPlate');
     expect(partTypeOf('Test pin plate')).toBe('pinPlate');
-    expect(partTypeOf('Guidance pin')).toBe('pinPlate');
+    // A pin itself is not a pin plate (it has no pins pressed into it).
+    expect(partTypeOf('Guidance pin')).toBe('other');
+    expect(partTypeOf('Stiftplatte')).toBe('pinPlate');
     expect(partTypeOf('Seal cage ALU')).toBe('sealCage');
     expect(partTypeOf('Contour insert')).toBe('contourInsert');
     expect(partTypeOf('Holding plate')).toBe('subPlate');

@@ -44,6 +44,8 @@ export interface CamInput {
   orient?: { side: string; spin: boolean };
   /** The part's family (from its PDF title, confirmed by the operator): where precision matters. */
   partType?: PartType;
+  /** Stock left on every wall and floor on purpose (CAM AI settings, mm; the templates' own stock is not used). */
+  sideStock?: number;
   /** Template tool codes the operator does not have, and the ones picked in their place. */
   exclude?: string[];
   prefer?: string[];
@@ -79,6 +81,9 @@ export interface CamSetup {
   nest?: Nest;
   /** Where precision matters, to show on the part (setup frame: outlines, from lo to hi in Z). */
   zones: Zone[];
+  /** The part as held (setup frame: x0, y0, x1, y1; X along the jaws), and where the vise touches it. */
+  box: [number, number, number, number];
+  contact: Contact | null;
   ops: CamOp[];
 }
 
@@ -1024,12 +1029,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
       let k = union(above, slice(P, z + 0.001));
       const disks = keepHoles.filter((h) => h.top > z + 0.001 && h.bottom < z).map((h) => circle(h.c, h.r));
       if (disks.length) k = union(k, disks);
-      return k;
+      // The operator's side stock: the walls are left that much out.
+      return input.sideStock ? offset(k, input.sideStock) : k;
     };
     const perTool = new Map<CamTool, Work[]>();
     // Precise families: the roughing leaves ALLOW on the walls for the finishing (it counts as done
     // for the smaller tools that follow).
     const precise = !!input.partType && PRECISE.includes(input.partType);
+    // A top plate's or contour insert's precise contour is its pockets (where the part goes in): the
+    // outside is cut as usual. A seal cage's thin walls have both faces finished.
+    const pocketsOnly = input.partType === 'topPlate' || input.partType === 'contourInsert';
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(sb.hi[2], 0);
@@ -1053,7 +1062,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
         for (const tool of cands) {
           const cut = cutData(tool, 'pocket', mat, limits);
-          const rings = clearLevel(keep, todo, tool.diameter / 2, cut.ae, inside, precise ? tool.diameter / 2 + ALLOW : undefined);
+          const r0 = tool.diameter / 2;
+          const rings = precise ? clearLevel(keep, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(keep, todo, r0, cut.ae, inside);
           if (!rings.length) continue;
           const gone = precise ? offset(swept(rings, tool.diameter / 2), ALLOW + 0.02) : swept(rings, tool.diameter / 2);
           const share = area(intersection(todo, gone)) / all;
@@ -1097,7 +1107,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         for (const w of (byDia.get(tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z)) {
           const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
           const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
-          const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
+          const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
           const fin = ring(r);
           const rings = [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
           if (rings.length) work.push({ z: w.z, above: w.above, rings, keep: w.keep, done: w.rings });
@@ -1150,15 +1160,19 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // shortcut: the plate checks use the whole part's thickness, not thin pocket floors (part families, step 7).
     const thin = Math.min(stockH, H);
     const squeeze = input.partType === 'topPlate' || input.partType === 'contourInsert' || input.partType === 'sealCage' ? SQUEEZE.precise : SQUEEZE.normal;
+    let contact: Contact | null = null;
     const physicsAt = (g: number) => {
-      const { contact, width } = contactOf(left, sb.lo[2], g, twoVises);
-      const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], width || hold[1], limits));
-      return checkSetup({ material: mat, length: hold[0], width: width || hold[1], height: stockH, grip: g, thin, contact, loads, squeeze });
+      const c = contactOf(left, sb.lo[2], g, twoVises);
+      contact = c.contact;
+      const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], c.width || hold[1], limits));
+      return checkSetup({ material: mat, length: hold[0], width: c.width || hold[1], height: stockH, grip: g, thin, contact: c.contact, loads, squeeze });
     };
     const nest = nested ? nestFor([sb.lo[0], sb.lo[1]], [sb.hi[0], sb.hi[1]], sb.lo[2], nestDepth) : undefined;
     const physics = nest
       ? checkNest({ material: mat, loads: ops.map((op) => loadOf(op, mat, sb.lo[0], hold[1], limits)), screws: nest.screws.length })
       : physicsAt(grip);
+    // The contact of the grip used (physicsAt may have been tried at deeper grips).
+    if (!nest) physicsAt(grip);
     if (!nested && least === 3 && (physics.feed < 1 || !physics.ok)) {
       const deeper = CALE_HEIGHTS.map((c) => JAW - c)
         .filter((g) => g > grip && g <= stockH - 1)
@@ -1175,7 +1189,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, ops: done });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], contact, ops: done });
     prevR = R;
     return true;
   };

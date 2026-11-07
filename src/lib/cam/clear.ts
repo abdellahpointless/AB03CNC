@@ -54,38 +54,42 @@ const length = (pts: P2[]) => pts.reduce((t, p, i) => (i ? t + Math.hypot(p[0] -
  * `left`: the material still to remove here; `stock`: the outline of the raw part (rings stop
  * past it). `insideOnly`: only pockets (below the jaw tops the outside cannot be cut).
  */
-export function clearLevel(keep: Region, left: Region, r: number, ae: number, insideOnly: boolean, start = r - 0.02): Ring[] {
+export function clearLevel(keep: Region, left: Region, r: number, ae: number, insideOnly: boolean, start = r - 0.02, outsideStart = start): Ring[] {
   if (area(left) < 0.05) return [];
   // The tool centre may go wherever it sweeps material without touching what stays.
   const reach = offset(left, r - 0.01);
-  const rings: Ring[] = [];
   // The first ring 0.02 in: a slot exactly the tool's Ø (a Ø4 slot for a Ø4 end mill, as the shop
-  // programs it) still has a path down its middle. Precise parts start further out (`start`):
-  // the walls are left for the finishing (wallRings).
-  for (let d = start, n = 0; n < 2000; d += ae, n++) {
-    const grown = offset(keep, d);
-    const loops = grown.filter((l) => l.length > 2);
-    if (!loops.length) break;
-    // Outer loops (counter-clockwise) go round the outside, the others round pockets.
-    let any = false;
-    for (const l of loops) {
-      const outside = signedArea(l) > 0;
-      if (insideOnly && outside) continue;
-      // Run climbing: the part on the right.
-      const run = [...l].reverse();
-      const pieces = trim([run], reach).filter((p) => length(p) > 0.05);
-      if (!pieces.length) continue;
-      any = true;
-      const whole = pieces.length === 1 && Math.abs(length(pieces[0]) - length([...run, run[0]])) < 0.05;
-      if (whole) rings.push({ pts: run, closed: true, outside });
-      else for (const p of pieces) rings.push({ pts: p, closed: false, outside });
+  // programs it) still has a path down its middle. Precise parts start their pocket rings further
+  // out (`start`): those walls are left for the finishing (wallRings); `outsideStart` for the rings
+  // round the outside. Each kind steps out from its own start.
+  const run = (from: number, outer: boolean) => {
+    const rings: Ring[] = [];
+    for (let d = from, n = 0; n < 2000; d += ae, n++) {
+      const grown = offset(keep, d);
+      const loops = grown.filter((l) => l.length > 2);
+      if (!loops.length) break;
+      // Outer loops (counter-clockwise) go round the outside, the others round pockets.
+      let any = false;
+      for (const l of loops) {
+        const outside = signedArea(l) > 0;
+        if (outside !== outer || (insideOnly && outside)) continue;
+        // Run climbing: the part on the right.
+        const path = [...l].reverse();
+        const pieces = trim([path], reach).filter((p) => length(p) > 0.05);
+        if (!pieces.length) continue;
+        any = true;
+        const whole = pieces.length === 1 && Math.abs(length(pieces[0]) - length([...path, path[0]])) < 0.05;
+        if (whole) rings.push({ pts: path, closed: true, outside });
+        else for (const p of pieces) rings.push({ pts: p, closed: false, outside });
+      }
+      // Every place the tool centre had to go is inside this ring: done (out past the stock, or
+      // the middle of every pocket reached).
+      if (!any && area(difference(reach, grown)) < 0.01) break;
     }
-    // Every place the tool centre had to go is inside this ring: done (out past the stock, or
-    // the middle of every pocket reached).
-    if (!any && area(difference(reach, grown)) < 0.01) break;
-  }
-  // Outermost (furthest from the part) first: the tool works its way in, never buried.
-  return rings.reverse();
+    // Outermost (furthest from the part) first: the tool works its way in, never buried.
+    return rings.reverse();
+  };
+  return [...run(outsideStart, true), ...run(start, false)];
 }
 
 /** The part's footprint with its pockets filled: inside it, the jaws are never in the way. */

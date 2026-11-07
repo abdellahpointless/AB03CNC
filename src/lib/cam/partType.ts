@@ -3,8 +3,8 @@
  *   topPlate      the contour on the RAFI (white) face, where a part is inserted: straight walls,
  *                 exact radii; engravings on the top
  *   sealCage      hollow ALU/MS parts with a long thin wall: precise inner and outer walls
- *   pinPlate      any "pin" part (contact pin plate, test pin plate…): pins pressed into the 1, 2
- *                 and 3 mm holes
+ *   pinPlate      a plate the pins are pressed into (contact pin plate, test pin plate…): its 1, 2
+ *                 and 3 mm holes; a pin itself ("guidance pin") is another part
  *   contourInsert its contour is where the shop's part goes in: high quality
  *   subPlate      other plates: produced normally
  *   other         anything else: produced normally
@@ -20,7 +20,7 @@ export function partTypeOf(title: string | null | undefined): PartType | null {
   if (/seal\s*cage|dichtungsk/.test(t)) return 'sealCage';
   if (/contour\s*insert|kontur\s*einsatz|konture?insatz/.test(t)) return 'contourInsert';
   if (/top\s*plate|oberplatte/.test(t)) return 'topPlate';
-  if (/pin/.test(t)) return 'pinPlate';
+  if (/pin\s*plate|stift\s*platte|pinplatte/.test(t)) return 'pinPlate';
   if (/plate|platte/.test(t)) return 'subPlate';
   return 'other';
 }

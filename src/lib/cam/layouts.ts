@@ -9,7 +9,7 @@ import { OVERHANG, VISE } from '../setups';
  * The ways the part can lie in the vise for its first setup: each side up, as is or turned a
  * quarter (X and Y swapped). Each is scored for safety and time, best first: it must fit the vise,
  * one vise is better than two, fewer setups are faster, more done from the first side is better,
- * and a low, wide part sits steadier than a tall, narrow one. The operator picks one (or keeps the
+ * the jaws should hold the long side, and a low, wide part sits steadier than a tall, narrow one. The operator picks one (or keeps the
  * suggestion); the planner then follows it (CamInput.orient).
  */
 
@@ -69,7 +69,9 @@ export function layouts(tris: ArrayLike<number>): Layout[] {
       const twoVises = s[0] > VISE.width + OVERHANG;
       const fits = s[1] <= VISE.opening && s[0] <= VISE.width * 2 + VISE.gap;
       const topShare = total ? top / total : 1;
-      const score = (fits ? 0 : 1000) + setups * 10 + (twoVises ? 4 : 0) + (s[2] / Math.min(s[0], s[1])) * 3 - topShare * 6;
+      // The jaws hold a part best along its long side (as later setups are turned, program.ts).
+      const across = s[0] < 0.5 * s[1] && s[1] <= VISE.width + OVERHANG;
+      const score = (fits ? 0 : 1000) + setups * 10 + (twoVises ? 4 : 0) + (across ? 5 : 0) + (s[2] / Math.min(s[0], s[1])) * 3 - topShare * 6;
       out.push({ side: side.name, spin, R, size: s, topShare, setups, twoVises, fits, score });
     }
   });

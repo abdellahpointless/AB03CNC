@@ -199,6 +199,8 @@ export function checkSetup(l: SetupLoad): SetupCheck {
   if (Math.min(...l.contact.rest) < Math.min(10, along * 0.3)) issues.push({ key: 'restContact' });
   if (!l.contact.stop) issues.push({ key: 'stopContact' });
   const pressure = use / area;
+  // Each issue once (several operations can bend the part the same way).
+  const once = [...new Map(issues.map((i) => [JSON.stringify(i), i])).values()];
   return {
     clamp: { min: Math.round(min), max: Math.round(max), use: Math.round(use) },
     pressure: Math.round(pressure * 10) / 10,
@@ -207,8 +209,8 @@ export function checkSetup(l: SetupLoad): SetupCheck {
     force: { side: Math.round(side), down: Math.round(Math.max(0, ...l.loads.map((o) => o.down))) },
     feed: Math.round(Math.max(MIN_FEED, feed) * 100) / 100,
     opFeed: opFeed.map((k) => Math.round(k * 100) / 100),
-    issues,
-    ok: !issues.some((i) => i.key !== 'slowed'),
+    issues: once,
+    ok: !once.some((i) => i.key !== 'slowed'),
   };
 }
 

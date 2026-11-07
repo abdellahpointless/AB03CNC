@@ -2,18 +2,38 @@ import { readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
-import { camProgram, type CamInput } from './program';
+import { camProgram, type CamInput, type Purpose, type Zone } from './program';
 import type { CamNote, Need } from './tools';
-import type { SetupCheck } from './physics';
+import type { Contact, SetupCheck } from './physics';
+import { layouts, type Layout } from './layouts';
+import { bounds } from './geom';
+import { pdfInfo } from '../pdfTitle';
+import { partTypeOf, type PartType } from './partType';
 
 /*
  * CAM AI away from the screen (a part takes from seconds to a few minutes):
+ *   { type: 'prepare', model } -> { type: 'prepared', title, sap, partType, size, layouts, tris }
+ *     (the model read, the name and family from its PDF, the ways it can lie in the vise), or
  *   CamRequest -> { type: 'progress', done, of } ..., then { type: 'done', result, lesson }
  *   or { type: 'error', error }.
  * lesson: the part record (lib/lessons) of the program made, for the learning records.
  */
 
 export type CamRequest = Omit<CamInput, 'tris'> & { model: { name: string; bytes: Uint8Array } };
+export type PrepareRequest = { type: 'prepare'; model: { name: string; bytes: Uint8Array } };
+
+export interface Prepared {
+  /** From the PDF's title block (null for an STL or no title). */
+  title: string | null;
+  sap: string | null;
+  partType: PartType | null;
+  /** The model's size along its own X, Y, Z (mm). */
+  size: number[];
+  /** Best first (layouts.ts). */
+  layouts: Layout[];
+  /** The model's triangles, for the views of each layout. */
+  tris: Float32Array;
+}
 
 /** What the page shows of the result (the program and its proof, without the paths). */
 export interface CamSummary {
@@ -34,25 +54,30 @@ export interface CamSummary {
   setups: {
     side: string;
     notes: string[];
+    /** The part as held (setup frame: x0, y0, x1, y1; X along the jaws) and where the vise touches it. */
+    box: [number, number, number, number];
+    contact: Contact | null;
     /** Jaw grip (mm) and what the vise does to the part (clamp force, pressure, issues). */
     grip: number;
     physics: SetupCheck;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
-    ops: { name: string; purpose: string; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
+    ops: { name: string; purpose: Purpose; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
     /** Where precision matters (setup frame): the contour, thin walls, engraving. */
-    zones: { kind: string; loops: [number, number][][]; lo: number; hi: number }[];
+    zones: Zone[];
   }[];
 }
 
 export type CamMessage =
+  | ({ type: 'prepared' } & Prepared)
   | { type: 'progress'; done: number; of: number }
   | { type: 'done'; result: CamSummary; lesson: unknown }
   | { type: 'error'; error: ModelError | 'failed' };
 
 const post = (m: CamMessage) => postMessage(m);
 
-self.onmessage = async (e: MessageEvent<CamRequest>) => {
-  const { model, ...input } = e.data;
+self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
+  if ('type' in e.data && e.data.type === 'prepare') return prepare(e.data.model);
+  const { model, ...input } = e.data as CamRequest;
   try {
     const tris = await readTris(model.bytes);
     if ('error' in tris) return post({ type: 'error', error: tris.error });
@@ -82,6 +107,8 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
           grip: s.grip,
           physics: s.physics,
           zones: s.zones,
+          box: s.box,
+          contact: s.contact,
           ops: s.ops.map((o) => ({
             name: o.name,
             purpose: o.purpose,
@@ -101,3 +128,22 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
     post({ type: 'error', error: 'failed' });
   }
 };
+
+async function prepare(model: { name: string; bytes: Uint8Array }) {
+  try {
+    const tris = await readTris(model.bytes);
+    if ('error' in tris) return post({ type: 'error', error: tris.error });
+    const info = /\.pdf$/i.test(model.name) ? await pdfInfo(model.bytes).catch(() => null) : null;
+    const b = bounds(tris);
+    const list = layouts(tris);
+    const out = new Float32Array(tris);
+    (postMessage as (m: CamMessage, transfer: Transferable[]) => void)(
+      { type: 'prepared', title: info?.title ?? null, sap: info?.sap ?? null, partType: partTypeOf(info?.title), size: [0, 1, 2].map((k) => b.max[k] - b.min[k]), layouts: list, tris: out },
+      [out.buffer],
+    );
+  } catch (err) {
+    console.error(err);
+    post({ type: 'error', error: 'failed' });
+  }
+}
+
