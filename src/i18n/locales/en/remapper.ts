@@ -289,6 +289,8 @@ const remapper = {
     result: 'Result',
     proven: 'Simulated and checked: the part comes out like the model, and no tool or holder hits the jaws or the part.',
     notProven: 'The simulated part is not close enough to the model (99 % needed). Look at it in the toolpath viewer.',
+    cannotHold: 'The vise cannot hold the part safely in setup {{side}} (it would slip, tip or deform).',
+    gouge: 'The program cuts into the part ({{mm3}} mm³ too much). Look at it in the toolpath viewer.',
     collisions_one: '{{count}} collision in the simulation. Look at it in the toolpath viewer.',
     collisions_other: '{{count}} collisions in the simulation. Look at them in the toolpath viewer.',
     percent: '{{v}} %',

@@ -23,6 +23,8 @@ export interface CamSummary {
   toolChanges: number;
   collisions: number;
   cales: number;
+  /** The largest piece cut out of the part that the model keeps (mm³): a gouge. */
+  gouge: number;
   size: number[];
   raw: number[];
   missing: Need[];
@@ -66,6 +68,7 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
         toolChanges: r.check.toolChanges,
         collisions: r.check.collisions,
         cales: r.check.cales,
+        gouge: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))),
         size: r.size,
         raw: r.raw,
         missing: r.missing,

@@ -279,6 +279,8 @@ const remapper: Translation<typeof en> = {
     result: 'Sonuç',
     proven: 'Simüle edildi ve kontrol edildi: parça modeldeki gibi çıkıyor, hiçbir takım veya tutucu mengene çenelerine ya da parçaya çarpmıyor.',
     notProven: 'Simüle edilen parça modele yeterince yakın değil (%99 gerekli). Takım yolu görüntüleyicisinde inceleyin.',
+    cannotHold: 'Mengene parçayı {{side}} bağlamasında güvenle tutamıyor (kayar, devrilir veya şekli bozulur).',
+    gouge: 'Program parçanın içine kesiyor ({{mm3}} mm³ fazla). Takım yolu görüntüleyicisinde inceleyin.',
     collisions_one: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
     collisions_other: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
     percent: '%{{v}}',

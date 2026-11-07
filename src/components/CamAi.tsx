@@ -96,7 +96,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
   const result = run.state === 'done' ? run.result : null;
   // Proven: as the model (99 %) and nothing hit. Otherwise it can be looked at, not used.
-  const proven = !!result && result.match >= 0.99 && result.collisions === 0;
+  // Download and Send only when every check passes: like the model, nothing hit (tools, holders,
+  // rapids), nothing cut out of the part, and the vise holds it safely in every setup.
+  const unheld = result?.setups.find((s) => !s.physics.ok);
+  const GOUGE_MM3 = 20;
+  const proven = !!result && result.match >= 0.99 && result.collisions === 0 && result.gouge < GOUGE_MM3 && !unheld;
   const download = () => {
     if (!result || !machine) return;
     const fanuc = machine.brand === 'FANUC' && engineMachineId(currentRegion().id, machine) !== 'FANUC-2';
@@ -224,7 +228,17 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
           <h3 id="cam-result" className="sr-only">{t('camAi.result')}</h3>
           <div className={`flex items-start gap-2 text-sm font-medium ${proven ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
             {proven ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertTriangle size={18} className="shrink-0" />}
-            <span>{proven ? t('camAi.proven') : result.collisions ? t('camAi.collisions', { count: result.collisions }) : t('camAi.notProven')}</span>
+            <span>
+              {proven
+                ? t('camAi.proven')
+                : result.collisions
+                  ? t('camAi.collisions', { count: result.collisions })
+                  : result.gouge >= GOUGE_MM3
+                    ? t('camAi.gouge', { mm3: result.gouge })
+                    : unheld
+                      ? t('camAi.cannotHold', { side: unheld.side })
+                      : t('camAi.notProven')}
+            </span>
           </div>
 
           {result.cales > 0 && (
