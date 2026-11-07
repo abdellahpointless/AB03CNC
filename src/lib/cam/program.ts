@@ -465,7 +465,7 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
  * next ring is entered from the side, out of a ring already cut to the bottom (sideEntry): down
  * in that ring's path, across, round, back.
  */
-function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose): CamOp {
+function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null): CamOp {
   const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
   const cut = cutData(tool, finish ? 'finish' : 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
@@ -499,12 +499,14 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
   let rpm = cut.s;
   let prevZ = stockTop;
   for (const { z, above, rings, keep, done: before } of work) {
-    const top = Math.min(above, prevZ);
+    const top0 = Math.min(above, prevZ);
     const done: Ring[] = [...(before ?? [])];
     for (const ring of rings) {
       const c = ring.thin ? gentle(ring.outside ? side : cut, ring.thin) : ring.outside ? side : cut;
       // The spindle speed of this ring's cut (a gentle one runs faster).
       if (c.s !== rpm) lines.push(`S${(rpm = c.s)}`);
+      // Ground a smaller mill takes above this level later is still there under this ring: from its top.
+      const top = Math.max(top0, upTo?.(ring, z) ?? -Infinity);
       const n = Math.max(1, Math.ceil((top - z) / c.ap - 1e-6));
       const passes = Array.from({ length: n }, (_, i) => top - ((top - z) * (i + 1)) / n);
       // Finishing looks through all the roughing's rings at this level (its rings lie next to them).
@@ -514,7 +516,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
         // Start the ring where it is entered (an open piece from its nearer end).
         const pts = ring.closed ? [...ring.pts.slice(entry.at), ...ring.pts.slice(0, entry.at)] : entry.at ? [...ring.pts].reverse() : ring.pts;
         const q = pts[0];
-        lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(entry.from)}`, `G00 Z${n3(Math.max(z, prevZ) + 1)}`);
+        lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(entry.from)}`, `G00 Z${n3(Math.max(top, prevZ) + 1)}`);
         let fset = false;
         const feed = () => (fset ? '' : ((fset = true), ` F${c.f}.`));
         for (const pz of passes) {
@@ -536,7 +538,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
       // Vertex index the closed ring continues from (the ramp ends between two of them).
       let k0 = 0;
       let zAt = top;
-      lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(at)}`, `G00 Z${n3(Math.max(z, prevZ) + 1)}`);
+      lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(at)}`, `G00 Z${n3(Math.max(top, prevZ) + 1)}`);
       passes.forEach((pz, pi) => {
         const from = pi ? passes[pi - 1] : top;
         const enter = pi === 0 || !ring.closed;
@@ -724,6 +726,8 @@ export interface CamCheck {
   /** Of those: the shop's holder (Ø50 then Ø63 from the typed length) into material, rapids through material. */
   holders: number;
   rapids: number;
+  /** The rapids (code lines) that only graze a sliver: run at feed by camProgram. */
+  grazes: number[];
   /** Spots where a tool goes into a cale under the part (move that cale: a warning). */
   cales: number;
 }
@@ -748,16 +752,24 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
   // remove first is a crash).
   let holders = 0;
   let rapids = 0;
+  const grazes: number[] = [];
   if (sim) {
     const g = carve({ ...sim, maxVoxels: 600_000, surfaceMoves: false });
     holders = holderHits(sim, g, tp.moves.map(movePath), tp.moves.map((m) => m.reach), tp.moves.map((m) => m.dia), shopHolder).length;
     const all = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: 300_000, surfaceMoves: false, dropLoose: false });
-    const into = new Set<number>();
+    // Each rapid that takes material, with the grid columns (x, y) it takes it in.
+    const into = new Map<number, Set<number>>();
+    const plane = all.n[0] * all.n[1];
     for (let v = 0; v < all.removed.length; v++) {
       const i = all.removed[v];
-      if (i !== KEPT && tp.moves[i]?.kind === 'rapid') into.add(i);
+      if (i !== KEPT && tp.moves[i]?.kind === 'rapid') (into.get(i) ?? into.set(i, new Set()).get(i)!).add(v % plane);
     }
     rapids = into.size;
+    // Straight down, its edge only grazing a sliver (two grid columns at most): fine at feed.
+    for (const [i, cols] of into) {
+      const [a, b] = [tp.moves[i].points[0], tp.moves[i].points[tp.moves[i].points.length - 1]];
+      if (cols.size <= 2 && Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6) grazes.push(tp.moves[i].line);
+    }
   }
   return {
     match: diff?.match ?? 0,
@@ -768,8 +780,26 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     collisions: hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer').length + holders + rapids,
     holders,
     rapids,
+    grazes,
     cales: hits.filter((h) => h.what === 'cale').length,
   };
+}
+
+/**
+ * The program checked. A rapid down whose edge only grazes a sliver the rings left (the tool's
+ * own path misses it by less than a grid cell) runs at the feed of the move after it; checked again.
+ * Any other rapid into material stays a collision (it blocks the program).
+ */
+function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
+  const check = checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose);
+  if (!check.rapids || check.grazes.length !== check.rapids) return { ...r, check };
+  const lines = r.code.split('\n');
+  for (const i of check.grazes) {
+    const f = lines.slice(i + 1, i + 6).join(' ').match(/F(\d+)/)?.[1] ?? '300';
+    lines[i] = `${lines[i].replace(/\bG00\b/, 'G01')} F${f}.`;
+  }
+  const code = lines.join('\n');
+  return { ...r, code, check: checkProgram(input.tris, code, input.brand, input.speeds, r.pose) };
 }
 
 /**
@@ -787,7 +817,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let bestAxis = order[0];
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
-    const now = { ...r, check: checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose) };
+    const now = checked(input, r);
     progress(i + 1, order.length);
     const better = !best || (good(now) && (!good(best) || now.check.minutes < best.check.minutes)) || (!good(now) && !good(best) && now.check.match > best.check.match);
     if (better) [best, bestAxis] = [now, axis];
@@ -802,7 +832,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let nested: CamResult & { check: CamCheck } = kept;
   for (let round = 0; round < 3; round++) {
     const r = planFor({ ...input, nestSides: sides }, bestAxis);
-    nested = { ...r, check: checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose) };
+    nested = checked(input, r);
     const more = fails(nested).filter((x) => !sides.includes(x));
     if (!more.length) break;
     sides = [...sides, ...more];
@@ -1042,6 +1072,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(sb.hi[2], 0);
+    // Each level's ground and what each end mill took of it. The mills run largest first, each
+    // top down: one coming to a level can meet, above it, ground a smaller one takes there later.
+    const ground: { z: number; above: number; todo: Region; took: { dia: number; gone: Region }[] }[] = [];
     for (const z of levels) {
       const keep = keepAt(z);
       // All the material between this level and the one above: the side of the tool takes it.
@@ -1052,6 +1085,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const inside = z < jawLimit - 0.001;
       if (inside) todo = intersection(todo, filled(keep));
       todo = opened(todo);
+      const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
+      ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
       // one that takes most of it (80 %): the sizes in between would only add tool changes. A
       // small tool on open ground is the slowest program there is.
@@ -1076,6 +1111,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
         (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined });
+        level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }
       // What no end mill here could reach: listed once it adds up to more than slivers.
@@ -1093,7 +1129,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const same = byDia.get(tool.diameter);
       if (!same?.includes(tool) || same.some((o) => o.length > tool.length)) continue;
       const work = same.flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z);
-      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough'));
+      // What is still there when this Ø comes: each level's ground less what this Ø and the larger
+      // ones took (highest level first). A ring under some of it starts from that level's top.
+      const still = ground
+        .map((g) => ({ ...g, rest: g.took.filter((t) => t.dia >= tool.diameter).reduce((rest, t) => difference(rest, t.gone), g.todo) }))
+        .filter((g) => area(g.rest) > 0.05);
+      const r = tool.diameter / 2;
+      const upTo = (ring: Ring, z: number) => {
+        const sw = swept([ring], r - 0.02);
+        return still.find((g) => g.z > z + 1e-6 && area(intersection(sw, g.rest)) > 0.05)?.above ?? null;
+      };
+      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
     }
     // 3b. Precise families: each roughing tool finishes the walls it roughed, from the side out of
     // its roughing: semi-finish (0.05 left all round), finish on the wall, a spring pass (what the
@@ -1104,13 +1150,21 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const r = tool.diameter / 2;
         const work: Work[] = [];
         let thinAny = false;
+        let lastFin: Ring[] = [];
         for (const w of (byDia.get(tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z)) {
           const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
           const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
           const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
           const fin = ring(r);
           const rings = [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
-          if (rings.length) work.push({ z: w.z, above: w.above, rings, keep: w.keep, done: w.rings });
+          if (!rings.length) continue;
+          // A straight wall (the level just above finished by this tool on the very same path): one
+          // run from the wall's top in the finish's own depth per pass, no step at each level.
+          const prev = work[work.length - 1];
+          const [a, b] = [swept(lastFin, r), swept(fin, r)];
+          const straight = prev && Math.abs(prev.z - w.above) < 1e-6 && fin.length === lastFin.length && area(difference(a, b)) + area(difference(b, a)) < 0.01;
+          work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
+          lastFin = fin;
         }
         if (work.length) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
       }

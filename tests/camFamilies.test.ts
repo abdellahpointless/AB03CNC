@@ -15,6 +15,11 @@ describe('part families', () => {
     // Finishing after all the roughing.
     const kinds = top.ops.map((o) => o.kind);
     expect(kinds.lastIndexOf('pocket')).toBeLessThan(kinds.indexOf('finish'));
+    // The pocket's straight wall finished from its top in the finish's own depth per pass (not at
+    // every roughing level): 3 rings (semi, finish, spring), each entered once per pass.
+    const fin = top.ops.find((o) => o.purpose === 'contour')!;
+    const plunges = fin.lines.filter((l) => /^G01 Z/.test(l)).length;
+    expect(plunges).toBeLessThanOrEqual(3 * Math.ceil(6 / fin.cut.ap - 1e-6));
     expect(top.zones.map((z) => z.kind).sort()).toEqual(['contour', 'engraving']);
     expect(r.check).toMatchObject({ collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);

@@ -19,7 +19,10 @@ describe('the safety double check', () => {
     const at = lines.findIndex((l) => /TOOLPATH FRAESEN/.test(l));
     const start = lines.findIndex((l, i) => i > at && /G00 G90 X/.test(l));
     const planted = [...lines.slice(0, start + 1), 'N9 G00 Z-3.', 'N9 G00 X60.', ...lines.slice(start + 1)].join('\n');
-    expect(checkProgram(plate, planted, 'HAAS', undefined, r.pose).rapids).toBeGreaterThan(0);
+    const check = checkProgram(plate, planted, 'HAAS', undefined, r.pose);
+    expect(check.rapids).toBeGreaterThan(0);
+    // Straight down into the solid stock and across it: never taken for a graze (never run at feed).
+    expect(check.grazes).toEqual([]);
   }, 300_000);
 
   it('catches a holder planted in the part (a tool typed too short for its depth)', () => {
