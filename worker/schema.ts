@@ -7,6 +7,9 @@ import type { RegionId } from '../src/regions';
  *
  * Never edit a migration that has shipped - append a new one instead.
  */
+/** Each Moroccan machine's top spindle speed (shop figures; HAAS-3 not given). */
+const MOROCCO_MAX_RPM: Record<string, number> = { 'HAAS-1': 12000, 'HAAS-2': 8000, 'HAAS-4': 10000, 'HAAS-5': 8000, 'FANUC-1': 14000, 'FANUC-2': 5000, 'DMG-1': 12000 };
+
 export const MIGRATIONS: { version: number; statements: string[] }[] = [
   {
     version: 1,
@@ -370,6 +373,12 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 13,
     statements: [`ALTER TABLE users ADD COLUMN cam_ai INTEGER NOT NULL DEFAULT 0`],
   },
+  {
+    // The Moroccan machines' top spindle speeds (shop figures), where an admin set none. The
+    // same ids do not exist elsewhere; a fresh Morocco database gets them from its seed.
+    version: 14,
+    statements: Object.entries(MOROCCO_MAX_RPM).map(([id, rpm]) => `UPDATE machines SET max_rpm = ${rpm} WHERE id = '${id}' AND max_rpm IS NULL`),
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
@@ -432,10 +441,10 @@ async function seedInstance(db: D1Database, instance: RegionId | 'master'): Prom
       stmts.push(
         db
           .prepare(
-            `INSERT OR IGNORE INTO machines (id, name, brand, model, image, pockets, has_tools, active, sort, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+            `INSERT OR IGNORE INTO machines (id, name, brand, model, image, pockets, has_tools, active, sort, created_at, max_rpm)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
           )
-          .bind(id, id, brand, model, image, pockets, hasTools, (i + 1) * 10, now),
+          .bind(id, id, brand, model, image, pockets, hasTools, (i + 1) * 10, now, MOROCCO_MAX_RPM[id] ?? null),
       ),
     );
   } else {

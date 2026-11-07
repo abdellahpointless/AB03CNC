@@ -95,11 +95,12 @@ export interface MachineSpeeds {
   toolChange: number;
 }
 
-/** Typical figures per brand (rapid rate in mm/min, tool change in seconds). */
+/** Stock rapid rate per brand (mm/min) and the shop's tool change times (seconds). */
 export function speedsFor(brand: string | undefined): MachineSpeeds {
-  if (brand === 'FANUC') return { rapid: 54_000, toolChange: 1.6 };
-  if (brand === 'HAAS') return { rapid: 25_400, toolChange: 4.2 };
-  return { rapid: 30_000, toolChange: 3 };
+  if (brand === 'FANUC') return { rapid: 54_000, toolChange: 5 }; // Robodrill
+  if (brand === 'HAAS') return { rapid: 25_400, toolChange: 5 }; // VF series
+  if (brand === 'DMG MORI') return { rapid: 30_000, toolChange: 40 }; // CMX 600 V
+  return { rapid: 30_000, toolChange: 5 };
 }
 
 const CYCLES = new Set([73, 74, 76, 81, 82, 83, 84, 85, 86, 87, 88, 89]);

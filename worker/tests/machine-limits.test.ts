@@ -30,8 +30,9 @@ const patch = (body: unknown) =>
 const haas1 = async () => ((await (await handleListFleet(ctx('GET', '/fleet', {}))).json()) as { machines: Record<string, unknown>[] }).machines.find((m) => m.id === 'HAAS-1')!;
 
 describe('machine limits for CAM AI', () => {
-  it('are empty until an admin sets them, and keep the other fields', async () => {
-    expect(await haas1()).toMatchObject({ maxRpm: null, maxFeed: null, rapid: null, toolChange: null });
+  it('start with the shop top rpm (the rest empty), an admin changes them, the other fields stay', async () => {
+    expect(await haas1()).toMatchObject({ maxRpm: 12000, maxFeed: null, rapid: null, toolChange: null });
+    expect(await DB.prepare("SELECT max_rpm FROM machines WHERE id = 'HAAS-3'").first('max_rpm')).toBeNull();
     expect(await patch({ maxRpm: 12000, maxFeed: 10000, rapid: 25400, toolChange: 4.2 })).toBe(200);
     expect(await haas1()).toMatchObject({ name: 'HAAS-1', brand: 'HAAS', maxRpm: 12000, maxFeed: 10000, rapid: 25400, toolChange: 4.2 });
     expect(await patch({ maxRpm: null })).toBe(200);
