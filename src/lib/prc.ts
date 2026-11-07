@@ -207,7 +207,7 @@ function readTess3D(r: Bits, authoring: number, out: number[]) {
 }
 
 /** Inflate a zlib stream (the PDF's and PRC's compression). */
-async function inflate(data: Uint8Array): Promise<Uint8Array> {
+export async function inflate(data: Uint8Array): Promise<Uint8Array> {
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
   const reader = stream.getReader();
   const parts: Uint8Array[] = [];

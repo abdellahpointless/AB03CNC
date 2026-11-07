@@ -12,6 +12,7 @@ import { area, bounds, difference, inside, intersection, offset, rect, slice, tu
 import { clearLevel, filled, swept, trim, type Ring } from './clear';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
+import type { PartType } from './partType';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -36,6 +37,8 @@ export interface CamInput {
   raw?: Vec | null;
   /** The machine's rapid and tool change time (Admin > Machines), else its brand's. */
   speeds?: MachineSpeeds;
+  /** The part's family (from its PDF title, confirmed by the operator): where precision matters. */
+  partType?: PartType;
   /** Template tool codes the operator does not have, and the ones picked in their place. */
   exclude?: string[];
   prefer?: string[];
