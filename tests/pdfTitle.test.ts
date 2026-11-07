@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import plateUrl from './models/O1042013.pdf?inline';
+import holdingUrl from './models/O2504411.pdf?inline';
 import { pdfInfo } from '../src/lib/pdfTitle';
 import { partTypeOf } from '../src/lib/cam/partType';
 
+const bytes = (url: string) => Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+
 describe('part name from the 3D PDF', () => {
   it('reads the title block fields (title, SAP number, drafter), packed objects included', async () => {
-    expect(await pdfInfo(new Uint8Array(readFileSync('tests/models/O1042013.pdf')))).toEqual({ title: 'Top plate 100201014500', sap: '2330698', author: 'E. Yüksel' });
-    expect((await pdfInfo(new Uint8Array(readFileSync('tests/models/O2504411.pdf')))).title).toBe('Holding plate');
+    expect(await pdfInfo(bytes(plateUrl))).toEqual({ title: 'Top plate 100201014500', sap: '2330698', author: 'E. Yüksel' });
+    expect((await pdfInfo(bytes(holdingUrl))).title).toBe('Holding plate');
   });
 
   it('a PDF without the fields gives nothing (the operator is asked)', async () => {
