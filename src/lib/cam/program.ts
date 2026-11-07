@@ -761,7 +761,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
     chosen.push(si);
     for (let i = 0; i < occ.length; i++) if (reach[si][i]) covered[i] = 1;
   };
-  const spun = (si: number) => first >= 0 && !!input.orient?.spin && SIDES[si].d[thin] !== 0;
+  // The operator's pair of sides turns as chosen; any other side turns a quarter when the jaws
+  // would otherwise hold it by its short side (under half its long one), if it fits one vise.
+  const across = (si: number) => {
+    const e = apply(upTurn(SIDES[si].d), size).map(Math.abs);
+    return e[0] < 0.5 * e[1] && e[1] <= VISE.width + OVERHANG;
+  };
+  const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
   // The simpler face first (fewer floors and holes), the finished front last of the two.
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
