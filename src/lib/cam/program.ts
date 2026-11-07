@@ -13,6 +13,7 @@ import { clearLevel, filled, swept, trim, type Ring } from './clear';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
+import { checkSetup, drillThrust, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -62,6 +63,9 @@ export interface CamSetup {
   notes: string[];
   shift: Vec;
   cale: number;
+  /** How deep the jaws grip (mm), and what the vise does to the part with it (physics.ts). */
+  grip: number;
+  physics: SetupCheck;
   ops: CamOp[];
 }
 
@@ -73,6 +77,8 @@ export interface CamResult {
   notes: CamNote[];
   size: Vec;
   raw: Vec;
+  /** Where the model lies in setup 1's program coordinates (p -> R p + t): how it was planned. */
+  pose: { R: Mat3; t: Vec } | null;
 }
 
 const TABLE_Z = -57;
@@ -140,8 +146,8 @@ function grown(occ: Uint8Array, [nx, ny, nz]: number[]): Uint8Array {
  * The cale under the part: the jaws grip as little as the cut needs (the outside is cut down to
  * 0.5 mm above the jaws), at least 3 mm to hold it, at most 6, never all of the part.
  */
-function caleFor(height: number, want: number): { cale: number; grip: number } {
-  const target = Math.max(3, Math.min(6, want, height - 1));
+function caleFor(height: number, want: number, least = 3): { cale: number; grip: number } {
+  const target = Math.max(3, least, Math.min(6, want, height - 1));
   let best: { cale: number; grip: number } | null = null;
   for (const c of CALE_HEIGHTS) {
     const grip = JAW - c;
@@ -326,36 +332,170 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean }[]
   return ops;
 }
 
+/** Steepest way an end mill goes down into material (5°): it never plunges straight into it. */
+const RAMP = Math.tan((5 * Math.PI) / 180);
+type P3 = [number, number, number];
+const dist2 = (a: P2, b: P2) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+
+/**
+ * Down from z0 to z1 at the ramp's slope from `start`, through the vertices `next(k)` gives
+ * (k = 0, 1, …): the points passed, where it ends, and the vertex it was heading for.
+ */
+function ramp(start: P2, next: (k: number) => P2, z0: number, z1: number): { pts: P3[]; end: P2; k: number } {
+  const L = Math.max(0.01, (z0 - z1) / RAMP);
+  const pts: P3[] = [];
+  let p = start;
+  let s = 0;
+  for (let k = 0; k < 1_000_000; k++) {
+    const q = next(k);
+    const d = dist2(p, q);
+    if (s + d >= L) {
+      const t = d > 1e-9 ? (L - s) / d : 0;
+      const end: P2 = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      pts.push([end[0], end[1], z1]);
+      return { pts, end, k };
+    }
+    s += d;
+    pts.push([q[0], q[1], z0 - ((z0 - z1) * s) / L]);
+    p = q;
+  }
+  return { pts, end: p, k: 0 };
+}
+
+const perimeter = (g: Ring) => g.pts.reduce((t, p, i) => (i || g.closed ? t + dist2(g.pts[i ? i - 1 : g.pts.length - 1], p) : t), 0);
+
+/** One level of an end mill: its rings, the level's bottom and top, and the part there (never touched). */
+interface Work {
+  z: number;
+  above: number;
+  rings: Ring[];
+  keep: Region;
+}
+
+/**
+ * Where a ring can be entered from the side: from a ring already cut down to this level (its path
+ * is clear to the bottom), the nearest pair of points no more than two step-overs apart, the
+ * straight move between them clear of the part.
+ */
+function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): { from: P2; at: number } | null {
+  let best: { from: P2; at: number; d: number } | null = null;
+  // An open piece is entered at one of its ends (it is cut from there), a closed ring anywhere.
+  const at = g.closed ? g.pts.map((_, i) => i) : [0, g.pts.length - 1];
+  for (const o of done.slice(-4))
+    for (const p of o.pts)
+      for (const i of at) {
+        const d = dist2(p, g.pts[i]);
+        if (d <= 2 * ae + 0.5 && (!best || d < best.d)) best = { from: p, at: i, d };
+      }
+  if (!best) return null;
+  const b: { from: P2; at: number; d: number } = best;
+  // The tool sweeping straight across must not touch what stays.
+  if (area(intersection(swept([{ pts: [b.from, g.pts[b.at]], closed: false, outside: false }], r - 0.03), keep)) > 0.001) return null;
+  return { from: b.from, at: b.at };
+}
+
 /**
  * An end mill's rings, level by level, top down. Each ring is run in passes no deeper than the
  * tool's own depth per pass (its ring is clear of the part at every height above its level).
+ * It never plunges into material: the first ring of a level ramps down along itself (a closed
+ * one round and round, an open one back and forth), straight down only where its whole circle is
+ * in the air (`material`: what is there between two heights at the start of the setup). Every
+ * next ring is entered from the side, out of a ring already cut to the bottom (sideEntry): down
+ * in that ring's path, across, round, back.
  */
-function milling(tool: CamTool, work: { z: number; above: number; rings: Ring[] }[], mat: string, limits: Limits, stockTop: number, clear: number): CamOp {
+function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region): CamOp {
   const cut = cutData(tool, 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
   // (much deeper than in a pocket, where the first ring is a full slot).
   const side = cutData(tool, 'contour', mat, limits);
+  const r = tool.diameter / 2;
+  const airCache = new Map<string, Region>();
+  const inAir = (p: P2, lo: number, hi: number) => {
+    const key = `${lo.toFixed(3)}:${hi.toFixed(3)}`;
+    let m = airCache.get(key);
+    if (!m) airCache.set(key, (m = offset(material(lo, hi), r - 0.05)));
+    return inside(m, p) === 0;
+  };
+  const xy = (p: P2) => `X${n3(p[0])} Y${n3(p[1])}`;
+  const xyz = (p: P3) => `X${n3(p[0])} Y${n3(p[1])} Z${n3(p[2])}`;
   const first = work[0].rings[0].pts[0];
   const lines = [`G00 G90 X${n3(first[0])} Y${n3(first[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
   let prevZ = stockTop;
-  for (const { z, above, rings } of work) {
+  for (const { z, above, rings, keep } of work) {
     const top = Math.min(above, prevZ);
-    for (const g of rings) {
-      const c = g.outside ? side : cut;
+    const done: Ring[] = [];
+    for (const ring of rings) {
+      const c = ring.outside ? side : cut;
       const n = Math.max(1, Math.ceil((top - z) / c.ap - 1e-6));
       const passes = Array.from({ length: n }, (_, i) => top - ((top - z) * (i + 1)) / n);
-      const [x, y] = g.pts[0];
-      lines.push(`G00 Z${n3(clear)}`, `G00 X${n3(x)} Y${n3(y)}`, `G00 Z${n3(Math.max(z, prevZ) + 1)}`);
-      for (const pz of passes) {
-        lines.push(`G01 Z${n3(pz)} F${c.fz}.`);
+      const entry = done.length ? sideEntry(ring, done, r, c.ae, keep) : null;
+      done.push(ring);
+      if (entry) {
+        // Start the ring where it is entered (an open piece from its nearer end).
+        const pts = ring.closed ? [...ring.pts.slice(entry.at), ...ring.pts.slice(0, entry.at)] : entry.at ? [...ring.pts].reverse() : ring.pts;
+        const q = pts[0];
+        lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(entry.from)}`, `G00 Z${n3(Math.max(z, prevZ) + 1)}`);
         let fset = false;
-        for (const p of [...g.pts.slice(1), ...(g.closed ? [g.pts[0]] : [])]) {
-          lines.push(`G01 X${n3(p[0])} Y${n3(p[1])}${fset ? '' : ` F${c.f}.`}`);
-          fset = true;
+        const feed = () => (fset ? '' : ((fset = true), ` F${c.f}.`));
+        for (const pz of passes) {
+          // Down in the cut ring's path (clear to the bottom), across into this one, round, back.
+          lines.push(`G01 Z${n3(pz)} F${c.fz}.`, `G01 ${xy(q)}`);
+          fset = false;
+          for (const p of pts.slice(1)) lines.push(`G01 ${xy(p)}${feed()}`);
+          if (ring.closed) lines.push(`G01 ${xy(q)}`);
+          // An open piece: back along itself (cut at this depth) to where it was entered.
+          else for (const p of pts.slice(0, -1).reverse()) lines.push(`G01 ${xy(p)}`);
+          lines.push(`G01 ${xy(entry.from)} F${c.fz}.`);
         }
-        // An open piece: back to its start above the cut before the next pass.
-        if (!g.closed && pz !== passes[passes.length - 1]) lines.push(`G00 Z${n3(pz + 1)}`, `G00 X${n3(x)} Y${n3(y)}`);
+        continue;
       }
+      const pts = ring.pts;
+      const m = pts.length;
+      const tiny = m < 2 || perimeter(ring) < 1;
+      let at: P2 = pts[0];
+      // Vertex index the closed ring continues from (the ramp ends between two of them).
+      let k0 = 0;
+      let zAt = top;
+      lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(at)}`, `G00 Z${n3(Math.max(z, prevZ) + 1)}`);
+      passes.forEach((pz, pi) => {
+        const from = pi ? passes[pi - 1] : top;
+        const enter = pi === 0 || !ring.closed;
+        if (enter && pi > 0) lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(pts[0])}`, `G00 Z${n3(from + 1)}`);
+        if (enter) {
+          at = pts[0];
+          k0 = 0;
+          zAt = from;
+          // Down to the material's top here (cleared above it) at the entry feed.
+          lines.push(`G01 Z${n3(from)} F${c.fz}.`);
+        }
+        if (tiny || (enter && inAir(pts[0], pz, from))) {
+          // Its whole circle in the air (or no ring to ramp along): straight down.
+          lines.push(`G01 Z${n3(pz)} F${c.fz}.`);
+        } else if (ring.closed) {
+          const start = k0;
+          const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zAt, pz);
+          rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
+          at = rp.end;
+          k0 = (start + rp.k) % m;
+        } else {
+          // Back and forth along the open ring, then back to its start along it.
+          const idx = (q: number) => {
+            const w = q % (2 * (m - 1));
+            return w <= m - 1 ? w : 2 * (m - 1) - w;
+          };
+          const rp = ramp(pts[0], (k) => pts[idx(k + 1)], from, pz);
+          rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
+          for (let v = Math.min(idx(rp.k), idx(rp.k + 1)); v >= 0; v--) lines.push(`G01 ${xy(pts[v])}`);
+        }
+        zAt = pz;
+        // The ring at this depth, from where the tool is back to it.
+        let fset = false;
+        const feed = () => (fset ? '' : ((fset = true), ` F${c.f}.`));
+        if (ring.closed) {
+          for (let i = 1; i <= m; i++) lines.push(`G01 ${xy(pts[(k0 + i) % m])}${feed()}`);
+          if (dist2(pts[k0 % m], at) > 1e-6) lines.push(`G01 ${xy(at)}`);
+        } else for (const p of pts.slice(1)) lines.push(`G01 ${xy(p)}${feed()}`);
+      });
     }
     prevZ = z;
   }
@@ -401,6 +541,67 @@ function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[
   return { kind: 'chamfer', name: 'FASE', tool, cut, lines };
 }
 
+/** The outline of a region (min and max X, Y). */
+function extent(r: Region): { lo: P2; hi: P2 } | null {
+  const pts = r.flat();
+  if (!pts.length) return null;
+  return { lo: [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], hi: [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))] };
+}
+
+/**
+ * Where the vise really touches what is left of the part (3-2-1): both jaws over the grip, the
+ * parallels under it, the stop at its left. The jaws close on the widest material between the
+ * part's bottom and their top; vise 1 holds it from the stop for 142 mm, vise 2 from 192 to 342.
+ */
+function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean): { contact: Contact; width: number } {
+  const band = left.at(bottom, bottom + grip);
+  const e = extent(band);
+  if (!e) return { contact: { jaws: 0, rest: [0, 0], stop: false }, width: 0 };
+  // As thick as the simulation's grid steps: a flat face on the grid is a staircase that fine.
+  const strip = Math.max(0.3, left.skin);
+  const x0 = e.lo[0];
+  const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap - 8, x0 + VISE.width + VISE.gap - 8 + len] as [number, number]] : [])];
+  const along = (r: Region, y0: number, y1: number, len: number) => spans(len).reduce((t, [a, b]) => t + area(intersection(r, rect(a, y0, b, y1))) / (y1 - y0), 0);
+  const jaws = Math.min(along(band, e.lo[1], e.lo[1] + strip, VISE.width - 8), along(band, e.hi[1] - strip, e.hi[1], VISE.width - 8));
+  const width = e.hi[1] - e.lo[1];
+  const w = Math.min(6, width / 6);
+  const floor = left.at(bottom, bottom + strip);
+  const rest: [number, number] = [along(floor, e.lo[1], e.lo[1] + w, PARALLEL_LENGTH), along(floor, e.hi[1] - w, e.hi[1], PARALLEL_LENGTH)];
+  const stop = area(intersection(band, rect(x0, e.lo[1], x0 + strip, e.hi[1]))) > 0.01;
+  return { contact: { jaws, rest, stop }, width };
+}
+
+/** What an operation pushes the part with (physics.ts), and how far from its left face it works. */
+function loadOf(op: CamOp, mat: string, left: number, width: number, limits: Limits): OpLoad {
+  const { kc } = materialData(mat);
+  const d = op.tool.diameter;
+  const c = op.cut;
+  let reach = 0;
+  for (const l of op.lines) {
+    if (l.startsWith('G00')) continue;
+    const x = /X(-?[\d.]+)/.exec(l);
+    if (x) reach = Math.max(reach, Number(x[1]) + d / 2 - left);
+  }
+  if (op.kind === 'drill' || op.kind === 'centre') return { side: 0, down: drillThrust(kc, d, c.fz, c.s), reach };
+  const ae = op.kind === 'face' ? Math.min(d, width) : op.kind === 'pocket' ? d : c.ae;
+  let side = PEAK * millForce(kc, c.ap, ae, c.f, c.s, d);
+  // A milling op also runs round the outside with the contour's depth.
+  if (op.kind === 'pocket') {
+    const o = cutData(op.tool, 'contour', mat, limits);
+    side = Math.max(side, PEAK * millForce(kc, o.ap, o.ae, o.f, o.s, d));
+  }
+  // Down: the helix pulls and pushes about half the side force; the mills ramp in (milling()).
+  // shortcut: a ring no longer than 1 mm is plunged like a drill and not counted here; rare (a hole the tool's size).
+  return { side, down: side / 2, reach };
+}
+
+/** The operation at a share of its feed (the vise or the part cannot take more). */
+function slowed(op: CamOp, k: number): CamOp {
+  if (k >= 0.999) return op;
+  const r = (v: number) => Math.max(1, Math.round((v * k) / 10) * 10);
+  return { ...op, cut: { ...op.cut, f: r(op.cut.f), fz: r(op.cut.fz) }, lines: op.lines.map((l) => l.replace(/F(\d+(?:\.\d*)?)/g, (_, v: string) => `F${r(Number(v))}.`)) };
+}
+
 /** How the program does once read back and simulated like the toolpath viewer does it. */
 export interface CamCheck {
   /** How alike the simulated part and the model are (0..1), and where they differ. */
@@ -414,12 +615,20 @@ export interface CamCheck {
   cales: number;
 }
 
-export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds): CamCheck {
+export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const an = analyseProgram(tp, { jawHeight: JAW });
   const sim = buildInput(tp, an);
-  const laid = sim ? layModel(tris, sim, an.setups) : null;
-  const diff = laid && !('mismatch' in laid) ? differences(laid) : null;
+  // CAM AI's own program: the model where it was planned (a best fit could lay a nearly symmetric
+  // part the wrong way round and hide or invent differences); anyone else's: the best fit.
+  let diff: ReturnType<typeof differences> | null = null;
+  if (sim && pose) {
+    const g = carve({ ...sim, maxVoxels: 300_000, surfaceMoves: false });
+    diff = differences({ g, occ: voxelize(tris, pose.R, pose.t, g) });
+  } else if (sim) {
+    const laid = layModel(tris, sim, an.setups);
+    diff = 'mismatch' in laid ? null : differences(laid);
+  }
   const hits = an.setups.flatMap((x) => x.collisions);
   return {
     match: diff?.match ?? 0,
@@ -435,20 +644,21 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
 /**
  * The program for a part: planned with each of its sides as the height in the vise (thinnest
  * first), each checked like the toolpath viewer checks it, the right one (99 % like the model, no
- * collision) that takes the least time kept. `progress` after each try.
+ * collision, held safely) that takes the least time kept. `progress` after each try.
  */
 export function camProgram(input: CamInput, progress: (done: number, of: number) => void = () => {}): CamResult & { check: CamCheck } {
   const b = bounds(input.tris);
   // The operator's layout is planned alone; else each side as the height, thinnest first.
   const order = input.orient ? [SIDES.find((s) => s.name === input.orient!.side)!.d.findIndex((v) => v !== 0)] : [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
   let best: (CamResult & { check: CamCheck }) | null = null;
-  const good = (c: CamCheck) => c.match >= 0.99 && c.collisions === 0;
+  // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
+  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.setups.every((x) => x.physics.ok);
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
-    const check = checkProgram(input.tris, r.code, input.brand, input.speeds);
+    const now = { ...r, check: checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose) };
     progress(i + 1, order.length);
-    const better = !best || (good(check) && (!good(best.check) || check.minutes < best.check.minutes)) || (!good(check) && !good(best.check) && check.match > best.check.match);
-    if (better) best = { ...r, check };
+    const better = !best || (good(now) && (!good(best) || now.check.minutes < best.check.minutes)) || (!good(now) && !good(best) && now.check.match > best.check.match);
+    if (better) best = now;
   });
   return best!;
 }
@@ -519,7 +729,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The shop's template tools for this material, plus the machine's special ones (machine's first).
   const tools = catalog(mat, input.tools, input);
   const mills = usable(tools, MILLS);
-  const addSetup = (si: number): boolean => {
+  const addSetup = (si: number, least = 3): boolean => {
+    // What this try changes, to undo when the vise asks for a deeper grip and it is planned again.
+    const was = { drilled: new Map(drilled), notes: notes.length };
     const side = SIDES[si];
     const f = feats[si];
     const R = f.R;
@@ -537,7 +749,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const H = f.max[2] - f.min[2];
     const stockH = sb.hi[2] - sb.lo[2];
     // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
-    const { cale, grip } = caleFor(stockH, -H - 0.5 - sb.lo[2]);
+    const { cale, grip } = caleFor(stockH, -H - 0.5 - sb.lo[2], least);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     const hold: [number, number] = [sb.hi[0] - sb.lo[0], sb.hi[1] - sb.lo[1]];
@@ -641,7 +853,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (disks.length) k = union(k, disks);
       return k;
     };
-    const perTool = new Map<CamTool, { z: number; above: number; rings: Ring[] }[]>();
+    const perTool = new Map<CamTool, Work[]>();
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(sb.hi[2], 0);
@@ -677,7 +889,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep });
         todo = opened(difference(todo, pick.gone));
       }
       // What no end mill here could reach: listed once it adds up to more than slivers.
@@ -695,7 +907,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const same = byDia.get(tool.diameter);
       if (!same?.includes(tool) || same.some((o) => o.length > tool.length)) continue;
       const work = same.flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z);
-      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear));
+      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
@@ -708,7 +920,36 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
     // Nothing to do from this side after all: no setup.
     if (!ops.length) return false;
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, ops });
+    // 5. The vise and the part (physics.ts): held without slipping, tipping, crushing or squeezing
+    // it out of size, nothing bending past its limit. A deeper grip first (planned again), then
+    // slower cuts.
+    const twoVises = hold[0] > VISE.width + OVERHANG;
+    // shortcut: the plate checks use the whole part's thickness, not thin pocket floors (part families, step 7).
+    const thin = Math.min(stockH, H);
+    const squeeze = input.partType === 'topPlate' || input.partType === 'contourInsert' || input.partType === 'sealCage' ? SQUEEZE.precise : SQUEEZE.normal;
+    const physicsAt = (g: number) => {
+      const { contact, width } = contactOf(left, sb.lo[2], g, twoVises);
+      const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], width || hold[1], limits));
+      return checkSetup({ material: mat, length: hold[0], width: width || hold[1], height: stockH, grip: g, thin, contact, loads, squeeze });
+    };
+    const physics = physicsAt(grip);
+    if (least === 3 && (physics.feed < 1 || !physics.ok)) {
+      const deeper = CALE_HEIGHTS.map((c) => JAW - c)
+        .filter((g) => g > grip && g <= stockH - 1)
+        .sort((p, q) => p - q)
+        .find((g) => {
+          const p = physicsAt(g);
+          return p.feed >= 1 && !p.issues.some((i) => i.key === 'cannotHold' || i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
+        });
+      if (deeper) {
+        drilled.clear();
+        was.drilled.forEach((v, k) => drilled.set(k, v));
+        notes.length = was.notes;
+        return addSetup(si, deeper);
+      }
+    }
+    const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ops: done });
     prevR = R;
     return true;
   };
@@ -741,7 +982,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (!addSetup(best.si)) break;
   }
 
-  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw };
+  // The model as planned: centred, turned as setup 1, its top at Z0.
+  const pose = setups.length ? { R: setups[0].R, t: [0, 1, 2].map((k) => apply(setups[0].R, c0)[k] + setups[0].t[k]) as Vec } : null;
+  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose };
 }
 
 /** The program text, like the shop's. */

@@ -4,6 +4,7 @@ import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
 import { camProgram, type CamInput } from './program';
 import type { CamNote, Need } from './tools';
+import type { SetupCheck } from './physics';
 
 /*
  * CAM AI away from the screen (a part takes from seconds to a few minutes):
@@ -29,6 +30,9 @@ export interface CamSummary {
   setups: {
     side: string;
     notes: string[];
+    /** Jaw grip (mm) and what the vise does to the part (clamp force, pressure, issues). */
+    grip: number;
+    physics: SetupCheck;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
     ops: { name: string; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
   }[];
@@ -67,6 +71,8 @@ self.onmessage = async (e: MessageEvent<CamRequest>) => {
         setups: r.setups.map((s) => ({
           side: s.side,
           notes: s.notes,
+          grip: s.grip,
+          physics: s.physics,
           ops: s.ops.map((o) => ({
             name: o.name,
             tool: o.tool.number,

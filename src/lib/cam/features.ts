@@ -1,6 +1,6 @@
 import type { Vec } from '../toolpath';
 import { ALL, apply, mul, transpose, type Mat3 } from '../orient';
-import { bounds, inside, slice, turnTris } from './geom';
+import { area, bounds, intersection, slice, turnTris, type P2 } from './geom';
 
 /*
  * What CAM AI finds on a part's model, seen from each side it can be machined from (the tool comes
@@ -176,12 +176,17 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
       freeform += a;
     }
   }
-  // Holes reachable from above: nothing of the part over them.
+  // Holes reachable from above: nothing of the part over their whole circle (a wider bore under a
+  // narrower neck is not: its tool would cut the neck away), at every floor above and just over
+  // the hole's top.
   const above = [...new Set([...floors.keys(), max[2]])].sort((a, b) => b - a);
   const cuts = new Map<number, ReturnType<typeof slice>>();
   const cut = (z: number) => cuts.get(z) ?? cuts.set(z, slice(P, z)).get(z)!;
+  const disk = (c: [number, number], r: number): P2[][] => [Array.from({ length: 32 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 16), c[1] + r * Math.sin((i * Math.PI) / 16)] as P2)];
+  const open = (h: { c: [number, number]; r: number; hi: number }) =>
+    [...above.filter((z) => z > h.hi + 0.06).map((z) => z - 0.01), ...(h.hi + 0.05 < max[2] ? [h.hi + 0.05] : [])].every((z) => area(intersection(cut(z), disk(h.c, h.r - 0.05))) < 0.01);
   const holes: Hole[] = cylinders(P)
-    .filter((h) => h.concave && above.filter((z) => z > h.hi + 0.01).every((z) => inside(cut(z - 0.01), h.c) === 0))
+    .filter((h) => h.concave && open(h))
     .map((h) => ({ c: h.c, r: h.r, top: h.hi, bottom: h.lo, through: h.lo <= min[2] + 0.01, closed: h.closed }));
   return {
     side: side.name,

@@ -84,6 +84,12 @@ export interface SetupInfo {
   conflict: boolean;
   /** "15 MM ZWISCHENLAGE IN Y-": plates between the part and a jaw (or the stop), one per side written. */
   spacers: { mm: number; side: Face }[];
+  /**
+   * "TEIL IN POM-NEST LEGEN": the part sits in CAM AI's POM nest (its last way to hold a part), the
+   * nest in the vise on the written cale: the part is the nest's wall off the stop and the fixed
+   * jaw (as spacers there) and its floor higher.
+   */
+  nest: boolean;
   /** vise; module: the shop's modular clamp (a vise too, same 45 mm jaws); fixture: held in a fixture. */
   clamp: 'vise' | 'module' | 'fixture' | null;
   side: 'back' | 'front' | null;
@@ -248,6 +254,11 @@ export function readInstructions(notes: string[]) {
   const spacers = new Map<Face, number>();
   for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${NUM}\\s*MM\\s*UNTERLAGE${SIDE}`])
     for (const m of t.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
+  const nest = /\bNEST\b/.test(t);
+  if (nest) {
+    if (!spacers.has('X-')) spacers.set('X-', NEST_WALL + 2 * NEST_GAP);
+    if (!spacers.has('Y+')) spacers.set('Y+', NEST_WALL);
+  }
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
@@ -268,11 +279,12 @@ export function readInstructions(notes: string[]) {
     restAbove: above ? num(above[1]) : null,
     onJaw: onJaw ? num(onJaw[1]) : null,
     twoVises: /\b2\s*SCHRAUBST/.test(t),
+    nest,
     spacers: [...spacers].map(([side, mm]) => ({ mm, side })),
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
     // "FIXATION AVEC LES BRIDES": strap clamps on the table, no vise.
-    clamp: /VORRICHT|VORRI\b|BRIDES/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
+    clamp: nest || /VORRICHT|VORRI\b|BRIDES/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,
@@ -319,6 +331,10 @@ export const TABLE_Z = -57;
 const FLOOR_TRUST = 15;
 /** Thickness of the stop plate at the left end of the vise jaws (mm). */
 export const STOP_PLATE = 8;
+/** CAM AI's POM nest: the wall round its pocket, the floor under it, the pocket's play each side (mm). */
+export const NEST_WALL = 12;
+export const NEST_FLOOR = 8;
+export const NEST_GAP = 0.1;
 /**
  * The shop's vise: jaws 150 mm long (X), 45 mm high, open up to 400 mm (Y). The original one has
  * the stop and the machine zero; the second one stands 50 mm to its right, open on both sides.
@@ -957,7 +973,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     // its top follows (the face-mill guess is only a guess).
     const floorRule = s.shift && notes.length ? TABLE_Z - s.shift[2] : null;
     if (floorRule !== null && k === 0 && ins.restDepth === null && ins.support !== null && ins.topAt === null) {
-      const top = floorRule + ins.support + size[2];
+      const top = floorRule + ins.support + (ins.nest ? NEST_FLOOR : 0) + size[2];
       // Only when the guess is clearly off (more than 1.5 mm): small differences are the floor's
       // own tolerance.
       if (Math.abs(top - topZ) > 1.5 && Math.abs(top - topZ) <= FLOOR_TRUST) topZ = top;
@@ -970,7 +986,8 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     // The parallels hold the part under its bottom, or under a ledge ("IN EP 5 MM": 5 mm below
     // Z0, e.g. a flange, with a boss hanging between the parallels).
     // Order of trust: "IN EP" from the program, then the floor (G52 shift), then the shape.
-    const support = ins.support ?? 0;
+    // In the nest the part stands on its floor, on top of the cale.
+    const support = (ins.support ?? 0) + (ins.nest ? NEST_FLOOR : 0);
     const trusted = floorRule !== null && Math.abs(floorRule - (min[2] - support)) <= FLOOR_TRUST && floorRule <= min[2] + 1;
     let rest = min[2];
     let floor = rest - support;
@@ -988,7 +1005,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       // The part sits on supports that reach the floor. When the written supports end higher than
       // the part's bottom, it rests there on a ledge (a boss hanging between the parallels).
       const top = floorRule! + support;
-      if (k > 0 && ins.support !== null && top > min[2] + 1.5 && top < max[2] - 0.5) rest = top;
+      if (k > 0 && ins.support !== null && !ins.nest && top > min[2] + 1.5 && top < max[2] - 0.5) rest = top;
       floor = floorRule!;
     } else if (ledges?.has(k)) {
       rest = ledges.get(k)!;

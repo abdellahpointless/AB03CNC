@@ -50,6 +50,16 @@ describe('tools for a part', () => {
     expect(() => catalog('INOX', machine)).toThrow();
   });
 
+  it('never gives a template tool a T number the machine uses for another tool', () => {
+    // FH templates number the Ø1.5 drill 18; this machine has its Ø5.4 drill in pocket 18.
+    const m: Tool[] = [{ id: 'd', number: 18, category: 'foret', description: 'Foret', diameter: 5.4, length: 55 }];
+    const tools = catalog('FH', m);
+    expect(tools.find((t) => t.type === 'SB' && t.diameter === 5.4 && t.length === 55)).toMatchObject({ number: 18, inMachine: true });
+    expect(tools.find((t) => t.code === 'SB_01.50_035_000_FH')!.number).not.toBe(18);
+    const numbers = tools.map((t) => t.number);
+    expect(new Set(numbers).size).toBe(numbers.length);
+  });
+
   it('caps the rpm at the machine top speed and lowers the feed in proportion', () => {
     const sf8 = catalog('ALU', machine).find((t) => t.code === 'SF_08.00_040_000_ALHS')!;
     const full = cutData(sf8, 'pocket', 'ALU', { maxRpm: 20000, maxFeed: 10000 });

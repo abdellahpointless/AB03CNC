@@ -4,6 +4,7 @@ import learned from './shopKnowledge.json';
 import library from './library.json';
 import type { Family, TemplateKind, TemplateTool } from './templates';
 import { DEFAULT_LIMITS, type Limits } from './limits';
+import { DEFLECTION, drillBuckling, drillThrust, materialData, millForce, PEAK, SAFETY, toolDeflection } from './physics';
 export { DEFAULT_LIMITS, type Limits };
 
 /*
@@ -91,13 +92,15 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
   if (!fam) throw new Error(`Unknown CAM material ${material}`);
   const out: CamTool[] = [];
   const used = new Set<Tool>();
-  const numbers = new Set<number>();
+  // Every number in the machine is taken by the tool sitting there: a template tool that is not
+  // in the machine never gets one of them (the shop's template numbers repeat the machines').
+  const numbers = new Set<number>(machine.map((m) => m.number));
   for (const t of LIBRARY[fam]) {
     const category = CATEGORY[t.type];
     if (!category || opts.exclude?.includes(t.code)) continue;
     const m = machine.find((x) => !used.has(x) && sameType(x, t.type) && Math.abs(x.diameter - t.d) < 0.01 && Math.abs((x.length || 0) - t.length) <= 2);
     if (m) used.add(m);
-    // One T number per tool in a program (the shop's numbers repeat in places).
+    // One T number per tool in a program.
     let number = m?.number ?? t.number;
     while (!m && numbers.has(number)) number += 1_000_000;
     numbers.add(number);
@@ -183,6 +186,48 @@ const r10 = (v: number) => Math.max(10, Math.round(v / 10) * 10);
 
 /** Cutting data for a tool doing `kind` on a material, within the machine's limits. */
 export function cutData(tool: CamTool, kind: TemplateKind, material: string, limits: Limits = DEFAULT_LIMITS): Cut {
+  return stiff(tool, kind, material, rawCut(tool, kind, material, limits));
+}
+
+/** The family's own material: the one its templates were made for. */
+const BASE: Record<Family, CamMaterial> = { ALU: 'ALU', POM: 'POM', FH: 'FH' };
+const MILL_KINDS = new Set<TemplateKind>(['face', 'contour', 'pocket', 'finish', 'tslot', 'ball', 'radius']);
+
+/**
+ * Within what the tool takes (physics.ts). A mill bends no more than its template on its own tool
+ * in its own material (the shop runs it), else than the fixed limit (0.05 mm roughing, 0.01
+ * finishing): the depth per pass comes down first (to 0.1 Ø), then the feed. A drill pushes no
+ * harder than its template does (else a third of what it buckles under): its feed comes down.
+ */
+function stiff(tool: CamTool, kind: TemplateKind, material: string, c: Cut): Cut {
+  const d = tool.diameter;
+  const m = materialData(material);
+  const L = tool.length || tool.template?.length || 3 * d;
+  const fam = FAMILY[material as CamMaterial] ?? 'FH';
+  const base = materialData(BASE[fam]);
+  const templated = c.from === 'template' && !!tool.template;
+  if (kind === 'drill' || kind === 'centre' || kind === 'spot') {
+    const most = Math.max(drillBuckling(L, d) / SAFETY.buckle, templated ? drillThrust(base.kc, d, c.f, c.s) : 0);
+    const thrust = drillThrust(m.kc, d, c.f, c.s);
+    if (thrust <= most) return c;
+    const k = most / thrust;
+    return { ...c, f: Math.max(1, r10(c.f * k)), fz: Math.max(1, r10(c.fz * k)) };
+  }
+  if (!MILL_KINDS.has(kind)) return c;
+  // A pocket starts with a full slot.
+  const ae = kind === 'pocket' ? d : c.ae;
+  const bend = (kc: number, len: number) => toolDeflection(PEAK * millForce(kc, c.ap, ae, c.f, c.s, d), len, d);
+  const proven = templated ? bend(base.kc, tool.template!.length || L) : 0;
+  const limit = Math.max(kind === 'finish' ? DEFLECTION.finish : DEFLECTION.rough, proven);
+  const now = bend(m.kc, L);
+  if (now <= limit * 1.0001) return c;
+  // Force follows the depth and the feed alike.
+  const ap = Math.min(c.ap, Math.max(0.1 * d, (c.ap * limit) / now));
+  const k = Math.min(1, limit / now / (ap / c.ap));
+  return { ...c, ap: Math.round(ap * 100) / 100, f: Math.max(1, r10(c.f * k)), fz: Math.max(1, r10(c.fz * k)) };
+}
+
+function rawCut(tool: CamTool, kind: TemplateKind, material: string, limits: Limits): Cut {
   const fam = FAMILY[material as CamMaterial] ?? 'FH';
   const d = tool.diameter;
   const op = (NEAR[kind] ?? [kind]).map((k) => tool.template?.ops.find((o) => o.kind === k)).find(Boolean);
