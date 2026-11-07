@@ -850,7 +850,7 @@ export default function CodeEditorPair({
           )}
 
           {/* Code Viewer */}
-          <div ref={outputScrollRef} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] ${isOutputStale ? 'opacity-50' : ''}`}>
+          <div ref={outputScrollRef} tabIndex={0} role="region" aria-label={outputLabel} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)] -outline-offset-2 ${isOutputStale ? 'opacity-50' : ''}`}>
             {!outputCode ? (
               <div className="h-full flex items-center justify-center text-center p-6">
                 <div className="max-w-xs space-y-2">
