@@ -404,6 +404,8 @@ const remapper = {
       engraving: 'Engraving',
     },
     gouge: 'The program cuts into the part ({{mm3}} mm³ too much). Look at it in the toolpath viewer.',
+    intoCale_one: '{{count}} spot where a tool still goes into a cale under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
+    intoCale_other: '{{count}} spots where a tool still goes into a cale under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
     collisions_one: '{{count}} collision in the simulation. Look at it in the toolpath viewer.',
     collisions_other: '{{count}} collisions in the simulation. Look at them in the toolpath viewer.',
     percent: '{{v}} %',
@@ -435,7 +437,7 @@ const remapper = {
     view: 'Open in the toolpath viewer',
     download: 'Download',
     send: 'Send to the remapper',
-    locked: 'Download and Send unlock once every check passes: like the model (99 %), no collision, nothing cut out of the part, and the vise holds it safely.',
+    locked: 'Download and Send unlock once every check passes: like the model (99 %), no collision, no tool into a cale, nothing cut out of the part, and the vise holds it safely.',
   },
   /** Toolpath preview (components/ToolpathViewer). */
   toolpath: {

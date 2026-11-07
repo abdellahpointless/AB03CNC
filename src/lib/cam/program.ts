@@ -5,7 +5,7 @@ import { differences, layModel, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram, OVERHANG, VISE } from '../setups';
+import { analyseProgram, OVERHANG, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
@@ -776,8 +776,9 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     pieces: diff?.pieces ?? [],
     minutes: tp.totalSeconds / 60,
     toolChanges: tp.toolChanges,
-    // As the remapper: a tool into a cale is a warning (the operator moves the cale), not a hit.
-    collisions: hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer').length + holders + rapids,
+    // Unlike the remapper (a warning there), CAM AI's own program never goes into a parallel
+    // (shop rule): its through-cuts stop on them (overParallels); one still going in blocks it.
+    collisions: hits.filter((h) => h.what !== 'spacer').length + holders + rapids,
     holders,
     rapids,
     grazes,
@@ -791,15 +792,83 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
  * Any other rapid into material stays a collision (it blocks the program).
  */
 function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
-  const check = checkProgram(input.tris, r.code, input.brand, input.speeds, r.pose);
-  if (!check.rapids || check.grazes.length !== check.rapids) return { ...r, check };
-  const lines = r.code.split('\n');
-  for (const i of check.grazes) {
-    const f = lines.slice(i + 1, i + 6).join(' ').match(/F(\d+)/)?.[1] ?? '300';
-    lines[i] = `${lines[i].replace(/\bG00\b/, 'G01')} F${f}.`;
+  const again = (code: string) => checkProgram(input.tris, code, input.brand, input.speeds, r.pose);
+  let code = r.code;
+  let check = again(code);
+  if (check.rapids && check.grazes.length === check.rapids) {
+    const lines = code.split('\n');
+    for (const i of check.grazes) {
+      const f = lines.slice(i + 1, i + 6).join(' ').match(/F(\d+)/)?.[1] ?? '300';
+      lines[i] = `${lines[i].replace(/\bG00\b/, 'G01')} F${f}.`;
+    }
+    check = again((code = lines.join('\n')));
   }
-  const code = lines.join('\n');
-  return { ...r, code, check: checkProgram(input.tris, code, input.brand, input.speeds, r.pose) };
+  // Through-cuts over a parallel stop on it (the part's bottom rests there): checked again.
+  if (check.cales) check = again((code = overParallels(code, input.speeds ?? speedsFor(input.brand))));
+  return { ...r, code, check };
+}
+
+/**
+ * Shop rule: no tool into a parallel. Every feed move over one (within the tool's radius, inside
+ * the vise) and below its top is raised to its top, the part's bottom resting there: a through-cut
+ * stops there, not 0.2 below. A move that runs onto or off one is split at the edge, going up or
+ * down beside it. Moves only ever go higher. A drilled hole over one keeps its depth (its point
+ * would still go in): it stays a collision.
+ */
+function overParallels(code: string, speeds: MachineSpeeds): string {
+  const tp = parseToolpath(code, speeds);
+  const an = analyseProgram(tp, { jawHeight: JAW });
+  const lines = code.split('\n');
+  const z3 = (p: number[], q: number[], t: number) => p.map((v, k) => v + (q[k] - v) * t);
+  for (const s of an.setups) {
+    if (!s.cales?.length || !s.moves || !s.clampBox) continue;
+    const spans: [number, number][] = s.jawTopZ !== null ? viseSpans(s) : [[s.clampBox.min[0], s.clampBox.max[0]]];
+    let at: number | null = null; // the height the tool is really at after the last rewritten move
+    for (let mi = s.moves[0]; mi <= s.moves[1]; mi++) {
+      const m = tp.moves[mi];
+      if (m.setup !== s.index) continue;
+      if (m.kind !== 'feed' || m.points.length !== 2) {
+        at = null;
+        continue;
+      }
+      const r = (m.dia ?? 0) / 2 + 0.05;
+      const boxes = s.cales.flatMap((c) => spans.map(([a, b]) => ({ x: [a - r, b + r], y: [c.y[0] - r, c.y[1] + r], top: c.top })));
+      const [p, q] = m.points;
+      // Split where it crosses a box's edge or its top; each piece over a box below its top goes up to it.
+      const ts = [0, 1];
+      for (const bx of boxes) {
+        for (const k of [0, 1] as const) for (const e of k ? bx.y : bx.x) if (q[k] !== p[k]) ts.push((e - p[k]) / (q[k] - p[k]));
+        if (q[2] !== p[2]) ts.push((bx.top - p[2]) / (q[2] - p[2]));
+      }
+      const cuts = [...new Set(ts.filter((t) => t >= 0 && t <= 1).map((t) => Math.round(t * 1e9) / 1e9))].sort((u, v) => u - v);
+      const lift = (t0: number, t1: number) => {
+        const mid = z3(p, q, (t0 + t1) / 2);
+        return Math.max(-Infinity, ...boxes.filter((bx) => mid[0] > bx.x[0] && mid[0] < bx.x[1] && mid[1] > bx.y[0] && mid[1] < bx.y[1] && mid[2] < bx.top - 1e-6).map((bx) => bx.top));
+      };
+      const pieces = cuts.slice(1).map((t1, i) => ({ t0: cuts[i], t1, top: lift(cuts[i], t1) }));
+      if (pieces.every((pc) => pc.top === -Infinity)) {
+        // Back to its own height (a line without a height of its own would stay up).
+        if (at !== null && Math.abs(at - p[2]) > 1e-6 && !/Z-?[\d.]/.test(lines[m.line])) lines[m.line] += ` Z${n3(q[2])}`;
+        at = null;
+        continue;
+      }
+      const n = lines[m.line].match(/^N\d+\s*/)?.[0] ?? '';
+      const f = lines[m.line].match(/F[\d.]+/)?.[0];
+      const out: string[] = [];
+      let z = at ?? p[2];
+      for (const pc of pieces) {
+        const [a, b] = [z3(p, q, pc.t0), z3(p, q, pc.t1)];
+        const [za, zb] = [Math.max(a[2], pc.top), Math.max(b[2], pc.top)];
+        if (Math.abs(za - z) > 1e-6) out.push(`G01 Z${n3(za)}`); // up or down beside the parallel
+        out.push(`G01 X${n3(b[0])} Y${n3(b[1])} Z${n3(zb)}`);
+        z = zb;
+      }
+      out[0] = `${n}${out[0]}${f ? ` ${f}` : ''}`;
+      lines[m.line] = out.join('\n');
+      at = z;
+    }
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -1142,8 +1211,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
     }
     // 3b. Precise families: each roughing tool finishes the walls it roughed, from the side out of
-    // its roughing: semi-finish (0.05 left all round), finish on the wall, a spring pass (what the
-    // tool's bending left). Along a seal cage's thin walls, gently.
+    // its roughing. A seal cage's thin walls, gently: semi-finish (0.05 left all round), finish on
+    // the wall, a spring pass (what the tool's bending left). A top plate's or contour insert's
+    // pockets: one finishing pass on the wall (shop rule: the three passes cost too much time).
     if (precise)
       for (const op of ops.filter((o) => o.kind === 'pocket')) {
         const tool = op.tool;
@@ -1156,7 +1226,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
           const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
           const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
           const fin = ring(r);
-          const rings = [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
+          const rings = pocketsOnly ? fin : [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
           if (!rings.length) continue;
           // A straight wall (the level just above finished by this tool on the very same path): one
           // run from the wall's top in the finish's own depth per pass, no step at each level.

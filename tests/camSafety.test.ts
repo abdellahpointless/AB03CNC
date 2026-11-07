@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, checkProgram } from '../src/lib/cam/program';
-import { heightPart } from './heightPart';
+import { heightPart, plateWithHoles } from './heightPart';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -34,4 +34,15 @@ describe('the safety double check', () => {
     expect(c.holders).toBeGreaterThan(0);
     expect(c.collisions).toBeGreaterThan(0);
   }, 300_000);
+});
+
+describe('no tool into a parallel (shop rule for CAM AI)', () => {
+  it('a narrow plate with a hole milled through over the front parallel: the cut stops on it', () => {
+    // 40 x 9 x 5.5, a Ø4.5 hole through it near the front edge: the parallels under the front and
+    // back edges, the hole's milling over the front one (46 hits if it went 0.2 below the part).
+    const holed = plateWithHoles(40, 9, 5.5, [{ c: [20, 2.6], d: 4.5 }]);
+    const r = camProgram({ tris: holed, material: 'POM', tools: [], brand: 'HAAS', raw: [40, 9, 5.5], orient: { side: 'Z+', spin: false } });
+    expect(r.check).toMatchObject({ cales: 0, collisions: 0, holders: 0, rapids: 0 });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 900_000);
 });

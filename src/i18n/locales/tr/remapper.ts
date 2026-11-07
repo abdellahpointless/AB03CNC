@@ -394,6 +394,8 @@ const remapper: Translation<typeof en> = {
       engraving: 'Kazıma',
     },
     gouge: 'Program parçanın içine kesiyor ({{mm3}} mm³ fazla). Takım yolu görüntüleyicisinde inceleyin.',
+    intoCale_one: 'Bir takımın hâlâ parçanın altındaki kaleye girdiği {{count}} nokta var (üstünde baştan başa delinen bir delik). İndirme engellendi: parçayı başka şekilde yerleştirin.',
+    intoCale_other: 'Bir takımın hâlâ parçanın altındaki kalelere girdiği {{count}} nokta var (üstlerinde baştan başa delinen delikler). İndirme engellendi: parçayı başka şekilde yerleştirin.',
     collisions_one: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
     collisions_other: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
     percent: '%{{v}}',
@@ -425,7 +427,7 @@ const remapper: Translation<typeof en> = {
     view: 'Takım yolu görüntüleyicisinde aç',
     download: 'İndir',
     send: 'Takım eşleştiriciye gönder',
-    locked: 'İndirme ve Gönderme tüm kontroller geçince açılır: modele benzer (%99), çarpışma yok, parçadan fazla kesilmiyor ve mengene parçayı güvenle tutuyor.',
+    locked: 'İndirme ve Gönderme tüm kontroller geçince açılır: modele benzer (%99), çarpışma yok, kalelere takım girmiyor, parçadan fazla kesilmiyor ve mengene parçayı güvenle tutuyor.',
   },
   /** Takım yolu önizlemesi (components/ToolpathViewer). */
   toolpath: {

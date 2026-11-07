@@ -64,21 +64,18 @@ export default function CamAiResult({
         <span>
           {ok
             ? t('camAi.proven')
-            : result.collisions
-              ? t('camAi.collisions', { count: result.collisions })
-              : result.gouge >= GOUGE_MM3
-                ? t('camAi.gouge', { mm3: result.gouge })
-                : unheld
-                  ? t('camAi.cannotHold', { side: unheld.side })
-                  : t('camAi.notProven')}
+            : result.cales
+              ? t('camAi.intoCale', { count: result.cales })
+              : result.collisions
+                ? t('camAi.collisions', { count: result.collisions })
+                : result.gouge >= GOUGE_MM3
+                  ? t('camAi.gouge', { mm3: result.gouge })
+                  : unheld
+                    ? t('camAi.cannotHold', { side: unheld.side })
+                    : t('camAi.notProven')}
         </span>
       </div>
 
-      {result.cales > 0 && (
-        <p className="text-xs text-[var(--orange-text)] flex items-start gap-1.5">
-          <AlertTriangle size={14} className="shrink-0 mt-px" /> {t('editor.caleWarning', { count: result.cales })}
-        </p>
-      )}
       <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           [t('camAi.match'), t('camAi.percent', { v: fmt(result.match * 100, 2) })],

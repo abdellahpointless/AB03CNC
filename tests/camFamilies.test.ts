@@ -5,7 +5,7 @@ import { heightPart, plateWithHoles } from './heightPart';
 const ops = (r: ReturnType<typeof camProgram>) => r.setups.flatMap((s) => s.ops);
 
 describe('part families', () => {
-  it('a top plate: its contour finished (semi, finish, spring pass), its lettering engraved, both shown as zones', () => {
+  it('a top plate: its contour finished in one pass on the wall, its lettering engraved, both shown as zones', () => {
     // 60 x 40 x 10, a 20 x 10 pocket 6 deep (the contour the part goes in), an "L" engraved 0.2 deep.
     const L = (i: number, j: number) => (i === 8 && j >= 28 && j <= 34) || (j === 28 && i >= 8 && i <= 12);
     const plate = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 20 && i < 40 && j >= 15 && j < 25 ? 4 : L(i, j) ? 9.8 : 10))));
@@ -16,10 +16,10 @@ describe('part families', () => {
     const kinds = top.ops.map((o) => o.kind);
     expect(kinds.lastIndexOf('pocket')).toBeLessThan(kinds.indexOf('finish'));
     // The pocket's straight wall finished from its top in the finish's own depth per pass (not at
-    // every roughing level): 3 rings (semi, finish, spring), each entered once per pass.
+    // every roughing level): one ring, entered once per pass.
     const fin = top.ops.find((o) => o.purpose === 'contour')!;
     const plunges = fin.lines.filter((l) => /^G01 Z/.test(l)).length;
-    expect(plunges).toBeLessThanOrEqual(3 * Math.ceil(6 / fin.cut.ap - 1e-6));
+    expect(plunges).toBeLessThanOrEqual(Math.ceil(6 / fin.cut.ap - 1e-6));
     expect(top.zones.map((z) => z.kind).sort()).toEqual(['contour', 'engraving']);
     expect(r.check).toMatchObject({ collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
