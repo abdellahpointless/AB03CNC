@@ -1,5 +1,5 @@
 import type { Vec } from '../toolpath';
-import { ALL, apply, transpose, type Mat3 } from '../orient';
+import { ALL, apply, mul, transpose, type Mat3 } from '../orient';
 import { bounds, inside, slice, turnTris } from './geom';
 
 /*
@@ -17,6 +17,9 @@ export const SIDES: { name: string; d: Vec }[] = [
   { name: 'Y+', d: [0, 1, 0] },
   { name: 'Y-', d: [0, -1, 0] },
 ];
+
+/** A quarter turn about the vertical: the part's X and Y swapped in the vise. */
+export const SPIN: Mat3 = [0, -1, 0, 1, 0, 0, 0, 0, 1];
 
 /** The turn that puts model direction d up (+Z), the smallest such turn. */
 export function upTurn(d: Vec): Mat3 {
@@ -148,8 +151,8 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
 }
 
 /** The part seen from one side: everything a setup with that side up can machine. */
-export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number]): SideFeatures {
-  const R = upTurn(side.d);
+export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false): SideFeatures {
+  const R = spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d);
   const P = turnTris(tris, R);
   const { min, max } = bounds(P);
   const floors = new Map<number, number>();

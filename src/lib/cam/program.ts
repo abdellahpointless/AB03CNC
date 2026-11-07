@@ -37,6 +37,8 @@ export interface CamInput {
   raw?: Vec | null;
   /** The machine's rapid and tool change time (Admin > Machines), else its brand's. */
   speeds?: MachineSpeeds;
+  /** How the part lies in the first setup (the operator's pick, see layouts.ts): the side up, turned a quarter or not. */
+  orient?: { side: string; spin: boolean };
   /** The part's family (from its PDF title, confirmed by the operator): where precision matters. */
   partType?: PartType;
   /** Template tool codes the operator does not have, and the ones picked in their place. */
@@ -89,7 +91,7 @@ const mm = (v: number) => String(Math.round(v * 100) / 100);
 const sideOf = (axis: number, sign: number) => SIDES.findIndex((s) => s.d[axis] === sign);
 
 /** Where the part must be cut away, seen from each side (removal samples reachable from it). */
-function reachable(tris: ArrayLike<number>, lo: Vec, hi: Vec) {
+export function reachable(tris: ArrayLike<number>, lo: Vec, hi: Vec) {
   const size = [0, 1, 2].map((k) => hi[k] - lo[k]);
   const step = Math.max(0.25, Math.cbrt((size[0] * size[1] * size[2]) / 400_000));
   const n = size.map((s) => Math.max(1, Math.ceil(s / step))) as [number, number, number];
@@ -437,7 +439,8 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
  */
 export function camProgram(input: CamInput, progress: (done: number, of: number) => void = () => {}): CamResult & { check: CamCheck } {
   const b = bounds(input.tris);
-  const order = [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
+  // The operator's layout is planned alone; else each side as the height, thinnest first.
+  const order = input.orient ? [SIDES.find((s) => s.name === input.orient!.side)!.d.findIndex((v) => v !== 0)] : [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
   let best: (CamResult & { check: CamCheck }) | null = null;
   const good = (c: CamCheck) => c.match >= 0.99 && c.collisions === 0;
   order.forEach((axis, i) => {
@@ -477,7 +480,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const rawHi = raw.map((v) => v / 2) as Vec;
 
   // Sides: the two faces of the chosen height, then whichever reaches most of what is left.
-  const thin = vertical;
+  // The operator's layout: its side first (then the opposite one), both turned as chosen.
+  const first = input.orient ? SIDES.findIndex((s) => s.name === input.orient!.side) : -1;
+  const thin = first >= 0 ? SIDES[first].d.findIndex((v) => v !== 0) : vertical;
   const { occ, reach, cell, grid } = reachable(tris, rawLo, rawHi);
   const covered = new Uint8Array(occ.length);
   const chosen: number[] = [];
@@ -485,11 +490,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
     chosen.push(si);
     for (let i = 0; i < occ.length; i++) if (reach[si][i]) covered[i] = 1;
   };
-  const feats = SIDES.map((s) => sideFeatures(tris, s));
+  const spun = (si: number) => first >= 0 && !!input.orient?.spin && SIDES[si].d[thin] !== 0;
+  const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
   // The simpler face first (fewer floors and holes), the finished front last of the two.
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
   const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
-  for (const si of busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
+  for (const si of first >= 0 ? [first, first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
   for (;;) {
     let best = -1;
     let gain = 0;
