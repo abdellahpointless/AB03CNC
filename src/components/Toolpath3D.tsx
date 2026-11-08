@@ -674,6 +674,9 @@ interface Api {
   frame: () => { c: THREE.Vector3; size: number };
 }
 
+/** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
+const MAX_PIXELS = 1_800_000;
+
 export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
@@ -742,6 +745,9 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const resize = () => {
       const w = el.clientWidth || 1;
       const h = el.clientHeight || 1;
+      // The window is nearly the whole screen: a frame costs what its pixels cost, so the drawing
+      // is capped at the pixel budget of the earlier, smaller window (sharper only where it is cheap).
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5, Math.sqrt(MAX_PIXELS / (w * h))));
       renderer.setSize(w, h, false);
       renderer.domElement.style.width = '100%';
       renderer.domElement.style.height = '100%';
