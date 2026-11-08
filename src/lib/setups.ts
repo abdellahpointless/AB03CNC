@@ -832,7 +832,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       line: s.line,
       notes,
       ...ins,
-      clamp: ins.clamp ?? (notes.length ? prev?.clamp ?? 'vise' : null),
+      // The shop holds every part in the vise unless the M0 names another clamp (a setup without
+      // its own M0 keeps the one before).
+      clamp: ins.clamp ?? prev?.clamp ?? 'vise',
       conflict: solved.conflict,
       rejects:
         ins.support !== null && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
