@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
-import { AlertTriangle, CheckCircle2, Download, Repeat } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Download, Repeat, RotateCcw, Trash2 } from 'lucide-react';
 import { useT } from '../i18n';
 import { fmtNumber as fmt } from '../i18n/format';
 import { downloadBlob } from '../lib/download';
 import type { CamTool } from '../lib/cam/tools';
 import type { CamSummary } from '../lib/cam/cam.worker';
 import type { PhysicsIssue } from '../lib/cam/physics';
+import { GOUGE_MM3 } from '../lib/cam/limits';
 
 export type Setup = CamSummary['setups'][number];
 export type Op = Setup['ops'][number];
 
-/** Bigger than this is a gouge (mm³): smaller pieces are the simulation's grid. */
-export const GOUGE_MM3 = 20;
+export { GOUGE_MM3 };
 
 /** Every check passed: like the model, nothing hit, nothing cut out of the part, held safely. */
 export const passed = (r: CamSummary) => r.match >= 0.99 && r.collisions === 0 && r.gouge < GOUGE_MM3 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe));
@@ -20,6 +20,9 @@ export const passed = (r: CamSummary) => r.match >= 0.99 && r.collisions === 0 &
 const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a855f7', engraving: '#f59e0b' };
 /** Pressure on the jaws, by its share of what the material takes: calm, watch, high. */
 const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8 ? '#f59e0b' : '#ef4444');
+
+/** 164 s -> "2:44". */
+export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
 
 export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
 
@@ -57,7 +60,7 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
  * The program as a whole (the browser's Program item): whether it can go out, its numbers, the
  * tools to load, what the machine lacks, the POM nests (each with its own program), notes.
  */
-export function ProgramPanel({ result, machineName, changed }: { result: CamSummary; machineName: string; changed: number }) {
+export function ProgramPanel({ result, machineName, changed, removed, onRestore }: { result: CamSummary; machineName: string; changed: number; removed: { key: string; label: string }[]; onRestore: (key: string) => void }) {
   const { t } = useT('remapper');
   const toolName = useToolName();
   const { ok, text } = useVerdict(result, changed);
@@ -75,6 +78,7 @@ export function ProgramPanel({ result, machineName, changed }: { result: CamSumm
           [t('camAi.time'), t('camAi.minutes', { v: fmt(result.minutes, 1) })],
           [t('camAi.toolChanges'), String(result.toolChanges)],
           [t('camAi.setups'), String(result.setups.length)],
+          [t('camAi.overcut'), result.gouge < GOUGE_MM3 ? t('camAi.noOvercut') : t('camAi.overcutValue', { mm3: result.gouge })],
         ].map(([label, value]) => (
           <div key={label} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-2.5 py-2">
             <dt className="text-[11px] text-[var(--text-tertiary)]">{label}</dt>
@@ -82,6 +86,22 @@ export function ProgramPanel({ result, machineName, changed }: { result: CamSumm
           </div>
         ))}
       </dl>
+      {removed.length > 0 && (
+        <div className="space-y-1.5">
+          <h4 className="section-label">{t('camAi.removedTitle')}</h4>
+          <ul className="space-y-1">
+            {removed.map((r) => (
+              <li key={r.key} className="flex items-center gap-1 text-xs">
+                <span className="flex-1 min-w-0 break-words text-[var(--text-secondary)]">{r.label}</span>
+                <button type="button" onClick={() => onRestore(r.key)} className="btn-secondary text-xs min-h-9 px-2.5 flex items-center gap-1">
+                  <RotateCcw size={12} aria-hidden /> {t('camAi.restoreOp')}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.removedNote')}</p>
+        </div>
+      )}
       <p className="text-xs text-[var(--text-tertiary)]">
         {t('camAi.sizes', { size: result.size.map((v) => fmt(v, 1)).join(' × '), raw: result.raw.map((v) => fmt(v, 1)).join(' × ') })}
       </p>
@@ -152,6 +172,7 @@ export function SetupPanel({ setup }: { setup: Setup }) {
   const s = setup;
   return (
     <div className="space-y-3 text-xs">
+      <p className="flex items-center gap-1.5 text-[var(--text-secondary)] tabular-nums"><Clock size={13} aria-hidden />{t('camAi.setupTime', { time: fmtTime(s.ops.reduce((a, o) => a + o.seconds, 0)) })}</p>
       <div className="font-mono text-[11px] text-[var(--text-secondary)] space-y-0.5 break-words">
         {s.notes.map((n, k) => <div key={k}>M0 ({n})</div>)}
       </div>
@@ -202,6 +223,10 @@ export function ToolCard({
   changed,
   busy,
   onEdit,
+  removing,
+  onRemove,
+  focus,
+  onFocus,
   options,
   toolName,
   onSwap,
@@ -212,6 +237,12 @@ export function ToolCard({
   changed: boolean;
   busy: boolean;
   onEdit: (v: CutEdit) => void;
+  /** Operations (keys) marked for removal: gone from the program the next time it is made. */
+  removing: string[];
+  onRemove: (op: Op, remove: boolean) => void;
+  /** The operation whose path alone is shown in the view, and a way to pick one. */
+  focus: string | null;
+  onFocus: (key: string | null) => void;
   options: CamTool[];
   toolName: (o: { type: string; diameter: number; length: number }) => string;
   onSwap: (code: string, standIn: string) => void;
@@ -222,7 +253,6 @@ export function ToolCard({
   const op = ops[0];
   const mill = ops.some((o) => MILL_PURPOSES.has(o.purpose));
   const deepest = Math.min(...ops.map((o) => o.zMin));
-  const purposes = [...new Set(ops.map((o) => o.purpose))];
   const field = (key: 'rpm' | 'feed' | 'ae' | 'ap', k: 's' | 'f' | 'ae' | 'ap', step: number) => (
     <label className="space-y-1 min-w-0">
       <span className="section-label block">{t(`camAi.cut.${key}`)}</span>
@@ -245,11 +275,35 @@ export function ToolCard({
         <span className={`text-[10px] py-0.5 px-1.5 ${op.inMachine ? 'badge-neutral' : 'badge-warning'}`}>{t(op.inMachine ? 'camAi.inMachine' : 'camAi.toLoad')}</span>
         {changed && <span className="badge-neutral text-[10px] py-0.5 px-1.5 text-[var(--blue-text)]">{t('camAi.changedBadge')}</span>}
       </div>
-      <p className="text-[var(--text-secondary)]">
-        {purposes.map((p) => t(`camAi.purpose.${p}`)).join(', ')}
-        {deepest < 0 && ` ${t('camAi.downTo', { z: fmt(deepest, 2) })}`}
-        {!op.learned && ` · ${t('camAi.default')}`}
-      </p>
+      <ul className="space-y-1" aria-label={t('camAi.ops')}>
+        {ops.map((o) => {
+          const gone = removing.includes(o.key);
+          const on = focus === o.key;
+          return (
+            <li key={o.key} className={`flex items-center gap-1 rounded-[6px] border ${on ? 'border-[var(--accent-primary)]/60 bg-[var(--accent-primary)]/8' : 'border-transparent'}`}>
+              <button type="button" onClick={() => onFocus(on ? null : o.key)} aria-pressed={on} title={t('camAi.showOnlyThis')} className="no-glass flex-1 min-w-0 text-left px-2 py-1.5 min-h-9">
+                <span className={`block ${gone ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{t(`camAi.purpose.${o.purpose}`)}</span>
+                <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-tertiary)] tabular-nums">
+                  <span className="inline-flex items-center gap-1"><Clock size={11} aria-hidden />{fmtTime(o.seconds)}</span>
+                  {o.zMin < 0 && <span>{t('camAi.downTo', { z: fmt(o.zMin, 2) })}</span>}
+                  {!o.learned && <span>{t('camAi.default')}</span>}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(o, !gone)}
+                disabled={busy}
+                aria-label={t(gone ? 'camAi.keepOp' : 'camAi.removeOp', { name: t(`camAi.purpose.${o.purpose}`) })}
+                title={t(gone ? 'camAi.keepOp' : 'camAi.removeOp', { name: t(`camAi.purpose.${o.purpose}`) })}
+                className="no-glass shrink-0 grid place-items-center w-9 h-9 rounded-[6px] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)] disabled:opacity-40"
+              >
+                {gone ? <RotateCcw size={14} aria-hidden /> : <Trash2 size={14} aria-hidden />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.toolTime', { time: fmtTime(ops.reduce((a, o) => a + o.seconds, 0)) })}{deepest < 0 ? ` · ${t('camAi.deepest', { z: fmt(deepest, 2) })}` : ''}</p>
       <div className="grid grid-cols-2 gap-2">
         {field('rpm', 's', 100)}
         {field('feed', 'f', 10)}

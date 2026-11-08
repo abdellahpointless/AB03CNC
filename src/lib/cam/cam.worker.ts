@@ -2,7 +2,7 @@ import { readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
-import { camProgram, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
+import { camProgram, gougeOf, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
 import type { CamNote, Coolant, Need } from './tools';
 import type { Contact, SetupCheck } from './physics';
 import { layouts, type Layout } from './layouts';
@@ -62,7 +62,11 @@ export interface CamSummary {
     physics: SetupCheck;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
     ops: {
+      /** The operation's name in the program (CamInput.skip removes by it). */
+      key: string;
       name: string;
+      /** Its time in the program: the tool change, the moves at their feed and rapid (s). */
+      seconds: number;
       purpose: Purpose;
       tool: number;
       diameter: number;
@@ -104,6 +108,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
     post({ type: 'progress', done: 0, of: 3 });
     const r = camProgram({ ...input, tris, live: (ev) => post({ type: 'live', e: ev }) }, (done, of) => post({ type: 'progress', done, of }));
     const tp = parseToolpath(r.code, input.speeds ?? speedsFor(input.brand));
+    const secondsOf = opSeconds(tp, r.setups, (input.speeds ?? speedsFor(input.brand)).toolChange);
     const lesson = await partLessonOf({ code: r.code, tp, model, match: r.check.match, pieces: r.check.pieces, brand: input.brand, source: 'cam' }).catch(() => null);
     post({
       type: 'done',
@@ -115,13 +120,13 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
         toolChanges: r.check.toolChanges,
         collisions: r.check.collisions,
         cales: r.check.cales,
-        gouge: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))),
+        gouge: gougeOf(r.check),
         size: r.size,
         raw: r.raw,
         missing: r.missing,
         notes: r.notes,
         nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),
-        setups: r.setups.map((s) => ({
+        setups: r.setups.map((s, i) => ({
           side: s.side,
           notes: s.notes,
           grip: s.grip,
@@ -129,7 +134,9 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
           zones: s.zones,
           box: s.box,
           contact: s.contact,
-          ops: s.ops.map((o) => ({
+          ops: s.ops.map((o, k) => ({
+            key: o.key ?? `${s.side}|${o.name}|${o.tool.code}|${k}`,
+            seconds: secondsOf.get(`${i}|${k}`) ?? 0,
             name: o.name,
             purpose: o.purpose,
             tool: o.tool.number,
@@ -155,6 +162,30 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
     post({ type: 'error', error: 'failed' });
   }
 };
+
+/**
+ * Each operation's time in its program: its moves (the program writes an operation as one run of
+ * moves under its "(TOOLPATH name)" line) and the tool change that starts it. Key: setup|operation.
+ */
+function opSeconds(tp: ReturnType<typeof parseToolpath>, setups: { ops: { name: string }[] }[], toolChange: number): Map<string, number> {
+  const runs: { setup: number; op: string; seconds: number }[] = [];
+  for (const m of tp.moves) {
+    const last = runs[runs.length - 1];
+    if (last && last.setup === m.setup && last.op === (m.op ?? '')) last.seconds += m.seconds;
+    else runs.push({ setup: m.setup, op: m.op ?? '', seconds: m.seconds });
+  }
+  const out = new Map<string, number>();
+  setups.forEach((s, i) => {
+    let at = 0;
+    s.ops.forEach((o, k) => {
+      const j = runs.findIndex((r, n) => n >= at && r.setup === i && r.op === o.name);
+      if (j < 0) return;
+      at = j + 1;
+      out.set(`${i}|${k}`, Math.round(runs[j].seconds + toolChange));
+    });
+  });
+  return out;
+}
 
 /** The lowest Z an operation's cuts reach (its setup frame, Z0 the top). */
 function deepest(lines: string[]): number {

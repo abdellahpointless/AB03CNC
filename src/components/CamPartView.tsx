@@ -19,6 +19,9 @@ export interface FacePick {
 export interface LivePath {
   purpose: Purpose;
   pts: number[];
+  /** The operation it is (CamOp.key) and its tool's code: what a selection in the browser shows. */
+  key?: string;
+  tool?: string;
 }
 
 /** Roughing yellow, finishing cyan, drilling red. */

@@ -11,6 +11,7 @@ import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
+import { GOUGE_MM3 } from './limits';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
@@ -56,6 +57,8 @@ export interface CamInput {
   second?: string;
   /** The operator's cutting values per tool code (the tool inspector). */
   cuts?: Record<string, CutEdit>;
+  /** Operations the operator removed (CamOp.key): left out of the program, which is simulated and checked without them. */
+  skip?: string[];
   /** What is being done, as it is done: for the page's live console and 3D paths. */
   live?: (e: LiveEvent) => void;
 }
@@ -64,7 +67,7 @@ export interface CamInput {
 export type LiveEvent =
   | { kind: 'reset' }
   | { kind: 'stage'; stage: 'features' | 'stock' | 'setup' | 'check' | 'post'; setup?: number; of?: number; side?: string }
-  | { kind: 'path'; setup: number; purpose: Purpose; pts: number[] };
+  | { kind: 'path'; setup: number; purpose: Purpose; pts: number[]; key: string; tool: string };
 
 /**
  * An operation's feed moves as segments (x0 y0 z0 x1 y1 z1 ...) in its setup's frame: G01 moves,
@@ -101,6 +104,8 @@ export function opSegments(lines: string[]): number[] {
 export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave';
 
 export interface CamOp {
+  /** Stable name of the operation in the program (its setup's side, its name, its tool, which one of those): what the operator removes by. */
+  key?: string;
   kind: OpKind;
   purpose: Purpose;
   name: string;
@@ -914,6 +919,9 @@ function overParallels(code: string, speeds: MachineSpeeds): string {
   return lines.join('\n');
 }
 
+/** The largest piece cut out of the part that the model keeps (mm³): an overcut. */
+export const gougeOf = (c: CamCheck) => Math.round(Math.max(0, ...c.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3)));
+
 /**
  * The program for a part: planned with each of its sides as the height in the vise (thinnest
  * first), each checked like the toolpath viewer checks it, the right one (99 % like the model, no
@@ -925,7 +933,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   const order = input.orient ? [SIDES.find((s) => s.name === input.orient!.side)!.d.findIndex((v) => v !== 0)] : [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
   let best: (CamResult & { check: CamCheck }) | null = null;
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
-  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.setups.every((x) => x.physics.ok);
+  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
   let bestAxis = order[0];
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
@@ -1328,6 +1336,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
     }
     if (f.freeform > 20) notes.push({ key: 'surface', side: side.name, mm2: Math.round(f.freeform) });
 
+    // Each operation gets its name in the program, then the ones the operator removed go.
+    const seen = new Map<string, number>();
+    for (const o of ops) {
+      const base = `${side.name}|${o.name}|${o.tool.code}`;
+      const n = seen.get(base) ?? 0;
+      seen.set(base, n + 1);
+      o.key = `${base}|${n}`;
+    }
+    if (input.skip?.length) {
+      const kept = ops.filter((o) => !input.skip!.includes(o.key!));
+      ops.length = 0;
+      ops.push(...kept);
+    }
+
     // Nothing to do from this side after all: no setup.
     if (!ops.length) return false;
     // 5. The vise and the part (physics.ts): held without slipping, tipping, crushing or squeezing
@@ -1374,7 +1396,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const seg = opSegments(op.lines);
         const pts: number[] = [];
         for (let i = 0; i < seg.length; i += 3) pts.push(...apply(Rt, [seg[i] - t[0], seg[i + 1] - t[1], seg[i + 2] - t[2]]));
-        input.live({ kind: 'path', setup: setups.length - 1, purpose: op.purpose, pts });
+        input.live({ kind: 'path', setup: setups.length - 1, purpose: op.purpose, pts, key: op.key ?? op.name, tool: op.tool.code });
       }
     }
     prevR = R;

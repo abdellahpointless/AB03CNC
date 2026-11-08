@@ -16,7 +16,7 @@ import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools'
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
-import type { LiveEvent } from '../lib/cam/program';
+import type { LiveEvent, Purpose } from '../lib/cam/program';
 import type { Mat3 } from '../lib/orient';
 import { passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick, LivePath } from './CamPartView';
@@ -79,6 +79,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [perSide, setPerSide] = useState(['2', '2', '3.5']);
   const [live, setLive] = useState<Live>(NO_LIVE);
   const [cuts, setCuts] = useState<Record<string, CutEdit>>({});
+  // Operations the operator removed: in the program already (skip), and marked since (skipDraft, for the next time it is made).
+  const [skip, setSkip] = useState<string[]>([]);
+  const [skipDraft, setSkipDraft] = useState<string[]>([]);
+  const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
+  const pendingSkips = [...new Set([...skip, ...skipDraft])].filter((k) => skip.includes(k) !== skipDraft.includes(k)).length;
   const [machineId, setMachineId] = useState(() => toolMachines[0]?.id ?? '');
   const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER'>('FH');
   const [family, setFamily] = useState<Family>('ALU');
@@ -140,6 +145,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setTotals(['', '', '']);
     setLive(NO_LIVE);
     setCuts({});
+    setDraft({});
+    setSkip([]);
+    setSkipDraft([]);
+    setSkipLabels({});
     setSwap({ exclude: [], prefer: [] });
     setRun({ state: 'preparing' });
     // Read in the worker: the model, its name and family from the PDF, the ways it can lie.
@@ -168,7 +177,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setRun({ state: 'idle' });
   };
 
-  const generate = (with_ = swap, edits = cuts) => {
+  const generate = (with_ = swap, edits = cuts, skips = skip) => {
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
     const w = newWorker();
     const speeds = speedsFor(machine.brand);
@@ -186,6 +195,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       prefer: with_.prefer,
       second: second && second.side !== opposite(chosen.side) ? second.side : undefined,
       cuts: edits,
+      skip: skips,
       limits: { maxRpm: machine.maxRpm ?? DEFAULT_LIMITS.maxRpm, maxFeed: machine.maxFeed ?? DEFAULT_LIMITS.maxFeed },
       speeds: { rapid: machine.rapid ?? speeds.rapid, toolChange: machine.toolChange ?? speeds.toolChange },
     };
@@ -254,7 +264,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [draft, setDraft] = useState<Record<string, CutEdit>>({});
   const changed = Object.keys({ ...draft, ...cuts }).filter((k) => JSON.stringify(draft[k] ?? {}) !== JSON.stringify(cuts[k] ?? {}));
   const toolName = useToolName();
-  const verdict = useVerdictOrNull(result, changed.length);
+  const verdict = useVerdictOrNull(result, changed.length + pendingSkips);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
   const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length ? 'machine' : !templatesFor ? 'material' : null;
@@ -270,11 +280,22 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   };
   const recalc = () => {
     setCuts(draft);
-    generate(swap, draft);
+    setSkip(skipDraft);
+    generate(swap, draft, skipDraft);
+  };
+  // Removing an operation (or keeping it after all): it stays in the browser, struck through, until the program is made again.
+  const toggleOp = (o: { key: string; purpose: Purpose; tool: number }, remove: boolean) => {
+    setSkipDraft((d) => (remove ? [...new Set([...d, o.key])] : d.filter((k) => k !== o.key)));
+    if (remove) setSkipLabels((l) => ({ ...l, [o.key]: `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})` }));
   };
   // The browser's setups: the two picked ones before a program, the program's after.
   const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];
-  const paths = sel.kind === 'setup' || sel.kind === 'tool' ? live.paths.filter((p) => p.setup === sel.i) : live.paths;
+  const paths =
+    sel.kind === 'tool'
+      ? live.paths.filter((p) => p.setup === sel.i && p.tool === sel.code && (!sel.op || p.key === sel.op))
+      : sel.kind === 'setup'
+        ? live.paths.filter((p) => p.setup === sel.i)
+        : live.paths;
 
   const node = (active: boolean) =>
     `no-glass w-full text-left flex items-center gap-2 px-2 min-h-8 rounded-[6px] text-xs transition-colors ${active ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'}`;
@@ -324,7 +345,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             </button>
           </Popover.Trigger>
           <Popover.Portal>
-            <Popover.Content align="end" sideOffset={6} className="tp-menu z-[1000] w-72 p-3 space-y-1.5">
+            <Popover.Content align="end" sideOffset={6} className="cam-pop z-[1000] w-72 p-3 space-y-1.5">
               <label className="space-y-1 block">
                 <span className="section-label block">{t('camAi.sideStock')}</span>
                 <input className="aurora-input w-full text-xs" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
@@ -596,6 +617,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     changed={changed.includes(sel.code)}
                     busy={busy}
                     onEdit={(v) => setDraft((d) => ({ ...d, [sel.code]: { ...d[sel.code], ...v } }))}
+                    removing={skipDraft}
+                    onRemove={toggleOp}
+                    focus={sel.op ?? null}
+                    onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
                     options={alternatives(templatesFor, tools, sel.code, swap.exclude)}
                     toolName={toolName}
                     onSwap={(code, standIn) => {
@@ -609,7 +634,15 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               );
             })()}
 
-            {result && sel.kind === 'program' && machine && <ProgramPanel result={result} machineName={machine.name} changed={changed.length} />}
+            {result && sel.kind === 'program' && machine && (
+              <ProgramPanel
+                result={result}
+                machineName={machine.name}
+                changed={changed.length + pendingSkips}
+                removed={skipDraft.map((k) => ({ key: k, label: skipLabels[k] ?? k }))}
+                onRestore={(k) => setSkipDraft((d) => d.filter((x) => x !== k))}
+              />
+            )}
 
             {run.state === 'error' && (
               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
@@ -621,10 +654,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       </div>
 
       {/* Values typed and not in the program yet. */}
-      {changed.length > 0 && (
+      {(changed.length > 0 || pendingSkips > 0) && (
         <div className="flex items-center gap-3 px-3 py-2 border-t border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/8" role="status">
-          <span className="text-xs text-[var(--text-primary)] flex-1">{t('camAi.recalcNeeded', { count: changed.length })}</span>
-          <button type="button" onClick={() => setDraft(cuts)} disabled={busy} className="btn-secondary text-xs min-h-9 px-3">{t('camAi.discard')}</button>
+          <span className="text-xs text-[var(--text-primary)] flex-1 space-y-0.5">
+            {changed.length > 0 && <span className="block">{t('camAi.recalcNeeded', { count: changed.length })}</span>}
+            {pendingSkips > 0 && <span className="block">{t('camAi.removeNeeded', { count: pendingSkips })}</span>}
+          </span>
+          <button type="button" onClick={() => { setDraft(cuts); setSkipDraft(skip); }} disabled={busy} className="btn-secondary text-xs min-h-9 px-3">{t('camAi.discard')}</button>
           <button type="button" onClick={recalc} disabled={busy} className="btn-primary text-xs min-h-9 px-4 flex items-center gap-1.5">
             <RefreshCw size={14} className={busy ? 'animate-spin motion-reduce:animate-none' : ''} /> {t('camAi.recalc')}
           </button>
@@ -769,7 +805,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   }
 }
 
-type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string };
+type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string; op?: string };
 
 /** The paths' colours, for the browser's dots (CamPartView draws them the same). */
 const PURPOSE_HEX: Record<string, string> = { face: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
@@ -784,7 +820,7 @@ function useVerdictOrNull(result: CamSummary | null, changed: number) {
 /** One step of the planner into what the page shows (cam.worker 'live'). */
 function liveStep(l: Live, e: LiveEvent): Live {
   if (e.kind === 'reset') return NO_LIVE;
-  if (e.kind === 'path') return { ...l, paths: [...l.paths, { setup: e.setup, purpose: e.purpose, pts: e.pts }] };
+  if (e.kind === 'path') return { ...l, paths: [...l.paths, { setup: e.setup, purpose: e.purpose, pts: e.pts, key: e.key, tool: e.tool }] };
   const sides = [...l.sides];
   if (e.stage === 'setup' && e.setup !== undefined && e.side) sides[e.setup] = e.side;
   return { ...l, stages: [...l.stages, e.stage], setup: e.stage === 'setup' ? (e.setup ?? l.setup) : l.setup, of: Math.max(l.of, e.of ?? 0), sides };

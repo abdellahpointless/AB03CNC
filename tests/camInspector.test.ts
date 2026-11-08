@@ -55,3 +55,20 @@ describe('the operator picks the sides and sees it being made', () => {
     if (code && r.code.includes(code)) expect(r.code).toMatch(/Z50\. M83/);
   }, 900_000);
 });
+
+describe('removing an operation', () => {
+  it('it is gone from the program, the others keep their keys, and the program is checked without it', () => {
+    const input = { tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19] as [number, number, number], orient: { side: 'Z+', spin: false }, noNest: true };
+    const all = camProgram(input);
+    const keys = all.setups.flatMap((s) => s.ops.map((o) => o.key!));
+    expect(keys.every(Boolean)).toBe(true);
+    expect(new Set(keys).size).toBe(keys.length);
+    // Remove the last operation of the first setup.
+    const gone = all.setups[0].ops.at(-1)!;
+    const less = camProgram({ ...input, skip: [gone.key!] });
+    const left = less.setups.flatMap((s) => s.ops.map((o) => o.key!));
+    expect(left).not.toContain(gone.key);
+    expect(left).toEqual(keys.filter((k) => k !== gone.key));
+    expect(less.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length).toBe(all.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length - 1);
+  }, 900_000);
+});
