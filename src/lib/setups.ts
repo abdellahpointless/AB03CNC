@@ -258,6 +258,8 @@ export function readInstructions(notes: string[]) {
   if (nest) {
     if (!spacers.has('X-')) spacers.set('X-', NEST_WALL + 2 * NEST_GAP);
     if (!spacers.has('Y+')) spacers.set('Y+', NEST_WALL);
+    // Its wall all round: the moving jaw presses on the front one.
+    if (!spacers.has('Y-')) spacers.set('Y-', NEST_WALL);
   }
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
@@ -284,7 +286,8 @@ export function readInstructions(notes: string[]) {
     // Only clamping words say vise; "36 MM UNTERLAGE" alone keeps the fixture of the setup before.
     // "MOD. IN ALUVORRICHTUNG SPANNEN": the module holds a fixture, the part sits in that.
     // "FIXATION AVEC LES BRIDES": strap clamps on the table, no vise.
-    clamp: nest || /VORRICHT|VORRI\b|BRIDES/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
+    // The nest is held in the vise like any part; only a written fixture is not.
+    clamp: nest ? ('vise' as const) : /VORRICHT|VORRI\b|BRIDES/.test(t) ? ('fixture' as const) : /\bMOD\b|MOD\./.test(t) ? ('module' as const) : /EINSPANNEN|SPANNEN/.test(t) ? ('vise' as const) : null,
     side: /RUECKS|RÜCKS/.test(t) ? ('back' as const) : /FRONT/.test(t) ? ('front' as const) : null,
     onEdge: /HOCHKANT/.test(t),
     topToward: toward ? (toward[1].replace(/\s/g, '') as Face) : null,

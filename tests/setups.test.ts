@@ -57,6 +57,13 @@ describe('setups', () => {
     expect(readInstructions(['MOD.SPANNEN F. FRONTSEITE /50 IN X /TASTER IN X+ Y-', '50 MM ZWISCHENLAGE IN X-'])).toMatchObject({ side: 'front', marker: { name: 'TASTER', faces: ['X+', 'Y-'] }, spacers: [{ mm: 50, side: 'X-' }] });
   });
 
+  it("CAM AI's POM nest is held in the vise, its wall on every jaw side", () => {
+    const n = readInstructions(['TEIL IN POM-NEST LEGEN', '38 MM UNTERLAGE']);
+    expect(n.clamp).toBe('vise');
+    expect(n.spacers.map((x) => x.side).sort()).toEqual(['X-', 'Y+', 'Y-']);
+    expect(readInstructions(['TEIL IN VORRICHT SPANNEN']).clamp).toBe('fixture');
+  });
+
   it('a setup without its own M0 is still held in the vise (never drawn without jaws)', () => {
     const code = program(10).split('\n').filter((l) => !/^M0 \((TEIL 180|38 MM UNTERLAGE \/ Z\+)/.test(l)).join('\n');
     const tp = parseToolpath(code, S);
