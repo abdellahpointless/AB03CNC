@@ -557,8 +557,6 @@ const remapper = {
     carving: 'Cutting the part…',
     meshing: 'Building the surfaces…',
     measuring: 'Measuring the walls…',
-    viewMenu: 'View',
-    panel: 'Show or hide the side panel',
     isolate: 'Part only',
     isolateHelp: 'Show only the part, without the vise, supports, toolpath and tool',
     unsupported: {

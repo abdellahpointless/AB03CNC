@@ -502,14 +502,14 @@ export default function CodeEditorPair({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleSwitchFanucToHaas}
-              className="btn-primary text-xs min-h-11 px-3.5"
+              className="btn-primary text-xs py-1.5 px-3"
             >
               <Sparkles size={13} />
               <span>{t('editor.fromFanucToHaas')}</span>
             </button>
             <button
               onClick={handleSwitchHaasToFanuc}
-              className="btn-warning text-xs min-h-11 px-3.5"
+              className="btn-warning text-xs py-1.5 px-3"
             >
               <ArrowLeftRight size={13} />
               <span>{t('editor.fromHaasToFanuc')}</span>
@@ -519,17 +519,16 @@ export default function CodeEditorPair({
       )}
 
       {conversionNotification && (
-        <div className="badge-positive toast-bottom justify-between gap-3 py-2.5 pl-4 pr-2 text-xs font-medium" role="status">
+        <div className="badge-positive w-full justify-between py-2 px-4 text-xs font-medium">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-[var(--green-500)] shrink-0" />
             <span>{conversionNotification}</span>
           </div>
-          <button
+          <button 
             onClick={() => setConversionNotification(null)}
-            aria-label={t('common:actions.dismiss')}
-            className="btn-icon w-8 h-8 shrink-0"
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer text-sm"
           >
-            <X size={14} />
+            ✕
           </button>
         </div>
       )}
@@ -557,7 +556,7 @@ export default function CodeEditorPair({
                   <button
                     onClick={handleSwitchFanucToHaas}
                     title={t('editor.fanucToHaasTitle')}
-                    className="btn-secondary text-xs min-h-11 px-3.5"
+                    className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <Sparkles size={12} className="text-[var(--blue-text)]" />
                     <span>FANUC &rarr; HAAS</span>
@@ -565,7 +564,7 @@ export default function CodeEditorPair({
                   <button
                     onClick={handleSwitchHaasToFanuc}
                     title={t('editor.haasToFanucTitle')}
-                    className="btn-secondary text-xs min-h-11 px-3.5"
+                    className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <ArrowLeftRight size={12} className="text-[var(--orange-text)]" />
                     <span>HAAS &rarr; FANUC</span>
@@ -578,7 +577,7 @@ export default function CodeEditorPair({
                   {onLoadSample && (
                     <button
                       onClick={onLoadSample}
-                      className="btn-secondary text-xs min-h-11 px-3.5"
+                      className="btn-secondary text-xs py-1 px-2.5"
                       title={t('editor.sampleFanucTitle')}
                     >
                       {t('editor.sampleFanuc')}
@@ -587,7 +586,7 @@ export default function CodeEditorPair({
                   {onLoadHaasSample && (
                     <button
                       onClick={onLoadHaasSample}
-                      className="btn-secondary text-xs min-h-11 px-3.5"
+                      className="btn-secondary text-xs py-1 px-2.5"
                       title={t('editor.sampleHaasTitle')}
                     >
                       {t('editor.sampleHaas')}
@@ -606,7 +605,7 @@ export default function CodeEditorPair({
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="btn-secondary text-xs min-h-11 px-3.5"
+                    className="btn-secondary text-xs py-1 px-2.5"
                   >
                     <Upload size={13} />
                     <span>{t('common:actions.import')}</span>
@@ -636,7 +635,7 @@ export default function CodeEditorPair({
                       </button>
                     </span>
                   ) : (
-                    <button onClick={() => modelInputRef.current?.click()} className="btn-secondary text-xs min-h-11 px-3.5" title={t('toolpath.model.addHelp')}>
+                    <button onClick={() => modelInputRef.current?.click()} className="btn-secondary text-xs py-1 px-2.5" title={t('toolpath.model.addHelp')}>
                       <Box size={13} />
                       <span>{t('toolpath.model.add')}</span>
                     </button>
@@ -654,7 +653,7 @@ export default function CodeEditorPair({
                 <Upload size={12} />
                 {t('toolpath.model.add')}
               </button>
-              <button onClick={() => setAskModel(false)} className="btn-secondary text-xs min-h-11 px-3.5">
+              <button onClick={() => setAskModel(false)} className="btn-secondary text-xs py-1 px-2.5">
                 {t('toolpath.model.skip')}
               </button>
             </div>
@@ -717,7 +716,7 @@ export default function CodeEditorPair({
               <button 
                 onClick={copyToClipboard}
                 disabled={!outputCode || isOutputStale || exportBlocked}
-                className="btn-secondary text-xs min-h-11 px-3.5"
+                className="btn-secondary text-xs py-1 px-2.5"
                 title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : t('editor.copyTitle')}
               >
                 {isCopied ? <Check size={13} className="text-[var(--green-500)]" /> : <Copy size={13} />}
@@ -728,7 +727,7 @@ export default function CodeEditorPair({
                   onClick={() => handleExportClick()}
                   disabled={!outputCode || isOutputStale || exportBlocked}
                   title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : `${t('editor.extractTitle')} (Ctrl+S)`}
-                  className="btn-warning text-xs min-h-11 px-3.5 font-semibold"
+                  className="btn-warning text-xs py-1.5 px-3 font-semibold"
                 >
                   <Download size={13} />
                   <span>{t('editor.extract')}</span>
@@ -850,7 +849,7 @@ export default function CodeEditorPair({
           )}
 
           {/* Code Viewer */}
-          <div ref={outputScrollRef} tabIndex={0} role="region" aria-label={outputLabel} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)] -outline-offset-2 ${isOutputStale ? 'opacity-50' : ''}`}>
+          <div ref={outputScrollRef} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] ${isOutputStale ? 'opacity-50' : ''}`}>
             {!outputCode ? (
               <div className="h-full flex items-center justify-center text-center p-6">
                 <div className="max-w-xs space-y-2">
@@ -866,7 +865,7 @@ export default function CodeEditorPair({
                 </div>
               </div>
             ) : (
-              <pre key="out" className="reveal-in font-mono text-[13px] leading-relaxed text-[var(--text-primary)] w-full">
+              <pre className="font-mono text-[13px] leading-relaxed text-[var(--text-primary)] w-full">
                 {outputLines.map((line, i) => {
                   const isChanged = changedLines[i];
                   const isApprox = line.includes('(APPROX-REMAP:');

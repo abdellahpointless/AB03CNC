@@ -547,8 +547,6 @@ const remapper: Translation<typeof en> = {
     carving: 'Parça işleniyor…',
     meshing: 'Yüzeyler oluşturuluyor…',
     measuring: 'Et kalınlıkları ölçülüyor…',
-    viewMenu: 'Görünüm',
-    panel: 'Yan paneli göster veya gizle',
     isolate: 'Yalnızca parça',
     isolateHelp: 'Mengene, destekler, takım yolu ve takım olmadan yalnızca parçayı göster',
     unsupported: {

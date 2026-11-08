@@ -12,7 +12,6 @@ import { api } from '../lib/api';
 /** A program comment as shown to the operator (in English where the country reads no French). */
 const shownComment = (text: string) => (currentRegion().gcodeComments === 'en' ? translateCommentText(text) : text);
 import { AlertTriangle, CheckCircle, Plus, AlertCircle, Trash2, Clock, Sparkles, Database, ArrowUpRight, Wrench, History } from 'lucide-react';
-import { GlassSelect } from './GlassSelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, SPRING_TOAST, iosBackdrop, iosSurface } from '../lib/motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -721,21 +720,29 @@ N190 M30`;
       {/* Control Bar (Aurora Glass Floating Panel - Focused Elements 1 to 5) */}
       <div className="glass-panel px-4 sm:px-5 py-3 flex flex-wrap items-center gap-2.5 sm:gap-3 rounded-[var(--radius-lg)] border border-[rgba(var(--ov),0.12)] bg-[rgba(var(--surface),0.65)] shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-xl">
         {/* One line: the machine (its tool count is in the list), its inventory, then the actions. */}
-        <GlassSelect
-          label={t('controls.targetMachine')}
+        <select 
+          aria-label={t('controls.targetMachine')}
           value={selectedMachine}
-          onValueChange={(v) => setSelectedMachine(v as MachineId)}
-          options={toolMachines.map((m) => ({ value: m.id, label: t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length }) }))}
-          placeholder={t('controls.noMachines')}
-          disabled={toolMachines.length === 0}
+          onChange={(e) => setSelectedMachine(e.target.value as MachineId)}
+          className="aurora-input w-52 sm:w-60 min-w-0 h-10 font-semibold cursor-pointer text-xs sm:text-sm py-2 px-3 rounded-[var(--radius-md)] border-[var(--border-subtle)] focus:border-[var(--accent-primary)] transition-colors truncate"
           title={toolMachines.length === 0 ? t('controls.noMachinesHint') : undefined}
-          className="w-52 sm:w-60 min-w-0"
-        />
+        >
+          {toolMachines.length === 0 && (
+            <option value="" className="bg-[var(--bg-panel)] text-[var(--text-primary)]">
+              {t('controls.noMachines')}
+            </option>
+          )}
+          {toolMachines.map(m => (
+            <option key={m.id} value={m.id} className="bg-[var(--bg-panel)] text-[var(--text-primary)]">
+              {t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}
+            </option>
+          ))}
+        </select>
         {/* Selector 4: Tool Inventory button */}
         <button
           type="button"
           onClick={() => onNavigateToDatabase && onNavigateToDatabase(selectedMachine)}
-          className="btn-secondary h-11 px-3.5 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold shrink-0 rounded-[var(--radius-md)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[rgba(var(--ov),0.06)] active:scale-[0.98] transition cursor-pointer shadow-xs"
+          className="btn-secondary h-10 px-3.5 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold shrink-0 rounded-[var(--radius-md)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:bg-[rgba(var(--ov),0.06)] active:scale-[0.98] transition cursor-pointer shadow-xs"
           title={t('controls.openInventoryTitle', { machine: machineLabel })}
         >
           <Database size={14} className="text-[var(--accent-primary)]" />
@@ -746,7 +753,7 @@ N190 M30`;
         {/* Selector 3: Analyze & Remap primary button */}
         <button 
           onClick={handleProcess}
-          className="btn-primary h-11 px-5 sm:px-6 flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide rounded-[var(--radius-md)] shadow-[0_4px_18px_rgba(59,111,212,0.4)] hover:shadow-[0_6px_24px_rgba(59,111,212,0.6)] active:scale-[0.98] transition cursor-pointer"
+          className="btn-primary h-10 px-5 sm:px-6 flex items-center gap-2 text-xs sm:text-sm font-bold tracking-wide rounded-[var(--radius-md)] shadow-[0_4px_18px_rgba(59,111,212,0.4)] hover:shadow-[0_6px_24px_rgba(59,111,212,0.6)] active:scale-[0.98] transition cursor-pointer"
           title={`${t('controls.analyzeTitle')} (Ctrl+Enter)`}
         >
           <Sparkles size={15} />
@@ -764,8 +771,8 @@ N190 M30`;
           }}
           className={
             blocks.length > 0
-              ? "btn-secondary h-11 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-text)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
-              : "btn-secondary h-11 px-4 flex items-center gap-2 text-xs sm:text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition whitespace-nowrap cursor-pointer opacity-70"
+              ? "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] border border-[var(--orange-500)]/40 bg-[rgba(224,138,77,0.12)] text-[var(--orange-text)] hover:bg-[rgba(224,138,77,0.2)] hover:border-[var(--orange-500)]/60 active:scale-[0.98] transition whitespace-nowrap cursor-pointer shadow-[0_2px_12px_rgba(224,138,77,0.15)]"
+              : "btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-medium rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.02)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition whitespace-nowrap cursor-pointer opacity-70"
           }
           title={blocks.length > 0 ? t('controls.modifyTitle') : t('controls.modifyTitleDisabled')}
         >
@@ -778,7 +785,7 @@ N190 M30`;
           <button
             type="button"
             onClick={onOpenHistory}
-            className="btn-secondary h-11 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] whitespace-nowrap"
+            className="btn-secondary h-10 px-4 flex items-center gap-2 text-xs sm:text-sm font-semibold rounded-[var(--radius-md)] whitespace-nowrap"
             title={tApp('remapHistory.openTitle')}
           >
             <History size={14} className="text-[var(--orange-text)]" />
@@ -787,7 +794,7 @@ N190 M30`;
         )}
 
         {detectedMat && (
-           <div className="h-11 px-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.08)] border border-[rgba(59,111,212,0.25)] flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-[var(--text-secondary)]">
+           <div className="h-10 px-3 rounded-[var(--radius-md)] bg-[rgba(59,111,212,0.08)] border border-[rgba(59,111,212,0.25)] flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-[var(--text-secondary)]">
              <span className="text-xs text-[var(--text-tertiary)] uppercase">{t('controls.material')}</span>
              <span className="text-[var(--accent-primary)] font-bold">{detectedMat}</span>
            </div>

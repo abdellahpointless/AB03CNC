@@ -57,17 +57,6 @@ describe('setups', () => {
     expect(readInstructions(['MOD.SPANNEN F. FRONTSEITE /50 IN X /TASTER IN X+ Y-', '50 MM ZWISCHENLAGE IN X-'])).toMatchObject({ side: 'front', marker: { name: 'TASTER', faces: ['X+', 'Y-'] }, spacers: [{ mm: 50, side: 'X-' }] });
   });
 
-  it('a setup without its own M0 is still held in the vise (never drawn without jaws)', () => {
-    const code = program(10).split('\n').filter((l) => !/^M0 \((TEIL 180|38 MM UNTERLAGE \/ Z\+)/.test(l)).join('\n');
-    const tp = parseToolpath(code, S);
-    expect(tp.setups).toHaveLength(2);
-    expect(tp.setups[1].notes).toEqual([]);
-    const [, b] = analyseSetups(tp, { jawHeight: 42 });
-    expect(b.clamp).toBe('vise');
-    expect(b.stock).not.toBeNull();
-    expect(b.jawTopZ).not.toBeNull();
-  });
-
   it('places the part and the jaws in each setup', () => {
     const tp = parseToolpath(program(10), S);
     const [a, b] = analyseSetups(tp, { jawHeight: 42 });

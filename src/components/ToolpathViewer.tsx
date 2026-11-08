@@ -1,8 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine, Eye, Upload, SlidersHorizontal, PanelRight } from 'lucide-react';
-import { Popover } from 'radix-ui';
+import { ArrowDownToLine, Pause, Play, Route, SkipBack, SkipForward, Timer, Wrench, X, Maximize2, ShieldCheck, ShieldAlert, Box, RotateCw, Layers, Info, Flame, Ruler, Scissors, PenLine, Eye, Upload } from 'lucide-react';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
 import { partLook } from '../lib/partLook';
@@ -165,7 +164,6 @@ export default function ToolpathViewer({
   };
   const [fitKey, setFitKey] = useState(0);
   const [isolate, setIsolate] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
   // Weak spots: the finished part coloured by wall thickness.
   const [heat, setHeat] = useState(false);
   // Measuring on the part (its faces and holes) and what the last clicks measured.
@@ -309,7 +307,6 @@ export default function ToolpathViewer({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return; // the View menu closes on Escape first
       if (e.key === 'Escape') onClose();
       if (e.key === ' ') {
         e.preventDefault();
@@ -498,9 +495,9 @@ export default function ToolpathViewer({
   }, [path]);
 
   return createPortal(
-    <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-2.5 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
+    <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-3 sm:p-6 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
       <motion.div
-        className={`always-dark w-full h-full flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border bg-[#0E1421] text-[var(--text-primary)] ${totalHits ? 'border-[#ff4d4d] shadow-[0_0_0_1px_rgba(255,77,77,0.5),0_0_60px_rgba(255,60,60,0.25),0_30px_90px_rgba(0,0,0,0.6)]' : 'border-[var(--border-subtle)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]'}`}
+        className={`always-dark w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border bg-[#0E1421] text-[var(--text-primary)] ${totalHits ? 'border-[#ff4d4d] shadow-[0_0_0_1px_rgba(255,77,77,0.5),0_0_60px_rgba(255,60,60,0.25),0_30px_90px_rgba(0,0,0,0.6)]' : 'border-[var(--border-subtle)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]'}`}
         style={DARK_VARS}
         {...iosSurface}
         role="dialog"
@@ -511,43 +508,18 @@ export default function ToolpathViewer({
           {totalHits ? <ShieldAlert size={18} className="text-[#ff6b6b]" /> : <Route size={18} className="text-[var(--accent-primary)]" />}
           <h3 className="font-bold text-[var(--text-primary)]">{t('toolpath.title')}</h3>
           <span className="font-mono text-xs text-[var(--text-tertiary)] truncate max-w-[30ch]">{title}</span>
-          {multi && (
-          <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto mx-auto" role="tablist" aria-label={t('toolpath.setup', { n: '' })}>
-            {setups.map((s) => {
-              const active = sel?.index === s.index;
-              return (
-                <button
-                  key={s.index}
-                  role="tab"
-                  aria-selected={active}
-                  disabled={!s.moves}
-                  onClick={() => goSetup(s)}
-                  className={`shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-40 ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.05)]'}`}
-                >
-                  <span className={`w-5 h-5 rounded-full grid place-items-center font-mono font-bold text-[11px] ${active ? 'bg-[var(--accent-primary)] text-white' : 'bg-[rgba(var(--ov),0.08)]'}`}>{s.index + 1}</span>
-                  {s.clamp && <span>{t(`toolpath.clamp.${s.clamp}`)}</span>}
-                  {s.rotation && (
-                    <span className="inline-flex items-center gap-0.5 font-mono text-[11px] text-[var(--text-tertiary)]">
-                      <RotateCw size={11} />
-                      {s.rotation.deg}° {s.rotation.axis}
-                    </span>
-                  )}
-                  {s.support !== null && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">▭{fmtNumber(s.support)}</span>}
-                  {s.marker && <span className="font-mono text-[10px] font-bold text-[#FFB869]">{s.marker.name}</span>}
-                  {s.conflict && <ShieldAlert size={12} className="text-[#f5b942]" aria-label={t('toolpath.conflict.caution', { n: s.index + 1 })} />}
-                  {calesOf(s).length > 0 && <span className="badge-warning text-[10px] px-1.5 py-0 font-bold">{calesOf(s).length}</span>}
-                  {s.jawTopZ !== null && (hardOf(s).length ? <span className="badge-danger text-[10px] px-1.5 py-0 font-bold">{hardOf(s).length}</span> : <ShieldCheck size={12} className="text-[var(--emerald-500,#3FB97A)]" />)}
-                </button>
-              );
-            })}
-          </div>
-        )}
           <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <span className="inline-flex items-center gap-3 text-xs text-[var(--text-secondary)] tabular-nums pr-1">
-              <span className="inline-flex items-center gap-1.5" title={t('toolpath.estimateNote')}><Timer size={13} aria-hidden="true" /> ≈ {fmtDuration(path.totalSeconds)}</span>
-              <span className="inline-flex items-center gap-1.5" title={t('toolpath.tools')}><Wrench size={13} aria-hidden="true" /> {path.tools.length}</span>
-              {path.lowestZ !== null && <span className="inline-flex items-center gap-1.5 font-mono" title={t('toolpath.lowestZ')}><ArrowDownToLine size={13} aria-hidden="true" /> Z{fmtNumber(path.lowestZ, 2)}</span>}
+            <span className="badge-neutral text-xs py-1 px-2.5 inline-flex items-center gap-1.5" title={t('toolpath.estimateNote')}>
+              <Timer size={13} /> ≈ {fmtDuration(path.totalSeconds)}
             </span>
+            <span className="badge-neutral text-xs py-1 px-2.5 inline-flex items-center gap-1.5" title={t('toolpath.tools')}>
+              <Wrench size={13} /> {path.tools.length}
+            </span>
+            {path.lowestZ !== null && (
+              <span className="badge-neutral text-xs py-1 px-2.5 inline-flex items-center gap-1.5 font-mono" title={t('toolpath.lowestZ')}>
+                <ArrowDownToLine size={13} /> Z{fmtNumber(path.lowestZ, 2)}
+              </span>
+            )}
             {(totalHits > 0 || setups.some((x) => x.jawTopZ !== null)) && (
               <span className={`${totalHits ? 'badge-danger' : 'badge-positive'} text-xs py-1 px-2.5 inline-flex items-center gap-1.5`}>
                 {totalHits ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
@@ -581,19 +553,49 @@ export default function ToolpathViewer({
                 {t('toolpath.unsupported.title', { count: path.unsupported.length })}
               </span>
             )}
-            <button onClick={() => setPanelOpen((x) => !x)} aria-pressed={panelOpen} className="btn-icon w-11 h-11 hidden lg:grid place-items-center" title={t('toolpath.panel')} aria-label={t('toolpath.panel')}>
-              <PanelRight size={17} />
-            </button>
-            <button onClick={onClose} className="btn-icon w-11 h-11" title={t('common:actions.close')} aria-label={t('common:actions.close')}>
-              <X size={17} />
+            <button onClick={onClose} className="btn-icon w-8 h-8" title={t('common:actions.close')} aria-label={t('common:actions.close')}>
+              <X size={15} />
             </button>
           </div>
         </div>
 
+        {multi && (
+          <div className="flex items-center gap-2 px-5 py-2 border-b border-[var(--border-subtle)] overflow-x-auto" role="tablist" aria-label={t('toolpath.setup', { n: '' })}>
+            <Layers size={14} className="text-[var(--text-tertiary)] shrink-0" />
+            {setups.map((s) => {
+              const active = sel?.index === s.index;
+              return (
+                <button
+                  key={s.index}
+                  role="tab"
+                  aria-selected={active}
+                  disabled={!s.moves}
+                  onClick={() => goSetup(s)}
+                  className={`shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-40 ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.05)]'}`}
+                >
+                  <span className={`w-5 h-5 rounded-full grid place-items-center font-mono font-bold text-[11px] ${active ? 'bg-[var(--accent-primary)] text-white' : 'bg-[rgba(var(--ov),0.08)]'}`}>{s.index + 1}</span>
+                  {s.clamp && <span>{t(`toolpath.clamp.${s.clamp}`)}</span>}
+                  {s.rotation && (
+                    <span className="inline-flex items-center gap-0.5 font-mono text-[11px] text-[var(--text-tertiary)]">
+                      <RotateCw size={11} />
+                      {s.rotation.deg}° {s.rotation.axis}
+                    </span>
+                  )}
+                  {s.support !== null && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">▭{fmtNumber(s.support)}</span>}
+                  {s.marker && <span className="font-mono text-[10px] font-bold text-[#FFB869]">{s.marker.name}</span>}
+                  {s.conflict && <ShieldAlert size={12} className="text-[#f5b942]" aria-label={t('toolpath.conflict.caution', { n: s.index + 1 })} />}
+                  {calesOf(s).length > 0 && <span className="badge-warning text-[10px] px-1.5 py-0 font-bold">{calesOf(s).length}</span>}
+                  {s.jawTopZ !== null && (hardOf(s).length ? <span className="badge-danger text-[10px] px-1.5 py-0 font-bold">{hardOf(s).length}</span> : <ShieldCheck size={12} className="text-[var(--emerald-500,#3FB97A)]" />)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {total === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm text-[var(--text-secondary)]">{t('toolpath.noMoves')}</div>
         ) : (
-          <div className={`flex-1 min-h-0 grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-1 transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${panelOpen ? 'lg:grid-cols-[1fr_340px]' : 'lg:grid-cols-[1fr_0px]'}`}>
+          <div className="flex-1 min-h-0 grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-1 lg:grid-cols-[1fr_300px]">
             <div className="min-h-0 flex flex-col">
               {/* Top view */}
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
@@ -753,7 +755,7 @@ export default function ToolpathViewer({
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <div className="tp-bar absolute left-3 right-3 top-3 z-10 flex items-center gap-2 flex-wrap">
+                <div className="absolute right-3 top-2 z-10 flex items-center gap-2">
                   <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label="3D / 2D">
                     {[true, false].map((m) => (
                       <button key={String(m)} role="radio" aria-checked={mode3d === m} onClick={() => setMode3d(m)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${mode3d === m ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
@@ -762,59 +764,6 @@ export default function ToolpathViewer({
                     ))}
                   </div>
                   {mode3d && (
-                    <>
-                      <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden="true" />
-{mode3d && (
-                    <button
-                      onClick={() => (measure ? setMeasure(false) : startMeasure())}
-                      aria-pressed={!!measure}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${measure ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
-                      title={t('toolpath.measureHelp')}
-                    >
-                      <Ruler size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.measure')}</span>
-                    </button>
-                  )}
-{mode3d && (
-                    <button
-                      onClick={() => {
-                        // The colours are the finished part's: show it.
-                        if (!heat) seek(total);
-                        setHeat((x) => !x);
-                      }}
-                      aria-pressed={heat}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${heat ? 'border-[#ff9a2e] bg-[#ff9a2e] text-[#1a1206]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
-                      title={t('toolpath.heatHelp')}
-                    >
-                      <Flame size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
-                    </button>
-                  )}
-{mode3d && (
-                    <button
-                      onClick={() => setSection((x) => (x ? null : { axis: 1, at: 0.5 }))}
-                      aria-pressed={!!section}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${section ? 'border-[#e07a5f] bg-[#e07a5f] text-[#2a0f08]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
-                      title={t('toolpath.sectionHelp')}
-                    >
-                      <Scissors size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.section')}</span>
-                    </button>
-                  )}
-                      <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden="true" />
-                      <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="group" aria-label={t('toolpath.views')}>
-                      {(['top', 'front', 'iso'] as const).map((k) => (
-                        <button key={k} onClick={() => setView3d({ kind: k, key: Date.now() })} className="px-2.5 h-6 rounded-full text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)]">
-                          {t(`toolpath.viewKind.${k}`)}
-                        </button>
-                      ))}
-                    </div>
-                      <Popover.Root>
-                        <Popover.Trigger className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 px-3 h-9 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] data-[state=open]:border-[var(--accent-primary)]">
-                          <SlidersHorizontal size={13} aria-hidden="true" /> {t('toolpath.viewMenu')}
-                        </Popover.Trigger>
-                        <Popover.Content align="start" sideOffset={8} className="tp-menu z-20 w-56 rounded-[var(--radius-md,12px)] border border-[var(--border-strong)] bg-[#0E1421]/95 p-2 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)]">
-{mode3d && (
                     <button
                       onClick={() => setIsolate((x) => !x)}
                       aria-pressed={isolate}
@@ -825,29 +774,7 @@ export default function ToolpathViewer({
                       <span className="sr-only sm:not-sr-only">{t('toolpath.isolate')}</span>
                     </button>
                   )}
-{mode3d && (
-                    <button
-                      onClick={() => setOutline((x) => !x)}
-                      aria-pressed={outline}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${outline ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
-                      title={t('toolpath.outlineHelp')}
-                    >
-                      <PenLine size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
-                    </button>
-                  )}
-{mode3d && !(isolate || measure) && (
-                    <button
-                      onClick={() => setSeeThrough((x) => !x)}
-                      aria-pressed={seeThrough}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${seeThrough ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
-                      title={t('toolpath.seeThroughHelp')}
-                    >
-                      <Eye size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.seeThrough')}</span>
-                    </button>
-                  )}
-{mode3d && (
+                  {mode3d && (
                     <>
                       <button
                         onClick={() => modelInput.current?.click()}
@@ -871,21 +798,87 @@ export default function ToolpathViewer({
                       />
                     </>
                   )}
-                          <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label={t('toolpath.quality.label')} title={t('toolpath.quality.help')}>
+                  {mode3d && (
+                    <button
+                      onClick={() => (measure ? setMeasure(false) : startMeasure())}
+                      aria-pressed={!!measure}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${measure ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.measureHelp')}
+                    >
+                      <Ruler size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.measure')}</span>
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => {
+                        // The colours are the finished part's: show it.
+                        if (!heat) seek(total);
+                        setHeat((x) => !x);
+                      }}
+                      aria-pressed={heat}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${heat ? 'border-[#ff9a2e] bg-[#ff9a2e] text-[#1a1206]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.heatHelp')}
+                    >
+                      <Flame size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => setSection((x) => (x ? null : { axis: 1, at: 0.5 }))}
+                      aria-pressed={!!section}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${section ? 'border-[#e07a5f] bg-[#e07a5f] text-[#2a0f08]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.sectionHelp')}
+                    >
+                      <Scissors size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.section')}</span>
+                    </button>
+                  )}
+                  {mode3d && (
+                    <button
+                      onClick={() => setOutline((x) => !x)}
+                      aria-pressed={outline}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${outline ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.outlineHelp')}
+                    >
+                      <PenLine size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
+                    </button>
+                  )}
+                  {mode3d && !(isolate || measure) && (
+                    <button
+                      onClick={() => setSeeThrough((x) => !x)}
+                      aria-pressed={seeThrough}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${seeThrough ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.seeThroughHelp')}
+                    >
+                      <Eye size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.seeThrough')}</span>
+                    </button>
+                  )}
+                  <button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
+                    <Maximize2 size={13} />
+                  </button>
+                </div>
+                {mode3d && (
+                  <div className="absolute right-3 top-11 z-10 flex items-center gap-2">
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label={t('toolpath.quality.label')} title={t('toolpath.quality.help')}>
                       {[false, true].map((d) => (
                         <button key={String(d)} role="radio" aria-checked={details === d} onClick={() => chooseDetails(d)} className={`px-2.5 h-6 rounded-full text-[11px] font-semibold ${details === d ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
                           {d ? t('toolpath.quality.details') : t('toolpath.quality.performance')}
                         </button>
                       ))}
                     </div>
-                        </Popover.Content>
-                      </Popover.Root>
-                    </>
-                  )}
-<button onClick={() => (mode3d ? setFitKey((k) => k + 1) : setView(homeTop))} className="btn-icon w-7 h-7" title={t('toolpath.fit')} aria-label={t('toolpath.fit')}>
-                    <Maximize2 size={13} />
-                  </button>
-                </div>
+                    <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="group" aria-label={t('toolpath.views')}>
+                      {(['top', 'front', 'iso'] as const).map((k) => (
+                        <button key={k} onClick={() => setView3d({ kind: k, key: Date.now() })} className="px-2.5 h-6 rounded-full text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)]">
+                          {t(`toolpath.viewKind.${k}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {mode3d && modelName && (
                   <div className="absolute right-3 top-20 z-10 flex items-center gap-2">
                     <div aria-live="polite" className={`inline-flex items-center gap-1.5 max-w-[34rem] rounded-full border bg-[#0E1421]/90 pl-2.5 pr-1 h-7 text-[11px] font-semibold ${modelState?.state === 'error' ? 'border-[#ff6b6b] text-[#ffb4b4]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
@@ -1016,7 +1009,7 @@ export default function ToolpathViewer({
             </div>
 
             {/* Side panel: tools with their colour and time, the current line */}
-            <div inert={!panelOpen} aria-hidden={!panelOpen} className={`min-h-0 min-w-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4 transition-opacity duration-200 ${panelOpen ? '' : 'lg:opacity-0 lg:p-0 lg:border-l-0'}`}>
+            <div className="min-h-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4">
               {model && mode3d && (
                 <ModelCheck
                   record={!noRecord}
