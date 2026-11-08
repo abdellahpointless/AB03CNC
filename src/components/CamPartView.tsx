@@ -262,7 +262,7 @@ export default function CamPartView({
     controls.pickables = () => [part];
     controls.center = () => new THREE.Vector3();
 
-    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 1.25);
+    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 1.55);
     camera.near = size / 100;
     camera.far = size * 50;
     camera.updateProjectionMatrix();
@@ -397,9 +397,9 @@ export default function CamPartView({
         a.stock.add(s);
       };
       const [x, y, z] = [v[0] / 2, v[2] / 2, v[1] / 2];
-      // Each just outside its own edge: X under the front, Y under the right end, Z by the left front corner.
+      // Each just outside its own edge: X under the front, Y under the left end, Z by the left front corner.
       put(`X ${fmtNumber(v[0], 1)} mm`, new THREE.Vector3(0, -y - h * 0.9, z));
-      put(`Y ${fmtNumber(v[1], 1)} mm`, new THREE.Vector3(x, -y - h * 0.9, 0));
+      put(`Y ${fmtNumber(v[1], 1)} mm`, new THREE.Vector3(-x, -y - h * 0.9, 0));
       put(`Z ${fmtNumber(v[2], 1)} mm`, new THREE.Vector3(-x - h * 1.8, 0, z));
     }
     a.invalidate();

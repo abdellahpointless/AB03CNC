@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, CheckCircle2, Circle, Cpu, Loader2, Lock, MousePointerClick, Pencil, Settings2, Square, Upload } from 'lucide-react';
+import { AlertTriangle, Box, Check, CheckCircle2, Circle, Cpu, Download, FileCode2, FilePlus2, Loader2, Lock, MousePointerClick, Package, Pencil, Play, RefreshCw, Route, Send, Settings2, Square, Upload } from 'lucide-react';
+import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useT } from '../i18n';
 import { fmtNumber as fmt } from '../i18n/format';
@@ -11,13 +12,13 @@ import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { convertHaasToFanuc } from '../lib/haasToFanucConverter';
 import { engineMachineId } from '../regions';
-import { CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
+import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
 import type { LiveEvent } from '../lib/cam/program';
 import type { Mat3 } from '../lib/orient';
-import CamAiResult, { passed } from './CamAiResult';
+import { passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick, LivePath } from './CamPartView';
 import type { CutEdit } from '../lib/cam/tools';
 
@@ -246,324 +247,416 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
   };
 
-  const step = 'glass-panel rounded-[var(--radius-lg)] p-5 space-y-3';
-  const h3 = 'text-sm font-semibold text-[var(--text-primary)]';
+  // The browser's selected item, what the properties panel edits.
+  const [sel, setSel] = useState<Sel>({ kind: 'part' });
+  const [dialog, setDialog] = useState(false);
+  // Cutting values typed and not yet in the program: it must be made again before it goes out.
+  const [draft, setDraft] = useState<Record<string, CutEdit>>({});
+  const changed = Object.keys({ ...draft, ...cuts }).filter((k) => JSON.stringify(draft[k] ?? {}) !== JSON.stringify(cuts[k] ?? {}));
+  const toolName = useToolName();
+  const verdict = useVerdictOrNull(result, changed.length);
+  const ok = !!verdict?.ok;
+  // What still stands before the program can be made (the status bar says it).
+  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length ? 'machine' : !templatesFor ? 'material' : null;
+  // A setup picked again after a program was made: that program is no longer the one shown.
+  const unlock = (k: 0 | 1) => {
+    if (k === 0) {
+      setLocked1(false);
+      setSecond(null);
+    }
+    setLocked2(false);
+    if (result) setRun({ state: 'idle' });
+    setSel({ kind: 'setup', i: k });
+  };
+  const recalc = () => {
+    setCuts(draft);
+    generate(swap, draft);
+  };
+  // The browser's setups: the two picked ones before a program, the program's after.
+  const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];
+  const paths = sel.kind === 'setup' || sel.kind === 'tool' ? live.paths.filter((p) => p.setup === sel.i) : live.paths;
+
+  const node = (active: boolean) =>
+    `no-glass w-full text-left flex items-center gap-2 px-2 min-h-8 rounded-[6px] text-xs transition-colors ${active ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'}`;
+  const tb = 'no-glass inline-flex items-center gap-1.5 px-2.5 min-h-9 rounded-[6px] text-xs text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40 disabled:hover:bg-transparent';
+  const head = 'section-label px-2 pt-3 pb-1';
 
   return (
-    <div className="max-w-5xl mx-auto w-full space-y-4 pb-16">
-      <section className={`${step} space-y-5`} aria-labelledby="cam-title">
-        <header className="flex items-start gap-3">
-          <span className="w-10 h-10 shrink-0 rounded-[var(--radius-md)] bg-[var(--accent-primary)]/12 text-[var(--accent-primary)] flex items-center justify-center">
-            <Cpu size={20} />
-          </span>
-          <div className="space-y-1 flex-1">
-            <h2 id="cam-title" className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              CAM AI <span className="badge-warning text-[10px] py-0.5 px-1.5">{t('camAi.beta')}</span>
-            </h2>
-            <p className="text-xs text-[var(--text-secondary)] max-w-2xl">{t('camAi.intro')}</p>
-          </div>
-          <details className="relative">
-            <summary className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer list-none">
-              <Settings2 size={14} /> {t('camAi.settings')}
-            </summary>
-            <div className="absolute right-0 z-20 mt-2 w-72 glass-panel rounded-[var(--radius-md)] p-3 space-y-1.5 shadow-lg">
+    <div className="cam-ws glass-panel rounded-[var(--radius-lg)] w-full flex flex-col overflow-hidden h-[calc(100vh-12.5rem)] min-h-[640px]">
+      <input ref={fileRef} type="file" accept=".pdf,.stl" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
+
+      {/* Toolbar */}
+      <header className="flex items-center gap-1 px-2 h-12 shrink-0 border-b border-[var(--border-subtle)]" role="toolbar" aria-label={t('camAi.ws.toolbar')}>
+        <span className="flex items-center gap-2 px-2 mr-1">
+          <Cpu size={16} className="text-[var(--accent-primary)]" aria-hidden />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">CAM AI</h2>
+          <span className="badge-warning text-[10px] py-0.5 px-1.5">{t('camAi.beta')}</span>
+        </span>
+        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
+        <button type="button" className={tb} onClick={() => setDialog(true)} disabled={busy}>
+          <FilePlus2 size={15} /> {t('camAi.ws.new')}
+        </button>
+        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
+        {run.state === 'busy' ? (
+          <button type="button" className={tb} onClick={stop}>
+            <Square size={14} /> {t('camAi.stop')}
+          </button>
+        ) : (
+          <button type="button" className={`${tb} font-semibold text-[var(--blue-text)]`} onClick={() => generate()} disabled={!ready || busy}>
+            <Play size={15} /> {t(result ? 'camAi.again' : 'camAi.generate')}
+          </button>
+        )}
+        <button type="button" className={tb} onClick={() => setViewing(true)} disabled={!result || busy}>
+          <Route size={15} /> {t('camAi.ws.simulate')}
+        </button>
+        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
+        <button type="button" className={tb} onClick={download} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
+          <Download size={15} /> {t('camAi.download')}
+        </button>
+        <button type="button" className={tb} onClick={() => result && ok && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
+          <Send size={15} /> {t('camAi.send')}
+        </button>
+        <span className="flex-1" />
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className={tb}>
+              <Settings2 size={15} /> {t('camAi.settings')}
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content align="end" sideOffset={6} className="tp-menu z-[1000] w-72 p-3 space-y-1.5">
               <label className="space-y-1 block">
                 <span className="section-label block">{t('camAi.sideStock')}</span>
                 <input className="aurora-input w-full text-xs" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
               </label>
               <p className="text-xs text-[var(--text-tertiary)]">{t('camAi.sideStockHint')}</p>
-            </div>
-          </details>
-        </header>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </header>
 
-        <div className="space-y-1.5">
-          <h3 className={h3}>{t('camAi.step.model')}</h3>
-          <input ref={fileRef} type="file" accept=".pdf,.stl" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); }}
-            disabled={busy}
-            className="no-glass w-full h-[112px] border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-md)] flex flex-col items-center justify-center gap-1.5 text-xs text-[var(--text-secondary)] transition-colors"
-          >
-            <Upload size={18} className="text-[var(--blue-text)]" />
-            <span className="font-medium text-[var(--text-primary)]">{model ? model.name : t('camAi.drop')}</span>
-            <span className="text-[var(--text-tertiary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
-          </button>
-          {run.state === 'preparing' && <p className="text-xs text-[var(--text-secondary)]" role="status">{t('camAi.reading')}</p>}
-        </div>
-      </section>
-
-      {prep && (
-        <>
-          <section className={step} aria-labelledby="cam-part">
-            <h3 id="cam-part" className={h3}>{t('camAi.step.part')}</h3>
-            {prep.title ? (
-              <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
-                <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.title')}: </dt><dd className="inline font-medium text-[var(--text-primary)]">{prep.title}</dd></div>
-                {prep.sap && <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
-              </dl>
-            ) : (
-              <p className="text-xs text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
-            )}
-            <label className="block space-y-1 max-w-md">
-              <span className="section-label block">{t('camAi.part.type')}</span>
-              <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => setPartType(e.target.value as PartType)} disabled={busy}>
-                <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.part.choose')}</option>
-                {PART_TYPES.map((p) => (
-                  <option key={p} value={p} className="bg-[var(--bg-panel)]">{t(`camAi.part.types.${p}`)}</option>
-                ))}
-              </select>
-            </label>
-            <p className="text-xs text-[var(--text-tertiary)]">{t('camAi.part.typeHint')}</p>
-          </section>
-
-          <section className={step} aria-labelledby="cam-layout">
-            <h3 id="cam-layout" className={h3}>{t('camAi.step.layout')}</h3>
-            <ol className="flex flex-wrap items-center gap-2" aria-label={t('camAi.setupSteps')}>
-              {[0, 1].map((k) => {
-                const open = k === 0 || locked1;
-                const done = k === 0 ? locked1 : locked2;
-                const active = picking === k;
+      <div className="flex-1 min-h-0 grid grid-cols-[15rem_minmax(0,1fr)_21rem]">
+        {/* Browser */}
+        <nav className="border-r border-[var(--border-subtle)] overflow-y-auto p-1.5" aria-label={t('camAi.ws.browser')}>
+          {prep ? (
+            <ul className="space-y-0.5">
+              <li>
+                <button type="button" className={node(sel.kind === 'part')} aria-current={sel.kind === 'part' || undefined} onClick={() => setSel({ kind: 'part' })}>
+                  <Box size={14} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden />
+                  <span className="truncate flex-1">{prep.title ?? name}</span>
+                  {!partType && <AlertTriangle size={13} className="text-[var(--orange-text)]" aria-label={t('camAi.ws.needs')} />}
+                </button>
+              </li>
+              <li>
+                <button type="button" className={node(sel.kind === 'stock')} aria-current={sel.kind === 'stock' || undefined} onClick={() => setSel({ kind: 'stock' })}>
+                  <Package size={14} className="shrink-0 text-[#f5a524]" aria-hidden />
+                  <span className="truncate flex-1">{t('camAi.ws.stock')}</span>
+                  {chosen && excess && <span className="tabular-nums text-[10px] text-[var(--text-tertiary)]">{[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join('×')}</span>}
+                </button>
+              </li>
+              <li className={head}>{t('camAi.ws.setups')}</li>
+              {setupNodes.map(({ i, side }) => {
+                const done = i === 0 ? locked1 : i === 1 ? locked2 : true;
+                const s = result?.setups[i];
+                const byTool = s ? [...new Map(s.ops.map((o) => [o.code, o] as const)).values()] : [];
+                const issue = s && (!s.physics.ok || s.ops.some((o) => o.unsafe));
                 return (
-                  <li
-                    key={k}
-                    aria-current={active ? 'step' : undefined}
-                    className={`flex items-center gap-2 rounded-full border px-3 min-h-9 text-xs transition-colors ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10 text-[var(--text-primary)]' : done ? 'border-[#22c55e]/50 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-tertiary)]'}`}
-                  >
-                    {!open ? <Lock size={13} aria-hidden /> : done ? <CheckCircle2 size={14} className="text-[var(--green-text,#1fb257)]" aria-hidden /> : <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse motion-reduce:animate-none" aria-hidden />}
-                    <span className="font-medium">{t('camAi.setupStep', { n: k + 1, op: (k + 1) * 10 })}</span>
-                    {open && chosen && <span className="font-mono">{k === 0 ? chosen.side : side2}</span>}
-                    <span className="sr-only">{t(!open ? 'camAi.stepState.locked' : done ? 'camAi.stepState.done' : 'camAi.stepState.now')}</span>
+                  <li key={i}>
+                    <button type="button" className={node(sel.kind === 'setup' && sel.i === i)} aria-current={(sel.kind === 'setup' && sel.i === i) || undefined} onClick={() => setSel({ kind: 'setup', i })}>
+                      {issue ? <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-hidden /> : done ? <CheckCircle2 size={14} className="shrink-0 text-[var(--green-text,#1fb257)]" aria-hidden /> : <span className="w-3.5 h-3.5 shrink-0 grid place-items-center" aria-hidden><span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" /></span>}
+                      <span className="flex-1 truncate">{t('camAi.setupStep', { n: i + 1, op: (i + 1) * 10 })}</span>
+                      <span className="font-mono text-[11px]">{side}</span>
+                      <span className="sr-only">{t(issue ? 'camAi.setupIssue' : done ? 'camAi.stepState.done' : 'camAi.stepState.now')}</span>
+                    </button>
+                    {byTool.length > 0 && (
+                      <ul className="ml-4 pl-2 border-l border-[var(--border-subtle)] space-y-0.5 my-0.5">
+                        {byTool.map((o) => (
+                          <li key={o.code}>
+                            <button type="button" className={node(sel.kind === 'tool' && sel.i === i && sel.code === o.code)} aria-current={(sel.kind === 'tool' && sel.i === i && sel.code === o.code) || undefined} onClick={() => setSel({ kind: 'tool', i, code: o.code })}>
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PURPOSE_HEX[o.purpose] }} aria-hidden />
+                              <span className="font-mono text-[11px] shrink-0">T{o.tool}</span>
+                              <span className="truncate flex-1">{toolName(o)}</span>
+                              {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={12} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}
-              <li className="text-xs text-[var(--text-tertiary)] px-1">{t('camAi.restByAi')}</li>
-            </ol>
-            {chosen && (
-              <div className="grid lg:grid-cols-[minmax(0,1fr)_16rem] gap-3">
-                <Suspense fallback={<div className="h-[380px] rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.04)]" />}>
-                  <CamPartView tris={prep.tris} R={chosen.R} raw={raw} picks={picks} picking={picking} onPick={pickFace} label={t('camAi.view3d')} className="h-[380px]" />
-                </Suspense>
-                <div className="space-y-3 text-xs">
-                  {picking !== null ? (
-                    <p className="flex items-start gap-2 text-[var(--text-primary)]">
-                      <MousePointerClick size={15} className="shrink-0 text-[var(--blue-text)]" aria-hidden />
-                      {t('camAi.pickHint', { n: picking + 1 })}
-                    </p>
-                  ) : (
-                    <p className="flex items-start gap-2 text-[var(--text-secondary)]">
-                      <CheckCircle2 size={15} className="shrink-0 text-[var(--green-text,#1fb257)]" aria-hidden />
-                      {t('camAi.setupsReady')}
-                    </p>
-                  )}
-                  {pickNote && <p role="alert" className="text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
-                  <dl className="space-y-1 text-[var(--text-secondary)]">
-                    <div className="flex justify-between gap-2"><dt>{t('camAi.setupStep', { n: 1, op: 10 })}</dt><dd className="text-[var(--text-primary)] text-right"><span className="font-mono">{chosen.side}</span>{chosen.spin ? ` · ${t('camAi.layout.turned')}` : ''}</dd></div>
-                    {locked1 && <div className="flex justify-between gap-2"><dt>{t('camAi.setupStep', { n: 2, op: 20 })}</dt><dd className="text-[var(--text-primary)] text-right"><span className="font-mono">{side2}</span>{!second ? ` · ${t('camAi.proposed')}` : ''}</dd></div>}
-                  </dl>
-                  <div className="flex flex-wrap gap-2">
-                    {picking === 0 && (
-                      <button type="button" onClick={() => setLocked1(true)} disabled={!chosen.fits} className="btn-primary text-xs min-h-11 px-4 flex items-center gap-1.5">
-                        <Check size={14} /> {t('camAi.confirmSetup', { n: 1 })}
-                      </button>
-                    )}
-                    {picking === 1 && (
-                      <>
-                        <button type="button" onClick={() => setLocked2(true)} className="btn-primary text-xs min-h-11 px-4 flex items-center gap-1.5">
-                          <Check size={14} /> {t('camAi.confirmSetup', { n: 2 })}
-                        </button>
-                        {second && (
-                          <button type="button" onClick={() => setSecond(null)} className="btn-secondary text-xs min-h-11 px-3">
-                            {t('camAi.useProposal')}
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {locked1 && !busy && (
-                      <button type="button" onClick={() => (locked2 ? setLocked2(false) : (setLocked1(false), setSecond(null)))} className="btn-secondary text-xs min-h-11 px-3 flex items-center gap-1.5">
-                        <Pencil size={13} /> {t('camAi.changeSetup', { n: locked2 ? 2 : 1 })}
-                      </button>
-                    )}
-                  </div>
-                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-[var(--text-tertiary)]" aria-hidden>
-                    <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#2f80ff]/60 mr-1" />{t('camAi.legend.hover')}</span>
-                    <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22c55e] mr-1" />{t('camAi.legend.top')}</span>
-                    <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#f5a524] mr-1" />{t('camAi.legend.stock')}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-            <details className="group">
-              <summary className="text-xs text-[var(--text-secondary)] cursor-pointer select-none min-h-9 flex items-center">{t('camAi.layout.others')}</summary>
-              <p className="text-xs text-[var(--text-tertiary)] mt-1">{t('camAi.layout.hint')}</p>
-              <fieldset className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2" disabled={busy}>
-                <legend className="sr-only">{t('camAi.step.layout')}</legend>
-                {prep.layouts.map((l, i) => {
-                  const label = `${t('camAi.layout.up', { side: l.side })}${l.spin ? `, ${t('camAi.layout.turned')}` : ''}`;
-                  return (
-                    <label
-                      key={i}
-                      className={`relative rounded-[var(--radius-md)] border p-2 text-xs cursor-pointer transition-colors ${layout === i ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/8' : 'border-[var(--border-subtle)] hover:border-[var(--blue-500)]/50'} ${l.fits ? '' : 'opacity-50 cursor-not-allowed'}`}
-                    >
-                      <input type="radio" name="cam-layout" className="sr-only" checked={layout === i} disabled={!l.fits} onChange={() => { chooseLayout(i); setLocked1(false); }} />
-                      {views[i] ? <img src={views[i]} alt="" className="w-full aspect-square object-contain" /> : <div className="w-full aspect-square rounded bg-[rgba(var(--ov),0.05)]" aria-hidden />}
-                      <span className="block font-medium text-[var(--text-primary)]">{label}</span>
-                      <span className="block text-[var(--text-secondary)] tabular-nums">{t('camAi.layout.size', { x: fmt(l.size[0], 1), y: fmt(l.size[1], 1), z: fmt(l.size[2], 1) })}</span>
-                      <span className="block text-[var(--text-tertiary)]">
-                        {t('camAi.layout.setups', { count: l.setups })}
-                        {l.twoVises && ` · ${t('camAi.layout.twoVises')}`}
-                        {!l.fits && ` · ${t('camAi.layout.noFit')}`}
-                      </span>
-                      {i === 0 && l.fits && <span className="absolute top-1.5 right-1.5 badge-positive text-[10px] py-0.5 px-1.5">{t('camAi.layout.suggested')}</span>}
-                    </label>
-                  );
-                })}
-              </fieldset>
-            </details>
-          </section>
+              {!result && locked1 && locked2 && <li className="px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{t('camAi.restByAi')}</li>}
+              {!result && !locked1 && (
+                <li className="flex items-center gap-2 px-2 min-h-8 text-xs text-[var(--text-tertiary)]">
+                  <Lock size={13} aria-hidden /> {t('camAi.setupStep', { n: 2, op: 20 })}
+                  <span className="sr-only">{t('camAi.stepState.locked')}</span>
+                </li>
+              )}
+              {result && (
+                <>
+                  <li className={head}>{t('camAi.ws.output')}</li>
+                  <li>
+                    <button type="button" className={node(sel.kind === 'program')} aria-current={sel.kind === 'program' || undefined} onClick={() => setSel({ kind: 'program' })}>
+                      <FileCode2 size={14} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden />
+                      <span className="flex-1 truncate">{fileName}</span>
+                      {ok ? <CheckCircle2 size={13} className="text-[var(--green-text,#1fb257)]" aria-hidden /> : <AlertTriangle size={13} className="text-[var(--orange-text)]" aria-hidden />}
+                    </button>
+                  </li>
+                </>
+              )}
+            </ul>
+          ) : (
+            <p className="text-xs text-[var(--text-tertiary)] p-2">{t('camAi.ws.empty')}</p>
+          )}
+        </nav>
 
-          <section className={step} aria-labelledby="cam-raw">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 id="cam-raw" className={h3}>{t('camAi.step.raw')}</h3>
-              <button type="button" role="switch" aria-checked={autoStock} onClick={() => setAutoStock(!autoStock)} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
-                <span className={`relative w-9 h-5 rounded-full transition-colors ${autoStock ? 'bg-[var(--accent-primary)]' : 'bg-[rgba(var(--ov),0.22)]'}`} aria-hidden>
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoStock ? 'translate-x-4' : ''}`} />
-                </span>
-                {t('camAi.stock.auto')}
+        {/* Viewport */}
+        <main className="relative min-w-0 bg-[rgba(var(--ov),0.025)]" aria-label={t('camAi.ws.viewport')}>
+          {prep && chosen ? (
+            <div className="absolute inset-0">
+            <Suspense fallback={null}>
+              <CamPartView
+                tris={prep.tris}
+                R={chosen.R}
+                raw={raw}
+                picks={result || busy ? [] : picks}
+                picking={result ? null : picking}
+                onPick={pickFace}
+                paths={paths}
+                label={picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
+                className="h-full rounded-none bg-transparent"
+              />
+            </Suspense>
+            </div>
+          ) : (
+            <div className="absolute inset-0 grid place-items-center p-6">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); setDialog(true); }}
+                disabled={busy}
+                className="no-glass w-full max-w-md aspect-[16/9] border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-lg)] flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)] transition-colors"
+              >
+                <Upload size={22} className="text-[var(--blue-text)]" />
+                <span className="text-sm font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : t('camAi.drop')}</span>
+                <span className="text-[var(--text-tertiary)]">{t('camAi.dropHint')}</span>
               </button>
             </div>
-            {!autoStock && chosen && (
-              <fieldset className="space-y-2" disabled={busy}>
-                <legend className="sr-only">{t('camAi.stock.manual')}</legend>
-                <div className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('camAi.stock.manual')}>
-                  {(['total', 'side'] as const).map((m) => (
-                    <button key={m} type="button" role="radio" aria-checked={stockMode === m} onClick={() => setStockMode(m)} className={`no-glass text-xs px-3 min-h-9 rounded-[calc(var(--radius-md)-2px)] ${stockMode === m ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
-                      {t(`camAi.stock.${m}`)}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 max-w-md">
-                  {(['X', 'Y', 'Z'] as const).map((axis, k) => {
-                    const list = stockMode === 'total' ? totals : perSide;
-                    const set = stockMode === 'total' ? setTotals : setPerSide;
-                    return (
-                      <label key={axis} className="flex-1 space-y-1">
-                        <span className="section-label block">{t(stockMode === 'total' ? 'camAi.stock.totalAxis' : 'camAi.stock.sideAxis', { axis })}</span>
-                        <input className="aurora-input w-full min-w-0 text-xs px-2" type="number" min={0} step={0.5} inputMode="decimal" value={list[k]} onChange={(e) => set(list.map((v, i) => (i === k ? e.target.value : v)))} />
-                      </label>
-                    );
-                  })}
-                </div>
-                {!excessOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.stock.tooSmall')}</p>}
-              </fieldset>
+          )}
+          {/* What the view is doing, top centre. */}
+          {prep && !result && picking !== null && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.pickHint', { n: picking + 1 })}
+            </p>
+          )}
+          {pickNote && <p role="alert" className="absolute top-14 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/95 border border-[#f5b942]/50 text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
+          {run.state === 'busy' && (
+            <div className="absolute left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)]">
+              <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
+            </div>
+          )}
+          {prep && (
+            <p className="absolute right-3 top-3 flex flex-col gap-1 rounded-[var(--radius-md)] px-2.5 py-2 text-[11px] bg-[var(--bg-panel)]/85 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-secondary)]" aria-hidden>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#2f80ff]/60 mr-1.5 align-middle" />{t('camAi.legend.hover')}</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22c55e] mr-1.5 align-middle" />{t('camAi.legend.top')}</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#f5a524] mr-1.5 align-middle" />{t('camAi.legend.stock')}</span>
+            </p>
+          )}
+        </main>
+
+        {/* Properties */}
+        <aside className="border-l border-[var(--border-subtle)] overflow-y-auto" aria-labelledby="cam-props">
+          <h3 id="cam-props" className="text-xs font-semibold text-[var(--text-primary)] px-3 h-10 flex items-center border-b border-[var(--border-subtle)] sticky top-0 bg-[var(--bg-panel)]/95 backdrop-blur z-10">
+            {sel.kind === 'part' ? t('camAi.ws.partProps') : sel.kind === 'stock' ? t('camAi.ws.stock') : sel.kind === 'program' ? fileName : sel.kind === 'setup' ? t('camAi.setupStep', { n: sel.i + 1, op: (sel.i + 1) * 10 }) : t('camAi.ws.toolProps')}
+          </h3>
+          <div className="p-3 space-y-3 text-xs">
+            {!prep && <p className="text-[var(--text-tertiary)]">{t('camAi.ws.empty')}</p>}
+
+            {prep && sel.kind === 'part' && (
+              <>
+                {prep.title ? (
+                  <dl className="space-y-1">
+                    <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.title')}: </dt><dd className="inline font-medium text-[var(--text-primary)]">{prep.title}</dd></div>
+                    {prep.sap && <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
+                  </dl>
+                ) : (
+                  <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
+                )}
+                {partFields()}
+              </>
             )}
-            {raw && chosen && excess && (
-              <p className="text-xs text-[var(--text-secondary)] tabular-nums">
-                {t('camAi.rawStep.result', { size: [0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join(' × ') })}
-                {' · '}
-                {t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}
+
+            {prep && chosen && sel.kind === 'stock' && (
+              <>
+                <button type="button" role="switch" aria-checked={autoStock} onClick={() => setAutoStock(!autoStock)} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
+                  <span className={`relative w-9 h-5 rounded-full transition-colors ${autoStock ? 'bg-[var(--accent-primary)]' : 'bg-[rgba(var(--ov),0.22)]'}`} aria-hidden>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoStock ? 'translate-x-4' : ''}`} />
+                  </span>
+                  {t('camAi.stock.auto')}
+                </button>
+                {!autoStock && (
+                  <fieldset className="space-y-2" disabled={busy}>
+                    <legend className="sr-only">{t('camAi.stock.manual')}</legend>
+                    <div className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('camAi.stock.manual')}>
+                      {(['total', 'side'] as const).map((m) => (
+                        <button key={m} type="button" role="radio" aria-checked={stockMode === m} onClick={() => setStockMode(m)} className={`no-glass text-xs px-3 min-h-9 rounded-[calc(var(--radius-md)-2px)] ${stockMode === m ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                          {t(`camAi.stock.${m}`)}
+                        </button>
+                      ))}
+                    </div>
+                    {(['X', 'Y', 'Z'] as const).map((axis, k) => {
+                      const list = stockMode === 'total' ? totals : perSide;
+                      const set = stockMode === 'total' ? setTotals : setPerSide;
+                      return (
+                        <label key={axis} className="grid grid-cols-[1fr_7rem] items-center gap-2">
+                          <span className="text-[var(--text-secondary)]">{t(stockMode === 'total' ? 'camAi.stock.totalAxis' : 'camAi.stock.sideAxis', { axis })}</span>
+                          <input className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums" type="number" min={0} step={0.5} inputMode="decimal" value={list[k]} onChange={(e) => set(list.map((v, i) => (i === k ? e.target.value : v)))} />
+                        </label>
+                      );
+                    })}
+                    {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t('camAi.stock.tooSmall')}</p>}
+                  </fieldset>
+                )}
+                {raw && excess && (
+                  <dl className="grid grid-cols-3 gap-2">
+                    {(['X', 'Y', 'Z'] as const).map((axis, k) => (
+                      <div key={axis} className="rounded-[var(--radius-md)] border border-[#f5a524]/40 px-2 py-1.5">
+                        <dt className="text-[11px] text-[var(--text-tertiary)]">{axis}</dt>
+                        <dd className="font-semibold tabular-nums text-[var(--text-primary)]">{fmt(chosen.size[k] + excess[k], 1)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+                {excess && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+              </>
+            )}
+
+            {prep && chosen && sel.kind === 'setup' && (
+              <>
+                {sel.i < 2 && !result && (
+                  <>
+                    {((sel.i === 0 && !locked1) || (sel.i === 1 && locked1 && !locked2)) && <p className="flex gap-2 text-[var(--text-primary)]"><MousePointerClick size={15} className="shrink-0 text-[var(--blue-text)]" aria-hidden />{t('camAi.pickHint', { n: sel.i + 1 })}</p>}
+                    <dl className="space-y-1 text-[var(--text-secondary)]">
+                      <div className="flex justify-between gap-2"><dt>{t('camAi.ws.top')}</dt><dd className="text-[var(--text-primary)] text-right"><span className="font-mono">{sel.i === 0 ? chosen.side : side2}</span>{sel.i === 0 && chosen.spin ? ` · ${t('camAi.layout.turned')}` : sel.i === 1 && !second ? ` · ${t('camAi.proposed')}` : ''}</dd></div>
+                      {sel.i === 0 && <div className="flex justify-between gap-2"><dt>{t('camAi.ws.inVise')}</dt><dd className="tabular-nums text-[var(--text-primary)]">{t('camAi.layout.size', { x: fmt(chosen.size[0], 1), y: fmt(chosen.size[1], 1), z: fmt(chosen.size[2], 1) })}</dd></div>}
+                    </dl>
+                    <div className="flex flex-wrap gap-2">
+                      {sel.i === 0 && !locked1 && (
+                        <button type="button" onClick={() => { setLocked1(true); setSel({ kind: 'setup', i: 1 }); }} disabled={!chosen.fits} className="btn-primary text-xs min-h-11 px-4 flex items-center gap-1.5">
+                          <Check size={14} /> {t('camAi.confirmSetup', { n: 1 })}
+                        </button>
+                      )}
+                      {sel.i === 1 && locked1 && !locked2 && (
+                        <>
+                          <button type="button" onClick={() => { setLocked2(true); setSel({ kind: 'stock' }); }} className="btn-primary text-xs min-h-11 px-4 flex items-center gap-1.5">
+                            <Check size={14} /> {t('camAi.confirmSetup', { n: 2 })}
+                          </button>
+                          {second && <button type="button" onClick={() => setSecond(null)} className="btn-secondary text-xs min-h-11 px-3">{t('camAi.useProposal')}</button>}
+                        </>
+                      )}
+                      {((sel.i === 0 && locked1) || (sel.i === 1 && locked2)) && !busy && (
+                        <button type="button" onClick={() => unlock(sel.i as 0 | 1)} className="btn-secondary text-xs min-h-11 px-3 flex items-center gap-1.5">
+                          <Pencil size={13} /> {t('camAi.changeSetup', { n: sel.i + 1 })}
+                        </button>
+                      )}
+                    </div>
+                    {sel.i === 0 && !locked1 && (
+                      <details>
+                        <summary className="cursor-pointer min-h-9 flex items-center text-[var(--text-secondary)]">{t('camAi.layout.others')}</summary>
+                        <fieldset className="grid grid-cols-3 gap-1.5 mt-1" disabled={busy}>
+                          <legend className="sr-only">{t('camAi.layout.others')}</legend>
+                          {prep.layouts.map((l, i) => (
+                            <label key={i} title={`${t('camAi.layout.up', { side: l.side })}${l.spin ? `, ${t('camAi.layout.turned')}` : ''}`} className={`relative rounded-[6px] border p-1 cursor-pointer ${layout === i ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/8' : 'border-[var(--border-subtle)]'} ${l.fits ? '' : 'opacity-40 cursor-not-allowed'}`}>
+                              <input type="radio" name="cam-layout" className="sr-only" checked={layout === i} disabled={!l.fits} onChange={() => chooseLayout(i)} aria-label={`${t('camAi.layout.up', { side: l.side })}${l.spin ? `, ${t('camAi.layout.turned')}` : ''}`} />
+                              {views[i] ? <img src={views[i]} alt="" className="w-full aspect-square object-contain" /> : <div className="w-full aspect-square" aria-hidden />}
+                              <span className="block text-center font-mono text-[10px] text-[var(--text-secondary)]">{l.side}{l.spin ? ' ⟲' : ''}</span>
+                            </label>
+                          ))}
+                        </fieldset>
+                      </details>
+                    )}
+                  </>
+                )}
+                {result?.setups[sel.i] && <SetupPanel setup={result.setups[sel.i]} />}
+              </>
+            )}
+
+            {result && sel.kind === 'tool' && (() => {
+              const s = result.setups[sel.i];
+              const ops = s?.ops.filter((o) => o.code === sel.code) ?? [];
+              if (!ops.length || !machine || !templatesFor) return null;
+              return (
+                <ul aria-label={t('camAi.ops')}>
+                  <ToolCard
+                    ops={ops}
+                    name={toolName(ops[0])}
+                    draft={draft[sel.code] ?? {}}
+                    changed={changed.includes(sel.code)}
+                    busy={busy}
+                    onEdit={(v) => setDraft((d) => ({ ...d, [sel.code]: { ...d[sel.code], ...v } }))}
+                    options={alternatives(templatesFor, tools, sel.code, swap.exclude)}
+                    toolName={toolName}
+                    onSwap={(code, standIn) => {
+                      const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
+                      setSwap(nextSwap);
+                      generate(nextSwap);
+                    }}
+                  />
+                  <li className="pt-2 text-[11px] text-[var(--text-tertiary)] list-none">{t('camAi.everywhere')}</li>
+                </ul>
+              );
+            })()}
+
+            {result && sel.kind === 'program' && machine && <ProgramPanel result={result} machineName={machine.name} changed={changed.length} />}
+
+            {run.state === 'error' && (
+              <p className="badge-danger text-xs py-1.5 px-3" role="alert">
+                {run.error === 'failed' ? t('camAi.failed') : t(`toolpath.model.errors.${run.error}`)}
               </p>
             )}
-          </section>
+          </div>
+        </aside>
+      </div>
 
-          <section className={step} aria-labelledby="cam-machine">
-            <h3 id="cam-machine" className={h3}>{t('camAi.step.machine')}</h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1">
-                <span className="section-label block">{t('camAi.machine')}</span>
-                <select className="aurora-input w-full text-xs cursor-pointer" value={machine?.id ?? ''} onChange={(e) => setMachineId(e.target.value)} disabled={busy}>
-                  {toolMachines.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-[var(--bg-panel)]">
-                      {t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1">
-                <span className="section-label block">{t('camAi.material')}</span>
-                <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER')} disabled={busy}>
-                  {CAM_MATERIALS.map((m) => (
-                    <option key={m} value={m} className="bg-[var(--bg-panel)]">{m}</option>
-                  ))}
-                  <option value="INOX" className="bg-[var(--bg-panel)]">{t('camAi.inox')}</option>
-                  <option value="OTHER" className="bg-[var(--bg-panel)]">{t('camAi.otherMaterial')}</option>
-                </select>
-              </label>
-            </div>
-            {material === 'INOX' && (
-              <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[#f5b942]/40 bg-[#f5b942]/8 p-3 text-xs" role="alert">
-                <AlertTriangle size={14} className="text-[var(--orange-text)] shrink-0" />
-                <span className="text-[var(--text-primary)]">{t('camAi.inoxAsk')}</span>
-                <button type="button" onClick={() => setMaterial('MS')} className="btn-primary text-xs py-1 px-3">
-                  {t('camAi.useMs')}
-                </button>
-              </div>
-            )}
-            {material === 'OTHER' && (
-              <label className="block space-y-1 max-w-sm">
-                <span className="section-label block">{t('camAi.family')}</span>
-                <select className="aurora-input w-full text-xs cursor-pointer" value={family} onChange={(e) => setFamily(e.target.value as Family)} disabled={busy}>
-                  {(['ALU', 'POM', 'FH'] as const).map((f) => (
-                    <option key={f} value={f} className="bg-[var(--bg-panel)]">{t(`camAi.families.${f}`)}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
-              {!tools.length && machine && <span className="text-xs text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</span>}
-              {run.state === 'busy' ? (
-                <button type="button" onClick={stop} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
-                  <Square size={12} /> {t('camAi.stop')}
-                </button>
-              ) : (
-                <button type="button" onClick={() => generate()} disabled={!ready || busy} className="btn-primary text-xs py-2 px-5 flex items-center gap-1.5">
-                  <Cpu size={14} /> {t(result ? 'camAi.again' : 'camAi.generate')}
-                </button>
-              )}
-            </div>
-            {chosen && (run.state === 'busy' || (result && live.paths.length > 0)) && (
-              <div className="grid lg:grid-cols-[minmax(0,1fr)_19rem] gap-3 pt-1">
-                <Suspense fallback={<div className="h-[340px] rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.04)]" />}>
-                  <CamPartView tris={prep.tris} R={chosen.R} raw={raw} picks={[]} picking={null} paths={live.paths} label={t('camAi.live.view')} className="h-[340px]" />
-                </Suspense>
-                <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
-              </div>
-            )}
-          </section>
-        </>
-      )}
-
-      {run.state === 'error' && (
-        <div className="badge-danger text-xs py-1.5 px-3" role="alert">
-          {run.error === 'failed' ? t('camAi.failed') : t(`toolpath.model.errors.${run.error}`)}
+      {/* Values typed and not in the program yet. */}
+      {changed.length > 0 && (
+        <div className="flex items-center gap-3 px-3 py-2 border-t border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/8" role="status">
+          <span className="text-xs text-[var(--text-primary)] flex-1">{t('camAi.recalcNeeded', { count: changed.length })}</span>
+          <button type="button" onClick={() => setDraft(cuts)} disabled={busy} className="btn-secondary text-xs min-h-9 px-3">{t('camAi.discard')}</button>
+          <button type="button" onClick={recalc} disabled={busy} className="btn-primary text-xs min-h-9 px-4 flex items-center gap-1.5">
+            <RefreshCw size={14} className={busy ? 'animate-spin motion-reduce:animate-none' : ''} /> {t('camAi.recalc')}
+          </button>
         </div>
       )}
 
-      {result && machine && templatesFor && (
-        <CamAiResult
-          result={result}
-          machineName={machine.name}
-          machineTools={tools}
-          material={templatesFor}
-          exclude={swap.exclude}
-          cuts={cuts}
-          busy={busy}
-          onRecalc={(next) => {
-            setCuts(next);
-            generate(swap, next);
-          }}
-          onSwap={(code, standIn) => {
-            const next = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
-            setSwap(next);
-            generate(next);
-          }}
-          onView={() => setViewing(true)}
-          onDownload={download}
-          onSend={() => passed(result) && onSend(result.code, fileName, machine.id)}
-        />
-      )}
+      {/* Status bar */}
+      <footer className="flex items-center gap-4 px-3 h-8 shrink-0 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)]" role="status" aria-live="polite">
+        {run.state === 'busy' ? (
+          <span className="flex items-center gap-1.5 text-[var(--blue-text)]"><Loader2 size={12} className="animate-spin motion-reduce:animate-none" aria-hidden />{t('camAi.making')}</span>
+        ) : verdict ? (
+          <span className={`flex items-center gap-1.5 min-w-0 ${verdict.ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`}>
+            {verdict.ok ? <CheckCircle2 size={12} aria-hidden /> : <AlertTriangle size={12} aria-hidden />}
+            <span className="truncate">{verdict.text}</span>
+          </span>
+        ) : next ? (
+          <span className="truncate">{t(`camAi.ws.next.${next}`)}</span>
+        ) : (
+          <span className="text-[var(--green-text,#1fb257)]">{t('camAi.ws.ready')}</span>
+        )}
+        <span className="flex-1" />
+        {result && (
+          <>
+            <span className="tabular-nums">{t('camAi.match')} {t('camAi.percent', { v: fmt(result.match * 100, 2) })}</span>
+            <span className="tabular-nums">{t('camAi.minutes', { v: fmt(result.minutes, 1) })}</span>
+            <span className="tabular-nums">{t('camAi.toolChanges')} {result.toolChanges}</span>
+          </>
+        )}
+        {machine && <span>{machine.name} · {templatesFor ?? material}</span>}
+      </footer>
+
+      {newProgramDialog()}
 
       {viewing && result && model && (
         <Suspense fallback={null}>
@@ -572,6 +665,120 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       )}
     </div>
   );
+
+  /** Part type, machine and material: in the New program dialog and the Part's properties. */
+  function partFields() {
+    return (
+      <div className="space-y-3">
+        <label className="block space-y-1">
+          <span className="section-label block">{t('camAi.part.type')}</span>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => setPartType(e.target.value as PartType)} disabled={busy}>
+            <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.part.choose')}</option>
+            {PART_TYPES.map((p) => (
+              <option key={p} value={p} className="bg-[var(--bg-panel)]">{t(`camAi.part.types.${p}`)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-1">
+          <span className="section-label block">{t('camAi.machine')}</span>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={machine?.id ?? ''} onChange={(e) => setMachineId(e.target.value)} disabled={busy}>
+            {toolMachines.map((m) => (
+              <option key={m.id} value={m.id} className="bg-[var(--bg-panel)]">{t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}</option>
+            ))}
+          </select>
+        </label>
+        {!tools.length && machine && <p className="text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</p>}
+        <label className="block space-y-1">
+          <span className="section-label block">{t('camAi.material')}</span>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER')} disabled={busy}>
+            {CAM_MATERIALS.map((m) => (
+              <option key={m} value={m} className="bg-[var(--bg-panel)]">{m}</option>
+            ))}
+            <option value="INOX" className="bg-[var(--bg-panel)]">{t('camAi.inox')}</option>
+            <option value="OTHER" className="bg-[var(--bg-panel)]">{t('camAi.otherMaterial')}</option>
+          </select>
+        </label>
+        {material === 'INOX' && (
+          <div className="space-y-2 rounded-[var(--radius-md)] border border-[#f5b942]/40 bg-[#f5b942]/8 p-2.5" role="alert">
+            <p className="text-[var(--text-primary)]">{t('camAi.inoxAsk')}</p>
+            <button type="button" onClick={() => setMaterial('MS')} className="btn-primary text-xs min-h-9 px-3">{t('camAi.useMs')}</button>
+          </div>
+        )}
+        {material === 'OTHER' && (
+          <label className="block space-y-1">
+            <span className="section-label block">{t('camAi.family')}</span>
+            <select className="aurora-input w-full text-xs cursor-pointer" value={family} onChange={(e) => setFamily(e.target.value as Family)} disabled={busy}>
+              {(['ALU', 'POM', 'FH'] as const).map((f) => (
+                <option key={f} value={f} className="bg-[var(--bg-panel)]">{t(`camAi.families.${f}`)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.part.typeHint')}</p>
+      </div>
+    );
+  }
+
+  /** New program: the model, then what the part is and where it is made. */
+  function newProgramDialog() {
+    return (
+      <Dialog.Root open={dialog} onOpenChange={setDialog}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
+          <Dialog.Content className="glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-5 space-y-4">
+            <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{t('camAi.ws.newTitle')}</Dialog.Title>
+            <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.intro')}</Dialog.Description>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); }}
+              disabled={busy}
+              className="no-glass w-full h-24 border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-md)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--text-secondary)]"
+            >
+              <Upload size={18} className="text-[var(--blue-text)]" />
+              <span className="font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : model ? model.name : t('camAi.drop')}</span>
+              <span className="text-[var(--text-tertiary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
+            </button>
+            {prep && (
+              <>
+                {prep.title && <p className="text-xs"><span className="text-[var(--text-tertiary)]">{t('camAi.part.title')}: </span><span className="font-medium text-[var(--text-primary)]">{prep.title}</span></p>}
+                {partFields()}
+              </>
+            )}
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <button type="button" className="btn-secondary text-xs min-h-11 px-4">{t('camAi.cancel')}</button>
+              </Dialog.Close>
+              <button
+                type="button"
+                disabled={!prep || !partType || busy}
+                onClick={() => {
+                  setDialog(false);
+                  setSel({ kind: 'setup', i: 0 });
+                }}
+                className="btn-primary text-xs min-h-11 px-4"
+              >
+                {t('camAi.ws.create')}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    );
+  }
+}
+
+type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string };
+
+/** The paths' colours, for the browser's dots (CamPartView draws them the same). */
+const PURPOSE_HEX: Record<string, string> = { face: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
+
+/** The verdict, once there is a program. */
+function useVerdictOrNull(result: CamSummary | null, changed: number) {
+  const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, cales: 0, gouge: 0, size: [], raw: [], missing: [], notes: [], nests: [], setups: [] };
+  const v = useVerdict(result ?? empty, changed);
+  return result ? v : null;
 }
 
 /** One step of the planner into what the page shows (cam.worker 'live'). */
