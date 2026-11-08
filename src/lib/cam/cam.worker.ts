@@ -2,8 +2,8 @@ import { readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
-import { camProgram, type CamInput, type Purpose, type Zone } from './program';
-import type { CamNote, Need } from './tools';
+import { camProgram, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
+import type { CamNote, Coolant, Need } from './tools';
 import type { Contact, SetupCheck } from './physics';
 import { layouts, type Layout } from './layouts';
 import { bounds } from './geom';
@@ -19,7 +19,7 @@ import { partTypeOf, type PartType } from './partType';
  * lesson: the part record (lib/lessons) of the program made, for the learning records.
  */
 
-export type CamRequest = Omit<CamInput, 'tris'> & { model: { name: string; bytes: Uint8Array } };
+export type CamRequest = Omit<CamInput, 'tris' | 'live'> & { model: { name: string; bytes: Uint8Array } };
 export type PrepareRequest = { type: 'prepare'; model: { name: string; bytes: Uint8Array } };
 
 export interface Prepared {
@@ -61,7 +61,26 @@ export interface CamSummary {
     grip: number;
     physics: SetupCheck;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
-    ops: { name: string; purpose: Purpose; tool: number; diameter: number; length: number; code: string; type: string; inMachine: boolean; learned: boolean }[];
+    ops: {
+      name: string;
+      purpose: Purpose;
+      tool: number;
+      diameter: number;
+      length: number;
+      code: string;
+      type: string;
+      inMachine: boolean;
+      learned: boolean;
+      /** Cutting values as programmed (rpm, mm/min, mm), its coolant, the deepest it goes (Z, setup frame). */
+      s: number;
+      f: number;
+      ae: number;
+      ap: number;
+      coolant: Coolant;
+      zMin: number;
+      /** The operator's values are more than the tool takes. */
+      unsafe: boolean;
+    }[];
     /** Where precision matters (setup frame): the contour, thin walls, engraving. */
     zones: Zone[];
   }[];
@@ -70,6 +89,7 @@ export interface CamSummary {
 export type CamMessage =
   | ({ type: 'prepared' } & Prepared)
   | { type: 'progress'; done: number; of: number }
+  | { type: 'live'; e: LiveEvent }
   | { type: 'done'; result: CamSummary; lesson: unknown }
   | { type: 'error'; error: ModelError | 'failed' };
 
@@ -82,7 +102,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
     const tris = await readTris(model.bytes);
     if ('error' in tris) return post({ type: 'error', error: tris.error });
     post({ type: 'progress', done: 0, of: 3 });
-    const r = camProgram({ ...input, tris }, (done, of) => post({ type: 'progress', done, of }));
+    const r = camProgram({ ...input, tris, live: (ev) => post({ type: 'live', e: ev }) }, (done, of) => post({ type: 'progress', done, of }));
     const tp = parseToolpath(r.code, input.speeds ?? speedsFor(input.brand));
     const lesson = await partLessonOf({ code: r.code, tp, model, match: r.check.match, pieces: r.check.pieces, brand: input.brand, source: 'cam' }).catch(() => null);
     post({
@@ -119,6 +139,13 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
             type: o.tool.type,
             inMachine: o.tool.inMachine,
             learned: o.cut.from !== 'default',
+            s: o.cut.s,
+            f: o.cut.f,
+            ae: o.cut.ae,
+            ap: o.cut.ap,
+            coolant: o.tool.edit?.coolant ?? 'flood',
+            zMin: deepest(o.lines),
+            unsafe: !!o.cut.unsafe,
           })),
         })),
       },
@@ -128,6 +155,14 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
     post({ type: 'error', error: 'failed' });
   }
 };
+
+/** The lowest Z an operation's cuts reach (its setup frame, Z0 the top). */
+function deepest(lines: string[]): number {
+  const seg = opSegments(lines);
+  let z = 0;
+  for (let i = 2; i < seg.length; i += 3) z = Math.min(z, seg[i]);
+  return Math.round(z * 100) / 100;
+}
 
 async function prepare(model: { name: string; bytes: Uint8Array }) {
   try {

@@ -77,6 +77,19 @@ export interface CamTool extends Tool {
   type: string;
   template: TemplateTool | null;
   inMachine: boolean;
+  /** The operator's own cutting values for this tool (CAM AI's tool inspector). */
+  edit?: CutEdit;
+}
+
+/** Coolant per tool: flood (M08), air (M83), none. */
+export type Coolant = 'flood' | 'air' | 'off';
+/** What the operator typed for a tool: spindle (rpm), feed (mm/min), step-over and depth (mm), coolant. */
+export interface CutEdit {
+  s?: number;
+  f?: number;
+  ae?: number;
+  ap?: number;
+  coolant?: Coolant;
 }
 
 /** A machine tool is a template tool of this type (strict: a drill is never taken for a reamer). */
@@ -87,7 +100,7 @@ const sameType = (t: Tool, type: string) => (TYPE_OF[t.category] === 'SF' ? MILL
  * the machine has it), then the machine's special tools. `exclude`: codes the operator does not
  * have; `prefer`: codes the operator picked in their place (treated as in the machine).
  */
-export function catalog(material: string, machine: Tool[], opts: { exclude?: string[]; prefer?: string[] } = {}): CamTool[] {
+export function catalog(material: string, machine: Tool[], opts: { exclude?: string[]; prefer?: string[]; cuts?: Record<string, CutEdit> } = {}): CamTool[] {
   const fam = FAMILY[material as CamMaterial];
   if (!fam) throw new Error(`Unknown CAM material ${material}`);
   const out: CamTool[] = [];
@@ -116,6 +129,7 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
       type: t.type,
       template: t,
       inMachine: !!m || !!opts.prefer?.includes(t.code),
+      ...(opts.cuts?.[t.code] ? { edit: opts.cuts[t.code] } : {}),
     });
   }
   // Special tools imported into the machine (taps are not used).
@@ -125,7 +139,7 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
     if (m.materials?.length && !m.materials.some((x) => INVENTORY[fam].includes(x))) continue;
     const code = `${type}_${m.diameter.toFixed(2).padStart(5, '0')}_${String(Math.round(m.length || 0)).padStart(3, '0')}_000_${SUFFIX[fam]}`;
     if (opts.exclude?.includes(code)) continue;
-    out.push({ ...m, code, type, template: null, inMachine: true });
+    out.push({ ...m, code, type, template: null, inMachine: true, ...(opts.cuts?.[code] ? { edit: opts.cuts[code] } : {}) });
   }
   return out;
 }
@@ -163,6 +177,8 @@ export interface Cut {
   from: 'template' | 'learned' | 'nearest' | 'default';
   /** The template used (its name in the shop's programs). */
   template?: string;
+  /** The operator's values bend the tool (or push the drill) past what it takes: not allowed out. */
+  unsafe?: boolean;
 }
 
 /** The template kinds to look for, best first, for what an operation does. */
@@ -186,7 +202,36 @@ const r10 = (v: number) => Math.max(10, Math.round(v / 10) * 10);
 
 /** Cutting data for a tool doing `kind` on a material, within the machine's limits. */
 export function cutData(tool: CamTool, kind: TemplateKind, material: string, limits: Limits = DEFAULT_LIMITS): Cut {
-  return stiff(tool, kind, material, rawCut(tool, kind, material, limits));
+  const c = stiff(tool, kind, material, rawCut(tool, kind, material, limits));
+  const e = tool.edit;
+  if (!e) return c;
+  // The operator's values, within the machine; unsafe when the tool could not take them.
+  const f = e.f && e.f > 0 ? Math.min(e.f, limits.maxFeed) : c.f;
+  const typed: Cut = {
+    ...c,
+    s: e.s && e.s > 0 ? Math.min(Math.round(e.s), limits.maxRpm) : c.s,
+    f,
+    fz: Math.max(1, Math.round((c.fz * f) / c.f)),
+    ap: e.ap && e.ap > 0 ? e.ap : c.ap,
+    ae: e.ae && e.ae > 0 ? Math.min(e.ae, tool.diameter) : c.ae,
+  };
+  return { ...typed, unsafe: harder(tool, kind, material, typed, c) || (tool.length > 0 && typed.ap > tool.length) };
+}
+
+/**
+ * The operator's cut loads the tool more than CAM AI's own cut for it (which is within what the
+ * tool takes) and more than the fixed limit: a mill bending further, a drill pushing harder.
+ */
+function harder(tool: CamTool, kind: TemplateKind, material: string, typed: Cut, own: Cut): boolean {
+  const d = tool.diameter;
+  const m = materialData(material);
+  const L = tool.length || tool.template?.length || 3 * d;
+  if (kind === 'drill' || kind === 'centre' || kind === 'spot') {
+    return drillThrust(m.kc, d, typed.f, typed.s) > Math.max(drillThrust(m.kc, d, own.f, own.s), drillBuckling(L, d) / SAFETY.buckle) * 1.0001;
+  }
+  if (!MILL_KINDS.has(kind)) return false;
+  const bend = (c: Cut) => toolDeflection(PEAK * millForce(m.kc, c.ap, kind === 'pocket' ? d : c.ae, c.f, c.s, d), L, d);
+  return bend(typed) > Math.max(bend(own), kind === 'finish' ? DEFLECTION.finish : DEFLECTION.rough) * 1.0001;
 }
 
 /** The family's own material: the one its templates were made for. */

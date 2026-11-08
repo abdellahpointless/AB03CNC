@@ -11,7 +11,7 @@ import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
-import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type Limits, type Need } from './tools';
+import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
@@ -52,6 +52,49 @@ export interface CamInput {
   /** Sides held in the POM nest (set by camProgram when nothing else holds them), or none ever (the nest's own program). */
   nestSides?: string[];
   noNest?: boolean;
+  /** The side up in setup 2, when the operator picked it on the model (else CAM AI's choice). */
+  second?: string;
+  /** The operator's cutting values per tool code (the tool inspector). */
+  cuts?: Record<string, CutEdit>;
+  /** What is being done, as it is done: for the page's live console and 3D paths. */
+  live?: (e: LiveEvent) => void;
+}
+
+/** The planner's steps (the live console) and each operation's feed moves (3D, model frame centred on its box). */
+export type LiveEvent =
+  | { kind: 'reset' }
+  | { kind: 'stage'; stage: 'features' | 'stock' | 'setup' | 'check' | 'post'; setup?: number; of?: number; side?: string }
+  | { kind: 'path'; setup: number; purpose: Purpose; pts: number[] };
+
+/**
+ * An operation's feed moves as segments (x0 y0 z0 x1 y1 z1 ...) in its setup's frame: G01 moves,
+ * and each drilled hole from its R plane down (G81/G83). CAM AI writes nothing else.
+ */
+export function opSegments(lines: string[]): number[] {
+  const out: number[] = [];
+  let [x, y, z] = [NaN, NaN, NaN];
+  let feed = false;
+  for (const l of lines) {
+    const word = (c: string) => {
+      const m = l.match(new RegExp(`${c}(-?\\d*\\.?\\d+)`));
+      return m ? Number(m[1]) : null;
+    };
+    if (/\bG0?0\b/.test(l)) feed = false;
+    else if (/\bG0?1\b/.test(l)) feed = true;
+    const [nx, ny] = [word('X') ?? x, word('Y') ?? y];
+    const r = word('R');
+    if (r !== null) {
+      // A drilling cycle line: the hole, from the R plane to its depth.
+      const depth = word('Z');
+      if (depth !== null) out.push(nx, ny, r, nx, ny, depth);
+      [x, y] = [nx, ny];
+      continue;
+    }
+    const nz = word('Z') ?? z;
+    if (feed && [x, y, z, nx, ny, nz].every(Number.isFinite)) out.push(x, y, z, nx, ny, nz);
+    [x, y, z] = [nx, ny, nz];
+  }
+  return out;
 }
 
 /** What an operation is for, in plain words (camAi.purpose.* on the page). */
@@ -886,7 +929,9 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let bestAxis = order[0];
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
+    input.live?.({ kind: 'stage', stage: 'check' });
     const now = checked(input, r);
+    input.live?.({ kind: 'stage', stage: 'post' });
     progress(i + 1, order.length);
     const better = !best || (good(now) && (!good(best) || now.check.minutes < best.check.minutes)) || (!good(now) && !good(best) && now.check.match > best.check.match);
     if (better) [best, bestAxis] = [now, axis];
@@ -901,7 +946,9 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let nested: CamResult & { check: CamCheck } = kept;
   for (let round = 0; round < 3; round++) {
     const r = planFor({ ...input, nestSides: sides }, bestAxis);
+    input.live?.({ kind: 'stage', stage: 'check' });
     nested = checked(input, r);
+    input.live?.({ kind: 'stage', stage: 'post' });
     const more = fails(nested).filter((x) => !sides.includes(x));
     if (!more.length) break;
     sides = [...sides, ...more];
@@ -918,6 +965,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
 
 /** The program with the part's `vertical` model axis as its height in the first two setups. */
 function planFor(input: CamInput, vertical: number): CamResult {
+  input.live?.({ kind: 'reset' });
   const limits = input.limits ?? DEFAULT_LIMITS;
   const mat = input.material;
   const missing: Need[] = [];
@@ -961,10 +1009,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
   };
   const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
+  input.live?.({ kind: 'stage', stage: 'features' });
+  input.live?.({ kind: 'stage', stage: 'stock' });
   // The simpler face first (fewer floors and holes), the finished front last of the two.
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
   const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
-  for (const si of first >= 0 ? [first, first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
+  // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
+  const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
+  for (const si of first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
   for (;;) {
     let best = -1;
     let gain = 0;
@@ -991,6 +1043,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const addSetup = (si: number, least = 3): boolean => {
     // What this try changes, to undo when the vise asks for a deeper grip and it is planned again.
     const was = { drilled: new Map(drilled), notes: notes.length };
+    input.live?.({ kind: 'stage', stage: 'setup', setup: setups.length, of: Math.max(chosen.length, setups.length + 1), side: SIDES[si].name });
     const side = SIDES[si];
     const f = feats[si];
     const R = f.R;
@@ -1314,6 +1367,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], contact, ops: done });
+    if (input.live) {
+      // Back to the model (centred): p = Rᵀ (p' - t).
+      const Rt = transpose(R);
+      for (const op of done) {
+        const seg = opSegments(op.lines);
+        const pts: number[] = [];
+        for (let i = 0; i < seg.length; i += 3) pts.push(...apply(Rt, [seg[i] - t[0], seg[i + 1] - t[1], seg[i + 2] - t[2]]));
+        input.live({ kind: 'path', setup: setups.length - 1, purpose: op.purpose, pts });
+      }
+    }
     prevR = R;
     return true;
   };
@@ -1351,6 +1414,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose };
 }
 
+/** The coolant word after the tool's first move: flood, air (HAAS 2 and 4 always get air when the program is sent), none. */
+const COOLANT = { flood: ' M08', air: ' M83', off: '' } as const;
+
 /** The program text, like the shop's. */
 function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string {
   const s0 = setups[0];
@@ -1377,7 +1443,7 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         `(${toolComment(t)})`,
         `(DIAMETER ${t.diameter.toFixed(2)} MM/LENGTH ${(t.length || 0).toFixed(2)} MM)`,
         'M01 (CHECK TOOL)',
-        `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}. M08`,
+        `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[t.edit?.coolant ?? 'flood']}`,
         ...op.lines,
         `G00 Z${SAFE}.`,
       );
