@@ -1,3 +1,4 @@
+import './i18n/appLocales';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CHOOSE_COUNTRY_PATH, currentRegion, scopedKey } from './lib/instance';
 import { Flag } from './components/Flag';

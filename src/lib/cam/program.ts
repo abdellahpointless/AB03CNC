@@ -1440,6 +1440,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
 const COOLANT = { flood: ' M08', air: ' M83', off: '' } as const;
 
 /** The program text, like the shop's. */
+/**
+ * Text from outside (the model's file name) made safe for a G-code comment: only letters, digits,
+ * spaces and `_ . -`. A ')' would end the comment and turn the rest of the name into commands the
+ * machine runs but the simulation never sees (for example "#5223=#5223-30", the G54 Z offset).
+ */
+export function commentSafe(text: string | undefined, fallback = 'TEIL'): string {
+  const clean = (text ?? '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9 _.-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || fallback;
+}
+
 function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string {
   const s0 = setups[0];
   const fin = apply(s0?.R ?? IDENTITY, size).map(Math.abs);
@@ -1449,7 +1463,7 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
   const out: string[] = [
     '(CAM AI)',
     `(DATUM DER ERSTELLUNG: ${date} / BEARBEITER: CAM AI)`,
-    `(${(input.name ?? 'TEIL').toUpperCase()} ${input.material} / ${fin.map(mm).join('X')} / ZUSCHNITT:${rw.map(mm).join('X')})`,
+    `(${commentSafe(input.name)} ${commentSafe(input.material, '')} / ${fin.map(mm).join('X')} / ZUSCHNITT:${rw.map(mm).join('X')})`,
     '(ERSTES TEIL MIT REDUZIERTEM VORSCHUB FAHREN)',
     'G40 G17 G53 G49 G80 G90',
     'G54',

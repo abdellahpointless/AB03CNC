@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
+import { accessDir, privateChunks, workerAccess } from './vite-private-chunks';
 
 // The commit being built, shown in the account menu. Workers Builds sets WORKERS_CI_COMMIT_SHA; locally ask git.
 function commit(): string {
@@ -20,9 +21,20 @@ export default defineConfig({
     react(),
     tailwindcss(),
     // /version.json: open pages compare it with the version they run and offer to refresh (UpdateBanner).
+    // Only the sign-in page is public; the rest of the app is served to signed-in sessions only.
+    privateChunks(),
     { name: 'version-file', generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) }); } },
   ],
   define: { __APP_VERSION__: JSON.stringify(version) },
+  worker: {
+    rollupOptions: {
+      output: {
+        // Web workers (CAM AI, the toolpath simulation) are private like the code that starts them.
+        entryFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
+        chunkFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

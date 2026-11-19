@@ -1,5 +1,5 @@
 import 'i18next';
-import type { resources } from './index';
+import type { resources } from './resources';
 
 // Typed keys: t('tools:title') is checked against the English resources at compile time.
 declare module 'i18next' {

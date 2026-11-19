@@ -18,6 +18,7 @@ import { audit } from './security';
 import { translateMessage } from './i18n';
 import './i18n-tr';
 import { readFeatures } from './features';
+import { handlePrivateAsset, isPrivateAssetPath } from './assets';
 import {
   handleAlertsLink,
   handleAlertsInvite,
@@ -383,6 +384,8 @@ async function respond(request: Request, env: Env, url: URL, instance: RegionId 
 export default {
   async fetch(request: Request, env: Env, exec: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // The app's code (everything but the sign-in page): only for signed-in sessions.
+    if (isPrivateAssetPath(url.pathname)) return handlePrivateAsset(request, env, url, (instance) => instanceEnv(env, instance));
     const target = resolveInstance(url.pathname);
     if (!target) return env.ASSETS.fetch(request);
     return withSecurityHeaders(await respond(request, env, url, target.instance, target.rest, exec));

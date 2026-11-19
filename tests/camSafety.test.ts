@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { camProgram, checkProgram } from '../src/lib/cam/program';
+import { camProgram, checkProgram, commentSafe } from '../src/lib/cam/program';
 import { heightPart, plateWithHoles } from './heightPart';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
@@ -45,4 +45,21 @@ describe('no tool into a parallel (shop rule for CAM AI)', () => {
     expect(r.check).toMatchObject({ cales: 0, collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 900_000);
+});
+
+describe('text from outside in the program', () => {
+  it("a ')' in the model's file name cannot end the comment and add commands", () => {
+    const name = '100201637205 TOP PLATE)#5223=#5223-30(';
+    expect(commentSafe(name)).toBe('100201637205 TOP PLATE 5223 5223-30');
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], orient: { side: 'Z+', spin: false }, name });
+    const header = r.code.split('\n').find((l) => l.includes('TOP PLATE'))!;
+    // One comment, nothing outside it.
+    expect(header).toMatch(/^(N\d+ )?\([^()]*\)$/);
+    expect(r.code).not.toContain('#5223');
+  });
+
+  it('keeps an ordinary name, upper case', () => {
+    expect(commentSafe('o2504411 top-plate_v2.1')).toBe('O2504411 TOP-PLATE_V2.1');
+    expect(commentSafe('  ')).toBe('TEIL');
+  });
 });

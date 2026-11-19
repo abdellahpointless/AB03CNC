@@ -6,5 +6,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts', 'worker/tests/**/*.test.ts'],
     environment: 'node',
+    // The signed-in app's translations (the public page loads only the sign-in words).
+    setupFiles: ['src/i18n/appLocales.ts'],
   },
 });
