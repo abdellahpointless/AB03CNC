@@ -224,8 +224,6 @@ const remapper = {
     securityLines: 'Security lines -> G0 G53 G49 Z0 G94 M95',
     g43ToFanuc: '{{count}} G43 -> H#513 D#513 M254',
     coolantMerged: '{{count}} M08 merged',
-    feedRatesFixed: '{{count}} feedrates fixed',
-    trailingZFixed: '{{count}} trailing Z fixed',
     percentWrapped: '% wrapped',
     toFanuc: 'Switched to FANUC: {{details}}',
     toFanucPlain: 'Switched code from HAAS to FANUC dialect',

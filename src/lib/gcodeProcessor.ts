@@ -13,6 +13,33 @@ export function detectMaterial(input: string): Material | undefined {
   return undefined;
 }
 
+/** Brass (MS) as the program header names it: "MS58.ZN40B", "CUZN39PB3", "MESSING". */
+export const BRASS_RE = /\b(MS|MS58|CUZN\w*|MESSING|BRASS)\b/;
+
+/** Aluminium or brass part, from the program header. */
+export function isAluOrBrass(code: string): boolean {
+  const m = detectMaterial(code);
+  return m === 'ALU' || (!m && BRASS_RE.test(code.split('\n').slice(0, 15).join('\n').toUpperCase()));
+}
+
+/**
+ * FANUC-2 limits: the spindle never turns faster than S5000 (feeds unchanged), and in aluminium and
+ * brass programs the peck of G83/G73 is always 2 mm. A value keeps its own notation (with or without
+ * a dot). Macro and subprogram calls keep their Q (an argument there, not a peck).
+ */
+export function fanuc2Limits(lines: string[], aluOrBrass: boolean): string[] {
+  const keepDot = (v: string, to: string) => to + (v.includes('.') ? '.' : '');
+  return lines.map((l) => {
+    if (l === '__REMOVE_ME__') return l;
+    let out = replaceInCode(l, /(?<![A-Z])S(\d+\.?\d*|\.\d+)/gi, (w: string, v: string) => (Number(v) > 5000 ? keepDot(v, 'S5000') : w));
+    const code = codeOnly(out);
+    if (aluOrBrass && /(?<![A-Z])G(?:83|73)(?![0-9])/i.test(code) && !/(?<![A-Z])(?:G65|M98|M97)(?![0-9])/i.test(code)) {
+      out = replaceInCode(out, /(?<![A-Z])Q(\d+\.?\d*|\.\d+)/gi, (_w: string, v: string) => keepDot(v, 'Q2'));
+    }
+    return out;
+  });
+}
+
 /** The executable part of a line, with every (comment) removed. */
 export function codeOnly(line: string): string {
   return line.replace(/\([^)]*\)?/g, ' ');
@@ -37,6 +64,16 @@ export function replaceInCode(line: string, pattern: RegExp, replacement: string
     last = m.index + m[0].length;
   }
   return out + doReplace(line.slice(last));
+}
+
+/**
+ * FANUC reads a coordinate written without a decimal point in thousandths of a mm (Z-5 is
+ * -0.005 mm), so every X, Y and Z that is a whole number gets its dot (Z-5 -> Z-5.). Values that
+ * already have a dot, other words (F, S, Q, R...), macro values (X#1) and comments are never
+ * touched, and no dot is ever removed. Running it again changes nothing.
+ */
+export function addCoordinateDots(lines: string[]): string[] {
+  return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi, '$1$2.')));
 }
 
 /** True when the line performs a tool change (M6 / M06 in the code, not in a comment). */
@@ -519,8 +556,26 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     const nextBlockIndex = i + 1 < blocks.length ? blocks[i + 1].lineIndex : outputLines.length;
 
     if (block.skipOperation || (resolutions[block.blockId] && resolutions[block.blockId].category === 'empty' && resolutions[block.blockId].description === 'Skip Operation')) {
-      for (let j = block.lineIndex; j < nextBlockIndex; j++) {
-        outputLines[j] = '__REMOVE_ME__';
+      // From the tool change up to the next one; the last tool up to the end-of-program codes,
+      // which stay (spindle and coolant off, retract, M30). Part flips in the section (M0 notes,
+      // G52 shift) stay too: the next tools are set up by them.
+      const end = i + 1 < blocks.length ? nextBlockIndex : Math.max(block.lineIndex + 1, endCodesStart(outputLines));
+      let flip = false;
+      let tableOut = false;
+      for (let j = block.lineIndex + 1; j < end; j++) {
+        if (hasG53Y0(outputLines[j])) tableOut = true;
+        else if (isPartSetup(outputLines[j])) flip = true;
+        else outputLines[j] = '__REMOVE_ME__';
+      }
+      // The table still comes to the operator before a flip kept from the section: the tool change
+      // line becomes "G53 Y0" (keeping its N number).
+      outputLines[block.lineIndex] = flip && !tableOut ? `${codeOnly(outputLines[block.lineIndex]).match(N_RE)?.[0].trim() ?? ''} G53 Y0`.trim() : '__REMOVE_ME__';
+      // The tool's pre-staging call ("T27" alone, before its M6) goes with it.
+      const t = block.originalT?.match(/\d+/)?.[0];
+      if (t) {
+        for (let j = i > 0 ? blocks[i - 1].lineIndex + 1 : 0; j < block.lineIndex; j++) {
+          if (new RegExp(`^T0*${Number(t)}$`, 'i').test(bareCode(outputLines[j]))) outputLines[j] = '__REMOVE_ME__';
+        }
       }
       continue;
     }
@@ -633,6 +688,7 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   // FANUC-2 only: cancel the tool length offset right on the tool change line ("T3 M6 G49").
   if (machineId === 'FANUC-2') {
     outputLines = addG49AfterM6(outputLines);
+    outputLines = fanuc2Limits(outputLines, isAluOrBrass(lines.join('\n')));
   }
 
   // HAAS-2 and HAAS-4 cool with air, not coolant: M08 (or M8) becomes M83, never inside a (comment).
@@ -667,6 +723,9 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   // and before the end of the program (to unload the parts). Not at every tool change.
   const { lines: linesWithG53 } = applyG53BeforeG52(outputLines);
   outputLines = linesWithG53;
+
+  // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point.
+  if (machineId?.toUpperCase().startsWith('FANUC')) outputLines = addCoordinateDots(outputLines);
 
   return {
     finalCode: outputLines.filter(l => l !== '__REMOVE_ME__').join('\n'),
@@ -718,6 +777,24 @@ const bareCode = (l: string) => codeOnly(l).replace(N_RE, '').trim();
 const isCommentOrBlank = (l: string) => isRemoved(l) || bareCode(l) === '';
 /** M0 / M00 / M01 operator stops (alone on their line). */
 const isOperatorStop = (l: string) => /^(?:M0*[01](?![0-9])\s*)+$/i.test(bareCode(l));
+/** Part flip lines (operator stops with their notes, G52 shift): kept when a tool's section is deleted. */
+const isPartSetup = (l: string) => isG52Shift(l) || /^M0*0(?![0-9.])/i.test(bareCode(l));
+/** Cutting, spindle or tool words: a line with them is not part of the end-of-program codes. */
+const NOT_END_CODE = /(?<![A-Z])(?:G0*[123]|G7[346]|G8[1-9])(?![0-9])|(?<![A-Z])[ST]\s*\d|(?<![A-Z])M0*[34](?![0-9.])/i;
+/**
+ * Where the end-of-program codes start: the lines right before (and including) M30/M02 that do not
+ * cut, start the spindle, move in work coordinates or change tool (M05, M09, G80, G53 retracts,
+ * G53 Y0, M30, %...). The program length when it has no end.
+ */
+function endCodesStart(lines: string[]): number {
+  let k = -1;
+  for (let j = lines.length - 1; j >= 0; j--) if (isProgramEnd(lines[j])) { k = j; break; }
+  if (k === -1) return lines.length;
+  const isEndCode = (l: string) =>
+    isRemoved(l) || (!isToolChangeLine(l) && !(isMotionLine(l) && !/(?<![A-Z])G(?:28|30)(?![0-9])/i.test(bareCode(l))) && !NOT_END_CODE.test(bareCode(l)));
+  while (k > 0 && isEndCode(lines[k - 1])) k--;
+  return k;
+}
 /** True when the line moves an axis (G52/G53/G10/G92 lines only set coordinates or are G53 itself). */
 const isMotionLine = (l: string) => {
   if (isRemoved(l)) return false;

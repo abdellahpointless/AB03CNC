@@ -76,7 +76,8 @@ describe('code generation', () => {
   it('adds FANUC offsets without damaging comments', () => {
     const src = '%\nO1\nT06 M6 (SB_04.00_050_000_VAHS)\nG43 H06 Z50 M08 (DRILL CYCLE)\nG01 Z-10\nM30\n%';
     const { code } = remap(src, fanuc1, 'FANUC-1');
-    expect(code).toContain('G43 H#513 D#513 Z50 M08 (DRILL CYCLE) (AI-MOD: FANUC OFFSETS)');
+    expect(code).toContain('G43 H#513 D#513 Z50. M08 (DRILL CYCLE) (AI-MOD: FANUC OFFSETS)');
+    expect(code).toContain('G01 Z-10.');
   });
 
   it('inserts G53 Y0 after the tool name comment and before G52, and before M30', () => {
@@ -228,7 +229,7 @@ describe('dialect converters', () => {
     const { fanucCode } = convertHaasToFanuc(src, 'x.txt');
     const lines = fanucCode.split('\n');
     const g43 = lines.findIndex((l) => l.includes('G43'));
-    expect(lines[g43]).toMatch(/G43 H#513 D#513 M254 Z50 M08$/);
+    expect(lines[g43]).toMatch(/G43 H#513 D#513 M254 Z50\. M08$/);
     expect(lines[g43 - 1]).toMatch(/G0 X10\. Y20\. S3500 M03$/);
     expect(fanucCode.startsWith('%\n')).toBe(true);
     expect(fanucCode.endsWith('\n%')).toBe(true);

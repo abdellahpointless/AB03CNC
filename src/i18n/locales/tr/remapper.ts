@@ -215,8 +215,6 @@ const remapper: Translation<typeof en> = {
     securityLines: 'Güvenlik satırları -> G0 G53 G49 Z0 G94 M95',
     g43ToFanuc: '{{count}} G43 -> H#513 D#513 M254',
     coolantMerged: '{{count}} M08 birleştirildi',
-    feedRatesFixed: '{{count}} ilerleme (F) değeri düzeltildi',
-    trailingZFixed: '{{count}} Z değerindeki nokta kaldırıldı',
     percentWrapped: 'Başa ve sona % eklendi',
     toFanuc: 'FANUC’a dönüştürüldü: {{details}}',
     toFanucPlain: 'Kod HAAS formatından FANUC formatına dönüştürüldü',

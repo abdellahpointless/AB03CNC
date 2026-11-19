@@ -6,14 +6,14 @@
  * 2. G43 line conversion: (G00 G43 Hxx Z.. -> G43 H#513 D#513 M254 Z.. [M08])
  * 3. Coolant consolidation: Merges standalone M08 into the G43 line
  * 4. M98 P7999 detection & removal (strictly deleted in FANUC)
- * 5. Feedrate integer formatting (F1200. -> F1200)
- * 6. Integer Z coordinate formatting (Z50. -> Z50)
+ * 5. Decimal points: never removed; whole-number X/Y/Z get one (Z50 -> Z50.), FANUC reads them
+ *    in thousandths of a mm otherwise. Other words keep their source form.
  * 7. G53 Y0 check: Only apply G53 Y0 when G52 is present in the code, placed right before G52
  * 8. Program wrapping: Ensures leading % and trailing % standard for FANUC controls
  * 9. O-Code preservation / formatting
  */
 
-import { applyG53BeforeG52 } from './gcodeProcessor';
+import { addCoordinateDots, applyG53BeforeG52 } from './gcodeProcessor';
 
 export interface HaasToFanucResult {
   fanucCode: string;
@@ -23,8 +23,6 @@ export interface HaasToFanucResult {
     securityLinesReplaced: number;
     g43Converted: number;
     coolantMerged: number;
-    feedRatesFixed: number;
-    trailingZFixed: number;
     m98LinesDeleted: number;
     g53Y0Added: number;
     percentWrapped: boolean;
@@ -43,8 +41,6 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     securityLinesReplaced: 0,
     g43Converted: 0,
     coolantMerged: 0,
-    feedRatesFixed: 0,
-    trailingZFixed: 0,
     m98LinesDeleted: 0,
     g53Y0Added: 0,
     percentWrapped: false,
@@ -107,12 +103,8 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     // HAAS: [N...] [G00] G43 H<num> Z<val> [M08]
     if (/\bG43\b.*H\d+/i.test(line)) {
       stats.g43Converted++;
-      const zMatch = line.match(/Z[-+]?\d+(?:\.\d*)?/i);
-      let zVal = zMatch ? zMatch[0] : 'Z50';
-      // Convert Z integer with dot: Z50. -> Z50
-      if (zVal.endsWith('.')) {
-        zVal = zVal.slice(0, -1);
-      }
+      const zMatch = line.match(/Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
+      const zVal = zMatch ? zMatch[0] : 'Z50.';
 
       let hasCoolant = /\bM0?8\b/i.test(line);
 
@@ -150,20 +142,6 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
       continue;
     }
 
-    // Rule: Fix Feedrate decimals (F1200. -> F1200)
-    const fMatches = line.match(/F(\d+)\.(?!\d)/g);
-    if (fMatches) {
-      stats.feedRatesFixed += fMatches.length;
-      line = line.replace(/F(\d+)\.(?!\d)/g, 'F$1');
-    }
-
-    // Rule: Fix trailing Z decimals (Z50. -> Z50)
-    const zMatches = line.match(/(\bZ[-+]?\d+)\.(?!\d)/g);
-    if (zMatches) {
-      stats.trailingZFixed += zMatches.length;
-      line = line.replace(/(\bZ[-+]?\d+)\.(?!\d)/g, '$1');
-    }
-
     // Standardize N-numbering if line starts with N\d+
     if (/^N\d+\s+/i.test(line)) {
       const withoutN = line.replace(/^N\d+\s+/i, '');
@@ -187,7 +165,8 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     });
   }
 
-  const { lines: linesWithG53, addedCount: g53Added } = applyG53BeforeG52(cleanedFanucLines);
+  const { lines: withG53, addedCount: g53Added } = applyG53BeforeG52(cleanedFanucLines);
+  const linesWithG53 = addCoordinateDots(withG53);
   stats.g53Y0Added = g53Added;
 
   // Step 4: Ensure FANUC % wrappers (start and end)

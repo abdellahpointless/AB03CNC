@@ -1,4 +1,4 @@
-import { detectMaterial } from './gcodeProcessor';
+import { BRASS_RE, detectMaterial } from './gcodeProcessor';
 import { partSizes } from './setups';
 
 /** How the part is drawn in 3D, from the material its program names. */
@@ -22,7 +22,7 @@ export function partLook(code: string): PartLook {
   }
   if (m === 'ALU') return 'alu';
   if (m) return 'plain';
-  if (/\b(MS|MS58|CUZN\w*|MESSING|BRASS)\b/.test(head)) return 'brass';
+  if (BRASS_RE.test(head)) return 'brass';
   if (/\b(STAHL|STEEL|C45|S235|S355|42CRMO4|1\.\d{4})\b/.test(head)) return 'steel';
   return 'plain';
 }

@@ -441,8 +441,6 @@ export default function CodeEditorPair({
     if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLines'));
     if (result.stats.g43Converted > 0) details.push(t('convert.g43ToFanuc', { count: result.stats.g43Converted }));
     if (result.stats.coolantMerged > 0) details.push(t('convert.coolantMerged', { count: result.stats.coolantMerged }));
-    if (result.stats.feedRatesFixed > 0) details.push(t('convert.feedRatesFixed', { count: result.stats.feedRatesFixed }));
-    if (result.stats.trailingZFixed > 0) details.push(t('convert.trailingZFixed', { count: result.stats.trailingZFixed }));
     if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98Removed', { count: result.stats.m98LinesDeleted }));
     if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
     if (result.stats.percentWrapped) details.push(t('convert.percentWrapped'));
