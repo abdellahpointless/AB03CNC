@@ -7,3 +7,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Output of npm run learn-turns (the shop's programs): import it, never commit it
+learned-turns.json

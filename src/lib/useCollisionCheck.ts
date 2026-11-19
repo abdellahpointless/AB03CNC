@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { movePath } from './playback';
+import type { Mat3 } from './orient';
+import { useTurnMemory } from './turnMemory';
 import { analyseProgram, readJawHeight, type Collision, type Reject } from './setups';
 import { buildInput, type HolderHit } from './stockSim';
 import { parseToolpath, speedsFor } from './toolpath';
@@ -12,13 +14,16 @@ const CHECK_VOXELS = 1_000_000;
  * part (in a worker). `code` empty: nothing to check. `again` changes to check once more (the jaw
  * height may have changed in the viewer).
  */
-export function useCollisionCheck(code: string, brand: string | undefined, again: number): { checking: boolean; hits: Collision[]; rejects: Reject[] } {
+/** `turns`: each setup's turn found for this program with its 3D model (else the program's own reading). */
+export function useCollisionCheck(code: string, brand: string | undefined, again: number, turns?: Mat3[]): { checking: boolean; hits: Collision[]; rejects: Reject[] } {
   const [done, setDone] = useState<{ key: string; hits: Collision[]; rejects: Reject[] } | null>(null);
-  const key = `${again}|${brand}|${code}`;
+  // Read with the turns learned from 3D models (again when they arrive).
+  const memory = useTurnMemory(!!code);
+  const key = `${again}|${brand}|${memory}|${turns?.map((m) => m.join()).join(';') ?? ''}|${code}`;
   useEffect(() => {
     if (!code) return;
     const tp = parseToolpath(code, speedsFor(brand));
-    const an = analyseProgram(tp, { jawHeight: readJawHeight() });
+    const an = analyseProgram(tp, { jawHeight: readJawHeight() }, turns);
     const jaws = an.setups.flatMap((s) => s.collisions);
     // Why the program is rejected (a cale the box does not have, a clamping size the part does not have).
     const rejects = an.setups.flatMap((s) => s.rejects);

@@ -87,7 +87,7 @@ registerTurkish(
     'Wrong code. Check the time on your phone and try again.':
       'Kod yanlış. Telefonunuzdaki saati kontrol edip tekrar deneyin.',
     'The first admin of this country is created by the master admin.':
-      'Bu ülkenin ilk yöneticisini ana yönetici oluşturur.',
+      'Bu ülkenin ilk yönetici hesabı henüz oluşturulmadı.',
     'Setup has already been completed. Please sign in.': 'Kurulum zaten tamamlandı. Lütfen giriş yapın.',
     'The new password must be different from the current one.': 'Yeni şifre mevcut şifreden farklı olmalıdır.',
     'Two-step sign-in is already on.': 'İki adımlı doğrulama zaten açık.',

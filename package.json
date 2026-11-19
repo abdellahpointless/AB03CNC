@@ -16,7 +16,8 @@
     "stl-blame": "esbuild tools/stl-blame.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/stl-blame.mjs --log-level=warning && node node_modules/.cache/stl-blame.mjs",
     "prc-dump": "esbuild tools/prc-dump.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/prc-dump.mjs --log-level=warning && node node_modules/.cache/prc-dump.mjs",
     "import-templates": "esbuild tools/import-templates.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/import-templates.mjs --log-level=warning && node node_modules/.cache/import-templates.mjs",
-    "learn-shop": "esbuild tools/learn-shop.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/learn-shop.mjs --log-level=warning && node node_modules/.cache/learn-shop.mjs"
+    "learn-shop": "esbuild tools/learn-shop.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/learn-shop.mjs --log-level=warning && node node_modules/.cache/learn-shop.mjs",
+    "learn-turns": "esbuild tools/learn-turns.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/learn-turns.mjs --log-level=warning && node node_modules/.cache/learn-turns.mjs"
   },
   "dependencies": {
     "clipper-lib": "^6.4.2",

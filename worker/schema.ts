@@ -379,6 +379,21 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     version: 14,
     statements: Object.entries(MOROCCO_MAX_RPM).map(([id, rpm]) => `UPDATE machines SET max_rpm = ${rpm} WHERE id = '${id}' AND max_rpm IS NULL`),
   },
+  {
+    // Turns learned from parts checked against their 3D model (src/lib/setups.ts, turnKey), kept in
+    // the master hub so every country learns from all of them: the setup's notes as a key, the turn
+    // from the setup before that was right, and how many times.
+    version: 15,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS turn_memory (
+        key TEXT NOT NULL,
+        rel TEXT NOT NULL,
+        n INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (key, rel)
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

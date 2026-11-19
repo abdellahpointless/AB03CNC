@@ -121,7 +121,7 @@ const app: Translation<typeof en> = {
     noMasterBody:
       "Bu hesabı Fas'taki bir yönetici, Admin → Master admin account bölümünden oluşturur. Ardından buradan veya herhangi bir ülkenin giriş sayfasından giriş yapın.",
     notSetUpTitle: 'Bu ülke henüz kurulmadı.',
-    notSetUpBody: 'İlk yönetici hesabını ana yönetici, ana yönetici panelinden oluşturur. Ana yönetici buradan giriş yapabilir.',
+    notSetUpBody: 'İlk yönetici hesabı oluşturulduğunda buradan giriş yapabilirsiniz.',
     setupTitle: 'İlk kurulum.',
     setupBody:
       'Bu kurulum için yönetici hesabını oluşturun. Ardından eski verilerinizi içe aktarabilir (Yönetici → Veri taşıma) ve operatör ekleyebilirsiniz.',

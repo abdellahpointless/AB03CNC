@@ -1,6 +1,7 @@
 import { HttpError, intParam, json, num, readJson, str } from '../http';
 import type { Ctx } from '../context';
 import { consumeQuota } from '../security';
+import { ensureSchema } from '../schema';
 
 /*
  * Learning records (see src/lib/lessons.ts), saved by anyone who may use the toolpath and
@@ -60,4 +61,52 @@ export async function handleExportLessons(ctx: Ctx): Promise<Response> {
     // The server's own fields last: the stored data cannot pretend to be someone else's record.
     lessons: results.slice(0, limit).map((r) => ({ ...JSON.parse(r.data), id: r.id, kind: r.kind, at: new Date(r.created_at).toISOString(), user: r.username, fileName: r.file_name, start: r.start, match: r.match })),
   });
+}
+
+// ---- Turns learned from 3D models (shared by every country, in the master hub) ---------------
+
+const TURN = /^-?[01](?:,-?[01]){8}$/;
+
+/** The shared memory: the hub when the country has one (the deployed app), else its own database. */
+async function memoryDb(ctx: Ctx): Promise<D1Database> {
+  const hub = ctx.env.HUB;
+  if (!hub) return ctx.env.DB;
+  await ensureSchema(hub, 'master');
+  return hub;
+}
+
+// POST /api/toolpath/memory { entries: [{ key, rel, n? }] }  turns a 3D check found right; an admin
+// may import many at once with their counts (learning from a folder of programs and models).
+export async function handleSaveTurnMemory(ctx: Ctx): Promise<Response> {
+  const u = ctx.user!;
+  if (u.role !== 'ADMIN' && !u.toolpathBeta && !u.camAi) throw new HttpError(403, 'The toolpath is not switched on for you.');
+  const admin = u.role === 'ADMIN';
+  const body = await readJson<{ entries?: unknown }>(ctx.request, admin ? 2_000_000 : 50_000);
+  if (!Array.isArray(body.entries) || !body.entries.length || body.entries.length > (admin ? 5000 : 60)) throw new HttpError(400, 'entries must be a list');
+  const entries = body.entries.map((e: { key?: unknown; rel?: unknown; n?: unknown }) => {
+    const key = str(e?.key, 'key', { min: 1, max: 600 });
+    const rel = str(e?.rel, 'rel', { min: 17, max: 26 });
+    if (!TURN.test(rel)) throw new HttpError(400, 'rel must be a turn');
+    // One check counts once; an admin import carries the counts it found.
+    const n = admin && e?.n !== undefined ? num(e.n, 'n', { min: 1, max: 1000, integer: true }) : 1;
+    return { key, rel, n };
+  });
+  await consumeQuota(ctx.env, `turn-memory:${u.id}`, admin ? 50 : 100, 86_400_000, 'Daily limit of learning records reached.');
+  const db = await memoryDb(ctx);
+  const now = Date.now();
+  await db.batch(
+    entries.map((e) =>
+      db
+        .prepare('INSERT INTO turn_memory (key, rel, n, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(key, rel) DO UPDATE SET n = n + excluded.n, updated_at = excluded.updated_at')
+        .bind(e.key, e.rel, e.n, now),
+    ),
+  );
+  return json({ ok: true, saved: entries.length });
+}
+
+// GET /api/toolpath/memory -> every learned turn (small: one row per wording and turn)
+export async function handleGetTurnMemory(ctx: Ctx): Promise<Response> {
+  const db = await memoryDb(ctx);
+  const { results } = await db.prepare('SELECT key, rel, n FROM turn_memory ORDER BY n DESC LIMIT 20000').all<{ key: string; rel: string; n: number }>();
+  return json({ rows: results });
 }

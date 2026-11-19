@@ -681,7 +681,10 @@ export async function handleMfaDisable(ctx: Ctx): Promise<Response> {
 export async function handleAuditLog(ctx: Ctx): Promise<Response> {
   const { results } = await ctx.env.DB.prepare(
     'SELECT id, at, username, ip, action, detail FROM audit_log ORDER BY at DESC, id DESC LIMIT 300',
-  ).all();
+  ).all<{ username: string | null }>();
+  // Only Morocco knows the master account (its admins created it): elsewhere a master's actions
+  // show as the system's.
+  if (ctx.env.REGION !== 'ma' && ctx.env.REGION !== 'master') for (const r of results) if (r.username?.startsWith('master:')) r.username = 'system';
   return json({ events: results });
 }
 

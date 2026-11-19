@@ -814,6 +814,11 @@ N190 M30`;
         onReanalyze={handleProcess}
         onLoadSample={handleLoadFanucSample}
         onLoadHaasSample={handleLoadHaasSample}
+        onOutputCorrected={(output, source) => {
+          // Only comments changed: the output stays the current one for the corrected program.
+          setAnalyzedSignature?.(signatureOf(selectedMachine, source));
+          setOutputCode(output);
+        }}
       />
 
       {/* Portaled Modals into document.body to ensure zero top-bar collision and proper viewport bounds */}

@@ -15,6 +15,28 @@ import { locale } from '../i18n/format';
 import { scopedKey } from '../lib/instance';
 import { MODEL_MAX_BYTES } from '../lib/modelLimits';
 import type { TurnFix } from '../lib/fixTurns';
+import type { Mat3 } from '../lib/orient';
+import { translateGcodeComments } from '../lib/gcodeTranslate';
+import { currentRegion } from '../lib/instance';
+
+/** The comment at the end of a line (or the line), to find a line again after N numbers changed. */
+const lastComment = (l: string) => l.match(/\(([^)]*)\)\s*$/)?.[1].trim() ?? l.trim();
+
+/**
+ * Puts corrected M0 comments into a program: each line found by its comment (`key` turns a line's
+ * comment into the form the changes were found in), all or nothing (null when one is missing).
+ */
+function rewriteComments(code: string, changes: TurnFix['changes'], key: (comment: string) => string, to: (comment: string) => string): string | null {
+  const ls = code.split('\n');
+  for (const c of changes) {
+    const want = lastComment(c.from);
+    const i = ls.findIndex((l) => key(lastComment(l)) === want);
+    const now = c.to.match(/\(([^)]*)\)\s*$/);
+    if (i < 0 || !now) return null;
+    ls[i] = ls[i].replace(/\([^)]*\)\s*$/, `(${to(now[1])})`);
+  }
+  return ls.join('\n');
+}
 
 // "NEW" on the toolpath button until it is first opened on this PC.
 const TOOLPATH_SEEN = scopedKey('cnc-toolpath-seen');
@@ -48,6 +70,8 @@ interface CodeEditorPairProps {
   machineBrand?: string;
   /** FANUC-2 runs HAAS code: the HAAS → FANUC button leaves the program as it is. */
   haasOnly?: boolean;
+  /** The output with corrected comments (and the source they come from): it stays the current output. */
+  onOutputCorrected?: (output: string, source: string) => void;
 }
 
 /** Symbol and short code of each check: readable without knowing the app's language. */
@@ -221,6 +245,7 @@ export default function CodeEditorPair({
   onSafetyOverride,
   machineBrand,
   haasOnly = false,
+  onOutputCorrected,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
   const [showSoon, setShowSoon] = useState(false);
@@ -239,6 +264,14 @@ export default function CodeEditorPair({
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The part's 3D PDF or STL (for the toolpath to check the program against): kept while the page is open.
   const [model, setModel] = useState<{ name: string; bytes: Uint8Array } | null>(null);
+  // Comments the 3D model corrected (as the output writes them), highlighted in the output; and the
+  // turns it found for a program, which the collision check then uses for that program.
+  const [correctedNotes, setCorrectedNotes] = useState<Set<string>>(new Set());
+  const [foundTurns, setFoundTurns] = useState<{ code: string; orients: Mat3[] } | null>(null);
+  useEffect(() => {
+    setCorrectedNotes(new Set());
+    setFoundTurns(null);
+  }, [model]);
   const [askModel, setAskModel] = useState(false);
   const modelInputRef = useRef<HTMLInputElement>(null);
   const pickModel = async (file: File) => {
@@ -268,7 +301,8 @@ export default function CodeEditorPair({
   // Collisions (tools and holders into the jaws, holders into the part): with the toolpath viewer
   // (beta), the output is checked and cannot be copied or downloaded until there is none.
   const [checkAgain, setCheckAgain] = useState(0);
-  const collisions = useCollisionCheck(toolpathOn && outputCode && !isOutputStale ? outputCode : '', machineBrand, checkAgain);
+  const checkedCode = toolpathOn && outputCode && !isOutputStale ? outputCode : '';
+  const collisions = useCollisionCheck(checkedCode, machineBrand, checkAgain, foundTurns?.code === checkedCode ? foundTurns.orients : undefined);
   // A tool into a cale is a warning (move the cale), not a reason to stop the export.
   const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer'), [collisions.hits]);
   const caleHits = useMemo(() => collisions.hits.filter((h) => h.what === 'cale'), [collisions.hits]);
@@ -369,18 +403,20 @@ export default function CodeEditorPair({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // The corrected M0 comments (found by the toolpath with the 3D model) put into the program: each
-  // line found by its comment (the output's N numbers may differ), all or nothing.
+  // The corrected M0 comments (found by the toolpath with the 3D model), put into the program as
+  // soon as they are found: into the program on the left and into the output (which stays current),
+  // highlighted there. The viewer worked on the output when there was one, else on the program.
   const useFix = (changes: TurnFix['changes']): boolean => {
-    const ls = sourceCode.split('\n');
-    const comment = (l: string) => l.match(/\(([^)]*)\)\s*$/)?.[1].trim() ?? l.trim();
-    for (const c of changes) {
-      const i = ls.findIndex((l) => comment(l) === comment(c.from));
-      const now = c.to.match(/\([^)]*\)\s*$/);
-      if (i < 0 || !now) return false;
-      ls[i] = ls[i].replace(/\([^)]*\)\s*$/, now[0]);
-    }
-    setSourceCode(ls.join('\n'));
+    const english = currentRegion().gcodeComments === 'en';
+    const shown = (c: string) => (english ? lastComment(translateGcodeComments(`(${c})`)) : c);
+    const same = (c: string) => c;
+    const fromOutput = !!outputCode && !isOutputStale;
+    const source = rewriteComments(sourceCode, changes, fromOutput ? shown : same, same);
+    const output = fromOutput ? rewriteComments(outputCode, changes, same, shown) : null;
+    if (!source || (fromOutput && !output)) return false;
+    setSourceCode(source);
+    if (output) onOutputCorrected?.(output, source);
+    setCorrectedNotes(new Set(changes.map((c) => shown(lastComment(c.to)))));
     return true;
   };
 
@@ -875,6 +911,8 @@ export default function CodeEditorPair({
                     lineClass = flagged === 'error'
                       ? 'bg-[var(--rose-500)]/15 text-[var(--rose-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--rose-500)]'
                       : 'bg-[var(--orange-500)]/15 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)] border-dashed';
+                  } else if (correctedNotes.size && correctedNotes.has(lastComment(line))) {
+                    lineClass = 'bg-[#8b5cf6]/20 text-[#c4b5fd] -mx-1 px-1 rounded font-semibold border-l-2 border-[#8b5cf6]';
                   } else if (isApprox) {
                     lineClass = 'bg-[var(--orange-500)]/20 text-[var(--orange-text)] -mx-1 px-1 rounded font-semibold border-l-2 border-[var(--orange-500)]';
                   } else if (isChanged) {
@@ -882,7 +920,7 @@ export default function CodeEditorPair({
                   }
                   
                   return (
-                    <div key={i} data-line={i} className={`py-0.5 ${lineClass}`}>
+                    <div key={i} data-line={i} className={`py-0.5 ${lineClass}`} title={correctedNotes.has(lastComment(line)) ? t('toolpath.model.correctedLine') : undefined}>
                       {line || ' '}
                     </div>
                   );
@@ -913,6 +951,7 @@ export default function CodeEditorPair({
             initialModel={model}
             onModelChange={setModel}
             onUseFix={useFix}
+            onTurnsFound={(code, orients) => setFoundTurns(orients ? { code, orients } : null)}
           />
         </Suspense>
       )}

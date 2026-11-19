@@ -13,6 +13,10 @@ const data: Translation<typeof en> = {
     download: 'Öğrenme kayıtlarını indir',
     none: 'Henüz öğrenme kaydı yok.',
     done: '{{count}} öğrenme kaydı indirildi.',
+    turnsImport: 'Öğrenilmiş dönüşleri içe aktar',
+    turnsHelp: 'Programlar ve 3B modellerinden oluşturulan bir learned-turns.json: bundan sonra tüm ülkeler bu bağlamaları doğru okur.',
+    turnsBad: 'Bu bir öğrenilmiş dönüşler dosyası değil.',
+    turnsDone: '{{count}} öğrenilmiş dönüş tüm ülkeler için içe aktarıldı.',
   },
   backup: {
     title: 'Yedekleme ve geri yükleme',

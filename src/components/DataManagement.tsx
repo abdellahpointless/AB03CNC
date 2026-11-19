@@ -93,6 +93,27 @@ export default function DataManagement() {
   const lessonsLog = useLog();
   const [lessonsFrom, setLessonsFrom] = useState('');
   const [lessonsTo, setLessonsTo] = useState('');
+  // Learned turns made from folders of programs and their 3D models (npm run learn-turns): shared by every country.
+  const turnsRef = useRef<HTMLInputElement>(null);
+  const importTurns = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    lessonsLog.clear();
+    setBusy('turns');
+    try {
+      const data = JSON.parse(await file.text());
+      const entries: unknown[] = Array.isArray(data?.entries) ? data.entries : [];
+      if (data?.format !== 'cnc-learned-turns-v1' || !entries.length) return lessonsLog.log(t('lessons.turnsBad'), 'error');
+      for (let i = 0; i < entries.length; i += 5000) await api('/toolpath/memory', { body: { entries: entries.slice(i, i + 5000) }, timeoutMs: 120_000 });
+      lessonsLog.log(t('lessons.turnsDone', { count: entries.length }), 'ok');
+    } catch (err: any) {
+      lessonsLog.log(err instanceof SyntaxError ? t('lessons.turnsBad') : err?.message || String(err), 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const downloadLessons = async () => {
     lessonsLog.clear();
     setBusy('lessons');
@@ -225,6 +246,11 @@ export default function DataManagement() {
             {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
             <span>{t('lessons.download')}</span>
           </button>
+          <button onClick={() => turnsRef.current?.click()} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4" title={t('lessons.turnsHelp')}>
+            {busy === 'turns' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+            <span>{t('lessons.turnsImport')}</span>
+          </button>
+          <input ref={turnsRef} type="file" accept=".json,application/json" hidden onChange={importTurns} />
         </div>
         <LogView lines={lessonsLog.lines} />
       </div>

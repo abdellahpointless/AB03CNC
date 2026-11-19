@@ -12,6 +12,8 @@ import { MODEL_MAX_BYTES } from '../lib/modelLimits';
 import type { TurnFix } from '../lib/fixTurns';
 import { apply, type Mat3 } from '../lib/orient';
 import ModelCheck from './ModelCheck';
+import { recordTurns, useTurnMemory } from '../lib/turnMemory';
+import { TARGET } from '../lib/fixTurns';
 import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
@@ -72,6 +74,7 @@ export default function ToolpathViewer({
   initialModel = null,
   onModelChange,
   onUseFix,
+  onTurnsFound,
   noRecord = false,
 }: {
   code: string;
@@ -85,6 +88,8 @@ export default function ToolpathViewer({
   onModelChange?: (m: { name: string; bytes: Uint8Array } | null) => void;
   /** Put the corrected M0 comments into the program in the editor (false: not placed). */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
+  /** The turns found for this program with its 3D model (null: back to the program's own). */
+  onTurnsFound?: (code: string, orients: Mat3[] | null) => void;
   /** No learning record from here (the program's maker saved one: CAM AI). */
   noRecord?: boolean;
 }) {
@@ -105,7 +110,14 @@ export default function ToolpathViewer({
   const [jawHeight, setJawHeight] = useState(readJawHeight);
   // The turns found by comparing with the model, simulated instead of the program's own (null: the program's).
   const [fixed, setFixed] = useState<Mat3[] | null>(null);
-  const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }, fixed ?? undefined), [path, fixed]);
+  // Setups are read again when the turns learned from 3D models arrive.
+  const memory = useTurnMemory();
+  useEffect(() => {
+    onTurnsFound?.(code, fixed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixed, code]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }, fixed ?? undefined), [path, fixed, memory]);
   // The jaw height only changes the jaw check, not where the part is: keep the program (and the
   // cut part) when it changes.
   const jawSetups = useMemo(() => (jawHeight === DEFAULT_JAW_HEIGHT ? program.setups : analyseProgram(path, { jawHeight }, fixed ?? undefined).setups), [program, path, jawHeight, fixed]);
@@ -184,6 +196,21 @@ export default function ToolpathViewer({
   // While the part is compared with its model and the turns corrected, the 3D view stays covered:
   // only the corrected result is shown.
   const [checking, setChecking] = useState(false);
+  // The part matches its model: how each setup turns is recorded, so programs worded the same way
+  // are read right from now on (once per model and turns). A "ready" always belongs to the setups
+  // shown now: the 3D view drops a comparison when they change.
+  const taught = useRef('');
+  const latest = useRef({ program, path, model });
+  latest.current = { program, path, model };
+  const onModel = (s: ModelState) => {
+    setModelState(s);
+    const { program: p, path: tp, model: m } = latest.current;
+    if (noRecord || !m || s.state !== 'ready' || s.match < TARGET) return;
+    const key = `${m.name}|${m.bytes.length}|${p.setups.map((x) => x.orient.join()).join(';')}`;
+    if (taught.current === key) return;
+    taught.current = key;
+    recordTurns(tp, p.setups.map((x) => x.orient));
+  };
   const [modelView, setModelView] = useState<ModelView>('both');
   const modelInput = useRef<HTMLInputElement>(null);
   const importModel = async (file: File) => {
@@ -602,7 +629,7 @@ export default function ToolpathViewer({
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={setModelState} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -1066,7 +1093,8 @@ export default function ToolpathViewer({
                   <div className="flex items-center gap-2">
                     <Box size={14} className="text-[var(--accent-primary)]" />
                     <span className="text-xs font-bold text-[var(--text-primary)]">{multi ? t('toolpath.setupOf', { n: sel.index + 1, total: setups.length }) : t('toolpath.setup', { n: 1 })}</span>
-                    {sel.clamp && <span className="badge-neutral text-[10px] py-0.5 px-2 ml-auto">{t(`toolpath.clamp.${sel.clamp}`)}</span>}
+                    {sel.learned && <span className="badge-positive text-[10px] py-0.5 px-2 ml-auto" title={t('toolpath.learnedTurnHelp')}>{t('toolpath.learnedTurn')}</span>}
+                    {sel.clamp && <span className={`badge-neutral text-[10px] py-0.5 px-2 ${sel.learned ? '' : 'ml-auto'}`}>{t(`toolpath.clamp.${sel.clamp}`)}</span>}
                   </div>
                   <ul className="space-y-1">
                     {instructions(sel).map((x, i) => (

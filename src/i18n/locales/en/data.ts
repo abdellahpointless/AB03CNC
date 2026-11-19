@@ -11,6 +11,10 @@ const data = {
     download: 'Download learning records',
     none: 'No learning records yet.',
     done: '{{count}} learning records downloaded.',
+    turnsImport: 'Import learned turns',
+    turnsHelp: 'A learned-turns.json made from folders of programs and their 3D models: every country reads those setups right from then on.',
+    turnsBad: 'This is not a learned-turns file.',
+    turnsDone: '{{count}} learned turns imported, for every country.',
   },
   backup: {
     title: 'Backup & restore',

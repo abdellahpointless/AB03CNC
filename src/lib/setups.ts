@@ -82,6 +82,8 @@ export interface SetupInfo {
    * be done as written. The position is followed; the user is warned to check the flip.
    */
   conflict: boolean;
+  /** The turn comes from earlier parts checked against their 3D model (the same notes), not from reading them. */
+  learned: boolean;
   /** "15 MM ZWISCHENLAGE IN Y-": plates between the part and a jaw (or the stop), one per side written. */
   spacers: { mm: number; side: Face }[];
   /**
@@ -757,6 +759,59 @@ const sameBoxes = (a: Map<number, Box>, b: Map<number, Box>) =>
     return !!o && [0, 1, 2].every((i) => Math.abs(o.min[i] - v.min[i]) < 0.02 && Math.abs(o.max[i] - v.max[i]) < 0.02);
   });
 
+// ---- Turns learned from 3D models ------------------------------------------------------------
+//
+// Every time a part is checked against its 3D model, the turn each setup really needed (from the
+// setup before, in machine axes) is recorded with the setup's notes, worded as a key. Shared by
+// every country (lib/turnMemory loads it). When a setup's notes match a key whose turn was found
+// right (and not contradicted by other parts), that turn is used instead of reading the notes.
+
+/** note key -> turn from the setup before ("1,0,0,...") -> times found right. */
+let memory = new Map<string, Map<string, number>>();
+
+export function setTurnMemory(rows: { key: string; rel: string; n: number }[]): void {
+  const m = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    const turns = m.get(r.key) ?? new Map<string, number>();
+    turns.set(r.rel, (turns.get(r.rel) ?? 0) + r.n);
+    m.set(r.key, turns);
+  }
+  memory = m;
+}
+
+/**
+ * The notes that say how the part lies, as a key: tool names, operation names and the parallels are
+ * left out, and every number but a turn's angle ("90 GRAD") is N, so the same wording on another
+ * part (other sizes) gives the same key.
+ */
+export function turnKey(notes: string[]): string {
+  return notes
+    .filter((n) => !/TOOLPATH|[A-Z]{2,4}_\d+[.,]\d+_|STICHEL|BOHRER|FRAESER|FRÄSER|MESSERKOPF|DIAMETER|LENGTH|^\s*\d+\s*MM\s+UNTERLAGE\s*$/i.test(n))
+    .map((n) => n.toUpperCase().replace(/\d+(?:[.,]\d+)?(?!\s*(?:GRAD|°|\d|[.,]\d))/g, 'N').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' / ');
+}
+
+/** The turn from one setup to the next, in machine axes (next = turn x before). */
+export const relTurn = (now: Mat3, before: Mat3): Mat3 => mul(now, transpose(before));
+
+/** The learned orientation for a setup with these notes after `before`, when its wording is known. */
+function recall(notes: string[], before: Mat3): Mat3 | null {
+  const key = turnKey(notes);
+  const turns = key ? memory.get(key) : undefined;
+  if (!turns) return null;
+  let total = 0;
+  let top: [string, number] | null = null;
+  for (const [rel, n] of turns) {
+    total += n;
+    if (!top || n > top[1]) top = [rel, n];
+  }
+  // Found right before, and nearly always the same way when parts disagree.
+  if (!top || top[1] / total < 0.75) return null;
+  const rel = top[0].split(',').map(Number) as Mat3;
+  return rel.length === 9 && rel.every((v) => v === 0 || v === 1 || v === -1) ? mul(rel, before) : null;
+}
+
 /** Share of setup k's cutting that falls where earlier setups already cut (coarse). */
 function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
   const input = buildInput(tp, r);
@@ -827,7 +882,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       }
     }
     const solved = k === 0 ? { options: [IDENTITY], conflict: false } : solveOrientation(orient, ins, known);
-    const alternatives = byCuts(bySize(solved.options, part, ins.sizes), part, moves, (m) => (isFaceMill(m.tool) ? null : (diameter.get(m.tool ?? -1) ?? 0) / 2));
+    // Notes worded like ones a 3D model already corrected turn the part the way that was right then.
+    const learnedTurn = k > 0 ? recall(notes, orient) : null;
+    const alternatives = learnedTurn ? [learnedTurn] : byCuts(bySize(solved.options, part, ins.sizes), part, moves, (m) => (isFaceMill(m.tool) ? null : (diameter.get(m.tool ?? -1) ?? 0) / 2));
     orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {
@@ -838,7 +895,8 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       // The shop holds every part in the vise unless the M0 names another clamp (a setup without
       // its own M0 keeps the one before).
       clamp: ins.clamp ?? prev?.clamp ?? 'vise',
-      conflict: solved.conflict,
+      conflict: solved.conflict && !learnedTurn,
+      learned: !!learnedTurn && !override.has(k),
       rejects:
         ins.support !== null && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
           ? [{ kind: 'cale', mm: ins.support, line: s.notes.find((n) => /UNTERLAGE/i.test(n.text))?.line ?? s.line }]

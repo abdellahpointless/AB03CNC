@@ -99,9 +99,11 @@ export default function ModelCheck({
       w.terminate();
       if (!msg.result) return setSearch({ status: 'error' });
       setSearch({ status: 'done', result: msg.result, fix: msg.fix });
-      // Better turns found: simulated straight away, the user only sees the corrected part.
+      // Better turns found: simulated straight away, the user only sees the corrected part; the
+      // program's M0 comments are corrected too (highlighted in the output).
       if (!msg.result.same) {
         onSimulate(msg.result.orients);
+        if (msg.fix?.changes.length && onUseFix) setUsed(onUseFix(msg.fix.changes));
         chime();
       }
       // The learning record (see lib/lessons): best effort, the user is not bothered if it fails.
@@ -202,12 +204,6 @@ export default function ModelCheck({
                 <p key={k} className="flex gap-2 text-[11px] text-[#f5b942]"><AlertTriangle size={13} className="shrink-0 mt-px" />{t('toolpath.model.unresolved', { n: k + 1 })}</p>
               ))}
               <div className="flex flex-wrap gap-1.5">
-                {onUseFix && (
-                  <button onClick={() => setUsed(onUseFix(corrected.changes))} className="btn-primary text-xs py-1 px-2.5">
-                    <CheckCircle2 size={12} />
-                    {t('toolpath.model.use')}
-                  </button>
-                )}
                 <button
                   onClick={() => {
                     void navigator.clipboard?.writeText(corrected.code).then(() => setCopied(true));
