@@ -1,6 +1,6 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx } from '../context';
-import { assertNotMasterUsername, hashPassword, validateUsername } from '../auth';
+import { assertNotMasterUsername, hashPassword, requirePassword, validateUsername } from '../auth';
 import { MAX_TOOLS_PER_MACHINE, bulkInsertToolsStmt, normalizeImportedTool, parseTool, validateMachine } from './tools';
 import { codeStatements, historyInsertStatements, normalizeHistory, parseCode } from './history';
 import { validateSap } from './parts';
@@ -14,8 +14,10 @@ import type { Tool } from '../../src/types';
 
 // POST /api/admin/import/users { users: [{ id?, username, password?, role?, created_at? }] }  (max 3 per request)
 export async function handleImportUsers(ctx: Ctx): Promise<Response> {
-  const body = await readJson<{ users?: any[] }>(ctx.request, 50_000);
+  const body = await readJson<{ users?: any[]; currentPassword?: unknown }>(ctx.request, 50_000);
   if (!Array.isArray(body.users) || body.users.length > 3) throw new HttpError(400, 'users must be an array (max 3 per request)');
+  // Admin accounts in the file: the admin's own password, as when adding one by hand.
+  if (body.users.some((u) => u?.role === 'ADMIN')) await requirePassword(ctx, body.currentPassword);
 
   const idMap: Record<string, string> = {};
   const created: string[] = [];

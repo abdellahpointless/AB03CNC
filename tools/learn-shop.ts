@@ -38,11 +38,20 @@ for (const f of files) {
   const buf = readFileSync(f);
   if (f.endsWith('.json')) {
     // An export of learning records: the programs kept in the part records.
+    let j: { lessons?: { program?: unknown; fileName?: string; id?: string }[] };
     try {
-      const j = JSON.parse(buf.toString('utf8'));
-      for (const l of j.lessons ?? []) if (l.program) add(l.fileName ?? l.id, gunzipSync(Buffer.from(l.program, 'base64')).toString('utf8'));
+      j = JSON.parse(buf.toString('utf8'));
     } catch {
-      /* not an export */
+      continue; // not an export
+    }
+    // Records come from users: each is checked on its own, and unpacks to at most 5 MB (a "zip bomb" cannot fill memory).
+    for (const l of j.lessons ?? []) {
+      if (typeof l.program !== 'string') continue;
+      try {
+        add(String(l.fileName ?? l.id), gunzipSync(Buffer.from(l.program, 'base64'), { maxOutputLength: 5_000_000 }).toString('utf8'));
+      } catch {
+        console.warn(`skipped a learning record that does not unpack: ${l.fileName ?? l.id}`);
+      }
     }
     continue;
   }

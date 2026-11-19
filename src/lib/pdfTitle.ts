@@ -19,7 +19,8 @@ async function dictionaries(pdf: Uint8Array): Promise<string[]> {
   for (const m of text.matchAll(/(?:^|[\s>])\d+\s+\d+\s+obj\b/g)) {
     const s = m.index! + m[0].length;
     const e = text.indexOf('endobj', s);
-    const body = text.slice(s, e < 0 ? undefined : e);
+    // Without "endobj" only a bounded piece: the rest of the file per object was quadratic.
+    const body = text.slice(s, e < 0 ? s + 65_536 : e);
     const st = /stream\r?\n/.exec(body);
     if (!st || !/\/Type\s*\/ObjStm/.test(body.slice(0, st.index))) {
       out.push(st ? body.slice(0, st.index) : body);

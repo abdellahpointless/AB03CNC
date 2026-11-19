@@ -288,10 +288,26 @@ export async function readPrc(prc: Uint8Array): Promise<Float32Array> {
 /** The PRC stream of a 3D PDF (its /Subtype /PRC stream, inflated when the PDF compresses it). */
 export async function prcFromPdf(pdf: Uint8Array): Promise<Uint8Array> {
   const text = new TextDecoder('latin1').decode(pdf);
-  const head = /<<((?:(?!>>\s*stream)[\s\S])*?\/Subtype\s*\/PRC[\s\S]*?)>>\s*stream\r?\n/.exec(text);
-  if (!head) throw new PrcError('PDF: no 3D model in this PDF');
-  const dict = head[1];
-  const start = head.index + head[0].length;
+  // The dictionary around a "/Subtype /PRC", looked for in a window around it: one regex over the
+  // whole file backtracked across it once per "<<" (a crafted PDF hung the page).
+  const WINDOW = 65_536;
+  let dict = '';
+  let start = -1;
+  let tries = 0;
+  for (const sub of text.matchAll(/\/Subtype\s*\/PRC/g)) {
+    if (++tries > 20) break;
+    const at = sub.index!;
+    const from = Math.max(0, at - WINDOW);
+    let open = from;
+    for (const s of text.slice(from, at).matchAll(/>>\s*stream/g)) open = from + s.index! + s[0].length;
+    const dictStart = text.indexOf('<<', open);
+    const tail = />>\s*stream\r?\n/.exec(text.slice(at, at + WINDOW));
+    if (dictStart === -1 || dictStart > at || !tail) continue;
+    dict = text.slice(dictStart + 2, at + tail.index);
+    start = at + tail.index + tail[0].length;
+    break;
+  }
+  if (start < 0) throw new PrcError('PDF: no 3D model in this PDF');
   let length = Number(/\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(dict)?.[1] ?? NaN);
   if (!Number.isFinite(length)) {
     const ref = /\/Length\s+(\d+)\s+(\d+)\s+R/.exec(dict);

@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDateTime } from '../i18n/format';
+import { useAskPassword } from './ChangePasswordModal';
 
 interface AccountRow {
   id: string;
@@ -137,6 +138,7 @@ export default function UserManagement() {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<Role>('MACHINIST');
+  const [askPassword, passwordDialog] = useAskPassword();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -187,12 +189,18 @@ export default function UserManagement() {
     }
   };
 
+  // Giving admin rights (or a new password to an admin) asks for the admin's own password, so a
+  // signed-in PC left alone is not enough to make a new admin.
+  const confirmAdmin = (name: string) => askPassword(t('users.confirmAdmin', { name }));
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const username = newUsername.trim();
+    const currentPassword = newRole === 'ADMIN' ? await confirmAdmin(username) : undefined;
+    if (currentPassword === null) return;
     const ok = await run(
       null,
-      () => api('/users', { method: 'POST', body: { username, password: newPassword, role: newRole } }),
+      () => api('/users', { method: 'POST', body: { username, password: newPassword, role: newRole, currentPassword } }),
       t('users.created', { name: username }),
     );
     if (ok) {
@@ -207,10 +215,13 @@ export default function UserManagement() {
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'DELETE' }), t('users.deleted', { name: u.username }));
   };
 
-  const handleResetPassword = (u: AccountRow) => {
-    const pw = prompt(t('users.promptPassword', { name: u.username, min: u.role === 'ADMIN' ? 10 : 8 }));
+  const handleResetPassword = async (u: AccountRow) => {
+    const min = u.role === 'ADMIN' ? 10 : 8;
+    const pw = await askPassword(t('users.promptPassword', { name: u.username, min }), min);
     if (pw === null) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { password: pw } }), t('users.passwordReset', { name: u.username }));
+    const currentPassword = u.role === 'ADMIN' ? await confirmAdmin(u.username) : undefined;
+    if (currentPassword === null) return;
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { password: pw, currentPassword } }), t('users.passwordReset', { name: u.username }));
   };
 
   const handleResetMfa = (u: AccountRow) => {
@@ -224,13 +235,16 @@ export default function UserManagement() {
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { [s.key]: on } }), t(on ? s.on : s.off, { name: u.username }));
   };
 
-  const handleRoleChange = (u: AccountRow, role: Role) => {
+  const handleRoleChange = async (u: AccountRow, role: Role) => {
     if (role === u.role) return;
-    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { role } }), role === 'ADMIN' ? t('users.nowAdmin', { name: u.username }) : t('users.nowMachinist', { name: u.username }));
+    const currentPassword = role === 'ADMIN' ? await confirmAdmin(u.username) : undefined;
+    if (currentPassword === null) return;
+    run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { role, currentPassword } }), role === 'ADMIN' ? t('users.nowAdmin', { name: u.username }) : t('users.nowMachinist', { name: u.username }));
   };
 
   return (
     <div className="space-y-5 pb-12 w-full">
+      {passwordDialog}
       {/* Header Glass Panel */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -267,12 +281,12 @@ export default function UserManagement() {
           <div className="flex-1 space-y-1 w-full sm:w-auto">
             <label className="section-label block">{t('users.password')}</label>
             <input
-              type="text"
+              type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               className="aurora-input w-full text-xs"
               placeholder={t('users.passwordPlaceholder', { min: newRole === 'ADMIN' ? 10 : 8 })}
-              autoComplete="off"
+              autoComplete="new-password"
               minLength={newRole === 'ADMIN' ? 10 : 8}
               maxLength={200}
               required

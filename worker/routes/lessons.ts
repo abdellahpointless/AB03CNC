@@ -57,6 +57,7 @@ export async function handleExportLessons(ctx: Ctx): Promise<Response> {
     region: ctx.env.REGION,
     exportedAt: new Date().toISOString(),
     more: results.length > limit,
-    lessons: results.slice(0, limit).map((r) => ({ id: r.id, kind: r.kind, at: new Date(r.created_at).toISOString(), user: r.username, fileName: r.file_name, start: r.start, match: r.match, ...JSON.parse(r.data) })),
+    // The server's own fields last: the stored data cannot pretend to be someone else's record.
+    lessons: results.slice(0, limit).map((r) => ({ ...JSON.parse(r.data), id: r.id, kind: r.kind, at: new Date(r.created_at).toISOString(), user: r.username, fileName: r.file_name, start: r.start, match: r.match })),
   });
 }

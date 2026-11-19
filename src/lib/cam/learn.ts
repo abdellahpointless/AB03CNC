@@ -70,7 +70,8 @@ const word = (line: string, letter: string) => {
 };
 
 export function readProgram(text: string, name = ''): PartRead {
-  const lines = text.split(/\r?\n/);
+  // Lines cut to a sane length: the regexes below are quadratic on a crafted endless line.
+  const lines = text.split(/\r?\n/).map((l) => l.slice(0, 500));
   const header = lines.slice(0, 15).join(' ').toUpperCase();
   const mat = header.match(/\b(FH|POM|ALU|PC GF|RESOPAL|EPOXYDE)\b/);
   const dims = [...header.matchAll(/(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)/g)].map((m) => [1, 2, 3].map((k) => Number(m[k].replace(',', '.'))));

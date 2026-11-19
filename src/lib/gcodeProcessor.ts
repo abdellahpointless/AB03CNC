@@ -805,17 +805,19 @@ function insertBefore(lines: string[], positions: number[]): string[] {
  */
 export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCount: number } {
   const positions: number[] = [];
+  // One pass: the last G53 Y0 and the last tool change seen so far stand for the scan upwards
+  // (a scan per G52 was quadratic: a program of many G52 lines froze the page).
+  let lastG53 = -1;
+  let lastToolChange = -1;
 
   for (let g = 0; g < lines.length; g++) {
+    if (g > 0 && !isRemoved(lines[g - 1]) && isToolChangeLine(lines[g - 1])) lastToolChange = g - 1;
+    if (hasG53Y0(lines[g])) lastG53 = g;
     if (!isG52Shift(lines[g])) continue;
 
-    let toolChange = -1;
-    let found = false;
-    for (let k = g; k >= 0; k--) {
-      if (hasG53Y0(lines[k])) { found = true; break; }
-      if (k < g && !isRemoved(lines[k]) && isToolChangeLine(lines[k])) { toolChange = k; break; }
-    }
-    if (found) continue;
+    // Found when the nearest G53 Y0 above (this line included) is not before the nearest tool change.
+    if (lastG53 !== -1 && lastG53 >= lastToolChange) continue;
+    const toolChange = lastToolChange;
 
     let pos: number;
     if (toolChange !== -1) {
@@ -828,8 +830,10 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
         pos--;
       }
     }
-    // One insertion covers every G52 after it in the same tool section.
-    if (!positions.some(p => p <= g && p >= (toolChange === -1 ? 0 : toolChange))) positions.push(pos);
+    // One insertion covers every G52 after it in the same tool section. Positions only grow, so
+    // the last one is the only candidate.
+    const last = positions[positions.length - 1];
+    if (last === undefined || last < (toolChange === -1 ? 0 : toolChange)) positions.push(pos);
   }
 
   // End of program: the table must come to the operator to unload the parts.

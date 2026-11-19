@@ -257,12 +257,37 @@ async function isLocked(env: Env, key: string): Promise<boolean> {
   return !!row && row.locked_until > Date.now();
 }
 
-async function checkLock(env: Env, key: string): Promise<void> {
-  const row = await env.DB.prepare('SELECT locked_until FROM login_attempts WHERE key = ?').bind(key).first<{ locked_until: number }>();
-  if (row && row.locked_until > Date.now()) {
-    const minutes = Math.ceil((row.locked_until - Date.now()) / 60000);
-    throw new HttpError(429, `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
-  }
+function lockedError(lockedUntil: number): HttpError {
+  const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
+  return new HttpError(429, `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+}
+
+/**
+ * Takes one attempt in a single atomic statement *before* the password or code is checked, so
+ * parallel guesses cannot all pass a lock that is only written afterwards. Refuses while locked;
+ * the attempt that goes over the limit sets the lock (and runs `onLock`). A success clears the
+ * key, so only failures stay counted.
+ */
+async function reserveAttempt(env: Env, key: string, kind: LimitKind, onLock?: () => Promise<void>): Promise<void> {
+  const { max, lockMs } = LIMITS[kind];
+  const now = Date.now();
+  const row = await env.DB.prepare(
+    `INSERT INTO login_attempts (key, failures, window_start, locked_until) VALUES (?1, 1, ?2, 0)
+     ON CONFLICT(key) DO UPDATE SET
+       failures = CASE WHEN window_start < ?3 THEN 1 ELSE failures + 1 END,
+       window_start = CASE WHEN window_start < ?3 THEN ?2 ELSE window_start END
+     RETURNING failures, locked_until`,
+  )
+    .bind(key, now, now - FAILURE_WINDOW_MS)
+    .first<{ failures: number; locked_until: number }>();
+  if (row && row.locked_until > now) throw lockedError(row.locked_until);
+  if ((row?.failures ?? 0) <= max) return;
+  // Only the request that moves the lock from "open" to "locked" sets it (and alerts).
+  const set = await env.DB.prepare('UPDATE login_attempts SET failures = 0, window_start = ?1, locked_until = ?2 WHERE key = ?3 AND locked_until <= ?1')
+    .bind(now, now + lockMs, key)
+    .run();
+  if (set.meta.changes === 1) await onLock?.();
+  throw lockedError(now + lockMs);
 }
 
 /**
@@ -288,7 +313,26 @@ async function recordFailure(env: Env, key: string, kind: LimitKind): Promise<bo
   return true;
 }
 
-const userKey = (username: string) => `u:${username.toLowerCase()}`;
+/**
+ * Password guesses are limited per user name *and* network: a stranger cannot lock a real person
+ * out, and real and unknown names behave the same, so the lock reveals no names. The name is
+ * hashed (people sometimes type their password in the username box).
+ */
+async function loginKey(username: string, request: Request): Promise<string> {
+  return `u:${(await sha256Hex(username.toLowerCase())).slice(0, 32)}|${ipKey(request).slice(3)}`;
+}
+/** Second-step codes are limited per account: whoever guesses them already has the password. */
+const mfaKey = (userId: string) => `m:${userId}`;
+
+/** Runs bookkeeping after the response, so failed sign-ins of real and unknown names take the same time. */
+function later(ctx: Ctx, work: Promise<unknown>): Promise<unknown> {
+  const safe = work.catch((err) => console.error('sign-in bookkeeping failed', err instanceof Error ? err.message : err));
+  if (ctx.waitUntil) {
+    ctx.waitUntil(safe);
+    return Promise.resolve();
+  }
+  return safe;
+}
 /** IPv6 clients usually own a whole /64, so they are limited per /64 rather than per address. */
 function ipKey(request: Request): string {
   const ip = clientIp(request);
@@ -303,12 +347,11 @@ function ipKey(request: Request): string {
 export async function requirePassword(ctx: Ctx, password: unknown): Promise<void> {
   const user = ctx.user!;
   const key = `pw:${user.id}`;
-  await checkLock(ctx.env, key);
   const p = str(password, 'Current password', { min: 1, max: 200, trim: false });
+  await reserveAttempt(ctx.env, key, 'pw', () => auditCtx(ctx, 'password_check_failed', 'locked'));
   const row = await ctx.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first<{ password_hash: string }>();
   if (!row || !(await verifyPassword(ctx.env, p, row.password_hash))) {
-    const locked = await recordFailure(ctx.env, key, 'pw');
-    await auditCtx(ctx, 'password_check_failed', locked ? 'locked' : undefined);
+    await auditCtx(ctx, 'password_check_failed');
     throw new HttpError(400, 'Current password is incorrect');
   }
   await ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(key).run();
@@ -344,7 +387,7 @@ interface LoginRow {
 
 async function finishLogin(ctx: Ctx, row: LoginRow, weakPassword: boolean, method: string, extra: Record<string, unknown> = {}): Promise<Response> {
   await ctx.env.DB.batch([
-    ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(userKey(row.username)),
+    ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(mfaKey(row.id)),
   ]);
   const { cookie } = await createSession(ctx.env, row.id, row.role);
   await audit(ctx.env, ctx.request, 'login', row, method);
@@ -389,39 +432,40 @@ export async function handleLogin(ctx: Ctx): Promise<Response> {
 }
 
 async function loginWith(ctx: Ctx, username: string, password: string, extra: Record<string, unknown>): Promise<Response> {
-  const uKey = userKey(username);
+  const uKey = await loginKey(username, ctx.request);
   const iKey = ipKey(ctx.request);
 
   // A locked IP is not refused outright (the whole shop shares one IP); it only stops being
-  // recorded, so a flood of made-up usernames cannot burn the database's daily write quota.
+  // recorded, so a flood of made-up usernames cannot fill the security log.
   const ipLocked = await isLocked(ctx.env, iKey);
-  await checkLock(ctx.env, uKey);
 
   const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai FROM users WHERE username = ?')
     .bind(username)
     .first<LoginRow>();
 
+  await reserveAttempt(ctx.env, uKey, 'user', async () => {
+    if (!row) return;
+    await later(ctx, audit(ctx.env, ctx.request, 'login_failed', row, 'account locked'));
+    const a = lockoutAlert(ctx.env.REGION, row.username);
+    await notifyLater(ctx, 'lockout', a.message, a.call, row.username);
+  });
+
   // Always run one hash so response time does not reveal whether the user exists.
   const ok = await verifyPassword(ctx.env, password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !ok) {
-    // Real accounts: counted per account. Unknown names: counted per IP (guessing/spraying), and
-    // the typed name is not stored (people sometimes type their password in the username box).
+    // Unknown names are also counted per IP (guessing/spraying); the typed name is not stored.
     if (row || !ipLocked) {
-      const locked = row ? await recordFailure(ctx.env, uKey, 'user') : await recordFailure(ctx.env, iKey, 'ip');
-      await audit(
-        ctx.env,
-        ctx.request,
-        'login_failed',
-        row ?? { username: '(unknown user)' },
-        locked ? (row ? 'account locked' : 'IP throttled (unknown usernames)') : undefined,
+      await later(
+        ctx,
+        (async () => {
+          const ipThrottled = !row && (await recordFailure(ctx.env, iKey, 'ip'));
+          await audit(ctx.env, ctx.request, 'login_failed', row ?? { username: '(unknown user)' }, ipThrottled ? 'IP throttled (unknown usernames)' : undefined);
+        })(),
       );
-      if (locked && row) {
-        const a = lockoutAlert(ctx.env.REGION, row.username);
-        await notifyLater(ctx, 'lockout', a.message, a.call, row.username);
-      }
     }
     throw new HttpError(401, 'Invalid username or password');
   }
+  await ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(uKey).run();
 
   if (needsRehash(ctx.env, row.password_hash)) {
     await ctx.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(ctx.env, password), row.id).run();
@@ -430,9 +474,15 @@ async function loginWith(ctx: Ctx, username: string, password: string, extra: Re
 
   if (row.mfa_enabled) {
     const challenge = b64url(crypto.getRandomValues(new Uint8Array(32)));
-    await ctx.env.DB.prepare('INSERT INTO login_challenges (token_hash, user_id, expires_at, attempts) VALUES (?, ?, ?, 0)')
-      .bind(await sha256Hex(challenge), row.id, Date.now() + CHALLENGE_TTL_MS)
-      .run();
+    // One live challenge per account: signing in again cannot collect fresh batches of attempts.
+    await ctx.env.DB.batch([
+      ctx.env.DB.prepare('DELETE FROM login_challenges WHERE user_id = ?').bind(row.id),
+      ctx.env.DB.prepare('INSERT INTO login_challenges (token_hash, user_id, expires_at, attempts) VALUES (?, ?, ?, 0)').bind(
+        await sha256Hex(challenge),
+        row.id,
+        Date.now() + CHALLENGE_TTL_MS,
+      ),
+    ]);
     return json({ mfaRequired: true, challenge, weakPassword, ...extra });
   }
   return finishLogin(ctx, row, weakPassword, 'password', extra);
@@ -462,7 +512,11 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     .bind(ch.user_id)
     .first<LoginRow & { mfa_secret: string | null; mfa_last_step: number; mfa_recovery: string | null }>();
   if (!row || !row.mfa_enabled) throw new HttpError(401, 'Sign-in expired. Please enter your password again.', { code: 'challenge_expired' });
-  await checkLock(ctx.env, userKey(row.username));
+  await reserveAttempt(ctx.env, mfaKey(row.id), 'user', async () => {
+    await audit(ctx.env, ctx.request, 'mfa_failed', row, 'account locked');
+    const a = lockoutAlert(ctx.env.REGION, row.username);
+    await notifyLater(ctx, 'lockout', a.message, a.call, row.username);
+  });
 
   let method = 'totp';
   let accepted = false;
@@ -487,8 +541,7 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
   }
 
   if (!accepted) {
-    const locked = await recordFailure(ctx.env, userKey(row.username), 'user');
-    await audit(ctx.env, ctx.request, 'mfa_failed', row, locked ? 'account locked' : undefined);
+    await audit(ctx.env, ctx.request, 'mfa_failed', row);
     throw new HttpError(401, 'Wrong code. Check the time on your phone and try again.');
   }
   await ctx.env.DB.prepare('DELETE FROM login_challenges WHERE token_hash = ?').bind(challengeHash).run();

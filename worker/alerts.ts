@@ -98,10 +98,13 @@ export function callFailed(text: string): boolean {
 
 export async function listRecipients(hub: D1Database): Promise<Recipient[]> {
   const { results } = await hub.prepare("SELECT value FROM settings WHERE key LIKE 'alerts:recipient:%'").all<{ value: string }>();
+  // Only invited people (p_...) and masters who still exist: a deleted master's chat gets nothing.
+  const masters = new Set((await hub.prepare('SELECT id FROM users').all<{ id: string }>()).results.map((u) => u.id));
   const out: Recipient[] = [];
   for (const r of results) {
     try {
       const rec = JSON.parse(r.value) as Recipient;
+      if (!rec.userId.startsWith('p_') && !masters.has(rec.userId)) continue;
       rec.modes = { ...DEFAULT_MODES, ...rec.modes };
       out.push(rec);
     } catch {

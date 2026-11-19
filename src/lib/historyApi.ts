@@ -50,36 +50,43 @@ export async function submitExport(record: HistoryRecord, code: string): Promise
   const items = await readOutbox();
   items.push({ record, code: stored, attempts: 0 });
   await writeOutbox(items);
-  await flushOutbox();
+  await flushOutbox(record.user ?? '');
   const remaining = await readOutbox();
   return remaining.some((i) => i.record.id === record.id) ? 'queued' : 'saved';
 }
 
-export function flushOutbox(): Promise<void> {
+/**
+ * Uploads the signed-in person's queued exports. Someone else's (a shared PC, signed out before
+ * the upload went through) wait for them: the server records every upload as the uploader's.
+ */
+export function flushOutbox(username: string): Promise<void> {
   if (!flushing) {
-    flushing = doFlush().finally(() => {
+    flushing = doFlush(username).finally(() => {
       flushing = null;
     });
   }
   return flushing;
 }
 
-async function doFlush(): Promise<void> {
-  let items = await readOutbox();
+async function doFlush(username: string): Promise<void> {
+  const mine = (all: OutboxItem[]) => all.filter((i) => i.record.user === username);
+  let items = mine(await readOutbox());
   while (items.length) {
     const item = items[0];
     try {
       await api('/history', { method: 'POST', body: { record: item.record, code: item.code }, timeoutMs: 120_000 });
-      items = (await readOutbox()).filter((i) => i.record.id !== item.record.id);
-      await writeOutbox(items);
+      const rest = (await readOutbox()).filter((i) => i.record.id !== item.record.id);
+      await writeOutbox(rest);
+      items = mine(rest);
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
       // Network/server trouble or signed out: keep it and retry later.
       if (status === 0 || status >= 500 || status === 401 || status === 429) return;
       // The server rejected the record itself; drop it so it cannot block the queue forever.
       console.error('Dropping export that the server rejected', item.record.id, err);
-      items = (await readOutbox()).filter((i) => i.record.id !== item.record.id);
-      await writeOutbox(items);
+      const rest = (await readOutbox()).filter((i) => i.record.id !== item.record.id);
+      await writeOutbox(rest);
+      items = mine(rest);
     }
   }
 }

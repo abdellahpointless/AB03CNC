@@ -299,3 +299,53 @@ export function ChangePasswordModal({ onClose, initialTab = 'password' }: { onCl
     document.body,
   );
 }
+
+/**
+ * A masked password question in a dialog (window.prompt shows what is typed). Returns
+ * `[ask, dialog]`: render `dialog`, and `await ask(label)` gives the text or null when cancelled.
+ */
+export function useAskPassword() {
+  const [q, setQ] = useState<{ label: string; minLength?: number; resolve: (v: string | null) => void } | null>(null);
+  const ask = (label: string, minLength?: number) => new Promise<string | null>((resolve) => setQ({ label, minLength, resolve }));
+  const done = (v: string | null) => {
+    q?.resolve(v);
+    setQ(null);
+  };
+  return [ask, q && <AskPasswordDialog key={q.label} label={q.label} minLength={q.minLength} onDone={done} />] as const;
+}
+
+function AskPasswordDialog({ label, minLength, onDone }: { label: string; minLength?: number; onDone: (v: string | null) => void }) {
+  const { t } = useT('app');
+  const [value, setValue] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onDone(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onDone]);
+  return createPortal(
+    <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onDone(null)} {...iosBackdrop}>
+      <motion.form
+        className="glass-modal max-w-sm w-full p-6 space-y-4"
+        {...iosSurface}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        onSubmit={(e) => {
+          e.preventDefault();
+          onDone(value);
+        }}
+      >
+        <Field label={label} type="password" value={value} onChange={(e) => setValue(e.target.value)} className="aurora-input w-full text-sm" autoComplete="new-password" minLength={minLength} maxLength={200} required autoFocus />
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn-secondary text-xs py-2 px-4" onClick={() => onDone(null)}>
+            {t('common:actions.cancel')}
+          </button>
+          <button type="submit" className="btn-primary text-xs py-2 px-4">
+            {t('common:actions.confirm')}
+          </button>
+        </div>
+      </motion.form>
+    </motion.div>,
+    document.body,
+  );
+}

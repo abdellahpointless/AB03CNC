@@ -232,6 +232,7 @@ const app: Translation<typeof en> = {
     confirmDelete: '"{{name}}" hesabı silinsin mi? Kullanıcının geçmişi ve parça kayıtları korunur.',
     deleted: '"{{name}}" hesabı silindi.',
     promptPassword: '"{{name}}" için yeni şifre (en az {{min}} karakter):',
+    confirmAdmin: 'Onaylamak için kendi şifreniz ("{{name}}" için yönetici yetkisi)',
     passwordReset: '"{{name}}" kullanıcısının şifresi değiştirildi. Diğer bilgisayarlardaki oturumları kapatıldı.',
     confirmResetMfa:
       '"{{name}}" için iki adımlı doğrulama kapatılsın mı? Bunu kullanıcı telefonunu kaybettiğinde kullanın. Giriş yaptıktan sonra yeniden açabilir.',

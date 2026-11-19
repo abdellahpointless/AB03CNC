@@ -1,6 +1,6 @@
 import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx, type Role } from '../context';
-import { assertNotMasterUsername, hashPassword, validateNewPassword, validateUsername } from '../auth';
+import { assertNotMasterUsername, hashPassword, requirePassword, validateNewPassword, validateUsername } from '../auth';
 import { auditCtx } from '../security';
 
 function parseRole(v: unknown): Role {
@@ -21,10 +21,12 @@ export async function handleListUsers(ctx: Ctx): Promise<Response> {
 
 // POST /api/users { username, password, role }  (admin)
 export async function handleCreateUser(ctx: Ctx): Promise<Response> {
-  const body = await readJson<{ username?: unknown; password?: unknown; role?: unknown }>(ctx.request, 10_000);
+  const body = await readJson<{ username?: unknown; password?: unknown; role?: unknown; currentPassword?: unknown }>(ctx.request, 10_000);
   const username = validateUsername(body.username);
   const role = parseRole(body.role ?? 'MACHINIST');
   const password = validateNewPassword(body.password, username, role);
+  // A new admin asks for the admin's own password: a signed-in PC left alone is not enough.
+  if (role === 'ADMIN') await requirePassword(ctx, body.currentPassword);
 
   const exists = await ctx.env.DB.prepare('SELECT 1 AS x FROM users WHERE username = ? COLLATE NOCASE').bind(username).first();
   if (exists) throw new HttpError(409, 'User already exists');
@@ -50,7 +52,7 @@ const FLAGS = {
 // PATCH /api/users/:id { password?, role?, resetMfa? } or { toolpathBeta } or { camAi }  (admin)
 export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   const id = ctx.params.id;
-  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown; toolpathBeta?: unknown; camAi?: unknown }>(ctx.request, 10_000);
+  const body = await readJson<{ password?: unknown; role?: unknown; resetMfa?: unknown; toolpathBeta?: unknown; camAi?: unknown; currentPassword?: unknown }>(ctx.request, 10_000);
   const target = await ctx.env.DB.prepare('SELECT id, username, role FROM users WHERE id = ?')
     .bind(id)
     .first<{ id: string; username: string; role: Role }>();
@@ -87,6 +89,8 @@ export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
   const resetMfa = body.resetMfa === true;
   if (resetMfa && self) throw new HttpError(400, 'Turn off your own two-step sign-in from the Security menu');
   if (newRole === null && newPassword === null && !resetMfa) throw new HttpError(400, 'Nothing to update');
+  // Making an admin, or setting an admin's password, asks for the admin's own password.
+  if (newRole === 'ADMIN' || (newPassword !== null && (newRole ?? target.role) === 'ADMIN')) await requirePassword(ctx, body.currentPassword);
 
   // 2. Apply everything in one atomic batch. The role change carries the last-admin guard; if it
   //    matches nothing, the other statements are conditioned on it too.

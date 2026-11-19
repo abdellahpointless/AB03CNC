@@ -162,7 +162,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (res.versions.settings !== settingsVersionLoaded.current) jobs.push(loadFeatures(res.versions.settings));
       const aKey = `${res.versions.history}:${res.versions.settings}`;
       if (aKey !== analyticsKeyLoaded.current) jobs.push(loadAnalytics(aKey));
-      jobs.push(flushOutbox());
+      jobs.push(flushOutbox(user.username));
       await Promise.all(jobs);
     } catch (err) {
       if (err instanceof ApiError && err.offline) setConnection('offline');

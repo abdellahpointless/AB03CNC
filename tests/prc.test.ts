@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import pdfUrl from './models/O2504411.pdf?inline';
 import stlUrl from './models/O2504411.stl?inline';
 import { readModel, readStl } from '../src/lib/model';
+import { prcFromPdf } from '../src/lib/prc';
 
 const bytes = (url: string) => Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), (c) => c.charCodeAt(0));
 const box = (t: Float32Array) => [0, 1, 2].map((k) => {
@@ -27,5 +28,14 @@ describe('the model inside a 3D PDF', () => {
   });
   it('says so when a PDF has no 3D model', async () => {
     await expect(readModel(new TextEncoder().encode('%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\n%%EOF'))).rejects.toThrow(/no 3D model/);
+  });
+});
+
+describe('a crafted PDF cannot hang the model reader', () => {
+  it('many "<<" and no 3D stream: refused quickly', async () => {
+    const pdf = new TextEncoder().encode('%PDF-1.7\n' + '<< /Subtype /PRC '.repeat(50) + '<<'.repeat(2_000_000));
+    const t = performance.now();
+    await expect(prcFromPdf(pdf)).rejects.toThrow(/no 3D model/);
+    expect(performance.now() - t).toBeLessThan(3000);
   });
 });

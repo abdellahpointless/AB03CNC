@@ -280,3 +280,13 @@ describe('FANUC -> HAAS fixes', () => {
     expect(r).not.toContain('SAMPLE');
   });
 });
+
+describe('programs from other people cannot freeze the page', () => {
+  it('G53 placement stays fast on a program of many G52 lines', () => {
+    const lines = ['%', 'O1000', ...Array.from({ length: 100_000 }, () => 'G52 X1'), 'M30', '%'];
+    const t = performance.now();
+    const r = applyG53BeforeG52(lines);
+    expect(performance.now() - t).toBeLessThan(2000);
+    expect(r.addedCount).toBe(2); // one before the first G52, one before M30
+  });
+});

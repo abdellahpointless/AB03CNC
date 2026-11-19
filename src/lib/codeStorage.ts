@@ -38,8 +38,27 @@ export async function compressCode(code: string): Promise<StoredCode> {
   return { encoding: 'gzip-base64', data: bytesToBase64(gz), size: code.length };
 }
 
+/** Far above any real program (the biggest shop programs are well under 1 MB). */
+export const MAX_CODE_BYTES = 50_000_000;
+
+/** Unpacks a stored program, refusing one that unpacks past MAX_CODE_BYTES (a "zip bomb" would freeze the PC). */
 export async function decompressCode(stored: StoredCode): Promise<string> {
   if (stored.encoding === 'plain') return stored.data;
-  const bytes = await pipeThrough(base64ToBytes(stored.data), new DecompressionStream('gzip'));
-  return new TextDecoder().decode(bytes);
+  const reader = new Blob([base64ToBytes(stored.data) as BlobPart])
+    .stream()
+    .pipeThrough(new DecompressionStream('gzip') as unknown as TransformStream<Uint8Array, Uint8Array>)
+    .getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_CODE_BYTES) {
+      await reader.cancel();
+      throw new Error('This program is too large to open.');
+    }
+    parts.push(value);
+  }
+  return new TextDecoder().decode(await new Blob(parts as BlobPart[]).arrayBuffer());
 }

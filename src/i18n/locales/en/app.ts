@@ -239,6 +239,7 @@ const app = {
     confirmDelete: 'Delete the account "{{name}}"? Their history and part entries are kept.',
     deleted: 'Account "{{name}}" deleted.',
     promptPassword: 'New password for "{{name}}" (at least {{min}} characters):',
+    confirmAdmin: 'Your own password, to confirm (admin rights for "{{name}}")',
     passwordReset: 'Password for "{{name}}" changed. They are signed out on other PCs.',
     confirmResetMfa: 'Turn off two-step sign-in for "{{name}}"? Use this when they lost their phone. They can turn it on again after signing in.',
     mfaReset: 'Two-step sign-in reset for "{{name}}".',

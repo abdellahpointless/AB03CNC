@@ -335,6 +335,9 @@ export async function handleDeleteMaster(ctx: Ctx): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
     ctx.env.DB.prepare('DELETE FROM login_challenges WHERE user_id = ?').bind(id),
+    // Their Telegram link and any link they had started: no more alerts to a removed master.
+    ctx.env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(`alerts:recipient:${id}`),
+    ctx.env.DB.prepare("DELETE FROM settings WHERE key LIKE 'alerts:link:%' AND json_extract(value, '$.userId') = ?").bind(id),
   ]);
   await auditCtx(ctx, 'master_deleted', target.username);
   return json({ ok: true });
