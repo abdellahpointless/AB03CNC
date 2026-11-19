@@ -20,6 +20,10 @@ describe('CAM AI', () => {
     expect(r.code).toMatch(/M0 \(TEIL MIT 44 IN X UND 34 IN Y EINSPANNEN/);
     expect(r.code).toMatch(/G52 X/);
     expect(r.code.trim().split('\n').at(-2)).toMatch(/M30$/);
+    // G53 Y0 before each flip and the end, never before the first clamping.
+    const lines = r.code.split('\n');
+    expect(lines.slice(0, lines.findIndex((l) => /G52/.test(l))).some((l) => /G53 Y0/.test(l))).toBe(false);
+    expect(lines.filter((l) => /G53 Y0/.test(l))).toHaveLength(r.setups.length);
     // Only the shop's template tools, or the machine's own special tools (its Ø10 and Ø4 × 25).
     for (const s of r.setups) for (const o of s.ops) expect(ALU_CODES.has(o.tool.code) || (o.tool.inMachine && [2, 3].includes(o.tool.number))).toBe(true);
     // Never over the machine's top rpm.

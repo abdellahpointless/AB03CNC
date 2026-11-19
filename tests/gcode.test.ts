@@ -80,8 +80,17 @@ describe('code generation', () => {
     expect(code).toContain('G01 Z-10.');
   });
 
+  it('no G53 Y0 for the first clamping at the start of the program, only for the flips after it', () => {
+    // O0106607's start: the operator loads the raw part (M0 notes, G52) before anything moves.
+    const src = ['%', 'O0106607(X20)', 'N7 G0 G53 G49 Z0 G94 M95', 'N9 G54', 'N10 M0 (TEIL MIT 24.5 IN X UND 20 IN Y EINSPANNEN)', 'N11 M0 (40 MM UNTERLAGE)', 'N12 G52 X-48.000 Y48.000 Z16.000', 'N13 (TOOLPATH PLAN_MK40_1)', 'N14 T3 M6', 'N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)', 'N17 G00 G43 Z53. H3 M08', 'N18 G00 G90 X52.5 Y-8.125 S8000 M03', 'N19 G01 Z1.5 F3000', 'N20 T5 M6', 'N21 (FRAISE)', 'N22 M0 (TEIL 180 GRAD UM Y DREHEN)', 'N23 G52 X-48.000 Y48.000 Z10.000', 'N24 G01 X5. F300', 'N25 M30', '%'];
+    const out = applyG53BeforeG52(src).lines;
+    expect(out.slice(0, 7)).toEqual(src.slice(0, 7)); // the start is left as it is
+    expect(out.filter((l) => /G53 Y0/.test(l))).toHaveLength(2); // the flip and the end
+    expect(out[out.findIndex((l) => l.includes('TEIL 180 GRAD')) - 1]).toMatch(/G53 Y0$/);
+  });
+
   it('inserts G53 Y0 after the tool name comment and before G52, and before M30', () => {
-    const src = 'O1\nN10 T1 M6\nN11 (SB_04.00_045_000_ALHS)\nN12 G52 X10 Y10\nN13 G43 H1 Z50.\nN14 M30';
+    const src = 'O1\nN9 G0 X0 Y0 Z5.\nN10 T1 M6\nN11 (SB_04.00_045_000_ALHS)\nN12 G52 X10 Y10\nN13 G43 H1 Z50.\nN14 M30';
     const { code } = remap(src, haas2, 'HAAS-2');
     const lines = code.split('\n');
     const g52 = lines.findIndex((l) => l.includes('G52'));
@@ -140,10 +149,10 @@ describe('code generation', () => {
   });
 
   it('keeps N numbers when there is a free number, and does not renumber programs that jump to labels', () => {
-    const spaced = applyG53BeforeG52(['N10 T1 M6', 'N20 (TOOL)', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']).lines;
-    expect(spaced).toEqual(['N10 T1 M6', 'N20 (TOOL)', 'N21 G53 Y0', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']);
-    const labels = applyG53BeforeG52(['N1 T1 M6', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']).lines;
-    expect(labels).toEqual(['N1 T1 M6', 'G53 Y0', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']);
+    const spaced = applyG53BeforeG52(['N5 G0 X0', 'N10 T1 M6', 'N20 (TOOL)', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']).lines;
+    expect(spaced).toEqual(['N5 G0 X0', 'N10 T1 M6', 'N20 (TOOL)', 'N21 G53 Y0', 'N30 M0', 'N40 G52 X5', 'N50 G0 X0']);
+    const labels = applyG53BeforeG52(['N0 G0 X0', 'N1 T1 M6', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']).lines;
+    expect(labels).toEqual(['N0 G0 X0', 'N1 T1 M6', 'G53 Y0', 'N2 M0', 'N3 G52 X5', 'N4 M99 P2']);
   });
 
   it('only scans up to the tool change: an earlier tool\'s G53 Y0 does not count', () => {
@@ -284,7 +293,7 @@ describe('FANUC -> HAAS fixes', () => {
 
 describe('programs from other people cannot freeze the page', () => {
   it('G53 placement stays fast on a program of many G52 lines', () => {
-    const lines = ['%', 'O1000', ...Array.from({ length: 100_000 }, () => 'G52 X1'), 'M30', '%'];
+    const lines = ['%', 'O1000', 'G0 X0 Y0', ...Array.from({ length: 100_000 }, () => 'G52 X1'), 'M30', '%'];
     const t = performance.now();
     const r = applyG53BeforeG52(lines);
     expect(performance.now() - t).toBeLessThan(2000);

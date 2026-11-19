@@ -1469,7 +1469,9 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
     'G54',
   ];
   for (const s of setups) {
-    out.push('G53 Y0', ...s.notes.map((n) => `M0 (${n})`), `G52 X${n3(s.shift[0])} Y${n3(s.shift[1])} Z${n3(s.shift[2])}`);
+    // G53 Y0 brings the table to the operator before a flip; the first clamping needs none.
+    if (s !== setups[0]) out.push('G53 Y0');
+    out.push(...s.notes.map((n) => `M0 (${n})`), `G52 X${n3(s.shift[0])} Y${n3(s.shift[1])} Z${n3(s.shift[2])}`);
     for (const op of s.ops) {
       const t = op.tool;
       out.push(

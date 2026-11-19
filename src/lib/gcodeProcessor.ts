@@ -872,7 +872,8 @@ function insertBefore(lines: string[], positions: number[]): string[] {
 }
 
 /**
- * Makes sure a "G53 Y0" comes before every G52 that shifts the work offset (part flip), and
+ * Makes sure a "G53 Y0" comes before every G52 that shifts the work offset (part flip), except the
+ * first clamping at the start of the program (a G52 before anything moves), and
  * right before the end of the program (M30 / M02) so the parts can be unloaded. For each G52 the program is scanned upwards to
  * the tool change it belongs to (or to the start of the program). If no G53 Y0 is found on the
  * way, one is added:
@@ -886,11 +887,15 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
   // (a scan per G52 was quadratic: a program of many G52 lines froze the page).
   let lastG53 = -1;
   let lastToolChange = -1;
+  // Nothing has moved yet: a G52 here is the first clamping at the start of the program (the
+  // operator loads the raw part), not a flip, and gets no G53 Y0.
+  let moved = false;
 
   for (let g = 0; g < lines.length; g++) {
     if (g > 0 && !isRemoved(lines[g - 1]) && isToolChangeLine(lines[g - 1])) lastToolChange = g - 1;
+    if (g > 0 && isMotionLine(lines[g - 1])) moved = true;
     if (hasG53Y0(lines[g])) lastG53 = g;
-    if (!isG52Shift(lines[g])) continue;
+    if (!isG52Shift(lines[g]) || !moved) continue;
 
     // Found when the nearest G53 Y0 above (this line included) is not before the nearest tool change.
     if (lastG53 !== -1 && lastG53 >= lastToolChange) continue;
