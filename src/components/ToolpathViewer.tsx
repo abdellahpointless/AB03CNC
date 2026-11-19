@@ -181,6 +181,9 @@ export default function ToolpathViewer({
   };
   const [modelName, setModelName] = useState<string | null>(initialModel?.name ?? null);
   const [modelState, setModelState] = useState<ModelState | null>(null);
+  // While the part is compared with its model and the turns corrected, the 3D view stays covered:
+  // only the corrected result is shown.
+  const [checking, setChecking] = useState(false);
   const [modelView, setModelView] = useState<ModelView>('both');
   const modelInput = useRef<HTMLInputElement>(null);
   const importModel = async (file: File) => {
@@ -723,6 +726,28 @@ export default function ToolpathViewer({
                     </div>
                   </div>
                 )}
+                {/* With a 3D model: covered (not just veiled) until the turns are checked and corrected. */}
+                <AnimatePresence>
+                  {mode3d && checking && (
+                    <motion.div
+                      key="checking"
+                      initial={{ opacity: 1 }}
+                      exit={{ opacity: 0, transition: { duration: 0.4 } }}
+                      className="absolute inset-0 z-[6] flex items-center justify-center bg-[#0A0F19]"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="flex flex-col items-center gap-3 px-6 text-center">
+                        <span className="relative w-12 h-12" aria-hidden="true">
+                          <span className="absolute inset-0 rounded-full border-2 border-[rgba(var(--ov),0.12)]" />
+                          <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-[var(--accent-primary)] animate-spin motion-reduce:animate-none" />
+                          <Box size={18} className="absolute inset-0 m-auto text-[var(--accent-primary)]" />
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--text-primary)]">{t('toolpath.model.correcting')}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {/* The part stays veiled until it is cut and shown, and while its walls are measured. */}
                 <AnimatePresence>
                   {mode3d && (solid.state === 'carving' || solid.state === 'meshing' || solid.state === 'measuring' || solid.state === 'analysing' || solid.state === 'jumping') && (
@@ -1033,6 +1058,7 @@ export default function ToolpathViewer({
                   }}
                   onFocus={(p) => sel && setFocus({ point: apply(sel.orient, p).map((v, k) => v + sel.offset[k]) as Vec, key: Date.now() })}
                   onUseFix={onUseFix}
+                  onBusy={setChecking}
                 />
               )}
               {sel && sel.notes.length > 0 ? (

@@ -586,6 +586,9 @@ const remapper = {
     estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
     toolSize: 'Ø {{d}} mm · length {{l}} mm',
     model: {
+      corrected: "The turns were corrected from the 3D model: {{pct}} % alike (the program's own: {{from}} %).",
+      correctedClosest: "Turns corrected to the closest found: {{pct}} % alike (the program's own: {{from}} %). Check them.",
+      correcting: 'Checking the part against its 3D model and correcting the turns…',
       stage: {
         written: 'Reading the written turns every other way',
         one: 'Turning each setup every way',
@@ -598,10 +601,7 @@ const remapper = {
       stopped: 'Stopped after {{count}} simulations',
       best: 'closest {{pct}} %',
       stop: 'Stop',
-      found: 'Right turns found: {{pct}} %, simulate them',
-      closest: 'Closest turns: {{pct}} %, check them',
       noBetter: 'No other turns make the part more like the model ({{pct}} %): the difference is in the cuts, not the turns.',
-      back: "Back to the program's turns",
       fixTitle: 'Corrected program',
       fixHelp: 'The M0 comments rewritten so the app reads the turns found. Check them on the drawing before using the program.',
       line: 'Line {{n}}',

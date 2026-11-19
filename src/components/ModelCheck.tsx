@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Copy, Download, Play, Square, AlertTriangle, Sparkles, Undo2 } from 'lucide-react';
+import { CheckCircle2, Copy, Download, Square, AlertTriangle, Sparkles } from 'lucide-react';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import type { Mat3 } from '../lib/orient';
 import type { SearchProgress, TurnFix, TurnSearch } from '../lib/fixTurns';
@@ -36,6 +36,7 @@ export default function ModelCheck({
   onSimulate,
   onFocus,
   onUseFix,
+  onBusy,
   record = true,
 }: {
   model: { name: string; bytes: Uint8Array };
@@ -53,6 +54,8 @@ export default function ModelCheck({
   record?: boolean;
   /** Put the corrected comments into the program in the editor; false when they could not be placed. */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
+  /** True while the part is compared with the model and its turns corrected: the 3D view stays covered. */
+  onBusy?: (busy: boolean) => void;
 }) {
   const { t } = useT('remapper');
   const [search, setSearch] = useState<Search | null>(null);
@@ -96,12 +99,24 @@ export default function ModelCheck({
       w.terminate();
       if (!msg.result) return setSearch({ status: 'error' });
       setSearch({ status: 'done', result: msg.result, fix: msg.fix });
-      if (!msg.result.same) chime();
+      // Better turns found: simulated straight away, the user only sees the corrected part.
+      if (!msg.result.same) {
+        onSimulate(msg.result.orients);
+        chime();
+      }
       // The learning record (see lib/lessons): best effort, the user is not bothered if it fails.
       if (msg.lesson) void api('/toolpath/lessons', { body: { fileName, start: msg.result.start, match: msg.result.match, data: msg.lesson } }).catch(() => {});
     };
     w.postMessage({ type: 'search', bytes: model.bytes, code, brand });
   }, [ready, using, model, code, brand, fileName]);
+
+  // Covered until the comparison (and the correction it leads to) is shown; a stopped search or an
+  // unreadable model shows what there is.
+  const busy = !!model && (state === null || state.state === 'reading' || search?.status === 'running' || (search?.status === 'done' && !search.result.same && !using));
+  useEffect(() => {
+    onBusy?.(busy);
+  }, [busy, onBusy]);
+  useEffect(() => () => onBusy?.(false), [onBusy]);
 
   const stop = () => {
     worker.current?.terminate();
@@ -162,16 +177,10 @@ export default function ModelCheck({
 
       {found && (
         <div className="space-y-2">
-          <button
-            onClick={() => onSimulate(using ? null : found.orients)}
-            aria-pressed={using}
-            className={`w-full inline-flex items-center justify-center gap-1.5 rounded-full border px-3 h-8 text-xs font-bold transition-shadow ${
-              right ? 'border-[#22c55e] bg-[#22c55e]/15 text-[#4ade80] shadow-[0_0_18px_rgba(34,197,94,0.55)]' : 'border-[#f5b942] bg-[#f5b942]/10 text-[#f5b942]'
-            }`}
-          >
-            {using ? <Undo2 size={13} /> : <Play size={13} />}
-            {using ? t('toolpath.model.back') : t(right ? 'toolpath.model.found' : 'toolpath.model.closest', { pct: pct(found.match), count: found.count })}
-          </button>
+          <p className={`flex gap-2 text-xs ${right ? 'text-[var(--green-500)]' : 'text-[#f5b942]'}`}>
+            {right ? <CheckCircle2 size={14} className="shrink-0 mt-px" /> : <AlertTriangle size={14} className="shrink-0 mt-px" />}
+            {t(right ? 'toolpath.model.corrected' : 'toolpath.model.correctedClosest', { pct: pct(found.match), from: pct(found.start) })}
+          </p>
           {corrected && (
             <button onClick={() => setShowFix((x) => !x)} aria-expanded={showFix} className="btn-secondary w-full text-xs py-1">
               {t('toolpath.model.fixTitle')} ({corrected.changes.length})

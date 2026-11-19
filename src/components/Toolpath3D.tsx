@@ -1739,9 +1739,14 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   const lastSetup = useRef<SetupInfo | null>(null);
   const lastJump = useRef<Jump | null>(null);
   const turnLater = useRef(0);
+  // A turn that is waiting to start hides the new clamp and toolpaths; if it is called off, this
+  // puts everything where the turn would have left it (else the clamp stayed hidden).
+  const callOff = useRef<(() => void) | null>(null);
   useEffect(() => {
     const a = api.current;
     clearTimeout(turnLater.current);
+    callOff.current?.();
+    callOff.current = null;
     const fresh = jump && jump !== lastJump.current ? jump : null;
     lastJump.current = jump;
     if (setup === lastSetup.current && !fresh) return;
@@ -1798,6 +1803,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const sc = new THREE.Vector3();
     poseOf(prev).decompose(p0, q0, sc);
     end.decompose(p1, q1, sc);
+    // Each setup has its own Z0, so the table is at another height in each one. During the turn the
+    // old vise, cales and part are drawn on the new setup's table (else the old cales stood sunk
+    // into the new vise bed).
+    const lift0 = v3([0, 0, prev.floorZ !== null && setup.floorZ !== null ? setup.floorZ - prev.floorZ : 0]);
+    p0.add(lift0);
     const height = setup.stock ? Math.max(setup.stock.max[2] - setup.stock.min[2], 20) : 30;
 
     // The poses the part goes through: every written turn alone, in the order written, around the
@@ -1830,14 +1840,16 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       return arrow;
     });
 
-    // Changing cales, slowly enough to see which ones: with the part up, the old pair slides out to
-    // the right and the new pair slides in with its height shown; then the part sets down on them.
+    // Changing cales, slowly enough to see which ones: with the part up, the old pair is taken out
+    // and the new pair stands on the bed with its height shown; then the part sets down on them.
+    // Both stand on the same table: nothing moves through it.
     const newCales = a.cales;
     const oldCales = buildCales(prev);
     const changing = calesKey(prev) !== calesKey(setup) && (!!newCales || !!oldCales);
-    const slide = setup.stock ? setup.stock.max[0] - setup.stock.min[0] + 120 : 150;
-    if (oldCales && changing) a.overlay.add(oldCales);
-    else if (oldCales) disposeTree(oldCales);
+    if (oldCales && changing) {
+      oldCales.position.copy(lift0);
+      a.overlay.add(oldCales);
+    } else if (oldCales) disposeTree(oldCales);
     const tagOf = (c: THREE.Group | null) => (c?.userData.tag as THREE.Sprite | undefined) ?? null;
     // Timeline (ms): unclamp, lift and turn, [change the cales], set down, clamp.
     const UNCLAMP = FLIP_MS * 0.15;
@@ -1856,25 +1868,26 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const part = (ms: number, from: number, len: number) => (len > 0 ? Math.min(1, Math.max(0, (ms - from) / len)) : ms >= from ? 1 : 0);
     const placeCales = (ms: number) => {
       if (!changing) return;
+      // The old pair's height first, then the new pair in its place (halfway through the change).
       const sw = part(ms, tSwap, SWAP);
-      const out = Math.min(1, sw / 0.28);
-      const inn = Math.min(1, Math.max(0, (sw - 0.33) / 0.37));
+      const swapped = sw >= 0.5;
       if (oldCales) {
-        oldCales.position.x = ease(out) * slide;
-        oldCales.visible = out < 1;
-        tagOf(oldCales)!.visible = sw > 0 && out < 1;
+        oldCales.visible = !swapped;
+        tagOf(oldCales)!.visible = sw > 0 && !swapped;
       }
       if (newCales) {
-        newCales.position.x = (1 - ease(inn)) * slide;
-        newCales.visible = inn > 0;
-        tagOf(newCales)!.visible = inn > 0 && ms < tClamp;
+        newCales.visible = swapped;
+        tagOf(newCales)!.visible = swapped && ms < tClamp;
       }
     };
     placeCales(0);
     // The old clamping holds the part until it is lifted out; then the new one is there, open.
     const s0 = prev.stock;
     const oldClamp = s0 ? buildClamp(prev, s0, prev.floorZ ?? s0.min[2]) : null;
-    if (oldClamp) a.overlay.add(oldClamp.group);
+    if (oldClamp) {
+      oldClamp.group.position.copy(lift0);
+      a.overlay.add(oldClamp.group);
+    }
     const swapAt = tTurn + TURN * 0.3;
     const newClamp = a.clamp;
     const hide = a.setupObjects;
@@ -1921,32 +1934,40 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         if (ar) ar.visible = i === k && (i < steps - 1 || (changing ? ms < tSwap : ms < tClamp));
       });
       if (ms >= total) {
-        a.solid.matrix.copy(end);
-        setJaw(0);
         a.camera.position.copy(target).add(off);
-        if (newClamp) newClamp.visible = true;
-        if (newCales) {
-          newCales.position.x = 0;
-          newCales.visible = true;
-          tagOf(newCales)!.visible = false;
-        }
-        disposeTree(a.overlay);
-        a.overlay.clear();
-        hide.forEach((o) => (o.visible = o.userData.has !== false));
+        finish();
         return false;
       }
       return true;
     };
+    function finish() {
+      a!.solid.matrix.copy(end);
+      a!.solid.matrixWorldNeedsUpdate = true;
+      setJaw(0);
+      if (newClamp) newClamp.visible = true;
+      if (newCales) {
+        newCales.visible = true;
+        tagOf(newCales)!.visible = false;
+      }
+      disposeTree(a!.overlay);
+      a!.overlay.clear();
+      hide.forEach((o) => (o.visible = o.userData.has !== false));
+    }
     // After a jump the part is hidden until it is cut up to here; it turns once the veil is gone.
-    if (fresh)
+    if (fresh) {
+      callOff.current = () => {
+        finish();
+        a.invalidate();
+      };
       whenShown(() => {
         shown();
         turnLater.current = window.setTimeout(() => {
+          callOff.current = null;
           a.anim = run;
           a.invalidate();
         }, 450);
       });
-    else a.anim = run;
+    } else a.anim = run;
     a.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup, jump]);

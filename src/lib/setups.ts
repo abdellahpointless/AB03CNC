@@ -859,7 +859,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       moves: idx.length ? [idx[0], idx[idx.length - 1]] : null,
     };
     out.push(info);
-    if (!moves.length || (!notes.length && !finished && !raw)) return;
+    // Without notes or sizes in the header the part is still placed (from what is cut), so it is
+    // always drawn with its clamp.
+    if (!moves.length) return;
     // The part as it really is now (what the setups before left of it).
     const real = boxes?.get(k);
     if (real && part) part = { min: [...real.min], max: [...real.max] };
@@ -912,6 +914,11 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
           if (!best || score < best.score) best = { score, p };
         }
         if (best) size = best.p;
+      }
+      // No size written anywhere: the part is what the program cuts (tool centres, 5 mm deep at least).
+      if (!size && pts.length) {
+        const depth = Math.max(5, -Math.min(...pts.map((p) => p[2])));
+        size = [Math.max(1, xs[xs.length - 1] - xs[0]), Math.max(1, ys[ys.length - 1] - ys[0]), depth];
       }
     } else {
       const b = turnedBox(orient, part.min, part.max);

@@ -576,6 +576,9 @@ const remapper: Translation<typeof en> = {
     estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
     toolSize: 'Ø {{d}} mm · boy {{l}} mm',
     model: {
+      corrected: 'Dönüşler 3B modele göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}).',
+      correctedClosest: 'Dönüşler bulunan en yakın sonuca göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}). Kontrol edin.',
+      correcting: 'Parça 3B modeliyle karşılaştırılıyor ve dönüşler düzeltiliyor…',
       stage: {
         written: 'Yazılı dönüşler her şekilde okunuyor',
         one: 'Her bağlama her yöne çevriliyor',
@@ -588,10 +591,7 @@ const remapper: Translation<typeof en> = {
       stopped: '{{count}} simülasyondan sonra durduruldu',
       best: 'en yakın %{{pct}}',
       stop: 'Durdur',
-      found: 'Doğru dönüşler bulundu: %{{pct}}, simüle et',
-      closest: 'En yakın dönüşler: %{{pct}}, kontrol edin',
       noBetter: 'Başka hiçbir dönüş parçayı modele daha çok benzetmiyor (%{{pct}}): fark dönüşlerde değil, kesimlerde.',
-      back: 'Programın dönüşlerine dön',
       fixTitle: 'Düzeltilmiş program',
       fixHelp: 'M0 açıklamaları, uygulama bulunan dönüşleri okuyacak şekilde yeniden yazıldı. Programı kullanmadan önce teknik resimle kontrol edin.',
       line: 'Satır {{n}}',
