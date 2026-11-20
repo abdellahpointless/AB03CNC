@@ -481,3 +481,24 @@ describe('programs that jump to N labels keep them', () => {
     expect(at(out, 10007)).toBe('IF [#1 LT 2] GOTO10005');
   });
 });
+
+describe('a G43 written on the tool change line', () => {
+  it('HAAS -> FANUC splits it off and converts it', () => {
+    const src = '%\nO1234\nG40 G17 G53 G49 G80 G90\nG54\nT1 M06 G43 H01 Z50.\nG00 X0. Y0. S3000 M03\nG01 Z-5. F300.\nG00 Z50.\nT2 M6\n(BOHRER D5)\nM01 (CHECK TOOL)\nG00 G43 H02 Z50.\nM30\n%';
+    const out = convertHaasToFanuc(src, 'x.nc').fanucCode;
+    const lines = out.split('\n');
+    expect(lines).toContain('N3 T1 M06');
+    expect(lines).toContain('N4 G00 G43 Z50. H#513 D#513 M254');
+    expect(lines).toContain('N9 M01 (BOHRER D5)'); // the next tool's stop stays on its own comment
+    expect(isHaasDialectForFanuc(out)).toBe(false);
+  });
+
+  it('FANUC -> HAAS splits it off and converts it', () => {
+    const src = '%\nO01234\nG0 G53 G49 Z0 G94 M95\nG54\nT1 M6 G43 Z50. H#513 D#513 M254\nG00 X0. Y0. S3000 M03\nG01 Z-5. F300\nG00 Z50.\nM30\n%';
+    const out = convertFanucToHaas(src, 'x.nc').haasCode;
+    const lines = out.split('\n');
+    expect(lines).toContain('N3 T1 M6');
+    expect(lines).toContain('N4 G00 G43 H01 Z50.');
+    expect(isFanucDialect(out)).toBe(false);
+  });
+});

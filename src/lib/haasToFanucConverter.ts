@@ -112,10 +112,13 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     }
 
     if (isToolChange(code)) {
-      out.push(line);
       label = -1;
       inToolComments = true;
-      continue;
+      // A G43 on the tool change line is split off and converted below, as on its own line.
+      if (!/\bG43\b.*H\d+/i.test(code)) {
+        out.push(line);
+        continue;
+      }
     }
     // The tool's comment block right after the change: its first line (not the size) is the label.
     if (inToolComments && isCommentOnly(line)) {
@@ -123,7 +126,7 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
       out.push(line);
       continue;
     }
-    inToolComments = false;
+    inToolComments = isToolChange(code);
     if (CHECK_TOOL.test(line) && label !== -1) {
       out[label] = out[label].replace(/^(N\d+\s*)?/i, (n) => `${n}M01 `);
       label = -1;

@@ -111,15 +111,18 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     const toolCode = codeOnly(line);
     if (/(?<![A-Z])M0*6(?![0-9.])/i.test(toolCode) && /(?<![A-Z])T\d+/i.test(toolCode)) {
       lastToolNumber = toolCode.match(/(?<![A-Z])T(\d+)/i)![1].padStart(2, '0');
-      out.push(line);
-      // "M01 (tool comment)" right after it: the comment stays where it is.
-      const next = input[index + 1]?.trim() ?? '';
-      if (/^(N\d+\s+)?M0?1\s*\(/i.test(next) && /^M0?1$/i.test(bare(next))) {
-        out.push(next.replace(/^(N\d+\s+)?M0?1\s*/i, '$1'));
-        pendingStop = true;
-        index++;
+      // A G43 on the tool change line is split off and converted below, as on its own line.
+      if (!/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(toolCode)) {
+        out.push(line);
+        // "M01 (tool comment)" right after it: the comment stays where it is.
+        const next = input[index + 1]?.trim() ?? '';
+        if (/^(N\d+\s+)?M0?1\s*\(/i.test(next) && /^M0?1$/i.test(bare(next))) {
+          out.push(next.replace(/^(N\d+\s+)?M0?1\s*/i, '$1'));
+          pendingStop = true;
+          index++;
+        }
+        continue;
       }
-      continue;
     }
 
     // FANUC G43 line -> HAAS
