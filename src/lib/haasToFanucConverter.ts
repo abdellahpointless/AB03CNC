@@ -160,6 +160,8 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
       }
       // G00 kept: the approach is a rapid even when the program is restarted at this tool.
       out.push(`G00 G43${zVal ? ` ${zVal}` : ''} H#513 D#513 M254${hasCoolant ? ' M08' : ''}`);
+      // The tool has started: a CHECK TOOL after this belongs to the next tool change (other posts).
+      label = -1;
       continue;
     }
 

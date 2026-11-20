@@ -534,3 +534,12 @@ describe('feed per revolution', () => {
     expect(out).toMatch(/G01 X20\. F300\./);
   });
 });
+
+describe('a CHECK TOOL stop after the tool has cut (other posts)', () => {
+  it('HAAS -> FANUC leaves it where it is, before the next tool change', () => {
+    const src = '%\nO1234\nG40 G17 G53 G49 G80 G90\nT1 M6\n(FRAESER D10)\nG00 G43 H01 Z50. M08\nG01 Z-5. F300.\nG00 Z50.\nM01 (CHECK TOOL)\nT2 M6\n(BOHRER D5)\nG00 G43 H02 Z50. M08\nM30\n%';
+    const out = convertHaasToFanuc(src, 'x.nc').fanucCode.split('\n');
+    expect(out).toContain('N3 (FRAESER D10)');
+    expect(out.slice(out.indexOf('N7 M01 (CHECK TOOL)'), out.indexOf('N7 M01 (CHECK TOOL)') + 2)).toEqual(['N7 M01 (CHECK TOOL)', 'N8 T2 M6']);
+  });
+});
