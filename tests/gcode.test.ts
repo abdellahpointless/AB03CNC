@@ -525,3 +525,12 @@ describe('block delete lines', () => {
     }
   });
 });
+
+describe('feed per revolution', () => {
+  it('HAAS -> FANUC keeps the dot of every F in a program with G95 (the shop\'s bare F are all G94)', () => {
+    const src = '%\nO1234\nN1 G40 G17 G53 G49 G80 G90\nN2 T1 M6\nN3 (GEWINDEBOHRER M6)\nN4 M01 (CHECK TOOL)\nN5 G00 G43 H01 Z50. M08\nN6 G00 X10. Y10. S300 M03\nN7 G95 G98 G84 Z-15. R2. F1. (TAP M6)\nN8 G80 G94\nN9 G01 X20. F300.\nN10 M30\n%';
+    const out = convertHaasToFanuc(src, 'x.nc').fanucCode;
+    expect(out).toMatch(/G84 Z-15\. R2\. F1\. M84/);
+    expect(out).toMatch(/G01 X20\. F300\./);
+  });
+});

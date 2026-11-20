@@ -16,7 +16,8 @@
  *    table comes out with G53 Y0 before each part flip and at the end instead.
  * 7. N1, N2, N3... on every line but % and O; from N9999 on, N9999 (the FANUC files do the same).
  * 8. Whole-number X/Y/Z get a dot (FANUC reads X10 as 0.010 mm), a G53 move to 0 stays bare
- *    ("Z0", as the FANUC files); whole-number feeds lose theirs (F3000. -> F3000, as the FANUC files).
+ *    ("Z0", as the FANUC files); whole-number feeds lose theirs (F3000. -> F3000, as the FANUC files),
+ *    except in a program with G95 (feed per revolution).
  * Every rule reads the code only, never the text of a (comment).
  */
 
@@ -176,8 +177,10 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
   const { lines: withG53, addedCount } = applyG53BeforeG52(cleaned);
   stats.g53Y0Added = addedCount;
 
-  // Feeds: no dot on whole numbers (F3000., as the FANUC files write F3000), code only.
-  const body = addCoordinateDots(numberLines(withG53, FANUC_MAX_N)).map((l) => replaceInCode(l, /(?<![A-Z])F(\d+)\.(?![0-9])/gi, 'F$1'));
+  // Feeds: no dot on whole numbers (F3000., as the FANUC files write F3000), code only. Not in a
+  // program that feeds per revolution (G95): the shop's bare feeds are all mm/min (G94).
+  const perRev = withG53.some((l) => /(?<![A-Z])G95(?![0-9])/i.test(codeOnly(l)));
+  const body = addCoordinateDots(numberLines(withG53, FANUC_MAX_N)).map((l) => (perRev ? l : replaceInCode(l, /(?<![A-Z])F(\d+)\.(?![0-9])/gi, 'F$1')));
   const fanucLines = ['%', ...body, '%'];
   stats.totalLines = fanucLines.length;
   return { fanucCode: fanucLines.join('\n'), fanucFilename, stats };
