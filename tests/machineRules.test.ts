@@ -65,3 +65,11 @@ describe('CAM AI and Process ask the same of a material', () => {
     expect(materialNeed(null)).toBeNull();
   });
 });
+
+describe('the air jet line of a program without O line or safety line', () => {
+  it('goes after the leading %, never above it', () => {
+    const src = ['%', '(BRACKET POM)', 'G00 G90 G17 G40 G80 G49', 'G54', 'T6 M6', 'M30', '%'];
+    expect(applyMachineCoolant(src, 'HAAS-1').slice(0, 3)).toEqual(['%', 'M84', '(BRACKET POM)']);
+    expect(applyMachineCoolant(['%O1234', ...src.slice(1)], 'HAAS-5').slice(0, 2)).toEqual(['%O1234', 'M84']);
+  });
+});

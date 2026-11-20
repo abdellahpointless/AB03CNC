@@ -50,9 +50,11 @@ export function applyMachineCoolant(lines: string[], machineId: string): string[
     return l !== '__REMOVE_ME__' && /G40/i.test(c) && /G17/i.test(c) && /G53/i.test(c) && /G49/i.test(c) && /G80/i.test(c) && /G90/i.test(c) && !/(?<![A-Z])M\d/i.test(c);
   });
   if (safety !== -1) return lines.map((l, i) => (i === safety ? l.replace(/^(\s*[^(]*?)\s*(\(.*)?$/, (_w, code: string, c?: string) => `${code} M84${c ? ` ${c}` : ''}`) : l));
-  // No safety line: on its own line right after the program number.
-  const o = lines.findIndex((l) => /^\s*O\d/i.test(l));
-  return [...lines.slice(0, o + 1), 'M84', ...lines.slice(o + 1)];
+  // No safety line: on its own line right after the program number (or the leading %: a block
+  // above it is not part of the program).
+  const o = lines.findIndex((l) => /^\s*%?\s*O\d/i.test(l));
+  const at = o !== -1 ? o + 1 : /^\s*%\s*$/.test(lines[0] ?? '') ? 1 : 0;
+  return [...lines.slice(0, at), 'M84', ...lines.slice(at)];
 }
 
 /** Aluminium or brass part, from the program header. */
