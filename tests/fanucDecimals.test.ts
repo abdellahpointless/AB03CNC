@@ -13,8 +13,12 @@ const programs = Object.entries(files).map(([name, code]) => ({ name, code }));
 
 /** Every number written with a dot in the code (comments excluded), with its letter: "Z-22.889", "F230.". */
 const dotted = (code: string) => code.split('\n').flatMap((l) => codeOnly(l).match(/(?<![A-Z_#])[A-Z]\s*[-+]?(?:\d+\.\d*|\.\d+)/gi) ?? []).map((w) => w.replace(/\s+/g, '').toUpperCase());
-/** Whole-number X/Y/Z left without a dot. */
-const bareXYZ = (code: string) => code.split('\n').flatMap((l) => codeOnly(l).match(/(?<![A-Z_#\]])[XYZ]\s*[-+]?\d+(?![\d.])/gi) ?? []);
+/**
+ * Whole-number X/Y/Z left without a dot. A machine move to 0 (a G53 line) is no such risk, 0 is 0
+ * in any unit, and the shop's FANUC files write it bare: "G0 G53 G49 Z0 G94 M95".
+ */
+const bareXYZ = (code: string) =>
+  code.split('\n').flatMap((l) => (codeOnly(l).match(/(?<![A-Z_#\]])[XYZ]\s*[-+]?\d+(?![\d.])/gi) ?? ([] as string[])).filter((w) => !(/(?<![A-Z_])G53(?![0-9])/i.test(codeOnly(l)) && Number(w.slice(1)) === 0)));
 
 function count(words: string[]): Map<string, number> {
   const m = new Map<string, number>();

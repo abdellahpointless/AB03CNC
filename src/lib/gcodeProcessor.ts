@@ -70,11 +70,33 @@ export function replaceInCode(line: string, pattern: RegExp, replacement: string
  * FANUC reads a coordinate written without a decimal point in thousandths of a mm (Z-5 is
  * -0.005 mm), so every X, Y and Z that is a whole number gets its dot (Z-5 -> Z-5.). Values that
  * already have a dot, other words (F, S, Q, R...), macro values (X#1) and comments are never
- * touched, and no dot is ever removed. Running it again changes nothing.
+ * touched, and no dot is ever removed. A machine-coordinate move to 0 stays as the shop writes it
+ * ("G0 G53 G49 Z0 G94 M95", "G53 Y0"): 0 is 0 in any unit. Running it again changes nothing.
  */
 export function addCoordinateDots(lines: string[]): string[] {
-  return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi, '$1$2.')));
+  return lines.map((l) => {
+    if (l === '__REMOVE_ME__') return l;
+    const machine = /(?<![A-Z_])G53(?![0-9])/i.test(codeOnly(l));
+    return replaceInCode(l, /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi, (w: string, a: string, n: string) => (machine && Number(n) === 0 ? w : `${a}${n}.`));
+  });
 }
+
+/**
+ * N1, N2, N3... on every line but "%" and the O line, as the shop's programs are numbered. `cap`:
+ * the highest N the control takes; the shop's FANUC files repeat N9999 from there on.
+ */
+export function numberLines(lines: string[], cap = Infinity): string[] {
+  let n = 0;
+  return lines.map((l) => {
+    const t = l.trim();
+    if (l === '__REMOVE_ME__' || !t || t === '%' || /^O\d/i.test(t)) return l;
+    n++;
+    return `N${Math.min(n, cap)} ${t.replace(/^N\d+\s*/i, '')}`;
+  });
+}
+
+/** The highest N number a FANUC control takes (the shop's FANUC post repeats N9999 after it). */
+export const FANUC_MAX_N = 9999;
 
 /** True when the line performs a tool change (M6 / M06 in the code, not in a comment). */
 export function isToolChangeLine(line: string): boolean {
@@ -718,16 +740,16 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     );
   }
 
-  // In FANUC, if the app detects M98 P7999 then it should be deleted (code only, never a comment)
+  // In FANUC, if the app detects M98 P7999 then it should be deleted (code only, never a comment).
+  // The shop's machines have no O7999: the table comes out with G53 Y0 right there instead (the
+  // shop's FANUC files call O7999 exactly where their HAAS twins have G53 Y0), N number kept.
   const isFanuc = machineId !== 'FANUC-2' && ((machineId && machineId.toUpperCase().includes('FANUC')) ||
                   outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(codeOnly(l))));
   if (isFanuc) {
     outputLines = outputLines.map(l => {
-      if (l === '__REMOVE_ME__') return l;
-      if (/M98\s*P7999/i.test(codeOnly(l))) {
-        return '__REMOVE_ME__';
-      }
-      return l;
+      if (l === '__REMOVE_ME__' || !/M98\s*P7999/i.test(codeOnly(l))) return l;
+      const n = l.match(/^\s*N\d+/i)?.[0].trim();
+      return n ? `${n} G53 Y0` : 'G53 Y0';
     });
   }
 
@@ -746,8 +768,11 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   const { lines: linesWithG53 } = applyG53BeforeG52(outputLines);
   outputLines = linesWithG53;
 
-  // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point.
-  if (machineId?.toUpperCase().startsWith('FANUC')) outputLines = addCoordinateDots(outputLines);
+  // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
+  // number goes over N9999 (the shop's FANUC post repeats N9999 after it).
+  if (machineId?.toUpperCase().startsWith('FANUC')) {
+    outputLines = addCoordinateDots(outputLines).map((l) => l.replace(/^(\s*)N(\d{5,})/i, (w, s: string, n: string) => (Number(n) > FANUC_MAX_N ? `${s}N${FANUC_MAX_N}` : w)));
+  }
 
   return {
     finalCode: outputLines.filter(l => l !== '__REMOVE_ME__').join('\n'),
@@ -785,7 +810,11 @@ const N_RE = /^(\s*)N(\d+)/i;
 interface Entry { text: string; inserted: boolean }
 
 const isRemoved = (l: string) => l === REMOVED_LINE;
-const hasG53Y0 = (l: string) => !isRemoved(l) && G53_Y0_RE.test(codeOnly(l));
+/**
+ * The table comes to the operator here: "G53 Y0", or "M98 P7999" in the shop's FANUC files (their
+ * HAAS twins have G53 Y0 at exactly those places), so a FANUC program is not given a second one.
+ */
+const hasG53Y0 = (l: string) => !isRemoved(l) && (G53_Y0_RE.test(codeOnly(l)) || /(?<![A-Z])M98\s*P7999(?![0-9])/i.test(codeOnly(l)));
 const hasG52 = (l: string) => !isRemoved(l) && G52_RE.test(codeOnly(l));
 /** A G53 line that moves Y to 0 among other words ("G0 G53 G49 Y0 Z0"). */
 const hasG53WithY0 = (l: string) =>
