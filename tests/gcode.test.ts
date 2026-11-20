@@ -417,6 +417,29 @@ describe("HAAS <-> FANUC as the shop's posts write them", () => {
     expect(out.at(-2)).toBe('N37 M30');
   });
 
+  it('FANUC-2 keeps M98 P7999 and still brings the table out with G53 Y0 at the flip and at the end', () => {
+    const src = SHOP_FANUC.replace(/O0131784\(X20\)/, 'O0131784');
+    const out = remap(src, fanuc1, 'FANUC-2').code.split('\n');
+    expect(out.filter((l) => /G53 Y0/.test(l))).toEqual(['N26 G53 Y0', 'N38 G53 Y0']);
+    expect(out[out.indexOf('N26 G53 Y0') - 1]).toMatch(/^N25 T\d+ M6 G49/); // right after the flip tool's change, before its stops
+    expect(out[out.indexOf('N38 G53 Y0') + 1]).toBe('N39 M30');
+    expect(out.filter((l) => /M98 P7999/.test(l))).toHaveLength(2);
+  });
+
+  it('FANUC-2: skipping the flip tool still brings the table out before the flip', () => {
+    const src = SHOP_FANUC.replace(/O0131784\(X20\)/, 'O0131784');
+    const a = analyzeGCode(src, fanuc1, 'FANUC-2');
+    const skip: Tool = { id: 'skip', number: 0, category: 'empty', diameter: 0, length: 0, description: 'Skip Operation' };
+    const out = generateRemappedCode(a.lines, a.blocks, { [a.blocks[2].blockId]: skip }, 'FANUC-2').finalCode.split('\n');
+    const flip = out.findIndex((l) => /TEIL 180 GRAD/.test(l));
+    const section = out.slice(out.findIndex((l) => /^N24 /.test(l)), flip);
+    expect(section.some((l) => /G53 Y0/.test(l))).toBe(true);
+    expect(section.some((l) => /M98 P7999/.test(l))).toBe(false);
+    // Nothing moves after the last G53 Y0: the table is still out at M30.
+    const last = out.map((l) => /G53 Y0/.test(l)).lastIndexOf(true);
+    expect(out.slice(last + 1).filter((l) => /(?<![A-Z])[XYZ]-?\d/.test(l.replace(/\(.*?\)/g, '')) && !/G52/.test(l))).toEqual([]);
+  });
+
   it('importing a FANUC program that calls O7999 changes nothing (no second table-out)', () => {
     expect(applyG53BeforeG52(SHOP_FANUC.split('\n')).addedCount).toBe(0);
   });

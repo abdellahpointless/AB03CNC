@@ -629,7 +629,7 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
       let flip = false;
       let tableOut = false;
       for (let j = block.lineIndex + 1; j < end; j++) {
-        if (hasG53Y0(outputLines[j])) tableOut = true;
+        if (hasG53Y0(outputLines[j], machineId !== 'FANUC-2')) tableOut = true;
         else if (isPartSetup(outputLines[j])) flip = true;
         else outputLines[j] = '__REMOVE_ME__';
       }
@@ -808,7 +808,7 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
 
   // Bring the table to the operator only where they need it: before each part flip (G52)
   // and before the end of the program (to unload the parts). Not at every tool change.
-  const { lines: linesWithG53 } = applyG53BeforeG52(outputLines);
+  const { lines: linesWithG53 } = applyG53BeforeG52(outputLines, machineId !== 'FANUC-2');
   outputLines = linesWithG53;
 
   // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
@@ -857,8 +857,9 @@ const isRemoved = (l: string) => l === REMOVED_LINE;
 /**
  * The table comes to the operator here: "G53 Y0", or "M98 P7999" in the shop's FANUC files (their
  * HAAS twins have G53 Y0 at exactly those places), so a FANUC program is not given a second one.
+ * `call` false: the O7999 call does not count (FANUC-2 keeps it and gets its G53 Y0 all the same).
  */
-const hasG53Y0 = (l: string) => !isRemoved(l) && (G53_Y0_RE.test(codeOnly(l)) || /(?<![A-Z])M98\s*P7999(?![0-9])/i.test(codeOnly(l)));
+const hasG53Y0 = (l: string, call = true) => !isRemoved(l) && (G53_Y0_RE.test(codeOnly(l)) || (call && /(?<![A-Z])M98\s*P7999(?![0-9])/i.test(codeOnly(l))));
 const hasG52 = (l: string) => !isRemoved(l) && G52_RE.test(codeOnly(l));
 /** A G53 line that moves Y to 0 among other words ("G0 G53 G49 Y0 Z0"). */
 const hasG53WithY0 = (l: string) =>
@@ -977,9 +978,10 @@ function insertBefore(lines: string[], positions: number[]): string[] {
  * way, one is added:
  *  - after the tool change and its comment block (before the M0 stops), or
  *  - when there is no tool change above, just before the M0 stops / comments that precede the G52.
+ * `call` false: an M98 P7999 (O7999 call) is not taken for the table out (FANUC-2).
  * Running it again changes nothing.
  */
-export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCount: number } {
+export function applyG53BeforeG52(lines: string[], call = true): { lines: string[]; addedCount: number } {
   const positions: number[] = [];
   // One pass: the last G53 Y0 and the last tool change seen so far stand for the scan upwards
   // (a scan per G52 was quadratic: a program of many G52 lines froze the page).
@@ -992,7 +994,7 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
   for (let g = 0; g < lines.length; g++) {
     if (g > 0 && !isRemoved(lines[g - 1]) && isToolChangeLine(lines[g - 1])) lastToolChange = g - 1;
     if (g > 0 && isMotionLine(lines[g - 1])) moved = true;
-    if (hasG53Y0(lines[g])) lastG53 = g;
+    if (hasG53Y0(lines[g], call)) lastG53 = g;
     if (!isG52Shift(lines[g]) || !moved) continue;
 
     // Found when the nearest G53 Y0 above (this line included) is not before the nearest tool change.
@@ -1019,11 +1021,11 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
   // End of program: the table must come to the operator to unload the parts.
   let end = -1;
   for (let k = lines.length - 1; k >= 0; k--) if (isProgramEnd(lines[k])) { end = k; break; }
-  if (end !== -1 && !hasG53Y0(lines[end])) {
+  if (end !== -1 && !hasG53Y0(lines[end], call)) {
     let present = false;
     for (let k = end - 1; k >= 0; k--) {
       // "G0 G53 G49 Y0 Z0" (the HAAS end line) already brings the table out: no second Y0 move.
-      if (hasG53Y0(lines[k]) || hasG53WithY0(lines[k])) { present = true; break; }
+      if (hasG53Y0(lines[k], call) || hasG53WithY0(lines[k])) { present = true; break; }
       if (isMotionLine(lines[k]) || (!isRemoved(lines[k]) && isToolChangeLine(lines[k]))) break;
     }
     if (!present && !positions.includes(end)) positions.push(end);
