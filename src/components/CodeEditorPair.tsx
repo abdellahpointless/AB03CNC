@@ -22,6 +22,41 @@ import { currentRegion } from '../lib/instance';
 /** The comment at the end of a line (or the line), to find a line again after N numbers changed. */
 const lastComment = (l: string) => l.match(/\(([^)]*)\)\s*$/)?.[1].trim() ?? l.trim();
 
+/** Height of one output line and the pane's top padding (p-5), in px: rows are fixed so only the visible ones are drawn. */
+const OUT_ROW = 25;
+const OUT_PAD = 20;
+/** Rows drawn above and below the visible ones, so a fast scroll does not show blank space. */
+const OUT_OVERSCAN = 40;
+
+/** The range of rows [first, last) visible in a scrolling element (plus the overscan). */
+function useVisibleRows(ref: React.RefObject<HTMLElement | null>, count: number): { first: number; last: number } {
+  const [view, setView] = useState({ top: 0, height: 1000 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let frame = 0;
+    const read = () => {
+      frame = 0;
+      setView((v) => (v.top === el.scrollTop && v.height === el.clientHeight ? v : { top: el.scrollTop, height: el.clientHeight }));
+    };
+    const later = () => {
+      if (!frame) frame = requestAnimationFrame(read);
+    };
+    el.addEventListener('scroll', later, { passive: true });
+    const resize = new ResizeObserver(later);
+    resize.observe(el);
+    read();
+    return () => {
+      el.removeEventListener('scroll', later);
+      resize.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [ref]);
+  const first = Math.max(0, Math.floor((view.top - OUT_PAD) / OUT_ROW) - OUT_OVERSCAN);
+  const last = Math.min(count, Math.ceil((view.top - OUT_PAD + view.height) / OUT_ROW) + OUT_OVERSCAN);
+  return { first: Math.min(first, count), last: Math.max(last, Math.min(first, count)) };
+}
+
 /**
  * Puts corrected M0 comments into a program: each line found by its comment (`key` turns a line's
  * comment into the form the changes were found in), all or nothing (null when one is missing).
@@ -491,6 +526,13 @@ export default function CodeEditorPair({
   };
 
   const outputLines = useMemo(() => outputCode.split('\n'), [outputCode]);
+  // Only the lines in view are drawn (a 20 000-line program was 20 000 rows redrawn on each key).
+  const outputView = useVisibleRows(outputScrollRef, outputLines.length);
+  const outputWidth = useMemo(() => outputLines.reduce((m, l) => Math.max(m, l.length), 0), [outputLines]);
+  const goToOutputLine = (line: number) => {
+    const el = outputScrollRef.current;
+    if (el) el.scrollTo({ top: OUT_PAD + line * OUT_ROW - el.clientHeight / 2 + OUT_ROW / 2, behavior: 'smooth' });
+  };
   // Lines the safety check flagged (errors win over warnings on the same line).
   const safetyLines = useMemo(() => {
     const map = new Map<number, 'error' | 'warning'>();
@@ -570,9 +612,10 @@ export default function CodeEditorPair({
       )}
 
       {/* 2-Pane Editor Layout: Left = Source Code, Right = Processed Code */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Fixed height: each pane scrolls on its own, so only the lines in view are drawn. */}
+      <div className="flex-1 lg:flex-none grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)] gap-4 lg:h-[calc(100dvh-11rem)] lg:min-h-[560px]">
         {/* Source Code Pane (Aurora Card) */}
-        <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px]">
+        <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px] h-[75dvh] lg:h-auto">
           {/* Pane Header */}
           <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2.5">
@@ -704,13 +747,13 @@ export default function CodeEditorPair({
             onPaste={handlePaste}
             onBlur={handleBlur}
             spellCheck={false}
-            className="flex-1 w-full resize-none p-5 font-mono text-[13px] leading-relaxed text-[var(--text-primary)] bg-[var(--bg-input)] focus:outline-none overflow-auto border-none selection:bg-[var(--blue-500)]/30"
+            className="flex-1 min-h-0 w-full resize-none p-5 font-mono text-[13px] leading-relaxed text-[var(--text-primary)] bg-[var(--bg-input)] focus:outline-none overflow-auto border-none selection:bg-[var(--blue-500)]/30"
             placeholder={t('editor.sourcePlaceholder')}
           />
         </div>
 
         {/* Processed Code Pane (Aurora Card) */}
-        <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px]">
+        <div className="aurora-card p-0 flex flex-col overflow-hidden min-h-[460px] h-[75dvh] lg:h-auto">
           {/* Pane Header */}
           <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[rgba(var(--surface),0.6)] flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -791,7 +834,7 @@ export default function CodeEditorPair({
                       <button
                         key={i}
                         type="button"
-                        onClick={() => outputScrollRef.current?.querySelector(`[data-line="${h.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                        onClick={() => goToOutputLine(h.line)}
                         className="badge-danger font-mono hover:underline"
                       >
                         #{h.line + 1} · {t(h.what === 'holder' ? 'toolpath.holderJawHit' : h.what === 'holderPart' ? 'toolpath.holderPartHit' : 'toolpath.jawHit', { t: h.tool ?? '?', mm: (Math.round(h.depth * 10) / 10).toLocaleString(locale()) })}
@@ -808,13 +851,13 @@ export default function CodeEditorPair({
           {outputCode && !isOutputStale && !collisions.checking && collisions.rejects.length > 0 && (
             <div role="alert" className="px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs space-y-2 bg-[var(--rose-500)]/10">
               {collisions.rejects.map((b, i) => {
-                const all = outputCode.split('\n');
+                const all = outputLines;
                 const from = Math.max(0, b.line - 2);
                 return (
                   <div key={i} className="space-y-1.5">
                     <button
                       type="button"
-                      onClick={() => outputScrollRef.current?.querySelector(`[data-line="${b.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                      onClick={() => goToOutputLine(b.line)}
                       className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)] hover:underline text-left"
                     >
                       <ShieldAlert size={14} className="shrink-0" />{' '}
@@ -844,7 +887,7 @@ export default function CodeEditorPair({
                   <button
                     key={i}
                     type="button"
-                    onClick={() => outputScrollRef.current?.querySelector(`[data-line="${h.line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+                    onClick={() => goToOutputLine(h.line)}
                     className="badge-warning font-mono hover:underline"
                   >
                     #{h.line + 1} · {t('toolpath.caleHit', { t: h.tool ?? '?', mm: (Math.round(h.depth * 10) / 10).toLocaleString(locale()) })}
@@ -865,7 +908,7 @@ export default function CodeEditorPair({
                 handleExportClick(true);
               }}
               onCancel={() => setConfirmingExport(false)}
-              onGoToLine={(line) => outputScrollRef.current?.querySelector(`[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
+              onGoToLine={goToOutputLine}
             />
           )}
 
@@ -885,7 +928,7 @@ export default function CodeEditorPair({
           )}
 
           {/* Code Viewer */}
-          <div ref={outputScrollRef} tabIndex={0} role="region" aria-label={outputLabel} className={`flex-1 w-full p-5 overflow-auto bg-[var(--bg-input)] focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)] -outline-offset-2 ${isOutputStale ? 'opacity-50' : ''}`}>
+          <div ref={outputScrollRef} tabIndex={0} role="region" aria-label={outputLabel} className={`flex-1 min-h-0 w-full p-5 overflow-auto bg-[var(--bg-input)] focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)] -outline-offset-2 ${isOutputStale ? 'opacity-50' : ''}`}>
             {!outputCode ? (
               <div className="h-full flex items-center justify-center text-center p-6">
                 <div className="max-w-xs space-y-2">
@@ -901,8 +944,10 @@ export default function CodeEditorPair({
                 </div>
               </div>
             ) : (
-              <pre key="out" className="reveal-in font-mono text-[13px] leading-relaxed text-[var(--text-primary)] w-full">
-                {outputLines.map((line, i) => {
+              <pre key="out" className="reveal-in font-mono text-[13px] text-[var(--text-primary)] w-full" style={{ minWidth: `calc(${outputWidth}ch + 1rem)` }}>
+                <div style={{ height: outputView.first * OUT_ROW }} aria-hidden />
+                {outputLines.slice(outputView.first, outputView.last).map((line, k) => {
+                  const i = outputView.first + k;
                   const isChanged = changedLines[i];
                   const isApprox = line.includes('(APPROX-REMAP:');
                   
@@ -921,11 +966,12 @@ export default function CodeEditorPair({
                   }
                   
                   return (
-                    <div key={i} data-line={i} className={`py-0.5 ${lineClass}`} title={correctedNotes.has(lastComment(line)) ? t('toolpath.model.correctedLine') : undefined}>
+                    <div key={i} data-line={i} className={`whitespace-pre ${lineClass}`} style={{ height: OUT_ROW, lineHeight: `${OUT_ROW}px` }} title={correctedNotes.has(lastComment(line)) ? t('toolpath.model.correctedLine') : undefined}>
                       {line || ' '}
                     </div>
                   );
                 })}
+                <div style={{ height: (outputLines.length - outputView.last) * OUT_ROW }} aria-hidden />
               </pre>
             )}
           </div>
