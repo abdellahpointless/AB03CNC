@@ -43,7 +43,8 @@ const isFlipLine = (l: string) => {
 };
 
 export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 'haas_program.txt'): FanucToHaasResult {
-  const input = fanucCode.replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '%');
+  // "%O01234": the O number on the % line is the program's own line.
+  const input = fanucCode.replace(/\r/g, '').split('\n').map((l) => l.replace(/^\s*%\s*(?=O\d)/i, '')).filter((l) => l.trim() !== '%');
   const out: string[] = [];
   let haasFilename = defaultFilename.endsWith('.txt') ? defaultFilename : `${defaultFilename.replace(/\.[^/.]+$/, '')}.txt`;
   let lastToolNumber = '';

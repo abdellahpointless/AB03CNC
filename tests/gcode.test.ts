@@ -543,3 +543,12 @@ describe('a CHECK TOOL stop after the tool has cut (other posts)', () => {
     expect(out.slice(out.indexOf('N7 M01 (CHECK TOOL)'), out.indexOf('N7 M01 (CHECK TOOL)') + 2)).toEqual(['N7 M01 (CHECK TOOL)', 'N8 T2 M6']);
   });
 });
+
+describe('an O number on the % line', () => {
+  it('is still the program number, in both directions', () => {
+    const f = '%O01234\nG0 G53 G49 Z0 G94 M95\nT1 M6\nG00 G43 Z50. H#513 D#513 M254\nM30\n%';
+    expect(convertFanucToHaas(f, 'x.nc').haasCode.split('\n').slice(0, 3)).toEqual(['%', 'O0234', 'N1 G40 G17 G53 G49 G80 G90']);
+    const h = '%O1234\nG40 G17 G53 G49 G80 G90\nT1 M6\nG00 G43 H01 Z50.\nM30\n%';
+    expect(convertHaasToFanuc(h, 'x.nc').fanucCode.split('\n').slice(0, 3)).toEqual(['%', 'O1234', 'N1 G0 G53 G49 Z0 G94 M95']);
+  });
+});

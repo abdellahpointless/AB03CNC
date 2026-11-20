@@ -52,7 +52,8 @@ const isToolChange = (code: string) => /(?<![A-Z])M0*6(?![0-9.])/i.test(code);
 const CHECK_TOOL = /^(N\d+\s*)?M0?1\s*\(\s*CHECK TOOL\s*\)\s*$/i;
 
 export function convertHaasToFanuc(haasCode: string, defaultFilename: string = 'fanuc_program.nc'): HaasToFanucResult {
-  const input = haasCode.replace(/\r/g, '').split('\n').filter((l) => l.trim() !== '%');
+  // "%O1234": the O number on the % line is the program's own line.
+  const input = haasCode.replace(/\r/g, '').split('\n').map((l) => l.replace(/^\s*%\s*(?=O\d)/i, '')).filter((l) => l.trim() !== '%');
   const out: string[] = [];
   let fanucFilename = defaultFilename.replace(/\.[^/.]+$/, '') + '.nc';
   const named = fileProgramNumber(defaultFilename);
