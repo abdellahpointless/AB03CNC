@@ -732,6 +732,14 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
         // A D that is not the old tool's number was chosen on purpose and stays.
         const oldT = block.originalT?.match(/\d+/)?.[0];
         if (oldT && Number(oldT) !== Number(toolToUse.number)) {
+          // So does every later length offset of the section ("G43 H18" again after a G49): an H
+          // of another register stays.
+          const hOld = new RegExp(`(?<![A-Z])H0*${Number(oldT)}(?![0-9.])`, 'i');
+          for (let j = block.lineIndex + 1; j < nextBlockIndex; j++) {
+            const l = outputLines[j];
+            if (l === '__REMOVE_ME__' || !/(?<![A-Z])G0*4[34](?![0-9])/i.test(codeOnly(l)) || !hOld.test(codeOnly(l))) continue;
+            outputLines[j] = replaceInCode(l, hOld, `H${toolToUse.number}`) + ` (AI-MOD: OFFSET H${toolToUse.number})`;
+          }
           const dOld = new RegExp(`(?<![A-Z])D0*${Number(oldT)}(?![0-9.])`, 'i');
           for (let j = block.lineIndex + 1; j < nextBlockIndex; j++) {
             const l = outputLines[j];

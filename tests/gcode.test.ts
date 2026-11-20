@@ -502,3 +502,15 @@ describe('a G43 written on the tool change line', () => {
     expect(isFanucDialect(out)).toBe(false);
   });
 });
+
+describe('a tool section with two G43 lines', () => {
+  it('both take the new tool\'s length offset; an H of another register stays', () => {
+    const src = 'O1\nN3 T18 M6\nN4 (FRAISE D10 / FR_10.00_030_000_AL)\nN6 G00 G43 H18 Z50. M08\nN8 G01 Z-2. F500.\nN9 G00 Z50.\nN10 G49\nN11 G00 G43 H18 Z60.\nN12 G01 Z-4. F500.\nN13 G43 H17 Z70. (ANOTHER REGISTER ON PURPOSE)\nN14 M30';
+    const a = analyzeGCode(src, haas1, 'HAAS-1');
+    const t = haas1.find((x) => x.category === 'fraise' && x.number !== 17 && x.number !== 18)!;
+    const out = generateRemappedCode(a.lines, a.blocks, { [a.blocks[0].blockId]: t }, 'HAAS-1').finalCode.split('\n');
+    expect(out.find((l) => l.startsWith('N6 '))).toMatch(new RegExp(`G43 H${t.number} `));
+    expect(out.find((l) => l.startsWith('N11 '))).toMatch(new RegExp(`G43 H${t.number} `));
+    expect(out.find((l) => l.startsWith('N13 '))).toMatch(/G43 H17 /);
+  });
+});
