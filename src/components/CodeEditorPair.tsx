@@ -473,10 +473,9 @@ export default function CodeEditorPair({
     setHasImported(false);
     
     const details: string[] = [];
-    if (result.stats.n100n110Deleted > 0) details.push(t('convert.n100Deleted'));
     if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLineUpdated'));
     if (result.stats.trailingZFixed > 0) details.push(t('convert.trailingZAdded', { count: result.stats.trailingZFixed }));
-    if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98Removed', { count: result.stats.m98LinesDeleted }));
+    if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98ToTableOut', { count: result.stats.m98LinesDeleted }));
     if (result.stats.g43Converted > 0) details.push(t('convert.g43Converted', { count: result.stats.g43Converted }));
     if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
 

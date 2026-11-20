@@ -208,10 +208,10 @@ const remapper: Translation<typeof en> = {
     g53Placed: 'Tabla operatöre: {{count}} adet G53 Y0 otomatik eklendi (parça çevirme / program sonu)',
   },
   convert: {
-    n100Deleted: 'N100/N110 silindi',
     securityLineUpdated: 'Güvenlik satırı güncellendi',
     trailingZAdded: '{{count}} Z değerine nokta eklendi',
     m98Removed: '{{count}} M98 P7999 kaldırıldı',
+    m98ToTableOut: '{{count}} M98 P7999 -> tablayı dışarı alma (G53 Y0 / son satır)',
     g43Converted: '{{count}} G43 dönüştürüldü',
     g53Added: '{{count}} G53 Y0 eklendi (parça çevirme / program sonu)',
     toHaas: 'HAAS’a dönüştürüldü: {{details}}',

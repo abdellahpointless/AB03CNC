@@ -26,13 +26,15 @@ function count(words: string[]): Map<string, number> {
   return m;
 }
 /** Each dotted number of the source is still in the output (as often: lines are only added). */
-function expectNoDotLost(source: string, output: string, name: string, machine = '') {
+function expectNoDotLost(source: string, output: string, name: string, machine = '', feedsBare = false) {
   const out = count(dotted(output));
   // Values changed on purpose (still written with their dot): FH pecks over 5 mm become Q5.;
   // on FANUC-2, aluminium/brass pecks become Q2. and spindle speeds over 5000 become S5000.
+  // HAAS -> FANUC writes whole-number feeds as the shop's FANUC files do (F3000, never a
+  // coordinate: those always keep their dot).
   const fh = detectMaterial(source) === 'FH';
   const f2 = machine === 'FANUC-2';
-  const changed = (w: string) => (w.startsWith('Q') && (fh || (f2 && isAluOrBrass(source)))) || (f2 && w.startsWith('S'));
+  const changed = (w: string) => (w.startsWith('Q') && (fh || (f2 && isAluOrBrass(source)))) || (f2 && w.startsWith('S')) || (feedsBare && /^F\d+\.$/.test(w));
   for (const [w, n] of count(dotted(source))) if (!changed(w)) expect(out.get(w) ?? 0, `${name}: ${w}`).toBeGreaterThanOrEqual(n);
 }
 
@@ -50,18 +52,18 @@ describe('FANUC programs keep every decimal point', () => {
     });
   }
 
-  it('HAAS -> FANUC conversion: no dot lost, every X/Y/Z has one', () => {
+  it('HAAS -> FANUC conversion: no coordinate dot lost, every X/Y/Z has one', () => {
     for (const p of programs) {
       const out = convertHaasToFanuc(p.code, p.name).fanucCode;
-      expectNoDotLost(p.code, out, p.name);
+      expectNoDotLost(p.code, out, p.name, '', true);
       expect(bareXYZ(out), p.name).toEqual([]);
     }
   });
 
-  it('the reported case: F100. and Z-5. keep their dot', () => {
+  it('the reported case: Z-5. keeps its dot; the feed is written as the FANUC files write it (F100)', () => {
     const src = 'O1\nT6 M6\n(SB_04.00_050_000_ALHS)\nG00 G43 H6 Z50.\nS3500 M03\nG01 Z-5. F100.\nG00 Z50.\nM30';
     const out = convertHaasToFanuc(src).fanucCode;
-    expect(out).toMatch(/G01 Z-5\. F100\./);
+    expect(out).toMatch(/G01 Z-5\. F100$/m);
     expect(out).toMatch(/G00 G43 Z50\. H#513 D#513 M254/);
   });
 

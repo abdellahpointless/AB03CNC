@@ -217,10 +217,10 @@ const remapper = {
   },
   /** Summary after switching the program between FANUC and HAAS. */
   convert: {
-    n100Deleted: 'N100/N110 deleted',
     securityLineUpdated: 'Security line updated',
     trailingZAdded: '{{count}} trailing Z. added',
     m98Removed: '{{count}} M98 P7999 removed',
+    m98ToTableOut: '{{count}} M98 P7999 -> table out (G53 Y0 / end line)',
     g43Converted: '{{count}} G43 converted',
     g53Added: '{{count}} G53 Y0 added (part flip / end of program)',
     toHaas: 'Switched to HAAS: {{details}}',
