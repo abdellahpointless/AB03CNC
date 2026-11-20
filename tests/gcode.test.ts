@@ -431,3 +431,30 @@ describe('programs from other people cannot freeze the page', () => {
     expect(r.addedCount).toBe(2); // one before the first G52, one before M30
   });
 });
+
+describe('programs that jump to N labels keep them', () => {
+  // The code of the line labelled N<n>, without the N: what a jump to n runs.
+  const at = (lines: string[], n: number) => lines.find((l) => new RegExp(`^N${n}\\s`).test(l))?.replace(/^N\d+\s*/, '');
+
+  it('FANUC -> HAAS keeps every N, so GOTO lands on the same block', () => {
+    const src = 'O1\nT3 M6\nM01 (D10)\nG00 G43 Z50. H#513 D#513 M254\nN10 #1=1.\nN20 G01 Z[-#1] F100\nN30 #1=#1+1.\nN40 IF [#1 LE 3.] GOTO20\nN50 M30';
+    const out = convertFanucToHaas(src, 'x.nc').haasCode.split('\n');
+    expect(at(out, 20)).toBe('G01 Z[-#1] F100.');
+    expect(at(out, 40)).toBe('IF [#1 LE 3.] GOTO20');
+  });
+
+  it('HAAS -> FANUC keeps every N too (M99 P and GOTO)', () => {
+    const src = '%\nO1234\nN1 G40 G17 G53 G49 G80 G90\nN2 T1 M6\nN3 (FRAISE D10)\nN4 M01 (CHECK TOOL)\nN5 G00 G43 H01 Z50. M08\nN6 #100=0.\nN7 G01 Z[-#100] F2500.\nN8 G01 X-10.\nN9 #100=#100+0.5\nN10 IF [#100 LE 2.] GOTO7\nN11 M99 P7\n%';
+    const out = convertHaasToFanuc(src, 'x.nc').fanucCode.split('\n');
+    expect(at(out, 7)).toBe('G01 Z[-#100] F2500');
+    expect(at(out, 10)).toBe('IF [#100 LE 2.] GOTO7');
+  });
+
+  it('a FANUC remap over N9999 keeps the labels a jump needs', () => {
+    const body = Array.from({ length: 10_000 }, (_, k) => `N${k + 4} G01 X${k}.`);
+    const src = ['O1', 'N1 G0 G53 G49 Z0 G94 M95', 'N2 T3 M6', 'N3 G00 G43 Z50. H#513 D#513 M254', ...body, 'N10004 #1=0', 'N10005 G01 Z-1. F300', 'N10006 #1=#1+1', 'N10007 IF [#1 LT 2] GOTO10005', 'N10008 M30'].join('\n');
+    const out = remap(src, fanuc1, 'FANUC-1').code.split('\n');
+    expect(at(out, 10005)).toBe('G01 Z-1. F300');
+    expect(at(out, 10007)).toBe('IF [#1 LT 2] GOTO10005');
+  });
+});

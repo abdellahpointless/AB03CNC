@@ -120,11 +120,16 @@ export function addCoordinateDots(lines: string[]): string[] {
   });
 }
 
+/** The program jumps to N labels (M97, M99 P, GOTO): its N numbers are jump targets and never change. */
+export const jumpsToLabels = (lines: string[]) => lines.some((l) => l !== '__REMOVE_ME__' && /(?<![A-Z])(?:M97|M99\s*P|GOTO)/i.test(codeOnly(l)));
+
 /**
  * N1, N2, N3... on every line but "%" and the O line, as the shop's programs are numbered. `cap`:
- * the highest N the control takes; the shop's FANUC files repeat N9999 from there on.
+ * the highest N the control takes; the shop's FANUC files repeat N9999 from there on. A program
+ * that jumps to labels keeps its numbers (renumbered, every jump would land on another block).
  */
 export function numberLines(lines: string[], cap = Infinity): string[] {
+  if (jumpsToLabels(lines)) return lines;
   let n = 0;
   return lines.map((l) => {
     const t = l.trim();
@@ -809,7 +814,8 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
   // number goes over N9999 (the shop's FANUC post repeats N9999 after it).
   if (machineId?.toUpperCase().startsWith('FANUC')) {
-    outputLines = addCoordinateDots(outputLines).map((l) => l.replace(/^(\s*)N(\d{5,})/i, (w, s: string, n: string) => (Number(n) > FANUC_MAX_N ? `${s}N${FANUC_MAX_N}` : w)));
+    const labels = jumpsToLabels(outputLines); // a jump needs its label: no cap then
+    outputLines = addCoordinateDots(outputLines).map((l) => (labels ? l : l.replace(/^(\s*)N(\d{5,})/i, (w, s: string, n: string) => (Number(n) > FANUC_MAX_N ? `${s}N${FANUC_MAX_N}` : w))));
   }
 
   return {
@@ -912,7 +918,7 @@ function afterToolCommentBlock(lines: string[], m6Idx: number): number {
 function renumberWithInsertions(entries: Entry[]): string[] {
   const real = entries.filter(e => !e.inserted && !isRemoved(e.text)).map(e => e.text);
   const usesN = real.some(l => N_RE.test(l));
-  const jumpsToLabels = real.some(l => /(?<![A-Z])(?:M97|M99\s*P|GOTO)/i.test(codeOnly(l)));
+  const jumps = jumpsToLabels(real);
   const usedNumbers = new Set(real.map(l => l.match(N_RE)?.[2]).filter(Boolean).map(Number));
 
   const format = (orig: string, value: number) => orig.startsWith('0') ? String(value).padStart(orig.length, '0') : String(value);
@@ -928,7 +934,7 @@ function renumberWithInsertions(entries: Entry[]): string[] {
       let text = e.text;
       if (usesN) {
         const candidate = (lastOut ?? 0) + 1;
-        if (!jumpsToLabels || !usedNumbers.has(candidate)) {
+        if (!jumps || !usedNumbers.has(candidate)) {
           text = `N${format(lastDigits, candidate)} ${e.text}`;
           lastOut = candidate;
           usedNumbers.add(candidate);
@@ -941,7 +947,7 @@ function renumberWithInsertions(entries: Entry[]): string[] {
     if (!m) { out.push(e.text); continue; }
     const value = parseInt(m[2], 10);
     let emitted = value;
-    if (!jumpsToLabels && lastOut !== null && value <= lastOut && (lastIn === null || value > lastIn)) {
+    if (!jumps && lastOut !== null && value <= lastOut && (lastIn === null || value > lastIn)) {
       emitted = lastOut + 1; // was in order, but now collides with an inserted number
     }
     out.push(emitted === value ? e.text : e.text.replace(N_RE, `$1N${format(m[2], emitted)}`));
