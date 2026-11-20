@@ -66,7 +66,7 @@ export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
     const on = body[flag.key];
     const rest = [body.password, body.role, body.resetMfa, body[flag.key === 'toolpathBeta' ? 'camAi' : 'toolpathBeta']];
     if (typeof on !== 'boolean' || rest.some((x) => x !== undefined)) throw new HttpError(400, `${flag.key} must be true or false, on its own`);
-    if (flag.key === 'camAi') {
+    if (flag.key === 'camAi' && on) { // switching it off is always allowed (less access)
       const region = regionById(ctx.env.REGION);
       if (!region || !(await readFeatures(ctx.env.DB, region.id)).camAi) throw new HttpError(403, 'CAM AI is not switched on for this country.');
     }

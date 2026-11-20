@@ -64,6 +64,8 @@ describe('toolpath beta access', () => {
     await DB.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify({ camAi: false })).run();
     expect(await patch('u-ali', { camAi: true })).toBe(403);
     expect(await cam()).toBe(0);
+    // Taking it away is always allowed.
+    expect(await patch('u-ali', { camAi: false })).toBe(200);
     // The toolpath beta is its own switch.
     expect(await patch('u-ali', { toolpathBeta: true })).toBe(200);
     expect(await patch('u-ali', { toolpathBeta: false })).toBe(200);
