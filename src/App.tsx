@@ -197,8 +197,8 @@ function Workspace() {
     };
   }, [calesOn, versions.machines]);
 
-  // CAM AI (beta): with the toolpath on for the country, for admins and the people an admin picked.
-  const camOn = features.toolpath && (user.role === 'ADMIN' || !!user.camAi);
+  // CAM AI (beta): where a master admin switched it on for the country, for admins and the people an admin picked.
+  const camOn = features.camAi && (user.role === 'ADMIN' || !!user.camAi);
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
     if ((!camOn && activeTab === 'CAM_AI') || (!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
@@ -492,7 +492,7 @@ function Workspace() {
             )}
           </button>
 
-          {/* Tab: CAM AI (toolpath beta) */}
+          {/* Tab: CAM AI (beta) */}
           {camOn && (
             <button
               onClick={() => openTab('CAM_AI')}

@@ -2,6 +2,8 @@ import { HttpError, json, readJson } from '../http';
 import { bumpStmt, newId, type Ctx, type Role } from '../context';
 import { assertNotMasterUsername, hashPassword, requirePassword, validateNewPassword, validateUsername } from '../auth';
 import { auditCtx } from '../security';
+import { readFeatures } from '../features';
+import { regionById } from '../../src/regions';
 
 function parseRole(v: unknown): Role {
   if (v === 'ADMIN' || v === 'MACHINIST') return v;
@@ -64,6 +66,10 @@ export async function handleUpdateUser(ctx: Ctx): Promise<Response> {
     const on = body[flag.key];
     const rest = [body.password, body.role, body.resetMfa, body[flag.key === 'toolpathBeta' ? 'camAi' : 'toolpathBeta']];
     if (typeof on !== 'boolean' || rest.some((x) => x !== undefined)) throw new HttpError(400, `${flag.key} must be true or false, on its own`);
+    if (flag.key === 'camAi') {
+      const region = regionById(ctx.env.REGION);
+      if (!region || !(await readFeatures(ctx.env.DB, region.id)).camAi) throw new HttpError(403, 'CAM AI is not switched on for this country.');
+    }
     await ctx.env.DB.batch([ctx.env.DB.prepare(`UPDATE users SET ${flag.column} = ? WHERE id = ?`).bind(on ? 1 : 0, id), bumpStmt(ctx.env, 'users')]);
     await auditCtx(ctx, 'user_updated', `${target.username}: ${flag.label} ${on ? 'on' : 'off'}`);
     return json({ ok: true });

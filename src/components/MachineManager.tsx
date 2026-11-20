@@ -34,7 +34,7 @@ const limitDefault = (k: (typeof LIMITS)[number], brand: MachineBrand) => (k ===
 /** Admin: the machines of this country (add, edit, remove, order on the floor). */
 export default function MachineManager() {
   const { t } = useT('machines');
-  const { machines, reloadMachines } = useSync();
+  const { machines, reloadMachines, features } = useSync();
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [busy, setBusy] = useState(false);
@@ -197,28 +197,30 @@ export default function MachineManager() {
                   {t('form.hasTools')}
                 </label>
               </div>
-              <fieldset className="md:col-span-3 space-y-2">
-                <legend className="section-label">{t('form.limits')}</legend>
-                <p className="text-xs text-[var(--text-tertiary)]">{t('form.limitsHint')}</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {LIMITS.map((k) => (
-                    <label key={k} className="space-y-1">
-                      <span className="text-xs text-[var(--text-secondary)] block">{t(`form.${k}`)}</span>
-                      <input
-                        className="aurora-input w-full text-xs"
-                        type="number"
-                        inputMode="decimal"
-                        min={LIMIT_RANGE[k][0]}
-                        max={LIMIT_RANGE[k][1]}
-                        step={k === 'toolChange' ? 0.1 : 1}
-                        value={form[k]}
-                        placeholder={String(limitDefault(k, form.brand))}
-                        onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              {features.camAi && (
+                <fieldset className="md:col-span-3 space-y-2">
+                  <legend className="section-label">{t('form.limits')}</legend>
+                  <p className="text-xs text-[var(--text-tertiary)]">{t('form.limitsHint')}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {LIMITS.map((k) => (
+                      <label key={k} className="space-y-1">
+                        <span className="text-xs text-[var(--text-secondary)] block">{t(`form.${k}`)}</span>
+                        <input
+                          className="aurora-input w-full text-xs"
+                          type="number"
+                          inputMode="decimal"
+                          min={LIMIT_RANGE[k][0]}
+                          max={LIMIT_RANGE[k][1]}
+                          step={k === 'toolChange' ? 0.1 : 1}
+                          value={form[k]}
+                          placeholder={String(limitDefault(k, form.brand))}
+                          onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <div className="md:col-span-3 flex justify-end gap-2">
                 <button type="button" onClick={() => setEditing(null)} className="btn-secondary text-xs py-2 px-4">
                   {t('common:actions.cancel')}

@@ -59,4 +59,15 @@ describe('toolpath beta access', () => {
     expect(await patch('u-ali', { camAi: true, toolpathBeta: true })).toBe(400);
     expect(await patch('u-ali', { camAi: true, role: 'ADMIN' })).toBe(400);
   });
+
+  it('CAM AI cannot be given while a master admin has it switched off for the country', async () => {
+    await DB.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify({ camAi: false })).run();
+    expect(await patch('u-ali', { camAi: true })).toBe(403);
+    expect(await cam()).toBe(0);
+    // The toolpath beta is its own switch.
+    expect(await patch('u-ali', { toolpathBeta: true })).toBe(200);
+    expect(await patch('u-ali', { toolpathBeta: false })).toBe(200);
+    await DB.prepare("DELETE FROM settings WHERE key = 'features'").run();
+    expect(await patch('u-ali', { camAi: true })).toBe(200);
+  });
 });

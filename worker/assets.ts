@@ -12,8 +12,9 @@ import { MASTER, REGIONS, type RegionId } from '../src/regions';
  *
  *   user      signed in to a country
  *   admin     a country admin
- *   toolpath  the toolpath viewer: an admin, or the toolpath beta or CAM AI, with the toolpath on in that country
- *   cam       CAM AI and the shop's cutting data: an admin or CAM AI, with the toolpath on in that country
+ *   toolpath  the toolpath viewer: an admin, the toolpath beta or CAM AI with the toolpath on in that
+ *             country, or an admin or CAM AI with CAM AI on there (CAM AI shows its programs in it)
+ *   cam       CAM AI and the shop's cutting data: an admin or CAM AI, with CAM AI on in that country
  *   master    a master admin
  *   any       signed in to a country or the master dashboard
  *
@@ -58,10 +59,13 @@ async function allowed(env: Env, request: Request, instance: Instance, tier: Tie
   const { user, setCookies } = session;
   if (instance === 'master' || tier === 'user' || tier === 'any') return { ok: true, setCookies };
   if (tier === 'admin') return { ok: user.role === 'ADMIN', setCookies };
-  const entitled = user.role === 'ADMIN' || !!user.camAi || (tier === 'toolpath' && !!user.toolpathBeta);
-  if (!entitled) return { ok: false, setCookies };
+  const admin = user.role === 'ADMIN';
+  const cam = admin || !!user.camAi;
+  if (!cam && !(tier === 'toolpath' && user.toolpathBeta)) return { ok: false, setCookies };
   const features = await readFeatures(env.DB, instance);
-  return { ok: features.toolpath, setCookies };
+  const camOk = features.camAi && cam;
+  if (tier === 'cam') return { ok: camOk, setCookies };
+  return { ok: camOk || (features.toolpath && (cam || !!user.toolpathBeta)), setCookies };
 }
 
 /**

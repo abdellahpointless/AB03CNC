@@ -384,6 +384,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
     { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
     { key: 'shiftChecks', label: t('features.shiftChecks'), hint: t('features.shiftChecksHint') },
     { key: 'toolpath', label: t('features.toolpath'), hint: t('features.toolpathHint') },
+    { key: 'camAi', label: t('features.camAi'), hint: t('features.camAiHint') },
   ];
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">
