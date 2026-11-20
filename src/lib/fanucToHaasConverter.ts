@@ -6,14 +6,17 @@
  * 2. Rule 3: Drop M98 P7999 lines entirely
  * 3. Rule 1: Replace security line (G0 G53 G49 Z0 G94 M95 -> G40 G17 G53 G49 G80 G90)
  * 4. Tool change detection & tracking (Txx M6)
- * 5. G43 line conversion (G43 H#513 D#513 M254 -> G00 G43 Hxx Z..)
+ * 5. G43 line conversion (G43 H#513 [D#513] [M254] -> G00 G43 Hxx Z..). Every G43 H#513 line,
+ *    with or without M254 (the remapper writes it without). A line with no Z gets the Z of the
+ *    rapid right after it, never an invented one.
  * 6. Feed rate decimal formatting (Fxxx -> Fxxx.)
  * 7. First N-line removal
  * 8. Auto-numbering (N100, N110, ...)
  * 9. Rule 2: Trailing Z decimal fix (Z50 -> Z50.)
  */
 
-import { applyG53BeforeG52 } from './gcodeProcessor';
+import { applyG53BeforeG52, codeOnly } from './gcodeProcessor';
+import { nextRapidZ } from './haasToFanucConverter';
 
 export interface FanucToHaasResult {
   haasCode: string;
@@ -67,11 +70,11 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
   }
 
   // Step 2: Per-line processing
-  lines.forEach(rawLine => {
+  lines.forEach((rawLine, index) => {
     let line = rawLine.trim();
 
     // Rule 3 (delete M98 P7999 lines) — do this first as an early skip/continue
-    if (/M98\s*P7999/i.test(line)) {
+    if (/M98\s*P7999/i.test(codeOnly(line))) {
       stats.m98LinesDeleted++;
       return; // line does not appear at all in output
     }
@@ -100,10 +103,11 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     }
 
     // Convert FANUC G43 line
-    if (/G43.*H#513.*D#513.*M254/i.test(line)) {
+    if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line))) {
       stats.g43Converted++;
-      const zMatch = line.match(/Z[-+]?\d+(\.\d+)?/i);
-      const zVal = zMatch ? zMatch[0] : 'Z0.';
+      const zMatch = codeOnly(line).match(/(?<![A-Z])Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
+      // No Z on the line: never "Z0." (a rapid down to the part top); the approach rapid after it.
+      const zVal = zMatch ? zMatch[0] : nextRapidZ(lines, index + 1);
       const hasCoolant = /\bM0?8\b/i.test(line.split('(')[0]);
 
       if (!toolAlreadyCalled && lastToolNumber) {
@@ -128,7 +132,7 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
         nNumber += 10;
       }
 
-      haasLines.push(`N${nNumber} G00 G43 H${lastToolNumber} ${zVal}`);
+      haasLines.push(`N${nNumber} G00 G43 H${lastToolNumber}${zVal ? ` ${zVal}` : ''}`);
       nNumber += 10;
 
       if (hasCoolant) {

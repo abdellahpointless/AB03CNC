@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isToolChangeLine, replaceInCode } from '../src/lib/gcodeProcessor';
+import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, replaceInCode } from '../src/lib/gcodeProcessor';
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
 import { defaultToolbox } from '../src/lib/defaultTools';
@@ -232,13 +232,78 @@ describe('helpers', () => {
   });
 });
 
+describe('HAAS -> FANUC switch (audit fixes)', () => {
+  const haasEnd = ['O1', 'N1 G40 G17 G53 G49 G80 G90', 'N2 T3 M6', 'N3 (SF_06.00_044_000_ALHS)', 'N4 G00 G43 H03 Z50. M08',
+    'N5 G01 Z-1. F100.', 'N6 G00 Z50.', 'N7 G0 G53 G49 Y0 Z0 M89', 'N8 ( Gesamt-Bearbeitungszeit =1MIN )', 'N9 M30'].join('\n');
+
+  it('drops M89, writes one Y0 move before M30, numbers N in steps of 1', () => {
+    const lines = convertHaasToFanuc(haasEnd, 'x.txt').fanucCode.split('\n');
+    expect(lines.some((l) => /M89/.test(l))).toBe(false);
+    expect(lines.filter((l) => /G53/.test(l) && /Y0/.test(l))).toHaveLength(1);
+    expect(lines.filter((l) => /M95/.test(l))).toHaveLength(1);
+    expect(lines.filter((l) => /^N\d/.test(l)).map((l) => Number(l.match(/^N(\d+)/)![1]))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('a bare end retract stays a retract (M95 only at the start)', () => {
+    const out = convertHaasToFanuc('O1\nN1 G40 G17 G53 G49 G80 G90\nN2 G53 G49 Z0\nN3 M30', 'x.txt').fanucCode;
+    expect(out).toMatch(/N1 G0 G53 G49 Z0\.? G94 M95/);
+    expect(out).toMatch(/N2 G0 G53 G49 Z0\.?$/m);
+  });
+
+  it('reads code only: a comment never deletes or rewrites its line', () => {
+    const out = convertHaasToFanuc('O1\nN1 G0 X0. (NOT M98 P7999)\nN2 (G40 G17 G53 G49 G80 G90)\nN3 M30', 'x.txt').fanucCode;
+    expect(out).toMatch(/G0 X0\. \(NOT M98 P7999\)/);
+    expect(out).toMatch(/\(G40 G17 G53 G49 G80 G90\)/);
+    expect(out).not.toMatch(/M95/);
+  });
+
+  it('a G43 line without Z takes the next rapid Z, never an invented one', () => {
+    const next = convertHaasToFanuc('O1\nT3 M6\nG00 G43 H03 M08\nG00 Z30.\nM30', 'x.txt').fanucCode;
+    expect(next).toMatch(/G00 G43 Z30\. H#513 D#513 M254 M08/);
+    const none = convertHaasToFanuc('O1\nT3 M6\nG00 G43 H03\nG01 Z-2. F100.\nM30', 'x.txt').fanucCode;
+    expect(none).toMatch(/G00 G43 H#513 D#513 M254$/m);
+    const back = convertFanucToHaas('O1\nT3 M6\nG00 G43 H#513 D#513 M254 M08\nM30', 'x.nc').haasCode;
+    expect(back).not.toMatch(/Z0\./);
+  });
+
+  it('FANUC -> HAAS converts the remapper\'s G43 H#513 lines without M254 too', () => {
+    const back = convertFanucToHaas('O1\nT3 M6\nG00 G43 H#513 D#513 Z32.7 M08 (AI-MOD: FANUC OFFSETS)\nM30', 'x.nc').haasCode;
+    expect(back).not.toMatch(/#513/);
+    expect(back).toMatch(/G00 G43 H03 Z32\.7/);
+  });
+
+  it('a HAAS remap turns FANUC offsets into the tool\'s own H', () => {
+    const { code } = remap('O1\nN16 T3 M6\nN17 (SB_04.00_045_000_ALHS)\nN18 G00 G43 Z50. H#513 D#513 M254 M08\nN19 M30', haas1, 'HAAS-1');
+    expect(code).not.toMatch(/#513|M254/);
+  });
+
+  it('G41 D follows the remapped tool on HAAS; FANUC drops M89', () => {
+    const src = 'O1\nN10 T7 M6\nN11 (SF_06.00_044_000_ALHS)\nN12 G00 G43 H07 Z50.\nN13 G01 G41 D7 X10. Y10. F500.\nN14 G40 X0.\nN15 G0 G53 G49 Y0 Z0 M89\nN16 M30';
+    const h = remap(src, haas1, 'HAAS-1');
+    const t = h.code.match(/T(\d+) M6/)![1];
+    expect(t).not.toBe('7');
+    expect(h.code).toMatch(new RegExp(`G41 D${t} X10`));
+    const f = remap(src, fanuc1, 'FANUC-1').code;
+    expect(f).not.toMatch(/M89/);
+    expect(f.split('\n').filter((l) => /G53/.test(l) && /Y0/.test(l))).toHaveLength(1);
+  });
+
+  it('knows which dialect a program is in', () => {
+    expect(isHaasDialectForFanuc('N1 G40 G17 G53 G49 G80 G90')).toBe(true);
+    expect(isHaasDialectForFanuc('N4 G00 G43 H03 Z50.')).toBe(true);
+    expect(isHaasDialectForFanuc('N4 G00 G43 Z50. H#513 D#513 M254 M08\nN1 G0 G53 G49 Z0 G94 M95')).toBe(false);
+    expect(isFanucDialect('N4 G00 G43 Z50. H#513 D#513 M254 M08')).toBe(true);
+    expect(isFanucDialect('N4 G00 G43 H03 Z50. (H#513 IN A COMMENT)')).toBe(false);
+  });
+});
+
 describe('dialect converters', () => {
   it('HAAS -> FANUC keeps X/Y/spindle words from the G43 line', () => {
     const src = 'O2345\nG40 G17 G53 G49 G80 G90\nT06 M6\nN100 G00 G43 H06 Z50. X10. Y20. S3500 M03\nN110 M08\nN120 G01 Z-10.\nN130 M30';
     const { fanucCode } = convertHaasToFanuc(src, 'x.txt');
     const lines = fanucCode.split('\n');
     const g43 = lines.findIndex((l) => l.includes('G43'));
-    expect(lines[g43]).toMatch(/G43 H#513 D#513 M254 Z50\. M08$/);
+    expect(lines[g43]).toMatch(/G00 G43 Z50\. H#513 D#513 M254 M08$/);
     expect(lines[g43 - 1]).toMatch(/G0 X10\. Y20\. S3500 M03$/);
     expect(fanucCode.startsWith('%\n')).toBe(true);
     expect(fanucCode.endsWith('\n%')).toBe(true);

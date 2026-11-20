@@ -31,7 +31,11 @@ const remapper = {
     installFailed:
       'The new tools could not be saved to the {{machine}} inventory:\n{{error}}\n\nCheck the connection and press "Approve & Install" again.',
     fanucOffsetsAdded:
-      "Attention: After tool changes on FANUC machine, 'H#513 D#513' were missing. They have been automatically added to the G-code.",
+      "Attention: some tools of this FANUC program had no G43 line. 'H#513 D#513' was added after their tool change, but without G43 the length offset is not switched on: check those tools before running the program.",
+    haasForFanuc:
+      'This program is still in HAAS format (HAAS safety line or G43 without M254). Press "HAAS → FANUC" first, then "Analyze & Remap".',
+    fanucForHaas:
+      'This program is in FANUC format (H#513, M254 or M95). Press "FANUC → HAAS" first, then "Analyze & Remap".',
   },
   /** Labels shared by several cards. */
   fields: {
@@ -252,6 +256,7 @@ const remapper = {
       noWorkOffset: 'Work offset (G54…) selected',
       toolTooShort: 'Tools long enough for the depth',
       noProgramEnd: 'Program ends with M30',
+      tooBig: 'Program fits the FANUC memory',
     },
     msg: {
       noOffset: '{{t}} cuts with no length offset (G43) active',
@@ -261,6 +266,7 @@ const remapper = {
       noWorkOffset: 'The machine moves before a work offset (G54…) is selected',
       noProgramEnd: 'The program has no end (M30)',
       toolTooShort: '{{t}} sticks out {{length}} mm but the cut goes {{depth}} mm deep',
+      tooBig: 'The program is {{kb}} KB: more than the {{limit}} KB program memory of a standard Robodrill. Run it from a memory card or the Data Server, or check the machine has more memory.',
     },
   },
   /** CAM AI tab: the program written from the part's 3D model. */

@@ -56,4 +56,10 @@ describe('program safety check', () => {
     const r = checkProgram(p, { fanuc: false });
     expect(r.findings.map((f) => f.code)).toEqual(['noOffset']);
   });
+
+  it('warns when a FANUC program is bigger than the machine memory', () => {
+    const big = `%\nO1\n${'G01 X1. Y1.\n'.repeat(60_000)}M30\n%`;
+    expect(codes(checkProgram(big, { fanuc: true, memoryKb: 512 }))).toContain('warning:tooBig@');
+    expect(checkProgram(big, { fanuc: false }).ran).not.toContain('tooBig');
+  });
 });

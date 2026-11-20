@@ -58,7 +58,7 @@ describe('FANUC programs keep every decimal point', () => {
     const src = 'O1\nT6 M6\n(SB_04.00_050_000_ALHS)\nG00 G43 H6 Z50.\nS3500 M03\nG01 Z-5. F100.\nG00 Z50.\nM30';
     const out = convertHaasToFanuc(src).fanucCode;
     expect(out).toMatch(/G01 Z-5\. F100\./);
-    expect(out).toMatch(/M254 Z50\./);
+    expect(out).toMatch(/G00 G43 Z50\. H#513 D#513 M254/);
   });
 
   it('adds a dot to whole-number X/Y/Z only, never to other words or a value that has one', () => {

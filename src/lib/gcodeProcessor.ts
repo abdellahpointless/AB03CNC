@@ -650,7 +650,8 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
           // Ignore lines that are comments
           if (outputLines[j] !== '__REMOVE_ME__' && !isPureCommentLine(outputLines[j])) {
             const codePart = codeOnly(outputLines[j]);
-            if (machineId === 'FANUC-2' && /(?<![A-Z])H#513/i.test(codePart)) {
+            // FANUC offsets (H#513 D#513 M254) on a HAAS-style machine: the plain tool offset.
+            if (/(?<![A-Z])H#513/i.test(codePart)) {
               const l = replaceInCode(outputLines[j], /(?<![A-Z])H#513(?:\s+D#513)?/i, `H${toolToUse.number}`);
               outputLines[j] = replaceInCode(l, /\s*(?<![A-Z0-9])M254(?![0-9.])/i, '') + ` (AI-MOD: OFFSET H${toolToUse.number})`;
               break;
@@ -659,6 +660,17 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
               outputLines[j] = replaceInCode(outputLines[j], /(?<![A-Z])H\d+/i, `H${toolToUse.number}`) + ` (AI-MOD: OFFSET H${toolToUse.number})`;
               break; 
             }
+          }
+        }
+        // Cutter compensation follows the tool too: "G41 D7" of the old T7 becomes D<new tool>.
+        // A D that is not the old tool's number was chosen on purpose and stays.
+        const oldT = block.originalT?.match(/\d+/)?.[0];
+        if (oldT && Number(oldT) !== Number(toolToUse.number)) {
+          const dOld = new RegExp(`(?<![A-Z])D0*${Number(oldT)}(?![0-9.])`, 'i');
+          for (let j = block.lineIndex + 1; j < nextBlockIndex; j++) {
+            const l = outputLines[j];
+            if (l === '__REMOVE_ME__' || !/(?<![A-Z])G4[12](?![0-9])/i.test(codeOnly(l)) || !dOld.test(codeOnly(l))) continue;
+            outputLines[j] = replaceInCode(l, dOld, `D${toolToUse.number}`) + ` (AI-MOD: D${toolToUse.number})`;
           }
         }
       }
@@ -706,16 +718,26 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     );
   }
 
-  // In FANUC, if the app detects M98 P7999 then it should be deleted
+  // In FANUC, if the app detects M98 P7999 then it should be deleted (code only, never a comment)
   const isFanuc = machineId !== 'FANUC-2' && ((machineId && machineId.toUpperCase().includes('FANUC')) ||
-                  outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(l)));
+                  outputLines.some(l => l !== '__REMOVE_ME__' && /H#513|M95|M254/i.test(codeOnly(l))));
   if (isFanuc) {
     outputLines = outputLines.map(l => {
       if (l === '__REMOVE_ME__') return l;
-      if (/M98\s*P7999/i.test(l)) {
+      if (/M98\s*P7999/i.test(codeOnly(l))) {
         return '__REMOVE_ME__';
       }
       return l;
+    });
+  }
+
+  // FANUC machines that take the FANUC dialect: the HAAS-only M89 (through-spindle coolant off)
+  // is a Robodrill external output, so it is removed (FANUC-2 runs HAAS code and keeps it).
+  if (machineId && machineId.toUpperCase().startsWith('FANUC') && machineId !== 'FANUC-2') {
+    outputLines = outputLines.map((l) => {
+      if (l === '__REMOVE_ME__' || !/(?<![A-Z0-9])M89(?![0-9.])/i.test(codeOnly(l))) return l;
+      const rest = replaceInCode(l, /\s*(?<![A-Z0-9])M89(?![0-9.])/gi, '');
+      return bareCode(rest) === '' && !/\(/.test(rest) ? '__REMOVE_ME__' : rest;
     });
   }
 
@@ -765,6 +787,9 @@ interface Entry { text: string; inserted: boolean }
 const isRemoved = (l: string) => l === REMOVED_LINE;
 const hasG53Y0 = (l: string) => !isRemoved(l) && G53_Y0_RE.test(codeOnly(l));
 const hasG52 = (l: string) => !isRemoved(l) && G52_RE.test(codeOnly(l));
+/** A G53 line that moves Y to 0 among other words ("G0 G53 G49 Y0 Z0"). */
+const hasG53WithY0 = (l: string) =>
+  !isRemoved(l) && /(?<![A-Z_])G53(?![0-9])/i.test(codeOnly(l)) && /(?<![A-Z])Y\s*0(?:\.0*)?(?![0-9.])/i.test(codeOnly(l));
 /** A G52 that moves the work offset (part flip / new face). "G52 X0 Y0 Z0" only cancels it. */
 const isG52Shift = (l: string) => {
   if (!hasG52(l)) return false;
@@ -924,7 +949,8 @@ export function applyG53BeforeG52(lines: string[]): { lines: string[]; addedCoun
   if (end !== -1 && !hasG53Y0(lines[end])) {
     let present = false;
     for (let k = end - 1; k >= 0; k--) {
-      if (hasG53Y0(lines[k])) { present = true; break; }
+      // "G0 G53 G49 Y0 Z0" (the HAAS end line) already brings the table out: no second Y0 move.
+      if (hasG53Y0(lines[k]) || hasG53WithY0(lines[k])) { present = true; break; }
       if (isMotionLine(lines[k]) || (!isRemoved(lines[k]) && isToolChangeLine(lines[k]))) break;
     }
     if (!present && !positions.includes(end)) positions.push(end);
@@ -944,5 +970,22 @@ export function addG49AfterM6(lines: string[]): string[] {
     if (l === '__REMOVE_ME__' || !isToolChangeLine(l)) return l;
     if (/(?<![A-Z])G49(?![0-9])/i.test(codeOnly(l))) return l;
     return replaceInCode(l, /(?<![A-Z])(M0*6)(?![0-9.])/i, '$1 G49');
+  });
+}
+
+/** A program written in the FANUC dialect (H#513, M254 or the "G94 M95" safety line), code only. */
+export function isFanucDialect(code: string): boolean {
+  return code.split('\n').some((l) => /(?<![A-Z])H#513|(?<![A-Z0-9])M254(?![0-9])|G94\s+M95(?![0-9])/i.test(codeOnly(l)));
+}
+
+/**
+ * A program still in the HAAS dialect for a FANUC that takes the FANUC dialect: the HAAS safety
+ * line "G40 G17 G53 G49 G80 G90", or a G43 line with a plain H number and no M254.
+ */
+export function isHaasDialectForFanuc(code: string): boolean {
+  return code.split('\n').some((l) => {
+    const c = codeOnly(l);
+    if (/G40/i.test(c) && /G17/i.test(c) && /G53/i.test(c) && /G49/i.test(c) && /G80/i.test(c) && /G90/i.test(c)) return true;
+    return /(?<![A-Z])G0*43(?![0-9.])/i.test(c) && /(?<![A-Z])H\d/i.test(c) && !/(?<![A-Z0-9])M254(?![0-9])/i.test(c);
   });
 }

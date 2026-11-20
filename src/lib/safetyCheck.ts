@@ -18,7 +18,8 @@ export type SafetyCode =
   | 'noFeed' // first cutting move with no feed rate ever set
   | 'noWorkOffset' // moving before any work offset (G54...) was selected
   | 'noProgramEnd' // no M30 / M2 / M99
-  | 'toolTooShort'; // tool sticks out less than the deepest cut
+  | 'toolTooShort' // tool sticks out less than the deepest cut
+  | 'tooBig'; // FANUC: the program is larger than the machine's program memory
 
 export interface SafetyFinding {
   level: SafetyLevel;
@@ -29,7 +30,7 @@ export interface SafetyFinding {
 }
 
 /** The checks that ran, so the panel can list passed ones too. */
-export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd'];
+export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd', 'tooBig'];
 
 export interface SafetyReport {
   findings: SafetyFinding[];
@@ -37,6 +38,8 @@ export interface SafetyReport {
   warnings: number;
   /** Check codes that found nothing. */
   passed: Exclude<SafetyCode, 'offsetMismatch'>[];
+  /** The checks that ran (the memory check only runs for a FANUC). */
+  ran: Exclude<SafetyCode, 'offsetMismatch'>[];
 }
 
 export interface ToolDepthCheck {
@@ -72,7 +75,14 @@ function words(line: string): Words {
 const num = (v: string | undefined) => (v === undefined || v.startsWith('#') ? NaN : Number(v));
 const nLabel = (line: string) => line.match(/^\s*N(\d+)/i)?.[1];
 
-export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: ToolDepthCheck[] }): SafetyReport {
+/** Program memory of a standard Robodrill (α-DiB5: 512 KB; options go up to 8 MB). */
+export const FANUC_MEMORY_KB = 512;
+
+/**
+ * `memoryKb`: the machine's program memory; the program must fit in it (FANUC only, a HAAS
+ * runs big programs from its drive).
+ */
+export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: ToolDepthCheck[]; memoryKb?: number }): SafetyReport {
   const lines = code.split('\n');
   const findings: SafetyFinding[] = [];
   const add = (level: SafetyLevel, codeName: SafetyCode, line: number | null, params: Record<string, string | number> = {}) => {
@@ -166,6 +176,9 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: 
   });
 
   if (!hasEnd) add('warning', 'noProgramEnd', null);
+  // A FANUC stores characters (no line ends): too big and it refuses to load it.
+  const stored = code.replace(/\r?\n/g, '').length;
+  if (opts.memoryKb && stored > opts.memoryKb * 1024) add('warning', 'tooBig', null, { kb: Math.ceil(stored / 1024), limit: opts.memoryKb });
   for (const d of opts.toolDepths ?? []) {
     if (d.length > 0 && d.length < d.depth) add('error', 'toolTooShort', null, { t: `T${d.tool}`, length: d.length, depth: d.depth });
   }
@@ -173,5 +186,6 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: 
   findings.sort((a, b) => (a.level === b.level ? (a.line ?? 1e9) - (b.line ?? 1e9) : a.level === 'error' ? -1 : 1));
   const errors = findings.filter((f) => f.level === 'error').length;
   const found = new Set<SafetyCode>(findings.map((f) => (f.code === 'offsetMismatch' ? 'noOffset' : f.code)));
-  return { findings, errors, warnings: findings.length - errors, passed: SAFETY_CHECKS.filter((c) => !found.has(c)) };
+  const ran = SAFETY_CHECKS.filter((c) => c !== 'tooBig' || !!opts.memoryKb);
+  return { findings, errors, warnings: findings.length - errors, passed: ran.filter((c) => !found.has(c)), ran };
 }

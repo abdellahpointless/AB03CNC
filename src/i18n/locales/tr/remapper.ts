@@ -32,7 +32,11 @@ const remapper: Translation<typeof en> = {
     installFailed:
       'Yeni takımlar {{machine}} takım listesine kaydedilemedi:\n{{error}}\n\nBağlantıyı kontrol edin ve "Onayla ve Yükle" düğmesine tekrar basın.',
     fanucOffsetsAdded:
-      "Dikkat: FANUC tezgahta takım değişimlerinden sonra 'H#513 D#513' eksikti. Bunlar G-koduna otomatik olarak eklendi.",
+      "Dikkat: bu FANUC programındaki bazı takımların G43 satırı yoktu. Takım değişiminden sonra 'H#513 D#513' eklendi, ancak G43 olmadan boy ofseti devreye girmez: programı çalıştırmadan önce bu takımları kontrol edin.",
+    haasForFanuc:
+      'Bu program hâlâ HAAS biçiminde (HAAS güvenlik satırı veya M254 olmadan G43). Önce "HAAS → FANUC" düğmesine, sonra "Analiz Et ve Eşleştir" düğmesine basın.',
+    fanucForHaas:
+      'Bu program FANUC biçiminde (H#513, M254 veya M95). Önce "FANUC → HAAS" düğmesine, sonra "Analiz Et ve Eşleştir" düğmesine basın.',
   },
   fields: {
     category: 'Kategori',
@@ -243,6 +247,7 @@ const remapper: Translation<typeof en> = {
       noWorkOffset: 'İş parçası sıfırı (G54…) seçilmiş',
       toolTooShort: 'Takımlar derinlik için yeterince uzun',
       noProgramEnd: 'Program M30 ile bitiyor',
+      tooBig: 'Program FANUC belleğine sığıyor',
     },
     msg: {
       noOffset: '{{t}} boy ofseti (G43) olmadan kesiyor',
@@ -252,6 +257,7 @@ const remapper: Translation<typeof en> = {
       noWorkOffset: 'Tezgah, iş parçası sıfırı (G54…) seçilmeden hareket ediyor',
       noProgramEnd: 'Programın sonu (M30) yok',
       toolTooShort: '{{t}} {{length}} mm dışarıda ama kesme {{depth}} mm derine iniyor',
+      tooBig: 'Program {{kb}} KB: standart bir Robodrill’in {{limit}} KB program belleğinden büyük. Hafıza kartından veya Data Server’dan çalıştırın ya da tezgahın daha fazla belleği olduğunu kontrol edin.',
     },
   },
   camAi: {

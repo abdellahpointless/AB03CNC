@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock, Box } from 'lucide-react';
-import { SAFETY_CHECKS, type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
+import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock, Box, HardDrive } from 'lucide-react';
+import { type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
 const ToolpathSoon = lazy(() => import('./ToolpathSoon'));
@@ -83,6 +83,7 @@ const CHECK_SYMBOL: Record<SafetyCode, { icon: React.ComponentType<{ size?: numb
   noWorkOffset: { icon: Crosshair, code: 'G54' },
   toolTooShort: { icon: MoveVertical, code: 'L' },
   noProgramEnd: { icon: Flag, code: 'M30' },
+  tooBig: { icon: HardDrive, code: 'KB' },
 };
 const LEVEL_COLOR = { error: 'var(--rose-500)', warning: 'var(--orange-500)', ok: 'var(--green-500)' } as const;
 
@@ -122,7 +123,7 @@ function SafetyPanel({
         ) : (
           <ShieldAlert size={16} style={{ color: report.errors ? LEVEL_COLOR.error : LEVEL_COLOR.warning }} className="shrink-0" aria-label={t('safety.title')} />
         )}
-        {SAFETY_CHECKS.map((c) => {
+        {report.ran.map((c) => {
           const { level, line } = statusOf(c);
           const { icon: Icon, code } = CHECK_SYMBOL[c];
           const color = LEVEL_COLOR[level];
@@ -144,7 +145,7 @@ function SafetyPanel({
             </button>
           );
         })}
-        {clean && <span className="text-xs text-[var(--green-500)] font-semibold ml-1 truncate">{t('safety.allClear', { count: SAFETY_CHECKS.length })}</span>}
+        {clean && <span className="text-xs text-[var(--green-500)] font-semibold ml-1 truncate">{t('safety.allClear', { count: report.ran.length })}</span>}
         {!clean && !confirming && (
           <button
             type="button"

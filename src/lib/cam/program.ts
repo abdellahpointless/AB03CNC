@@ -1469,10 +1469,14 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
     'G54',
   ];
   for (const s of setups) {
-    // G53 Y0 brings the table to the operator before a flip; the first clamping needs none.
-    if (s !== setups[0]) out.push('G53 Y0');
-    out.push(...s.notes.map((n) => `M0 (${n})`), `G52 X${n3(s.shift[0])} Y${n3(s.shift[1])} Z${n3(s.shift[2])}`);
-    for (const op of s.ops) {
+    const first = s === setups[0];
+    const clamp = [...s.notes.map((n) => `M0 (${n})`), `G52 X${n3(s.shift[0])} Y${n3(s.shift[1])} Z${n3(s.shift[2])}`];
+    // The first clamping: before anything moves. A flip: after the next tool change (it stops the
+    // spindle and the coolant, as in the shop's programs), with G53 Y0 bringing the table out.
+    // A setup without operations has no tool change to wait for: spindle and coolant off first.
+    if (first) out.push(...clamp);
+    else if (!s.ops.length) out.push('M05', 'M09', 'G53 Y0', ...clamp);
+    s.ops.forEach((op, k) => {
       const t = op.tool;
       out.push(
         'M09',
@@ -1480,12 +1484,13 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         `T${t.number} M6`,
         `(${toolComment(t)})`,
         `(DIAMETER ${t.diameter.toFixed(2)} MM/LENGTH ${(t.length || 0).toFixed(2)} MM)`,
+        ...(!first && k === 0 ? ['G53 Y0', ...clamp] : []),
         'M01 (CHECK TOOL)',
         `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[t.edit?.coolant ?? 'flood']}`,
         ...op.lines,
         `G00 Z${SAFE}.`,
       );
-    }
+    });
   }
   out.push('M09', 'G53 Y0', 'M30');
   return ['%', `O${String(input.number ?? 1).padStart(4, '0')}`, ...out.map((l, i) => `N${i + 1} ${l}`), '%'].join('\n');

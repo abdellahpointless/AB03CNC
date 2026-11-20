@@ -2,8 +2,10 @@
  * HAAS to FANUC G-Code Converter
  * 
  * Reverses the FANUC-to-HAAS dialect transformation rules to generate compliant FANUC G-Code:
- * 1. Security line conversion: (G40 G17 G53 G49 G80 G90 -> G0 G53 G49 Z0 G94 M95)
- * 2. G43 line conversion: (G00 G43 Hxx Z.. -> G43 H#513 D#513 M254 Z.. [M08])
+ * 1. Security line conversion: (G40 G17 G53 G49 G80 G90 -> G0 G53 G49 Z0 G94 M95). A bare end
+ *    retract "G53 G49 Z0" becomes "G0 G53 G49 Z0" (M95 only once, at the start).
+ * 2. G43 line conversion: (G00 G43 Hxx Z.. -> G00 G43 Z.. H#513 D#513 M254 [M08], the shop's order).
+ *    A G43 line without Z takes the Z of the rapid right after it, never an invented one.
  * 3. Coolant consolidation: Merges standalone M08 into the G43 line
  * 4. M98 P7999 detection & removal (strictly deleted in FANUC)
  * 5. Decimal points: never removed; whole-number X/Y/Z get one (Z50 -> Z50.), FANUC reads them
@@ -11,9 +13,13 @@
  * 7. G53 Y0 check: Only apply G53 Y0 when G52 is present in the code, placed right before G52
  * 8. Program wrapping: Ensures leading % and trailing % standard for FANUC controls
  * 9. O-Code preservation / formatting
+ * 10. N numbers in steps of 1 (N1, N2...), as the shop's FANUC programs: steps of 10 reached 6
+ *     digits in big programs.
+ * 11. HAAS-only M89 (through-spindle coolant off) is removed: on a Robodrill it is an external output.
+ * Every rule reads the code only, never the text of a (comment).
  */
 
-import { addCoordinateDots, applyG53BeforeG52 } from './gcodeProcessor';
+import { addCoordinateDots, applyG53BeforeG52, codeOnly, replaceInCode } from './gcodeProcessor';
 
 export interface HaasToFanucResult {
   fanucCode: string;
@@ -34,7 +40,7 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
   const rawLines = haasCode.split('\n');
   const fanucLines: string[] = [];
   let fanucFilename = defaultFilename.replace(/\.[^/.]+$/, '') + '.nc';
-  let nNumber = 10;
+  let nNumber = 1;
 
   const stats = {
     oCodeFormatted: false,
@@ -76,8 +82,15 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
       continue;
     }
 
+    // HAAS through-spindle coolant off: not a FANUC code (a Robodrill external output).
+    if (/(?<![A-Z0-9])M89(?![0-9.])/i.test(codeOnly(line))) {
+      line = replaceInCode(line, /\s*(?<![A-Z0-9])M89(?![0-9.])/gi, '').trim();
+      if (!line.replace(/^N\d+/i, '').trim()) continue;
+    }
+    const code = codeOnly(line).trim();
+
     // Rule: In FANUC if the app detects M98 P7999 then it should be deleted
-    if (/M98\s*P7999/i.test(line)) {
+    if (/M98\s*P7999/i.test(code)) {
       stats.m98LinesDeleted++;
       continue; // Delete this line
     }
@@ -85,32 +98,34 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     // Rule: Security line replacement (HAAS -> FANUC)
     // Matches HAAS security lines like: G40 G17 G53 G49 G80 G90 or G00 G40 G17 G53 G49 G80 G90
     const isHaasSecurityLine = 
-      /^(N\d+\s+)?(?:G0?0\s+)?G40\s+G17\s+G53\s+G49\s+G80\s+G90/i.test(line) ||
-      (/G40/i.test(line) && /G17/i.test(line) && /G53/i.test(line) && /G49/i.test(line) && /G80/i.test(line) && /G90/i.test(line));
+      /^(N\d+\s+)?(?:G0?0\s+)?G40\s+G17\s+G53\s+G49\s+G80\s+G90/i.test(code) ||
+      (/G40/i.test(code) && /G17/i.test(code) && /G53/i.test(code) && /G49/i.test(code) && /G80/i.test(code) && /G90/i.test(code));
 
     // Also check for end-of-program retract like: G53 G49 Z0 or G00 G53 G49 Z0. before M30
-    const isHaasRetractSecurity = /^(N\d+\s+)?(?:G0?0\s+)?G53\s+G49\s+Z0(?:\.0*)?$/i.test(line);
+    const isHaasRetractSecurity = /^(N\d+\s+)?(?:G0?0\s+)?G53\s+G49\s+Z0(?:\.0*)?$/i.test(code);
 
     if (isHaasSecurityLine || isHaasRetractSecurity) {
       stats.securityLinesReplaced++;
-      line = `N${nNumber} G0 G53 G49 Z0 G94 M95`;
-      nNumber += 10;
+      // M95 belongs to the start of the program only; a retract elsewhere stays a plain retract.
+      line = isHaasSecurityLine ? `N${nNumber} G0 G53 G49 Z0 G94 M95` : `N${nNumber} G0 G53 G49 Z0`;
+      nNumber += 1;
       fanucLines.push(line);
       continue;
     }
 
     // Rule: G43 Height/Diameter offset conversion (HAAS -> FANUC)
     // HAAS: [N...] [G00] G43 H<num> Z<val> [M08]
-    if (/\bG43\b.*H\d+/i.test(line)) {
+    if (/\bG43\b.*H\d+/i.test(code)) {
       stats.g43Converted++;
-      const zMatch = line.match(/Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
-      const zVal = zMatch ? zMatch[0] : 'Z50.';
+      const zMatch = code.match(/Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
+      // No Z on the line: the Z of the rapid right after it (the approach), never an invented one.
+      const zVal = zMatch ? zMatch[0] : nextRapidZ(filteredInput, i + 1);
 
-      let hasCoolant = /\bM0?8\b/i.test(line);
+      let hasCoolant = /\bM0?8\b/i.test(code);
 
       // Check if the next non-empty line is a standalone M08
       if (!hasCoolant && i + 1 < filteredInput.length) {
-        const nextTrimmed = filteredInput[i + 1].trim();
+        const nextTrimmed = codeOnly(filteredInput[i + 1]).trim();
         if (/^(N\d+\s+)?M0?8$/i.test(nextTrimmed)) {
           hasCoolant = true;
           stats.coolantMerged++;
@@ -120,7 +135,7 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
 
       // Keep any other words of the HAAS block (X/Y position, spindle S/M3, feed...) on their own
       // block just before the G43 line, so no motion or spindle command is silently lost.
-      const codePart = line.replace(/\([^)]*\)?/g, ' ');
+      const codePart = code;
       const otherWords = codePart
         .replace(/^\s*N\d+/i, ' ')
         .replace(/\bG0?0\b|\bG43\b|\bH\d+\b|\bZ[-+]?\d*\.?\d*|\bM0?8\b/gi, ' ')
@@ -132,12 +147,13 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
         const hasMotionCode = otherWords.some(w => /^G0?[0-3]$/i.test(w));
         const needsRapid = hadRapid && !hasMotionCode && otherWords.some(w => /^[XY]/i.test(w));
         fanucLines.push(`N${nNumber} ${needsRapid ? 'G0 ' : ''}${otherWords.join(' ')}`);
-        nNumber += 10;
+        nNumber += 1;
       }
 
       const coolantSuffix = hasCoolant ? ' M08' : '';
-      line = `N${nNumber} G43 H#513 D#513 M254 ${zVal}${coolantSuffix}`;
-      nNumber += 10;
+      // G00 kept: the approach is a rapid even when the program is restarted at this tool.
+      line = `N${nNumber} G00 G43${zVal ? ` ${zVal}` : ''} H#513 D#513 M254${coolantSuffix}`;
+      nNumber += 1;
       fanucLines.push(line);
       continue;
     }
@@ -146,7 +162,7 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     if (/^N\d+\s+/i.test(line)) {
       const withoutN = line.replace(/^N\d+\s+/i, '');
       line = `N${nNumber} ${withoutN}`;
-      nNumber += 10;
+      nNumber += 1;
     }
 
     fanucLines.push(line);
@@ -193,4 +209,21 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     fanucFilename,
     stats
   };
+}
+
+/**
+ * The Z of the approach rapid right after a G43 line that has none ("G00 Z50." on the next code
+ * line), or '' when the next code line is not such a move.
+ */
+export function nextRapidZ(lines: string[], from: number): string {
+  for (let k = from; k < lines.length; k++) {
+    const code = codeOnly(lines[k]).replace(/^\s*N\d+/i, '').trim();
+    if (!code) continue;
+    const z = code.match(/(?<![A-Z])Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
+    const feedMove = /(?<![A-Z])G0*[123](?![0-9])|(?<![A-Z])G[89]\d(?![0-9])|(?<![A-Z])G7[346](?![0-9])/i.test(code);
+    // Only a Z-only rapid: the G43 line then makes exactly that move.
+    const rapid = /(?<![A-Z])G0*0(?![0-9])/i.test(code) && !/(?<![A-Z])[XY]\s*[-+.\d]/i.test(code);
+    return z && rapid && !feedMove ? z[0] : '';
+  }
+  return '';
 }

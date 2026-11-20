@@ -24,6 +24,13 @@ describe('CAM AI', () => {
     const lines = r.code.split('\n');
     expect(lines.slice(0, lines.findIndex((l) => /G52/.test(l))).some((l) => /G53 Y0/.test(l))).toBe(false);
     expect(lines.filter((l) => /G53 Y0/.test(l))).toHaveLength(r.setups.length);
+    // A flip comes after the next tool change (which stops the spindle and the coolant), never with the spindle on.
+    lines.forEach((l, i) => {
+      if (!/G53 Y0/.test(l) || /M30/.test(lines[i + 1] ?? '')) return;
+      let k = i - 1;
+      while (/^N\d+ \(/.test(lines[k])) k--;
+      expect(lines[k]).toMatch(/T\d+ M6$/);
+    });
     // Only the shop's template tools, or the machine's own special tools (its Ø10 and Ø4 × 25).
     for (const s of r.setups) for (const o of s.ops) expect(ALU_CODES.has(o.tool.code) || (o.tool.inMachine && [2, 3].includes(o.tool.number))).toBe(true);
     // Never over the machine's top rpm.

@@ -4,9 +4,9 @@ import { MachineId, ToolChangeBlock, Tool, TOOL_CATEGORIES, ToolCategory, Histor
 import { engineMachineId, maxPocketsFor } from '../regions';
 import { currentRegion } from '../lib/instance';
 import CodeEditorPair from './CodeEditorPair';
-import { analyzeGCode, generateRemappedCode, applyG53BeforeG52 } from '../lib/gcodeProcessor';
+import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
 import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
-import { checkProgram } from '../lib/safetyCheck';
+import { checkProgram, FANUC_MEMORY_KB } from '../lib/safetyCheck';
 import { api } from '../lib/api';
 
 /** A program comment as shown to the operator (in English where the country reads no French). */
@@ -203,6 +203,16 @@ N190 M30`;
 
   const handleProcess = () => {
     let currentSource = sourceCode;
+    // The dialect must match the machine: the switch buttons convert it, Process never does.
+    const fanucDialectMachine = engineId.toUpperCase().startsWith('FANUC') && engineId !== 'FANUC-2';
+    if (fanucDialectMachine && isHaasDialectForFanuc(currentSource)) {
+      alert(t('alerts.haasForFanuc'));
+      return;
+    }
+    if (!engineId.toUpperCase().includes('FANUC') && isFanucDialect(currentSource)) {
+      alert(t('alerts.fanucForHaas'));
+      return;
+    }
     if (currentSource.trim()) {
       const { lines: processedLines, addedCount } = applyG53BeforeG52(currentSource.split('\n'));
       if (addedCount > 0) {
@@ -333,7 +343,9 @@ N190 M30`;
       .map((b) => ({ tool: b, used: resolutions[b.blockId] || b.matchedTool }))
       .filter((x) => x.used)
       .map(({ tool: b, used }) => ({ tool: used!.number, length: used!.length, depth: Math.abs(b.minZDepth || 0) }));
-    return checkProgram(outputCode, { fanuc: engineId !== 'FANUC-2' && (isFanucMachine || engineId.startsWith('FANUC')), toolDepths });
+    const fanucBrand = isFanucMachine || engineId.toUpperCase().startsWith('FANUC');
+    // shortcut: every FANUC is taken as a standard 512 KB Robodrill; a per-machine memory setting once the machines are known.
+    return checkProgram(outputCode, { fanuc: engineId !== 'FANUC-2' && fanucBrand, toolDepths, memoryKb: fanucBrand ? FANUC_MEMORY_KB : undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outputCode]);
 
