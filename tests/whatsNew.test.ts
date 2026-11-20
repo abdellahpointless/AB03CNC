@@ -11,6 +11,9 @@ describe("what's new", () => {
     expect(tr).toEqual(['2026-11-02-news']);
     // Once a master admin unlocks the toolpath for Türkiye, its entry shows there too.
     expect(releasesFor('tr', { ...regionById('tr')!.features, toolpath: true }).map((r) => r.id)).toContain('2026-11-02-toolpath');
+    // CAM AI's news comes with CAM AI's own switch, not with the toolpath.
+    expect(releasesFor('tr', { ...regionById('tr')!.features, toolpath: true }).map((r) => r.id)).not.toContain('2026-11-06-cam-ai');
+    expect(releasesFor('tr', { ...regionById('tr')!.features, camAi: true }).map((r) => r.id)).toContain('2026-11-06-cam-ai');
   });
 
   it('has unique ids, newest first, and every entry in both languages', () => {

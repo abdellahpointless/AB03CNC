@@ -45,7 +45,7 @@ function useLog() {
 
 export default function DataManagement() {
   const { t } = useT('data');
-  const { refreshNow } = useSync();
+  const { refreshNow, features } = useSync();
   const [busy, setBusy] = useState<string | null>(null);
 
   // Backup / restore
@@ -246,11 +246,16 @@ export default function DataManagement() {
             {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
             <span>{t('lessons.download')}</span>
           </button>
-          <button onClick={() => turnsRef.current?.click()} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4" title={t('lessons.turnsHelp')}>
-            {busy === 'turns' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}
-            <span>{t('lessons.turnsImport')}</span>
-          </button>
-          <input ref={turnsRef} type="file" accept=".json,application/json" hidden onChange={importTurns} />
+          {/* The server takes learned turns only where the toolpath or CAM AI is on. */}
+          {(features.toolpath || features.camAi) && (
+            <>
+              <button onClick={() => turnsRef.current?.click()} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4" title={t('lessons.turnsHelp')}>
+                {busy === 'turns' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+                <span>{t('lessons.turnsImport')}</span>
+              </button>
+              <input ref={turnsRef} type="file" accept=".json,application/json" hidden onChange={importTurns} />
+            </>
+          )}
         </div>
         <LogView lines={lessonsLog.lines} />
       </div>

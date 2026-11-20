@@ -2,6 +2,8 @@ import { HttpError, intParam, json, num, readJson, str } from '../http';
 import type { Ctx } from '../context';
 import { consumeQuota } from '../security';
 import { ensureSchema } from '../schema';
+import { readFeatures } from '../features';
+import { regionById } from '../../src/regions';
 
 /*
  * Learning records (see src/lib/lessons.ts), saved by anyone who may use the toolpath and
@@ -17,11 +19,22 @@ type Kind = (typeof KINDS)[number];
 const MAX_BYTES: Record<Kind, number> = { turns: 256 * 1024, part: 1_900_000 };
 const PER_DAY: Record<Kind, number> = { turns: 200, part: 300 };
 
+/**
+ * The toolpath viewer and CAM AI both save records: the viewer's people (admins, toolpath beta)
+ * where the toolpath is on in the country, CAM AI's (admins, CAM AI) where CAM AI is on.
+ */
+async function requireToolpath(ctx: Ctx): Promise<void> {
+  const u = ctx.user!;
+  const region = regionById(ctx.env.REGION);
+  const f = region ? await readFeatures(ctx.env.DB, region.id) : null;
+  const admin = u.role === 'ADMIN';
+  if (!f || !((f.toolpath && (admin || u.toolpathBeta)) || (f.camAi && (admin || u.camAi)))) throw new HttpError(403, 'The toolpath is not switched on for you.');
+}
+
 // POST /api/toolpath/lessons  { kind?, fileName, start, match, data }
 export async function handleSaveLesson(ctx: Ctx): Promise<Response> {
   const u = ctx.user!;
-  // The toolpath viewer and CAM AI both save records.
-  if (u.role !== 'ADMIN' && !u.toolpathBeta && !u.camAi) throw new HttpError(403, 'The toolpath is not switched on for you.');
+  await requireToolpath(ctx);
   const body = await readJson<{ kind?: unknown; fileName?: unknown; start?: unknown; match?: unknown; data?: unknown }>(ctx.request, MAX_BYTES.part + 8192);
   const kind = (body.kind ?? 'turns') as Kind;
   if (!KINDS.includes(kind)) throw new HttpError(400, 'kind must be turns or part');
@@ -79,7 +92,7 @@ async function memoryDb(ctx: Ctx): Promise<D1Database> {
 // may import many at once with their counts (learning from a folder of programs and models).
 export async function handleSaveTurnMemory(ctx: Ctx): Promise<Response> {
   const u = ctx.user!;
-  if (u.role !== 'ADMIN' && !u.toolpathBeta && !u.camAi) throw new HttpError(403, 'The toolpath is not switched on for you.');
+  await requireToolpath(ctx);
   const admin = u.role === 'ADMIN';
   const body = await readJson<{ entries?: unknown }>(ctx.request, admin ? 2_000_000 : 50_000);
   if (!Array.isArray(body.entries) || !body.entries.length || body.entries.length > (admin ? 5000 : 60)) throw new HttpError(400, 'entries must be a list');

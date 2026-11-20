@@ -19,7 +19,7 @@ export const RELEASES: Release[] = [
   {
     id: '2026-11-06-cam-ai',
     date: '2026-11-06',
-    feature: 'toolpath',
+    feature: 'camAi',
     en: {
       title: 'CAM AI: the program written from the 3D model (beta)',
       items: [

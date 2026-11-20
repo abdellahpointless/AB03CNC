@@ -40,6 +40,23 @@ describe('toolpath learning records', () => {
     expect(out.data?.lessons[0]).toMatchObject({ kind: 'turns', user: 'ali', fileName: 'O1042013.C60', start: 0.744, match: 1, version: 1 });
   });
 
+  it('are refused where the country switched off what the person uses', async () => {
+    const lesson = { fileName: 'O1.000', start: 1, match: 1, data: { version: 1 } };
+    const cam: AuthedUser = { id: 'u-cam', username: 'cam', role: 'MACHINIST', camAi: true };
+    const set = (f: object) => DB.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify(f)).run();
+    await set({ camAi: false });
+    expect((await call(handleSaveLesson, cam, lesson)).status).toBe(403);
+    expect((await call(handleSaveLesson, ali, lesson)).status).toBe(200);
+    await set({ toolpath: false });
+    expect((await call(handleSaveLesson, ali, lesson)).status).toBe(403);
+    expect((await call(handleSaveLesson, cam, lesson)).status).toBe(200);
+    expect((await call(handleSaveLesson, admin, lesson)).status).toBe(200);
+    await set({ toolpath: false, camAi: false });
+    expect((await call(handleSaveLesson, admin, lesson)).status).toBe(403);
+    await DB.prepare("DELETE FROM settings WHERE key = 'features'").run();
+    await DB.prepare("DELETE FROM turn_lessons WHERE file_name = 'O1.000'").run();
+  });
+
   it('keep big part records (model + program) apart, exported page by page', async () => {
     const part = { kind: 'part', fileName: 'O2504411.000', start: 1, match: 1, data: { version: 1, model: 'x'.repeat(1_000_000), program: 'y' } };
     expect((await call(handleSaveLesson, ali, part)).status).toBe(200);

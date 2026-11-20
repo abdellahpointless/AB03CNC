@@ -50,6 +50,8 @@ const master: Translation<typeof en> = {
     shiftChecksHint: 'Önleyici bakım ile: kişiye özel kontroller, her vardiya paralel kutusu, kilit, paralel stoku',
     toolpath: 'Takım yolu görüntüleyici',
     toolpathHint: 'Eşleyicide programların 3B simülasyonu; kapalıyken düğmede kilit görünür',
+    camAi: 'CAM AI',
+    camAiHint: 'Parçanın 3B modelinden yazılan programlar, yöneticiler ve seçtikleri kişiler için; kapalıyken uygulamada hiç görünmez',
   },
   compare: {
     title: 'Karşılaştırma',

@@ -132,7 +132,7 @@ function SecurityLog() {
 export default function UserManagement() {
   const { t } = useT('app');
   const { user } = useAuth();
-  const { versions } = useSync();
+  const { versions, features } = useSync();
   const [users, setUsers] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newUsername, setNewUsername] = useState('');
@@ -357,7 +357,7 @@ export default function UserManagement() {
                           </span>
                         )}
                         {u.role !== 'ADMIN' &&
-                          SWITCHES.map((s) => (
+                          SWITCHES.filter((s) => s.key !== 'camAi' || features.camAi).map((s) => (
                             <button
                               key={s.key}
                               type="button"

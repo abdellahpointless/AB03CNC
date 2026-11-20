@@ -2,13 +2,16 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { ensureSchema } from '../schema';
 import { handlePrivateAsset } from '../assets';
+import { handleSetCountryFeatures } from '../routes/master';
 import { sha256Hex } from '../security';
-import type { Env } from '../context';
+import type { Ctx, Env } from '../context';
 import type { RegionId } from '../../src/regions';
 
 // The app's code (/app/...) only for signed-in sessions with the right access; the sign-in page stays public.
 let mf: Miniflare;
 let DB: D1Database;
+let TR: D1Database;
+let HUB: D1Database;
 
 // Static files: a real file is JavaScript, anything else falls back to the app's index.html.
 const ASSETS = {
@@ -20,9 +23,13 @@ const ASSETS = {
 } as unknown as Fetcher;
 
 beforeAll(async () => {
-  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, compatibilityDate: '2026-01-01', script: 'export default { fetch: () => new Response() }', d1Databases: ['DB'] }));
+  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, compatibilityDate: '2026-01-01', script: 'export default { fetch: () => new Response() }', d1Databases: ['DB', 'TR', 'HUB'] }));
   DB = (await mf.getD1Database('DB')) as unknown as D1Database;
+  TR = (await mf.getD1Database('TR')) as unknown as D1Database;
+  HUB = (await mf.getD1Database('HUB')) as unknown as D1Database;
   await ensureSchema(DB, 'ma');
+  await ensureSchema(TR, 'tr');
+  await ensureSchema(HUB, 'master');
   const far = 9999999999999;
   const now = Date.now();
   await DB.prepare(
@@ -38,14 +45,26 @@ beforeAll(async () => {
       .bind(await sha256Hex(token), user, now, far, role)
       .run();
   }
+  // Türkiye: an admin and a person with the CAM AI switch (set before the feature was closed).
+  await TR.prepare("INSERT INTO users (id, username, password_hash, role, created_at, toolpath_beta, cam_ai) VALUES ('t-admin', 'sef', 'x', 'ADMIN', 0, 0, 0), ('t-cam', 'cam', 'x', 'MACHINIST', 0, 0, 1)").run();
+  for (const [token, user, role] of [
+    ['tr-admin', 't-admin', 'ADMIN'],
+    ['tr-cam', 't-cam', 'MACHINIST'],
+  ]) {
+    await TR.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at, role) VALUES (?, ?, ?, ?, ?)')
+      .bind(await sha256Hex(token), user, now, far, role)
+      .run();
+  }
 }, 60_000);
 afterAll(() => mf?.dispose());
 
-const envFor = (instance: RegionId | 'master'): Env | null => (instance === 'ma' ? ({ DB, ASSETS, REGION: 'ma' } as Env) : null);
+const envFor = (instance: RegionId | 'master'): Env | null =>
+  instance === 'ma' ? ({ DB, ASSETS, REGION: 'ma' } as Env) : instance === 'tr' ? ({ DB: TR, ASSETS, REGION: 'tr' } as Env) : null;
 
 const get = async (path: string, token?: string, method = 'GET') => {
   const url = new URL(`https://cnc.test${path}`);
-  const headers: Record<string, string> = token ? { Cookie: `__Host-cnc_sid=${token}` } : {};
+  const cookie = token?.startsWith('tr-') ? '__Host-cnc_sid_tr' : '__Host-cnc_sid';
+  const headers: Record<string, string> = token ? { Cookie: `${cookie}=${token}` } : {};
   const res = await handlePrivateAsset(new Request(url, { method, headers }), { DB, ASSETS } as Env, url, envFor);
   return res.status;
 };
@@ -74,12 +93,43 @@ describe('the app code is only for signed-in sessions', () => {
     expect(await get('/app/master/real-x.js', 'tok-admin')).toBe(403);
   });
 
-  it('the toolpath switched off in the country closes the toolpath and CAM AI files, even for an admin', async () => {
-    await DB.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify({ toolpath: false })).run();
+  it('each country switch closes its own files, even for an admin; CAM AI keeps the viewer it uses', async () => {
+    const set = (f: object) => DB.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify(f)).run();
+    // Toolpath off, CAM AI on (the default): CAM AI and its viewer stay, the beta viewer closes.
+    await set({ toolpath: false });
+    expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(200);
+    expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(200);
+    expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(403);
+    // CAM AI off, toolpath on: the CAM AI files close, the viewer stays.
+    await set({ camAi: false });
     expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(403);
+    expect(await get('/app/cam/real-x.js', 'tok-cam')).toBe(403);
+    expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(200);
+    expect(await get('/app/toolpath/real-x.js', 'tok-admin')).toBe(200);
+    // Both off: neither, for anyone.
+    await set({ toolpath: false, camAi: false });
+    expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(403);
+    expect(await get('/app/toolpath/real-x.js', 'tok-admin')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(403);
     expect(await get('/app/user/real-x.js', 'tok-admin')).toBe(200);
     await DB.prepare("DELETE FROM settings WHERE key = 'features'").run();
+  });
+
+  it('Türkiye has no CAM AI until a master admin switches it on', async () => {
+    expect(await get('/app/admin/real-x.js', 'tr-admin')).toBe(200);
+    expect(await get('/app/cam/real-x.js', 'tr-admin')).toBe(403);
+    expect(await get('/app/cam/real-x.js', 'tr-cam')).toBe(403);
+    expect(await get('/app/toolpath/real-x.js', 'tr-admin')).toBe(403);
+    const url = new URL('https://cnc.test/master/api/countries/tr/features');
+    const request = new Request(url, { method: 'PUT', body: JSON.stringify({ camAi: true }), headers: { 'Content-Type': 'application/json' } });
+    const env = { DB: HUB, COUNTRIES: { tr: TR }, REGION: 'master' } as unknown as Env;
+    const res = await handleSetCountryFeatures({ env, request, url, params: { region: 'tr' }, user: { id: 'm-1', username: 'boss', role: 'ADMIN' } } as Ctx);
+    expect(((await res.json()) as { features: { camAi: boolean } }).features.camAi).toBe(true);
+    expect(await get('/app/cam/real-x.js', 'tr-admin')).toBe(200);
+    expect(await get('/app/cam/real-x.js', 'tr-cam')).toBe(200);
+    expect(await get('/app/toolpath/real-x.js', 'tr-cam')).toBe(200);
+    // Morocco is not affected by Türkiye's switch.
+    expect(await get('/app/cam/real-x.js', 'tok-cam')).toBe(200);
   });
 
   it('a missing file, an odd path or a write is refused, never answered with the page', async () => {

@@ -43,6 +43,9 @@ const turn = '1,0,0,0,-1,0,0,0,-1';
 describe('learned turns', () => {
   it('a turn learned in Morocco is read in Türkiye, counted each time', async () => {
     expect((await call(handleSaveTurnMemory, 'ma', ali, { entries: [{ key: 'TEIL N GRAD UM X DREHEN', rel: turn }] })).status).toBe(200);
+    // Türkiye has neither the toolpath nor CAM AI: its admin cannot add turns until one is switched on.
+    expect((await call(handleSaveTurnMemory, 'tr', chef, { entries: [{ key: 'TEIL N GRAD UM X DREHEN', rel: turn }] })).status).toBe(403);
+    await TR.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify({ toolpath: true })).run();
     expect((await call(handleSaveTurnMemory, 'tr', chef, { entries: [{ key: 'TEIL N GRAD UM X DREHEN', rel: turn }] })).status).toBe(200);
     const rows = (await call(handleGetTurnMemory, 'tr', plain)).body.rows!;
     expect(rows).toEqual([{ key: 'TEIL N GRAD UM X DREHEN', rel: turn, n: 2 }]);
