@@ -388,18 +388,24 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
   return { kind: 'face', purpose: 'face', name: 'PLAN', tool: fm, cut, lines };
 }
 
-/** Centre-drill, then drill (G83 pecking), one tool after the other. */
-function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number): CamOp[] {
+/**
+ * Centre-drill, then drill (G83 pecking), one tool after the other. `surface`: where the material
+ * over a hole starts when it is drilled. The shop drills before the pockets (143 of 157 library
+ * setups) from R2 above the faced top (513 drill cycles): a cycle starts 2 mm above that material,
+ * never in it (its way down to R is a rapid).
+ */
+function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number): CamOp[] {
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one).
-  const fresh = list.filter((x) => !x.again && (!spot || (spot.length || 99) >= stockTop - (x.h.top - Math.min(x.h.r, spot.diameter / 2)) + 2));
+  const fresh = list.filter((x) => !x.again && (!spot || (spot.length || 99) >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     fresh.forEach(({ h }, i) => {
-      const z = h.top - Math.min(h.r, spot.diameter / 2) * 0.8;
-      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)} F${cut.fz}.`);
+      const s = surface(h);
+      const z = s - Math.min(h.r, spot.diameter / 2) * 0.8;
+      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)} F${cut.fz}.`);
     });
     lines.push('G80');
     ops.push({ kind: 'centre', purpose: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
@@ -410,7 +416,8 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pi
     const cut = cutData(tool, 'drill', mat, limits);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     for (const { h, z } of hs) {
-      lines.push(`G98 G83 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(h.top + 1)} Q${n3(Math.min(cut.q, h.top - z))} F${cut.fz}.`);
+      const s = surface(h);
+      lines.push(`G98 G83 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)} Q${n3(Math.min(cut.q, s - z))} F${cut.fz}.`);
     }
     lines.push('G80');
     ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
@@ -813,10 +820,12 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
       if (i !== KEPT && tp.moves[i]?.kind === 'rapid') (into.get(i) ?? into.set(i, new Set()).get(i)!).add(v % plane);
     }
     rapids = into.size;
-    // Straight down, its edge only grazing a sliver (two grid columns at most): fine at feed.
+    // Straight down, its edge only grazing a sliver (two grid columns at most): fine at feed. Not a
+    // drilling cycle's way down to its R plane: its line has no G00 to slow down, it stays a collision.
     for (const [i, cols] of into) {
       const [a, b] = [tp.moves[i].points[0], tp.moves[i].points[tp.moves[i].points.length - 1]];
-      if (cols.size <= 2 && Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6) grazes.push(tp.moves[i].line);
+      const cycle = tp.moves[i + 1]?.kind === 'drill' && tp.moves[i + 1].line === tp.moves[i].line;
+      if (!cycle && cols.size <= 2 && Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6) grazes.push(tp.moves[i].line);
     }
   }
   return {
@@ -1162,7 +1171,26 @@ function planFor(input: CamInput, vertical: number): CamResult {
         }
       }
     }
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear, stockTop));
+    // Where the material over each hole starts when it is drilled: the faced top, or lower where the
+    // setups before already took it (sampled every 0.5 mm, from the grid of what they left).
+    const faced = Math.min(sb.hi[2], 0);
+    const tops = new Map<Hole, number>();
+    const surface = (h: Hole) => {
+      let s = tops.get(h);
+      if (s === undefined) {
+        const disc: Region = [circle(h.c, h.r)];
+        s = h.top;
+        for (let z = faced; z > h.top + 0.05; z -= 0.5) {
+          if (area(intersection(left.at(Math.max(z - 0.5, h.top), z), disc)) > 0.01) {
+            s = z;
+            break;
+          }
+        }
+        tops.set(h, s);
+      }
+      return s;
+    };
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear, stockTop, surface));
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);

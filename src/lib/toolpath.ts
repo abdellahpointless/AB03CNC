@@ -342,10 +342,14 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
         (cycle === 83 ? rapidTime(depth) * pecks : 0) +
         rapidTime(Math.abs(back - (tapping ? cycleR : cycleZ)));
       const hole: Vec = [x, y, cycleZ];
-      grow([x, y, cycleR]);
+      const atR: Vec = [x, y, cycleR];
+      grow(atR);
       grow(hole);
-      moves.push({ kind: 'rapid', tool, line: i, points: [from, top], seconds: rapidTime(dist(from, top)), length: dist(from, top), setup , reach, dia, op });
-      moves.push({ kind: 'drill', tool, line: i, points: [[x, y, cycleR]], depth: cycleZ, seconds: seconds - rapidTime(dist(from, top)), length: depth, setup , reach, dia, op });
+      // Across at the current height, then to the R plane at rapid, as the control does: drawn, so
+      // a check sees what that way down goes through (an R plane inside the stock is a crash).
+      const approach = dist(from, top) + Math.abs(from[2] - cycleR);
+      moves.push({ kind: 'rapid', tool, line: i, points: from[2] === cycleR ? [from, top] : [from, top, atR], seconds: rapidTime(approach), length: approach, setup , reach, dia, op });
+      moves.push({ kind: 'drill', tool, line: i, points: [atR], depth: cycleZ, seconds: seconds - rapidTime(approach), length: depth, setup , reach, dia, op });
       addTime(seconds);
       pos = [x, y, back];
       return;

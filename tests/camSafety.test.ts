@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, checkProgram, commentSafe } from '../src/lib/cam/program';
-import { heightPart, plateWithHoles } from './heightPart';
+import type { Tool } from '../src/types';
+import { heightPart, plateWithHoles, pocketWithHole } from './heightPart';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -25,6 +26,17 @@ describe('the safety double check', () => {
     expect(check.grazes).toEqual([]);
   }, 300_000);
 
+  it("catches a drilling cycle whose R plane is inside the stock (its rapid down to R goes through it)", () => {
+    // Right after the first end mill is loaded, before it has cut anything: a hole in the middle of
+    // the pocket, its R plane 2 mm under the top that is still there. Not a graze: G01 cannot fix it.
+    const at = lines.findIndex((l) => /TOOLPATH FRAESEN/.test(l));
+    const start = lines.findIndex((l, i) => i > at && /G00 G90 X/.test(l));
+    const planted = [...lines.slice(0, start + 1), 'N9 G00 Z5.', 'N9 G98 G81 X0. Y0. Z-4. R-2. F100.', 'N9 G80', ...lines.slice(start + 1)].join('\n');
+    const check = checkProgram(plate, planted, 'HAAS', undefined, r.pose);
+    expect(check.rapids).toBeGreaterThan(0);
+    expect(check.grazes).toEqual([]);
+  }, 300_000);
+
   it('catches a holder planted in the part (a tool typed too short for its depth)', () => {
     // The first end mill typed 2 mm long: its holder goes down into the pocket's walls.
     const at = lines.findIndex((l) => /TOOLPATH FRAESEN/.test(l));
@@ -33,6 +45,24 @@ describe('the safety double check', () => {
     const c = checkProgram(plate, planted, 'HAAS', undefined, r.pose);
     expect(c.holders).toBeGreaterThan(0);
     expect(c.collisions).toBeGreaterThan(0);
+  }, 300_000);
+});
+
+describe('drilling before the pocket above the hole is milled (shop order)', () => {
+  // A 40x30x12 plate, a 20x14 pocket 6 deep, a Ø4 hole through the pocket's floor.
+  const part = pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 });
+  const tool = (number: number, category: Tool['category'], diameter: number, length: number): Tool => ({ id: `t${number}`, number, category, description: '', diameter, length });
+  const tools = [tool(1, 'tourteau', 40, 30), tool(2, 'fraise', 10, 40), tool(3, 'fraise', 4, 25), tool(4, 'foret', 4, 50)];
+  const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], orient: { side: 'Z+', spin: false } });
+
+  it('starts every cycle above the material still over the hole (the shop: R2 above the faced top)', () => {
+    const lines = r.code.split('\n');
+    const g52 = lines.flatMap((l, i) => (/G52 /.test(l) ? [i] : []));
+    const cycles = lines.slice(g52[0], g52[1] ?? lines.length).filter((l) => /G8[13] /.test(l));
+    expect(cycles.length).toBeGreaterThan(0);
+    // The hole drilled before the pocket: the pocket's material is still over it, up to Z0.
+    for (const l of cycles) expect(Number(l.match(/R(-?[\d.]+)/)![1])).toBeGreaterThanOrEqual(2);
+    expect(r.check).toMatchObject({ rapids: 0, collisions: 0 });
   }, 300_000);
 });
 

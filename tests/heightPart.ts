@@ -26,6 +26,53 @@ export function heightPart(h: number[][]): Float32Array {
   return new Float32Array(t);
 }
 
+/**
+ * A W x L x H plate (corner at the origin) with a rectangular pocket [x0, y0, x1, y1] `depth` deep in
+ * its top and one round hole through the pocket's floor: its closed mesh (48-sided hole).
+ */
+export function pocketWithHole(W: number, L: number, H: number, pocket: [number, number, number, number], depth: number, hole: { c: [number, number]; d: number }): Float32Array {
+  const N = 48;
+  const floorZ = H - depth;
+  const ring = Array.from({ length: N }, (_, k) => [hole.c[0] + (hole.d / 2) * Math.cos((2 * Math.PI * k) / N), hole.c[1] + (hole.d / 2) * Math.sin((2 * Math.PI * k) / N)] as [number, number]);
+  const [x0, y0, x1, y1] = pocket;
+  const outer: [number, number][] = [[0, 0], [W, 0], [W, L], [0, L]];
+  const inner: [number, number][] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const t: number[] = [];
+  const tri = (a: number[], b: number[], c: number[], n: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const x = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    t.push(...(x[0] * n[0] + x[1] * n[1] + x[2] * n[2] >= 0 ? [...a, ...b, ...c] : [...a, ...c, ...b]));
+  };
+  const face = (contour: [number, number][], holes: [number, number][][], z: number, nz: number) => {
+    const all = [...contour, ...holes.flat()];
+    for (const [i, j, k] of ShapeUtils.triangulateShape(contour.map(([x, y]) => new Vector2(x, y)), holes.map((h) => h.map(([x, y]) => new Vector2(x, y)))))
+      tri([...all[i], z], [...all[j], z], [...all[k], z], [0, 0, nz]);
+  };
+  const wall = (a: [number, number], b: [number, number], za: number, zb: number, n: number[]) => {
+    tri([...a, za], [...b, za], [...b, zb], n);
+    tri([...a, za], [...b, zb], [...a, zb], n);
+  };
+  face(outer, [inner], H, 1);
+  face(inner, [ring], floorZ, 1);
+  face(outer, [ring], 0, -1);
+  wall([0, 0], [W, 0], 0, H, [0, -1, 0]);
+  wall([W, 0], [W, L], 0, H, [1, 0, 0]);
+  wall([W, L], [0, L], 0, H, [0, 1, 0]);
+  wall([0, L], [0, 0], 0, H, [-1, 0, 0]);
+  // The pocket's walls face into the pocket.
+  wall([x0, y0], [x1, y0], floorZ, H, [0, 1, 0]);
+  wall([x1, y0], [x1, y1], floorZ, H, [-1, 0, 0]);
+  wall([x1, y1], [x0, y1], floorZ, H, [0, -1, 0]);
+  wall([x0, y1], [x0, y0], floorZ, H, [1, 0, 0]);
+  ring.forEach((p, k) => {
+    const q = ring[(k + 1) % N];
+    const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    wall(p, q, 0, floorZ, [hole.c[0] - m[0], hole.c[1] - m[1], 0]);
+  });
+  return new Float32Array(t);
+}
+
 /** A W x L x H plate (corner at the origin) with round holes straight through it: its closed mesh (48-sided holes). */
 export function plateWithHoles(W: number, L: number, H: number, holes: { c: [number, number]; d: number }[]): Float32Array {
   const N = 48;

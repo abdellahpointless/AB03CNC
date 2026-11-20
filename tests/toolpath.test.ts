@@ -56,6 +56,17 @@ describe('toolpath reader', () => {
     expect(p.tools[0].seconds).toBeGreaterThan(3 * ((22 / 100) * 60));
   });
 
+  it("draws a drilling cycle's rapid down to its R plane, so a check can see what it passes through", () => {
+    const code = ['T7 M6', 'G0 G90 G54 X0 Y0 Z50. S2000 M3', 'G98 G83 X10. Y10. Z-20. R-8. Q5. F100', 'X30.', 'G80', 'M30'].join('\n');
+    const p = parseToolpath(code, S);
+    const rapids = p.moves.filter((m) => m.kind === 'rapid' && m.line === 2);
+    // Across at the start height, then straight down to R (G98: back up to 50 between holes).
+    expect(rapids[0].points).toEqual([[0, 0, 50], [10, 10, 50], [10, 10, -8]]);
+    expect(p.moves.find((m) => m.kind === 'rapid' && m.line === 3)!.points).toEqual([[10, 10, 50], [30, 10, 50], [30, 10, -8]]);
+    // The descent is timed on the rapid now, and no longer on the hole.
+    expect(rapids[0].seconds).toBeCloseTo(((Math.hypot(10, 10) + 58) / S.rapid) * 60, 6);
+  });
+
   it('ignores machine-coordinate moves and comments', () => {
     const p = parseToolpath(['G0 G90 X0 Y0 Z5.', '(G1 X100. F50)', 'G53 G49 Z0.', 'G1 X10. F100'].join('\n'), S);
     expect(p.moves.map((m) => m.points[1]?.[0])).toEqual([10]);
