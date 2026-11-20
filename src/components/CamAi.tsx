@@ -11,7 +11,7 @@ import { MODEL_MAX_BYTES, type ModelError } from '../lib/modelLimits';
 import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { convertHaasToFanuc } from '../lib/haasToFanucConverter';
-import { coolingOf, engineMachineId, isLockedMachine } from '../regions';
+import { coolingOf, engineMachineId, isLockedMachine, materialNeed } from '../regions';
 import { applyMachineCoolant } from '../lib/gcodeProcessor';
 import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
@@ -102,8 +102,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const fileName = `${name || 'CAM_AI'}.nc`;
   // The material the templates are taken for (inox waits for the operator's yes to MS).
   const templatesFor: CamMaterial | null = material === 'INOX' ? null : material === 'OTHER' ? family : material;
-  // Shop rule: FH must stay dry (air machines); aluminium, PC GF and brass need lubricant.
-  const need = material === 'FH' ? 'air' : material === 'ALU' || material === 'PCGF' || material === 'MS' ? 'lubricant' : null;
+  // Shop rule, for the material the program is made and labelled for (Process reads that label).
+  const need = materialNeed(templatesFor);
   const cooling = machine ? coolingOf(engineMachineId(currentRegion().id, machine)) : null;
   const wrongCooling = !!need && !!cooling && need !== cooling;
   const busy = run.state === 'busy' || run.state === 'preparing';
@@ -286,6 +286,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setLocked2(false);
     if (result) setRun({ state: 'idle' });
     setSel({ kind: 'setup', i: k });
+  };
+  // Another machine or material: the program made (its tools, speeds, coolant) is not for it.
+  const choose = (set: () => void) => {
+    set();
+    if (result) setRun({ state: 'idle' });
   };
   const recalc = () => {
     setCuts(draft);
@@ -726,7 +731,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
         </label>
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.machine')}</span>
-          <select className="aurora-input w-full text-xs cursor-pointer" value={machine?.id ?? ''} onChange={(e) => setMachineId(e.target.value)} disabled={busy}>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={machine?.id ?? ''} onChange={(e) => choose(() => setMachineId(e.target.value))} disabled={busy}>
             {toolMachines.map((m) => (
               <option key={m.id} value={m.id} className="bg-[var(--bg-panel)]">{t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}</option>
             ))}
@@ -738,7 +743,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
         )}
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.material')}</span>
-          <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER')} disabled={busy}>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => choose(() => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER'))} disabled={busy}>
             {CAM_MATERIALS.map((m) => (
               <option key={m} value={m} className="bg-[var(--bg-panel)]">{m}</option>
             ))}
@@ -755,7 +760,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
         {material === 'OTHER' && (
           <label className="block space-y-1">
             <span className="section-label block">{t('camAi.family')}</span>
-            <select className="aurora-input w-full text-xs cursor-pointer" value={family} onChange={(e) => setFamily(e.target.value as Family)} disabled={busy}>
+            <select className="aurora-input w-full text-xs cursor-pointer" value={family} onChange={(e) => choose(() => setFamily(e.target.value as Family))} disabled={busy}>
               {(['ALU', 'POM', 'FH'] as const).map((f) => (
                 <option key={f} value={f} className="bg-[var(--bg-panel)]">{t(`camAi.families.${f}`)}</option>
               ))}

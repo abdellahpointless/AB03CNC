@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeGCode, applyMachineCoolant, coolantNeed, generateRemappedCode } from '../src/lib/gcodeProcessor';
 import { defaultToolbox } from '../src/lib/defaultTools';
-import { coolingOf, isLockedMachine } from '../src/regions';
+import { coolingOf, isLockedMachine, materialNeed } from '../src/regions';
+import { CAM_MATERIALS } from '../src/lib/cam/tools';
 
 // Shop rules from the answers to the Phase 0 questions (reference library work).
 
@@ -55,5 +56,12 @@ describe('machine rules', () => {
     expect(out('HAAS-1')).toMatch(/G40 G17 G53 G49 G80 G90 M84/);
     expect(out('HAAS-4')).toMatch(/G43 H\d+ Z50\. M83/);
     expect(out('HAAS-4')).not.toMatch(/M84/);
+  });
+});
+
+describe('CAM AI and Process ask the same of a material', () => {
+  it('the need CAM AI checks is the one Process reads from the part line CAM AI writes', () => {
+    for (const m of CAM_MATERIALS) expect(materialNeed(m), m).toBe(coolantNeed(`(CAM AI)\n(PART ${m} / 40X30X12 / ZUSCHNITT:44X34X16)`));
+    expect(materialNeed(null)).toBeNull();
   });
 });

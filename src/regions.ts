@@ -192,6 +192,12 @@ export function coolingOf(engineId: string): 'air' | 'lubricant' | null {
   return null;
 }
 
+/** What a material needs (shop rule): FH stays dry (air); aluminium, PC GF and brass need lubricant. */
+export function materialNeed(material: string | null): 'air' | 'lubricant' | null {
+  if (material === 'FH') return 'air';
+  return material === 'ALU' || material === 'PCGF' || material === 'MS' ? 'lubricant' : null;
+}
+
 /** Highest pocket number the remapper offers for a machine. */
 export function maxPocketsFor(machine: Pick<MachineInfo, 'brand' | 'pockets'>): number {
   if (machine.pockets) return machine.pockets;
