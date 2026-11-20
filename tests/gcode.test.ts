@@ -514,3 +514,14 @@ describe('a tool section with two G43 lines', () => {
     expect(out.find((l) => l.startsWith('N13 '))).toMatch(/G43 H17 /);
   });
 });
+
+describe('block delete lines', () => {
+  it('keep the slash first, the N number after it, in both directions', () => {
+    const haas = '%\nO1234\nN1 G40 G17 G53 G49 G80 G90\nN2 T1 M6\nN3 (FRAISE D10)\nN4 M01 (CHECK TOOL)\nN5 G00 G43 H01 Z50. M08\n/N8 M00 (MEASURE)\n/M00\nN9 M30\n%';
+    const fanuc = convertHaasToFanuc(haas, 'x.nc').fanucCode.split('\n');
+    const back = convertFanucToHaas(fanuc.join('\n'), 'x.nc').haasCode.split('\n');
+    for (const out of [fanuc, back]) {
+      expect(out.filter((l) => l.includes('/'))).toEqual([expect.stringMatching(/^\/N\d+ M00 \(MEASURE\)$/), expect.stringMatching(/^\/N\d+ M00$/)]);
+    }
+  });
+});

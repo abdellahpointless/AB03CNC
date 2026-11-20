@@ -137,7 +137,9 @@ export function numberLines(lines: string[], cap = Infinity): string[] {
     const t = l.trim();
     if (l === '__REMOVE_ME__' || !t || t === '%' || /^O\d/i.test(t)) return l;
     n++;
-    return `N${Math.min(n, cap)} ${t.replace(/^N\d+\s*/i, '')}`;
+    // Block delete: the slash stays first ("/N8 M00"), the control reads it only there.
+    const slash = t.startsWith('/') ? '/' : '';
+    return `${slash}N${Math.min(n, cap)} ${t.slice(slash.length).trimStart().replace(/^N\d+\s*/i, '')}`;
   });
 }
 
