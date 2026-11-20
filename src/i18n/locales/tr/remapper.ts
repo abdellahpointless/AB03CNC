@@ -37,6 +37,11 @@ const remapper: Translation<typeof en> = {
       'Bu program hâlâ HAAS biçiminde (HAAS güvenlik satırı veya M254 olmadan G43). Önce "HAAS → FANUC" düğmesine, sonra "Analiz Et ve Eşleştir" düğmesine basın.',
     fanucForHaas:
       'Bu program FANUC biçiminde (H#513, M254 veya M95). Önce "FANUC → HAAS" düğmesine, sonra "Analiz Et ve Eşleştir" düğmesine basın.',
+    machineLocked: '{{machine}} kilitli: DMG tezgahları için programlar şimdilik uygulamada hazırlanmıyor.',
+    needsAir:
+      'Bu parça FH (preslenmiş ahşap): kuru kalmalı, asla soğutma sıvısıyla işlenmez. {{machine}} sıvı ile çalışıyor: hava ile çalışan bir tezgah seçin (HAAS-2 veya HAAS-4).',
+    needsLubricant:
+      'Bu parça soğutma sıvısı ister (alüminyum, PC GF, pirinç veya paslanmaz çelik): {{machine}} yalnızca hava üfler. Sıvı ile çalışan bir tezgah seçin (HAAS-1, HAAS-5, FANUC-1 veya FANUC-2).',
   },
   fields: {
     category: 'Kategori',

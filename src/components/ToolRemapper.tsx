@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MachineId, ToolChangeBlock, Tool, TOOL_CATEGORIES, ToolCategory, HistoryRecord } from '../types';
-import { engineMachineId, maxPocketsFor } from '../regions';
+import { coolingOf, engineMachineId, isLockedMachine, maxPocketsFor } from '../regions';
 import { currentRegion } from '../lib/instance';
 import CodeEditorPair from './CodeEditorPair';
-import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
+import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, coolantNeed, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
 import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
 import { checkProgram, FANUC_MEMORY_KB } from '../lib/safetyCheck';
 import { api } from '../lib/api';
@@ -203,6 +203,18 @@ N190 M30`;
 
   const handleProcess = () => {
     let currentSource = sourceCode;
+    // DMG machines are not programmed in the app for now (shop decision).
+    if (machine && isLockedMachine(machine)) {
+      alert(t('alerts.machineLocked', { machine: machineLabel }));
+      return;
+    }
+    // FH must stay dry; aluminium, PC GF, brass and stainless need lubricant (shop rule).
+    const need = coolantNeed(currentSource);
+    const cooling = coolingOf(engineId);
+    if (need && cooling && need !== cooling) {
+      alert(t(need === 'air' ? 'alerts.needsAir' : 'alerts.needsLubricant', { machine: machineLabel }));
+      return;
+    }
     // The dialect must match the machine: the switch buttons convert it, Process never does.
     const fanucDialectMachine = engineId.toUpperCase().startsWith('FANUC') && engineId !== 'FANUC-2';
     if (fanucDialectMachine && isHaasDialectForFanuc(currentSource)) {

@@ -36,6 +36,11 @@ const remapper = {
       'This program is still in HAAS format (HAAS safety line or G43 without M254). Press "HAAS → FANUC" first, then "Analyze & Remap".',
     fanucForHaas:
       'This program is in FANUC format (H#513, M254 or M95). Press "FANUC → HAAS" first, then "Analyze & Remap".',
+    machineLocked: '{{machine}} is locked: programs for DMG machines are not made in the app for now.',
+    needsAir:
+      'This part is FH (pressed wood): it must stay dry, never in lubricant. {{machine}} runs lubricant: choose an air machine (HAAS-2 or HAAS-4).',
+    needsLubricant:
+      'This part needs lubricant (aluminium, PC GF, brass or stainless steel): {{machine}} only blows air. Choose a lubricant machine (HAAS-1, HAAS-5, FANUC-1 or FANUC-2).',
   },
   /** Labels shared by several cards. */
   fields: {

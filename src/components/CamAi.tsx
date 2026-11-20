@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Box, Check, CheckCircle2, Circle, Cpu, Download, FileCode2, FilePlus2, Loader2, Lock, MousePointerClick, Package, Pencil, Play, RefreshCw, Route, Send, Settings2, Square, Upload } from 'lucide-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
@@ -11,7 +11,8 @@ import { MODEL_MAX_BYTES, type ModelError } from '../lib/modelLimits';
 import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { convertHaasToFanuc } from '../lib/haasToFanucConverter';
-import { engineMachineId } from '../regions';
+import { coolingOf, engineMachineId, isLockedMachine } from '../regions';
+import { applyMachineCoolant } from '../lib/gcodeProcessor';
 import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
@@ -59,7 +60,9 @@ const toModelAxes = (R: Mat3, v: number[]) => [0, 1, 2].map((k) => v[[0, 1, 2].f
  */
 export default function CamAi({ onSend }: { onSend: (code: string, fileName: string, machine: string) => void }) {
   const { t } = useT('remapper');
-  const { toolbox, toolMachines } = useSync();
+  const { toolbox, toolMachines: allMachines } = useSync();
+  // DMG machines are not programmed in the app for now (shop decision).
+  const toolMachines = useMemo(() => allMachines.filter((m) => !isLockedMachine(m)), [allMachines]);
   const [model, setModel] = useState<Model | null>(null);
   const [prep, setPrep] = useState<Prepared | null>(null);
   const [views, setViews] = useState<string[]>([]);
@@ -99,6 +102,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const fileName = `${name || 'CAM_AI'}.nc`;
   // The material the templates are taken for (inox waits for the operator's yes to MS).
   const templatesFor: CamMaterial | null = material === 'INOX' ? null : material === 'OTHER' ? family : material;
+  // Shop rule: FH must stay dry (air machines); aluminium, PC GF and brass need lubricant.
+  const need = material === 'FH' ? 'air' : material === 'ALU' || material === 'PCGF' || material === 'MS' ? 'lubricant' : null;
+  const cooling = machine ? coolingOf(engineMachineId(currentRegion().id, machine)) : null;
+  const wrongCooling = !!need && !!cooling && need !== cooling;
   const busy = run.state === 'busy' || run.state === 'preparing';
   const chosen = prep?.layouts[layout];
   // What is added to the part in the vise's X, Y, Z (centred: half on each side).
@@ -114,7 +121,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const side2 = second?.side ?? (chosen ? opposite(chosen.side) : '');
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
-  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor;
+  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling;
 
   useEffect(() => () => worker.current?.terminate(), []);
 
@@ -221,7 +228,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const download = () => {
     if (!result || !machine || !passed(result)) return;
     const fanuc = machine.brand === 'FANUC' && engineMachineId(currentRegion().id, machine) !== 'FANUC-2';
-    const code = fanuc ? convertHaasToFanuc(result.code, fileName).fanucCode : result.code;
+    // The air jet code the machine always uses (M83 on air machines, M84 on HAAS-1/5), as Send gets it.
+    const cooled = applyMachineCoolant(result.code.split('\n'), engineMachineId(currentRegion().id, machine)).join('\n');
+    const code = fanuc ? convertHaasToFanuc(cooled, fileName).fanucCode : cooled;
     downloadBlob(fileName, new Blob([code], { type: 'text/plain' }));
   };
   const saveSideStock = (v: number) => {
@@ -267,7 +276,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
-  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length ? 'machine' : !templatesFor ? 'material' : null;
+  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : null;
   // A setup picked again after a program was made: that program is no longer the one shown.
   const unlock = (k: 0 | 1) => {
     if (k === 0) {
@@ -724,6 +733,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
           </select>
         </label>
         {!tools.length && machine && <p className="text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</p>}
+        {wrongCooling && machine && (
+          <p className="text-[var(--orange-text)]" role="alert">{t(need === 'air' ? 'alerts.needsAir' : 'alerts.needsLubricant', { machine: machine.name })}</p>
+        )}
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.material')}</span>
           <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER')} disabled={busy}>

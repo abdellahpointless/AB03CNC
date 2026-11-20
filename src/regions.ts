@@ -179,6 +179,19 @@ export function engineMachineId(region: RegionId, machine: Pick<MachineInfo, 'id
   return `${brand}~${region}~${machine.id}`;
 }
 
+/** Machines not programmed in the app for now (shop decision): DMG MORI. Process and CAM AI refuse them. */
+export const isLockedMachine = (machine: Pick<MachineInfo, 'brand'>) => machine.brand === 'DMG MORI';
+
+/**
+ * How the Moroccan machines cool (shop rule): HAAS-2 and HAAS-4 blow air (auto air jet, M83), the
+ * others run lubricant. Any other machine: not known (null), no rule. Takes the engine id.
+ */
+export function coolingOf(engineId: string): 'air' | 'lubricant' | null {
+  if (engineId === 'HAAS-2' || engineId === 'HAAS-4') return 'air';
+  if (['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2', 'DMG-1'].includes(engineId)) return 'lubricant';
+  return null;
+}
+
 /** Highest pocket number the remapper offers for a machine. */
 export function maxPocketsFor(machine: Pick<MachineInfo, 'brand' | 'pockets'>): number {
   if (machine.pockets) return machine.pockets;

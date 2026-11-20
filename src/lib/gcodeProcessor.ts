@@ -16,6 +16,45 @@ export function detectMaterial(input: string): Material | undefined {
 /** Brass (MS) as the program header names it: "MS58.ZN40B", "CUZN39PB3", "MESSING". */
 export const BRASS_RE = /\b(MS|MS58|CUZN\w*|MESSING|BRASS)\b/;
 
+/**
+ * What the part's material needs (shop rule), read from the comments of the program's first lines
+ * (the part line): FH, pressed wood, must stay dry (air only); aluminium, PC GF, brass and
+ * stainless always need lubricant. POM, PEEK and anything else: null, either way.
+ */
+export function coolantNeed(code: string): 'air' | 'lubricant' | null {
+  const head = code
+    .split('\n')
+    .slice(0, 12)
+    .flatMap((l) => l.match(/\(([^)]*)\)/g) ?? [])
+    .join(' ')
+    .toUpperCase();
+  const dry = /\bFH\b/.test(head);
+  const wet = /\bALU(?:MINIUM)?\b|\bPC[\s-]?GF|\bINOX\b|\bVA\s?1\.4\d{3}\b|\b1\.4\d{3}\b/.test(head) || BRASS_RE.test(head);
+  return dry === wet ? null : dry ? 'air' : 'lubricant';
+}
+
+/**
+ * The air jet code each machine always uses (shop rule): air machines (HAAS-2, HAAS-4) turn the
+ * auto air jet on (M83) wherever the program turns the coolant on (M08); the HAAS lubricant
+ * machines (HAAS-1, HAAS-5) switch it off with M84 on the safety line. FANUC: nothing yet, their
+ * programs use M84 only on tapping lines. Never inside a (comment); running it again changes nothing.
+ */
+export function applyMachineCoolant(lines: string[], machineId: string): string[] {
+  if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
+    return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+  }
+  if (machineId !== 'HAAS-1' && machineId !== 'HAAS-5') return lines;
+  if (lines.some((l) => l !== '__REMOVE_ME__' && /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l)))) return lines;
+  const safety = lines.findIndex((l) => {
+    const c = codeOnly(l);
+    return l !== '__REMOVE_ME__' && /G40/i.test(c) && /G17/i.test(c) && /G53/i.test(c) && /G49/i.test(c) && /G80/i.test(c) && /G90/i.test(c) && !/(?<![A-Z])M\d/i.test(c);
+  });
+  if (safety !== -1) return lines.map((l, i) => (i === safety ? l.replace(/^(\s*[^(]*?)\s*(\(.*)?$/, (_w, code: string, c?: string) => `${code} M84${c ? ` ${c}` : ''}`) : l));
+  // No safety line: on its own line right after the program number.
+  const o = lines.findIndex((l) => /^\s*O\d/i.test(l));
+  return [...lines.slice(0, o + 1), 'M84', ...lines.slice(o + 1)];
+}
+
 /** Aluminium or brass part, from the program header. */
 export function isAluOrBrass(code: string): boolean {
   const m = detectMaterial(code);
@@ -725,10 +764,9 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
     outputLines = fanuc2Limits(outputLines, isAluOrBrass(lines.join('\n')));
   }
 
-  // HAAS-2 and HAAS-4 cool with air, not coolant: M08 (or M8) becomes M83, never inside a (comment).
-  if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
-    outputLines = outputLines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
-  }
+  // HAAS-2 and HAAS-4 cool with air, not coolant: M08 (or M8) becomes M83; HAAS-1 and HAAS-5 run
+  // lubricant: M84 (air jet off) on the safety line.
+  outputLines = applyMachineCoolant(outputLines, machineId ?? '');
 
   // FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
   // subprogram calls keep their Q (an argument there, not a pass).
