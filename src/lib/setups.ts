@@ -506,9 +506,13 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
     const scores = options.map((o) => {
       const r = analyseWith(tp, opts, new Map([...chosen, [k, o]]));
       // This turn also places the setups after it (a RAFI or side learned here fixes their turns):
-      // their cuts meeting earlier ones count too.
-      let share = 0;
-      for (let j = k; j < r.setups.length; j++) share += meetShare(tp, r, j);
+      // their cuts meeting earlier ones count too, unless they would cut only air (no shop clamps a
+      // part for that, so it is no evidence for this turn).
+      let share = meetShare(tp, r, k);
+      for (let j = k + 1; j < r.setups.length; j++) {
+        const later = meetShare(tp, r, j);
+        if (later < 0.98) share += later;
+      }
       return { o, r, share };
     });
     const first = scores[0];
