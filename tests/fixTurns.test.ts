@@ -37,17 +37,15 @@ describe('finding the right turns with the real part', async () => {
   }, 300_000);
 });
 
-describe('a program read wrong (O1042013: the RAFI of the setups on edge is the TASTER of setup 2)', () => {
-  it('is found among the turns that agree with what is written, and written back', async () => {
+describe('a flip the notes allow several ways (O1042013: the RAFI of the setups on edge is the TASTER of setup 2)', () => {
+  it('is read right from the notes: the cuts of the setups after it choose the flip', async () => {
+    // The flip was chosen by its own setup's cuts only, and was wrong (the start was below 0.8);
+    // the cuts of every setup it places now count.
     const tris = await readModel(bytes(plateUrl));
     const tp = parseToolpath(plate, speedsFor('HAAS'));
     const r = searchTurns(tris, tp, opts)!;
-    expect(r.start).toBeLessThan(0.8);
-    expect(r.match).toBeGreaterThan(0.99);
-    expect(r.stage).toBe('written');
-    const fix = rewriteTurns(plate, tp, r.orients, opts);
-    expect(fix.unresolved).toEqual([]);
-    expect(orients(fix.code)).toEqual(r.orients.map((o) => o.join()));
+    expect(r.start).toBeGreaterThan(0.99);
+    expect(r.same).toBe(true);
   }, 300_000);
 });
 

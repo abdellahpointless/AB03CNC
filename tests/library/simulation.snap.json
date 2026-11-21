@@ -14,8 +14,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.5878,
-  "pieces": 42
+  "match": 0.9983,
+  "pieces": 2
  },
  "O0036265.X20 05642d2d/680fdb48": {
   "result": "compared",
@@ -121,12 +121,11 @@
   "setups": 5,
   "rejects": [],
   "collisions": {
-   "cale": 2,
    "spacer": 4
   },
   "conflicts": 0,
-  "match": 0.8169,
-  "pieces": 71
+  "match": 1,
+  "pieces": 0
  },
  "O0095457.X20 1a0b9fb4/b7ce6689": {
   "result": "size mismatch",

@@ -22,10 +22,10 @@ const records = (tp: Toolpath, right: Mat3[]) =>
 afterEach(() => setTurnMemory([]));
 
 describe('turns learned from 3D models', () => {
-  it('reads the same wording right after one correction (O1042013, read wrong from its notes)', async () => {
+  it('keeps a program read right from its notes right once its turns are learned (O1042013)', async () => {
     const tp = parseToolpath(plate, speedsFor('HAAS'));
     const right = searchTurns(await readModel(bytes(plateUrl)), tp, opts)!;
-    expect(read(tp)).not.toEqual(right.orients.map((o) => o.join()));
+    expect(read(tp)).toEqual(right.orients.map((o) => o.join()));
     setTurnMemory(records(tp, right.orients));
     expect(read(tp)).toEqual(right.orients.map((o) => o.join()));
     expect(analyseProgram(tp, opts).setups.slice(1).every((s) => s.learned)).toBe(true);

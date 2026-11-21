@@ -492,7 +492,11 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
     if (options.length < 2 || !result.part) continue;
     const scores = options.map((o) => {
       const r = analyseWith(tp, opts, new Map([...chosen, [k, o]]));
-      return { o, r, share: meetShare(tp, r, k) };
+      // This turn also places the setups after it (a RAFI or side learned here fixes their turns):
+      // their cuts meeting earlier ones count too.
+      let share = 0;
+      for (let j = k; j < r.setups.length; j++) share += meetShare(tp, r, j);
+      return { o, r, share };
     });
     const first = scores[0];
     const best = scores.reduce((a, b) => (b.share > a.share ? b : a));
