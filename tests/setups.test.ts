@@ -505,4 +505,11 @@ describe("the shop's other ways of writing a setup", () => {
       expect(analyseProgram(tp, { jawHeight: 42 }).setups[1].support, note).toBe(40);
     }
   });
+
+  it('an operation name is never a clamping note, even when it says GRAD', () => {
+    const turn = 'M0 (TEIL 180 GRAD UM Y DREHEN/49 IN X UND 40 IN Y)';
+    const tp = parseToolpath(program(10).replace(turn, `(TOOLPATH FASE_45_GRAD_1)\n${turn}`), S);
+    expect(tp.setups[1].notes.map((n) => n.text)).toEqual(['TEIL 180 GRAD UM Y DREHEN/49 IN X UND 40 IN Y', '38 MM UNTERLAGE / Z+ IN 15MM']);
+  });
 });
+
