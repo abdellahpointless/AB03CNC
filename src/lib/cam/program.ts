@@ -165,6 +165,8 @@ const STOP_X = -50;
 const STOP_Y = 50;
 const JAW = 45;
 const SAFE = 50;
+/** Stands for the machining time in the end comment until the program is checked. */
+const TIME = '?.?';
 
 const n3 = (v: number) => {
   const r = Math.round(v * 1000) / 1000;
@@ -979,7 +981,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       c.cales <= was.cales &&
       gougeOf(c) <= gougeOf(was);
     const [code, check] = ok ? [arced, c] : [words, was];
-    return { ...r, code, check };
+    return { ...r, code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
   };
   if (input.noNest || !fails(kept).length) return shop(kept);
   // Planned again with the failing sides nested, and again with any side that then fails.
@@ -1548,7 +1550,8 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
       );
     });
   }
-  out.push('M09', 'G53 Y0', 'M30');
+  // The shop's HAAS end: table out, offset cancelled, through-spindle coolant off; the time (set once checked).
+  out.push('M09', 'G0 G53 G49 Y0 Z0 M89', `( Gesamt-Bearbeitungszeit =${TIME}MIN )`, 'M30');
   return ['%', `O${String(input.number ?? 1).padStart(4, '0')}`, ...out.map((l, i) => `N${i + 1} ${l}`), '%'].join('\n');
 }
 

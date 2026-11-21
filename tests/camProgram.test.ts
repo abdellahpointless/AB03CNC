@@ -23,7 +23,9 @@ describe('CAM AI', () => {
     // G53 Y0 before each flip and the end, never before the first clamping.
     const lines = r.code.split('\n');
     expect(lines.slice(0, lines.findIndex((l) => /G52/.test(l))).some((l) => /G53 Y0/.test(l))).toBe(false);
-    expect(lines.filter((l) => /G53 Y0/.test(l))).toHaveLength(r.setups.length);
+    expect(lines.filter((l) => /G53 (G49 )?Y0/.test(l))).toHaveLength(r.setups.length);
+    // The shop's end: table out, offset cancelled, through-spindle coolant off, the machining time.
+    expect(lines.slice(-5, -1).map((l) => l.replace(/^N\d+ /, ''))).toEqual(['M09', 'G0 G53 G49 Y0 Z0 M89', `( Gesamt-Bearbeitungszeit =${(Math.round(r.check.minutes * 10) / 10).toFixed(1)}MIN )`, 'M30']);
     // A flip comes after the next tool change (which stops the spindle and the coolant), never with the spindle on.
     lines.forEach((l, i) => {
       if (!/G53 Y0/.test(l) || /M30/.test(lines[i + 1] ?? '')) return;
