@@ -16,11 +16,12 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readProgram, type PartRead } from '../src/lib/cam/learn';
+import { partTypeOf } from '../src/lib/cam/partType';
 
 const LIB = process.argv[2];
 if (!LIB) throw new Error('usage: npm run knowledge -- <library folder>');
 
-interface Program { file: string; lines: string[]; fanuc: boolean; read: PartRead }
+interface Program { file: string; lines: string[]; fanuc: boolean; read: PartRead; type: string }
 interface Cite { file: string; line: number; text: string }
 type Topic = 'workholding' | 'strategy' | 'tools' | 'gcode';
 interface Rule { id: string; topic: Topic; rule: string; unit: string; applies: number; holds: number; label: string; examples: Cite[]; exceptions: Cite[] }
@@ -41,7 +42,9 @@ for (const folder of readdirSync(LIB).sort()) {
     if (seen.has(hash)) continue;
     seen.add(hash);
     const lines = text.replace(/\r/g, '').split('\n');
-    programs.push({ file, lines, fanuc: /H#513|M254|G94\s+M95/.test(text), read: readProgram(text, file) });
+    // The family from the part's name on the header's size line (the name itself is not kept).
+    const named = lines.slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
+    programs.push({ file, lines, fanuc: /H#513|M254|G94\s+M95/.test(text), read: readProgram(text, file), type: partTypeOf(named) ?? 'other' });
   }
 }
 
@@ -55,7 +58,9 @@ const rules: Rule[] = [];
  * A rule checked unit by unit: `units` gives, per program, each unit it applies to (a program, a
  * tool change, a cycle line...) with whether it holds and the line to cite.
  */
+const RULES = new Map<string, (p: Program) => { holds: boolean; at: number }[]>();
 function rule(id: string, topic: Topic, text: string, unit: string, units: (p: Program) => { holds: boolean; at: number }[]) {
+  RULES.set(id, units);
   const r: Rule = { id, topic, rule: text, unit, applies: 0, holds: 0, label: '', examples: [], exceptions: [] };
   for (const p of programs) {
     for (const u of units(p)) {
@@ -210,6 +215,11 @@ rule('workholding.firstZeroCorner2mm', 'workholding', 'When the first zero is on
   if (!(x <= -45 && x >= -50 && y >= 45 && y <= 50)) return [];
   return [{ holds: x === -48 && y === 48, at: i }];
 });
+rule('workholding.z0AboveFloor', 'workholding', 'Program Z0 is at least 46 mm above the vise floor (G52 Z of -11 or higher): with 45 mm jaws, at least 1 mm of the part stands above them.', 'clampings (G52)', (p) =>
+  g52s(p).flatMap((i) => {
+    const z = code(p.lines[i]).match(/Z(-?[\d.]+)/);
+    return z ? [{ holds: Number(z[1]) + 57 >= 46 - 0.01, at: i }] : [];
+  }));
 const parallels = new Map<number, { n: number; at: Cite }>();
 const rests: Cite[] = [];
 const spacers = new Map<string, { n: number; at: Cite }>();
@@ -262,6 +272,18 @@ rule('strategy.order', 'strategy', 'Within a clamping the operations follow: fac
     return { holds: rank.every((v, k) => k === 0 || v >= rank[k - 1]), at: Math.max(0, p.lines.findIndex((l) => /\(TOOLPATH /i.test(l))) };
   }));
 
+rule('strategy.roughThenFinish', 'strategy', 'Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.', 'clampings with both', (p) =>
+  p.read.order.filter((o) => o.includes('finish') && (o.includes('pocket') || o.includes('contour'))).map((o) => ({ holds: o.lastIndexOf('finish') > Math.max(o.indexOf('pocket'), o.indexOf('contour')), at: Math.max(0, p.lines.findIndex((l) => /\(TOOLPATH SCHL/i.test(l))) })));
+rule('strategy.preFaceThenFinal', 'strategy', 'A pre-facing pass (VORPLAN) is followed by a final facing pass (FERTIGPLAN) in the same clamping.', 'pre-facing passes', (p) =>
+  p.lines.flatMap((l, i) => {
+    if (!/\(TOOLPATH VORPLAN/i.test(l)) return [];
+    // An operation named right before a clamping's notes and G52 belongs to that clamping.
+    const gs = g52s(p);
+    const own = gs.find((g) => g > i && g - i <= 12) ?? i;
+    const next = gs.find((g) => g > own) ?? p.lines.length;
+    return [{ holds: p.lines.slice(i + 1, next).some((x) => /\(TOOLPATH FERTIGPLAN/i.test(x)), at: i }];
+  }));
+
 // ---- Tools and cutting data ---------------------------------------------------------------------------
 rule('tools.codeFormat', 'tools', 'Tools are named by a code TYPE_D.DD_LLL_GGG_MAT: type (MK face mill, SF end mill, SB drill, ZB spot drill, GB tap, ST chamfer...), diameter, length, and the material its data is for.', 'tool changes', (p) =>
   toolChanges(p).map((i) => ({ holds: /[A-Z]{2}_\d+\.\d{2}_\d{3}_[A-Z0-9]+_[A-Z]+/.test(p.lines.slice(i, i + 3).join(' ')), at: i + 1 })));
@@ -299,8 +321,33 @@ const facts = {
   spacers: [...spacers].sort((a, b) => b[1].n - a[1].n).map(([k, v]) => ({ spacer: k, clampings: v.n, example: v.at })),
   rawAllowance: allowance.length ? { programs: allowance.length, medianPerAxisSmallestFirst: [0, 1, 2].map((k) => median(allowance.map((a) => a[k]))) } : null,
 };
+const parts = programs.map((p) => ({
+  file: p.file,
+  dialect: p.fanuc ? 'FANUC' : 'HAAS',
+  type: p.type,
+  material: p.read.material,
+  finished: p.read.size,
+  raw: p.read.raw,
+  setups: p.read.setups,
+  parallels: g52s(p).map((i) => Number(notesBefore(p, i).join(' ').match(/(\d+(?:[.,]\d+)?)\s*MM\s*UNTERLAGE/)?.[1].replace(',', '.') ?? NaN)).map((v) => (Number.isFinite(v) ? v : null)),
+  operations: p.read.order.map((o) => o.join(' > ')),
+  toolChanges: toolChanges(p).length,
+  cycles: cycleLines(p).length,
+  lines: p.lines.length,
+}));
+const types = [...new Set(programs.map((p) => p.type))].sort();
+const byType = rules
+  .filter((r) => r.topic !== 'gcode')
+  .map((r) => ({ id: r.id, rule: r.rule, perType: Object.fromEntries(types.map((t) => {
+    // Recount the rule over this family's programs only.
+    const sub = { holds: 0, applies: 0 };
+    const keep = programs.filter((p) => p.type === t);
+    const one = RULES.get(r.id)!;
+    for (const p of keep) for (const u of one(p)) { sub.applies++; if (u.holds) sub.holds++; }
+    return [t, sub];
+  })) }));
 mkdirSync('docs/knowledge', { recursive: true });
-writeFileSync('docs/knowledge/knowledge.json', `${JSON.stringify({ source: 'reference library, each distinct program once; cited as <program file>:<line>', facts, rules, cuttingData }, null, 1)}\n`);
+writeFileSync('docs/knowledge/knowledge.json', `${JSON.stringify({ source: 'reference library, each distinct program once; cited as <program file>:<line>', facts, rules, byType, cuttingData, parts }, null, 1)}\n`);
 
 const md: string[] = [
   '# How the shop programs: the reference library, counted',
@@ -330,6 +377,11 @@ for (const [topic, title] of topics) {
   }
   md.push('');
 }
+md.push('## By part family', '', `Families from the part's name (src/lib/cam/partType.ts): ${types.map((t) => `${t} ${programs.filter((p) => p.type === t).length}`).join(', ')}. Each cell: holds / applies.`, '', `| Rule | ${types.join(' | ')} |`, `|---|${types.map(() => '---').join('|')}|`);
+for (const b of byType) md.push(`| ${b.id} | ${types.map((t) => (b.perType[t].applies ? `${b.perType[t].holds}/${b.perType[t].applies}` : '–')).join(' | ')} |`);
+md.push('', '## Per program', '', 'Operations per clamping, in order (consecutive same kinds once).', '', '| Program | Dialect | Family | Material | Finished | Blank | Setups | Parallels per clamping | Operations | Tool changes | Cycle lines | Lines |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
+for (const q of parts) md.push(`| ${q.file} | ${q.dialect} | ${q.type} | ${q.material ?? '–'} | ${q.finished?.join('x') ?? '–'} | ${q.raw?.join('x') ?? '–'} | ${q.setups} | ${q.parallels.map((v) => v ?? '–').join(', ')} | ${q.operations.map((o, k) => `${k + 1}: ${o}`).join('<br>')} | ${q.toolChanges} | ${q.cycles} | ${q.lines} |`);
+md.push('');
 writeFileSync('docs/knowledge/README.md', md.join('\n'));
 console.log(`${programs.length} programs, ${rules.length} rules, ${cuttingData.length} cutting data rows`);
 for (const r of rules) console.log(`${r.label.padEnd(30)} ${String(r.holds).padStart(5)}/${String(r.applies).padEnd(5)} ${r.id}`);

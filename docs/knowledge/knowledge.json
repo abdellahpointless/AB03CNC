@@ -924,6 +924,33 @@
    ]
   },
   {
+   "id": "workholding.z0AboveFloor",
+   "topic": "workholding",
+   "rule": "Program Z0 is at least 46 mm above the vise floor (G52 Z of -11 or higher): with 45 mm jaws, at least 1 mm of the part stands above them.",
+   "unit": "clampings (G52)",
+   "applies": 302,
+   "holds": 302,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z1.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z6.000"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 15,
+     "text": "N13 G52 X15.000 Y39.000 Z5.000"
+    }
+   ],
+   "exceptions": []
+  },
+  {
    "id": "strategy.faceFirst",
    "topic": "strategy",
    "rule": "Each program starts by facing the top (PLAN / MESSERKOPF) in its first clamping.",
@@ -1139,6 +1166,76 @@
    ]
   },
   {
+   "id": "strategy.roughThenFinish",
+   "topic": "strategy",
+   "rule": "Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.",
+   "unit": "clampings with both",
+   "applies": 93,
+   "holds": 51,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O1420213.C62",
+     "line": 122,
+     "text": "N120 (TOOLPATH SCHLICHT_8MM)"
+    },
+    {
+     "file": "O0106606.X20",
+     "line": 265,
+     "text": "N263 (TOOLPATH SCHLICHT_16MM)"
+    },
+    {
+     "file": "O0106605.X20",
+     "line": 295,
+     "text": "N293 (TOOLPATH SCHLICHT_16MM)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 293,
+     "text": "N291 (TOOLPATH SCHLICHT_16MM)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 395,
+     "text": "N393 (TOOLPATH SCHLICHT_16MM_COPY)"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 276,
+     "text": "N274 (TOOLPATH SCHLICHT_16MM)"
+    }
+   ]
+  },
+  {
+   "id": "strategy.preFaceThenFinal",
+   "topic": "strategy",
+   "rule": "A pre-facing pass (VORPLAN) is followed by a final facing pass (FERTIGPLAN) in the same clamping.",
+   "unit": "pre-facing passes",
+   "applies": 8,
+   "holds": 0,
+   "label": "minority",
+   "examples": [],
+   "exceptions": [
+    {
+     "file": "O1420213.C62",
+     "line": 278,
+     "text": "N276 (TOOLPATH VORPLAN-MK-93)"
+    },
+    {
+     "file": "O1301093.C96",
+     "line": 208,
+     "text": "N206 (TOOLPATH VORPLAN-MK-93)"
+    },
+    {
+     "file": "O1920213.105",
+     "line": 318,
+     "text": "N316 (TOOLPATH VORPLAN-MK-93)"
+    }
+   ]
+  },
+  {
    "id": "tools.codeFormat",
    "topic": "tools",
    "rule": "Tools are named by a code TYPE_D.DD_LLL_GGG_MAT: type (MK face mill, SF end mill, SB drill, ZB spot drill, GB tap, ST chamfer...), diameter, length, and the material its data is for.",
@@ -1164,6 +1261,368 @@
     }
    ],
    "exceptions": []
+  }
+ ],
+ "byType": [
+  {
+   "id": "workholding.noteBeforeEachClamping",
+   "rule": "Every clamping is announced to the operator: M0 stops with the clamping notes right before its G52.",
+   "perType": {
+    "contourInsert": {
+     "holds": 38,
+     "applies": 38
+    },
+    "other": {
+     "holds": 141,
+     "applies": 142
+    },
+    "pinPlate": {
+     "holds": 22,
+     "applies": 22
+    },
+    "sealCage": {
+     "holds": 16,
+     "applies": 16
+    },
+    "subPlate": {
+     "holds": 62,
+     "applies": 62
+    },
+    "topPlate": {
+     "holds": 22,
+     "applies": 22
+    }
+   }
+  },
+  {
+   "id": "workholding.firstZero",
+   "rule": "In the first clamping program zero is either 2 mm inside the X-/Y+ corner of the raw block (\"G52 X-48. Y48.\") or the centre of the block as clamped.",
+   "perType": {
+    "contourInsert": {
+     "holds": 12,
+     "applies": 12
+    },
+    "other": {
+     "holds": 34,
+     "applies": 40
+    },
+    "pinPlate": {
+     "holds": 7,
+     "applies": 11
+    },
+    "sealCage": {
+     "holds": 7,
+     "applies": 7
+    },
+    "subPlate": {
+     "holds": 16,
+     "applies": 22
+    },
+    "topPlate": {
+     "holds": 1,
+     "applies": 1
+    }
+   }
+  },
+  {
+   "id": "workholding.firstZeroCorner2mm",
+   "rule": "When the first zero is on a corner, it is 2 mm inside the raw faces: \"G52 X-48. Y48.\".",
+   "perType": {
+    "contourInsert": {
+     "holds": 10,
+     "applies": 10
+    },
+    "other": {
+     "holds": 25,
+     "applies": 30
+    },
+    "pinPlate": {
+     "holds": 6,
+     "applies": 8
+    },
+    "sealCage": {
+     "holds": 5,
+     "applies": 5
+    },
+    "subPlate": {
+     "holds": 7,
+     "applies": 11
+    },
+    "topPlate": {
+     "holds": 0,
+     "applies": 2
+    }
+   }
+  },
+  {
+   "id": "workholding.z0AboveFloor",
+   "rule": "Program Z0 is at least 46 mm above the vise floor (G52 Z of -11 or higher): with 45 mm jaws, at least 1 mm of the part stands above them.",
+   "perType": {
+    "contourInsert": {
+     "holds": 38,
+     "applies": 38
+    },
+    "other": {
+     "holds": 142,
+     "applies": 142
+    },
+    "pinPlate": {
+     "holds": 22,
+     "applies": 22
+    },
+    "sealCage": {
+     "holds": 16,
+     "applies": 16
+    },
+    "subPlate": {
+     "holds": 62,
+     "applies": 62
+    },
+    "topPlate": {
+     "holds": 22,
+     "applies": 22
+    }
+   }
+  },
+  {
+   "id": "strategy.faceFirst",
+   "rule": "Each program starts by facing the top (PLAN / MESSERKOPF) in its first clamping.",
+   "perType": {
+    "contourInsert": {
+     "holds": 13,
+     "applies": 13
+    },
+    "other": {
+     "holds": 43,
+     "applies": 45
+    },
+    "pinPlate": {
+     "holds": 11,
+     "applies": 11
+    },
+    "sealCage": {
+     "holds": 7,
+     "applies": 7
+    },
+    "subPlate": {
+     "holds": 24,
+     "applies": 26
+    },
+    "topPlate": {
+     "holds": 6,
+     "applies": 6
+    }
+   }
+  },
+  {
+   "id": "strategy.faceEachSide",
+   "rule": "Each later clamping also starts by facing (the new top is brought to size first).",
+   "perType": {
+    "contourInsert": {
+     "holds": 13,
+     "applies": 25
+    },
+    "other": {
+     "holds": 43,
+     "applies": 97
+    },
+    "pinPlate": {
+     "holds": 10,
+     "applies": 11
+    },
+    "sealCage": {
+     "holds": 7,
+     "applies": 9
+    },
+    "subPlate": {
+     "holds": 21,
+     "applies": 36
+    },
+    "topPlate": {
+     "holds": 0,
+     "applies": 16
+    }
+   }
+  },
+  {
+   "id": "strategy.centreBeforeDrill",
+   "rule": "Holes are spot drilled (ZENTRIER) before they are drilled, in the same clamping.",
+   "perType": {
+    "contourInsert": {
+     "holds": 9,
+     "applies": 22
+    },
+    "other": {
+     "holds": 46,
+     "applies": 92
+    },
+    "pinPlate": {
+     "holds": 13,
+     "applies": 14
+    },
+    "sealCage": {
+     "holds": 3,
+     "applies": 13
+    },
+    "subPlate": {
+     "holds": 21,
+     "applies": 39
+    },
+    "topPlate": {
+     "holds": 13,
+     "applies": 20
+    }
+   }
+  },
+  {
+   "id": "strategy.chamferLast",
+   "rule": "Chamfering and deburring (FASE / ENTGRATEN) come last in their clamping.",
+   "perType": {
+    "contourInsert": {
+     "holds": 27,
+     "applies": 27
+    },
+    "other": {
+     "holds": 97,
+     "applies": 102
+    },
+    "pinPlate": {
+     "holds": 21,
+     "applies": 21
+    },
+    "sealCage": {
+     "holds": 14,
+     "applies": 16
+    },
+    "subPlate": {
+     "holds": 48,
+     "applies": 49
+    },
+    "topPlate": {
+     "holds": 3,
+     "applies": 9
+    }
+   }
+  },
+  {
+   "id": "strategy.order",
+   "rule": "Within a clamping the operations follow: face, pocket/contour, finish, spot drill, drill, counterbore, tap, chamfer.",
+   "perType": {
+    "contourInsert": {
+     "holds": 14,
+     "applies": 34
+    },
+    "other": {
+     "holds": 52,
+     "applies": 122
+    },
+    "pinPlate": {
+     "holds": 8,
+     "applies": 22
+    },
+    "sealCage": {
+     "holds": 3,
+     "applies": 16
+    },
+    "subPlate": {
+     "holds": 31,
+     "applies": 61
+    },
+    "topPlate": {
+     "holds": 5,
+     "applies": 20
+    }
+   }
+  },
+  {
+   "id": "strategy.roughThenFinish",
+   "rule": "Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.",
+   "perType": {
+    "contourInsert": {
+     "holds": 5,
+     "applies": 14
+    },
+    "other": {
+     "holds": 22,
+     "applies": 36
+    },
+    "pinPlate": {
+     "holds": 8,
+     "applies": 9
+    },
+    "sealCage": {
+     "holds": 0,
+     "applies": 7
+    },
+    "subPlate": {
+     "holds": 6,
+     "applies": 17
+    },
+    "topPlate": {
+     "holds": 10,
+     "applies": 10
+    }
+   }
+  },
+  {
+   "id": "strategy.preFaceThenFinal",
+   "rule": "A pre-facing pass (VORPLAN) is followed by a final facing pass (FERTIGPLAN) in the same clamping.",
+   "perType": {
+    "contourInsert": {
+     "holds": 0,
+     "applies": 0
+    },
+    "other": {
+     "holds": 0,
+     "applies": 2
+    },
+    "pinPlate": {
+     "holds": 0,
+     "applies": 3
+    },
+    "sealCage": {
+     "holds": 0,
+     "applies": 0
+    },
+    "subPlate": {
+     "holds": 0,
+     "applies": 3
+    },
+    "topPlate": {
+     "holds": 0,
+     "applies": 0
+    }
+   }
+  },
+  {
+   "id": "tools.codeFormat",
+   "rule": "Tools are named by a code TYPE_D.DD_LLL_GGG_MAT: type (MK face mill, SF end mill, SB drill, ZB spot drill, GB tap, ST chamfer...), diameter, length, and the material its data is for.",
+   "perType": {
+    "contourInsert": {
+     "holds": 241,
+     "applies": 241
+    },
+    "other": {
+     "holds": 780,
+     "applies": 780
+    },
+    "pinPlate": {
+     "holds": 161,
+     "applies": 161
+    },
+    "sealCage": {
+     "holds": 149,
+     "applies": 149
+    },
+    "subPlate": {
+     "holds": 304,
+     "applies": 304
+    },
+    "topPlate": {
+     "holds": 158,
+     "applies": 158
+    }
+   }
   }
  ],
  "cuttingData": [
@@ -5170,6 +5629,3132 @@
     "O1640053.C72",
     "O1640053_2.C72"
    ]
+  }
+ ],
+ "parts": [
+  {
+   "file": "O0161108.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    300,
+    145,
+    9
+   ],
+   "raw": [
+    304,
+    150,
+    20
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    41,
+    null,
+    null
+   ],
+   "operations": [
+    "face > drill > contour > finish > pocket > chamfer",
+    "face > finish > chamfer",
+    "other > drill",
+    "other > drill"
+   ],
+   "toolChanges": 14,
+   "cycles": 10,
+   "lines": 1364
+  },
+  {
+   "file": "O0161424.X20",
+   "dialect": "FANUC",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    39,
+    34,
+    16.7
+   ],
+   "raw": [
+    43,
+    38,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    40,
+    8
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > contour > pocket > chamfer",
+    "face > centre > drill > pocket > chamfer",
+    "drill > contour > chamfer > tap"
+   ],
+   "toolChanges": 22,
+   "cycles": 8,
+   "lines": 5317
+  },
+  {
+   "file": "O1420213.C62",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    24.5,
+    18,
+    14
+   ],
+   "raw": [
+    30,
+    22,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > contour > finish > counterbore > chamfer",
+    "face > centre > drill > contour > finish > counterbore > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 9,
+   "lines": 484
+  },
+  {
+   "file": "O0106624.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    21.2,
+    25.1,
+    17
+   ],
+   "raw": [
+    25,
+    30,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > chamfer",
+    "face > contour > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 8,
+   "lines": 625
+  },
+  {
+   "file": "O0106606.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    18,
+    16,
+    17
+   ],
+   "raw": [
+    22,
+    20,
+    27
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > counterbore > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 6,
+   "lines": 670
+  },
+  {
+   "file": "O0106605.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    21.2,
+    25.1,
+    17
+   ],
+   "raw": [
+    25,
+    30,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > counterbore > chamfer",
+    "face > contour > chamfer"
+   ],
+   "toolChanges": 13,
+   "cycles": 12,
+   "lines": 590
+  },
+  {
+   "file": "O0106604.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    19,
+    20.5,
+    24.5
+   ],
+   "raw": [
+    23,
+    25,
+    35
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > drill > counterbore > contour > finish > chamfer",
+    "face > centre > drill > pocket > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 8,
+   "lines": 2530
+  },
+  {
+   "file": "O0106623.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    16,
+    13.1,
+    24.5
+   ],
+   "raw": [
+    20,
+    17,
+    35
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > centre > drill > finish > contour > counterbore > chamfer",
+    "face > drill > counterbore > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 6,
+   "lines": 544
+  },
+  {
+   "file": "O0106612.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    25,
+    16.25,
+    23.7
+   ],
+   "raw": [
+    29,
+    20,
+    35
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    28
+   ],
+   "operations": [
+    "face > centre > drill > finish > pocket > counterbore > contour > chamfer",
+    "face > drill > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 16,
+   "cycles": 7,
+   "lines": 3875
+  },
+  {
+   "file": "O0125596.X20",
+   "dialect": "HAAS",
+   "type": "contourInsert",
+   "material": "POM",
+   "finished": [
+    94,
+    76,
+    38
+   ],
+   "raw": [
+    98,
+    80,
+    48
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    30,
+    null,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > contour > counterbore > finish > drill",
+    "face > drill > pocket > finish > centre > drill > pocket > chamfer",
+    "pocket > drill",
+    "pocket > drill"
+   ],
+   "toolChanges": 23,
+   "cycles": 13,
+   "lines": 4235
+  },
+  {
+   "file": "O0125675.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    17.8,
+    10,
+    13.5
+   ],
+   "raw": [
+    22,
+    14,
+    24
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "centre > drill > contour > finish > contour > chamfer",
+    "face > centre > drill > counterbore > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 5,
+   "lines": 707
+  },
+  {
+   "file": "O0095457.X20",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    30,
+    30,
+    5
+   ],
+   "raw": [
+    34,
+    34,
+    10
+   ],
+   "setups": 3,
+   "parallels": [
+    41,
+    41,
+    20
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > chamfer",
+    "face > chamfer",
+    "centre > drill"
+   ],
+   "toolChanges": 11,
+   "cycles": 4,
+   "lines": 460
+  },
+  {
+   "file": "O0125595.X20",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "FH",
+   "finished": [
+    100,
+    100,
+    21
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > pocket > chamfer",
+    "centre > drill > chamfer > pocket > finish"
+   ],
+   "toolChanges": 15,
+   "cycles": 9,
+   "lines": 1783
+  },
+  {
+   "file": "O0096795.X20",
+   "dialect": "FANUC",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    55,
+    30,
+    34.5
+   ],
+   "raw": [
+    60,
+    34,
+    45
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > counterbore > pocket > contour > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 4,
+   "lines": 8931
+  },
+  {
+   "file": "O0125674.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    94,
+    76,
+    30
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    36,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > counterbore > pocket > chamfer",
+    "face > pocket > drill > chamfer"
+   ],
+   "toolChanges": 16,
+   "cycles": 11,
+   "lines": 1023
+  },
+  {
+   "file": "O0096794.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    60,
+    46,
+    25
+   ],
+   "raw": [
+    64,
+    50,
+    35
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    28
+   ],
+   "operations": [
+    "face > centre > drill > contour > counterbore > finish > pocket > finish > drill > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 8,
+   "lines": 2239
+  },
+  {
+   "file": "O0131784.X20",
+   "dialect": "FANUC",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    56,
+    38,
+    32
+   ],
+   "raw": [
+    60,
+    42,
+    40
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > drill > centre > drill > contour > drill > pocket > contour > counterbore > contour > chamfer",
+    "face > pocket > contour > chamfer"
+   ],
+   "toolChanges": 19,
+   "cycles": 9,
+   "lines": 6318
+  },
+  {
+   "file": "O0131784_2.X20",
+   "dialect": "HAAS",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    56,
+    38,
+    32
+   ],
+   "raw": [
+    60,
+    42,
+    40
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > drill > centre > drill > contour > drill > pocket > contour > counterbore > contour > chamfer",
+    "face > pocket > contour > chamfer"
+   ],
+   "toolChanges": 19,
+   "cycles": 9,
+   "lines": 6337
+  },
+  {
+   "file": "O0131780.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "FH",
+   "finished": [
+    98,
+    78,
+    30
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    36,
+    36
+   ],
+   "operations": [
+    "face > drill > centre > drill > pocket > counterbore > finish > chamfer",
+    "contour > pocket > chamfer"
+   ],
+   "toolChanges": 14,
+   "cycles": 9,
+   "lines": 1817
+  },
+  {
+   "file": "O0131775.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    48.5,
+    34.5,
+    21
+   ],
+   "raw": [
+    52,
+    38,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    38,
+    8
+   ],
+   "operations": [
+    "face > other > drill > contour > counterbore > contour > tap > chamfer",
+    "face > drill > pocket > chamfer",
+    "drill"
+   ],
+   "toolChanges": 21,
+   "cycles": 12,
+   "lines": 2167
+  },
+  {
+   "file": "O0131775_2.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    48.5,
+    34.5,
+    21
+   ],
+   "raw": [
+    52,
+    38,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    38,
+    8
+   ],
+   "operations": [
+    "face > other > drill > contour > counterbore > contour > tap > chamfer",
+    "face > drill > pocket > chamfer",
+    "drill"
+   ],
+   "toolChanges": 21,
+   "cycles": 12,
+   "lines": 2146
+  },
+  {
+   "file": "O0132934.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "FH",
+   "finished": [
+    98,
+    78,
+    30
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    36,
+    36
+   ],
+   "operations": [
+    "face > drill > pocket > finish > chamfer",
+    "face > centre > drill > pocket > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 6,
+   "lines": 2170
+  },
+  {
+   "file": "O0143118.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    48.5,
+    34.5,
+    21
+   ],
+   "raw": [
+    53,
+    39,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    36,
+    8
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > contour > counterbore > chamfer",
+    "face > pocket > chamfer",
+    "drill"
+   ],
+   "toolChanges": 18,
+   "cycles": 10,
+   "lines": 1643
+  },
+  {
+   "file": "O0038963.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    22,
+    6,
+    4
+   ],
+   "raw": [
+    26,
+    10,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    42
+   ],
+   "operations": [
+    "face > drill > contour > finish > counterbore > pocket > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 3,
+   "lines": 491
+  },
+  {
+   "file": "O0131019.X20",
+   "dialect": "HAAS",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    42.5,
+    19.1,
+    25
+   ],
+   "raw": [
+    47,
+    23,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    25,
+    33,
+    15
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > counterbore > pocket > contour > chamfer",
+    "face > pocket > counterbore > contour > chamfer",
+    "pocket > contour > pocket",
+    "pocket"
+   ],
+   "toolChanges": 24,
+   "cycles": 9,
+   "lines": 3349
+  },
+  {
+   "file": "O0131019_2.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    42.5,
+    19.1,
+    25
+   ],
+   "raw": [
+    47,
+    23,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    25,
+    33,
+    15
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > counterbore > pocket > contour > chamfer",
+    "face > pocket > counterbore > contour > chamfer",
+    "pocket > contour > pocket",
+    "pocket"
+   ],
+   "toolChanges": 24,
+   "cycles": 9,
+   "lines": 3325
+  },
+  {
+   "file": "O2586546.000",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    17.8,
+    18,
+    18.3
+   ],
+   "raw": [
+    20,
+    20,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > chamfer",
+    "face > pocket > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 6,
+   "lines": 756
+  },
+  {
+   "file": "O0156138.X20",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    47.5,
+    36,
+    6
+   ],
+   "raw": [
+    52,
+    40,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > contour > pocket > contour > tap > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 14,
+   "cycles": 5,
+   "lines": 1002
+  },
+  {
+   "file": "O0155037.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    22,
+    17,
+    26
+   ],
+   "raw": [
+    26,
+    20,
+    36
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    22
+   ],
+   "operations": [
+    "face > drill > contour > finish > pocket > counterbore > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 3,
+   "lines": 846
+  },
+  {
+   "file": "O0155034.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    40,
+    25,
+    10
+   ],
+   "raw": [
+    44,
+    30,
+    20
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > chamfer",
+    "face > pocket > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 7,
+   "lines": 405
+  },
+  {
+   "file": "O0155036.X20",
+   "dialect": "FANUC",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    40,
+    25,
+    21
+   ],
+   "raw": [
+    44,
+    30,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    40,
+    15
+   ],
+   "operations": [
+    "face > other > drill > pocket > finish > contour > pocket > contour > chamfer",
+    "face > other > drill > pocket > counterbore > chamfer",
+    "drill > pocket > chamfer > tap"
+   ],
+   "toolChanges": 24,
+   "cycles": 9,
+   "lines": 4934
+  },
+  {
+   "file": "O0155153.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    37.5,
+    34.2,
+    28.5
+   ],
+   "raw": [
+    42,
+    38,
+    39
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    36,
+    15,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > counterbore > contour > chamfer",
+    "face > pocket > other > centre > drill > contour > chamfer",
+    "centre > drill",
+    "centre > drill"
+   ],
+   "toolChanges": 25,
+   "cycles": 18,
+   "lines": 6017
+  },
+  {
+   "file": "O0104049.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    37.5,
+    20,
+    16.825
+   ],
+   "raw": [
+    42,
+    24,
+    27
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > counterbore > chamfer",
+    "face > pocket > other > chamfer"
+   ],
+   "toolChanges": 14,
+   "cycles": 6,
+   "lines": 1956
+  },
+  {
+   "file": "O0155139.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    40,
+    20,
+    10
+   ],
+   "raw": [
+    44,
+    24,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    36,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > contour > chamfer",
+    "face > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 14,
+   "cycles": 3,
+   "lines": 1615
+  },
+  {
+   "file": "O0155136.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    35.5,
+    28,
+    15
+   ],
+   "raw": [
+    40,
+    32,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > contour > counterbore > chamfer",
+    "face > centre > drill > counterbore > chamfer"
+   ],
+   "toolChanges": 14,
+   "cycles": 9,
+   "lines": 435
+  },
+  {
+   "file": "O2619723.000",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    36.7,
+    31.5,
+    25
+   ],
+   "raw": [
+    42,
+    36,
+    35
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    22,
+    22
+   ],
+   "operations": [
+    "face > drill > contour > pocket > other > pocket > chamfer",
+    "face > chamfer",
+    "finish"
+   ],
+   "toolChanges": 11,
+   "cycles": 3,
+   "lines": 2545
+  },
+  {
+   "file": "O0155317.X20",
+   "dialect": "HAAS",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    48,
+    36,
+    20
+   ],
+   "raw": [
+    52,
+    40,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > finish > counterbore > contour > pocket > contour > chamfer",
+    "face > centre > drill > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 22,
+   "cycles": 10,
+   "lines": 50195
+  },
+  {
+   "file": "O0155317_2.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    48,
+    36,
+    20
+   ],
+   "raw": [
+    52,
+    40,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > finish > counterbore > contour > pocket > contour > chamfer",
+    "face > centre > drill > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 22,
+   "cycles": 10,
+   "lines": 50173
+  },
+  {
+   "file": "O1335033.105",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    13.6,
+    9.6,
+    14
+   ],
+   "raw": [
+    20,
+    15,
+    25
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    33,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > pocket > chamfer",
+    "face > centre > drill > pocket > contour > counterbore > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 16,
+   "cycles": 7,
+   "lines": 963
+  },
+  {
+   "file": "O1335033_2.105",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    13.6,
+    9.6,
+    14
+   ],
+   "raw": [
+    20,
+    15,
+    25
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    33,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > pocket > chamfer",
+    "face > centre > drill > pocket > contour > counterbore > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 16,
+   "cycles": 7,
+   "lines": 947
+  },
+  {
+   "file": "O1057063.C90",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    38,
+    90,
+    36
+   ],
+   "raw": [
+    94,
+    40,
+    44
+   ],
+   "setups": 6,
+   "parallels": [
+    40,
+    null,
+    8,
+    8,
+    null,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > contour > drill > pocket > contour > finish > chamfer > other",
+    "face > contour > counterbore > chamfer",
+    "pocket > chamfer",
+    "pocket > chamfer",
+    "pocket",
+    "chamfer > pocket"
+   ],
+   "toolChanges": 28,
+   "cycles": 5,
+   "lines": 28637
+  },
+  {
+   "file": "O1057063_2.C90",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    38,
+    90,
+    36
+   ],
+   "raw": [
+    94,
+    40,
+    44
+   ],
+   "setups": 6,
+   "parallels": [
+    40,
+    null,
+    8,
+    8,
+    null,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > contour > drill > pocket > contour > finish > chamfer > other",
+    "face > contour > counterbore > chamfer",
+    "pocket > chamfer",
+    "pocket > chamfer",
+    "pocket",
+    "chamfer > pocket"
+   ],
+   "toolChanges": 28,
+   "cycles": 5,
+   "lines": 28581
+  },
+  {
+   "file": "O1301093.C96",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    20,
+    15,
+    17
+   ],
+   "raw": [
+    25,
+    20,
+    30
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    33,
+    33,
+    33
+   ],
+   "operations": [
+    "face > drill > contour > pocket",
+    "face > counterbore > chamfer",
+    "centre > drill",
+    "centre > drill > tap"
+   ],
+   "toolChanges": 12,
+   "cycles": 9,
+   "lines": 353
+  },
+  {
+   "file": "O1920213.105",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    90,
+    38,
+    16.5
+   ],
+   "raw": [
+    94,
+    42,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40.5
+   ],
+   "operations": [
+    "face > drill > contour > finish > chamfer",
+    "face > centre > drill > contour > pocket > finish > pocket > chamfer"
+   ],
+   "toolChanges": 14,
+   "cycles": 9,
+   "lines": 979
+  },
+  {
+   "file": "O1944053.C94",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    22,
+    6,
+    4
+   ],
+   "raw": [
+    116,
+    10,
+    12
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    42
+   ],
+   "operations": [
+    "face > drill > contour > pocket > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 3,
+   "lines": 1853
+  },
+  {
+   "file": "O1944053_2.C94",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    22,
+    6,
+    4
+   ],
+   "raw": [
+    26,
+    10,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    42
+   ],
+   "operations": [
+    "face > drill > contour > finish > counterbore > pocket > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 3,
+   "lines": 481
+  },
+  {
+   "file": "O1972033.121",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    18.5,
+    15.4,
+    13.3
+   ],
+   "raw": [
+    22,
+    20,
+    23
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > drill > contour > finish > pocket > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 8,
+   "cycles": 1,
+   "lines": 806
+  },
+  {
+   "file": "O1754053.135",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    60,
+    37,
+    35
+   ],
+   "raw": [
+    64,
+    40,
+    45
+   ],
+   "setups": 7,
+   "parallels": [
+    40,
+    15,
+    22,
+    8,
+    22,
+    22,
+    36
+   ],
+   "operations": [
+    "face > contour > drill > pocket > finish > chamfer",
+    "face > chamfer",
+    "drill > counterbore > pocket > chamfer",
+    "centre > drill > pocket > counterbore > finish > chamfer",
+    "pocket",
+    "pocket > other",
+    "drill"
+   ],
+   "toolChanges": 28,
+   "cycles": 14,
+   "lines": 3981
+  },
+  {
+   "file": "O1754043.135",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "PC GF",
+   "finished": [
+    8.4,
+    8,
+    17
+   ],
+   "raw": [
+    12,
+    12,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > finish > contour > other > drill > tap > chamfer",
+    "face > other > drill > counterbore > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 9,
+   "lines": 1843
+  },
+  {
+   "file": "O0124681.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    40,
+    26.991,
+    19.5
+   ],
+   "raw": [
+    44,
+    30,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > counterbore > pocket > finish > chamfer",
+    "face > centre > drill > pocket > chamfer"
+   ],
+   "toolChanges": 18,
+   "cycles": 12,
+   "lines": 1018
+  },
+  {
+   "file": "O2613201.000",
+   "dialect": "HAAS",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    40,
+    27,
+    23
+   ],
+   "raw": [
+    44,
+    30,
+    33
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    42
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > contour > chamfer",
+    "face > other > drill > contour > finish > pocket > contour > chamfer"
+   ],
+   "toolChanges": 25,
+   "cycles": 8,
+   "lines": 6536
+  },
+  {
+   "file": "O2613201_2.000",
+   "dialect": "FANUC",
+   "type": "sealCage",
+   "material": "ALU",
+   "finished": [
+    40,
+    27,
+    23
+   ],
+   "raw": [
+    44,
+    30,
+    33
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    42
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > contour > chamfer",
+    "face > other > drill > contour > finish > pocket > contour > chamfer"
+   ],
+   "toolChanges": 25,
+   "cycles": 8,
+   "lines": 6511
+  },
+  {
+   "file": "O1566213.134",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    50,
+    30,
+    24.3
+   ],
+   "raw": [
+    55,
+    34,
+    40
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > chamfer",
+    "face > centre > drill > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 10,
+   "lines": 1421
+  },
+  {
+   "file": "O1650603.C18",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    94,
+    78,
+    8
+   ],
+   "raw": null,
+   "setups": 3,
+   "parallels": [
+    42,
+    42,
+    8
+   ],
+   "operations": [
+    "face > centre > drill > pocket > tap > chamfer",
+    "finish > chamfer",
+    "centre > drill > tap"
+   ],
+   "toolChanges": 15,
+   "cycles": 9,
+   "lines": 1407
+  },
+  {
+   "file": "O0024264.X20",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "FH",
+   "finished": [
+    100,
+    100,
+    40
+   ],
+   "raw": null,
+   "setups": 5,
+   "parallels": [
+    36,
+    36,
+    8,
+    8,
+    8
+   ],
+   "operations": [
+    "face > drill > contour > counterbore > pocket > finish > pocket > drill",
+    "centre > drill > chamfer > pocket > finish > counterbore > finish",
+    "counterbore",
+    "drill > pocket > centre > drill",
+    "counterbore"
+   ],
+   "toolChanges": 39,
+   "cycles": 39,
+   "lines": 4861
+  },
+  {
+   "file": "O0036265.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    64,
+    57,
+    8
+   ],
+   "raw": null,
+   "setups": 1,
+   "parallels": [
+    38
+   ],
+   "operations": [
+    "centre > drill > counterbore > pocket > finish > chamfer"
+   ],
+   "toolChanges": 9,
+   "cycles": 7,
+   "lines": 507
+  },
+  {
+   "file": "O0024263.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    30,
+    30,
+    16.5
+   ],
+   "raw": [
+    34,
+    34,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > chamfer",
+    "face > contour > counterbore > contour > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 5,
+   "lines": 2473
+  },
+  {
+   "file": "O1860053.C46",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    27.5,
+    28.5,
+    8
+   ],
+   "raw": [
+    32,
+    32,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    38,
+    38,
+    38
+   ],
+   "operations": [
+    "face > drill > contour > pocket > chamfer",
+    "face > chamfer",
+    "centre > drill > tap"
+   ],
+   "toolChanges": 11,
+   "cycles": 4,
+   "lines": 839
+  },
+  {
+   "file": "O1916043.C96",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    45.5,
+    28,
+    11.8
+   ],
+   "raw": [
+    50,
+    32,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    41,
+    38,
+    40
+   ],
+   "operations": [
+    "face > drill > contour > finish > pocket > contour > chamfer",
+    "face > pocket > chamfer",
+    "pocket > chamfer"
+   ],
+   "toolChanges": 13,
+   "cycles": 3,
+   "lines": 2101
+  },
+  {
+   "file": "O1916043_2.C96",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    45.5,
+    28,
+    11.8
+   ],
+   "raw": [
+    50,
+    32,
+    25
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    40,
+    40
+   ],
+   "operations": [
+    "face > drill > contour > finish > pocket > chamfer",
+    "face > finish > chamfer",
+    "pocket > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 3,
+   "lines": 2638
+  },
+  {
+   "file": "O0037181.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    17.3,
+    31,
+    5
+   ],
+   "raw": [
+    20,
+    34,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > contour > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 2,
+   "lines": 545
+  },
+  {
+   "file": "O0037181_2.X20",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    17.3,
+    31,
+    5
+   ],
+   "raw": [
+    20,
+    34,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > contour > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 10,
+   "cycles": 2,
+   "lines": 525
+  },
+  {
+   "file": "O0168461.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    35,
+    18,
+    15
+   ],
+   "raw": [
+    40,
+    22,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > contour > counterbore > pocket > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 7,
+   "lines": 421
+  },
+  {
+   "file": "O0168459.X20",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    25,
+    20,
+    20.5
+   ],
+   "raw": [
+    30,
+    24,
+    30
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    30,
+    22,
+    22
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > contour > chamfer",
+    "face > other > drill > chamfer",
+    "pocket",
+    "drill"
+   ],
+   "toolChanges": 21,
+   "cycles": 10,
+   "lines": 5743
+  },
+  {
+   "file": "O1268043.128",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    42,
+    11.5,
+    25
+   ],
+   "raw": [
+    46,
+    15,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    41,
+    36,
+    40
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > counterbore > contour > chamfer",
+    "face > pocket > contour > chamfer",
+    "pocket",
+    "pocket > contour"
+   ],
+   "toolChanges": 17,
+   "cycles": 4,
+   "lines": 2923
+  },
+  {
+   "file": "O1268043_2.128",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    42,
+    11.5,
+    25
+   ],
+   "raw": [
+    46,
+    15,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    41,
+    40,
+    36
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > contour > chamfer",
+    "face > pocket > contour > chamfer",
+    "pocket > contour > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 21,
+   "cycles": 4,
+   "lines": 4322
+  },
+  {
+   "file": "O0089654.X20",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "FH",
+   "finished": [
+    100,
+    100,
+    40
+   ],
+   "raw": null,
+   "setups": 5,
+   "parallels": [
+    36,
+    8,
+    null,
+    null,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > chamfer > contour > pocket > counterbore > finish > pocket",
+    "centre > drill > chamfer > pocket > finish > counterbore > finish > counterbore > finish > drill",
+    "centre > drill",
+    "pocket > drill",
+    "pocket > drill"
+   ],
+   "toolChanges": 36,
+   "cycles": 36,
+   "lines": 2750
+  },
+  {
+   "file": "O1784033.129",
+   "dialect": "HAAS",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    27,
+    8.75,
+    25
+   ],
+   "raw": [
+    30,
+    12,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    28,
+    41,
+    41
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > counterbore > contour > chamfer",
+    "face > pocket > chamfer",
+    "counterbore > drill",
+    "contour > pocket > chamfer"
+   ],
+   "toolChanges": 19,
+   "cycles": 8,
+   "lines": 1546
+  },
+  {
+   "file": "O1784033_2.129",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    27,
+    8.75,
+    25
+   ],
+   "raw": [
+    30,
+    12,
+    35
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    28,
+    41,
+    41
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > counterbore > contour > chamfer",
+    "face > pocket > chamfer",
+    "counterbore > drill",
+    "contour > pocket > chamfer"
+   ],
+   "toolChanges": 19,
+   "cycles": 8,
+   "lines": 1527
+  },
+  {
+   "file": "O1784233.129",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "FH",
+   "finished": [
+    78,
+    98,
+    30
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    36,
+    36
+   ],
+   "operations": [
+    "face > drill > pocket > counterbore > finish > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 10,
+   "cycles": 11,
+   "lines": 599
+  },
+  {
+   "file": "O1610603.C85",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    78,
+    98,
+    8
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    42,
+    42
+   ],
+   "operations": [
+    "centre > drill > pocket > tap",
+    "finish"
+   ],
+   "toolChanges": 9,
+   "cycles": 6,
+   "lines": 519
+  },
+  {
+   "file": "O0055194.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    91,
+    56,
+    10
+   ],
+   "raw": [
+    95,
+    60,
+    20
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > chamfer",
+    "face > pocket > finish > chamfer"
+   ],
+   "toolChanges": 11,
+   "cycles": 2,
+   "lines": 880
+  },
+  {
+   "file": "O0037519.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    45,
+    29.5,
+    31.5
+   ],
+   "raw": [
+    50,
+    32,
+    40
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    22,
+    22,
+    22
+   ],
+   "operations": [
+    "face > centre > drill > contour > pocket > finish > chamfer",
+    "face > finish",
+    "centre > drill > pocket",
+    "pocket > finish > chamfer"
+   ],
+   "toolChanges": 16,
+   "cycles": 5,
+   "lines": 1495
+  },
+  {
+   "file": "O1027213.C96",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "FH",
+   "finished": [
+    37,
+    47,
+    15
+   ],
+   "raw": [
+    40,
+    50,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > counterbore > chamfer",
+    "face > pocket > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 10,
+   "lines": 524
+  },
+  {
+   "file": "O1272053.C96",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    16,
+    20,
+    10.7
+   ],
+   "raw": [
+    20,
+    24,
+    15
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    41
+   ],
+   "operations": [
+    "face > contour > finish > pocket > contour > chamfer",
+    "face > other > drill > contour > finish > chamfer > pocket > contour"
+   ],
+   "toolChanges": 15,
+   "cycles": 2,
+   "lines": 2184
+  },
+  {
+   "file": "O1222033.113",
+   "dialect": "FANUC",
+   "type": "subPlate",
+   "material": "ALU",
+   "finished": [
+    31.6,
+    16,
+    27.5
+   ],
+   "raw": [
+    35,
+    20,
+    40
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    22,
+    36
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > pocket > other > pocket > contour > other > chamfer",
+    "face > chamfer",
+    "pocket > contour > chamfer"
+   ],
+   "toolChanges": 20,
+   "cycles": 5,
+   "lines": 5189
+  },
+  {
+   "file": "O0041108.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    41,
+    30,
+    32
+   ],
+   "raw": [
+    45,
+    34,
+    40
+   ],
+   "setups": 2,
+   "parallels": [
+    42,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > contour > pocket > finish",
+    "face > drill > pocket > counterbore > chamfer"
+   ],
+   "toolChanges": 11,
+   "cycles": 4,
+   "lines": 734
+  },
+  {
+   "file": "O0173704.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    70,
+    42,
+    40
+   ],
+   "raw": [
+    74,
+    46,
+    50
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    15,
+    8,
+    8
+   ],
+   "operations": [
+    "face > drill > contour > pocket > chamfer",
+    "face > drill > pocket > contour > chamfer",
+    "centre > drill",
+    "centre > drill"
+   ],
+   "toolChanges": 14,
+   "cycles": 6,
+   "lines": 1869
+  },
+  {
+   "file": "O0173595.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "POM",
+   "finished": [
+    74.6,
+    45,
+    21.4
+   ],
+   "raw": [
+    79,
+    50,
+    31
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > finish",
+    "face > pocket > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 18,
+   "cycles": 8,
+   "lines": 9984
+  },
+  {
+   "file": "O0173579.X20",
+   "dialect": "HAAS",
+   "type": "pinPlate",
+   "material": "FH",
+   "finished": [
+    98,
+    78,
+    30
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    36,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > finish > chamfer",
+    "face > pocket > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 5,
+   "lines": 926
+  },
+  {
+   "file": "O0173596.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    17,
+    12,
+    26
+   ],
+   "raw": [
+    21,
+    16,
+    36
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    25,
+    36
+   ],
+   "operations": [
+    "face > drill > contour > pocket > chamfer",
+    "face > chamfer",
+    "centre > drill"
+   ],
+   "toolChanges": 9,
+   "cycles": 3,
+   "lines": 448
+  },
+  {
+   "file": "O0173572.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    78,
+    98,
+    8
+   ],
+   "raw": null,
+   "setups": 1,
+   "parallels": [
+    38
+   ],
+   "operations": [
+    "face > drill > pocket > chamfer"
+   ],
+   "toolChanges": 6,
+   "cycles": 4,
+   "lines": 665
+  },
+  {
+   "file": "O0073078.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    75,
+    25,
+    12
+   ],
+   "raw": [
+    79,
+    30,
+    22
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    41,
+    4
+   ],
+   "operations": [
+    "face > contour > finish > chamfer",
+    "face > centre > drill > contour > chamfer",
+    "other > drill"
+   ],
+   "toolChanges": 11,
+   "cycles": 4,
+   "lines": 1252
+  },
+  {
+   "file": "O0073078_2.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    75,
+    25,
+    12
+   ],
+   "raw": [
+    79,
+    30,
+    22
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    41,
+    4
+   ],
+   "operations": [
+    "face > contour > finish > chamfer",
+    "face > centre > drill > contour > chamfer",
+    "other > drill"
+   ],
+   "toolChanges": 11,
+   "cycles": 4,
+   "lines": 1263
+  },
+  {
+   "file": "O0173835.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    53,
+    36,
+    50
+   ],
+   "raw": [
+    57,
+    40,
+    60
+   ],
+   "setups": 5,
+   "parallels": [
+    40,
+    8,
+    8,
+    8,
+    30
+   ],
+   "operations": [
+    "face > drill > contour > pocket > finish > chamfer > finish",
+    "face > drill > chamfer",
+    "drill > pocket > finish > chamfer",
+    "drill > pocket > finish > chamfer",
+    "pocket > chamfer"
+   ],
+   "toolChanges": 23,
+   "cycles": 14,
+   "lines": 2748
+  },
+  {
+   "file": "O0118105.X20",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "POM",
+   "finished": [
+    78,
+    126,
+    8
+   ],
+   "raw": null,
+   "setups": 1,
+   "parallels": [
+    38
+   ],
+   "operations": [
+    "face > centre > drill > tap > other > pocket"
+   ],
+   "toolChanges": 9,
+   "cycles": 6,
+   "lines": 349
+  },
+  {
+   "file": "O0084691.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    32,
+    25,
+    20.5
+   ],
+   "raw": [
+    36,
+    29,
+    30
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    38,
+    25
+   ],
+   "operations": [
+    "face > centre > drill > contour > finish > pocket > chamfer",
+    "face > pocket > chamfer",
+    "centre > drill"
+   ],
+   "toolChanges": 15,
+   "cycles": 6,
+   "lines": 1671
+  },
+  {
+   "file": "O0173954.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    20,
+    15,
+    40
+   ],
+   "raw": [
+    24,
+    20,
+    50
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    8,
+    28,
+    33
+   ],
+   "operations": [
+    "face > drill > finish > counterbore > chamfer",
+    "face > drill > pocket > chamfer",
+    "centre > drill",
+    "centre > drill"
+   ],
+   "toolChanges": 15,
+   "cycles": 8,
+   "lines": 682
+  },
+  {
+   "file": "O0173010.X20",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "FH",
+   "finished": [
+    78,
+    48,
+    8
+   ],
+   "raw": null,
+   "setups": 2,
+   "parallels": [
+    38,
+    20
+   ],
+   "operations": [
+    "face > centre > drill > pocket > chamfer",
+    "centre > drill"
+   ],
+   "toolChanges": 9,
+   "cycles": 7,
+   "lines": 273
+  },
+  {
+   "file": "O0173781.X20",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "FH",
+   "finished": [
+    150,
+    100,
+    40
+   ],
+   "raw": null,
+   "setups": 6,
+   "parallels": [
+    36,
+    8,
+    null,
+    null,
+    null,
+    null
+   ],
+   "operations": [
+    "face > drill > contour > pocket > counterbore > drill > chamfer",
+    "centre > drill > chamfer > pocket > counterbore > finish",
+    "centre > drill > pocket > finish > drill",
+    "drill > pocket > finish > drill",
+    "drill > pocket",
+    "centre > drill"
+   ],
+   "toolChanges": 39,
+   "cycles": 26,
+   "lines": 9388
+  },
+  {
+   "file": "O2633759.000",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    90,
+    45,
+    45
+   ],
+   "raw": [
+    94,
+    50,
+    55
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    null
+   ],
+   "operations": [
+    "face > drill > centre > drill > contour > finish > pocket > contour > drill > contour > chamfer",
+    "face > pocket > contour > pocket > chamfer"
+   ],
+   "toolChanges": 22,
+   "cycles": 9,
+   "lines": 15432
+  },
+  {
+   "file": "O2625441.000",
+   "dialect": "FANUC",
+   "type": "contourInsert",
+   "material": "ALU",
+   "finished": [
+    45.5,
+    35,
+    21.5
+   ],
+   "raw": [
+    50,
+    40,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > centre > drill > finish > contour > pocket > contour > drill > chamfer",
+    "face > pocket > chamfer"
+   ],
+   "toolChanges": 20,
+   "cycles": 15,
+   "lines": 48804
+  },
+  {
+   "file": "O1161033.129",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    64,
+    65.5,
+    11.5
+   ],
+   "raw": [
+    68,
+    70,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    41,
+    41,
+    28
+   ],
+   "operations": [
+    "face > centre > drill > finish > pocket > contour > chamfer",
+    "face > contour > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 21,
+   "cycles": 7,
+   "lines": 16817
+  },
+  {
+   "file": "O1161033_2.129",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    64,
+    65.5,
+    11.5
+   ],
+   "raw": [
+    68,
+    70,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    41,
+    41,
+    28
+   ],
+   "operations": [
+    "face > centre > drill > finish > pocket > contour > chamfer",
+    "face > contour > chamfer",
+    "pocket"
+   ],
+   "toolChanges": 21,
+   "cycles": 7,
+   "lines": 16796
+  },
+  {
+   "file": "O1640053.C72",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "VAHS",
+   "finished": [
+    34,
+    32,
+    15
+   ],
+   "raw": [
+    40,
+    40,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > other > contour > counterbore > contour > chamfer",
+    "face > drill > pocket > contour > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 9,
+   "lines": 6071
+  },
+  {
+   "file": "O1640053_2.C72",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "VAHS",
+   "finished": [
+    34,
+    32,
+    15
+   ],
+   "raw": [
+    40,
+    40,
+    25
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    33
+   ],
+   "operations": [
+    "face > centre > drill > other > contour > counterbore > contour > chamfer",
+    "face > drill > pocket > contour > chamfer"
+   ],
+   "toolChanges": 17,
+   "cycles": 9,
+   "lines": 6088
+  },
+  {
+   "file": "O1723083.135",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    28,
+    8,
+    15.2
+   ],
+   "raw": [
+    30,
+    10,
+    20
+   ],
+   "setups": 4,
+   "parallels": [
+    null,
+    null,
+    41,
+    41
+   ],
+   "operations": [
+    "face > centre > drill > counterbore > contour > chamfer",
+    "face > centre > drill > contour > pocket > chamfer",
+    "contour",
+    "pocket > contour"
+   ],
+   "toolChanges": 16,
+   "cycles": 6,
+   "lines": 6153
+  },
+  {
+   "file": "O1024043.C51",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    32,
+    10,
+    8
+   ],
+   "raw": [
+    35,
+    15,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    38,
+    36
+   ],
+   "operations": [
+    "face > drill > contour > chamfer",
+    "face > chamfer",
+    "centre > drill > tap"
+   ],
+   "toolChanges": 9,
+   "cycles": 4,
+   "lines": 259
+  },
+  {
+   "file": "O2308115.000",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": [
+    32,
+    10,
+    8
+   ],
+   "raw": [
+    36,
+    72,
+    20
+   ],
+   "setups": 3,
+   "parallels": [
+    40,
+    36,
+    38
+   ],
+   "operations": [
+    "face > centre > drill > tap > finish > chamfer",
+    "face > chamfer",
+    "drill"
+   ],
+   "toolChanges": 9,
+   "cycles": 4,
+   "lines": 491
+  },
+  {
+   "file": "O4230811.000",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "POM",
+   "finished": null,
+   "raw": null,
+   "setups": 1,
+   "parallels": [
+    null
+   ],
+   "operations": [
+    "other > tap > other"
+   ],
+   "toolChanges": 10,
+   "cycles": 56,
+   "lines": 1417
+  },
+  {
+   "file": "O1130153.113",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    50.5,
+    27.5,
+    18.6
+   ],
+   "raw": [
+    55,
+    30,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > contour > pocket > chamfer",
+    "face > centre > drill > pocket > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 14,
+   "lines": 1362
+  },
+  {
+   "file": "O1130153_2.113",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    50.5,
+    27.5,
+    18.6
+   ],
+   "raw": [
+    55,
+    30,
+    30
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    40
+   ],
+   "operations": [
+    "face > contour > pocket > chamfer",
+    "face > centre > drill > pocket > counterbore > pocket > chamfer"
+   ],
+   "toolChanges": 15,
+   "cycles": 14,
+   "lines": 1345
+  },
+  {
+   "file": "O4280166.001",
+   "dialect": "HAAS",
+   "type": "topPlate",
+   "material": "FH",
+   "finished": [
+    100,
+    50,
+    35
+   ],
+   "raw": null,
+   "setups": 3,
+   "parallels": [
+    null,
+    null,
+    null
+   ],
+   "operations": [
+    "face > centre > drill > other > pocket > finish > counterbore > pocket > chamfer",
+    "centre > drill",
+    "centre > drill > chamfer > pocket > finish > counterbore > pocket"
+   ],
+   "toolChanges": 20,
+   "cycles": 10,
+   "lines": 1384
+  },
+  {
+   "file": "O0134813.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    43.8,
+    25,
+    21.5
+   ],
+   "raw": [
+    48,
+    29,
+    30
+   ],
+   "setups": 5,
+   "parallels": [
+    41,
+    25,
+    22,
+    15,
+    15
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > contour > pocket > counterbore > contour > chamfer",
+    "face > centre > drill > chamfer",
+    "drill > counterbore > chamfer",
+    "drill > pocket",
+    "drill > pocket"
+   ],
+   "toolChanges": 28,
+   "cycles": 15,
+   "lines": 6015
+  },
+  {
+   "file": "O0134813_2.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    43.8,
+    25,
+    21.5
+   ],
+   "raw": [
+    48,
+    29,
+    30
+   ],
+   "setups": 5,
+   "parallels": [
+    41,
+    25,
+    22,
+    15,
+    15
+   ],
+   "operations": [
+    "face > other > drill > contour > finish > contour > pocket > counterbore > contour > chamfer",
+    "face > centre > drill > chamfer",
+    "drill > counterbore > chamfer",
+    "drill > pocket",
+    "drill > pocket"
+   ],
+   "toolChanges": 28,
+   "cycles": 15,
+   "lines": 5987
+  },
+  {
+   "file": "O0137238.X20",
+   "dialect": "HAAS",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    15,
+    13,
+    30
+   ],
+   "raw": [
+    20,
+    17,
+    40
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    20,
+    41,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > finish > contour > pocket > chamfer",
+    "face > centre > drill > pocket > chamfer",
+    "pocket > chamfer",
+    "drill"
+   ],
+   "toolChanges": 23,
+   "cycles": 5,
+   "lines": 6256
+  },
+  {
+   "file": "O0137238_2.X20",
+   "dialect": "FANUC",
+   "type": "other",
+   "material": "ALU",
+   "finished": [
+    15,
+    13,
+    30
+   ],
+   "raw": [
+    20,
+    17,
+    40
+   ],
+   "setups": 4,
+   "parallels": [
+    40,
+    20,
+    41,
+    36
+   ],
+   "operations": [
+    "face > centre > drill > finish > contour > pocket > chamfer",
+    "face > centre > drill > pocket > chamfer",
+    "pocket > chamfer",
+    "drill"
+   ],
+   "toolChanges": 23,
+   "cycles": 5,
+   "lines": 6233
+  },
+  {
+   "file": "O2500009.002",
+   "dialect": "HAAS",
+   "type": "subPlate",
+   "material": "POM",
+   "finished": [
+    90,
+    37,
+    10
+   ],
+   "raw": [
+    94,
+    40,
+    20
+   ],
+   "setups": 2,
+   "parallels": [
+    40,
+    38
+   ],
+   "operations": [
+    "face > centre > drill > contour > pocket > finish > counterbore > chamfer",
+    "face > chamfer"
+   ],
+   "toolChanges": 12,
+   "cycles": 4,
+   "lines": 1074
   }
  ]
 }
