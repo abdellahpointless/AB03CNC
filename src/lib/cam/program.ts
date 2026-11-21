@@ -1185,7 +1185,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const H = f.max[2] - f.min[2];
     // What is left, on the faces it stands for: the part's (in this frame) or the raw block's.
     const rb = boxLeft(R, t, rawLo, rawHi).box;
-    const pb = { lo: [f.min[0], f.min[1], -H] as Vec, hi: [f.max[0], f.max[1], 0] as Vec };
+    // The operator's side stock stands on every wall the clampings cut, the faces across the first
+    // clamping's height (the two faces along it are faced to size).
+    const v1 = (setups[0]?.R ?? R).slice(6, 9).findIndex((x) => x !== 0);
+    const ss = (k: number) => (input.sideStock && R.slice(k * 3, k * 3 + 3).findIndex((x) => x !== 0) !== v1 ? input.sideStock : 0);
+    const pb = { lo: [f.min[0] - ss(0), f.min[1] - ss(1), -H - ss(2)] as Vec, hi: [f.max[0] + ss(0), f.max[1] + ss(1), ss(2)] as Vec };
     const sb = { lo: left.box.lo.map((v, k) => onFace(v, true, [pb.lo[k], rb.lo[k]], left.skin, 0)) as Vec, hi: left.box.hi.map((v, k) => onFace(v, false, [pb.hi[k], rb.hi[k]], left.skin, 0)) as Vec };
     const stockH = sb.hi[2] - sb.lo[2];
     // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
@@ -1201,15 +1205,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // app's reader take them): the stop and the fixed jaw touch those, so the shift and the size written
     // come from them, as the shop writes the size after a turn (docs/knowledge/cam-gaps.md, P1). Not from
     // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
-    const band = nested ? null : extent(left.at(sb.lo[2], jawTop));
+    // In the POM nest: what sits in its pocket (the pocket is made round it, and the part is put by it).
+    const band = extent(left.at(sb.lo[2], jawTop));
     // The part's own outline over that height, for the faces of the band.
     const nz = Math.max(2, Math.ceil(jawTop - sb.lo[2]) + 1);
     const zs = Array.from({ length: nz }, (_, i) => sb.lo[2] + 0.05 + ((jawTop - sb.lo[2] - 0.1) * i) / (nz - 1));
     const own = band && left.grow ? extent(zs.reduce((r: Region, z) => union(r, slice(P, Math.min(z, -0.01))), [])) : null;
     const held = band
       ? {
-          lo: [0, 1].map((k) => onFace(band.lo[k], true, [own?.lo[k] ?? NaN, rb.lo[k]], left.skin, left.grow)) as P2,
-          hi: [0, 1].map((k) => onFace(band.hi[k], false, [own?.hi[k] ?? NaN, rb.hi[k]], left.skin, left.grow)) as P2,
+          lo: [0, 1].map((k) => onFace(band.lo[k], true, [(own?.lo[k] ?? NaN) - ss(k), rb.lo[k]], left.skin, left.grow)) as P2,
+          hi: [0, 1].map((k) => onFace(band.hi[k], false, [(own?.hi[k] ?? NaN) + ss(k), rb.hi[k]], left.skin, left.grow)) as P2,
         }
       : { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
     const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
@@ -1538,7 +1543,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], c.width || hold[1], limits));
       return checkSetup({ material: mat, length: hold[0], width: c.width || hold[1], height: stockH, grip: g, thin, contact: c.contact, loads, squeeze });
     };
-    const nest = nested ? nestFor([sb.lo[0], sb.lo[1]], [sb.hi[0], sb.hi[1]], sb.lo[2], nestDepth) : undefined;
+    const nest = nested ? nestFor(held.lo, held.hi, sb.lo[2], nestDepth) : undefined;
     const physics = nest
       ? checkNest({ material: mat, loads: ops.map((op) => loadOf(op, mat, sb.lo[0], hold[1], limits)), screws: nest.screws.length })
       : physicsAt(grip);

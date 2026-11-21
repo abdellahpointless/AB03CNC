@@ -59,6 +59,12 @@ describe('where a clamping puts the part', () => {
     const turned = r.code.match(/DREHEN\/(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/)!;
     expect(Number(turned[1])).toBeCloseTo(40, 1);
     expect(Number(turned[2])).toBeCloseTo(30, 1);
+    // Where G52 puts it (the gaps above compare the written size with the faces, both placed by G52, so
+    // they cannot see it): the 40 x 30 held faces at the stop (X-50) and at the fixed jaw (Y50).
+    const g52 = [...r.code.matchAll(/G52 X(-?[\d.]+) Y(-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    expect(g52[0]).toEqual([-28, 33]);
+    expect(g52[1][0]).toBeCloseTo(-30, 2);
+    expect(g52[1][1]).toBeCloseTo(35, 2);
     // The second clamping written with the whole stock's size (44 x 34), as CAM AI wrote it before: the
     // vise holds 40 x 30 there, the part would sit 2 mm off; the check counts it, and that locks the program.
     const wrong = r.code.replace(/(DREHEN\/)(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/, (_m, pre: string, x: string, y: string) => `${pre}${Number(x) + 4} IN X UND ${Number(y) + 4} IN Y`);
@@ -83,6 +89,28 @@ describe('where a clamping puts the part', () => {
     expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
+});
+
+describe('where a clamping puts the part, with side stock or in the nest', () => {
+  it('writes the size the jaws hold with the side stock the operator asked for (walls left 0.3 mm out)', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, sideStock: 0.3, orient: { side: 'Z+', spin: false } });
+    const turned = r.code.match(/DREHEN\/(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/)!;
+    // The walls stand 0.3 mm out of the model: the jaws hold 40.6 x 30.6, not the model's 40 x 30.
+    expect(Number(turned[1])).toBeCloseTo(40.6, 1);
+    expect(Number(turned[2])).toBeCloseTo(30.6, 1);
+  }, 300_000);
+
+  it('makes the nest’s pocket round what sits in it, and puts the part by it (a review found it placed by the whole stock)', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], nestSides: ['Z-'], orient: { side: 'Z+', spin: false } });
+    const s = r.setups.find((x) => x.nest)!;
+    expect(s).toBeTruthy();
+    // After the first clamping the part's lower faces are its finished 40 x 30 walls: the pocket is 0.1 mm over them.
+    const p = s.nest!.pocket;
+    expect(p.hi[0] - p.lo[0]).toBeCloseTo(40.2, 1);
+    expect(p.hi[1] - p.lo[1]).toBeCloseTo(30.2, 1);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 600_000);
 });
 
 describe('turning the part over', () => {
