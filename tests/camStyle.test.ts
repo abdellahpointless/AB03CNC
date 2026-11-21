@@ -106,6 +106,15 @@ describe("CAM AI's program in the shop's words", () => {
     expect(after).toEqual(['N1 G00 G53 Z0', 'N2 G00 Z50.']);
   });
 
+  it('keeps every word of the move after a move in machine coordinates or a shift (G53, G28, G52: their X, Y, Z are not where the tool is)', () => {
+    // The app's reader skips these moves, so its check would not see a word left out after them.
+    const head = ['N1 T1 M6', 'N2 G00 G43 H01 Z50. M08', 'N3 G00 G90 X5. Y0. S1000 M03', 'N4 G00 Z5.'];
+    for (const [machine, move] of [['G53 Y0', 'G00 X10. Y0.'], ['G28 Z0.', 'G00 X10. Z0.'], ['G52 X0. Y0. Z5.', 'G00 X1. Z5.']]) {
+      const out = shorten([...head, `N5 ${machine}`, `N6 ${move}`, 'N7 G01 Z-5. F100.'].join('\n'), true).split('\n');
+      expect(out[5]).toBe(`N6 ${move}`);
+    }
+  });
+
   it('gives the program back as it was when the shortened one would change a spindle, tool, offset or M word, or a clamping shift', () => {
     for (const wrong of [(code: string) => code.replace('S9000 M03', 'S900 M03'), (code: string) => code.replace('G52 X-28. Y33. Z-3.', 'G52 X-28. Y33. Z-2.'), (code: string) => code.replace('N25 G00 Z50.\nN26 M09', 'N25 G00 Z50.\nN26 M05')])
       expect(shopStyle(cam, 'HAAS', (code) => wrong(shorten(code))).shortened).toBe(false);
