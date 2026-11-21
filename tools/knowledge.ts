@@ -709,18 +709,33 @@ for (const p of programs)
     }
   }
 
+/** The value most of `v` give (0.01 apart, its neighbours counted with it), and their share. */
+function mostOf(v: number[]): { value: number; share: number } {
+  const c = new Map<number, number>();
+  for (const x of v) c.set(Math.round(x * 100), (c.get(Math.round(x * 100)) ?? 0) + 1);
+  let best = { value: 0, share: 0 };
+  for (const k of c.keys()) {
+    const n = (c.get(k - 1) ?? 0) + c.get(k)! + (c.get(k + 1) ?? 0);
+    if (n / v.length > best.share) best = { value: k / 100, share: n / v.length };
+  }
+  return best;
+}
+
 /**
- * What a finishing pass leaves to the roughing before it (same clamping): on the walls, the
- * distance between the two tool centres less the difference of their radii (the roughing tool
- * stays that much further from the wall); on the floor, how much higher the roughing stopped.
- * Taken where the finishing tool runs at one height within reach of the roughing passes.
+ * What a finishing pass leaves to the roughing before it (same clamping). On the walls: the distance
+ * between the two tool centres less the difference of their radii (the roughing tool stays that much
+ * further from the wall), where the finishing tool cuts (one height, below the part's top) within
+ * reach of the roughing; the pass's value is the one most of its points give. On the floor: at the
+ * pass's lowest level, how much higher the roughing over the same spot stopped. "rest": no value for
+ * most points (corners and notches the roughing tool could not reach); "out of reach": the roughing
+ * never ran near it. Corner-rounding cutters (a description without a diameter) finish no wall.
  */
-interface Allowance { wall: number; floor: number; points: number; at: number }
+interface Allowance { kind: 'allowance' | 'rest' | 'out of reach'; wall: number | null; floor: number | null; d: number; points: number; at: number }
 function allowances(p: Program): Allowance[] {
   const out: Allowance[] = [];
   const samples = p.read.samples;
   samples.forEach((f, fi) => {
-    if (f.kind !== 'finish') return;
+    if (f.kind !== 'finish' || !(f.d > 0)) return;
     const fm = movesOf(p, fi).filter((m) => m.kind === 'feed');
     if (!fm.length) return;
     const setup = fm[0].setup;
@@ -741,15 +756,15 @@ function allowances(p: Program): Allowance[] {
           }
         }
       }
-    if (!grid.size) return;
     const rf = f.d / 2;
     const walls: number[] = [];
-    let roughFloor = Infinity;
-    let finishFloor = Infinity;
+    const floors: { z: number; low: number }[] = [];
+    let zLow = Infinity;
     for (const m of fm)
       for (let j = 1; j < m.points.length; j++) {
         const [a, b] = [m.points[j - 1], m.points[j]];
-        if (Math.abs(a[2] - b[2]) > 0.01) continue;
+        // Cutting at one height, below the part's top (not the links over it).
+        if (Math.abs(a[2] - b[2]) > 0.01 || a[2] > -0.01) continue;
         const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.5));
         for (let t = 0; t <= n; t++) {
           const x = a[0] + ((b[0] - a[0]) * t) / n;
@@ -770,18 +785,24 @@ function allowances(p: Program): Allowance[] {
               }
           if (best > rr + rf + 1.5) continue;
           walls.push(best - (rr - rf));
-          if (low < Infinity) {
-            roughFloor = Math.min(roughFloor, low);
-            finishFloor = Math.min(finishFloor, a[2]);
-          }
+          zLow = Math.min(zLow, a[2]);
+          if (low < Infinity) floors.push({ z: a[2], low });
         }
       }
-    if (walls.length < 20) return;
-    out.push({ wall: round(median(walls), 100), floor: Number.isFinite(roughFloor) ? round(roughFloor - finishFloor, 100) : NaN, points: walls.length, at: f.line });
+    if (walls.length < 20) {
+      out.push({ kind: 'out of reach', wall: null, floor: null, d: f.d, points: walls.length, at: f.line });
+      return;
+    }
+    const wall = mostOf(walls);
+    const atFloor = floors.filter((x) => Math.abs(x.z - zLow) < 0.011).map((x) => x.low - x.z);
+    const floor = atFloor.length ? mostOf(atFloor) : null;
+    const held = wall.share >= 0.5;
+    out.push({ kind: held ? 'allowance' : 'rest', wall: held ? wall.value : null, floor: held && floor && floor.share >= 0.5 ? floor.value : null, d: f.d, points: walls.length, at: f.line });
   });
   return out;
 }
-const allowanceList = programs.flatMap((p) => allowances(p).map((a) => ({ p, a })));
+// Each part once (its first program: a twin finishes the same way).
+const allowanceList = programs.filter((p, k) => programs.findIndex((q) => q.part === p.part) === k).flatMap((p) => allowances(p).map((a) => ({ p, a })));
 
 // ---- Tools and cutting data ---------------------------------------------------------------------------
 rule('tools.codeFormat', 'tools', 'Tools are named by a code TYPE_D.DD_LLL_GGG_MAT (a copy carries a number after it, "_1"): type (MK face mill, SF end mill, SB drill, ZB or AB spot drill, GB tap, ST chamfer/graver...), diameter, length, and the material its data is for.', 'tool changes', (p) =>
@@ -901,14 +922,23 @@ const facts = {
   drillCycleByDepth: ratioBands,
   tapCores: [...tapCores].sort((a, b) => b[1].n - a[1].n).map(([pair, v]) => ({ pair, holes: v.n, example: v.at })),
   spotDrills: [...spots].sort((a, b) => b[1] - a[1]).map(([spot, n]) => ({ spot, holes: n })),
-  finishingAllowance: {
-    passes: allowanceList.length,
-    // A finishing pass with no roughing alongside it (it works another feature) gives a value below 0: not counted.
-    notComparable: allowanceList.filter((x) => x.a.wall < -0.05).length,
-    wallMm: hist(allowanceList.filter((x) => x.a.wall >= -0.05).map((x) => x.a.wall), 0.05),
-    floorMm: hist(allowanceList.filter((x) => x.a.wall >= -0.05 && Number.isFinite(x.a.floor) && x.a.floor >= -0.05).map((x) => x.a.floor), 0.05),
-    passesList: allowanceList.map((x) => ({ ...cite(x.p, x.a.at), wall: x.a.wall, floor: Number.isFinite(x.a.floor) ? x.a.floor : null, points: x.a.points })),
-  },
+  finishingAllowance: (() => {
+    const held = allowanceList.filter((x) => x.a.kind === 'allowance');
+    const byTool = new Map<number, number[]>();
+    for (const x of held) (byTool.get(x.a.d) ?? byTool.set(x.a.d, []).get(x.a.d)!).push(x.a.wall!);
+    return {
+      passes: allowanceList.length,
+      parts: new Set(allowanceList.map((x) => x.p.part)).size,
+      allowance: held.length,
+      rest: allowanceList.filter((x) => x.a.kind === 'rest').length,
+      outOfReach: allowanceList.filter((x) => x.a.kind === 'out of reach').length,
+      wallMm: hist(held.map((x) => x.a.wall!), 0.05),
+      floorMm: hist(held.filter((x) => x.a.floor !== null).map((x) => x.a.floor!), 0.05),
+      floorVaries: held.filter((x) => x.a.floor === null).length,
+      wallByTool: [...byTool].sort((p, q) => p[0] - q[0]).map(([d, v]) => ({ d, passes: v.length, wallMm: hist(v, 0.05) })),
+      passesList: allowanceList.map((x) => ({ ...cite(x.p, x.a.at), kind: x.a.kind, d: x.a.d, wall: x.a.wall, floor: x.a.floor, points: x.a.points })),
+    };
+  })(),
   g43Heights: [...programs.reduce((m, p) => {
     for (const i of g43Lines(p)) {
       const z = code(p.lines[i]).match(/(?<![A-Z])Z(-?\d*\.?\d+)/i)?.[1];
@@ -1025,7 +1055,13 @@ for (const [topic, title] of topics) {
       '',
       '### Roughing and finishing',
       '',
-      `What a finishing pass (SCHLICHT...) leaves to the roughing before it, measured on the tool centres (cutter compensation applied) where the finishing tool runs within reach of the roughing passes, over ${fa.passes} finishing passes (${fa.notComparable} not comparable: no roughing ran alongside them). On the walls (0.05 mm steps): ${fa.wallMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}. On the floor (how much higher the roughing stopped): ${fa.floorMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}. Examples: ${fa.passesList.slice(0, 5).map((e) => `\`${e.file}:${e.line}\` wall ${e.wall}, floor ${e.floor ?? '–'}`).join('; ')}. A measurement of the paths, not a value the programs write.`,
+      `What a finishing pass (SCHLICHT...) leaves to the roughing before it in its clamping, measured on the tool centres (cutter compensation applied) where it cuts within reach of the roughing: ${fa.passes} finishing passes of ${fa.parts} parts (twins once). ${fa.allowance} follow a roughing along their wall; ${fa.rest} mostly clear corners and notches the roughing tool could not reach (rest machining); ${fa.outOfReach} work where no roughing ran (cut from solid). Corner-rounding cutters, whose description gives no diameter, are left out.`,
+      '',
+      `- On the walls (the value most of a pass's points give, 0.05 mm steps): ${fa.wallMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}.`,
+      `- By finishing tool: ${fa.wallByTool.map((t) => `Ø${t.d}: ${t.wallMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}`).join('; ')}.`,
+      `- On the floor (at the pass's lowest level, how much higher the roughing stopped): ${fa.floorMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}; ${fa.floorVaries} passes with no one value (they finish walls above the roughing's floor).`,
+      `- Examples: ${fa.passesList.filter((e) => e.kind === 'allowance').slice(0, 5).map((e) => `\`${e.file}:${e.line}\` Ø${e.d} wall ${e.wall}, floor ${e.floor ?? '–'}`).join('; ')}.`,
+      '- A measurement of the paths, not a value the programs write.',
     );
   }
   if (topic === 'tools') {
