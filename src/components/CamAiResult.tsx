@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Clock, Download, Repeat, RotateCcw, Trash2
 import { useT } from '../i18n';
 import { fmtNumber as fmt } from '../i18n/format';
 import { downloadBlob } from '../lib/download';
+import { forMachine } from '../lib/cam/export';
 import type { CamTool } from '../lib/cam/tools';
 import type { CamSummary } from '../lib/cam/cam.worker';
 import type { PhysicsIssue } from '../lib/cam/physics';
@@ -60,7 +61,7 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
  * The program as a whole (the browser's Program item): whether it can go out, its numbers, the
  * tools to load, what the machine lacks, the POM nests (each with its own program), notes.
  */
-export function ProgramPanel({ result, machineName, changed, removed, onRestore }: { result: CamSummary; machineName: string; changed: number; removed: { key: string; label: string }[]; onRestore: (key: string) => void }) {
+export function ProgramPanel({ result, machineName, machineId, changed, removed, onRestore }: { result: CamSummary; machineName: string; machineId: string; changed: number; removed: { key: string; label: string }[]; onRestore: (key: string) => void }) {
   const { t } = useT('remapper');
   const toolName = useToolName();
   const { ok, text } = useVerdict(result, changed);
@@ -147,7 +148,11 @@ export function ProgramPanel({ result, machineName, changed, removed, onRestore 
           <button
             type="button"
             disabled={n.match < 0.99 || n.collisions > 0}
-            onClick={() => downloadBlob(`NEST_${n.side.replace(/[+-]/, (c) => (c === '+' ? 'P' : 'M'))}.nc`, new Blob([n.code], { type: 'text/plain' }))}
+            onClick={() => {
+              // As the machine gets it, like the program's own Download (forMachine).
+              const name = `NEST_${n.side.replace(/[+-]/, (c) => (c === '+' ? 'P' : 'M'))}.nc`;
+              downloadBlob(name, new Blob([forMachine(n.code, machineId, name)], { type: 'text/plain' }));
+            }}
             className="btn-secondary text-xs min-h-9 px-3 flex items-center gap-1.5"
           >
             <Download size={14} /> {t('camAi.nestDownload')}

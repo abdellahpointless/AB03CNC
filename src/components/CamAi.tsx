@@ -10,9 +10,8 @@ import { currentRegion } from '../lib/instance';
 import { MODEL_MAX_BYTES, type ModelError } from '../lib/modelLimits';
 import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
-import { convertHaasToFanuc } from '../lib/haasToFanucConverter';
 import { coolingOf, engineMachineId, isLockedMachine, materialNeed } from '../regions';
-import { applyMachineCoolant } from '../lib/gcodeProcessor';
+import { forMachine } from '../lib/cam/export';
 import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
@@ -225,13 +224,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   };
 
   const result = run.state === 'done' ? run.result : null;
+  // The machine's own program, as Send and Process in the remapper give it (forMachine).
+  const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
     if (!result || !machine || !passed(result)) return;
-    const fanuc = machine.brand === 'FANUC' && engineMachineId(currentRegion().id, machine) !== 'FANUC-2';
-    // The air jet code the machine always uses (M83 on air machines, M84 on HAAS-1/5), as Send gets it.
-    const cooled = applyMachineCoolant(result.code.split('\n'), engineMachineId(currentRegion().id, machine)).join('\n');
-    const code = fanuc ? convertHaasToFanuc(cooled, fileName).fanucCode : cooled;
-    downloadBlob(fileName, new Blob([code], { type: 'text/plain' }));
+    downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName)], { type: 'text/plain' }));
   };
   const saveSideStock = (v: number) => {
     const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
@@ -652,6 +649,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               <ProgramPanel
                 result={result}
                 machineName={machine.name}
+                machineId={engineId}
                 changed={changed.length + pendingSkips}
                 removed={skipDraft.map((k) => ({ key: k, label: skipLabels[k] ?? k }))}
                 onRestore={(k) => setSkipDraft((d) => d.filter((x) => x !== k))}
