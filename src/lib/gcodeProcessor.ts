@@ -81,6 +81,27 @@ export function fanuc2Limits(lines: string[], aluOrBrass: boolean): string[] {
   });
 }
 
+/**
+ * FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
+ * subprogram calls keep their Q (an argument there, not a pass).
+ */
+export function fhPecks(lines: string[]): string[] {
+  return lines.map((l) =>
+    l === '__REMOVE_ME__' || /(?<![A-Z])(?:G65|M98|M97)(?![0-9])/i.test(codeOnly(l))
+      ? l
+      : replaceInCode(l, /(?<![A-Z])Q(\d+\.?\d*|\.\d+)/gi, (w: string, v: string) => (Number(v) > 5 ? 'Q5.' : w)),
+  );
+}
+
+/**
+ * Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
+ * number goes over N9999 (the shop's FANUC post repeats N9999 after it).
+ */
+export function fanucNumbers(lines: string[]): string[] {
+  const labels = jumpsToLabels(lines); // a jump needs its label: no cap then
+  return addCoordinateDots(lines).map((l) => (labels ? l : l.replace(/^(\s*)N(\d{5,})/i, (w, s: string, n: string) => (Number(n) > FANUC_MAX_N ? `${s}N${FANUC_MAX_N}` : w))));
+}
+
 /** The executable part of a line, with every (comment) removed. */
 export function codeOnly(line: string): string {
   return line.replace(/\([^)]*\)?/g, ' ');
@@ -785,15 +806,7 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   // lubricant: M84 (air jet off) on the safety line.
   outputLines = applyMachineCoolant(outputLines, machineId ?? '');
 
-  // FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
-  // subprogram calls keep their Q (an argument there, not a pass).
-  if (detectMaterial(lines.join('\n')) === 'FH') {
-    outputLines = outputLines.map((l) =>
-      l === '__REMOVE_ME__' || /(?<![A-Z])(?:G65|M98|M97)(?![0-9])/i.test(codeOnly(l))
-        ? l
-        : replaceInCode(l, /(?<![A-Z])Q(\d+\.?\d*|\.\d+)/gi, (w: string, v: string) => (Number(v) > 5 ? 'Q5.' : w)),
-    );
-  }
+  if (detectMaterial(lines.join('\n')) === 'FH') outputLines = fhPecks(outputLines);
 
   // In FANUC, if the app detects M98 P7999 then it should be deleted (code only, never a comment).
   // The shop's machines have no O7999: the table comes out with G53 Y0 right there instead (the
@@ -823,12 +836,7 @@ export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[],
   const { lines: linesWithG53 } = applyG53BeforeG52(outputLines, machineId !== 'FANUC-2');
   outputLines = linesWithG53;
 
-  // Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
-  // number goes over N9999 (the shop's FANUC post repeats N9999 after it).
-  if (machineId?.toUpperCase().startsWith('FANUC')) {
-    const labels = jumpsToLabels(outputLines); // a jump needs its label: no cap then
-    outputLines = addCoordinateDots(outputLines).map((l) => (labels ? l : l.replace(/^(\s*)N(\d{5,})/i, (w, s: string, n: string) => (Number(n) > FANUC_MAX_N ? `${s}N${FANUC_MAX_N}` : w))));
-  }
+  if (machineId?.toUpperCase().startsWith('FANUC')) outputLines = fanucNumbers(outputLines);
 
   return {
     finalCode: outputLines.filter(l => l !== '__REMOVE_ME__').join('\n'),
