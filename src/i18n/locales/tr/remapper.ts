@@ -702,7 +702,6 @@ const remapper: Translation<typeof en> = {
       sizeX: 'X’te {{x}}',
       support: '{{mm}} mm paralel üzerinde',
       restDepth: 'Üst yüzeyin {{mm}} mm altından paralellere oturuyor',
-      restAbove: 'Alt yüzeyin {{mm}} mm üstündeki basamaktan paralellere oturuyor',
       onJaw: 'Çene üstlerinde, kalesiz: parçanın {{mm}} mm’si çenelerin üstünde',
       rotation: 'Parçayı {{axis}} etrafında {{deg}}° çevir',
       back: 'Arka yüz',

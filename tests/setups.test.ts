@@ -161,8 +161,8 @@ describe('setups', () => {
     expect(r('MOD. HOCHKANT/PERS. Y+/90 GRAD UM Y DREHEN/Z+ WIRD X-')).toMatchObject({ onEdge: true, pers: 'Y+', turns: [{ axis: 'Y', deg: -90 }] });
     expect(r('MOD. HOCHKANT/PERS. Y+/ID WINDOW IN Z+')).toMatchObject({ pers: 'Y+', marker: { name: 'ID WINDOW', faces: ['Z+'] } });
     expect(r('F. RUECKS./60 UM X UND 66 UM Y /RAFI IN X+Y-')).toMatchObject({ side: 'back', sizes: { x: 60, y: 66 }, marker: { faces: ['X+', 'Y-'] } });
-    expect(r(' 41  MM UNTERLAGE  / UNTER MASS 5 MM')).toMatchObject({ support: 41, restAbove: 5, restDepth: null });
-    expect(r('36 MM UNTERLAGE IN EP 16 MM')).toMatchObject({ support: 36, restDepth: 16, restAbove: null });
+    expect(r(' 41  MM UNTERLAGE  / UNTER MASS 5 MM')).toMatchObject({ support: 41, restDepth: 5 });
+    expect(r('36 MM UNTERLAGE IN EP 16 MM')).toMatchObject({ support: 36, restDepth: 16 });
     expect(r('15 MM ZWISCHENLAGE IN Y- IN EP 18.55 POUR LE BON FIXATION').spacers).toEqual([{ mm: 15, side: 'Y-' }]);
     expect(r('MISE EN POSITION SUR LA TABLE 8 MM UNTERLAGE').support).toBe(8);
     expect(r('FIXATION AVEC LES BRIDES SENS Y ET DEMONTER LES BRIDES SEN X').clamp).toBe('fixture');
@@ -189,10 +189,10 @@ describe('setups', () => {
     expect(setups[3].orient).toEqual([1, 0, 0, 0, -1, 0, 0, 0, -1]);
   });
 
-  it('rests the part on a step above its bottom (UNTER MASS)', () => {
+  it('UNTER MASS n: the parallels touch the part n mm below Z0, like IN EP (shop answer D4)', () => {
     const tp = parseToolpath(program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (38 MM UNTERLAGE / UNTER MASS 5 MM / Z+ IN 15MM)'), S);
     const s = analyseProgram(tp, { jawHeight: 42 }).setups[1];
-    expect(s.restZ! - s.stock!.min[2]).toBeCloseTo(5, 5);
+    expect(s.restZ).toBeCloseTo(-5, 5);
   });
 
   it('turns 180 around Y then 90 around Z when the instruction says X+ becomes Y+', () => {
@@ -378,5 +378,12 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['28 MM UNTERLAGEIN MASS 19.5 MM'])).toMatchObject({ support: 28, restDepth: 19.5 });
     // A side ("IN Y-") is a spacer, not a rest depth.
     expect(readInstructions(['15 MM UNTERLAGE/ IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, restDepth: null, spacers: [{ mm: 15, side: 'Y-' }] });
+  });
+
+  it('reads UNTER MASS n as the rest depth below Z0, as the library writes it', () => {
+    expect(readInstructions(['36 MM UNTERLAGE /UNTER MASS  32 MM'])).toMatchObject({ support: 36, restDepth: 32 });
+    expect(readInstructions(['38 MM UNTERLAGE/UNTER MASS 13 MM LEGEN'])).toMatchObject({ support: 38, restDepth: 13 });
+    expect(readInstructions(['41 MM UNTERLAGE UNTER MASS 6.5'])).toMatchObject({ support: 41, restDepth: 6.5 });
+    expect(readInstructions(['TEIL 180 GRAD UM Y DREHEN / 64 IN X UND 65.5 IN Y / UNTER MASS 5', '41 MM UNTERLAGE IN EP 5 MM'])).toMatchObject({ support: 41, restDepth: 5 });
   });
 });

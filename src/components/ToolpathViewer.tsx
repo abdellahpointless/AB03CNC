@@ -510,7 +510,6 @@ export default function ToolpathViewer({
     if (s.topToward) out.push(t('toolpath.ins.topToward', { face: s.topToward }));
     if (s.support !== null) out.push(t('toolpath.ins.support', { mm: fmtNumber(s.support) }));
     if (s.restDepth !== null) out.push(t('toolpath.ins.restDepth', { mm: fmtNumber(s.restDepth) }));
-    if (s.restAbove !== null) out.push(t('toolpath.ins.restAbove', { mm: fmtNumber(s.restAbove) }));
     if (s.onJaw !== null) out.push(t('toolpath.ins.onJaw', { mm: fmtNumber(s.onJaw) }));
     for (const sp of s.spacers) out.push(t('toolpath.ins.spacer', { mm: fmtNumber(sp.mm), side: sp.side }));
     if (s.topAt !== null) out.push(t('toolpath.ins.topAt', { mm: fmtNumber(s.topAt) }));

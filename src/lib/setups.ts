@@ -62,10 +62,8 @@ export interface SetupInfo {
   /** Where the clamp holds the part (X/Y extents, program coordinates). */
   clampBox: { min: [number, number]; max: [number, number] } | null;
   support: number | null;
-  /** "UNTERLAGE IN EP 5 MM": the part rests on the parallels this far below its top (Z0). */
+  /** "UNTERLAGE IN EP 5 MM", "UNTER MASS 5 MM": the part rests on the parallels this far below its top (Z0). */
   restDepth: number | null;
-  /** "UNTER MASS 5 MM": the part rests on the parallels this far above its bottom. */
-  restAbove: number | null;
   /**
    * "3 MM SUR L'ETAU": no cales, the part rests on the jaw tops with this much of it above them
    * (its narrower lower part gripped between the jaws).
@@ -268,8 +266,8 @@ export function readInstructions(notes: string[]) {
   // "ID WINDOW IN Z+": the ID window (on the white face, like the RAFI) points that way.
   // "RAF X+Y-" (O0547) is the RAFI too: missing it lets the cuts pick the flip, and they can be wrong.
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
-  // "UNTER MASS 5 MM": the part rests on a step 5 mm above its bottom (it hangs 5 mm below the parallels).
-  const above = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
+  // "UNTER MASS 5 MM" is the same rest depth, 5 mm below Z0 (the G52 values prove it; shop answer D4).
+  const under = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
   // "EPAISSEUR DE 3 MM SUR L'ETAU" (also "EPESSEUR ... MMSUR L'ETEAU"): on the jaw tops, 3 mm above them.
   const onJaw = t.match(new RegExp(`${NUM}\\s*MM\\s*SUR\\s*L\\W?\\s*ET[EÉ]?AU`));
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
@@ -281,8 +279,7 @@ export function readInstructions(notes: string[]) {
     turns,
     pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
     support: sup ? num(sup[1]) : null,
-    restDepth: thick ? num(thick[1]) : null,
-    restAbove: above ? num(above[1]) : null,
+    restDepth: thick ? num(thick[1]) : under ? num(under[1]) : null,
     onJaw: onJaw ? num(onJaw[1]) : null,
     twoVises: /\b2\s*SCHRAUBST/.test(t),
     nest,
@@ -548,7 +545,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     const nextLedges = new Map<number, number>();
     for (const s of out.setups) {
       // Only where cales are written (the part stands on them).
-      if (s.index === 0 || s.restDepth !== null || s.restAbove !== null || s.support === null) continue;
+      if (s.index === 0 || s.restDepth !== null || s.support === null) continue;
       const low = lowest(s);
       if (!low || !s.stock) continue;
       const l = Math.min(...low);
@@ -1067,9 +1064,6 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       // On the jaw tops, Z0 (the finished top) that far above them; the floor is a jaw height lower.
       rest = -ins.onJaw;
       floor = rest - opts.jawHeight;
-    } else if (ins.restAbove !== null && ins.restAbove < max[2] - min[2]) {
-      rest = min[2] + ins.restAbove;
-      floor = trusted ? floorRule! : rest - support;
     } else if (ins.restDepth !== null && ins.restDepth < max[2] - min[2]) {
       rest = Math.max(min[2], -ins.restDepth);
       floor = trusted ? floorRule! : rest - support;

@@ -712,7 +712,6 @@ const remapper = {
       sizeX: '{{x}} in X',
       support: 'On {{mm}} mm parallels',
       restDepth: 'Resting on the parallels {{mm}} mm below the top',
-      restAbove: 'Resting on the parallels on a step {{mm}} mm above the bottom',
       onJaw: 'On the jaw tops, no cales: {{mm}} mm of the part above the jaws',
       rotation: 'Turn the part {{deg}}° around {{axis}}',
       back: 'Back side',
