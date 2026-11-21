@@ -6,7 +6,7 @@
  *   npm run cam-library -- <library folder> <out.jsonl> [program file ...]
  *
  * One JSON line per program, written as each is done (a long run keeps what it finished). Only
- * program files and numbers are written, never part names (the results may be shared).
+ * program ids and numbers are written, never file or part names (the results may be shared).
  */
 import { createHash } from 'node:crypto';
 import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -95,7 +95,8 @@ for (const folder of readdirSync(LIB).sort()) {
     seen.add(hash);
     const read = readProgram(text, file);
     const material = MATERIAL[read.material ?? ''] ?? null;
-    const row: Record<string, unknown> = { file, material: read.material };
+    // Named by a neutral id (P and the first 8 hex digits of the file's SHA-1), never its file name.
+    const row: Record<string, unknown> = { id: `P${hash.slice(0, 8)}`, material: read.material };
     const tris = await readTris(new Uint8Array(pdf));
     if (!material || !CAM_MATERIALS.includes(material)) row.result = 'material not cut by CAM AI';
     else if ('error' in tris) row.result = `model: ${tris.error}`;

@@ -7,7 +7,8 @@
  * purpose (vitest -u), so its diff shows exactly which programs a change moved.
  *
  * Skipped without CNC_LIBRARY=<folder> (the library is the shop's and stays out of the repository).
- * Programs are named by file and a hash of their text and model, never by order.
+ * Programs are named by a neutral id (P and the first 8 hex digits of the file's SHA-1) and a hash of
+ * their model, never by file name (it can carry a material number) or order.
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -75,7 +76,7 @@ describe.skipIf(!LIB)('reference library: simulation against the 3D models', () 
         const text = bytes.toString('latin1');
         if (isPdf(bytes) || !/[GMT]\d/.test(text)) continue;
         // The same program with the same model (a copy in another order) is one entry.
-        const key = `${n} ${hash(bytes)}${pdf ? `/${hash(pdf)}` : ''}`;
+        const key = `P${hash(bytes)}${pdf ? `/${hash(pdf)}` : ''}`;
         rows[key] ??= await simulate(text, pdf);
       }
     }

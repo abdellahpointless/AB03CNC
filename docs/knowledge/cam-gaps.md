@@ -6,7 +6,7 @@ CAM AI on each reference part's 3D model). Each gap: what the shop does, what CA
 the time of writing), the change, and how it is checked. Status: **planned**, **done** (with the commit),
 **question** (for the shop), **kept** (CAM AI already does it the shop's way).
 
-First comparison, one verified part (`O0161108.X20`, a 304 x 150 x 20 mm plate): the engineers need 4
+First comparison, one verified part (`Pa839d8d8`, a 304 x 150 x 20 mm plate): the engineers need 4
 clampings, 1,364 lines, 16.2 minutes; CAM AI 6 clampings, 14,988 lines, 28.3 minutes. In the simulation both
 programs make the part (CAM AI's matches the model, nothing collides); P1 says where its later clampings really sit. CAM AI on every reference program, next to the
 engineers' one: `docs/knowledge/cam-validation.md`.
@@ -30,20 +30,20 @@ engineers' one: `docs/knowledge/cam-validation.md`.
 | W7 | Program zero: 2 mm inside the X-/Y+ corner or the block centre (`workholding.firstZero`, 78 of 97). | The block centre. | none | kept |
 | W8 | Spacers in a jaw free a side to be cut below the jaw top (`workholding.spacerFreesSide`). | Not used (CAM AI holds the part directly in the jaws or in its POM nest). | none for now | kept |
 
-**W1 to W3 tried together** (not kept). `npm run cam-library` on six reference parts, both runs at commit 76ccead, when the reader still read the PC GF parts as aluminium (O0106612 and O0106624 are cut as aluminium here, as PC GF in the validation). The trial: the busier side first, a 5 mm grip (40 mm parallels) in every clamping or deeper where CAM AI's vise check asks, and outside cuts stopped 1.5 mm above the jaws. Each cell gives clampings, parallels, minutes, then for CAM AI the match with the model and the collisions:
+**W1 to W3 tried together** (not kept). `npm run cam-library` on six reference parts, both runs at commit 76ccead, when the reader still read the PC GF parts as aluminium (Pc18802fc and Pac6268a1 are cut as aluminium here, as PC GF in the validation). The trial: the busier side first, a 5 mm grip (40 mm parallels) in every clamping or deeper where CAM AI's vise check asks, and outside cuts stopped 1.5 mm above the jaws. Each cell gives clampings, parallels, minutes, then for CAM AI the match with the model and the collisions:
 
 | Program | Engineers | CAM AI | Trial |
 |---|---|---|---|
-| O0106612.X20 | 2, 40/28, 12.0 | 4, 42/38/38/42, 30.8, 0.995, 2 | 2, 40/40, 17.7, 0.995, 0 |
-| O0096794.X20 | 2, 40/28, 11.9 | 2, 41/42, 53.1, 1.000, 0 | 2, 40/38, 34.3, 1.000, 0 |
-| O0161424.X20 | 3, 40/40/8, 11.7 | 3, 40/42/42, 87.9, 1.000, 0 | 3, 40/40/40, 83.5, 1.000, 0 |
-| O0106624.X20 | 2, 40/38, 4.0 | 2, 42/42, 9.4, 0.995, 0 | 2, 40/40, 9.7, 0.995, 0 |
-| O0125595.X20 | 2, 40/36, 14.2 | 3, 41/42/42, 56.1, 1.000, 0 | 4, 40/40/40/40, 89.0, 1.000, 0 |
-| O0095457.X20 | 3, 41/41/20, 3.0 | 3, 42/42/38, 4.7, 0.994, 0 | 6, 40/40/42/40/40/42, 9.2, 0.979, 2 |
+| Pc18802fc | 2, 40/28, 12.0 | 4, 42/38/38/42, 30.8, 0.995, 2 | 2, 40/40, 17.7, 0.995, 0 |
+| P77d3db5b | 2, 40/28, 11.9 | 2, 41/42, 53.1, 1.000, 0 | 2, 40/38, 34.3, 1.000, 0 |
+| Pf08a2c99 | 3, 40/40/8, 11.7 | 3, 40/42/42, 87.9, 1.000, 0 | 3, 40/40/40, 83.5, 1.000, 0 |
+| Pac6268a1 | 2, 40/38, 4.0 | 2, 42/42, 9.4, 0.995, 0 | 2, 40/40, 9.7, 0.995, 0 |
+| P8e294283 | 2, 40/36, 14.2 | 3, 41/42/42, 56.1, 1.000, 0 | 4, 40/40/40/40, 89.0, 1.000, 0 |
+| P1a0b9fb4 | 3, 41/41/20, 3.0 | 3, 42/42/38, 4.7, 0.994, 0 | 6, 40/40/42/40/40/42, 9.2, 0.979, 2 |
 
-- **Better on two parts:** O0106612 had 2 clampings like the engineers, and no collision. O0096794 was 35 % faster.
+- **Better on two parts:** Pc18802fc had 2 clampings like the engineers, and no collision. P77d3db5b was 35 % faster.
 - **About the same on two parts.**
-- **Worse on two parts:** more clampings, on edges. On O0095457 there were also two collisions and a match under 0.99.
+- **Worse on two parts:** more clampings, on edges. On P1a0b9fb4 there were also two collisions and a match under 0.99.
 - **Why, likely:** on the two worse parts the engineers finish in their last clamping on 36 and 20 mm parallels (a grip of 9 and 25 mm). The trial kept 40 mm there and needed edge clampings instead.
 - **What is missing:** how much to grip in the later clampings. The package needs that rule before it can replace CAM AI's way.
 
