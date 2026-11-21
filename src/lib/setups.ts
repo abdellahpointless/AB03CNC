@@ -538,6 +538,8 @@ export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
 type Box = { min: Vec; max: Vec };
 /** What the jaws and the stop really hold after a turn: the part's extent between the vise floor and the jaw tops, from its box's corner (X, Y). */
 type Held = { x: [number, number]; y: [number, number] };
+/** A written size is what the jaws hold when the held faces lie this close to it (mm; the sim's accuracy, as sizeMiss). */
+const HELD_TOL = 1;
 
 /**
  * The part as it really is at each setup: after a turn, its box is the material left by the
@@ -602,7 +604,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     if (settled && !measured) {
       measured = true;
       for (const s of out.setups) {
-        if (s.index === 0 || !s.stock || s.sizes || s.restZ === null) continue;
+        if (s.index === 0 || !s.stock || s.restZ === null) continue;
         const r = jawReach(s, input, g, s.restZ);
         if (!r || r.stop === null || r.far === null || r.front === null || r.back === null) continue;
         helds.set(s.index, { x: [r.stop - s.stock.min[0], r.far - s.stock.min[0]], y: [r.front - s.stock.min[1], r.back - s.stock.min[1]] });
@@ -1030,17 +1032,21 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
 
     // The part held by the clamp: the sizes in the instruction, or the finished part on a later side.
     let hold: [number, number] = [size[0], size[1]];
-    // After a turn without written sizes: the part as it really is between the floor and the jaw tops.
-    const held = k > 0 && !(ins.sizes && Number.isFinite(ins.sizes.y)) ? helds?.get(k) : undefined;
-    if (ins.sizes && Number.isFinite(ins.sizes.y)) hold = [ins.sizes.x, ins.sizes.y];
-    else if (held) hold = [held.x[1] - held.x[0], held.y[1] - held.y[0]];
+    // After a turn: the part as it really is between the floor and the jaw tops.
+    const heldNow = k > 0 ? helds?.get(k) : undefined;
+    const written = !!ins.sizes && Number.isFinite(ins.sizes.y);
+    if (ins.sizes && written) hold = [ins.sizes.x, ins.sizes.y];
+    else if (heldNow) hold = [heldNow.x[1] - heldNow.x[0], heldNow.y[1] - heldNow.y[0]];
     else if (k > 0 && finished) {
       const f = turnedBox(orient, [0, 0, 0], finished);
       hold = [Math.min(size[0], f.max[0] - f.min[0]), Math.min(size[1], f.max[1] - f.min[1])];
     }
 
     // Where it sits: against the stops (from the G52 shift), else zero in the middle or on a corner.
-    // The held part's middle, from the middle of the part's box (0 unless the real hold says otherwise).
+    // The held part's middle, from the middle of the part's box (0 unless the real hold says otherwise):
+    // a written size that is what the jaws really hold sits where they hold it, off the middle too
+    // (a boss gripped after the turn).
+    const held = heldNow && (!written || (Math.abs(heldNow.x[1] - heldNow.x[0] - hold[0]) <= HELD_TOL && Math.abs(heldNow.y[1] - heldNow.y[0] - hold[1]) <= HELD_TOL)) ? heldNow : undefined;
     const hc: [number, number] = held ? [(held.x[0] + held.x[1] - size[0]) / 2, (held.y[0] + held.y[1] - size[1]) / 2] : [0, 0];
     let cx = measured.cx;
     let cy = measured.cy;

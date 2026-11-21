@@ -60,6 +60,24 @@ describe('where a clamping puts the part', () => {
     expect(wrong).not.toBe(r.code);
     expect(checkProgram(plate, wrong, 'HAAS', undefined, r.pose).misplaced).toBeGreaterThan(0);
   }, 300_000);
+
+  it('places a part held by a band off its middle where the program puts it (P1: the boss the jaws grip after the turn)', () => {
+    // A 30 x 30 x 8 plate with a 12 x 24 boss 6 high off the middle in X: turned over, the jaws hold the boss only.
+    const boss = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= 4 && i < 16 && j >= 3 && j < 27 ? 14 : 8))));
+    const r = camProgram({ tris: boss, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 34, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    expect(an.setups.length).toBeGreaterThanOrEqual(2);
+    // The held band really is off the stock's middle (else this tests nothing).
+    expect(r.setups.some((s) => Math.abs(s.held[0] + s.held[2] - s.box[0] - s.box[2]) / 2 > 2)).toBe(true);
+    an.setups.forEach((s, k) => {
+      expect(s.grip && s.clampBox, `clamping ${k + 1}`).toBeTruthy();
+      expect(Math.abs(s.grip!.stop - s.clampBox!.min[0]), `clamping ${k + 1} at the stop`).toBeLessThanOrEqual(0.3);
+      expect(Math.abs(s.clampBox!.max[1] - s.grip!.back), `clamping ${k + 1} at the fixed jaw`).toBeLessThanOrEqual(0.3);
+    });
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
 });
 
 describe('turning the part over', () => {
