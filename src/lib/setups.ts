@@ -246,7 +246,12 @@ export function readInstructions(notes: string[]) {
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
   // An UNTERLAGE written with a side ("15 MM UNTERLAGE/ IN Y-") stands beside the part: a spacer, not a support.
   const SIDE = '\\s*\\/?\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
-  const sup = t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`));
+  // The parallels are also written "CALCO 40 MM" (Portuguese) or "40 MM CALE" / "CALES DE 40 MM"
+  // (French, shop answer D1); UNTERCALE and INTERCALE are spacers (below).
+  const sup =
+    t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`)) ??
+    t.match(new RegExp(`(?:CALCO|\\bCALES?\\s*(?:DE)?)\\s*${NUM}\\s*MM`)) ??
+    t.match(new RegExp(`${NUM}\\s*MM\\s*CALES?\\b`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM"; also
   // "UNTERLAGE / IN 8 MM", "UNTERLAGE // IN 8 MM" and "UNTERLAGEIN MASS 7 MM".
   const thick = t.match(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN\\s*MASS|IN|SUR|AUF)\\s*${NUM}`));
@@ -268,6 +273,8 @@ export function readInstructions(notes: string[]) {
   const marker = t.match(/(RAFI?|TASTER|ID\s*WINDOW)\s*(?:IN\s*)?((?:[XYZ]\s*[+-]\s*)+)/);
   // "UNTER MASS 5 MM" is the same rest depth, 5 mm below Z0 (the G52 values prove it; shop answer D4).
   const under = t.match(new RegExp(`UNTER\\s*MASS\\s*${NUM}`));
+  // "CALCO 40 MM NA BASE DE 6 MM": Portuguese, "at the base of", the same rest depth.
+  const base = t.match(new RegExp(`NA\\s*BASE\\s*DE\\s*${NUM}`));
   // "EPAISSEUR DE 3 MM SUR L'ETAU" (also "EPESSEUR ... MMSUR L'ETEAU"): on the jaw tops, 3 mm above them.
   const onJaw = t.match(new RegExp(`${NUM}\\s*MM\\s*SUR\\s*L\\W?\\s*ET[EÉ]?AU`));
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
@@ -279,7 +286,7 @@ export function readInstructions(notes: string[]) {
     turns,
     pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
     support: sup ? num(sup[1]) : null,
-    restDepth: thick ? num(thick[1]) : under ? num(under[1]) : null,
+    restDepth: thick ? num(thick[1]) : under ? num(under[1]) : base ? num(base[1]) : null,
     onJaw: onJaw ? num(onJaw[1]) : null,
     twoVises: /\b2\s*SCHRAUBST/.test(t),
     nest,

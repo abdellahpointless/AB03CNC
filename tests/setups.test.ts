@@ -386,4 +386,13 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['41 MM UNTERLAGE UNTER MASS 6.5'])).toMatchObject({ support: 41, restDepth: 6.5 });
     expect(readInstructions(['TEIL 180 GRAD UM Y DREHEN / 64 IN X UND 65.5 IN Y / UNTER MASS 5', '41 MM UNTERLAGE IN EP 5 MM'])).toMatchObject({ support: 41, restDepth: 5 });
   });
+
+  it('CALCO (Portuguese) and CALE (French) are the parallels; NA BASE DE n is the rest depth', () => {
+    expect(readInstructions(['TEIL 180 GRAD IN X', 'CALCO 40 MM NA BASE DE 6 MM'])).toMatchObject({ support: 40, restDepth: 6 });
+    expect(readInstructions(['CALCO 41 MM NA BASE DE 5 MM'])).toMatchObject({ support: 41, restDepth: 5 });
+    expect(readInstructions(['40 MM CALE'])).toMatchObject({ support: 40, restDepth: null });
+    expect(readInstructions(['CALES DE 38 MM'])).toMatchObject({ support: 38 });
+    // UNTERCALE / INTERCALE stay spacers beside the part (shop answers D1, D15).
+    expect(readInstructions(['UNTERCALE 15 MM IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, spacers: [{ mm: 15, side: 'Y-' }] });
+  });
 });
