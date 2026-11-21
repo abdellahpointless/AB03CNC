@@ -26,8 +26,12 @@ function cites(v: unknown, out: Cite[] = []): Cite[] {
 describe('the knowledge base', () => {
   it('names no order, only program files', () => {
     for (const f of ['docs/knowledge/knowledge.json', 'docs/knowledge/README.md']) {
-      expect(readFileSync(f, 'utf8')).not.toMatch(/\b\d{12}_(?:HAAS|FANUC|MIXED)\b|\b[13]0000\d{7}\b/);
+      const text = readFileSync(f, 'utf8');
+      expect(text).not.toMatch(/\b\d{12}_(?:HAAS|FANUC|MIXED)\b|\b[13]0000\d{7}\b/);
+      expect(text).not.toMatch(/BEARBEITER\s*:\s*(?!<name>)\w/);
     }
+    // No part name: a cited header line shows only its sizes.
+    for (const c of cites(kb).filter((x) => /ZUSCHNITT|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(x.text))) expect(c.text).toMatch(/\(<part>/);
   });
 
   it.skipIf(!LIB)('cites each line as it is in the library', () => {
@@ -43,7 +47,9 @@ describe('the knowledge base', () => {
     }
     const all = cites(kb);
     expect(all.length).toBeGreaterThan(50);
-    const wrong = all.filter((c) => !(texts.get(c.file) ?? []).some((lines) => lines[c.line - 1]?.trim().slice(0, 90) === c.text));
+    // Header lines are cited with the part's (and programmer's) name masked, as tools/knowledge.ts does.
+    const mask = (t: string) => (/ZUSCHNITT|BEARBEITER|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(t) ? t.replace(/\(([^/)]*)(\/|\))/, (_w, _n: string, end: string) => `(<part>${end === '/' ? ' /' : ')'}`).replace(/BEARBEITER\s*:?[^/)]*/gi, 'BEARBEITER: <name>') : t);
+    const wrong = all.filter((c) => !(texts.get(c.file) ?? []).some((lines) => mask(lines[c.line - 1]?.trim().slice(0, 90) ?? '') === c.text));
     expect(wrong).toEqual([]);
   });
 });

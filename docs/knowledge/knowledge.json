@@ -773,17 +773,17 @@
     {
      "file": "O0161108.X20",
      "line": 5,
-     "text": "N3 (BASE ALU /300X145X9/ZUSCHNITT: 304X150X20)"
+     "text": "N3 (<part> /300X145X9/ZUSCHNITT: 304X150X20)"
     },
     {
      "file": "O0161424.X20",
      "line": 5,
-     "text": "N3 (DSEAL CAGE ALU / 39X34X16.7 / ZUSCHNITT: 43X38X30 )"
+     "text": "N3 (<part> / 39X34X16.7 / ZUSCHNITT: 43X38X30 )"
     },
     {
      "file": "O1420213.C62",
      "line": 5,
-     "text": "N3 (CONTACT PIN PLATE POM / 24.5X18X14 / ZUSCHNITT:30X22X25)"
+     "text": "N3 (<part> / 24.5X18X14 / ZUSCHNITT:30X22X25)"
     }
    ],
    "exceptions": [
@@ -1214,10 +1214,9 @@
    "rule": "A pre-facing pass (VORPLAN) is followed by a final facing pass (FERTIGPLAN) in the same clamping.",
    "unit": "pre-facing passes",
    "applies": 8,
-   "holds": 0,
-   "label": "minority",
-   "examples": [],
-   "exceptions": [
+   "holds": 8,
+   "label": "consistent across the library",
+   "examples": [
     {
      "file": "O1420213.C62",
      "line": 278,
@@ -1233,7 +1232,8 @@
      "line": 318,
      "text": "N316 (TOOLPATH VORPLAN-MK-93)"
     }
-   ]
+   ],
+   "exceptions": []
   },
   {
    "id": "tools.codeFormat",
@@ -1573,11 +1573,11 @@
      "applies": 0
     },
     "other": {
-     "holds": 0,
+     "holds": 2,
      "applies": 2
     },
     "pinPlate": {
-     "holds": 0,
+     "holds": 3,
      "applies": 3
     },
     "sealCage": {
@@ -1585,7 +1585,7 @@
      "applies": 0
     },
     "subPlate": {
-     "holds": 0,
+     "holds": 3,
      "applies": 3
     },
     "topPlate": {

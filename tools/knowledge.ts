@@ -49,7 +49,9 @@ for (const folder of readdirSync(LIB).sort()) {
 }
 
 const code = (l: string) => l.replace(/\([^)]*\)?/g, ' ').replace(/^\s*N\d+/i, '').trim();
-const cite = (p: Program, i: number): Cite => ({ file: p.file, line: i + 1, text: p.lines[i].trim().slice(0, 90) });
+/** A header line names the part (and the programmer): only its sizes are cited (the repository is public). */
+export const maskHeader = (t: string) => (/ZUSCHNITT|BEARBEITER|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(t) ? t.replace(/\(([^/)]*)(\/|\))/, (_w, _n: string, end: string) => `(<part>${end === '/' ? ' /' : ')'}`).replace(/BEARBEITER\s*:?[^/)]*/gi, 'BEARBEITER: <name>') : t);
+const cite = (p: Program, i: number): Cite => ({ file: p.file, line: i + 1, text: maskHeader(p.lines[i].trim().slice(0, 90)) });
 const label = (applies: number, holds: number) =>
   applies === 1 ? 'seen once' : holds === applies ? 'consistent across the library' : holds * 2 > applies ? 'majority' : 'minority';
 
@@ -281,7 +283,8 @@ rule('strategy.preFaceThenFinal', 'strategy', 'A pre-facing pass (VORPLAN) is fo
     const gs = g52s(p);
     const own = gs.find((g) => g > i && g - i <= 12) ?? i;
     const next = gs.find((g) => g > own) ?? p.lines.length;
-    return [{ holds: p.lines.slice(i + 1, next).some((x) => /\(TOOLPATH FERTIGPLAN/i.test(x)), at: i }];
+    // The final pass is often an operation of the same tool: "(FERTIGPLAN-MK-93 MIT WERKZEUG ...)".
+    return [{ holds: p.lines.slice(i + 1, next).some((x) => /\((?:TOOLPATH )?FERTIGPLAN/i.test(x)), at: i }];
   }));
 
 // ---- Tools and cutting data ---------------------------------------------------------------------------
