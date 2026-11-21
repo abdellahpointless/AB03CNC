@@ -1555,9 +1555,10 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         ...(!first && k === 0 ? ['G53 Y0', ...clamp] : []),
         'M01 (CHECK TOOL)',
         `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[t.edit?.coolant ?? 'flood']}`,
-        ...op.lines,
-        `G00 Z${SAFE}.`,
       );
+      // One line at a time: an operation can have hundreds of thousands, too many arguments for one push.
+      for (const l of op.lines) out.push(l);
+      out.push(`G00 Z${SAFE}.`);
     });
   }
   // The shop's HAAS end: table out, offset cancelled, through-spindle coolant off; the time (set once checked).
