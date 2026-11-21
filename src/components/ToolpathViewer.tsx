@@ -1071,6 +1071,7 @@ export default function ToolpathViewer({
               {model && mode3d && (
                 <ModelCheck
                   record={!noRecord}
+                  canExport={!noRecord}
                   model={model}
                   state={modelState}
                   code={code}

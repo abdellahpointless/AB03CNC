@@ -38,6 +38,7 @@ export default function ModelCheck({
   onUseFix,
   onBusy,
   record = true,
+  canExport = true,
 }: {
   model: { name: string; bytes: Uint8Array };
   state: ModelState | null;
@@ -52,6 +53,11 @@ export default function ModelCheck({
   onFocus: (p: Vec) => void;
   /** Save a part record (false: the page that made the program saved it already, CAM AI). */
   record?: boolean;
+  /**
+   * Copy and Download of the corrected program. False in CAM AI's viewer: its program leaves only by
+   * CAM AI's own Download and Send, as the machine gets it and once every check passed.
+   */
+  canExport?: boolean;
   /** Put the corrected comments into the program in the editor; false when they could not be placed. */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
   /** True while the part is compared with the model and its turns corrected: the 3D view stays covered. */
@@ -203,7 +209,7 @@ export default function ModelCheck({
               {corrected.unresolved.map((k) => (
                 <p key={k} className="flex gap-2 text-[11px] text-[#f5b942]"><AlertTriangle size={13} className="shrink-0 mt-px" />{t('toolpath.model.unresolved', { n: k + 1 })}</p>
               ))}
-              <div className="flex flex-wrap gap-1.5">
+              {canExport && <div className="flex flex-wrap gap-1.5">
                 <button
                   onClick={() => {
                     void navigator.clipboard?.writeText(corrected.code).then(() => setCopied(true));
@@ -217,7 +223,7 @@ export default function ModelCheck({
                   <Download size={12} />
                   {t('toolpath.model.download')}
                 </button>
-              </div>
+              </div>}
               {used !== null && <p className={`text-[11px] ${used ? 'text-[var(--green-500)]' : 'text-[#f5b942]'}`} role="status">{t(used ? 'toolpath.model.used' : 'toolpath.model.notUsed')}</p>}
             </div>
           )}
