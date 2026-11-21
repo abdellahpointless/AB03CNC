@@ -65,7 +65,8 @@ export async function partLessonOf(o: {
   // shortcut: one time per tool (its first operation), when a tool runs several operations only the first gets it.
   const seconds = new Map(o.tp.tools.map((t) => [(t.op || t.label).replace(/^TOOLPATH\s+/i, ''), t.seconds]));
   return {
-    version: 1,
+    // 2: every operation read (MIT WERKZEUG, copy-numbered tools), kinds also from the tool type.
+    version: 2,
     source: o.source,
     brand: o.brand ?? null,
     header: o.tp.header.slice(0, 12),

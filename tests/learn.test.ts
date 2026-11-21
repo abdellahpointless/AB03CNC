@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import plate from './models/O1042013.C60.txt?raw';
-import { readProgram, summarise } from '../src/lib/cam/learn';
+import { kindOf, readProgram, summarise } from '../src/lib/cam/learn';
 import knowledge from '../src/lib/cam/shopKnowledge.json';
 
 describe('learning from a program (O1042013, FH top plate)', () => {
@@ -90,3 +90,26 @@ describe('learning from the other ways an operation is written', () => {
     expect(p.order).toEqual([['face', 'centre', 'drill', 'pocket', 'finish']]);
   });
 });
+
+describe('the kind of an operation', () => {
+  it('reads the names the library uses', () => {
+    const cases: [string, string, string][] = [
+      ['FERTIGPLAN-MK-93', 'MK', 'face'],
+      ['CAVITY_SCHRUPP', 'SF', 'pocket'],
+      ['CAVITY_SCHLICHT', 'KF', 'finish'],
+      ['ZLEVEL_PROFILE', 'KF', 'finish'],
+      ['FIXED_CONTOUR', 'KF', 'finish'],
+      ['SCHRUPP_KONTUR_16MM', 'SR', 'contour'],
+      ['DEBURRING_0.3MM', 'ST', 'chamfer'],
+    ];
+    for (const [op, type, kind] of cases) expect(kindOf(op, type), op).toBe(kind);
+  });
+  it('a twist drill drills and a face mill faces whatever the operation is called', () => {
+    expect(kindOf('EINSATZ_4.8MM', 'SB')).toBe('drill');
+    expect(kindOf('ABSTNDB_6.4MM', 'SB')).toBe('drill');
+    expect(kindOf('ZENTRIERBOHREN', 'SB')).toBe('centre');
+    expect(kindOf('', 'MK')).toBe('face');
+    expect(kindOf('', 'SF')).toBe('other');
+  });
+});
+

@@ -42,17 +42,25 @@ export interface PartRead {
 }
 
 const KINDS: [RegExp, OpKind][] = [
-  [/^(PLAN|VORPLAN|MESSERKOPF)/, 'face'],
+  [/^(PLAN|VORPLAN|FERTIGPLAN|MESSERKOPF)/, 'face'],
   [/^(ZENTRIER|ZENTR|NC-ANBOHREN|ANBOHREN)/, 'centre'],
   [/^GEWINDE/, 'tap'],
   [/^ABSENKUNG/, 'counterbore'],
   [/^BOHREN/, 'drill'],
-  [/^(SCHLICHT|SCHL)/, 'finish'],
-  [/^(TASCHE|TASTER|EINSATZ|FRAESEN)/, 'pocket'],
-  [/^(PROFIL|KONTUR|HALTEZYL|RUECKS)/, 'contour'],
-  [/^(FASE|ENTGRATEN)/, 'chamfer'],
+  [/^(SCHLICHT|SCHL|CAVITY_SCHLICHT|ZLEVEL|FIXED_CONTOUR)/, 'finish'],
+  [/^(TASCHE|TASTER|EINSATZ|FRAESEN|CAVITY_SCHRUPP)/, 'pocket'],
+  [/^(PROFIL|KONTUR|HALTEZYL|RUECKS|SCHRUPP_KONTUR)/, 'contour'],
+  [/^(FASE|ENTGRATEN|DEBURRING)/, 'chamfer'],
 ];
-export const kindOf = (op: string, type: string): OpKind => (type === 'GB' ? 'tap' : (KINDS.find(([re]) => re.test(op))?.[1] ?? 'other'));
+/** What a tool type does when the operation's name does not say. */
+const BY_TYPE: Record<string, OpKind> = { MK: 'face', SB: 'drill', ZB: 'centre', AB: 'centre', GB: 'tap' };
+export const kindOf = (op: string, type: string): OpKind => {
+  const named = KINDS.find(([re]) => re.test(op))?.[1];
+  if (type === 'GB') return 'tap';
+  // A twist drill drills, whatever the operation is called ("EINSATZ_4.8MM": the hole for an insert).
+  if (type === 'SB' && named !== 'centre') return 'drill';
+  return named ?? BY_TYPE[type] ?? 'other';
+};
 
 /** The tool suffix names the material the data is for; the header names the part's. */
 const MATERIAL: Record<string, string> = { FH: 'FH', KS: 'POM', KSHS: 'POM', POM: 'POM', ALHS: 'ALU', AL: 'ALU', ALU: 'ALU', FRHS: 'FR', 'PC GF': 'PC GF' };
