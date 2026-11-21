@@ -24,6 +24,12 @@ the validation run.
 | W7 | Program zero: 2 mm inside the X-/Y+ corner or the block centre (`workholding.firstZero`, 78 of 97). | The block centre. | none | kept |
 | W8 | Spacers in a jaw free a side to be cut below the jaw top (`workholding.spacerFreesSide`). | Not used (CAM AI holds the part directly in the jaws or in its POM nest). | none for now | kept |
 
+**W1 to W3 tried together** (not kept; `npm run cam-library` on six reference parts, one per family, CAM AI with the busier side first, 40 mm parallels in every clamping and outside cuts stopped 1.5 mm above the jaws):
+- **Clearly better on one part:** O0106612 went from 4 clampings with 2 collisions and 30.8 minutes to 2 clampings like the engineers, no collision, 17.7 minutes.
+- **Clearly worse on one part:** O0095457 went from 3 clampings and 4.7 minutes to 6 clampings, 9.2 minutes, 2 collisions, and a match of 0.979.
+- **Within 5 % on two parts**, correct both ways.
+- **Why:** the engineers grip much more in the later clampings (38, 36, 28, even 8 mm parallels); the trial kept 40 mm everywhere. The package needs that rule worked out before it can replace CAM AI's way.
+
 ## Strategy
 
 | # | The shop | CAM AI now | Change | Status |
