@@ -235,7 +235,8 @@ rule('gcode.g43.haas', 'gcode', 'HAAS: the length offset is "G00 G43 H<tool> Z..
 rule('gcode.g43.fanuc', 'gcode', 'FANUC: the length offset is "G00 G43 Z.. H#513 D#513 M254": the offset number comes from #513.', 'G43 lines (FANUC)', (p) =>
   p.fanuc ? g43Lines(p).map((i) => ({ holds: /^G0*0 G43 Z-?[\d.]+ H#513 D#513 M254/i.test(code(p.lines[i])), at: i })) : []);
 rule('gcode.g43z50', 'gcode', 'The length offset brings the tool to Z50. (50 mm above program zero) before anything else.', 'G43 lines', (p) =>
-  g43Lines(p).map((i) => ({ holds: /(?<![A-Z])Z50\.?(?![0-9])/i.test(code(p.lines[i])), at: i })));
+  // Exactly Z50 (Z50, Z50., Z50.0), not Z50.2 or Z50.05.
+  g43Lines(p).map((i) => ({ holds: /(?<![A-Z])Z50(?:\.0*)?(?![0-9.])/i.test(code(p.lines[i])), at: i })));
 rule('gcode.coolantOnG43', 'gcode', 'The coolant comes on with the length offset: M08 on the G43 line.', 'G43 lines', (p) =>
   g43Lines(p).map((i) => ({ holds: /(?<![A-Z0-9])M0?8(?![0-9])/i.test(code(p.lines[i])), at: i })));
 rule('gcode.spindleStart', 'gcode', 'The spindle starts on the positioning move right after the G43 line: "G00 G90 X.. Y.. S.. M03".', 'G43 lines', (p) =>
@@ -461,7 +462,7 @@ function held(p: Program): (Held | null)[] {
 const helds = new Map(programs.map((p) => [p, verified(p) ? held(p) : []]));
 rule('workholding.grip', 'workholding', 'In the vise the part is gripped at least 3 mm deep: it stands on parallels of 42 mm or less in the 45 mm jaws.', 'vise clampings on parallels', (p) =>
   helds.get(p)!.flatMap((h) => (h ? [{ holds: h.grip >= 2.95, at: h.at }] : [])), true);
-rule('workholding.outsideCutsAboveJaws', 'workholding', 'Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top, mostly 1 to 2 mm above it: the part is set high enough for its outside contour.', 'vise clampings with such a cut and no spacer', (p) =>
+rule('workholding.outsideCutsAboveJaws', 'workholding', 'Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top: the part is set high enough for its outside contour. How far above it stops: the histogram under Workholding.', 'vise clampings with such a cut and no spacer', (p) =>
   helds.get(p)!.flatMap((h) => (h && h.clearance !== null && !h.spacers.length ? [{ holds: h.clearance >= -0.05, at: h.deepAt }] : [])), true);
 rule('workholding.spacerFreesSide', 'workholding', 'A spacer between the part and a jaw ("15 MM ZWISCHENLAGE IN Y-", "15 MM UNTERLAGE // IN Y-") frees that side: cuts beside that face go below the jaw top.', 'vise clampings with a spacer at Y- or Y+', (p) =>
   helds.get(p)!.flatMap((h) => {
@@ -660,7 +661,7 @@ const spotted = (h: HoleStep[]) => {
   const d = h.findIndex((s) => s.kind === 'drill');
   return d >= 0 && h.slice(0, d).some((s) => s.kind === 'centre');
 };
-rule('strategy.spotSmallDrills', 'strategy', 'A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling. 4 mm is the size that best separates the library\'s holes.', 'drilled holes', (p) =>
+rule('strategy.spotSmallDrills', 'strategy', 'A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling.', 'drilled holes', (p) =>
   holeList.get(p)!.flatMap(({ steps: h }) => {
     const d = h.findIndex((s) => s.kind === 'drill');
     return d < 0 ? [] : [{ holds: spotted(h) === h[d].d < 4, at: h[d].start }];
@@ -1099,7 +1100,7 @@ for (const [topic, title] of topics) {
       '',
       `How much longer the tool is than its deepest cut (mm), per type: ${Object.entries(facts.toolLongerThanCutMm).map(([t, s]) => (s ? `${t} median ${s.median} (${s.min}–${s.max}, ${s.n} operations)` : '')).filter(Boolean).join('; ')}.`,
       '',
-      "Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation. First the rpm and feed one operation runs together most often, with its share of the operations and its label: **consistent** (every operation), **majority** (more than half), **varies**, **seen once** (one part). Then each value on its own: the most common with its share, median and range. Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named. An operation's feed is the median of the feed in effect on its cutting lines: the shop's post slows arcs and corners (a finish programmed at 450 mm/min runs its corners at 315 and 284), so it can sit under the programmed feed.",
+      "Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation. First the rpm and feed one operation runs together most often, with its share of the operations and its label: **consistent** (every operation), **majority** (more than half), **varies**, **seen once** (one part). Then each value on its own: the most common with its share, median and range. Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named. An operation's feed is the median of the feed in effect on its cutting lines: the shop's post slows some arcs (for example a finish programmed at 450 mm/min runs arcs at 315 and 284; lead-in and lead-out arcs often slower still), so it can sit under the programmed feed.",
       '',
       '| Material | Type | Ø | Kind | Ops | Parts | Run together most (rpm / feed, share, label) | rpm | Feed mm/min | Plunge | Depth per pass | Step-over | Peck |',
       '|---|---|---|---|---|---|---|---|---|---|---|---|---|',

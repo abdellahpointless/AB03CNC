@@ -3268,7 +3268,7 @@
    },
    "units": {
     "applies": 1795,
-    "holds": 1473
+    "holds": 1408
    },
    "examples": [
     {
@@ -4151,7 +4151,7 @@
   {
    "id": "workholding.outsideCutsAboveJaws",
    "topic": "workholding",
-   "rule": "Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top, mostly 1 to 2 mm above it: the part is set high enough for its outside contour.",
+   "rule": "Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top: the part is set high enough for its outside contour. How far above it stops: the histogram under Workholding.",
    "unit": "vise clampings with such a cut and no spacer",
    "verifiedOnly": true,
    "parts": {
@@ -4682,7 +4682,7 @@
   {
    "id": "strategy.spotSmallDrills",
    "topic": "strategy",
-   "rule": "A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling. 4 mm is the size that best separates the library's holes.",
+   "rule": "A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling.",
    "unit": "drilled holes",
    "verifiedOnly": false,
    "parts": {
@@ -5041,7 +5041,7 @@
   },
   {
    "id": "workholding.outsideCutsAboveJaws",
-   "rule": "Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top, mostly 1 to 2 mm above it: the part is set high enough for its outside contour.",
+   "rule": "Without a spacer, a cut beside the clamped faces (Y) stops above the jaw top: the part is set high enough for its outside contour. How far above it stops: the histogram under Workholding.",
    "perType": {
     "contourInsert": {
      "applies": 9,
@@ -5401,7 +5401,7 @@
   },
   {
    "id": "strategy.spotSmallDrills",
-   "rule": "A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling. 4 mm is the size that best separates the library's holes.",
+   "rule": "A hole drilled under 4 mm is spot drilled first (ZENTRIER / NC-ANBOHREN, same clamping); from 4 mm up it is drilled without spot drilling.",
    "perType": {
     "contourInsert": {
      "applies": 9,
