@@ -63,7 +63,9 @@ const samples: Sample[] = [];
 const parts = programs.map((p) => readProgram(p.text, p.name));
 for (const p of parts) samples.push(...p.samples);
 const knowledge = summarise(parts);
-writeFileSync(join(process.cwd(), 'src/lib/cam/shopKnowledge.json'), JSON.stringify(knowledge, null, 1) + '\n');
+// The clamping notes are the engineers' free text (a note can name a customer or a part) and CAM AI
+// does not read them: they stay out of the file, which is in the public repository.
+writeFileSync(join(process.cwd(), 'src/lib/cam/shopKnowledge.json'), JSON.stringify({ ...knowledge, m0: [] }, null, 1) + '\n');
 
 // Report.
 console.log(`${programs.length} programs, ${samples.length} operations`);
