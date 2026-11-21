@@ -8,13 +8,16 @@
 import { addG49AfterM6, applyMachineCoolant, detectMaterial, fanuc2Limits, fanucNumbers, fhPecks, isAluOrBrass } from '../gcodeProcessor';
 import { convertHaasToFanuc } from '../haasToFanucConverter';
 
-/** `machineId`: the engine's id (regions.ts engineMachineId); `fileName`: the program's, for the FANUC O line. */
-export function forMachine(code: string, machineId: string, fileName: string): string {
+/**
+ * `machineId`: the engine's id (regions.ts engineMachineId); `fileName`: the program's, for the FANUC O line;
+ * `material`: CAM AI's (a word in the model's name could make the program's text read as another).
+ */
+export function forMachine(code: string, machineId: string, fileName: string, material?: string): string {
   const fanuc2 = machineId === 'FANUC-2';
   let lines = code.split('\n');
-  if (fanuc2) lines = fanuc2Limits(addG49AfterM6(lines), isAluOrBrass(code));
+  if (fanuc2) lines = fanuc2Limits(addG49AfterM6(lines), material ? material === 'ALU' || material === 'MS' : isAluOrBrass(code));
   lines = applyMachineCoolant(lines, machineId);
-  if (detectMaterial(code) === 'FH') lines = fhPecks(lines);
+  if ((material ?? detectMaterial(code)) === 'FH') lines = fhPecks(lines);
   if (fanuc2) lines = fanucNumbers(lines);
   const out = lines.join('\n');
   return machineId.toUpperCase().startsWith('FANUC') && !fanuc2 ? convertHaasToFanuc(out, fileName).fanucCode : out;

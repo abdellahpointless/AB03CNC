@@ -78,6 +78,17 @@ describe("CAM AI's program as each machine gets it", () => {
     expect(sent.join('\n')).toMatch(/G0 G53 G49 Y0 Z0 M89/);
   });
 
+  it('takes the material from CAM AI, not from words in the model\'s name (a review found "POM-PLATE ALU")', () => {
+    // A model named after another material: its name comes before the material in the header.
+    const named = r.code.replace(/\(([^()]*?)\bALU\b/, '(POM-PLATE ALU');
+    expect(named).toContain('POM-PLATE ALU');
+    const pecks = (code: string) => code.split('\n').filter((l) => /(?<![A-Z])G83(?![0-9])/.test(l));
+    for (const l of pecks(forMachine(named, 'FANUC-2', 'O0001.NC', 'ALU'))) expect(l).toMatch(/(?<![A-Z])Q2\.?(?![0-9])/);
+    // An FH part named like a POM one keeps its pecks to 5 mm.
+    const fh = named.replace('POM-PLATE ALU', 'POM-PLATE FH').replace(/(?<![A-Z])Q[\d.]+/g, 'Q8.');
+    expect(forMachine(fh, 'HAAS-2', 'O0001.NC', 'FH')).not.toMatch(/(?<![A-Z])Q8/);
+  });
+
   it('numbers a FANUC-2 program as the FANUC files are: no N over 9999, whole coordinates with a dot', () => {
     expect(forMachine(['%', 'O0001', 'N10001 G00 X1 Y2', '%'].join('\n'), 'FANUC-2', 'O0001.NC')).toBe(['%', 'O0001', 'N9999 G00 X1. Y2.', '%'].join('\n'));
   });

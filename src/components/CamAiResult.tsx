@@ -149,9 +149,9 @@ export function ProgramPanel({ result, machineName, machineId, changed, removed,
             type="button"
             disabled={n.match < 0.99 || n.collisions > 0}
             onClick={() => {
-              // As the machine gets it, like the program's own Download (forMachine).
+              // As the machine gets it, like the program's own Download (forMachine); a nest is POM.
               const name = `NEST_${n.side.replace(/[+-]/, (c) => (c === '+' ? 'P' : 'M'))}.nc`;
-              downloadBlob(name, new Blob([forMachine(n.code, machineId, name)], { type: 'text/plain' }));
+              downloadBlob(name, new Blob([forMachine(n.code, machineId, name, 'POM')], { type: 'text/plain' }));
             }}
             className="btn-secondary text-xs min-h-9 px-3 flex items-center gap-1.5"
           >

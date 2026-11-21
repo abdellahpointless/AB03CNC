@@ -228,7 +228,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
     if (!result || !machine || !passed(result)) return;
-    downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName)], { type: 'text/plain' }));
+    downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, material)], { type: 'text/plain' }));
   };
   const saveSideStock = (v: number) => {
     const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
