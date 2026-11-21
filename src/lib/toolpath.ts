@@ -244,7 +244,9 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if ((commentOnly || /^O\d+/i.test(line)) && i < 12 && !moves.length && tools.size === 0) header.push(...comments);
     // Operator instructions: comments on an M0 stop, or note lines about the support / spacer.
     const stop = /(?<![A-Z0-9])M0*0(?![0-9])/i.test(codeOnly(line));
-    if (comments.length && (stop || (commentOnly && !named && SETUP_NOTE.test(comments.join(' '))))) {
+    // A tool's description ("90 GRAD STICHEL / ST_04.00_025_G45_FH") is no clamping note either.
+    const toolNote = comments.some((c) => /[A-Z]{2,3}_\d+\.\d+_\d{3}_/i.test(c));
+    if (comments.length && (stop || (commentOnly && !named && !toolNote && SETUP_NOTE.test(comments.join(' '))))) {
       if (!/CHECK TOOL/i.test(comments.join(' '))) pendingNotes.push({ line: i, text: comments.join(' / ') });
     }
     if (commentOnly) return;
