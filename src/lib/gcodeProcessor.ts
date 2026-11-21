@@ -1060,6 +1060,9 @@ export function addG49AfterM6(lines: string[]): string[] {
   });
 }
 
+/** A whole program, with its own O line (program number), not a few lines of one. */
+export const isWholeProgram = (text: string) => /^\s*%?\s*O\d/im.test(text);
+
 /** A program written in the FANUC dialect (H#513, M254 or the "G94 M95" safety line), code only. */
 export function isFanucDialect(code: string): boolean {
   return code.split('\n').some((l) => /(?<![A-Z])H#513|(?<![A-Z0-9])M254(?![0-9])|G94\s+M95(?![0-9])/i.test(codeOnly(l)));

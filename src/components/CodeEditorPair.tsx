@@ -6,7 +6,7 @@ const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
 const ToolpathSoon = lazy(() => import('./ToolpathSoon'));
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
-import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
+import { applyG53BeforeG52, isWholeProgram } from '../lib/gcodeProcessor';
 import { useT } from '../i18n';
 import { useSync } from '../contexts/SyncContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -362,6 +362,9 @@ export default function CodeEditorPair({
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text');
+    // Another whole program: the imported file's name (and the full O number HAAS -> FANUC takes from
+    // it) is not this program's any more.
+    if (setFileName && isWholeProgram(pastedText)) setFileName('program.nc');
     if (pastedText) {
       const lines = pastedText.split('\n');
       const { lines: processedLines, addedCount } = applyG53BeforeG52(lines);

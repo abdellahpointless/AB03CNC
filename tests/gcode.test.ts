@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, replaceInCode } from '../src/lib/gcodeProcessor';
+import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, isWholeProgram, replaceInCode } from '../src/lib/gcodeProcessor';
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
 import { defaultToolbox } from '../src/lib/defaultTools';
@@ -585,5 +585,15 @@ describe('a G43 on a feed move (G01 G43)', () => {
     expect(out).toMatch(/^N\d+ G01 G43 Z5\. H03 F500\.$/m);
     expect(out).not.toMatch(/G00 G43/);
     expect(kindAfter(out, 'X20.')).toBe('feed');
+  });
+});
+
+describe('a pasted text', () => {
+  it('is a whole program when it has its own O line (then the imported file name no longer fits it)', () => {
+    expect(isWholeProgram('%\nO1033\nN1 (PART)\nN2 G40 G17 G53 G49 G80 G90')).toBe(true);
+    expect(isWholeProgram('%O01234\nG0 G53 G49 Z0 G94 M95')).toBe(true);
+    expect(isWholeProgram('O0131784(X20)\nN1 (NC_PROGRAM)')).toBe(true);
+    expect(isWholeProgram('N7 G01 X20. F300.\nN8 G00 Z50.')).toBe(false);
+    expect(isWholeProgram('N9 M98 P7999\nN10 (O1234 IN A COMMENT)')).toBe(false);
   });
 });
