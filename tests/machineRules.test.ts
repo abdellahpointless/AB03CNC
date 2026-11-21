@@ -73,3 +73,28 @@ describe('the air jet line of a program without O line or safety line', () => {
     expect(applyMachineCoolant(['%O1234', ...src.slice(1)], 'HAAS-5').slice(0, 2)).toEqual(['%O1234', 'M84']);
   });
 });
+
+describe("HAAS-1's Ø16 mills: T2 roughing, T21 finishing", () => {
+  const tools = [
+    { id: 'r', number: 2, pocket: 2, category: 'fraise ebauche', description: 'Fraise D16', diameter: 16, length: 48 },
+    { id: 'f', number: 21, pocket: 21, category: 'fraise finition', description: 'Fraise D16', diameter: 16, length: 48 },
+    { id: 's', number: 7, pocket: 7, category: 'fraise', description: 'Fraise D4 L16', diameter: 4, length: 16 },
+  ] as Parameters<typeof analyzeGCode>[1];
+  const run = (program: string) => {
+    const a = analyzeGCode(program, tools, 'HAAS-1');
+    return generateRemappedCode(a.lines, a.blocks, {}, 'HAAS-1').finalCode;
+  };
+  const block = (t: number, d: number, l: number) => [`N${t}0 T${t} M6`, `N${t}1 (${d}MM FRAESER/${l}MM LANG / SF_${d.toFixed(2).padStart(5, '0')}_${String(l).padStart(3, '0')}_000_ALHS)`, `N${t}2 G00 G43 H${t} Z50.`, `N${t}3 G01 Z-2. F300.`];
+
+  it('gives T2 and T21 to two Ø16 mills in a row', () => {
+    const out = run(['%', 'O1000', ...block(2, 16, 48), ...block(3, 16, 48), 'N99 M30', '%'].join('\n'));
+    expect(out).toMatch(/T2 M6/);
+    expect(out).toMatch(/T21 M6/);
+  });
+
+  it('never takes a 16 mm long mill of another Ø for the Ø16 one (a Ø4 x 16 after a Ø16 keeps its tool)', () => {
+    const out = run(['%', 'O1000', ...block(2, 16, 48), ...block(7, 4, 16), 'N99 M30', '%'].join('\n'));
+    expect(out).toMatch(/T7 M6/);
+    expect(out.match(/T21 M6/g) ?? []).toHaveLength(1);
+  });
+});

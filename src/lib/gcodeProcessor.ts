@@ -481,7 +481,8 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
     const isFraiseCategory = (cat: string | null | undefined) => cat === 'fraise' || cat === 'fraise ebauche' || cat === 'fraise finition';
     const isFraise16 = (b: ToolChangeBlock) => {
       const catMatch = isFraiseCategory(b.parsedCategory) || (b.matchedTool && isFraiseCategory(b.matchedTool.category)) || /fraise/i.test(b.contextStr);
-      const diamMatch = b.parsedDiameter === 16 || (b.matchedTool && b.matchedTool.diameter === 16) || /D16(?:\.0+)?\b/i.test(b.contextStr) || /16(?:\.0+)?\s*MM/i.test(b.contextStr);
+      // The text's "D16" or "16 MM" only when no Ø was read: a 16 mm long mill of another Ø is not the Ø16 one.
+      const diamMatch = b.parsedDiameter === 16 || (b.matchedTool && b.matchedTool.diameter === 16) || (b.parsedDiameter === null && (/D16(?:\.0+)?\b/i.test(b.contextStr) || /16(?:\.0+)?\s*MM/i.test(b.contextStr)));
       return catMatch && diamMatch;
     };
 
