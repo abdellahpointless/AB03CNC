@@ -261,6 +261,20 @@ interface Left {
   at: (lo: number, hi: number) => Region;
   /** How far from the part the grid may show material that is not there (mm). */
   skin: number;
+  /** How far at() grows the grid's cells (mm): the outline stands that far out of the faces. */
+  grow: number;
+}
+
+/**
+ * A side of the grid's box or outline of what is left, put on the face it stands for: the part's own
+ * or the raw block's, the one nearest where the grid puts it (less what it grew it by), within the
+ * grid's reach (`skin`); else just drawn in. Left as the grid has it, a clamping's G52 and the size
+ * written would sit that far off: 0.2 mm on a small part, 0.6 on a 300 mm plate.
+ */
+function onFace(v: number, low: boolean, faces: number[], skin: number, grown: number): number {
+  const want = low ? v + grown : v - grown;
+  const near = faces.filter((c) => Number.isFinite(c) && Math.abs(c - want) <= skin).sort((p, q) => Math.abs(p - want) - Math.abs(q - want))[0];
+  return near ?? want;
 }
 
 /** The raw part as a box, seen from a setup. */
@@ -268,7 +282,7 @@ function boxLeft(R: Mat3, t: Vec, lo: Vec, hi: Vec): Left {
   const p = [apply(R, lo), apply(R, hi)];
   const box = { lo: [0, 1, 2].map((k) => Math.min(p[0][k], p[1][k]) + t[k]) as Vec, hi: [0, 1, 2].map((k) => Math.max(p[0][k], p[1][k]) + t[k]) as Vec };
   const r = rect(box.lo[0], box.lo[1], box.hi[0], box.hi[1]);
-  return { box, at: (lo, hi) => (hi > box.lo[2] - 0.001 && lo < box.hi[2] + 0.001 ? r : []), skin: 0 };
+  return { box, at: (lo, hi) => (hi > box.lo[2] - 0.001 && lo < box.hi[2] + 0.001 ? r : []), skin: 0, grow: 0 };
 }
 
 /**
@@ -350,6 +364,7 @@ function remaining(input: CamInput, done: CamSetup[], size: Vec, raw: Vec, R: Ma
   return {
     box: { lo, hi },
     skin: Math.max(...g.step) * 1.6,
+    grow: Math.max(g.step[ax], g.step[ay]) * 0.75,
     at: (zLo, zHi) => {
       // Every grid layer between the two heights (and the one each is in).
       const [a, b] = [layerOf(zLo), layerOf(zHi)].sort((p, q) => p - q);
@@ -1167,8 +1182,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       notes.push({ key: 'notSimulated', side: side.name });
       return false;
     }
-    const sb = left.box;
     const H = f.max[2] - f.min[2];
+    // What is left, on the faces it stands for: the part's (in this frame) or the raw block's.
+    const rb = boxLeft(R, t, rawLo, rawHi).box;
+    const pb = { lo: [f.min[0], f.min[1], -H] as Vec, hi: [f.max[0], f.max[1], 0] as Vec };
+    const sb = { lo: left.box.lo.map((v, k) => onFace(v, true, [pb.lo[k], rb.lo[k]], left.skin, 0)) as Vec, hi: left.box.hi.map((v, k) => onFace(v, false, [pb.hi[k], rb.hi[k]], left.skin, 0)) as Vec };
     const stockH = sb.hi[2] - sb.lo[2];
     // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
     // In the POM nest the pocket's walls stand where the jaws would: cut down to the nest's top only.
@@ -1183,7 +1201,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // app's reader take them): the stop and the fixed jaw touch those, so the shift and the size written
     // come from them, as the shop writes the size after a turn (docs/knowledge/cam-gaps.md, P1). Not from
     // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
-    const held = (!nested && extent(left.at(sb.lo[2], jawTop))) || { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
+    const band = nested ? null : extent(left.at(sb.lo[2], jawTop));
+    // The part's own outline over that height, for the faces of the band.
+    const nz = Math.max(2, Math.ceil(jawTop - sb.lo[2]) + 1);
+    const zs = Array.from({ length: nz }, (_, i) => sb.lo[2] + 0.05 + ((jawTop - sb.lo[2] - 0.1) * i) / (nz - 1));
+    const own = band && left.grow ? extent(zs.reduce((r: Region, z) => union(r, slice(P, Math.min(z, -0.01))), [])) : null;
+    const held = band
+      ? {
+          lo: [0, 1].map((k) => onFace(band.lo[k], true, [own?.lo[k] ?? NaN, rb.lo[k]], left.skin, left.grow)) as P2,
+          hi: [0, 1].map((k) => onFace(band.hi[k], false, [own?.hi[k] ?? NaN, rb.hi[k]], left.skin, left.grow)) as P2,
+        }
+      : { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
     const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
     const cx = (held.lo[0] + held.hi[0]) / 2;
     const cy = (held.lo[1] + held.hi[1]) / 2;

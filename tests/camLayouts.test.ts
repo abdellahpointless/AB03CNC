@@ -48,12 +48,17 @@ describe('where a clamping puts the part', () => {
     expect(an.setups.length).toBeGreaterThanOrEqual(2);
     an.setups.forEach((s, k) => {
       expect(s.grip && s.clampBox, `clamping ${k + 1}`).toBeTruthy();
-      // The app's reader finds the held faces where the program puts the part (its grid: 0.3 mm).
-      expect(Math.abs(s.grip!.stop - s.clampBox!.min[0]), `clamping ${k + 1} at the stop`).toBeLessThanOrEqual(0.3);
-      expect(Math.abs(s.clampBox!.max[1] - s.grip!.back), `clamping ${k + 1} at the fixed jaw`).toBeLessThanOrEqual(0.3);
+      // The app's reader finds the held faces where the program puts the part (straight walls: within 0.1 mm).
+      expect(Math.abs(s.grip!.stop - s.clampBox!.min[0]), `clamping ${k + 1} at the stop`).toBeLessThanOrEqual(0.1);
+      expect(Math.abs(s.clampBox!.max[1] - s.grip!.back), `clamping ${k + 1} at the fixed jaw`).toBeLessThanOrEqual(0.1);
     });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.misplaced).toBe(0);
+    // The size written is the part's own after the turn (40 x 30), not the simulation grid's outline of it,
+    // which stands up to a cell and a half further out (40.36 x 30.35 here, 0.6 mm a side on a 300 mm plate).
+    const turned = r.code.match(/DREHEN\/(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/)!;
+    expect(Number(turned[1])).toBeCloseTo(40, 1);
+    expect(Number(turned[2])).toBeCloseTo(30, 1);
     // The second clamping written with the whole stock's size (44 x 34), as CAM AI wrote it before: the
     // vise holds 40 x 30 there, the part would sit 2 mm off; the check counts it, and that locks the program.
     const wrong = r.code.replace(/(DREHEN\/)(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/, (_m, pre: string, x: string, y: string) => `${pre}${Number(x) + 4} IN X UND ${Number(y) + 4} IN Y`);
