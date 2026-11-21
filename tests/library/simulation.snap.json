@@ -235,8 +235,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.9343,
-  "pieces": 3
+  "match": 1,
+  "pieces": 0
  },
  "O0125595.X20 8e294283/563a6aaf": {
   "result": "compared",
@@ -266,8 +266,8 @@
    "cale": 10
   },
   "conflicts": 0,
-  "match": 0.9397,
-  "pieces": 5
+  "match": 1,
+  "pieces": 0
  },
  "O0125675.X20 fae5765f/4e8895a3": {
   "result": "compared",
@@ -766,8 +766,8 @@
    "cale": 2
   },
   "conflicts": 0,
-  "match": 0.9418,
-  "pieces": 1
+  "match": 1,
+  "pieces": 0
  },
  "O1566213.134 7b039777/ee2ec30e": {
   "result": "compared",
@@ -847,8 +847,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.9996,
-  "pieces": 1
+  "match": 1,
+  "pieces": 0
  },
  "O1784033_2.129 8ec513d0/19859129": {
   "result": "compared",
@@ -858,8 +858,8 @@
    "cale": 1
   },
   "conflicts": 0,
-  "match": 0.9781,
-  "pieces": 8
+  "match": 1,
+  "pieces": 0
  },
  "O1784033.129 361bccd0/19859129": {
   "result": "compared",
@@ -869,8 +869,8 @@
    "cale": 1
   },
   "conflicts": 0,
-  "match": 0.9781,
-  "pieces": 8
+  "match": 1,
+  "pieces": 0
  },
  "O1784233.129 110eed98/3ad11eef": {
   "result": "compared",

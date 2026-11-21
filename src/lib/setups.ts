@@ -907,7 +907,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const solved = k === 0 ? { options: [IDENTITY], conflict: false } : solveOrientation(orient, ins, known);
     // Notes worded like ones a 3D model already corrected turn the part the way that was right then.
     const learnedTurn = k > 0 ? recall(notes, orient) : null;
-    const alternatives = learnedTurn ? [learnedTurn] : byCuts(bySize(solved.options, part, ins.sizes), part, moves, (m) => (isFaceMill(m.tool) ? null : (diameter.get(m.tool ?? -1) ?? 0) / 2));
+    const alternatives = learnedTurn ? [learnedTurn] : byCuts(bySize(solved.options, part, ins.sizes), part, moves, (m) => (isFaceMill(m.tool) ? null : (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2));
     orient = override.get(k) ?? alternatives[0];
     learn(orient, ins, known);
     const info: SetupInfo = {
@@ -963,7 +963,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       if (m.kind === 'rapid' || isFaceMill(m.tool)) continue;
       const add = m.kind === 'drill' ? [m.points[0]] : m.points;
       pts.push(...add);
-      for (let n = 0; n < add.length; n++) slack.push((diameter.get(m.tool ?? -1) ?? 0) / 2 + 3);
+      for (let n = 0; n < add.length; n++) slack.push((m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 + 3);
     }
     const xs = Float64Array.from(pts, (p) => p[0]).sort();
     const ys = Float64Array.from(pts, (p) => p[1]).sort();

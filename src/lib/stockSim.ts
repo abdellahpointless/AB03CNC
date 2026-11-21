@@ -37,8 +37,8 @@ export interface SimTool {
 }
 
 export interface SimInput {
-  /** Cutting moves as polylines (machine coordinates of their setup). */
-  moves: { setup: number; tool: number | null; points: Vec[] }[];
+  /** Cutting moves as polylines (machine coordinates of their setup); `cutter`: the tool its own tool change loaded (one T number can be another tool later on). */
+  moves: { setup: number; tool: number | null; points: Vec[]; cutter?: SimTool }[];
   setups: { orient: Mat3; offset: Vec }[];
   part: { min: Vec; max: Vec };
   tools: SimTool[];
@@ -66,17 +66,25 @@ export interface Grid {
 }
 
 
+/** How a tool cuts, from its description and diameter. */
+const simTool = (tool: number | null, label: string, diameter: number | null): SimTool => ({
+  tool,
+  radius: Math.max(0.3, (diameter ?? guessDiameter(label)) / 2),
+  slope: tipSlope(label) ?? (isBall(label) ? 'drop' : null),
+});
+
 /** Moves of a parsed program, ready to cut (drilling becomes a straight plunge). */
 export function simMoves(tp: Toolpath): SimInput['moves'] {
-  return tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: m.kind === 'rapid' ? [] : movePath(m) }));
+  const loaded = new Map<string, SimTool>();
+  return tp.moves.map((m) => {
+    const key = `${m.tool}|${m.dia}|${m.label}`;
+    const cutter = m.label === undefined ? undefined : loaded.get(key) ?? loaded.set(key, simTool(m.tool, m.label, m.dia ?? null)).get(key);
+    return { setup: m.setup, tool: m.tool, points: m.kind === 'rapid' ? [] : movePath(m), cutter };
+  });
 }
 
 export function simTools(tp: Toolpath): SimTool[] {
-  return tp.tools.map((t) => ({
-    tool: t.tool,
-    radius: Math.max(0.3, (t.diameter ?? guessDiameter(t.label)) / 2),
-    slope: tipSlope(t.label) ?? (isBall(t.label) ? 'drop' : null),
-  }));
+  return tp.tools.map((t) => simTool(t.tool, t.label, t.diameter));
 }
 
 /** Ball cutters (fraise boule, KUGEL, BALL): drawn and cut as an eyedrop. */
@@ -348,7 +356,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
     if (!s) return;
     const R = s.orient;
     const t = s.offset;
-    const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
+    const tool = mv.cutter ?? toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
     const r = tool.radius;
     const run = runShares(mv.points);
     for (let q = 1; q < mv.points.length; q++) {
@@ -410,7 +418,7 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
       if (!s) return;
       const R = s.orient;
       const t = s.offset;
-      const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
+      const tool = mv.cutter ?? toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
       for (let q = 1; q < mv.points.length; q++) {
         const a = mv.points[q - 1];
         const b = mv.points[q];
@@ -560,7 +568,7 @@ function moveIndex(input: SimInput): MoveIndex {
   const radius = new Map(input.tools.map((t) => [t.tool, t.radius]));
   const reach = new Float64Array(input.moves.length * 5);
   input.moves.forEach((mv, i) => {
-    const r = (radius.get(mv.tool) ?? 3) + 0.01;
+    const r = (mv.cutter?.radius ?? radius.get(mv.tool) ?? 3) + 0.01;
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity, z = Infinity;
     for (const p of mv.points) { a = Math.min(a, p[0] - r); b = Math.min(b, p[1] - r); c = Math.max(c, p[0] + r); d = Math.max(d, p[1] + r); z = Math.min(z, p[2]); }
     reach.set([a, c, b, d, z - 0.01], i * 5);
@@ -569,7 +577,7 @@ function moveIndex(input: SimInput): MoveIndex {
     const own = input.moves.map((m, i) => (m.setup === s && m.points.length > 1 ? i : -1)).filter((i) => i >= 0);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const i of own) {
-      const r = (radius.get(input.moves[i].tool) ?? 3) + 0.01;
+      const r = (input.moves[i].cutter?.radius ?? radius.get(input.moves[i].tool) ?? 3) + 0.01;
       for (const p of input.moves[i].points) {
         x0 = Math.min(x0, p[0] - r); y0 = Math.min(y0, p[1] - r); x1 = Math.max(x1, p[0] + r); y1 = Math.max(y1, p[1] + r);
       }
@@ -580,7 +588,7 @@ function moveIndex(input: SimInput): MoveIndex {
     const lists = new Map<number, number[]>();
     for (const i of own) {
       const mv = input.moves[i];
-      const r = (radius.get(mv.tool) ?? 3) + 0.01;
+      const r = (mv.cutter?.radius ?? radius.get(mv.tool) ?? 3) + 0.01;
       let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
       for (const p of mv.points) { a = Math.min(a, p[0] - r); b = Math.min(b, p[1] - r); c = Math.max(c, p[0] + r); d = Math.max(d, p[1] + r); }
       const i0 = Math.max(0, Math.floor((a - x0) / cell)), i1 = Math.min(nx - 1, Math.floor((c - x0) / cell));
@@ -616,7 +624,7 @@ function faceFinder(input: SimInput, before: number) {
     const mx = R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0];
     const my = R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1];
     const mz = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2];
-    const tool = toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
+    const tool = mv.cutter ?? toolOf.get(mv.tool) ?? { tool: mv.tool, radius: 3, slope: null };
     for (let q = 1; q < mv.points.length; q++) if (sweeps(mx, my, mz, mv.points[q - 1], mv.points[q], tool.radius, tool.slope)) return true;
     return false;
   };
@@ -848,10 +856,10 @@ export function drilledHoles(input: SimInput, g: Grid, before: number): Hole[] {
   };
   const holes: Hole[] = [];
   let reachOf: ReturnType<typeof faceFinder> | undefined;
-  const bores = [...rounds.values()].filter((h) => h.sweep >= Math.PI * 2 * 0.97 && toolOf.get(h.tool)?.slope === null);
+  const bores = [...rounds.values()].filter((h) => h.sweep >= Math.PI * 2 * 0.97 && (input.moves[h.move].cutter ?? toolOf.get(h.tool))?.slope === null);
   for (const h of [...plunges.values(), ...bores]) {
     const s = input.setups[h.setup];
-    const tool = toolOf.get(h.tool);
+    const tool = input.moves[h.move].cutter ?? toolOf.get(h.tool);
     if (!s || !tool) continue;
     const R = s.orient;
     const t = s.offset;
@@ -1118,7 +1126,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   input.moves.forEach((mv, m) => {
     const s = input.setups[mv.setup];
     if (mv.points.length < 2 || !s) return;
-    const r = (toolOf.get(mv.tool) ?? { radius: 3 }).radius;
+    const r = (mv.cutter ?? toolOf.get(mv.tool) ?? { radius: 3 }).radius;
     const lo: Vec = [Infinity, Infinity, Infinity];
     const hi: Vec = [-Infinity, -Infinity, 1e6];
     for (const p of mv.points) {
@@ -1231,7 +1239,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   const inMove = (m: number, p: Vec, upTo: number, from = 1): { seg: number; end: Vec } | null => {
     const mv = input.moves[m];
     const s = input.setups[mv.setup];
-    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
+    const tool = mv.cutter ?? toolOf.get(mv.tool) ?? { radius: 3, slope: null };
     const q = toMachine(s, p);
     const run = upTo < 1 ? runOf(m) : null;
     for (let i = from; i < mv.points.length; i++) {
@@ -1256,7 +1264,7 @@ export function mesher(g: Grid, input: SimInput): Mesher {
   const surfaceAt = (c: { m: number; seg: number; end: Vec }, p: Vec) => {
     const mv = input.moves[c.m];
     const s = input.setups[mv.setup];
-    const tool = toolOf.get(mv.tool) ?? { radius: 3, slope: null };
+    const tool = mv.cutter ?? toolOf.get(mv.tool) ?? { radius: 3, slope: null };
     const nm = sweepNormal(toMachine(s, p), mv.points[c.seg - 1], c.end, tool.radius, tool.slope, 0.01);
     return { s, tool, nm, n: toPart(s, nm) };
   };

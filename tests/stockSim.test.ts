@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { carve, drilledHoles, dropLoose, dropRadius, eigenSym, holderHits, holderOf, instant, isBall, KEPT, materialExtreme, mesher, simTools, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { carve, drilledHoles, dropLoose, dropRadius, eigenSym, holderHits, holderOf, instant, isBall, KEPT, materialExtreme, mesher, simMoves, simTools, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { parseToolpath } from '../src/lib/toolpath';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
 
@@ -357,5 +358,18 @@ describe('weak spots: wall thickness of the finished part', () => {
     const thin = { ...input, moves: [slot(4), slot(8.4)] };
     const g2 = carve(thin);
     expect(thicknessAt(g2, wallThickness(g2, thin), new Float32Array([6.2, 5, -4]))[0]).toBeCloseTo(0.4, 1);
+  });
+});
+
+describe('one T number loaded again with another tool', () => {
+  it('cuts each move with the tool its own tool change loaded', () => {
+    const code = ['%', 'O1', 'T1 M6', '(1.8MM BOHRER / SB_01.80_035_000_FH)', '(DIAMETER 1.80 MM/LENGTH 35.00 MM)', 'G0 G90 X0 Y0 S5000 M3', 'G43 H1 Z5.', 'G98 G83 Z-5. R2. Q1. F100.', 'G80',
+      'T1 M6', '(10MM BOHRER / SB_10.00_070_000_FH)', '(DIAMETER 10.00 MM/LENGTH 70.00 MM)', 'G0 G90 X20. Y0 S2000 M3', 'G43 H1 Z5.', 'G98 G83 Z-5. R2. Q1. F100.', 'G80', 'M30', '%'].join('\n');
+    const tp = parseToolpath(code, { rapid: 30000, toolChange: 5 });
+    const moves = simMoves(tp);
+    const drills = tp.moves.flatMap((m, i) => (m.kind === 'drill' ? [moves[i].cutter?.radius] : []));
+    expect(drills).toEqual([0.9, 5]);
+    // The tool list stays one entry per T number (the viewer and the texts name tools by number).
+    expect(tp.tools.map((t) => t.tool)).toEqual([1]);
   });
 });

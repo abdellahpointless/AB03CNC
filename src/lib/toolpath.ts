@@ -33,6 +33,8 @@ export interface Move {
   /** The length and diameter stated for the tool in the spindle at its tool change (one T number can be another tool later on). */
   reach?: number | null;
   dia?: number | null;
+  /** The description of that tool (its tool change's comment). */
+  label?: string;
   /** The operation the move belongs to ("TASTER_8MM" from "(TOOLPATH TASTER_8MM)"). */
   op?: string;
 }
@@ -193,6 +195,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   let reach: number | null = null;
   let op = '';
   let dia: number | null = null;
+  let label = '';
   let pendingTool: number | null = null;
   let toolChanges = 0;
   let cycle: number | null = null;
@@ -275,8 +278,9 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if (has(m, 6)) {
       tool = pendingTool;
       ({ length: reach, diameter: dia } = toolSize(lines, i));
+      label = toolLabel(lines, i);
       toolChanges++;
-      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label: toolLabel(lines, i), op: toolOp(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
+      if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label, op: toolOp(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
       addTime(speeds.toolChange);
     }
     if (v.has('F')) feed = v.get('F')!;
@@ -287,8 +291,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if (has(g, 41, 42)) {
       compSide = has(g, 41) ? 1 : -1;
       const d = v.get('D');
-      const dia = (d !== undefined ? tools.get(d)?.diameter : null) ?? (tool !== null ? tools.get(tool)?.diameter : null) ?? 0;
-      compR = dia / 2;
+      compR = ((d !== undefined && d !== tool ? tools.get(d)?.diameter : null) ?? dia ?? 0) / 2;
       compStart = true;
     }
     if (has(g, 40) && compSide) compEnd = true;
@@ -348,8 +351,8 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       // Across at the current height, then to the R plane at rapid, as the control does: drawn, so
       // a check sees what that way down goes through (an R plane inside the stock is a crash).
       const approach = dist(from, top) + Math.abs(from[2] - cycleR);
-      moves.push({ kind: 'rapid', tool, line: i, points: from[2] === cycleR ? [from, top] : [from, top, atR], seconds: rapidTime(approach), length: approach, setup , reach, dia, op });
-      moves.push({ kind: 'drill', tool, line: i, points: [atR], depth: cycleZ, seconds: seconds - rapidTime(approach), length: depth, setup , reach, dia, op });
+      moves.push({ kind: 'rapid', tool, line: i, points: from[2] === cycleR ? [from, top] : [from, top, atR], seconds: rapidTime(approach), length: approach, setup , reach, dia, op, label });
+      moves.push({ kind: 'drill', tool, line: i, points: [atR], depth: cycleZ, seconds: seconds - rapidTime(approach), length: depth, setup , reach, dia, op, label });
       addTime(seconds);
       pos = [x, y, back];
       return;
@@ -417,7 +420,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       }
       const length = Math.hypot(r * Math.abs(sweep), end[wa] - from[wa]);
       const seconds = feedTime(length);
-      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() , reach, dia, op });
+      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() , reach, dia, op, label });
       compDone();
       addTime(seconds);
     } else {
@@ -425,7 +428,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       const seconds = motion === 0 ? rapidTime(length) : feedTime(length);
       grow(from);
       grow(end);
-      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() , reach, dia, op });
+      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() , reach, dia, op, label });
       compDone();
       addTime(seconds);
     }
