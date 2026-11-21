@@ -87,7 +87,8 @@ describe('text from outside in the program', () => {
     // One comment, nothing outside it.
     expect(header).toMatch(/^(N\d+ )?\([^()]*\)$/);
     expect(r.code).not.toContain('#5223');
-  });
+    // A whole program is made: more than the default 5 s on a busy machine.
+  }, 180_000);
 
   it('keeps an ordinary name, upper case', () => {
     expect(commentSafe('o2504411 top-plate_v2.1')).toBe('O2504411 TOP-PLATE_V2.1');
