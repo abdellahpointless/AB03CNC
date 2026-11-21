@@ -50,6 +50,21 @@ describe('tools for a part', () => {
     expect(() => catalog('INOX', machine)).toThrow();
   });
 
+  it("takes a face mill or graver whose length the inventory leaves out as the template of its type and Ø, with the template's length", () => {
+    const m: Tool[] = [
+      { id: 'f', number: 13, category: 'tourteau', description: 'Tourteau', diameter: 40, length: 0 },
+      { id: 'g', number: 8, category: 'chanfrein', description: 'Chanfrein', diameter: 4, length: 0 },
+      { id: 'd', number: 5, category: 'foret', description: 'Foret', diameter: 5, length: 0 },
+    ];
+    const tools = catalog('ALU', m);
+    expect(tools.find((t) => t.code === 'MK_40.00_030_000_ALHS')).toMatchObject({ number: 13, inMachine: true, length: 30 });
+    expect(tools.find((t) => t.code === 'ST_04.00_025_G45_ALHS')).toMatchObject({ number: 8, inMachine: true, length: 25 });
+    // Never a face mill or graver of length 0 (a program saying "0MM LANG", simulated without a stick-out).
+    expect(tools.some((t) => (t.type === 'MK' || t.type === 'ST') && !t.length)).toBe(false);
+    // A drill of unknown length could be too short for the hole: it stands for no template.
+    expect(tools.filter((t) => t.number === 5).every((t) => t.template === null)).toBe(true);
+  });
+
   it('never gives a template tool a T number the machine uses for another tool', () => {
     // FH templates number the Ø1.5 drill 18; this machine has its Ø5.4 drill in pocket 18.
     const m: Tool[] = [{ id: 'd', number: 18, category: 'foret', description: 'Foret', diameter: 5.4, length: 55 }];

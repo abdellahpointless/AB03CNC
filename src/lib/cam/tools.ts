@@ -111,7 +111,9 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
   for (const t of LIBRARY[fam]) {
     const category = CATEGORY[t.type];
     if (!category || opts.exclude?.includes(t.code)) continue;
-    const m = machine.find((x) => !used.has(x) && sameType(x, t.type) && Math.abs(x.diameter - t.d) < 0.01 && Math.abs((x.length || 0) - t.length) <= 2);
+    // A face mill or graver whose length the inventory leaves out (0) is the template's: both cut at
+    // the top, and the template's length is the one simulated and written (never "0MM LANG").
+    const m = machine.find((x) => !used.has(x) && sameType(x, t.type) && Math.abs(x.diameter - t.d) < 0.01 && (Math.abs((x.length || 0) - t.length) <= 2 || (!x.length && (t.type === 'MK' || t.type === 'ST'))));
     if (m) used.add(m);
     // One T number per tool in a program.
     let number = m?.number ?? t.number;
