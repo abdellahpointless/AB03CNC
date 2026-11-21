@@ -84,7 +84,7 @@ export function shorten(code: string, still = false): string {
     }
     // Where the machine is is not known after these: nothing is left out from what follows. Their own
     // X, Y, Z are machine positions or a shift, not where the tool is (and the app's reader skips them).
-    if (/(?<![A-Z])(G52|G53|G28|G30|M6)(?![0-9])/.test(l)) {
+    if (/(?<![A-Z])(G0*52|G0*53|G0*28|G0*30|M0*6)(?![0-9])/.test(l)) {
       pos.X = pos.Y = pos.Z = null;
       feed = null;
       out.push(l);
@@ -305,7 +305,7 @@ export function arcs(code: string): string {
     const m = l.match(straight);
     if (!m || pos.X === null || pos.Y === null) {
       for (const [k, v] of words(l.replace(/^N\d+ /, '').replace(/\([^)]*\)/g, ''))) if (k in pos) pos[k] = num(v);
-      if (/(?<![A-Z])(G52|G53|G28|G30|M6)(?![0-9])/.test(l)) pos.X = pos.Y = pos.Z = null;
+      if (/(?<![A-Z])(G0*52|G0*53|G0*28|G0*30|M0*6)(?![0-9])/.test(l)) pos.X = pos.Y = pos.Z = null;
       out.push(l);
       i++;
       continue;

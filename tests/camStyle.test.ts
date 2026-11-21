@@ -115,6 +115,14 @@ describe("CAM AI's program in the shop's words", () => {
     }
   });
 
+  it('treats G053, G028, G052, G030 and M06 as G53, G28, G52, G30 and M6 (a review found the padded ones missed)', () => {
+    const head = ['N1 T1 M6', 'N2 G00 G43 H01 Z50. M08', 'N3 G00 G90 X5. Y0. S1000 M03', 'N4 G00 Z5. F300.'];
+    for (const [machine, move] of [['G053 Y0', 'G00 X10. Y0.'], ['G028 Z0.', 'G00 X10. Z0.'], ['G052 X0. Y0. Z5.', 'G00 X1. Z5.'], ['G030 Y0', 'G00 X10. Y0.'], ['T2 M06', 'G01 X20. Z5. F300.']]) {
+      const out = shorten([...head, `N5 ${machine}`, `N6 ${move}`, 'N7 G01 Z-5. F100.'].join('\n'), true).split('\n');
+      expect(out[5], machine).toBe(`N6 ${move}`);
+    }
+  });
+
   it('drills the shop way also when the cycle starts above its R plane, and still refuses a wrong hole', () => {
     // The G00 to the next depth's first hole and the cycle's way down to R then read as two rapids.
     const high = cam.replace('N48 G00 Z2.', 'N48 G00 Z7.');
