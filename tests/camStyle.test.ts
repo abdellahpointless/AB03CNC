@@ -175,6 +175,54 @@ describe('circles written as arcs', () => {
     for (const m of b.moves.filter((x) => x.kind === 'feed')) for (const p of m.points) expect(off(p)).toBeLessThan(0.012);
   });
 
+  // How far the old pieces lie from the arcs written for them, sampled densely, at each arc's start and end
+  // radius (the control may run either), and how many arcs there are.
+  function gaps(before: string, after: string): { worst: number; arcs: number } {
+    const at = (l: string, k: string) => Number(l.match(new RegExp(`(?<![A-Z])${k}(-?[\\d.]+)`))?.[1]);
+    const path: [number, number][] = [];
+    let [x, y] = [NaN, NaN];
+    for (const l of before.split('\n')) {
+      [x, y] = [Number.isFinite(at(l, 'X')) ? at(l, 'X') : x, Number.isFinite(at(l, 'Y')) ? at(l, 'Y') : y];
+      if (/G0?1 /.test(l) && Number.isFinite(x) && Number.isFinite(y)) path.push([x, y]);
+    }
+    let worst = 0;
+    let count = 0;
+    [x, y] = [NaN, NaN];
+    for (const l of after.split('\n')) {
+      if (/G0[23] /.test(l)) {
+        count++;
+        const [s, e] = [[x, y], [at(l, 'X'), at(l, 'Y')]];
+        const c = [s[0] + at(l, 'I'), s[1] + at(l, 'J')];
+        const radii = [Math.hypot(s[0] - c[0], s[1] - c[1]), Math.hypot(e[0] - c[0], e[1] - c[1])];
+        const same = (p: number[], q: number[]) => Math.abs(p[0] - q[0]) < 1e-9 && Math.abs(p[1] - q[1]) < 1e-9;
+        const from = path.findIndex((p) => same(p, s));
+        const to = path.findIndex((p, k) => k > from && same(p, e));
+        expect(from >= 0 && to > from).toBe(true);
+        for (let k = from; k < to; k++)
+          for (let t = 0; t <= 1; t += 0.01) {
+            const p = [path[k][0] + t * (path[k + 1][0] - path[k][0]), path[k][1] + t * (path[k + 1][1] - path[k][1])];
+            for (const r of radii) worst = Math.max(worst, Math.abs(Math.hypot(p[0] - c[0], p[1] - c[1]) - r));
+          }
+      }
+      [x, y] = [Number.isFinite(at(l, 'X')) ? at(l, 'X') : x, Number.isFinite(at(l, 'Y')) ? at(l, 'Y') : y];
+    }
+    return { worst, arcs: count };
+  }
+
+  it('keeps every piece it replaces within 0.012 mm of the arc as written, at its start and its end radius', () => {
+    // Points rounded to 0.001 mm, up to 0.003 off a circle of r 2, pieces about 0.011 mm deep (a review's example).
+    const pts = [[1.952, 0.429], [1.814, 0.837], [1.594, 1.208], [1.298, 1.522], [0.941, 1.764], [0.541, 1.925], [0.115, 1.994], [-0.316, 1.974]];
+    const scattered = ['N1 G00 G90 X2.002 Y0. S9000 M03', 'N2 G00 Z2.', 'N3 G01 Z-1. F300.', ...pts.map(([px, py], k) => `N${k + 4} G01 X${px} Y${py}${k === 0 ? ' F900.' : ''}`)].join('\n');
+    const g = gaps(scattered, arcs(scattered));
+    expect(g.arcs).toBeGreaterThan(0);
+    expect(g.worst).toBeLessThanOrEqual(0.012);
+    // A clean quarter circle: one arc, well within.
+    const clean = program(pieces(5, 28));
+    const q = gaps(clean, arcs(clean));
+    expect(q.arcs).toBe(1);
+    expect(q.worst).toBeLessThanOrEqual(0.012);
+  });
+
   it('leaves pieces as they are where they are not a circle, or too coarse for one', () => {
     const line = ['N1 G00 G90 X0 Y0 S9000 M03', 'N2 G01 Z-1. F300.', 'N3 G01 X1. F900.', 'N4 G01 X2.', 'N5 G01 X3.', 'N6 G01 X4.'].join('\n');
     expect(arcs(line)).toBe(line);

@@ -263,6 +263,31 @@ const n3 = (v: number) => {
   return short(Number.isInteger(r) ? `${r}.` : String(r));
 };
 
+/** How far a straight piece strays from a circle (centre c, radius r): at its ends, or where it comes closest to the centre. */
+function offCircle(p: P, q: P, c: P, r: number): number {
+  const d = (x: number, y: number) => Math.hypot(x - c[0], y - c[1]);
+  const v: P = [q[0] - p[0], q[1] - p[1]];
+  const t = Math.max(0, Math.min(1, ((c[0] - p[0]) * v[0] + (c[1] - p[1]) * v[1]) / (v[0] * v[0] + v[1] * v[1] || 1)));
+  return Math.max(Math.abs(d(p[0], p[1]) - r), Math.abs(d(q[0], q[1]) - r), r - d(p[0] + t * v[0], p[1] + t * v[1]));
+}
+
+/**
+ * The arc for points i..j as the program writes it ("G03 X.. Y.. I.. J.."), I and J to 0.001 mm, or null:
+ * the end must be as far from the centre as the start (the control checks it, 0.002 mm here), and every
+ * old piece within CHORD of the arc at its start and at its end radius (a control may run either).
+ */
+function written(pts: P[], i: number, j: number): string | null {
+  const arc = arcThrough(pts, i, j);
+  if (!arc) return null;
+  const [s, t] = [pts[i], pts[j]];
+  const [I, J] = [Math.round((arc.c[0] - s[0]) * 1000) / 1000, Math.round((arc.c[1] - s[1]) * 1000) / 1000];
+  const c: P = [s[0] + I, s[1] + J];
+  const radii = [Math.hypot(s[0] - c[0], s[1] - c[1]), Math.hypot(t[0] - c[0], t[1] - c[1])];
+  if (Math.abs(radii[1] - radii[0]) > 0.002) return null;
+  for (let k = i; k < j; k++) for (const r of radii) if (offCircle(pts[k], pts[k + 1], c, r) > CHORD) return null;
+  return `${arc.cw ? 'G02' : 'G03'} X${n3(t[0])} Y${n3(t[1])} I${n3(I)} J${n3(J)}`;
+}
+
 /**
  * Straight feed moves on one level that lie on a circle, as one arc: G02/G03 to the run's last point,
  * I and J from its first (the shop writes arcs this way, docs/knowledge: gcode.arcsIJ). At least three
@@ -301,23 +326,18 @@ export function arcs(code: string): string {
     const feed = m[2] ?? '';
     let k = 0;
     while (k < at.length) {
-      let best: { e: number; arc: { c: P; r: number; cw: boolean } } | null = null;
-      for (let e = k + 3; e < pts.length && e - k <= 2000; e++) {
-        const arc = arcThrough(pts, k, e);
-        if (!arc) break;
-        best = { e, arc };
-      }
-      if (best) {
-        const [s, t] = [pts[k], pts[best.e]];
-        const [I, J] = [best.arc.c[0] - s[0], best.arc.c[1] - s[1]];
-        // The control checks the end is as far from the centre as the start.
-        const c: P = [s[0] + Math.round(I * 1000) / 1000, s[1] + Math.round(J * 1000) / 1000];
-        if (Math.abs(Math.hypot(t[0] - c[0], t[1] - c[1]) - Math.hypot(s[0] - c[0], s[1] - c[1])) <= 0.002) {
-          out.push(`N0 ${best.arc.cw ? 'G02' : 'G03'} X${n3(t[0])} Y${n3(t[1])} I${n3(I)} J${n3(J)}${k === 0 ? feed : ''}`);
-          k = best.e;
-          continue;
+      // The longest run on one arc, cut back until the arc as written takes it.
+      let last = -1;
+      for (let e = k + 3; e < pts.length && e - k <= 2000 && arcThrough(pts, k, e); e++) last = e;
+      let arc: string | null = null;
+      for (let e = last; e >= k + 3 && !arc; e--) {
+        arc = written(pts, k, e);
+        if (arc) {
+          out.push(`N0 ${arc}${k === 0 ? feed : ''}`);
+          k = e;
         }
       }
+      if (arc) continue;
       // Not an arc: the line as written (it follows the same point as before).
       out.push(k === 0 ? src[at[k]] : src[at[k]].replace(new RegExp(` F${NUM}$`), ''));
       k++;
