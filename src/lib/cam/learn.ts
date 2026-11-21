@@ -43,7 +43,7 @@ export interface PartRead {
 
 const KINDS: [RegExp, OpKind][] = [
   [/^(PLAN|VORPLAN|MESSERKOPF)/, 'face'],
-  [/^(ZENTRIER|ZENTR)/, 'centre'],
+  [/^(ZENTRIER|ZENTR|NC-ANBOHREN|ANBOHREN)/, 'centre'],
   [/^GEWINDE/, 'tap'],
   [/^ABSENKUNG/, 'counterbore'],
   [/^BOHREN/, 'drill'],
@@ -142,7 +142,14 @@ export function readProgram(text: string, name = ''): PartRead {
       op = tp[1].trim();
       continue;
     }
-    const tc = comment.match(/([A-Z]{2,3})_(\d+\.\d+)_(\d{3})_[A-Z0-9]+_([A-Z]+)\s*$/);
+    // An operation that goes on with the same tool: "(SCHLICHT_8MM MIT WERKZEUG SF_08.00_040_000_FH)".
+    const same = comment.match(/^\s*(\S.*?)\s+MIT\s+WERKZEUG\b/);
+    if (same) {
+      close();
+      op = same[1];
+    }
+    // A copy of a tool carries a number: "SB_01.00_030_000_ALHS_1".
+    const tc = comment.match(/([A-Z]{2,3})_(\d+\.\d+)_(\d{3})_[A-Z0-9]+_([A-Z]+)(?:_\d+)?\s*$/);
     if (tc) {
       close();
       tool = { type: tc[1], d: Number(tc[2]), length: Number(tc[3]), material: MATERIAL[tc[4]] ?? tc[4] };
