@@ -115,6 +115,17 @@ describe("CAM AI's program in the shop's words", () => {
     }
   });
 
+  it('drills the shop way also when the cycle starts above its R plane, and still refuses a wrong hole', () => {
+    // The G00 to the next depth's first hole and the cycle's way down to R then read as two rapids.
+    const high = cam.replace('N48 G00 Z2.', 'N48 G00 Z7.');
+    const r = shopStyle(high, 'HAAS');
+    expect(r.shortened).toBe(true);
+    const at = r.code.split('\n');
+    const drill = at.findIndex((l) => /G98 G83/.test(l));
+    expect(at.slice(drill, drill + 6).map((l) => l.replace(/^N\d+ /, ''))).toEqual(['G98 G83 Z-8. R2. Q3. F400.', 'X15.', 'G80', 'G00 Y10.', 'G98 G83 Z-12. R2. Q3. F400.', 'G80']);
+    expect(shopStyle(high, 'HAAS', (code) => shorten(code).replace('G00 Y10.', 'G00 Y11.')).shortened).toBe(false);
+  });
+
   it('gives the program back as it was when the shortened one would change a spindle, tool, offset or M word, or a clamping shift', () => {
     for (const wrong of [(code: string) => code.replace('S9000 M03', 'S900 M03'), (code: string) => code.replace('G52 X-28. Y33. Z-3.', 'G52 X-28. Y33. Z-2.'), (code: string) => code.replace('N25 G00 Z50.\nN26 M09', 'N25 G00 Z50.\nN26 M05')])
       expect(shopStyle(cam, 'HAAS', (code) => wrong(shorten(code))).shortened).toBe(false);

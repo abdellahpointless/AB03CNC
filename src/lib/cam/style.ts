@@ -137,6 +137,18 @@ export function shorten(code: string, still = false): string {
 
 /** A move that goes nowhere (a line repeating where the tool is) is no move. */
 const moving = (ms: Move[]) => ms.filter((m) => m.kind === 'drill' || m.points.some((p) => p.some((v, c) => Math.abs(v - m.points[0][c]) > 1e-9)));
+const samePoint = (p: number[], q: number[]) => p.every((v, c) => Math.abs(v - q[c]) < 1e-9);
+/** Rapids one after the other as one, a point repeated once: a G00 to a hole and the cycle's way down from there read as two. */
+function joined(ms: Move[]): Move[] {
+  const out: Move[] = [];
+  for (const m of ms) {
+    const last = out.at(-1);
+    if (last?.kind === 'rapid' && m.kind === 'rapid' && last.tool === m.tool && last.setup === m.setup && samePoint(last.points.at(-1)!, m.points[0]))
+      out[out.length - 1] = { ...last, points: [...last.points, ...m.points.slice(1)], seconds: last.seconds + m.seconds };
+    else out.push(m);
+  }
+  return out.map((m) => (m.kind === 'rapid' ? { ...m, points: m.points.filter((p, j) => j === 0 || !samePoint(p, m.points[j - 1])) } : m));
+}
 /** The line with `f` applied to its code only, its comment left as written. */
 function codePart(l: string, f: (code: string) => string): string {
   const at = l.indexOf('(');
@@ -175,7 +187,7 @@ export function shopStyle(code: string, brand?: string, shortener: (code: string
   const speeds = speedsFor(brand);
   const [a, b] = [parseToolpath(code, speeds), parseToolpath(short, speeds)];
   const same =
-    sameMoves(moving(a.moves), moving(b.moves)) &&
+    sameMoves(joined(moving(a.moves)), joined(moving(b.moves))) &&
     machineWords(code) === machineWords(short) &&
     a.setups.length === b.setups.length &&
     a.setups.every((s, i) => JSON.stringify([s.shift, s.notes.map((x) => x.text)]) === JSON.stringify([b.setups[i].shift, b.setups[i].notes.map((x) => x.text)]));
