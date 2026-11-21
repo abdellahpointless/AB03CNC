@@ -33,7 +33,19 @@ function summary(code: string) {
   const read = readProgram(code);
   const lines = code.split('\n');
   const count = (re: RegExp) => lines.filter((l) => re.test(l.replace(/\([^)]*\)/g, ''))).length;
+  // Straight moves that write the feed again unchanged (the shop leaves it out: gcode.feedOnlyWhenChanged).
+  let feed = '';
+  let sameFeed = 0;
+  for (const l of lines) {
+    const c = l.replace(/\([^)]*\)/g, '');
+    if (/M0?6(?![0-9])|G8\d/.test(c)) feed = '';
+    const f = c.match(/(?<![A-Z])F(\d*\.?\d*)/)?.[1];
+    if (f === undefined) continue;
+    if (feed && Number(f) === Number(feed) && /(?<![A-Z])G0*1(?![0-9])|^\s*(N\d+\s*)?[XYZ]/.test(c)) sameFeed++;
+    feed = f;
+  }
   return {
+    sameFeed,
     setups: an.setups.length,
     parallels: an.setups.map((s) => readInstructions(s.notes).support),
     turns: an.setups.slice(1).map((s) => s.turns.map((t) => `${t.axis}${t.deg}`).join(' ') || '-'),
