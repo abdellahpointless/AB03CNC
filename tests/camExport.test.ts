@@ -127,6 +127,16 @@ describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
       expect(numbers(r.code)).toContain(face.number);
       // Download and Send give the same code, tool numbers included.
       expect(codeOf(forMachine(r.code, machine, 'O0001.NC')), machine).toEqual(codeOf(sendAuto(r.code, machine, tools)));
+      // And Process resolved every tool change by itself, to that same number (a block left unresolved
+      // keeps its line too, so the code alone cannot tell; a review found it).
+      let src = r.code;
+      if (machine.startsWith('FANUC') && isHaasDialectForFanuc(src)) src = convertHaasToFanuc(src, 'O0001.NC').fanucCode;
+      const a = analyzeGCode(applyG53BeforeG52(src.split('\n')).lines.join('\n'), tools, machine);
+      expect(a.success, machine).toBe(true);
+      for (const b of a.blocks) {
+        expect(b.matchType, `${machine} ${b.originalT}`).toBe('exact');
+        expect(b.matchedTool?.number, `${machine} ${b.originalT}`).toBe(Number(b.originalT?.slice(1)));
+      }
     }, 600_000);
   }
 
