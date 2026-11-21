@@ -697,15 +697,17 @@ const DEBURR = { depth: 0.3, off: 0.2 };
  * 90° graver of tip radius 0 at DEBURR). Where the cone would take more than that at any height (an
  * edge the model chamfers or rounds, a wall leaning out) the path is left out.
  */
-function deburrPaths(P: Float32Array, R: number): { z: number; pts: P2[]; top: number }[] {
+function deburrPaths(P: Float32Array, R: number, sideStock = 0): { z: number; pts: P2[]; top: number }[] {
   const t = -DEBURR.depth;
-  const edge = slice(P, -0.01);
+  // The walls as cut: the operator's side stock stands on them.
+  const at = (z: number) => (sideStock ? offset(slice(P, z), sideStock) : slice(P, z));
+  const edge = at(-0.01);
   if (area(edge) < 0.05) return [];
   // At each height the cone (radius z - t) may reach DEBURR.off short of its radius into the material, no more.
   let hit: Region = [];
   for (let z = t + 0.05; z < 0.001; z += 0.05) {
     const r = Math.min(R, z - t, DEBURR.off) - 0.02;
-    if (r > 0) hit = union(hit, offset(slice(P, Math.min(z, -0.01)), r));
+    if (r > 0) hit = union(hit, offset(at(Math.min(z, -0.01)), r));
   }
   const loops = offset(edge, DEBURR.off).map((l) => [...l].reverse());
   const where = difference(offset(edge, DEBURR.off + 0.3), hit);
@@ -1493,8 +1495,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     {
       const gravers = usable(tools, ['ST']).filter((t) => t.template?.shape === 'G45' || !t.template);
       const graver = [...gravers].sort((a, b) => Number(b.inMachine) - Number(a.inMachine) || a.diameter - b.diameter)[0];
-      const paths = graver ? deburrPaths(P, graver.diameter / 2) : [];
-      if (graver && paths.length) ops.push(chamfering(graver, paths, mat, limits, clear, 'ENTGRATEN'));
+      const paths = graver ? deburrPaths(P, graver.diameter / 2, input.sideStock ?? 0) : [];
+      // Only in a clamping that cuts something: a side with nothing else to do gets no clamping for it.
+      if (graver && paths.length && ops.length) ops.push(chamfering(graver, paths, mat, limits, clear, 'ENTGRATEN'));
     }
     // Where precision matters: the contour a top plate or contour insert takes its part in (the
     // pockets' walls, not round holes), a seal cage's thin walls.
