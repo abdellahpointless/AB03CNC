@@ -471,4 +471,14 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['38 MM UNTERLAGE / IN 8 MM'])).toMatchObject({ support: 38, restDepth: 8 });
     expect(readInstructions(['TEIL MIT 64 IN X /40 IN Y SPANNEN']).sizes).toEqual({ x: 64, y: 40 });
   });
+
+  it("only a single turn's hint in its own note can change the turn's axis (D6)", () => {
+    // A direction phrase in another note does not re-axis the turn.
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN', 'RAFI X+ IN Y-']).turns).toEqual([{ axis: 'X', deg: 90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN', '15 MM ZWISCHENLAGE Y- IN X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
+    // With two turns, a hint the second cannot fit is not taken as its axis.
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN', 'TEIL 90 GRAD UM Z DREHEN / Z+ WIRD Y-']).turns).toEqual([{ axis: 'X', deg: 90 }, { axis: 'Z', deg: 90 }]);
+    // The library's case still turns about X.
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD Y-']).turns).toEqual([{ axis: 'X', deg: 90 }]);
+  });
 });

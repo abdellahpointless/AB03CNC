@@ -214,6 +214,7 @@ export function readInstructions(notes: string[]) {
   // is not the shop's own slash ("49 IN X" and "180 IN Y" written as two notes are a size and a turn).
   const starts = up.map((_, k) => up.slice(0, k).reduce((a, u) => a + u.length + 3, 0));
   const inNote = (re: RegExp) => up.map((u) => u.match(re)).find(Boolean) ?? null;
+  const noteOf = (at: number) => starts.filter((s0) => s0 <= at).length - 1;
   // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y", "36 IN X AND 41 IN Y",
   // "30 IN X 20.5 IN Y", "64 IN X /40 IN Y", and "TOP 14X AND 22 IN Y" (14 along X, 22 along Y);
   // "30 IN X 13 UND Y" (13 along Y); "30 IN X UND Y", "100 IN XY", "100 IN X Y" and "50 IN X/Y": the
@@ -264,9 +265,9 @@ export function readInstructions(notes: string[]) {
     for (const h of [...own, ...hints]) {
       if (same(apply(turn(axis, deg), h.from), h.to)) return { axis, deg };
       if (same(apply(turn(axis, -deg), h.from), h.to)) return { axis, deg: -deg };
-      // The turn's own hint wins over a written axis it cannot fit (shop answer D6):
-      // "90 GRAD UM Y DREHEN/Z+ WIRD Y-" turns about X.
-      if (own.includes(h)) for (const a of ['X', 'Y', 'Z'] as const) for (const d of [deg, -deg]) if (same(apply(turn(a, d), h.from), h.to)) return { axis: a, deg: d };
+      // The turn's own hint wins over a written axis it cannot fit (shop answer D6): "90 GRAD UM Y
+      // DREHEN/Z+ WIRD Y-" turns about X. Only a single turn's hint, written in the same note.
+      if (own.includes(h) && found.length === 1 && noteOf(h.at) === noteOf(at)) for (const a of ['X', 'Y', 'Z'] as const) for (const d of [deg, -deg]) if (same(apply(turn(a, d), h.from), h.to)) return { axis: a, deg: d };
     }
     return { axis, deg };
   });
