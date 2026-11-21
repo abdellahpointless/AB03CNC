@@ -44,8 +44,23 @@ function summary(code: string) {
     if (feed && Number(f) === Number(feed) && /(?<![A-Z])G0*1(?![0-9])|^\s*(N\d+\s*)?[XYZ]/.test(c)) sameFeed++;
     feed = f;
   }
+  // Where the time goes: minutes per tool (its code's type and Ø, else its number: never the comment's
+  // free text), in rapids, and in tool changes.
+  const byTool = new Map<string, number>();
+  for (const t of tp.tools) {
+    const c = t.label.match(/\b([A-Z]{2,3})_(\d+\.\d+)_\d{3}_/);
+    const key = c ? `${c[1]} ${Number(c[2])}` : `T${t.tool}`;
+    byTool.set(key, (byTool.get(key) ?? 0) + t.seconds / 60);
+  }
+  const min1 = (s: number) => Math.round(s * 10) / 10;
+  const time = {
+    tools: [...byTool].sort((a, b) => b[1] - a[1]).map(([k, m]) => [k, min1(m)]),
+    rapid: min1(tp.moves.filter((m) => m.kind === 'rapid').reduce((s, m) => s + m.seconds, 0) / 60),
+    changes: min1((tp.totalSeconds - tp.tools.reduce((s, t) => s + t.seconds, 0)) / 60),
+  };
   return {
     sameFeed,
+    time,
     setups: an.setups.length,
     parallels: an.setups.map((s) => readInstructions(s.notes).support),
     turns: an.setups.slice(1).map((s) => s.turns.map((t) => `${t.axis}${t.deg}`).join(' ') || '-'),
