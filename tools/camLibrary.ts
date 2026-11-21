@@ -23,7 +23,7 @@ const [LIB, OUT, ...ONLY] = process.argv.slice(2);
 if (!LIB || !OUT) throw new Error('usage: npm run cam-library -- <library folder> <out.jsonl> [program file ...]');
 
 /** The header's material as CAM AI names it (null: CAM AI does not cut it). */
-const MATERIAL: Record<string, CamMaterial> = { ALU: 'ALU', POM: 'POM', FH: 'FH', 'PC GF': 'PCGF' };
+const MATERIAL: Record<string, CamMaterial> = { ALU: 'ALU', POM: 'POM', FH: 'FH', 'PC GF': 'PCGF', MS: 'MS', PEEK: 'PEEK', EPO: 'EPO', RESOPAL: 'RESOPAL' };
 
 /** What a program does, read the same way for both (the engineers' and CAM AI's). */
 function summary(code: string) {
