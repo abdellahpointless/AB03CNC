@@ -1,0 +1,5175 @@
+{
+ "source": "reference library, each distinct program once; cited as <program file>:<line>",
+ "facts": {
+  "programs": 108,
+  "haas": 65,
+  "fanuc": 43,
+  "clampings": 302,
+  "setupsPerProgram": {
+   "1": 4,
+   "2": 54,
+   "3": 24,
+   "4": 17,
+   "5": 5,
+   "6": 3,
+   "7": 1
+  },
+  "parallels": [
+   {
+    "mm": 4,
+    "clampings": 2,
+    "example": {
+     "file": "O0073078.X20",
+     "line": 1228,
+     "text": "N1226 M0 (4 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 8,
+    "clampings": 21,
+    "example": {
+     "file": "O0161424.X20",
+     "line": 5178,
+     "text": "N5176 M0 (8 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 15,
+    "clampings": 10,
+    "example": {
+     "file": "O0131019.X20",
+     "line": 3279,
+     "text": "N3277 M0 (15 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 20,
+    "clampings": 4,
+    "example": {
+     "file": "O0095457.X20",
+     "line": 436,
+     "text": "N434 M0 (20 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 22,
+    "clampings": 14,
+    "example": {
+     "file": "O0155037.X20",
+     "line": 741,
+     "text": "N739 M0 (22 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 25,
+    "clampings": 6,
+    "example": {
+     "file": "O0131019.X20",
+     "line": 2725,
+     "text": "N2723 M0 (25 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 28,
+    "clampings": 7,
+    "example": {
+     "file": "O0106612.X20",
+     "line": 3627,
+     "text": "N3625 M0 (28 MM UNTERLAGEIN MASS 19.5 MM)"
+    }
+   },
+   {
+    "mm": 30,
+    "clampings": 3,
+    "example": {
+     "file": "O0125596.X20",
+     "line": 3469,
+     "text": "N3467 M0 (30 MM UNTERLAGE IN EP 30 MM )"
+    }
+   },
+   {
+    "mm": 33,
+    "clampings": 16,
+    "example": {
+     "file": "O0106606.X20",
+     "line": 599,
+     "text": "N597 M0 (33 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 36,
+    "clampings": 36,
+    "example": {
+     "file": "O1420213.C62",
+     "line": 285,
+     "text": "N283 (50 MM ZWISCHENLAGE IN X-)"
+    }
+   },
+   {
+    "mm": 38,
+    "clampings": 20,
+    "example": {
+     "file": "O0106624.X20",
+     "line": 485,
+     "text": "N483 M0 (38 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 40,
+    "clampings": 99,
+    "example": {
+     "file": "O0161108.X20",
+     "line": 13,
+     "text": "N11 M0 (40 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 40.5,
+    "clampings": 1,
+    "example": {
+     "file": "O1920213.105",
+     "line": 324,
+     "text": "N322 M0 (40.5 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 41,
+    "clampings": 28,
+    "example": {
+     "file": "O0161108.X20",
+     "line": 627,
+     "text": "N625 M0 (41 MM UNTERLAGE)"
+    }
+   },
+   {
+    "mm": 42,
+    "clampings": 10,
+    "example": {
+     "file": "O0038963.X20",
+     "line": 317,
+     "text": "N315 M0 (42 MM UNTERLAGE)"
+    }
+   }
+  ],
+  "restNotes": [
+   {
+    "file": "O0161424.X20",
+    "line": 4101,
+    "text": "N4099 M0 (40 MM UNTERLAGE IN EP 6.7 MM)"
+   },
+   {
+    "file": "O0106623.X20",
+    "line": 465,
+    "text": "N463 M0 (40 MM UNTERLAGEIN MASS 7 MM)"
+   },
+   {
+    "file": "O0106612.X20",
+    "line": 3627,
+    "text": "N3625 M0 (28 MM UNTERLAGEIN MASS 19.5 MM)"
+   }
+  ],
+  "spacers": [
+   {
+    "spacer": "15 mm X-",
+    "clampings": 1,
+    "example": {
+     "file": "O0089654.X20",
+     "line": 14,
+     "text": "N12 M0 (15 MM ZWISCHENLAGE IN X-)"
+    }
+   }
+  ],
+  "rawAllowance": {
+   "programs": 91,
+   "medianPerAxisSmallestFirst": [
+    7.5,
+    5,
+    4.5
+   ]
+  }
+ },
+ "rules": [
+  {
+   "id": "gcode.numbering",
+   "topic": "gcode",
+   "rule": "Every line but \"%\" and the O line carries an N number, N1, N2, N3... in steps of 1 (FANUC: N9999 repeated after line 9,999).",
+   "unit": "programs",
+   "applies": 108,
+   "holds": 107,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 3,
+     "text": "N1 (CHIRON)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 3,
+     "text": "N1 (NC_PROGRAM)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 3,
+     "text": "N1 (NC_PROGRAM)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O1130153_2.113",
+     "line": 295,
+     "text": "N294 M0 (TEIL 180 GRAD UM X DREHEN/50.5 IN X UND 27.5 IN Y)"
+    }
+   ]
+  },
+  {
+   "id": "gcode.safety.haas",
+   "topic": "gcode",
+   "rule": "HAAS programs start with the safety line \"G40 G17 G53 G49 G80 G90\".",
+   "unit": "HAAS programs",
+   "applies": 65,
+   "holds": 64,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O1420213.C62",
+     "line": 9,
+     "text": "N7 G40 G17 G53 G49 G80 G90"
+    },
+    {
+     "file": "O0125596.X20",
+     "line": 9,
+     "text": "N7 G40 G17 G53 G49 G80 G90"
+    },
+    {
+     "file": "O0125595.X20",
+     "line": 9,
+     "text": "N7 G40 G17 G53 G49 G80 G90"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 8,
+     "text": "N5 G00 G90 G17 G40 G80 G49"
+    }
+   ]
+  },
+  {
+   "id": "gcode.safety.fanuc",
+   "topic": "gcode",
+   "rule": "FANUC programs start with \"G0 G53 G49 Z0 G94 M95\" (retract, cancel the length offset, feed per minute).",
+   "unit": "FANUC programs",
+   "applies": 43,
+   "holds": 43,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 9,
+     "text": "N7 G0 G53 G49 Z0 G94 M95"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 9,
+     "text": "N7 G0 G53 G49 Z0 G94 M95"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 9,
+     "text": "N7 G0 G53 G49 Z0 G94 M95"
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.operationName",
+   "topic": "gcode",
+   "rule": "Each tool change is announced by the operation name: a \"(TOOLPATH NAME)\" comment right before \"T.. M6\".",
+   "unit": "tool changes",
+   "applies": 1793,
+   "holds": 1783,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40_1)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 16,
+     "text": "N14 (TOOLPATH PLAN-MK-93-SCHL)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 31,
+     "text": "N24 G49"
+    }
+   ]
+  },
+  {
+   "id": "gcode.toolComment",
+   "topic": "gcode",
+   "rule": "After \"T.. M6\" the tool is described: \"(NAME / CODE)\" with a code like SF_10.00_030_000_AL, then \"(DIAMETER d MM/LENGTH l MM)\".",
+   "unit": "tool changes",
+   "applies": 1793,
+   "holds": 1783,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 17,
+     "text": "N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 17,
+     "text": "N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 18,
+     "text": "N16 (MESSERKOPF D93 / MK_93.00_030_000_KS)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 33,
+     "text": "N26 ( MK_93.00_030_000_KS Cap:93.000 Boy:70.000 )"
+    }
+   ]
+  },
+  {
+   "id": "gcode.g43.haas",
+   "topic": "gcode",
+   "rule": "HAAS: the length offset is \"G00 G43 H<tool> Z..\" with H the number of the tool in the spindle.",
+   "unit": "G43 lines (HAAS)",
+   "applies": 1057,
+   "holds": 1045,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O1420213.C62",
+     "line": 21,
+     "text": "N19 G00 G43 H03 Z50. M08"
+    },
+    {
+     "file": "O0125596.X20",
+     "line": 20,
+     "text": "N18 G00 G43 H03 Z53. M08"
+    },
+    {
+     "file": "O0125595.X20",
+     "line": 19,
+     "text": "N17 G00 G43 H03 Z59. M08"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 57,
+     "text": "N49 G43 Z51.000 H3"
+    }
+   ]
+  },
+  {
+   "id": "gcode.g43.fanuc",
+   "topic": "gcode",
+   "rule": "FANUC: the length offset is \"G00 G43 Z.. H#513 D#513 M254\": the offset number comes from #513.",
+   "unit": "G43 lines (FANUC)",
+   "applies": 738,
+   "holds": 738,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 19,
+     "text": "N17 G00 G43 Z52. H#513 D#513 M254 M08"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 19,
+     "text": "N17 G00 G43 Z53.5 H#513 D#513 M254 M08"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 19,
+     "text": "N17 G00 G43 Z55. H#513 D#513 M254 M08"
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.coolantOnG43",
+   "topic": "gcode",
+   "rule": "The coolant comes on with the length offset: M08 on the G43 line.",
+   "unit": "G43 lines",
+   "applies": 1795,
+   "holds": 1783,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 19,
+     "text": "N17 G00 G43 Z52. H#513 D#513 M254 M08"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 19,
+     "text": "N17 G00 G43 Z53.5 H#513 D#513 M254 M08"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 21,
+     "text": "N19 G00 G43 H03 Z50. M08"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 57,
+     "text": "N49 G43 Z51.000 H3"
+    }
+   ]
+  },
+  {
+   "id": "gcode.spindleStart",
+   "topic": "gcode",
+   "rule": "The spindle starts on the positioning move right after the G43 line: \"G00 G90 X.. Y.. S.. M03\".",
+   "unit": "G43 lines",
+   "applies": 1795,
+   "holds": 1783,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 20,
+     "text": "N18 G00 G90 X14. Y-177. S8000 M03"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 20,
+     "text": "N18 G00 G90 X-29. Y-17. S8000 M03"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 22,
+     "text": "N20 G00 G90 X68.75 Y0. S2500 M03"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 58,
+     "text": "N50 M08"
+    }
+   ]
+  },
+  {
+   "id": "gcode.cycleReturn",
+   "topic": "gcode",
+   "rule": "Drilling and tapping cycles return to the start height (G98), never to R (G99).",
+   "unit": "cycle starts",
+   "applies": 920,
+   "holds": 920,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 171,
+     "text": "N169 G98 G83 Z-7. R2. Q5. F475"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 55,
+     "text": "N53 G98 G81 Z-.5 R2. F300"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 236,
+     "text": "N234 G98 G83 P200 Z-4. R2. Q2. F210."
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.cycleR2",
+   "topic": "gcode",
+   "rule": "The R plane of a cycle is R2. (2 mm above Z0); lower R planes are written where the hole starts lower.",
+   "unit": "cycle lines with R",
+   "applies": 920,
+   "holds": 734,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 171,
+     "text": "N169 G98 G83 Z-7. R2. Q5. F475"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 55,
+     "text": "N53 G98 G81 Z-.5 R2. F300"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 236,
+     "text": "N234 G98 G83 P200 Z-4. R2. Q2. F210."
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 202,
+     "text": "N200 G98 G83 Z-10.94 R-2. Q4.5 F510"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 383,
+     "text": "N381 G98 G83 Z-15.389 R-6. Q2.5 F200."
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 59,
+     "text": "N57 G98 G81 Z-3.5 R-1. F300"
+    }
+   ]
+  },
+  {
+   "id": "gcode.cycleKinds",
+   "topic": "gcode",
+   "rule": "Spot drilling uses G81, drilling G83 (pecking with Q), tapping G84; G73 is not used.",
+   "unit": "cycle starts",
+   "applies": 920,
+   "holds": 920,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 171,
+     "text": "N169 G98 G83 Z-7. R2. Q5. F475"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 55,
+     "text": "N53 G98 G81 Z-.5 R2. F300"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 236,
+     "text": "N234 G98 G83 P200 Z-4. R2. Q2. F210."
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.arcsIJ",
+   "topic": "gcode",
+   "rule": "Arcs are written with I and J (centre), not with R.",
+   "unit": "arc lines",
+   "applies": 145625,
+   "holds": 145625,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 221,
+     "text": "N219 G03 X150. Y8.2 I4.8 J0. F1050"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 104,
+     "text": "N102 G03 X-8.8 Y-.909 I3.362 J3.426 F1050"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 48,
+     "text": "N46 G03 X3.653 Y-18.995 I-5. J0."
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.noSubprograms",
+   "topic": "gcode",
+   "rule": "No subprograms or macros: the only call is the FANUC table out \"M98 P7999\".",
+   "unit": "programs",
+   "applies": 108,
+   "holds": 108,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 2,
+     "text": "O0161108(X20)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 2,
+     "text": "O0161424(X20)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 2,
+     "text": "O1213"
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.motionCodeEveryLine",
+   "topic": "gcode",
+   "rule": "Every motion line carries its motion code (G00, G01, G02, G03), also when it does not change (outside drilling cycles, whose lines are hole positions).",
+   "unit": "motion lines",
+   "applies": 480051,
+   "holds": 479061,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 20,
+     "text": "N18 G00 G90 X14. Y-177. S8000 M03"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 20,
+     "text": "N18 G00 G90 X-29. Y-17. S8000 M03"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 22,
+     "text": "N20 G00 G90 X68.75 Y0. S2500 M03"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 170,
+     "text": "N168 Z2."
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 54,
+     "text": "N52 Z2."
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 235,
+     "text": "N233 Z2."
+    }
+   ]
+  },
+  {
+   "id": "gcode.feedDots",
+   "topic": "gcode",
+   "rule": "Whole-number feeds: HAAS writes them with a dot (F3000.), FANUC without (F3000).",
+   "unit": "programs",
+   "applies": 108,
+   "holds": 108,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 22,
+     "text": "N20 G01 Z1. F3000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 22,
+     "text": "N20 G01 Z4.5 F3000"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 25,
+     "text": "N23 G01 Z1.5 F600."
+    }
+   ],
+   "exceptions": []
+  },
+  {
+   "id": "gcode.end.haas",
+   "topic": "gcode",
+   "rule": "HAAS programs end with \"G0 G53 G49 Y0 Z0 M89\" (table out, length offset cancelled, through-spindle coolant off), the machining time comment and M30.",
+   "unit": "HAAS programs",
+   "applies": 65,
+   "holds": 64,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O1420213.C62",
+     "line": 480,
+     "text": "N478 G0 G53 G49 Y0 Z0 M89"
+    },
+    {
+     "file": "O0125596.X20",
+     "line": 4231,
+     "text": "N4229 G0 G53 G49 Y0 Z0 M89"
+    },
+    {
+     "file": "O0125595.X20",
+     "line": 1779,
+     "text": "N1777 G0 G53 G49 Y0 Z0 M89"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 1415,
+     "text": "N1384 M30"
+    }
+   ]
+  },
+  {
+   "id": "gcode.end.fanuc",
+   "topic": "gcode",
+   "rule": "FANUC programs end with the table out \"M98 P7999\" and M30.",
+   "unit": "FANUC programs",
+   "applies": 43,
+   "holds": 42,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 1360,
+     "text": "N1358 M98 P7999"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 5313,
+     "text": "N5311 M98 P7999"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 621,
+     "text": "N619 M98 P7999"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O1130153_2.113",
+     "line": 1343,
+     "text": "N1343 M30"
+    }
+   ]
+  },
+  {
+   "id": "gcode.header",
+   "topic": "gcode",
+   "rule": "The header names the part, its material and finished size, and the saw-cut blank: \"(NAME MATERIAL / AxBxC / ZUSCHNITT:DxExF)\".",
+   "unit": "programs",
+   "applies": 108,
+   "holds": 91,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 5,
+     "text": "N3 (BASE ALU /300X145X9/ZUSCHNITT: 304X150X20)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 5,
+     "text": "N3 (DSEAL CAGE ALU / 39X34X16.7 / ZUSCHNITT: 43X38X30 )"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 5,
+     "text": "N3 (CONTACT PIN PLATE POM / 24.5X18X14 / ZUSCHNITT:30X22X25)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0125595.X20",
+     "line": 2,
+     "text": "O0595"
+    },
+    {
+     "file": "O0125674.X20",
+     "line": 2,
+     "text": "O0674"
+    },
+    {
+     "file": "O0131780.X20",
+     "line": 2,
+     "text": "O0780"
+    }
+   ]
+  },
+  {
+   "id": "workholding.noteBeforeEachClamping",
+   "topic": "workholding",
+   "rule": "Every clamping is announced to the operator: M0 stops with the clamping notes right before its G52.",
+   "unit": "clampings (G52)",
+   "applies": 302,
+   "holds": 301,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z1.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z6.000"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 15,
+     "text": "N13 G52 X15.000 Y39.000 Z5.000"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 11,
+     "text": "N8 G52 X0.0 Y0.0 Z0.0"
+    }
+   ]
+  },
+  {
+   "id": "workholding.firstZero",
+   "topic": "workholding",
+   "rule": "In the first clamping program zero is either 2 mm inside the X-/Y+ corner of the raw block (\"G52 X-48. Y48.\") or the centre of the block as clamped.",
+   "unit": "programs",
+   "applies": 93,
+   "holds": 77,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z1.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z6.000"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z8.000"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O1420213.C62",
+     "line": 15,
+     "text": "N13 G52 X15.000 Y39.000 Z5.000"
+    },
+    {
+     "file": "O0125674.X20",
+     "line": 14,
+     "text": "N12 G52 X-50.000 Y50.000 Z9.000"
+    },
+    {
+     "file": "O0131780.X20",
+     "line": 16,
+     "text": "N14 G52 X-35.000 Y50.000 Z9.000"
+    }
+   ]
+  },
+  {
+   "id": "workholding.firstZeroCorner2mm",
+   "topic": "workholding",
+   "rule": "When the first zero is on a corner, it is 2 mm inside the raw faces: \"G52 X-48. Y48.\".",
+   "unit": "programs with a corner zero",
+   "applies": 66,
+   "holds": 53,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z1.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z6.000"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 14,
+     "text": "N12 G52 X-48.000 Y48.000 Z8.000"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0125595.X20",
+     "line": 13,
+     "text": "N11 G52 X-50.000 Y50.000 Z4.000"
+    },
+    {
+     "file": "O0125674.X20",
+     "line": 14,
+     "text": "N12 G52 X-50.000 Y50.000 Z9.000"
+    },
+    {
+     "file": "O0132934.X20",
+     "line": 15,
+     "text": "N13 G52 X-50.000 Y50.000 Z9.000"
+    }
+   ]
+  },
+  {
+   "id": "strategy.faceFirst",
+   "topic": "strategy",
+   "rule": "Each program starts by facing the top (PLAN / MESSERKOPF) in its first clamping.",
+   "unit": "programs",
+   "applies": 108,
+   "holds": 104,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40_1)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 16,
+     "text": "N14 (TOOLPATH PLAN-MK-93-SCHL)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0125675.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_16MM)"
+    },
+    {
+     "file": "O0036265.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH ZENTRIERBOHREN)"
+    },
+    {
+     "file": "O1610603.C85",
+     "line": 16,
+     "text": "N14 (TOOLPATH ZENTRIERBOHREN)"
+    }
+   ]
+  },
+  {
+   "id": "strategy.faceEachSide",
+   "topic": "strategy",
+   "rule": "Each later clamping also starts by facing (the new top is brought to size first).",
+   "unit": "later clampings",
+   "applies": 194,
+   "holds": 94,
+   "label": "minority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 628,
+     "text": "N626 G52 X-50.000 Y50.000 Z-7.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 4102,
+     "text": "N4100 G52 X-50.000 Y50.000 Z-10.300"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 286,
+     "text": "N284 G52 X12.250 Y41.000 Z-7.000"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 1316,
+     "text": "N1314 G52 X-50.000 Y50.000 Z243.000"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 5179,
+     "text": "N5177 G52 X-50.000 Y50.000 Z-10.000"
+    },
+    {
+     "file": "O0125596.X20",
+     "line": 3991,
+     "text": "N3989 G52 X-50.000 Y50.000 Z19.000"
+    }
+   ]
+  },
+  {
+   "id": "strategy.centreBeforeDrill",
+   "topic": "strategy",
+   "rule": "Holes are spot drilled (ZENTRIER) before they are drilled, in the same clamping.",
+   "unit": "clampings that drill",
+   "applies": 200,
+   "holds": 105,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161424.X20",
+     "line": 62,
+     "text": "N60 (TOOLPATH BOHREN_1.0MM)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 346,
+     "text": "N344 (TOOLPATH BOHREN_1.0MM)"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 65,
+     "text": "N63 (TOOLPATH BOHREN_2.6MM)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 164,
+     "text": "N162 (TOOLPATH BOHREN_5.0MM)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 62,
+     "text": "N60 (TOOLPATH BOHREN_1.0MM)"
+    },
+    {
+     "file": "O0106604.X20",
+     "line": 34,
+     "text": "N32 (TOOLPATH BOHREN_4.0MM)"
+    }
+   ]
+  },
+  {
+   "id": "strategy.chamferLast",
+   "topic": "strategy",
+   "rule": "Chamfering and deburring (FASE / ENTGRATEN) come last in their clamping.",
+   "unit": "clampings that chamfer",
+   "applies": 224,
+   "holds": 210,
+   "label": "majority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 469,
+     "text": "N467 (TOOLPATH FASE_45_GRAD_1)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 4044,
+     "text": "N4042 (TOOLPATH FASE_45_GRAD_2)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 239,
+     "text": "N237 (TOOLPATH ENTGRATEN)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161424.X20",
+     "line": 4044,
+     "text": "N4042 (TOOLPATH FASE_45_GRAD_2)"
+    },
+    {
+     "file": "O0125595.X20",
+     "line": 384,
+     "text": "N382 (TOOLPATH FASE_45_GRAD_4)"
+    },
+    {
+     "file": "O0155036.X20",
+     "line": 3935,
+     "text": "N3933 (TOOLPATH ENTGRATEN_2)"
+    }
+   ]
+  },
+  {
+   "id": "strategy.order",
+   "topic": "strategy",
+   "rule": "Within a clamping the operations follow: face, pocket/contour, finish, spot drill, drill, counterbore, tap, chamfer.",
+   "unit": "clampings",
+   "applies": 275,
+   "holds": 113,
+   "label": "minority",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 16,
+     "text": "N14 (TOOLPATH PLAN-MK-93-SCHL)"
+    },
+    {
+     "file": "O0106624.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40)"
+    }
+   ],
+   "exceptions": [
+    {
+     "file": "O0161108.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 15,
+     "text": "N13 (TOOLPATH PLAN_MK40_1)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 16,
+     "text": "N14 (TOOLPATH PLAN-MK-93-SCHL)"
+    }
+   ]
+  },
+  {
+   "id": "tools.codeFormat",
+   "topic": "tools",
+   "rule": "Tools are named by a code TYPE_D.DD_LLL_GGG_MAT: type (MK face mill, SF end mill, SB drill, ZB spot drill, GB tap, ST chamfer...), diameter, length, and the material its data is for.",
+   "unit": "tool changes",
+   "applies": 1793,
+   "holds": 1793,
+   "label": "consistent across the library",
+   "examples": [
+    {
+     "file": "O0161108.X20",
+     "line": 17,
+     "text": "N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)"
+    },
+    {
+     "file": "O0161424.X20",
+     "line": 17,
+     "text": "N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)"
+    },
+    {
+     "file": "O1420213.C62",
+     "line": 18,
+     "text": "N16 (MESSERKOPF D93 / MK_93.00_030_000_KS)"
+    }
+   ],
+   "exceptions": []
+  }
+ ],
+ "cuttingData": [
+  {
+   "material": "ALU",
+   "type": "AB",
+   "d": 5.5,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 6500,
+    "max": 8000,
+    "n": 4
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0134813.X20",
+    "O0134813_2.X20",
+    "O1057063.C90",
+    "O1057063_2.C90"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "GB",
+   "d": 2,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1754043.135"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "GB",
+   "d": 2.5,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0156138.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "GB",
+   "d": 3,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0131775.X20",
+    "O0131775_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "GB",
+   "d": 6,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0155036.X20",
+    "O0161424.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "KF",
+   "d": 6,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 13000,
+    "min": 13000,
+    "max": 13000,
+    "n": 1
+   },
+   "feed": {
+    "median": 1430,
+    "min": 1430,
+    "max": 1430,
+    "n": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1222033.113"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "MK",
+   "d": 40,
+   "programs": 61,
+   "label": "majority",
+   "rpm": {
+    "median": 8000,
+    "min": 3000,
+    "max": 27000,
+    "n": 116
+   },
+   "feed": {
+    "median": 3000,
+    "min": 500,
+    "max": 3000,
+    "n": 114
+   },
+   "depthPerPass": {
+    "median": 1.33,
+    "min": 0.7,
+    "max": 2,
+    "n": 108
+   },
+   "stepOver": {
+    "median": 26,
+    "min": 24.73,
+    "max": 35.17,
+    "n": 20
+   },
+   "peck": {
+    "median": 0.3,
+    "min": 0.3,
+    "max": 0.3,
+    "n": 2
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0038963.X20",
+    "O0073078.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 0.8,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 21000,
+    "min": 12000,
+    "max": 27000,
+    "n": 6
+   },
+   "feed": {
+    "median": 2000,
+    "min": 1000,
+    "max": 2000,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 4,
+    "min": 1.81,
+    "max": 4,
+    "n": 4
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2
+   },
+   "peck": {
+    "median": 0.3,
+    "min": 0.3,
+    "max": 0.3,
+    "n": 2
+   },
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 1,
+   "programs": 13,
+   "label": "13 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 15
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.3,
+    "min": 0.1,
+    "max": 1,
+    "n": 15
+   },
+   "sources": [
+    "O0155036.X20",
+    "O0155153.X20",
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O0161424.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 1.1,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.3,
+    "min": 0.3,
+    "max": 0.3,
+    "n": 2
+   },
+   "sources": [
+    "O1335033.105",
+    "O1335033_2.105"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 1.3,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 10000,
+    "min": 10000,
+    "max": 10000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.5,
+    "min": 0.5,
+    "max": 0.5,
+    "n": 2
+   },
+   "sources": [
+    "O2613201.000",
+    "O2613201_2.000"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 1.4,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 26000,
+    "min": 26000,
+    "max": 26000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.4,
+    "min": 0.4,
+    "max": 0.4,
+    "n": 2
+   },
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 1.5,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 26000,
+    "min": 10000,
+    "max": 26000,
+    "n": 6
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.6,
+    "min": 0.6,
+    "max": 0.6,
+    "n": 6
+   },
+   "sources": [
+    "O0168459.X20",
+    "O1335033.105",
+    "O1335033_2.105",
+    "O1754043.135",
+    "O2613201.000"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 2,
+   "programs": 28,
+   "label": "28 programs",
+   "rpm": {
+    "median": 19000,
+    "min": 8000,
+    "max": 19000,
+    "n": 29
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 0.5,
+    "max": 1.5,
+    "n": 29
+   },
+   "sources": [
+    "O0104049.X20",
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0106623.X20",
+    "O0125675.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 2.3,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 16192,
+    "min": 16192,
+    "max": 16192,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 2
+   },
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 2.5,
+   "programs": 16,
+   "label": "16 programs",
+   "rpm": {
+    "median": 15000,
+    "min": 12000,
+    "max": 15000,
+    "n": 22
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 0.5,
+    "max": 3.3,
+    "n": 22
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0073078.X20",
+    "O0073078_2.X20",
+    "O0084691.X20",
+    "O0095457.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 2.96,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 13000,
+    "min": 13000,
+    "max": 13000,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 3
+   },
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0155153.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 3,
+   "programs": 14,
+   "label": "14 programs",
+   "rpm": {
+    "median": 13000,
+    "min": 8000,
+    "max": 13000,
+    "n": 15
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 1,
+    "max": 3.3,
+    "n": 15
+   },
+   "sources": [
+    "O0038963.X20",
+    "O0084691.X20",
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0155139.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 3.3,
+   "programs": 17,
+   "label": "17 programs",
+   "rpm": {
+    "median": 12000,
+    "min": 11000,
+    "max": 12000,
+    "n": 21
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.3,
+    "min": 1.3,
+    "max": 3.5,
+    "n": 21
+   },
+   "sources": [
+    "O0104049.X20",
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0131775.X20",
+    "O0131775_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 3.5,
+   "programs": 12,
+   "label": "12 programs",
+   "rpm": {
+    "median": 11000,
+    "min": 8000,
+    "max": 12000,
+    "n": 12
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.5,
+    "min": 0.5,
+    "max": 3.5,
+    "n": 12
+   },
+   "sources": [
+    "O0073078.X20",
+    "O0073078_2.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106624.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 4,
+   "programs": 32,
+   "label": "32 programs",
+   "rpm": {
+    "median": 9500,
+    "min": 8000,
+    "max": 9500,
+    "n": 34
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 0.5,
+    "max": 5,
+    "n": 34
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0038963.X20",
+    "O0096795.X20",
+    "O0106604.X20",
+    "O0106605.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 4.2,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 9000,
+    "min": 9000,
+    "max": 9000,
+    "n": 6
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 1,
+    "max": 4,
+    "n": 6
+   },
+   "sources": [
+    "O1057063.C90",
+    "O1057063_2.C90",
+    "O1161033.129",
+    "O1161033_2.129",
+    "O2613201.000"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 4.5,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 8500,
+    "min": 8500,
+    "max": 8500,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4.5,
+    "min": 4.5,
+    "max": 4.5,
+    "n": 1
+   },
+   "sources": [
+    "O0161108.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 4.8,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 1
+   },
+   "sources": [
+    "O1222033.113"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 5,
+   "programs": 15,
+   "label": "15 programs",
+   "rpm": {
+    "median": 7600,
+    "min": 7600,
+    "max": 16000,
+    "n": 19
+   },
+   "feed": {
+    "median": 720,
+    "min": 720,
+    "max": 720,
+    "n": 2
+   },
+   "depthPerPass": {
+    "median": 0.85,
+    "min": 0.85,
+    "max": 0.85,
+    "n": 2
+   },
+   "stepOver": {
+    "median": 1.84,
+    "min": 1.84,
+    "max": 1.84,
+    "n": 2
+   },
+   "peck": {
+    "median": 5,
+    "min": 3,
+    "max": 5,
+    "n": 17
+   },
+   "sources": [
+    "O0106605.X20",
+    "O0134813.X20",
+    "O0134813_2.X20",
+    "O0155036.X20",
+    "O0155037.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 5.5,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 6900,
+    "min": 6900,
+    "max": 6900,
+    "n": 4
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5.5,
+    "min": 1,
+    "max": 5.5,
+    "n": 4
+   },
+   "sources": [
+    "O0131775.X20",
+    "O0131775_2.X20",
+    "O0155153.X20",
+    "O1268043_2.128"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SB",
+   "d": 6.4,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 6000,
+    "min": 6000,
+    "max": 6000,
+    "n": 8
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6.5,
+    "min": 1,
+    "max": 6.5,
+    "n": 8
+   },
+   "sources": [
+    "O0104049.X20",
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0155153.X20",
+    "O0156138.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 0.8,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 16000,
+    "max": 27000,
+    "n": 4
+   },
+   "feed": {
+    "median": 900,
+    "min": 700,
+    "max": 900,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.12,
+    "n": 2
+   },
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 1,
+   "programs": 12,
+   "label": "12 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 23
+   },
+   "feed": {
+    "median": 700,
+    "min": 350,
+    "max": 800,
+    "n": 23
+   },
+   "depthPerPass": {
+    "median": 0.2,
+    "min": 0.02,
+    "max": 0.29,
+    "n": 23
+   },
+   "stepOver": {
+    "median": 0.5,
+    "min": 0.17,
+    "max": 0.96,
+    "n": 10
+   },
+   "peck": null,
+   "sources": [
+    "O0024263.X20",
+    "O0106612.X20",
+    "O0155036.X20",
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 1.5,
+   "programs": 15,
+   "label": "15 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 8000,
+    "max": 27000,
+    "n": 22
+   },
+   "feed": {
+    "median": 900,
+    "min": 260,
+    "max": 900,
+    "n": 20
+   },
+   "depthPerPass": {
+    "median": 0.38,
+    "min": 0.2,
+    "max": 0.4,
+    "n": 20
+   },
+   "stepOver": {
+    "median": 0.35,
+    "min": 0.12,
+    "max": 1,
+    "n": 7
+   },
+   "peck": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 2
+   },
+   "sources": [
+    "O0106604.X20",
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 2,
+   "programs": 32,
+   "label": "32 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 8000,
+    "max": 27000,
+    "n": 68
+   },
+   "feed": {
+    "median": 1000,
+    "min": 150,
+    "max": 1000,
+    "n": 66
+   },
+   "depthPerPass": {
+    "median": 0.5,
+    "min": 0.01,
+    "max": 1.4,
+    "n": 66
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.16,
+    "max": 1.52,
+    "n": 19
+   },
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 2
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0073078.X20",
+    "O0073078_2.X20",
+    "O0106612.X20",
+    "O0131019.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 2.5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 26000,
+    "min": 26000,
+    "max": 26000,
+    "n": 2
+   },
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2
+   },
+   "depthPerPass": {
+    "median": 0.04,
+    "min": 0.04,
+    "max": 0.04,
+    "n": 2
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2
+   },
+   "peck": null,
+   "sources": [
+    "O1335033.105",
+    "O1335033_2.105"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 3,
+   "programs": 25,
+   "label": "25 programs",
+   "rpm": {
+    "median": 21000,
+    "min": 8000,
+    "max": 27000,
+    "n": 37
+   },
+   "feed": {
+    "median": 1000,
+    "min": 300,
+    "max": 1200,
+    "n": 37
+   },
+   "depthPerPass": {
+    "median": 0.93,
+    "min": 0.01,
+    "max": 1.5,
+    "n": 33
+   },
+   "stepOver": {
+    "median": 0.62,
+    "min": 0.2,
+    "max": 1.8,
+    "n": 8
+   },
+   "peck": null,
+   "sources": [
+    "O0038963.X20",
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0125675.X20",
+    "O0131019.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 4,
+   "programs": 46,
+   "label": "46 programs",
+   "rpm": {
+    "median": 16000,
+    "min": 8000,
+    "max": 16000,
+    "n": 89
+   },
+   "feed": {
+    "median": 1000,
+    "min": 174,
+    "max": 1200,
+    "n": 81
+   },
+   "depthPerPass": {
+    "median": 1.31,
+    "min": 0.01,
+    "max": 2.5,
+    "n": 78
+   },
+   "stepOver": {
+    "median": 1.54,
+    "min": 0.2,
+    "max": 3.02,
+    "n": 18
+   },
+   "peck": {
+    "median": 4,
+    "min": 1,
+    "max": 4,
+    "n": 8
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0084691.X20",
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 5,
+   "programs": 33,
+   "label": "33 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 7600,
+    "max": 14000,
+    "n": 45
+   },
+   "feed": {
+    "median": 660,
+    "min": 300,
+    "max": 1100,
+    "n": 27
+   },
+   "depthPerPass": {
+    "median": 1.17,
+    "min": 0.01,
+    "max": 2.7,
+    "n": 25
+   },
+   "stepOver": {
+    "median": 2.93,
+    "min": 0.84,
+    "max": 3,
+    "n": 6
+   },
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 18
+   },
+   "sources": [
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0038963.X20",
+    "O0084691.X20",
+    "O0106604.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 6,
+   "programs": 30,
+   "label": "30 programs",
+   "rpm": {
+    "median": 11500,
+    "min": 6300,
+    "max": 12000,
+    "n": 52
+   },
+   "feed": {
+    "median": 1000,
+    "min": 500,
+    "max": 1200,
+    "n": 38
+   },
+   "depthPerPass": {
+    "median": 1.23,
+    "min": 0.01,
+    "max": 2.9,
+    "n": 36
+   },
+   "stepOver": {
+    "median": 3,
+    "min": 1.52,
+    "max": 5,
+    "n": 17
+   },
+   "peck": {
+    "median": 1,
+    "min": 0.5,
+    "max": 6,
+    "n": 14
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0084691.X20",
+    "O0106623.X20",
+    "O0131019.X20",
+    "O0131019_2.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 8,
+   "programs": 40,
+   "label": "40 programs",
+   "rpm": {
+    "median": 12000,
+    "min": 4700,
+    "max": 21000,
+    "n": 65
+   },
+   "feed": {
+    "median": 2000,
+    "min": 480,
+    "max": 3000,
+    "n": 61
+   },
+   "depthPerPass": {
+    "median": 1.67,
+    "min": 0.02,
+    "max": 4.9,
+    "n": 55
+   },
+   "stepOver": {
+    "median": 4,
+    "min": 2.4,
+    "max": 7.9,
+    "n": 29
+   },
+   "peck": {
+    "median": 8,
+    "min": 2,
+    "max": 8,
+    "n": 4
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0038963.X20",
+    "O0095457.X20",
+    "O0096795.X20",
+    "O0104049.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 16,
+   "programs": 52,
+   "label": "52 programs",
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 8000,
+    "n": 61
+   },
+   "feed": {
+    "median": 1200,
+    "min": 850,
+    "max": 1200,
+    "n": 61
+   },
+   "depthPerPass": {
+    "median": 4.33,
+    "min": 1.1,
+    "max": 9.5,
+    "n": 52
+   },
+   "stepOver": {
+    "median": 8,
+    "min": 7.55,
+    "max": 8,
+    "n": 5
+   },
+   "peck": null,
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0038963.X20",
+    "O0073078.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SFH",
+   "d": 16,
+   "programs": 48,
+   "label": "48 programs",
+   "rpm": {
+    "median": 20000,
+    "min": 8000,
+    "max": 20000,
+    "n": 53
+   },
+   "feed": {
+    "median": 3000,
+    "min": 700,
+    "max": 3000,
+    "n": 53
+   },
+   "depthPerPass": {
+    "median": 2.15,
+    "min": 1.4,
+    "max": 4.96,
+    "n": 50
+   },
+   "stepOver": {
+    "median": 7.6,
+    "min": 3,
+    "max": 7.6,
+    "n": 10
+   },
+   "peck": null,
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0038963.X20",
+    "O0073078.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "ST",
+   "d": 4,
+   "programs": 63,
+   "label": "majority",
+   "rpm": {
+    "median": 16000,
+    "min": 4000,
+    "max": 16000,
+    "n": 183
+   },
+   "feed": {
+    "median": 920,
+    "min": 300,
+    "max": 3000,
+    "n": 181
+   },
+   "depthPerPass": {
+    "median": 1.25,
+    "min": 0.58,
+    "max": 1.85,
+    "n": 10
+   },
+   "stepOver": {
+    "median": 2.2,
+    "min": 0.45,
+    "max": 4,
+    "n": 54
+   },
+   "peck": {
+    "median": 5.5,
+    "min": 5.5,
+    "max": 5.5,
+    "n": 2
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0038963.X20",
+    "O0073078.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "ST",
+   "d": 8,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 1
+   },
+   "feed": {
+    "median": 800,
+    "min": 800,
+    "max": 800,
+    "n": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0161108.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "ZB",
+   "d": 2.3,
+   "programs": 35,
+   "label": "35 programs",
+   "rpm": {
+    "median": 6500,
+    "min": 2174,
+    "max": 19000,
+    "n": 52
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 0.5,
+    "max": 2,
+    "n": 4
+   },
+   "sources": [
+    "O0024263.X20",
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0073078.X20",
+    "O0073078_2.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "GB",
+   "d": 2.5,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1650603.C18"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "GB",
+   "d": 3,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0118105.X20",
+    "O1610603.C85",
+    "O1650603.C18"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "GB",
+   "d": 5,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0118105.X20",
+    "O1610603.C85",
+    "O1650603.C18"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "MK",
+   "d": 93,
+   "programs": 15,
+   "label": "15 programs",
+   "rpm": {
+    "median": 2500,
+    "min": 1800,
+    "max": 2500,
+    "n": 19
+   },
+   "feed": {
+    "median": 1000,
+    "min": 450,
+    "max": 1000,
+    "n": 19
+   },
+   "depthPerPass": {
+    "median": 2,
+    "min": 1.5,
+    "max": 2.5,
+    "n": 4
+   },
+   "stepOver": {
+    "median": 57,
+    "min": 56.33,
+    "max": 64.33,
+    "n": 13
+   },
+   "peck": null,
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0125595.X20",
+    "O0125674.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 1.5,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 7800,
+    "min": 6000,
+    "max": 7800,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.7,
+    "min": 0.7,
+    "max": 0.7,
+    "n": 3
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 1.8,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 7800,
+    "min": 7800,
+    "max": 7800,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.7,
+    "min": 0.7,
+    "max": 0.7,
+    "n": 1
+   },
+   "sources": [
+    "O0125674.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 2,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 6000,
+    "min": 6000,
+    "max": 6000,
+    "n": 8
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 8
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0173010.X20",
+    "O0173781.X20",
+    "O1027213.C96",
+    "O1650603.C18"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 2.5,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 5800,
+    "min": 5400,
+    "max": 5800,
+    "n": 6
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.5,
+    "min": 3.5,
+    "max": 3.5,
+    "n": 6
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0118105.X20",
+    "O0173010.X20",
+    "O1610603.C85"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 2.6,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 19000,
+    "min": 19000,
+    "max": 19000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 2
+   },
+   "sources": [
+    "O0106605.X20",
+    "O0106624.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 2.96,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4.5,
+    "min": 4.5,
+    "max": 4.5,
+    "n": 1
+   },
+   "sources": [
+    "O0173579.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 3,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 9
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 9
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0125595.X20",
+    "O0125674.X20",
+    "O0131780.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 3.1,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 13000,
+    "min": 13000,
+    "max": 13000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 1
+   },
+   "sources": [
+    "O1754043.135"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 3.2,
+   "programs": 15,
+   "label": "15 programs",
+   "rpm": {
+    "median": 12000,
+    "min": 4500,
+    "max": 13000,
+    "n": 15
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.3,
+    "min": 2.5,
+    "max": 4.5,
+    "n": 15
+   },
+   "sources": [
+    "O0037181.X20",
+    "O0037181_2.X20",
+    "O0084691.X20",
+    "O0096794.X20",
+    "O0104049.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 3.3,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 7
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4.5,
+    "min": 4.5,
+    "max": 4.5,
+    "n": 7
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0173781.X20",
+    "O4280166.001"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 3.5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 4000,
+    "min": 4000,
+    "max": 4000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4.5,
+    "min": 4.5,
+    "max": 4.5,
+    "n": 2
+   },
+   "sources": [
+    "O0089654.X20",
+    "O4280166.001"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 4,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 6
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 6
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0173781.X20",
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 4.2,
+   "programs": 7,
+   "label": "7 programs",
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 8
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 8
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0173572.X20",
+    "O0173781.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 4.5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5.5,
+    "min": 5.5,
+    "max": 5.5,
+    "n": 2
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 4.8,
+   "programs": 10,
+   "label": "10 programs",
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 17
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 8.5,
+    "min": 3.8,
+    "max": 8.5,
+    "n": 17
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0125674.X20",
+    "O0131780.X20",
+    "O0132934.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 4.9,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 4000,
+    "min": 4000,
+    "max": 4000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 1
+   },
+   "sources": [
+    "O0173781.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3100,
+    "min": 3100,
+    "max": 3100,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 2
+   },
+   "sources": [
+    "O0089654.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 5.2,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 3100,
+    "min": 3100,
+    "max": 3100,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 3
+   },
+   "sources": [
+    "O0036265.X20",
+    "O0096794.X20",
+    "O0125596.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 5.4,
+   "programs": 17,
+   "label": "17 programs",
+   "rpm": {
+    "median": 3000,
+    "min": 2800,
+    "max": 6900,
+    "n": 18
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 8,
+    "min": 4,
+    "max": 8,
+    "n": 18
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 6,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 2900,
+    "min": 2900,
+    "max": 2900,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 1
+   },
+   "sources": [
+    "O0125596.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 6.2,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 8,
+    "min": 8,
+    "max": 8,
+    "n": 2
+   },
+   "sources": [
+    "O0168459.X20",
+    "O0173781.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 6.4,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 12
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 8,
+    "min": 8,
+    "max": 13.5,
+    "n": 12
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0125674.X20",
+    "O0132934.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SB",
+   "d": 10,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 6
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5.5,
+    "min": 2,
+    "max": 5.5,
+    "n": 6
+   },
+   "sources": [
+    "O0089654.X20",
+    "O0125674.X20",
+    "O0131780.X20",
+    "O0132934.X20",
+    "O0173579.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 2,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 6000,
+    "min": 4500,
+    "max": 27000,
+    "n": 5
+   },
+   "feed": {
+    "median": 150,
+    "min": 150,
+    "max": 1000,
+    "n": 3
+   },
+   "depthPerPass": {
+    "median": 0.6,
+    "min": 0.38,
+    "max": 0.9,
+    "n": 3
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 1
+   },
+   "peck": {
+    "median": 2,
+    "min": 1.5,
+    "max": 2,
+    "n": 2
+   },
+   "sources": [
+    "O0024264.X20",
+    "O2633759.000"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 3,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 7500,
+    "min": 6000,
+    "max": 7500,
+    "n": 11
+   },
+   "feed": {
+    "median": 270,
+    "min": 189,
+    "max": 270,
+    "n": 11
+   },
+   "depthPerPass": {
+    "median": 1.85,
+    "min": 1.2,
+    "max": 3.75,
+    "n": 7
+   },
+   "stepOver": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 1
+   },
+   "peck": null,
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0125595.X20",
+    "O0125674.X20",
+    "O0173781.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 4,
+   "programs": 11,
+   "label": "11 programs",
+   "rpm": {
+    "median": 7000,
+    "min": 4000,
+    "max": 7000,
+    "n": 35
+   },
+   "feed": {
+    "median": 360,
+    "min": 315,
+    "max": 450,
+    "n": 28
+   },
+   "depthPerPass": {
+    "median": 3,
+    "min": 0.03,
+    "max": 3.5,
+    "n": 24
+   },
+   "stepOver": {
+    "median": 2,
+    "min": 0.2,
+    "max": 2,
+    "n": 5
+   },
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 7
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0125595.X20",
+    "O0132934.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 5,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 6500,
+    "min": 3100,
+    "max": 6500,
+    "n": 5
+   },
+   "feed": {
+    "median": 580,
+    "min": 550,
+    "max": 580,
+    "n": 3
+   },
+   "depthPerPass": {
+    "median": 3.81,
+    "min": 0.11,
+    "max": 4.36,
+    "n": 3
+   },
+   "stepOver": {
+    "median": 1.01,
+    "min": 1.01,
+    "max": 1.01,
+    "n": 1
+   },
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 2
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0131780.X20",
+    "O0132934.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 6,
+   "programs": 14,
+   "label": "14 programs",
+   "rpm": {
+    "median": 6500,
+    "min": 2600,
+    "max": 6500,
+    "n": 33
+   },
+   "feed": {
+    "median": 650,
+    "min": 450,
+    "max": 650,
+    "n": 25
+   },
+   "depthPerPass": {
+    "median": 4.23,
+    "min": 0.17,
+    "max": 5,
+    "n": 18
+   },
+   "stepOver": {
+    "median": 3.01,
+    "min": 2.01,
+    "max": 6.01,
+    "n": 8
+   },
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 8
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0125595.X20",
+    "O0125596.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 8,
+   "programs": 16,
+   "label": "16 programs",
+   "rpm": {
+    "median": 6000,
+    "min": 2000,
+    "max": 8000,
+    "n": 61
+   },
+   "feed": {
+    "median": 810,
+    "min": 120,
+    "max": 1200,
+    "n": 52
+   },
+   "depthPerPass": {
+    "median": 6.3,
+    "min": 0.02,
+    "max": 10,
+    "n": 45
+   },
+   "stepOver": {
+    "median": 4,
+    "min": 1.01,
+    "max": 8.01,
+    "n": 26
+   },
+   "peck": {
+    "median": 6,
+    "min": 1,
+    "max": 6,
+    "n": 9
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "SF",
+   "d": 20,
+   "programs": 6,
+   "label": "6 programs",
+   "rpm": {
+    "median": 2200,
+    "min": 2000,
+    "max": 2200,
+    "n": 6
+   },
+   "feed": {
+    "median": 650,
+    "min": 500,
+    "max": 650,
+    "n": 6
+   },
+   "depthPerPass": {
+    "median": 7.75,
+    "min": 5,
+    "max": 10.1,
+    "n": 5
+   },
+   "stepOver": {
+    "median": 2.01,
+    "min": 2.01,
+    "max": 2.01,
+    "n": 1
+   },
+   "peck": null,
+   "sources": [
+    "O0024264.X20",
+    "O0089654.X20",
+    "O0131780.X20",
+    "O0173781.X20",
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "ST",
+   "d": 4,
+   "programs": 17,
+   "label": "17 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 5000,
+    "max": 8000,
+    "n": 30
+   },
+   "feed": {
+    "median": 800,
+    "min": 500,
+    "max": 900,
+    "n": 30
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 2.15,
+    "min": 0.3,
+    "max": 3.6,
+    "n": 14
+   },
+   "peck": null,
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FH",
+   "type": "ZB",
+   "d": 2.3,
+   "programs": 16,
+   "label": "16 programs",
+   "rpm": {
+    "median": 3500,
+    "min": 3000,
+    "max": 4500,
+    "n": 27
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4.5,
+    "min": 4.5,
+    "max": 4.5,
+    "n": 1
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0036265.X20",
+    "O0089654.X20",
+    "O0118105.X20",
+    "O0125595.X20"
+   ]
+  },
+  {
+   "material": "FR",
+   "type": "SF",
+   "d": 16,
+   "programs": 10,
+   "label": "10 programs",
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 8000,
+    "n": 14
+   },
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 3000,
+    "n": 14
+   },
+   "depthPerPass": {
+    "median": 2.5,
+    "min": 0.5,
+    "max": 4.9,
+    "n": 14
+   },
+   "stepOver": {
+    "median": 11.43,
+    "min": 11.43,
+    "max": 11.43,
+    "n": 2
+   },
+   "peck": null,
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1130153.113",
+    "O1130153_2.113",
+    "O1161033.129"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "GB",
+   "d": 2.5,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 4
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1024043.C51",
+    "O1860053.C46",
+    "O2308115.000",
+    "O4230811.000"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "GB",
+   "d": 3,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1301093.C96"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "KF",
+   "d": 6,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 6499,
+    "min": 6499,
+    "max": 6499,
+    "n": 1
+   },
+   "feed": {
+    "median": 1300,
+    "min": 1300,
+    "max": 1300,
+    "n": 1
+   },
+   "depthPerPass": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1754053.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "KF",
+   "d": 12,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 15915,
+    "min": 15915,
+    "max": 15915,
+    "n": 1
+   },
+   "feed": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 1
+   },
+   "depthPerPass": {
+    "median": 0.15,
+    "min": 0.15,
+    "max": 0.15,
+    "n": 1
+   },
+   "stepOver": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 1
+   },
+   "peck": null,
+   "sources": [
+    "O2619723.000"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "MK",
+   "d": 93,
+   "programs": 22,
+   "label": "22 programs",
+   "rpm": {
+    "median": 2500,
+    "min": 2500,
+    "max": 2500,
+    "n": 52
+   },
+   "feed": {
+    "median": 600,
+    "min": 600,
+    "max": 1200,
+    "n": 52
+   },
+   "depthPerPass": {
+    "median": 1.5,
+    "min": 0.5,
+    "max": 3,
+    "n": 39
+   },
+   "stepOver": {
+    "median": 56.33,
+    "min": 56.33,
+    "max": 56.33,
+    "n": 2
+   },
+   "peck": null,
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 0.98,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.5,
+    "min": 0.5,
+    "max": 0.5,
+    "n": 1
+   },
+   "sources": [
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 1,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 27000,
+    "min": 3100,
+    "max": 27000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.5,
+    "min": 0.3,
+    "max": 0.5,
+    "n": 2
+   },
+   "sources": [
+    "O1420213.C62",
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 1.33,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 1
+   },
+   "sources": [
+    "O1566213.134"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 1.5,
+   "programs": 5,
+   "label": "5 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 3100,
+    "max": 8000,
+    "n": 5
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 5
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0124681.X20",
+    "O0173954.X20",
+    "O1301093.C96",
+    "O2500009.002"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 1.8,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 1
+   },
+   "sources": [
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 1.97,
+   "programs": 11,
+   "label": "11 programs",
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 5000,
+    "n": 11
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 11
+   },
+   "sources": [
+    "O0096794.X20",
+    "O0155034.X20",
+    "O0155136.X20",
+    "O0168461.X20",
+    "O0173595.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 2,
+   "programs": 5,
+   "label": "5 programs",
+   "rpm": {
+    "median": 5000,
+    "min": 3000,
+    "max": 19000,
+    "n": 5
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 1.5,
+    "max": 2,
+    "n": 5
+   },
+   "sources": [
+    "O0089654.X20",
+    "O0173595.X20",
+    "O1723083.135",
+    "O1754053.135",
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 2.3,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 5000,
+    "min": 5000,
+    "max": 5000,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 1
+   },
+   "sources": [
+    "O1754053.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 2.5,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 6000,
+    "min": 2600,
+    "max": 6000,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2.5,
+    "min": 2.5,
+    "max": 2.5,
+    "n": 3
+   },
+   "sources": [
+    "O0173595.X20",
+    "O0173596.X20",
+    "O1301093.C96"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 2.6,
+   "programs": 4,
+   "label": "4 programs",
+   "rpm": {
+    "median": 16192,
+    "min": 5000,
+    "max": 16192,
+    "n": 4
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2.5,
+    "n": 4
+   },
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0106623.X20",
+    "O0173595.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 2.96,
+   "programs": 11,
+   "label": "11 programs",
+   "rpm": {
+    "median": 3000,
+    "min": 2600,
+    "max": 3000,
+    "n": 14
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2.5,
+    "min": 2.5,
+    "max": 2.5,
+    "n": 14
+   },
+   "sources": [
+    "O0124681.X20",
+    "O0125596.X20",
+    "O0155034.X20",
+    "O0155136.X20",
+    "O0168461.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 3.3,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 5000,
+    "min": 2400,
+    "max": 5000,
+    "n": 9
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 9
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0124681.X20",
+    "O0125596.X20",
+    "O0131784.X20",
+    "O0131784_2.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 3.5,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 8
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 8
+   },
+   "sources": [
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0168461.X20",
+    "O0173595.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 4,
+   "programs": 9,
+   "label": "9 programs",
+   "rpm": {
+    "median": 4000,
+    "min": 1900,
+    "max": 8000,
+    "n": 11
+   },
+   "feed": {
+    "median": 800,
+    "min": 800,
+    "max": 800,
+    "n": 1
+   },
+   "depthPerPass": {
+    "median": 1.93,
+    "min": 1.93,
+    "max": 1.93,
+    "n": 1
+   },
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 10
+   },
+   "sources": [
+    "O0041108.X20",
+    "O0096794.X20",
+    "O0125596.X20",
+    "O0155034.X20",
+    "O0173835.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 4.2,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 1900,
+    "min": 1900,
+    "max": 1900,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 1
+   },
+   "sources": [
+    "O1920213.105"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 4.6,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 3800,
+    "min": 3800,
+    "max": 3800,
+    "n": 10
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 10
+   },
+   "sources": [
+    "O0096794.X20",
+    "O0124681.X20",
+    "O0125596.X20",
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 4.7,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 1650,
+    "min": 1650,
+    "max": 1650,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 1
+   },
+   "sources": [
+    "O1420213.C62"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 4.8,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 1
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 1
+   },
+   "sources": [
+    "O0173579.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 1500,
+    "min": 1500,
+    "max": 1500,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 2
+   },
+   "sources": [
+    "O1754053.135",
+    "O1860053.C46"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 5.4,
+   "programs": 8,
+   "label": "8 programs",
+   "rpm": {
+    "median": 2900,
+    "min": 1400,
+    "max": 2900,
+    "n": 8
+   },
+   "feed": null,
+   "depthPerPass": {
+    "median": 24,
+    "min": 24,
+    "max": 24,
+    "n": 1
+   },
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 2.5,
+    "max": 6,
+    "n": 8
+   },
+   "sources": [
+    "O0131784.X20",
+    "O0131784_2.X20",
+    "O0173596.X20",
+    "O0173835.X20",
+    "O1024043.C51"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SB",
+   "d": 6.4,
+   "programs": 3,
+   "label": "3 programs",
+   "rpm": {
+    "median": 2500,
+    "min": 1200,
+    "max": 2500,
+    "n": 3
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 3
+   },
+   "sources": [
+    "O0173704.X20",
+    "O1754053.135",
+    "O2619723.000"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 2,
+   "programs": 5,
+   "label": "5 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 27000,
+    "n": 7
+   },
+   "feed": {
+    "median": 700,
+    "min": 400,
+    "max": 1000,
+    "n": 7
+   },
+   "depthPerPass": {
+    "median": 0.94,
+    "min": 0.5,
+    "max": 1.92,
+    "n": 7
+   },
+   "stepOver": {
+    "median": 1.19,
+    "min": 0.2,
+    "max": 1.5,
+    "n": 3
+   },
+   "peck": null,
+   "sources": [
+    "O0124681.X20",
+    "O0173595.X20",
+    "O1566213.134",
+    "O1723083.135",
+    "O1754053.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 3,
+   "programs": 13,
+   "label": "13 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 4000,
+    "max": 21000,
+    "n": 22
+   },
+   "feed": {
+    "median": 500,
+    "min": 51,
+    "max": 1000,
+    "n": 22
+   },
+   "depthPerPass": {
+    "median": 1.41,
+    "min": 0.01,
+    "max": 2.9,
+    "n": 17
+   },
+   "stepOver": {
+    "median": 1.35,
+    "min": 0.34,
+    "max": 2.34,
+    "n": 7
+   },
+   "peck": null,
+   "sources": [
+    "O0037519.X20",
+    "O0096794.X20",
+    "O0124681.X20",
+    "O0155034.X20",
+    "O0168461.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 4,
+   "programs": 19,
+   "label": "19 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 1800,
+    "max": 16000,
+    "n": 27
+   },
+   "feed": {
+    "median": 800,
+    "min": 300,
+    "max": 1200,
+    "n": 19
+   },
+   "depthPerPass": {
+    "median": 1.75,
+    "min": 0.1,
+    "max": 4.5,
+    "n": 18
+   },
+   "stepOver": {
+    "median": 0.64,
+    "min": 0.2,
+    "max": 2.24,
+    "n": 3
+   },
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 3,
+    "n": 8
+   },
+   "sources": [
+    "O0024264.X20",
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 5,
+   "programs": 11,
+   "label": "11 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 1400,
+    "max": 14000,
+    "n": 13
+   },
+   "feed": {
+    "median": 800,
+    "min": 186,
+    "max": 1200,
+    "n": 12
+   },
+   "depthPerPass": {
+    "median": 1.75,
+    "min": 0.02,
+    "max": 2.58,
+    "n": 12
+   },
+   "stepOver": {
+    "median": 3,
+    "min": 2.21,
+    "max": 5.03,
+    "n": 3
+   },
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 1
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 6,
+   "programs": 22,
+   "label": "22 programs",
+   "rpm": {
+    "median": 6300,
+    "min": 1000,
+    "max": 12000,
+    "n": 33
+   },
+   "feed": {
+    "median": 900,
+    "min": 450,
+    "max": 1400,
+    "n": 19
+   },
+   "depthPerPass": {
+    "median": 2.88,
+    "min": 0.98,
+    "max": 13,
+    "n": 15
+   },
+   "stepOver": {
+    "median": 2.7,
+    "min": 0.3,
+    "max": 4.11,
+    "n": 8
+   },
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 6,
+    "n": 14
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0096794.X20",
+    "O0096795.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 8,
+   "programs": 16,
+   "label": "16 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 800,
+    "max": 8000,
+    "n": 26
+   },
+   "feed": {
+    "median": 1200,
+    "min": 300,
+    "max": 1400,
+    "n": 23
+   },
+   "depthPerPass": {
+    "median": 2.95,
+    "min": 0.08,
+    "max": 6.75,
+    "n": 19
+   },
+   "stepOver": {
+    "median": 4,
+    "min": 1,
+    "max": 5.55,
+    "n": 13
+   },
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 3
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0055194.X20",
+    "O0125596.X20",
+    "O0155034.X20",
+    "O0173579.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 16,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 6600,
+    "n": 4
+   },
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 2.85,
+    "min": 1,
+    "max": 5,
+    "n": 4
+   },
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "SF",
+   "d": 20,
+   "programs": 24,
+   "label": "24 programs",
+   "rpm": {
+    "median": 4000,
+    "min": 4000,
+    "max": 12732,
+    "n": 33
+   },
+   "feed": {
+    "median": 1200,
+    "min": 600,
+    "max": 3000,
+    "n": 32
+   },
+   "depthPerPass": {
+    "median": 5.25,
+    "min": 1,
+    "max": 8.65,
+    "n": 29
+   },
+   "stepOver": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 1
+   },
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 1
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "ST",
+   "d": 4,
+   "programs": 27,
+   "label": "27 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 4000,
+    "max": 16000,
+    "n": 53
+   },
+   "feed": {
+    "median": 1500,
+    "min": 600,
+    "max": 1500,
+    "n": 53
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 3.3,
+    "min": 2,
+    "max": 3.9,
+    "n": 11
+   },
+   "peck": null,
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "UDM",
+   "d": 10,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3282,
+    "min": 2000,
+    "max": 3282,
+    "n": 3
+   },
+   "feed": {
+    "median": 328,
+    "min": 328,
+    "max": 400,
+    "n": 3
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "UDM",
+   "d": 12,
+   "programs": 1,
+   "label": "seen once",
+   "rpm": {
+    "median": 2500,
+    "min": 2500,
+    "max": 2500,
+    "n": 1
+   },
+   "feed": {
+    "median": 250,
+    "min": 250,
+    "max": 250,
+    "n": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O0173835.X20"
+   ]
+  },
+  {
+   "material": "POM",
+   "type": "ZB",
+   "d": 2.3,
+   "programs": 23,
+   "label": "23 programs",
+   "rpm": {
+    "median": 8000,
+    "min": 2000,
+    "max": 8000,
+    "n": 32
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.3,
+    "min": 3.3,
+    "max": 3.3,
+    "n": 1
+   },
+   "sources": [
+    "O0037519.X20",
+    "O0041108.X20",
+    "O0055194.X20",
+    "O0096794.X20",
+    "O0124681.X20"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SB",
+   "d": 3,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 4300,
+    "min": 4300,
+    "max": 4300,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 2
+   },
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SB",
+   "d": 3.5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3700,
+    "min": 3700,
+    "max": 3700,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.5,
+    "min": 3.5,
+    "max": 3.5,
+    "n": 2
+   },
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SB",
+   "d": 5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 2600,
+    "min": 2600,
+    "max": 2600,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 2
+   },
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SB",
+   "d": 5.5,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 2400,
+    "min": 2400,
+    "max": 2400,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SB",
+   "d": 6.4,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 2000,
+    "min": 2000,
+    "max": 2000,
+    "n": 2
+   },
+   "feed": null,
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 2
+   },
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SF",
+   "d": 2,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 10000,
+    "min": 10000,
+    "max": 10000,
+    "n": 4
+   },
+   "feed": {
+    "median": 126,
+    "min": 75,
+    "max": 126,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 0.29,
+    "min": 0.02,
+    "max": 0.29,
+    "n": 4
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2
+   },
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SF",
+   "d": 3,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 6400,
+    "min": 6400,
+    "max": 6400,
+    "n": 4
+   },
+   "feed": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 0.69,
+    "min": 0.63,
+    "max": 0.69,
+    "n": 4
+   },
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SF",
+   "d": 4,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 5000,
+    "min": 5000,
+    "max": 5000,
+    "n": 4
+   },
+   "feed": {
+    "median": 150,
+    "min": 113,
+    "max": 150,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 1,
+    "min": 0.95,
+    "max": 1,
+    "n": 4
+   },
+   "stepOver": null,
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SF",
+   "d": 6,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3600,
+    "min": 3600,
+    "max": 3600,
+    "n": 4
+   },
+   "feed": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 2
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 3.84,
+    "min": 3.84,
+    "max": 3.84,
+    "n": 2
+   },
+   "peck": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 2
+   },
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SF",
+   "d": 8,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 4
+   },
+   "feed": {
+    "median": 350,
+    "min": 245,
+    "max": 350,
+    "n": 4
+   },
+   "depthPerPass": {
+    "median": 2.6,
+    "min": 2.58,
+    "max": 2.6,
+    "n": 4
+   },
+   "stepOver": {
+    "median": 2.8,
+    "min": 2.8,
+    "max": 2.8,
+    "n": 2
+   },
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "SR",
+   "d": 16,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 6
+   },
+   "feed": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 6
+   },
+   "depthPerPass": {
+    "median": 2,
+    "min": 1,
+    "max": 5.1,
+    "n": 6
+   },
+   "stepOver": {
+    "median": 10,
+    "min": 10,
+    "max": 10,
+    "n": 4
+   },
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  },
+  {
+   "material": "VAHS",
+   "type": "ST",
+   "d": 4,
+   "programs": 2,
+   "label": "2 programs",
+   "rpm": {
+    "median": 4800,
+    "min": 4800,
+    "max": 4800,
+    "n": 10
+   },
+   "feed": {
+    "median": 180,
+    "min": 140,
+    "max": 200,
+    "n": 10
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 4
+   },
+   "peck": null,
+   "sources": [
+    "O1640053.C72",
+    "O1640053_2.C72"
+   ]
+  }
+ ]
+}
