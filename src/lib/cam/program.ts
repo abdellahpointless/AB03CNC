@@ -820,6 +820,11 @@ export interface CamCheck {
 
 /** How far the held faces may lie from where the program puts them (mm): the simulation's grid. */
 const MISPLACED = 0.5;
+/**
+ * The operator's minutes for one clamping (open the vise, turn the part, parallels, stop, close).
+ * shortcut: an assumption, not measured at the shop; the shop's own figure replaces it.
+ */
+const CLAMPING_MIN = 2;
 
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
@@ -979,13 +984,16 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
   const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.check.misplaced === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
   let bestAxis = order[0];
+  // The time a part takes: the machine's minutes and the operator's for each clamping (turning the part
+  // over, the parallels, the stop): a plan with a clamping more must save more than that.
+  const cost = (r: CamResult & { check: CamCheck }) => r.check.minutes + CLAMPING_MIN * r.setups.length;
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
     input.live?.({ kind: 'stage', stage: 'check' });
     const now = checked(input, r);
     input.live?.({ kind: 'stage', stage: 'post' });
     progress(i + 1, order.length);
-    const better = !best || (good(now) && (!good(best) || now.check.minutes < best.check.minutes)) || (!good(now) && !good(best) && now.check.match > best.check.match);
+    const better = !best || (good(now) && (!good(best) || cost(now) < cost(best))) || (!good(now) && !good(best) && now.check.match > best.check.match);
     if (better) [best, bestAxis] = [now, axis];
   });
   // The last way (shop rule, rare): the setups no way of holding in the vise passes, in a POM nest.
