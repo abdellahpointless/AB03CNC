@@ -208,7 +208,12 @@ function faces(text: string): Face[] {
 
 /** Reads one setup's instructions. */
 export function readInstructions(notes: string[]) {
-  const t = notes.join(' / ').toUpperCase();
+  const up = notes.map((n) => n.toUpperCase());
+  const t = up.join(' / ');
+  // Sizes, parallels, rest depths and spacers are read inside one note: the " / " between two notes
+  // is not the shop's own slash ("49 IN X" and "180 IN Y" written as two notes are a size and a turn).
+  const starts = up.map((_, k) => up.slice(0, k).reduce((a, u) => a + u.length + 3, 0));
+  const inNote = (re: RegExp) => up.map((u) => u.match(re)).find(Boolean) ?? null;
   // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y", "36 IN X AND 41 IN Y",
   // "30 IN X 20.5 IN Y", "64 IN X /40 IN Y", and "TOP 14X AND 22 IN Y" (14 along X, 22 along Y);
   // "30 IN X 13 UND Y" (13 along Y); "30 IN X UND Y", "100 IN XY", "100 IN X Y" and "50 IN X/Y": the
@@ -216,10 +221,11 @@ export function readInstructions(notes: string[]) {
   const sizeForms: [RegExp, (m: RegExpMatchArray) => { x: number; y: number }][] = [
     [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:(?:IN|UM)\\s*)?X\\s*\\/?\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
     [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:IN|UM)\\s*X\\s*${NUM}\\s*(?:UND|AND|ET)\\s*Y\\b`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
-    [new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b|X\\s*\\/?\\s*Y(?!\\s*[+-])\\b)`, 'g'), (m) => ({ x: num(m[1]), y: num(m[1]) })],
+    // Not "BOHRUNG D6 IN X Y" (a hole's diameter).
+    [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b|X\\s*\\/?\\s*Y(?!\\s*[+-])\\b)`, 'g'), (m) => ({ x: num(m[1]), y: num(m[1]) })],
   ];
   const sizeNotes = sizeForms
-    .flatMap(([re, read]) => [...t.matchAll(re)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, size: read(m) })))
+    .flatMap(([re, read]) => up.flatMap((u, k) => [...u.matchAll(re)].map((m) => ({ at: starts[k] + m.index!, end: starts[k] + m.index! + m[0].length, size: read(m) }))))
     .sort((a, b) => a.at - b.at);
   // Each turn note can carry its own size ("...DREHEN/53 IN X 36 IN Y", then the next turn's): the
   // last one is how the part is clamped.
@@ -273,18 +279,18 @@ export function readInstructions(notes: string[]) {
   // The parallels are also written "CALCO 40 MM" (Portuguese) or "40 MM CALE" / "CALES DE 40 MM"
   // (French, shop answer D1); UNTERCALE and INTERCALE are spacers (below).
   const sup =
-    t.match(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`)) ??
-    t.match(new RegExp(`(?:CALCO|\\bCALES?\\s*(?:DE)?)\\s*${NUM}\\s*MM`)) ??
-    t.match(new RegExp(`${NUM}\\s*MM\\s*CALES?\\b`));
+    inNote(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`)) ??
+    inNote(new RegExp(`(?:CALCO|\\bCALES?\\s*(?:DE)?)\\s*${NUM}\\s*MM`)) ??
+    inNote(new RegExp(`${NUM}\\s*MM\\s*CALES?\\b`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM"; also
   // "UNTERLAGE / IN 8 MM", "UNTERLAGE // IN 8 MM", "UNTERLAGEIN MASS 7 MM" and "UNTERLAGE MASS 5 MM".
-  const thick = t.match(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|(?:IN\\s*)?MASS|IN|SUR|AUF)\\s*${NUM}`));
+  const thick = inNote(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|(?:IN\\s*)?MASS|IN|SUR|AUF)\\s*${NUM}`));
   // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
   const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
   // Every one written counts ("IN Y-" and "IN Y+": one plate on each side); the last one per side wins.
   const spacers = new Map<Face, number>();
   for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${NUM}\\s*MM\\s*UNTERLAGE${SIDE}`])
-    for (const m of t.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
+    for (const u of up) for (const m of u.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
   const nest = /\bNEST\b/.test(t);
   if (nest) {
     if (!spacers.has('X-')) spacers.set('X-', NEST_WALL + 2 * NEST_GAP);

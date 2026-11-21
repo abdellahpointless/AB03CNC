@@ -459,4 +459,16 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['MOD. SPANNEN F. FRONTSEITE/50 IN X/Y']).sizes).toEqual({ x: 50, y: 50 });
     expect(readInstructions(['TEIL MIT 64 IN X /40 IN Y SPANNEN']).sizes).toEqual({ x: 64, y: 40 });
   });
+
+  it('sizes, parallels and rest depths are read inside one note, never across two', () => {
+    // "180 IN Y" in its own note is a turn, not the Y size of "49 IN X".
+    expect(readInstructions(['MOD. SPANNEN F. RUECKS./49 IN X', '180 IN Y'])).toMatchObject({ sizes: { x: 49, y: NaN }, turns: [{ axis: 'Y', deg: 180 }] });
+    // "IN 2 SCHRAUBSTOECKEN" after "38 MM UNTERLAGE" is not a rest depth of 2 mm.
+    expect(readInstructions(['38 MM UNTERLAGE', 'IN 2 SCHRAUBSTOECKEN SPANNEN'])).toMatchObject({ support: 38, restDepth: null });
+    // A hole's diameter is not a clamping size ("BOHRUNG D6 IN X Y").
+    expect(readInstructions(['TEIL MIT 98 IN X UND 78 IN Y EINSPANNEN', 'BOHRUNG D6 IN X Y']).sizes).toEqual({ x: 98, y: 78 });
+    // Within one note, as the shop writes them, nothing changes.
+    expect(readInstructions(['38 MM UNTERLAGE / IN 8 MM'])).toMatchObject({ support: 38, restDepth: 8 });
+    expect(readInstructions(['TEIL MIT 64 IN X /40 IN Y SPANNEN']).sizes).toEqual({ x: 64, y: 40 });
+  });
 });
