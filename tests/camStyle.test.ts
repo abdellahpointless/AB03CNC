@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { shopStyle, shorten } from '../src/lib/cam/style';
+import { arcs, shopStyle, shorten } from '../src/lib/cam/style';
+import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 // A program as CAM AI's post writes it: every word on every line, each hole its own cycle line.
 const cam = [
@@ -111,3 +112,38 @@ describe("CAM AI's program in the shop's words", () => {
     expect(back).toEqual({ code: cam, shortened: false });
   });
 });
+
+describe('circles written as arcs', () => {
+  // A quarter circle (r 5 about 0,0, counter-clockwise) cut into pieces as CAM AI's offsets do
+  // (0.002 mm from the arc), then a straight line on.
+  const pieces = (r: number, n: number) => Array.from({ length: n }, (_, k) => [r * Math.cos(((k + 1) * Math.PI) / 2 / n), r * Math.sin(((k + 1) * Math.PI) / 2 / n)]);
+  const fmt = (v: number) => String(Math.round(v * 1000) / 1000);
+  const program = (pts: number[][]) =>
+    ['N1 G00 G90 X5. Y0 S9000 M03', 'N2 G00 Z2.', 'N3 G01 Z-1. F300.', ...pts.map(([x, y], k) => `N${k + 4} G01 X${fmt(x)} Y${fmt(y)}${k === 0 ? ' F900.' : ''}`), `N${pts.length + 4} G01 X-6.`].join('\n');
+
+  it('writes the run as one G03 with I and J from its start, then goes on straight', () => {
+    const out = arcs(program(pieces(5, 28))).split('\n');
+    expect(out).toEqual(['N1 G00 G90 X5. Y0 S9000 M03', 'N2 G00 Z2.', 'N3 G01 Z-1. F300.', 'N4 G03 X0. Y5. I-5. J0. F900.', 'N5 G01 X-6.']);
+  });
+
+  it('stays within a hundredth of a millimetre of the pieces it replaces', () => {
+    const before = program(pieces(5, 28));
+    const [a, b] = [parseToolpath(before, speedsFor('HAAS')), parseToolpath(arcs(before), speedsFor('HAAS'))];
+    const old = a.moves.filter((m) => m.kind === 'feed').flatMap((m) => m.points.slice(1).map((q, k) => [m.points[k], q]));
+    const off = (p: number[]) => Math.min(...old.map(([s, e]) => {
+      const v = e.map((x, c) => x - s[c]);
+      const t = Math.max(0, Math.min(1, v.reduce((acc, x, c) => acc + x * (p[c] - s[c]), 0) / (v.reduce((acc, x) => acc + x * x, 0) || 1)));
+      return Math.hypot(...s.map((x, c) => x + t * v[c] - p[c]));
+    }));
+    for (const m of b.moves.filter((x) => x.kind === 'feed')) for (const p of m.points) expect(off(p)).toBeLessThan(0.012);
+  });
+
+  it('leaves pieces as they are where they are not a circle, or too coarse for one', () => {
+    const line = ['N1 G00 G90 X0 Y0 S9000 M03', 'N2 G01 Z-1. F300.', 'N3 G01 X1. F900.', 'N4 G01 X2.', 'N5 G01 X3.', 'N6 G01 X4.'].join('\n');
+    expect(arcs(line)).toBe(line);
+    // Four pieces for a quarter of r 5: 0.1 mm from the arc, more than CAM AI's offsets ever leave.
+    const coarse = program(pieces(5, 4));
+    expect(arcs(coarse)).toBe(coarse);
+  });
+});
+

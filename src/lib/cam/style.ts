@@ -160,3 +160,138 @@ export function shopStyle(code: string, brand?: string, shortener: (code: string
   const same = sameMoves(moving(a.moves), moving(b.moves)) && a.setups.length === b.setups.length && a.setups.every((s, i) => JSON.stringify(s.notes.map((x) => x.text)) === JSON.stringify(b.setups[i].notes.map((x) => x.text)));
   return same ? { code: short, shortened: true } : { code, shortened: false };
 }
+
+/** How far a run's points may lie off the arc written for them (CAM AI's offsets and its 0.001 mm rounding). */
+const ON_ARC = 0.003;
+/** How far the old straight pieces may stray from the arc (CAM AI's own offset tolerance, 0.002 to 0.01 mm). */
+const CHORD = 0.012;
+type P = [number, number];
+
+/** The circle best through points i..j (least squares, Kasa), or null when they are nearly straight. */
+function bestCircle(pts: P[], i: number, j: number): P | null {
+  // Solve for D, E, F in x² + y² + Dx + Ey + F = 0 (about the first point, for precision).
+  const [ox, oy] = pts[i];
+  let [sxx, sxy, syy, sx, sy, n, sxz, syz, sz] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let k = i; k <= j; k++) {
+    const [x, y] = [pts[k][0] - ox, pts[k][1] - oy];
+    const z = x * x + y * y;
+    [sxx, sxy, syy, sx, sy, n] = [sxx + x * x, sxy + x * y, syy + y * y, sx + x, sy + y, n + 1];
+    [sxz, syz, sz] = [sxz + x * z, syz + y * z, sz + z];
+  }
+  const M = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]];
+  const v = [-sxz, -syz, -sz];
+  const det = (A: number[][]) => A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+  const d0 = det(M);
+  if (Math.abs(d0) < 1e-12) return null;
+  const col = (c: number) => M.map((row, r) => row.map((x, k) => (k === c ? v[r] : x)));
+  const [D, E] = [det(col(0)) / d0, det(col(1)) / d0];
+  return [ox - D / 2, oy - E / 2];
+}
+
+/** The arc through points i..j (centre, radius, clockwise), when they all lie on it in order; else null. */
+function arcThrough(pts: P[], i: number, j: number): { c: P; r: number; cw: boolean } | null {
+  const [a, m, b] = [pts[i], pts[Math.round((i + j) / 2)], pts[j]];
+  const d = 2 * (a[0] * (m[1] - b[1]) + m[0] * (b[1] - a[1]) + b[0] * (a[1] - m[1]));
+  if (Math.abs(d) < 1e-9) return null;
+  const sq = (p: P) => p[0] * p[0] + p[1] * p[1];
+  const three: P = [(sq(a) * (m[1] - b[1]) + sq(m) * (b[1] - a[1]) + sq(b) * (a[1] - m[1])) / d, (sq(a) * (b[0] - m[0]) + sq(m) * (a[0] - b[0]) + sq(b) * (m[0] - a[0])) / d];
+  // The least-squares centre (cleaner I and J), else the one through the three points.
+  return onArc(pts, i, j, bestCircle(pts, i, j)) ?? onArc(pts, i, j, three);
+}
+
+function onArc(pts: P[], i: number, j: number, c: P | null): { c: P; r: number; cw: boolean } | null {
+  if (!c || !c.every(Number.isFinite)) return null;
+  const [a, m, b] = [pts[i], pts[Math.round((i + j) / 2)], pts[j]];
+  const r = (Math.hypot(a[0] - c[0], a[1] - c[1]) + Math.hypot(b[0] - c[0], b[1] - c[1])) / 2;
+  if (r < 0.2 || r > 2000) return null;
+  const cross = (m[0] - a[0]) * (b[1] - m[1]) - (m[1] - a[1]) * (b[0] - m[0]);
+  const cw = cross < 0;
+  let swept = 0;
+  let prev = Math.atan2(a[1] - c[1], a[0] - c[0]);
+  for (let k = i + 1; k <= j; k++) {
+    const p = pts[k];
+    if (Math.abs(Math.hypot(p[0] - c[0], p[1] - c[1]) - r) > ON_ARC) return null;
+    const L = Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]);
+    if (L < 1e-6 || L > 2 * r || r - Math.sqrt(r * r - (L / 2) ** 2) > CHORD) return null;
+    // Each point a little further round the same way (less than half a turn per piece).
+    const ang = Math.atan2(p[1] - c[1], p[0] - c[0]);
+    let step = ang - prev;
+    while (step > Math.PI) step -= 2 * Math.PI;
+    while (step < -Math.PI) step += 2 * Math.PI;
+    if ((cw ? -step : step) <= 0) return null;
+    swept += Math.abs(step);
+    prev = ang;
+  }
+  return swept < (350 * Math.PI) / 180 ? { c, r, cw } : null;
+}
+
+const n3 = (v: number) => {
+  const r = Math.round(v * 1000) / 1000;
+  return short(Number.isInteger(r) ? `${r}.` : String(r));
+};
+
+/**
+ * Straight feed moves on one level that lie on a circle, as one arc: G02/G03 to the run's last point,
+ * I and J from its first (the shop writes arcs this way, docs/knowledge: gcode.arcsIJ). At least three
+ * pieces per arc, within ON_ARC of every point and CHORD of every piece. The program it gives must be
+ * checked again (camProgram does: the simulation, against the model).
+ */
+export function arcs(code: string): string {
+  const src = code.split('\n');
+  const out: string[] = [];
+  const pos: Record<string, number | null> = { X: null, Y: null, Z: null };
+  const straight = new RegExp(`^N\\d+ G0?1((?: [XY]${NUM}){1,2})( F${NUM})?$`);
+  let i = 0;
+  while (i < src.length) {
+    const l = src[i];
+    const m = l.match(straight);
+    if (!m || pos.X === null || pos.Y === null) {
+      for (const [k, v] of words(l.replace(/^N\d+ /, '').replace(/\([^)]*\)/g, ''))) if (k in pos) pos[k] = num(v);
+      if (/(?<![A-Z])(G52|G53|G28|M6)(?![0-9])/.test(l)) pos.X = pos.Y = pos.Z = null;
+      out.push(l);
+      i++;
+      continue;
+    }
+    // The run: straight feed moves in X/Y only, a feed on its first line at most.
+    const pts: P[] = [[pos.X, pos.Y]];
+    const at: number[] = [];
+    let j = i;
+    let [x, y] = [pos.X, pos.Y];
+    while (j < src.length) {
+      const q = src[j].match(straight);
+      if (!q || (j > i && q[2])) break;
+      for (const [k, v] of words(q[1])) k === 'X' ? (x = num(v)) : (y = num(v));
+      pts.push([x, y]);
+      at.push(j);
+      j++;
+    }
+    const feed = m[2] ?? '';
+    let k = 0;
+    while (k < at.length) {
+      let best: { e: number; arc: { c: P; r: number; cw: boolean } } | null = null;
+      for (let e = k + 3; e < pts.length && e - k <= 2000; e++) {
+        const arc = arcThrough(pts, k, e);
+        if (!arc) break;
+        best = { e, arc };
+      }
+      if (best) {
+        const [s, t] = [pts[k], pts[best.e]];
+        const [I, J] = [best.arc.c[0] - s[0], best.arc.c[1] - s[1]];
+        // The control checks the end is as far from the centre as the start.
+        const c: P = [s[0] + Math.round(I * 1000) / 1000, s[1] + Math.round(J * 1000) / 1000];
+        if (Math.abs(Math.hypot(t[0] - c[0], t[1] - c[1]) - Math.hypot(s[0] - c[0], s[1] - c[1])) <= 0.002) {
+          out.push(`N0 ${best.arc.cw ? 'G02' : 'G03'} X${n3(t[0])} Y${n3(t[1])} I${n3(I)} J${n3(J)}${k === 0 ? feed : ''}`);
+          k = best.e;
+          continue;
+        }
+      }
+      // Not an arc: the line as written (it follows the same point as before).
+      out.push(k === 0 ? src[at[k]] : src[at[k]].replace(new RegExp(` F${NUM}$`), ''));
+      k++;
+    }
+    [pos.X, pos.Y] = [x, y];
+    i = j;
+  }
+  let n = 0;
+  return out.map((l) => (/^N\d+ /.test(l) ? `N${++n} ${l.replace(/^N\d+ /, '')}` : l)).join('\n');
+}

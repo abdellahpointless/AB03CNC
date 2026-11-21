@@ -12,7 +12,7 @@ import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures }
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
-import { shopStyle } from './style';
+import { arcs, shopStyle } from './style';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
@@ -958,8 +958,17 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // Planned again with them nested; each nest gets its own program (POM, held in the vise).
   const kept = best!;
   const fails = (x: CamResult) => x.setups.filter((st) => !st.physics.ok).map((st) => st.side);
-  // Written the shop's way at the end (style.ts proves the same moves; the check holds for it).
-  const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => ({ ...r, code: shopStyle(r.code, input.brand).code });
+  // Written the shop's way at the end: the same moves in the shop's words (style.ts proves them
+  // alike, the check holds), then circles as arcs, checked again in the simulation and taken only
+  // when nothing is worse than before.
+  const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => {
+    const words = shopStyle(r.code, input.brand).code;
+    const arced = arcs(words);
+    if (arced === words) return { ...r, code: words };
+    const c = checkProgram(input.tris, arced, input.brand, input.speeds, r.pose);
+    const ok = c.match >= r.check.match - 0.0005 && c.collisions <= r.check.collisions && c.cales <= r.check.cales && gougeOf(c) <= gougeOf(r.check);
+    return ok ? { ...r, code: arced, check: c } : { ...r, code: words };
+  };
   if (input.noNest || !fails(kept).length) return shop(kept);
   // Planned again with the failing sides nested, and again with any side that then fails.
   let sides = fails(kept);
