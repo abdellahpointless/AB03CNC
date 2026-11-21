@@ -492,13 +492,15 @@ interface Work {
   /** Below the jaws: pockets only. Thin walls here (a seal cage's, under THIN mm). */
   inside?: boolean;
   thin?: Region;
+  /** Its walls get a finishing pass. */
+  finish?: boolean;
 }
 
-/** Radial stock the roughing leaves on a precise part's walls for the finishing (mm). */
+/** Radial stock the roughing leaves on the walls for the finishing (mm). */
 const ALLOW = 0.15;
 /** A seal cage's walls thinner than this are cut gently (mm). */
 const THIN = 3;
-/** The families whose walls are finished: semi-finish, finish, spring pass. */
+/** The families whose walls every roughing mill leaves ALLOW on and finishes. */
 const PRECISE: PartType[] = ['topPlate', 'contourInsert', 'sealCage'];
 
 /** Thickness of the thinnest wall in a region (twice the deepest it can be shrunk). */
@@ -1316,7 +1318,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     };
     const perTool = new Map<CamTool, Work[]>();
     // Precise families: the roughing leaves ALLOW on the walls for the finishing (it counts as done
-    // for the smaller tools that follow).
+    // for the smaller tools that follow). Every other part gets the shop's finishing pass too (75 of
+    // 92 parts have one, docs/knowledge: S4), along the walls its largest mill roughed to size (the
+    // shop finishes aluminium with the SF 16: 41 operations on 29 parts). Leaving ALLOW there too kept
+    // that mill out of pockets of its own width: twice the time on a test part.
     const precise = !!input.partType && PRECISE.includes(input.partType);
     // A top plate's or contour insert's precise contour is its pockets (where the part goes in): the
     // outside is cut as usual. A seal cage's thin walls have both faces finished.
@@ -1362,7 +1367,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise || (round === 0 && pick.tool.diameter >= (mills[0]?.diameter ?? 0) - 0.01) });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }
@@ -1393,34 +1398,38 @@ function planFor(input: CamInput, vertical: number): CamResult {
       };
       ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
     }
-    // 3b. Precise families: each roughing tool finishes the walls it roughed, from the side out of
-    // its roughing. A seal cage's thin walls, gently: semi-finish (0.05 left all round), finish on
-    // the wall, a spring pass (what the tool's bending left). A top plate's or contour insert's
-    // pockets: one finishing pass on the wall (shop rule: the three passes cost too much time).
-    if (precise)
-      for (const op of ops.filter((o) => o.kind === 'pocket')) {
-        const tool = op.tool;
-        const r = tool.diameter / 2;
-        const work: Work[] = [];
-        let thinAny = false;
-        let lastFin: Ring[] = [];
-        for (const w of (byDia.get(tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).sort((p, q) => q.z - p.z)) {
-          const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
-          const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
-          const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
-          const fin = ring(r);
-          const rings = pocketsOnly ? fin : [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
-          if (!rings.length) continue;
-          // A straight wall (the level just above finished by this tool on the very same path): one
-          // run from the wall's top in the finish's own depth per pass, no step at each level.
-          const prev = work[work.length - 1];
-          const [a, b] = [swept(lastFin, r), swept(fin, r)];
-          const straight = prev && Math.abs(prev.z - w.above) < 1e-6 && fin.length === lastFin.length && area(difference(a, b)) + area(difference(b, a)) < 0.01;
-          work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
-          lastFin = fin;
-        }
-        if (work.length) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+    // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
+    // too much time); a top plate's or contour insert's pockets only. A seal cage's
+    // walls, gently: semi-finish (0.05 left all round), finish, a spring pass (what the tool's bending
+    // left). A high-feed mill's walls are finished by the plain mill of its Ø (the shop: SFH 16
+    // roughs, SF 16 finishes), the machine's first.
+    for (const op of ops.filter((o) => o.kind === 'pocket')) {
+      const roughed = (byDia.get(op.tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).filter((w) => w.finish);
+      if (!roughed.length) continue;
+      const deepest = Math.min(...roughed.map((w) => w.z));
+      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && (m.length || 99) >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
+      const tool = plain.find((m) => m.inMachine) ?? plain.find((m) => m.template?.ops.some((o) => o.kind === 'finish')) ?? op.tool;
+      const r = tool.diameter / 2;
+      const work: Work[] = [];
+      let thinAny = false;
+      let lastFin: Ring[] = [];
+      for (const w of roughed.sort((p, q) => q.z - p.z)) {
+        const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
+        const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
+        const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
+        const fin = ring(r);
+        const rings = input.partType !== 'sealCage' ? fin : [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
+        if (!rings.length) continue;
+        // A straight wall (the level just above finished by this tool on the very same path): one
+        // run from the wall's top in the finish's own depth per pass, no step at each level.
+        const prev = work[work.length - 1];
+        const [a, b] = [swept(lastFin, r), swept(fin, r)];
+        const straight = prev && Math.abs(prev.z - w.above) < 1e-6 && fin.length === lastFin.length && area(difference(a, b)) + area(difference(b, a)) < 0.01;
+        work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
+        lastFin = fin;
       }
+      if (work.length) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+    }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);

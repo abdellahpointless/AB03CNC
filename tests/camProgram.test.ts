@@ -44,13 +44,17 @@ describe('CAM AI', () => {
     }
   }, 180_000);
 
-  it('roughs with the SFH 16, as the shop does (T4)', () => {
+  it('roughs with the SFH 16 and finishes its walls with the SF 16, as the shop does (T4, S4)', () => {
+    // No part family given: every part gets the finishing pass (the shop: 75 of 92 parts).
     const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
     const ops = r.setups.flatMap((s) => s.ops);
     const rough = ops.filter((o) => o.name === 'FRAESEN_16MM');
     expect(rough.length).toBeGreaterThan(0);
     // The SFH 16 has the shop's roughing data (2,800 mm/min); the SF 16 only its finishing (850).
     for (const o of rough) expect(o.tool.code).toMatch(/^SFH_16\./);
+    const finish = ops.filter((o) => o.name === 'SCHLICHTEN_16MM');
+    expect(finish.length).toBeGreaterThan(0);
+    for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
