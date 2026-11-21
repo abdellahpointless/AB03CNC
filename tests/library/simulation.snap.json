@@ -379,8 +379,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.987,
-  "pieces": 1
+  "match": 1,
+  "pieces": 0
  },
  "O0137238.X20 a5178ee4/be3a11b0": {
   "result": "compared",
@@ -388,8 +388,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.987,
-  "pieces": 1
+  "match": 1,
+  "pieces": 0
  },
  "O0143118.X20 46d43b22/27081ffa": {
   "result": "compared",
@@ -821,15 +821,15 @@
   "pieces": 0
  },
  "O1723083.135 29c8c5a5/b6f76c40": {
-  "result": "size mismatch",
+  "result": "compared",
   "setups": 4,
-  "rejects": [
-   "setup 4: size X 28 (cut 23.3)"
-  ],
+  "rejects": [],
   "collisions": {
-   "cale": 340
+   "cale": 1
   },
-  "conflicts": 0
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
  },
  "O1754043.135 52e28c09/06851096": {
   "result": "compared",

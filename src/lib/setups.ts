@@ -1070,14 +1070,16 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     }
     if (ins.topAt !== null) topZ = ins.topAt;
 
-    // The floor from the G52 shift. On the first side the raw part stands on the parallels, so
-    // its top follows (the face-mill guess is only a guess).
+    // The floor from the G52 shift. Without a rest note the part stands on the parallels (167 of
+    // 168 later setups of the library, and every first one), so its top follows: the face-mill
+    // guess and the finished size read in any order are only guesses.
     const floorRule = s.shift && notes.length ? TABLE_Z - s.shift[2] : null;
-    if (floorRule !== null && k === 0 && ins.restDepth === null && ins.support !== null && ins.topAt === null) {
+    if (floorRule !== null && ins.restDepth === null && ins.onJaw === null && ins.support !== null && ins.topAt === null) {
       const top = floorRule + ins.support + (ins.nest ? NEST_FLOOR : 0) + size[2];
       // Only when the guess is clearly off (more than 1.5 mm): small differences are the floor's
-      // own tolerance.
-      if (Math.abs(top - topZ) > 1.5 && Math.abs(top - topZ) <= FLOOR_TRUST) topZ = top;
+      // own tolerance. On a later side Z0 is the finished top; a top below it means the part's
+      // height was underestimated by the first pass, which a later pass measures.
+      if (Math.abs(top - topZ) > 1.5 && Math.abs(top - topZ) <= FLOOR_TRUST && (k === 0 || top >= -0.5)) topZ = k === 0 ? top : Math.max(0, top);
     }
 
     const min: Vec = [cx - size[0] / 2, cy - size[1] / 2, topZ - size[2]];
