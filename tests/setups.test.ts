@@ -423,4 +423,13 @@ describe("the shop's other ways of writing a setup", () => {
     // Admins can always export (they see the same warnings).
     expect(exportBlocked([hit(), hit('holderPart')], true, true)).toBe(false);
   });
+
+  it("a turn's own hint wins over a written axis it cannot fit (shop answer D6)", () => {
+    // A quarter turn about Y never sends Z+ to Y-: about X it does.
+    const r = readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD Y-']);
+    expect(r.turns).toEqual([{ axis: 'X', deg: 90 }]);
+    expect(r.rotation).toEqual({ axis: 'X', deg: 90 });
+    // A hint that fits the written axis only sets the direction, as before.
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X-']).turns).toEqual([{ axis: 'Y', deg: -90 }]);
+  });
 });

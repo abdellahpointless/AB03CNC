@@ -256,10 +256,14 @@ export function readInstructions(notes: string[]) {
     for (const h of [...own, ...hints]) {
       if (same(apply(turn(axis, deg), h.from), h.to)) return { axis, deg };
       if (same(apply(turn(axis, -deg), h.from), h.to)) return { axis, deg: -deg };
+      // The turn's own hint wins over a written axis it cannot fit (shop answer D6):
+      // "90 GRAD UM Y DREHEN/Z+ WIRD Y-" turns about X.
+      if (own.includes(h)) for (const a of ['X', 'Y', 'Z'] as const) for (const d of [deg, -deg]) if (same(apply(turn(a, d), h.from), h.to)) return { axis: a, deg: d };
     }
     return { axis, deg };
   });
-  if (found.length) rotation = { axis: found[0].axis, deg: found[0].deg };
+  // The written angle, about the axis really turned (a hint can change it).
+  if (found.length) rotation = { axis: turns[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
   // An UNTERLAGE written with a side ("15 MM UNTERLAGE/ IN Y-") stands beside the part: a spacer, not a support.
   const SIDE = '\\s*\\/?\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
