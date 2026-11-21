@@ -258,11 +258,11 @@ rule('gcode.cyclesForHoles', 'gcode', 'Holes are spot drilled, drilled and tappe
   }));
 rule('gcode.arcsIJ', 'gcode', 'Arcs are written with I and J (centre), not with R.', 'arc lines', (p) =>
   p.lines.flatMap((l, i) => (/(?<![A-Z])G0*[23](?![0-9])/i.test(code(l)) && /(?<![A-Z])[IJR]-?[\d.]/i.test(code(l)) ? [{ holds: !/(?<![A-Z])R-?[\d.]/i.test(code(l)), at: i }] : [])));
-rule('gcode.noSubprograms', 'gcode', 'No subprograms or macros: the only call is the FANUC table out "M98 P7999".', 'programs', (p) => {
-  const i = first(p, /(?<![A-Z])(?:M97|G65)(?![0-9])|(?<![A-Z])M98\s*P(?!7999)/);
+rule('gcode.noSubprograms', 'gcode', 'No subprograms or macros: the only call is the FANUC table out "M98 P7999" (#513 in the FANUC G43 lines is a value the control holds, not a macro).', 'programs', (p) => {
+  const i = first(p, /(?<![A-Z])(?:M97|G65)(?![0-9])|(?<![A-Z])M98\s*P(?!7999)|#\d+\s*=/);
   return [{ holds: i < 0, at: i < 0 ? Math.max(0, oLine(p)) : i }];
 });
-rule('gcode.motionCodeEveryLine', 'gcode', 'Every motion line carries its motion code (G00, G01, G02, G03), also when it does not change. Not the moves into a drilling cycle (the drop to the R height, the move to the next hole between two cycles): they go on from the G00 before them. Inside a cycle the lines are hole positions.', 'motion lines', (p) => {
+rule('gcode.motionCodeEveryLine', 'gcode', 'Every motion line carries its motion code (G00, G01, G02, G03), also when it does not change. Not the moves into a drilling cycle (the drop to the R height, the move to the next hole between two cycles): they go on from the G00 before them. Inside a cycle the lines are hole positions. Machine moves (G53, such as the table out G53 Y0) are not counted: they are written without one.', 'motion lines', (p) => {
   const out: Unit[] = [];
   let cyc = false;
   const isCycle = (c: string) => /(?<![A-Z])G(?:73|8[1-9])(?![0-9])/i.test(c);
@@ -328,7 +328,7 @@ rule('gcode.feedOnlyWhenChanged', 'gcode', 'The feed is written only when it cha
   });
   return out;
 });
-rule('gcode.shortNumbers', 'gcode', 'Numbers are written short: no trailing zeros after the point (X10.5, X10.), no leading zero before it (Z-.6), except the G52 lines.', 'lines with coordinates', (p) =>
+rule('gcode.shortNumbers', 'gcode', 'Coordinates (X Y Z I J R) are written short: no trailing zeros after the point (X10.5, X10.), no leading zero before it (Z-.6), except the G52 lines (three decimals). Tool numbers after H are zero-padded on HAAS (H03).', 'lines with coordinates', (p) =>
   p.lines.flatMap((l, i) => {
     const c = code(l);
     if (!/(?<![A-Z])[XYZIJR]-?\.?\d/i.test(c) || /(?<![A-Z])G52(?![0-9])/i.test(c)) return [];
@@ -381,7 +381,8 @@ const notesBefore = (p: Program, g52: number) => {
   }
   return out;
 };
-const g52s = (p: Program) => p.lines.flatMap((l, i) => (/(?<![A-Z_])G52(?![0-9]).*[XYZ]-?\d/i.test(code(l)) ? [i] : []));
+// A G52 that puts every shift back to 0 (G52 X0 Y0 Z0) is a reset, not a clamping.
+const g52s = (p: Program) => p.lines.flatMap((l, i) => (/(?<![A-Z_])G52(?![0-9]).*[XYZ]-?\d/i.test(code(l)) && !/^G52(\s+[XYZ]-?0+(\.0*)?)+$/i.test(code(l)) ? [i] : []));
 rule('workholding.noteBeforeEachClamping', 'workholding', 'Every clamping is announced to the operator: M0 stops with the clamping notes right before its G52.', 'clampings (G52)', (p) =>
   g52s(p).map((i) => ({ holds: notesBefore(p, i).length > 0, at: i })));
 rule('workholding.firstZero', 'workholding', 'In the first clamping program zero is either 2 mm inside the X-/Y+ corner of the raw block ("G52 X-48. Y48.") or the centre of the block as clamped.', 'programs', (p) => {
@@ -446,7 +447,8 @@ function held(p: Program): (Held | null)[] {
     });
     const y = ['Y-', 'Y+'].filter((f) => f in sides).map((f) => sides[f]);
     return {
-      grip: jawTop - s.restZ,
+      // The jaws hold what is between the parallels and their top (the header's blank size can be off by a mm).
+      grip: DEFAULT_JAW_HEIGHT - s.support,
       above: st.max[2] - jawTop,
       clearance: y.length ? Math.min(...y) - jawTop : null,
       sides: Object.fromEntries(Object.entries(sides).map(([f, z]) => [f, z - jawTop])),
@@ -489,11 +491,12 @@ for (const p of programs) {
     const ins = readInstructions(s.notes.map((n) => n.text));
     const noteAt = (re: RegExp) => s.notes.find((n) => re.test(n.text.toUpperCase()))?.line ?? s.line;
     // Each cited with the note that says it: its number and, for a spacer, its side.
-    const sayingIt = (mm: number, side = '') => s.notes.find((n) => n.text.includes(String(mm)) && n.text.replace(/\s+/g, '').includes(side))?.line ?? s.line;
-    if (ins.support !== null) parallels.set(ins.support, { n: (parallels.get(ins.support)?.n ?? 0) + 1, at: parallels.get(ins.support)?.at ?? cite(p, sayingIt(ins.support)) });
+    const sayingIt = (mm: number, kind: RegExp, side = '') =>
+      s.notes.find((n) => kind.test(n.text.toUpperCase()) && new RegExp(`(?<![\\d.])${mm}(?![\\d])`).test(n.text) && n.text.replace(/\s+/g, '').includes(side))?.line ?? s.line;
+    if (ins.support !== null) parallels.set(ins.support, { n: (parallels.get(ins.support)?.n ?? 0) + 1, at: parallels.get(ins.support)?.at ?? cite(p, sayingIt(ins.support, /UNTERLAGE|CALE|CALCO/)) });
     for (const sp of ins.spacers) {
       const k = `${sp.mm} mm at ${sp.side}`;
-      spacerNotes.set(k, { n: (spacerNotes.get(k)?.n ?? 0) + 1, at: spacerNotes.get(k)?.at ?? cite(p, sayingIt(sp.mm, sp.side)) });
+      spacerNotes.set(k, { n: (spacerNotes.get(k)?.n ?? 0) + 1, at: spacerNotes.get(k)?.at ?? cite(p, sayingIt(sp.mm, /ZWISCHENLAGE|UNTERLAGE|CAL/, sp.side)) });
     }
     if (ins.restDepth !== null && rests.length < 3) rests.push(cite(p, noteAt(/EP|MASS|BASE|\/\s*IN\s*\d/)));
   }
@@ -565,18 +568,33 @@ rule('strategy.noFaceOnEdge', 'strategy', 'A clamping that stands the part on an
 }, true);
 rule('strategy.chamferLast', 'strategy', 'Chamfering and deburring (FASE / ENTGRATEN) come last in their clamping.', 'clampings that chamfer', (p) =>
   clampOps(p).filter((o) => o.some((s) => s.kind === 'chamfer')).map((o) => {
-    const after = o.findIndex((s, k) => s.kind !== 'chamfer' && o.slice(0, k).some((x) => x.kind === 'chamfer'));
+    // Operations of no known kind (T_NUT, TASTER...) do not count.
+    const after = o.findIndex((s, k) => s.kind !== 'chamfer' && s.kind !== 'other' && o.slice(0, k).some((x) => x.kind === 'chamfer'));
     return { holds: after < 0, at: after < 0 ? o.find((s) => s.kind === 'chamfer')!.line : o[after].line };
   }));
 // The order the library shows: holes before milling (face, spot, drill, tap, then pockets/contours/finishing/counterbores, chamfers last).
 const RANK: Partial<Record<OpKind, number>> = { face: 0, centre: 1, drill: 2, tap: 3, pocket: 4, contour: 4, finish: 4, counterbore: 4, chamfer: 5 };
-rule('strategy.order', 'strategy', 'Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling (in 75 clampings only holes come first, in 10 only milling).', 'clampings', (p) =>
+// Holes against milling in the clampings that have both (counterbores with the milling, as in the rule).
+const holesFirst = (() => {
+  const c = { both: 0, holesFirst: 0, millingFirst: 0 };
+  for (const p of programs)
+    for (const o of clampOps(p)) {
+      const h = o.flatMap((s, k) => (['centre', 'drill', 'tap'].includes(s.kind) ? [k] : []));
+      const m = o.flatMap((s, k) => (['pocket', 'contour', 'finish', 'counterbore'].includes(s.kind) ? [k] : []));
+      if (!h.length || !m.length) continue;
+      c.both++;
+      if (Math.max(...h) < Math.min(...m)) c.holesFirst++;
+      if (Math.max(...m) < Math.min(...h)) c.millingFirst++;
+    }
+  return c;
+})();
+rule('strategy.order', 'strategy', `Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling: of the ${holesFirst.both} clampings with both, ${holesFirst.holesFirst} make all their holes first, ${holesFirst.millingFirst} all their milling first.`, 'clampings', (p) =>
   clampOps(p).filter((o) => o.length > 1).map((o) => {
     const rank = o.map((s) => RANK[s.kind] ?? -1);
     const bad = rank.findIndex((v, k) => v >= 0 && rank.slice(0, k).some((w) => w > v));
     return { holds: bad < 0, at: bad < 0 ? o[0].line : o[bad].line };
   }));
-rule('strategy.roughThenFinish', 'strategy', 'Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.', 'clampings with both', (p) =>
+rule('strategy.roughThenFinish', 'strategy', 'In a clamping that roughs (pockets, contours) and finishes (SCHLICHT), its last finishing pass comes after its first roughing one. (Which roughing each finishing pass belongs to is not read.)', 'clampings with both', (p) =>
   clampOps(p).filter((o) => o.some((s) => s.kind === 'finish') && o.some((s) => s.kind === 'pocket' || s.kind === 'contour')).map((o) => {
     const lastFinish = o.map((s) => s.kind).lastIndexOf('finish');
     const firstRough = o.findIndex((s) => s.kind === 'pocket' || s.kind === 'contour');
