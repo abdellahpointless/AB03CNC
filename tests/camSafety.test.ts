@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { camProgram, checkProgram, commentSafe } from '../src/lib/cam/program';
 import type { Tool } from '../src/types';
 import { heightPart, plateWithHoles, pocketWithHole } from './heightPart';
+import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -93,3 +94,17 @@ describe('text from outside in the program', () => {
     expect(commentSafe('  ')).toBe('TEIL');
   });
 });
+
+describe('spot drilling as the shop does it', () => {
+  it('spots the holes under 4 mm only (docs/knowledge: strategy.spotSmallDrills)', () => {
+    // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate.
+    const holed = plateWithHoles(40, 30, 8, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 5 }]);
+    const r = camProgram({ tris: holed, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 12], orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const holesBy = (re: RegExp) => tp.moves.filter((m) => m.kind === 'drill' && re.test(m.op ?? '')).map((m) => Math.round(m.points[0][0]));
+    expect(holesBy(/^BOHREN/).sort((a, b) => a - b)).toEqual([-10, 10]);
+    expect(holesBy(/^ZENTRIER/)).toEqual([-10]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 600_000);
+});
+

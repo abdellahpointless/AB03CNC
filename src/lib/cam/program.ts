@@ -398,8 +398,9 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
 function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number): CamOp[] {
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
-  // the centre drill's holder to stay above the stock's top (drilled without one).
-  const fresh = list.filter((x) => !x.again && (!spot || (spot.length || 99) >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
+  // the centre drill's holder to stay above the stock's top (drilled without one). The shop spots
+  // only what it drills under 4 mm (docs/knowledge: strategy.spotSmallDrills, 1,572 of 1,636 holes).
+  const fresh = list.filter((x) => !x.again && x.tool.diameter < 4 && (!spot || (spot.length || 99) >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
