@@ -83,8 +83,8 @@
     "clampings": 6,
     "example": {
      "file": "O0131019.X20",
-     "line": 2641,
-     "text": "N2639 (90 GRAD STICHEL/D4 / ST_04.00_025_G45_ALHS)"
+     "line": 2725,
+     "text": "N2723 M0 (25 MM UNTERLAGE)"
     }
    },
    {
@@ -229,27 +229,19 @@
    "gripMm": [
     [
      3,
-     11
+     9
     ],
     [
      4,
-     52
+     28
     ],
     [
      5,
-     65
-    ],
-    [
-     6,
-     8
+     99
     ],
     [
      7,
-     19
-    ],
-    [
-     8,
-     1
+     20
     ],
     [
      9,
@@ -272,12 +264,8 @@
      6
     ],
     [
-     22,
-     1
-    ],
-    [
      23,
-     13
+     14
     ],
     [
      25,
@@ -3101,16 +3089,16 @@
   {
    "id": "gcode.noSubprograms",
    "topic": "gcode",
-   "rule": "No subprograms or macros: the only call is the FANUC table out \"M98 P7999\".",
+   "rule": "No subprograms or macros: the only call is the FANUC table out \"M98 P7999\" (#513 in the FANUC G43 lines is a value the control holds, not a macro).",
    "unit": "programs",
    "verifiedOnly": false,
    "parts": {
     "applies": 92,
-    "holds": 92
+    "holds": 91
    },
    "units": {
     "applies": 108,
-    "holds": 108
+    "holds": 107
    },
    "examples": [
     {
@@ -3129,13 +3117,19 @@
      "text": "O1213"
     }
    ],
-   "exceptions": [],
-   "label": "consistent across the library"
+   "exceptions": [
+    {
+     "file": "O4230811.000",
+     "line": 12,
+     "text": "N9 #5324=#5224"
+    }
+   ],
+   "label": "majority"
   },
   {
    "id": "gcode.motionCodeEveryLine",
    "topic": "gcode",
-   "rule": "Every motion line carries its motion code (G00, G01, G02, G03), also when it does not change. Not the moves into a drilling cycle (the drop to the R height, the move to the next hole between two cycles): they go on from the G00 before them. Inside a cycle the lines are hole positions.",
+   "rule": "Every motion line carries its motion code (G00, G01, G02, G03), also when it does not change. Not the moves into a drilling cycle (the drop to the R height, the move to the next hole between two cycles): they go on from the G00 before them. Inside a cycle the lines are hole positions. Machine moves (G53, such as the table out G53 Y0) are not counted: they are written without one.",
    "unit": "motion lines",
    "verifiedOnly": false,
    "parts": {
@@ -3265,7 +3259,7 @@
   {
    "id": "gcode.shortNumbers",
    "topic": "gcode",
-   "rule": "Numbers are written short: no trailing zeros after the point (X10.5, X10.), no leading zero before it (Z-.6), except the G52 lines.",
+   "rule": "Coordinates (X Y Z I J R) are written short: no trailing zeros after the point (X10.5, X10.), no leading zero before it (Z-.6), except the G52 lines (three decimals). Tool numbers after H are zero-padded on HAAS (H03).",
    "unit": "lines with coordinates",
    "verifiedOnly": false,
    "parts": {
@@ -3473,11 +3467,11 @@
    "unit": "clampings (G52)",
    "verifiedOnly": false,
    "parts": {
-    "applies": 92,
+    "applies": 91,
     "holds": 91
    },
    "units": {
-    "applies": 302,
+    "applies": 301,
     "holds": 301
    },
    "examples": [
@@ -3497,14 +3491,8 @@
      "text": "N13 G52 X15.000 Y39.000 Z5.000"
     }
    ],
-   "exceptions": [
-    {
-     "file": "O4230811.000",
-     "line": 11,
-     "text": "N8 G52 X0.0 Y0.0 Z0.0"
-    }
-   ],
-   "label": "majority"
+   "exceptions": [],
+   "label": "consistent across the library"
   },
   {
    "id": "workholding.firstZero",
@@ -3613,12 +3601,12 @@
    "unit": "clampings (G52)",
    "verifiedOnly": false,
    "parts": {
-    "applies": 92,
-    "holds": 92
+    "applies": 91,
+    "holds": 91
    },
    "units": {
-    "applies": 302,
-    "holds": 302
+    "applies": 301,
+    "holds": 301
    },
    "examples": [
     {
@@ -4033,7 +4021,7 @@
    },
    "units": {
     "applies": 225,
-    "holds": 210
+    "holds": 212
    },
    "examples": [
     {
@@ -4074,7 +4062,7 @@
   {
    "id": "strategy.order",
    "topic": "strategy",
-   "rule": "Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling (in 75 clampings only holes come first, in 10 only milling).",
+   "rule": "Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling: of the 166 clampings with both, 132 make all their holes first, 7 all their milling first.",
    "unit": "clampings",
    "verifiedOnly": false,
    "parts": {
@@ -4124,7 +4112,7 @@
   {
    "id": "strategy.roughThenFinish",
    "topic": "strategy",
-   "rule": "Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.",
+   "rule": "In a clamping that roughs (pockets, contours) and finishes (SCHLICHT), its last finishing pass comes after its first roughing one. (Which roughing each finishing pass belongs to is not read.)",
    "unit": "clampings with both",
    "verifiedOnly": false,
    "parts": {
@@ -4424,7 +4412,7 @@
      "holds": 9
     },
     "other": {
-     "applies": 36,
+     "applies": 35,
      "holds": 35
     },
     "pinPlate": {
@@ -4514,8 +4502,8 @@
      "holds": 9
     },
     "other": {
-     "applies": 36,
-     "holds": 36
+     "applies": 35,
+     "holds": 35
     },
     "pinPlate": {
      "applies": 11,
@@ -4837,7 +4825,7 @@
   },
   {
    "id": "strategy.order",
-   "rule": "Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling (in 75 clampings only holes come first, in 10 only milling).",
+   "rule": "Within a clamping: face, spot drill, drill, tap; then pockets, contours, finishing and counterbores (in any order among them); chamfers and deburring last. Holes come before milling: of the 166 clampings with both, 132 make all their holes first, 7 all their milling first.",
    "perType": {
     "contourInsert": {
      "applies": 9,
@@ -4867,7 +4855,7 @@
   },
   {
    "id": "strategy.roughThenFinish",
-   "rule": "Pockets and contours are roughed first and finished (SCHLICHT) after, in the same clamping.",
+   "rule": "In a clamping that roughs (pockets, contours) and finishes (SCHLICHT), its last finishing pass comes after its first roughing one. (Which roughing each finishing pass belongs to is not read.)",
    "perType": {
     "contourInsert": {
      "applies": 9,
@@ -15969,7 +15957,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 24,
      "removedCm3": 26.9
     },
@@ -16240,7 +16228,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 31,
      "removedCm3": 7.2
     },
@@ -16646,7 +16634,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 36,
      "removedCm3": 61
     },
@@ -16689,7 +16677,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 36,
      "removedCm3": 61
     },
@@ -16777,7 +16765,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 26,
      "removedCm3": 20.7
     },
@@ -16829,7 +16817,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 26,
      "removedCm3": 20.7
     },
@@ -16924,7 +16912,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 26,
      "removedCm3": 22.6
     },
@@ -16976,7 +16964,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 11,
      "removedCm3": 2
     },
@@ -17270,7 +17258,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 16,
      "removedCm3": 9.6
     },
@@ -17313,7 +17301,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 26,
      "removedCm3": 24.2
     },
@@ -17582,7 +17570,7 @@
      "parallels": 22,
      "turns": "X90 Y-90",
      "spacers": [],
-     "grip": 22,
+     "grip": 23,
      "aboveJaws": 14.7,
      "removedCm3": 0.3
     }
@@ -17618,7 +17606,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 24,
      "removedCm3": 36.9
     },
@@ -17661,7 +17649,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 24,
      "removedCm3": 36.9
     },
@@ -17808,7 +17796,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 40,
      "removedCm3": 124.2
     },
@@ -17887,7 +17875,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 40,
      "removedCm3": 124.2
     },
@@ -18078,7 +18066,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 6,
      "removedCm3": 4.3
     },
@@ -18121,7 +18109,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 11,
      "removedCm3": 2
     },
@@ -18164,7 +18152,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 19,
      "removedCm3": 4.3
     },
@@ -18207,7 +18195,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 41,
      "removedCm3": 22.8
     },
@@ -18381,7 +18369,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 29,
      "removedCm3": 11.3
     },
@@ -18424,7 +18412,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 29,
      "removedCm3": 11.3
     },
@@ -18699,7 +18687,7 @@
      "spacers": [
       "50 mm X-"
      ],
-     "grip": 8,
+     "grip": 7,
      "aboveJaws": 12,
      "removedCm3": 4.4
     },
@@ -18859,7 +18847,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 11,
      "removedCm3": 3.6
     },
@@ -18902,7 +18890,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 11,
      "removedCm3": 3.6
     },
@@ -18988,7 +18976,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 26,
      "removedCm3": 11.5
     },
@@ -19490,7 +19478,7 @@
      "spacers": [
       "50 mm X-"
      ],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 34,
      "removedCm3": 11.2
     },
@@ -19558,7 +19546,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 21,
      "removedCm3": 14.3
     },
@@ -19601,7 +19589,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 9,
      "removedCm3": 2.1
     },
@@ -19739,7 +19727,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 46,
      "removedCm3": 30.3
     },
@@ -19800,7 +19788,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 27,
      "removedCm3": 59.9
     },
@@ -19882,7 +19870,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 32,
      "removedCm3": 5.7
     },
@@ -20068,7 +20056,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 56,
      "removedCm3": 30.8
     },
@@ -20222,7 +20210,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 46,
      "removedCm3": 10
     },
@@ -20589,7 +20577,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 19,
      "removedCm3": 16.7
     },
@@ -20632,7 +20620,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 6,
+     "grip": 5,
      "aboveJaws": 19,
      "removedCm3": 16.7
     },
@@ -21000,7 +20988,7 @@
      "parallels": 41,
      "turns": null,
      "spacers": [],
-     "grip": 3,
+     "grip": 4,
      "aboveJaws": 27,
      "removedCm3": 17.5
     },
@@ -21070,7 +21058,7 @@
      "parallels": 41,
      "turns": null,
      "spacers": [],
-     "grip": 3,
+     "grip": 4,
      "aboveJaws": 27,
      "removedCm3": 17.5
     },
@@ -21262,7 +21250,7 @@
      "parallels": 40,
      "turns": null,
      "spacers": [],
-     "grip": 4,
+     "grip": 5,
      "aboveJaws": 16,
      "removedCm3": 20.8
     },
