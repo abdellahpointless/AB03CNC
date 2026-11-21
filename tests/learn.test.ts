@@ -85,6 +85,19 @@ describe('learning from the other ways an operation is written', () => {
     expect(p.samples.find((x) => x.op === 'TASCHE_8MM')).toMatchObject({ kind: 'pocket', f: 1500 });
     expect(p.samples.find((x) => x.op === 'SCHLICHT_8MM')).toMatchObject({ type: 'SF', d: 8, kind: 'finish', f: 1200 });
   });
+  it('each operation keeps the line it starts on and its clamping', () => {
+    expect(p.samples.map((x) => [x.op, prog.split('\n')[x.line], x.setup])).toEqual([
+      ['PLAN_MK40', 'N2 (TOOLPATH PLAN_MK40)', 0],
+      ['NC-ANBOHREN', 'N11 (TOOLPATH NC-ANBOHREN)', 0],
+      ['BOHREN_1.0MM', 'N19 (TOOLPATH BOHREN_1.0MM)', 0],
+      ['TASCHE_8MM', 'N27 (TOOLPATH TASCHE_8MM)', 0],
+      ['SCHLICHT_8MM', 'N36 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_040_000_ALHS)', 0],
+    ]);
+    // Turned over before the pocket: the pocket and its finish are the second clamping's.
+    const turned = readProgram(prog.replace('N27 (TOOLPATH TASCHE_8MM)', 'N26 M0 (TEIL 180 GRAD UM X DREHEN)\nN26 G52 X0 Y0 Z-10.\nN27 (TOOLPATH TASCHE_8MM)'), 'O0001');
+    expect(turned.samples.map((x) => x.setup)).toEqual([0, 0, 0, 1, 1]);
+    expect(turned.order).toEqual([['face', 'centre', 'drill'], ['pocket', 'finish']]);
+  });
   it('NC-ANBOHREN is spot drilling', () => {
     expect(p.samples.find((x) => x.op === 'NC-ANBOHREN')).toMatchObject({ type: 'ZB', kind: 'centre' });
     expect(p.order).toEqual([['face', 'centre', 'drill', 'pocket', 'finish']]);

@@ -26,6 +26,9 @@ export interface Sample {
   q: number | null;
   /** Deepest cut below the setup's top (mm). */
   depth: number;
+  /** Where the operation starts: its name's line (else its first move), 0-based, and its clamping (0-based). */
+  line: number;
+  setup: number;
 }
 
 export interface PartRead {
@@ -89,6 +92,7 @@ export function readProgram(text: string, name = ''): PartRead {
   const order: OpKind[][] = [[]];
   const m0: string[] = [];
   let op = '';
+  let opLine = -1;
   let tool: { type: string; d: number; length: number; material: string } | null = null;
   let s: number | null = null;
   let f: number | null = null;
@@ -122,12 +126,14 @@ export function readProgram(text: string, name = ''): PartRead {
     if (sample.f !== null || sample.q !== null || sample.kind === 'drill' || sample.kind === 'centre' || sample.kind === 'tap') samples.push(sample);
     const o = order[order.length - 1];
     if (o[o.length - 1] !== sample.kind) o.push(sample.kind);
+    // An operation cut by a new clamping goes on there from its first move.
+    opLine = -1;
     cur = null;
   };
-  const open = () => {
+  const open = (at: number) => {
     if (cur || !tool) return;
     cur = {
-      sample: { material: tool.material, type: tool.type, d: tool.d, length: tool.length, kind: kindOf(op, tool.type), op, s, f: null, fz: null, ap: null, ae: null, q: null, depth: 0 },
+      sample: { material: tool.material, type: tool.type, d: tool.d, length: tool.length, kind: kindOf(op, tool.type), op, s, f: null, fz: null, ap: null, ae: null, q: null, depth: 0, line: opLine >= 0 ? opLine : at, setup: order.length - 1 },
       cut: [],
       plunge: [],
       levels: new Set(),
@@ -136,7 +142,8 @@ export function readProgram(text: string, name = ''): PartRead {
     };
   };
 
-  for (const raw0 of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw0 = lines[i];
     const line = raw0.toUpperCase();
     const comment = line.match(/\(([^)]*)\)/)?.[1] ?? '';
     const code = line.replace(/\([^)]*\)/g, '');
@@ -148,6 +155,7 @@ export function readProgram(text: string, name = ''): PartRead {
     if (tp) {
       close();
       op = tp[1].trim();
+      opLine = i;
       continue;
     }
     // An operation that goes on with the same tool: "(SCHLICHT_8MM MIT WERKZEUG SF_08.00_040_000_FH)".
@@ -155,6 +163,7 @@ export function readProgram(text: string, name = ''): PartRead {
     if (same) {
       close();
       op = same[1];
+      opLine = i;
     }
     // A copy of a tool carries a number: "SB_01.00_030_000_ALHS_1".
     const tc = comment.match(/([A-Z]{2,3})_(\d+\.\d+)_(\d{3})_[A-Z0-9]+_([A-Z]+)(?:_\d+)?\s*$/);
@@ -188,7 +197,7 @@ export function readProgram(text: string, name = ''): PartRead {
     const ny = Y ?? y;
     const nz = Z ?? z;
     if (motion >= 73) {
-      open();
+      open(i);
       if (cur) {
         cur.sample.q ??= word(code, 'Q');
         if (F !== null) cur.plunge.push(F);
@@ -196,7 +205,7 @@ export function readProgram(text: string, name = ''): PartRead {
         cur.sample.s ??= s;
       }
     } else if (motion >= 1) {
-      open();
+      open(i);
       if (cur && f !== null) {
         const xy = nx !== x || ny !== y;
         if (xy) {
