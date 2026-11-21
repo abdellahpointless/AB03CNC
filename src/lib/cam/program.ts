@@ -692,8 +692,33 @@ function chamferPaths(P: Float32Array, bands: { lo: number; hi: number }[], R: n
   return out;
 }
 
-function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number): CamOp {
-  const cut = cutData(tool, 'chamfer', mat, limits);
+/** The shop's deburring (ENTGRATEN): the graver's tip this deep under the face, its axis this far outside the edge (mm). */
+const DEBURR = { depth: 0.3, off: 0.2 };
+
+/**
+ * The deburring paths round the top face (z 0 of P): along every sharp edge, a 0.1 mm break (the
+ * 90° graver of tip radius 0 at DEBURR). Where the cone would take more than that at any height (an
+ * edge the model chamfers or rounds, a wall leaning out) the path is left out.
+ */
+function deburrPaths(P: Float32Array, R: number): { z: number; pts: P2[]; top: number }[] {
+  const t = -DEBURR.depth;
+  const edge = slice(P, -0.01);
+  if (area(edge) < 0.05) return [];
+  // At each height the cone (radius z - t) may reach DEBURR.off short of its radius into the material, no more.
+  let hit: Region = [];
+  for (let z = t + 0.05; z < 0.001; z += 0.05) {
+    const r = Math.min(R, z - t, DEBURR.off) - 0.02;
+    if (r > 0) hit = union(hit, offset(slice(P, Math.min(z, -0.01)), r));
+  }
+  const loops = offset(edge, DEBURR.off).map((l) => [...l].reverse());
+  const where = difference(offset(edge, DEBURR.off + 0.3), hit);
+  return trim(loops, where)
+    .filter((pts) => pts.length > 1)
+    .map((pts) => ({ z: t, pts, top: 0 }));
+}
+
+function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number, name = 'FASE'): CamOp {
+  const cut = cutData(tool, name === 'FASE' ? 'chamfer' : 'deburr', mat, limits);
   const lines = [`G00 G90 X${n3(paths[0].pts[0][0])} Y${n3(paths[0].pts[0][1])} S${cut.s} M03`];
   for (const { z, pts, top } of paths) {
     // Down over the chamfer's top (clear of the corner it is about to take off), then in.
@@ -701,7 +726,7 @@ function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[
     pts.slice(1).forEach((p, i) => lines.push(`G01 X${n3(p[0])} Y${n3(p[1])}${i ? '' : ` F${cut.f}.`}`));
   }
   lines.push(`G00 Z${n3(clear)}`);
-  return { kind: 'chamfer', purpose: 'chamfer', name: 'FASE', tool, cut, lines };
+  return { kind: 'chamfer', purpose: 'chamfer', name, tool, cut, lines };
 }
 
 /** The outline of a region (min and max X, Y). */
@@ -1449,6 +1474,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (op) ops.push(op);
         zones.push({ kind: 'engraving', loops: union(grooves.flatMap((g) => g.region)), lo: -Math.max(...grooves.map((g) => g.depth)), hi: 0 });
       } else if (grooves.length) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: grooves.length } });
+    }
+    // 6. The sharp edges round the top face deburred, last in the clamping, as the shop does (ENTGRATEN):
+    // with the smallest 90° graver (the shop's Ø4: 124 operations), the machine's first.
+    {
+      const gravers = usable(tools, ['ST']).filter((t) => t.template?.shape === 'G45' || !t.template);
+      const graver = [...gravers].sort((a, b) => Number(b.inMachine) - Number(a.inMachine) || a.diameter - b.diameter)[0];
+      const paths = graver ? deburrPaths(P, graver.diameter / 2) : [];
+      if (graver && paths.length) ops.push(chamfering(graver, paths, mat, limits, clear, 'ENTGRATEN'));
     }
     // Where precision matters: the contour a top plate or contour insert takes its part in (the
     // pockets' walls, not round holes), a seal cage's thin walls.

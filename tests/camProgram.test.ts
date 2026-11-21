@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { camProgram } from '../src/lib/cam/program';
+import { GOUGE_MM3 } from '../src/lib/cam/limits';
+import { camProgram, gougeOf } from '../src/lib/cam/program';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { heightPart } from './heightPart';
 import type { Tool } from '../src/types';
@@ -57,6 +58,20 @@ describe('CAM AI', () => {
     for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('deburrs the sharp edges facing up, last in every clamping, with the 90° graver (S5: the shop’s ENTGRATEN, 0.3 deep, 0.2 off the edge)', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    for (const s of r.setups) {
+      const last = s.ops[s.ops.length - 1];
+      expect(last.name, s.side).toBe('ENTGRATEN');
+      expect(last.tool.type).toBe('ST');
+      expect(last.lines.some((l) => /^G01 Z-0\.3 F/.test(l))).toBe(true);
+    }
+    // A 0.1 mm break of the edge: within what the check reads as the model's own surface.
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(gougeOf(r.check)).toBeLessThan(GOUGE_MM3);
   }, 300_000);
 
   it('never uses a tool the operator does not have', () => {
