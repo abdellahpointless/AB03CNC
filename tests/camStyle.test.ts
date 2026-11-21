@@ -126,6 +126,13 @@ describe("CAM AI's program in the shop's words", () => {
     expect(shopStyle(high, 'HAAS', (code) => shorten(code).replace('G00 Y10.', 'G00 Y11.')).shortened).toBe(false);
   });
 
+  it('reads lines without a number too (a move split into pieces over a parallel)', () => {
+    const split = ['N1 T1 M6', 'N2 G00 G43 H01 Z50. M08', 'N3 G00 G90 X0. Y0. S1000 M03', 'N4 G00 Z2.', 'N5 G01 Z-0.2 F1200.', 'G01 X3. Y3. Z-0.2', 'G01 Z-0.5', 'G01 X10. Y10. Z-0.5', 'N6 G01 X0. Y10.', 'N7 G00 Z50.'].join('\n');
+    const r = shopStyle(split, 'HAAS');
+    expect(r.shortened).toBe(true);
+    expect(r.code.split('\n').slice(5, 9)).toEqual(['N6 G01 X3. Y3.', 'N7 G01 Z-.5', 'N8 G01 X10. Y10.', 'N9 G01 X0.']);
+  });
+
   it('gives the program back as it was when the shortened one would change a spindle, tool, offset or M word, or a clamping shift', () => {
     for (const wrong of [(code: string) => code.replace('S9000 M03', 'S900 M03'), (code: string) => code.replace('G52 X-28. Y33. Z-3.', 'G52 X-28. Y33. Z-2.'), (code: string) => code.replace('N25 G00 Z50.\nN26 M09', 'N25 G00 Z50.\nN26 M05')])
       expect(shopStyle(cam, 'HAAS', (code) => wrong(shorten(code))).shortened).toBe(false);

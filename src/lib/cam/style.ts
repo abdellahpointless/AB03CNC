@@ -71,12 +71,12 @@ export function shorten(code: string, still = false): string {
   let feed: string | null = null;
   for (let i = 0; i < src.length; i++) {
     const raw = src[i];
-    const n = raw.match(/^N\d+ /);
-    if (!n) {
+    if (raw === '%' || /^O\d/.test(raw) || !raw) {
       out.push(raw);
       continue;
     }
-    let l = raw.slice(n[0].length);
+    // A line without a number is read too (a move split into pieces over a parallel).
+    let l = raw.replace(/^N\d+ /, '');
     const comment = l.startsWith('(') || l.startsWith('M0 (') || l.startsWith('M01');
     if (comment) {
       out.push(l);
