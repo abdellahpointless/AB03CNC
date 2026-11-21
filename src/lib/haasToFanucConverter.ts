@@ -138,6 +138,13 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     // G43 Height/Diameter offset: [N..] [G00] G43 H<num> Z<val> [M08]
     if (/\bG43\b.*H\d+/i.test(code)) {
       stats.g43Converted++;
+      // A feed approach ("G01 G43 H03 Z5. F500."): the block stays whole and only the offset words
+      // change. Split, the G00 of the shop's G43 line would turn it and the moves after it into rapids.
+      if (/(?<![A-Z])G0*[123](?![0-9])/i.test(code)) {
+        out.push(replaceInCode(line, /(?<![A-Z])H\d+/i, 'H#513 D#513 M254'));
+        label = -1;
+        continue;
+      }
       const zMatch = code.match(/Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
       // No Z on the line: the Z of the rapid right after it (the approach), never an invented one.
       const zVal = zMatch ? zMatch[0] : nextRapidZ(input, i + 1);

@@ -128,8 +128,14 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
       }
     }
 
-    // FANUC G43 line -> HAAS
-    if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line))) {
+    // A feed approach ("G01 G43 Z5. H#513 D#513 M254 F500"): the block stays whole and only the
+    // offset words change (split, the G00 G43 line would turn it and the moves after it into
+    // rapids); its feed and Z get their dots below.
+    if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line)) && /(?<![A-Z])G0*[123](?![0-9])/i.test(codeOnly(line))) {
+      stats.g43Converted++;
+      line = replaceInCode(replaceInCode(replaceInCode(line, /(?<![A-Z])H#513/i, `H${lastToolNumber}`), /\s*(?<![A-Z])D#513/i, ''), /\s*(?<![A-Z0-9])M254(?![0-9])/i, '');
+    } else if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line))) {
+      // FANUC G43 line -> HAAS
       stats.g43Converted++;
       const zMatch = codeOnly(line).match(/(?<![A-Z])Z[-+]?(?:\d+\.?\d*|\.\d+)/i);
       // No Z on the line: never "Z0." (a rapid down to the part top); the approach rapid after it.

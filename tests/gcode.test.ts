@@ -3,6 +3,7 @@ import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemap
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
 import { defaultToolbox } from '../src/lib/defaultTools';
+import { parseToolpath } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
 
 const haas1 = defaultToolbox['HAAS-1']!;
@@ -560,5 +561,29 @@ describe('the O line of a FANUC program', () => {
     expect(first('O01234 (ROD)')).toBe('O0234 (ROD)');
     expect(first('O01234 (V2)')).toBe('O0234 (V2)');
     expect(first('O01203 (BRIDE ACIER)')).toBe('O0203 (BRIDE ACIER)');
+  });
+});
+
+describe('a G43 on a feed move (G01 G43)', () => {
+  const kindAfter = (code: string, text: string) => {
+    const lines = code.split('\n');
+    const tp = parseToolpath(code, { rapid: 30000, toolChange: 5 });
+    return tp.moves.find((m) => lines[m.line].includes(text))?.kind;
+  };
+
+  it('HAAS -> FANUC keeps the block whole: only the offset words change, the moves after it stay feeds', () => {
+    const src = '%\nO1234\nG40 G17 G53 G49 G80 G90\nT3 M6\n(FRAISE D10)\nM01 (CHECK TOOL)\nG00 G90 X10. Y0. S3000 M03\nG01 G43 H03 Z5. F500.\nX20.\nM30\n%';
+    const out = convertHaasToFanuc(src, 'x.nc').fanucCode;
+    expect(out.split('\n')).toContain('N5 G01 G43 H#513 D#513 M254 Z5. F500');
+    expect(out).not.toMatch(/G00 G43/);
+    expect(kindAfter(out, 'X20.')).toBe('feed');
+  });
+
+  it('FANUC -> HAAS keeps the block whole too', () => {
+    const src = '%\nO01234\nG0 G53 G49 Z0 G94 M95\nT3 M6\nM01 (FRAISE D10)\nG00 G90 X10. Y0. S3000 M03\nG01 G43 Z5. H#513 D#513 M254 F500\nX20.\nM30\n%';
+    const out = convertFanucToHaas(src, 'x.nc').haasCode;
+    expect(out).toMatch(/^N\d+ G01 G43 Z5\. H03 F500\.$/m);
+    expect(out).not.toMatch(/G00 G43/);
+    expect(kindAfter(out, 'X20.')).toBe('feed');
   });
 });
