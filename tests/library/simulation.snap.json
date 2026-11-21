@@ -1,0 +1,1044 @@
+{
+ "O0024263.X20 bb64d5c4/680fb4db": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0024264.X20 b361ad9d/52daff90": {
+  "result": "compared",
+  "setups": 5,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.5878,
+  "pieces": 42
+ },
+ "O0036265.X20 05642d2d/680fdb48": {
+  "result": "compared",
+  "setups": 1,
+  "rejects": [],
+  "collisions": {
+   "cale": 15
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0037181_2.X20 b26b5c88/2f5aa9e1": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0037181.X20 45aa9260/2f5aa9e1": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0037519.X20 e1777983/0d2ab829": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {
+   "cale": 2,
+   "spacer": 22
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0038963.X20 b0848eab/53518e92": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0041108.X20 34a2a356/3c826310": {
+  "result": "size mismatch",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O0055194.X20 38ddd534/d824a5d9": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "spacer": 21
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0073078_2.X20 d9623d61/d549bbc2": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [
+   "setup 3: cale 4"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0073078.X20 edda39a5/d549bbc2": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [
+   "setup 3: cale 4"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0084691.X20 f2990f37/cfc71a02": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9967,
+  "pieces": 2
+ },
+ "O0089654.X20 293fd65d/62b6a06f": {
+  "result": "compared",
+  "setups": 5,
+  "rejects": [],
+  "collisions": {
+   "cale": 2,
+   "spacer": 4
+  },
+  "conflicts": 0,
+  "match": 0.8169,
+  "pieces": 71
+ },
+ "O0095457.X20 1a0b9fb4/b7ce6689": {
+  "result": "size mismatch",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O0096794.X20 77d3db5b/dbb584ab": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0096795.X20 be302b11/e283c69d": {
+  "result": "size mismatch",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O0104049.X20 7ba6c2d8/0516c2df": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106604.X20 0e1cd235/a9fda8b9": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106605.X20 1b33384c/e889b451": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [
+   "setup 2: size Y 20.5 (cut 25.1)"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106606.X20 cbf6262d/757b6781": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106612.X20 c18802fc/29f95749": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106623.X20 ebfe7f9f/45c3839d": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0106624.X20 ac6268a1/edc61c67": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0118105.X20 908356ec/e12705c3": {
+  "result": "compared",
+  "setups": 1,
+  "rejects": [],
+  "collisions": {
+   "cale": 8
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0124681.X20 988e9a9b/4f093b98": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9343,
+  "pieces": 3
+ },
+ "O0125595.X20 8e294283/563a6aaf": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0125596.X20 c5596270/14589598": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 0.8672,
+  "pieces": 2
+ },
+ "O0125674.X20 64b41497/cbf76cff": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 10
+  },
+  "conflicts": 0,
+  "match": 0.9397,
+  "pieces": 5
+ },
+ "O0125675.X20 fae5765f/4e8895a3": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131019_2.X20 745768c3/0c94758d": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131019.X20 16bf7182/0c94758d": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131775_2.X20 9289073e/e43e57ba": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131775.X20 242c06c0/e43e57ba": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131780.X20 893f0b1f/ef4972f8": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 10,
+   "spacer": 18
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131784_2.X20 313bef3a/22e59246": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0131784.X20 2591c9a9/22e59246": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0132934.X20 33da3aba/9a224c74": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 14,
+   "spacer": 18
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0134813_2.X20 85c0bcb0/cdd35454": {
+  "result": "compared",
+  "setups": 5,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0134813.X20 20dd9603/cdd35454": {
+  "result": "compared",
+  "setups": 5,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0137238_2.X20 72cbe3d6/be3a11b0": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9872,
+  "pieces": 1
+ },
+ "O0137238.X20 a5178ee4/be3a11b0": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9872,
+  "pieces": 1
+ },
+ "O0143118.X20 46d43b22/27081ffa": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155034.X20 82e80739/d802a358": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155036.X20 32806ba5/440e1d14": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155037.X20 5eed3ed0/267ca4cc": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155136.X20 f807a2e2/c1d47a63": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155139.X20 96a6f5fc/7501efa1": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {
+   "spacer": 107
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155153.X20 a1ebff4c/220c3dbf": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9991,
+  "pieces": 1
+ },
+ "O0155317_2.X20 699bed24/526ec786": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 3
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0155317.X20 10c3a5d4/526ec786": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 3
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0156138.X20 33d572dd/53c59835": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0161108.X20 a839d8d8/d7ccec1c": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [
+   "setup 3: size X 300 (cut 145)"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0161424.X20 f08a2c99/4cb31e9e": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0168459.X20 809ee55c/182581eb": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0168461.X20 57135926/45d00b10": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173010.X20 8db5660f/be92dc65": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 4,
+   "spacer": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173572.X20 bc0b05fc/17d26083": {
+  "result": "compared",
+  "setups": 1,
+  "rejects": [],
+  "collisions": {
+   "cale": 7
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173579.X20 6d87b3da/50a08f8c": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 3
+  },
+  "conflicts": 0,
+  "match": 0.9999,
+  "pieces": 2
+ },
+ "O0173595.X20 94410f16/72b3fa3a": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173596.X20 787984bf/0e900b9d": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {
+   "cale": 1
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173704.X20 ec0805f5/34359096": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9998,
+  "pieces": 1
+ },
+ "O0173781.X20 906bf266/03e0c779": {
+  "result": "compared",
+  "setups": 6,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O0173835.X20 b3ff11d4/7141a37c": {
+  "result": "compared",
+  "setups": 5,
+  "rejects": [
+   "setup 5: size Y 36 (cut 50)"
+  ],
+  "collisions": {
+   "cale": 3,
+   "jaw": 8,
+   "spacer": 24
+  },
+  "conflicts": 0,
+  "match": 0.97,
+  "pieces": 2
+ },
+ "O0173954.X20 914a87fa/ca939280": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9994,
+  "pieces": 1
+ },
+ "O1024043.C51 c60b4811/5dc8fa92": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9617,
+  "pieces": 6
+ },
+ "O1027213.C96 e451e404/01301896": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1057063_2.C90 8fe4275b/60374ea9": {
+  "result": "size mismatch",
+  "setups": 6,
+  "rejects": [],
+  "collisions": {
+   "jaw": 3
+  },
+  "conflicts": 0
+ },
+ "O1057063.C90 fbe0e2c0/60374ea9": {
+  "result": "size mismatch",
+  "setups": 6,
+  "rejects": [],
+  "collisions": {
+   "jaw": 3
+  },
+  "conflicts": 0
+ },
+ "O1130153_2.113 1ffc5a14/83249494": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1130153.113 b47e0fdf/83249494": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1161033_2.129 30b6c412/7cfa5e95": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1161033.129 9a8cb73d/7cfa5e95": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1222033.113 6e2531c4/c437321d": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1268043_2.128 b8c4eaef/5130e473": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1268043.128 0a839ad5/5130e473": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1272053.C96 70a8866f/cee06224": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1301093.C96 5295c45b/0f6a8f03": {
+  "result": "size mismatch",
+  "setups": 4,
+  "rejects": [
+   "setup 2: size X 20 (cut 25)"
+  ],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O1335033_2.105 f3d9b947/6119e39b": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1335033.105 de1d25de/6119e39b": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1420213.C62 178b33e9/87411672": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 0.9418,
+  "pieces": 1
+ },
+ "O1566213.134 7b039777/ee2ec30e": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 2
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1610603.C85 0982886c/b53ec067": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 14,
+   "spacer": 17
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1640053_2.C72 e53fe2e7/fccdb646": {
+  "result": "size mismatch",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O1640053.C72 9504b0e7/fccdb646": {
+  "result": "size mismatch",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O1650603.C18 0ad1f28f/b4e0e7c7": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {
+   "cale": 15
+  },
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1723083.135 29c8c5a5/b6f76c40": {
+  "result": "size mismatch",
+  "setups": 4,
+  "rejects": [
+   "setup 4: size X 28 (cut 23.3)"
+  ],
+  "collisions": {
+   "cale": 340
+  },
+  "conflicts": 0
+ },
+ "O1754043.135 52e28c09/06851096": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1754053.135 5ea575e1/d2b247db": {
+  "result": "size mismatch",
+  "setups": 7,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O1784033_2.129 8ec513d0/19859129": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {
+   "cale": 1
+  },
+  "conflicts": 0,
+  "match": 0.9781,
+  "pieces": 8
+ },
+ "O1784033.129 361bccd0/19859129": {
+  "result": "compared",
+  "setups": 4,
+  "rejects": [],
+  "collisions": {
+   "cale": 1
+  },
+  "conflicts": 0,
+  "match": 0.9781,
+  "pieces": 8
+ },
+ "O1784233.129 110eed98/3ad11eef": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {
+   "cale": 5
+  },
+  "conflicts": 0,
+  "match": 0.9989,
+  "pieces": 1
+ },
+ "O1860053.C46 ff9707d9/fd8a8baf": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1916043_2.C96 972d76b5/d42ddd98": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [
+   "setup 3: size Y 15.8 (cut 11.8)"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1916043.C96 1522db53/d42ddd98": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [
+   "setup 3: size Y 15.8 (cut 11.8)"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1920213.105 fe1a99e8/160d3058": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [
+   "setup 2: cale 40.5"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1944053_2.C94 e5e6d40c/25b18116": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1944053.C94 b1aa3a77/25b18116": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [
+   "setup 2: size X 50 (cut 112)"
+  ],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O1972033.121 b5bdcf63/68e5aa37": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2308115.000 05a60026/5dc8fa92": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {
+   "cale": 1
+  },
+  "conflicts": 0,
+  "match": 0.9235,
+  "pieces": 1
+ },
+ "O2500009.002 abe2f57e/8bdc3a90": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2586546.000 6b923b7f/904cf374": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2613201_2.000 441ba43c/6f26cfdd": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2613201.000 08d7ea6f/6f26cfdd": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2619723.000 52edd748/9cbfc330": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2625441.000 c6319018/50900f72": {
+  "result": "compared",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 1,
+  "pieces": 0
+ },
+ "O2633759.000 51d8d6c6/b10326d3": {
+  "result": "size mismatch",
+  "setups": 2,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O4230811.000 82d17888/5dc8fa92": {
+  "result": "size mismatch",
+  "setups": 1,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0
+ },
+ "O4280166.001 0e0674a5/5029b15b": {
+  "result": "compared",
+  "setups": 3,
+  "rejects": [],
+  "collisions": {},
+  "conflicts": 0,
+  "match": 0.9995,
+  "pieces": 2
+ }
+}
