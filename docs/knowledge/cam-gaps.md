@@ -7,8 +7,8 @@ the time of writing), the change, and how it is checked. Status: **planned**, **
 **question** (for the shop), **kept** (CAM AI already does it the shop's way).
 
 First comparison, one verified part (`O0161108.X20`, a 304 x 150 x 20 mm plate): the engineers need 4
-clampings, 1,364 lines, 16.2 minutes; CAM AI 6 clampings, 14,988 lines, 28.3 minutes. Both programs make
-the part (CAM AI's simulation matches the model, nothing collides). CAM AI on every reference program, next to the
+clampings, 1,364 lines, 16.2 minutes; CAM AI 6 clampings, 14,988 lines, 28.3 minutes. In the simulation both
+programs make the part (CAM AI's matches the model, nothing collides); P1 says where its later clampings really sit. CAM AI on every reference program, next to the
 engineers' one: `docs/knowledge/cam-validation.md`.
 
 ## Positioning (found by the review; not fixed)
