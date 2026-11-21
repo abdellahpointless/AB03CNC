@@ -1047,6 +1047,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
   const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
   for (const si of first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
+  // Turned over about the machine's X, as the shop mostly does (docs/knowledge: X180 in 63 of 100
+  // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
+  const [s1, s2] = chosen;
+  if (SIDES[s2].d.every((v, k) => v === -SIDES[s1].d[k])) feats[s2] = sideFeatures(tris, SIDES[s2], false, mul([1, 0, 0, 0, -1, 0, 0, 0, -1], feats[s1].R));
   for (;;) {
     let best = -1;
     let gain = 0;

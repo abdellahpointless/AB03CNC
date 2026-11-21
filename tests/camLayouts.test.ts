@@ -37,3 +37,14 @@ describe('how the part lies in the vise', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 180_000);
 });
+
+describe('turning the part over', () => {
+  it('turns it about X, as the shop mostly does (docs/knowledge: second clamping X180 in 63 of 100, Y180 in 31), laid along X or across', () => {
+    for (const spin of [false, true]) {
+      const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin } });
+      expect(r.setups[1].notes[0], `spin ${spin}`).toMatch(/^TEIL 180 GRAD UM X DREHEN\//);
+      expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    }
+  }, 600_000);
+});
+

@@ -152,8 +152,8 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
 }
 
 /** The part seen from one side: everything a setup with that side up can machine. */
-export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false): SideFeatures {
-  const R = spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d);
+export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false, turn?: Mat3): SideFeatures {
+  const R = turn ?? (spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d));
   const P = turnTris(tris, R);
   const { min, max } = bounds(P);
   const floors = new Map<number, number>();
