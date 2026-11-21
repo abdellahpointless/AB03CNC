@@ -421,8 +421,9 @@ describe("the shop's other ways of writing a setup", () => {
     // A tool into a cale or a spacer is a warning; unknown cale heights and wrong sizes are not hits at all.
     expect(exportBlocked([hit('cale'), hit('spacer')], false, false)).toBe(false);
     expect(exportBlocked([], false, false)).toBe(false);
-    // Admins can always export (they see the same warnings).
-    expect(exportBlocked([hit(), hit('holderPart')], true, true)).toBe(false);
+    // Admins can always export once the check has shown them its hits (D14), never before it ends.
+    expect(exportBlocked([hit(), hit('holderPart')], false, true)).toBe(false);
+    expect(exportBlocked([], true, true)).toBe(true);
   });
 
   it("a turn's own hint wins over a written axis it cannot fit (shop answer D6)", () => {

@@ -41,13 +41,13 @@ export interface Collision {
 }
 
 /**
- * Whether the export waits (shop answers D7, D8, D14): a tool or a holder into the jaws or the part
- * stops it, as does the check still running. A tool into a cale or a spacer, a cale height the box
- * does not have and a clamping size the part does not have (the rejects) are only warnings. Admins
- * can always export.
+ * Whether the export waits (shop answers D7, D8, D14): for everyone while the check is still running
+ * (its hits are not shown yet); then a tool or a holder into the jaws or the part stops it. A tool
+ * into a cale or a spacer, a cale height the box does not have and a clamping size the part does
+ * not have (the rejects) are only warnings. Admins can export once they have seen the hits.
  */
 export const exportBlocked = (hits: Collision[], checking: boolean, admin: boolean) =>
-  !admin && (checking || hits.some((h) => h.what !== 'cale' && h.what !== 'spacer'));
+  checking || (!admin && hits.some((h) => h.what !== 'cale' && h.what !== 'spacer'));
 
 export type Reject = { kind: 'cale'; mm: number; line: number } | { kind: 'size'; axis: 'X' | 'Y'; want: number; found: number; line: number };
 
