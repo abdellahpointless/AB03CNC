@@ -2528,6 +2528,102 @@
     }
    ]
   },
+  "otherMaterials": [
+   {
+    "material": "EPO",
+    "programs": 1,
+    "parts": 1,
+    "cutWith": [
+     {
+      "code": "FH",
+      "operations": 13
+     }
+    ]
+   },
+   {
+    "material": "MS",
+    "programs": 2,
+    "parts": 2,
+    "cutWith": [
+     {
+      "code": "ALU",
+      "operations": 26
+     },
+     {
+      "code": "FR",
+      "operations": 2
+     },
+     {
+      "code": "POM",
+      "operations": 2
+     },
+     {
+      "code": "FH",
+      "operations": 1
+     }
+    ]
+   },
+   {
+    "material": "PC GF",
+    "programs": 17,
+    "parts": 12,
+    "cutWith": [
+     {
+      "code": "ALU",
+      "operations": 270
+     },
+     {
+      "code": "POM",
+      "operations": 20
+     },
+     {
+      "code": "FR",
+      "operations": 14
+     },
+     {
+      "code": "FH",
+      "operations": 5
+     }
+    ]
+   },
+   {
+    "material": "PEEK",
+    "programs": 2,
+    "parts": 1,
+    "cutWith": [
+     {
+      "code": "ALU",
+      "operations": 46
+     },
+     {
+      "code": "POM",
+      "operations": 2
+     }
+    ]
+   },
+   {
+    "material": "PETP",
+    "programs": 1,
+    "parts": 1,
+    "cutWith": [
+     {
+      "code": "POM",
+      "operations": 10
+     }
+    ]
+   },
+   {
+    "material": "VA",
+    "programs": 2,
+    "parts": 1,
+    "cutWith": [
+     {
+      "code": "VAHS",
+      "operations": 46
+     }
+    ]
+   }
+  ],
   "g43Heights": [
    [
     50,
@@ -4744,16 +4840,16 @@
   {
    "id": "tools.dataForPartMaterial",
    "topic": "tools",
-   "rule": "The tool's cutting data is for the part's material: the code's material is the header's.",
-   "unit": "operations",
+   "rule": "On aluminium, POM and FH parts, the tool's cutting data is for the part's material: the code's material (ALHS, KS, FH) is the header's.",
+   "unit": "operations on ALU, POM and FH parts",
    "verifiedOnly": false,
    "parts": {
-    "applies": 92,
-    "holds": 55
+    "applies": 74,
+    "holds": 50
    },
    "units": {
-    "applies": 1970,
-    "holds": 1861
+    "applies": 1513,
+    "holds": 1457
    },
    "examples": [
     {
@@ -4779,14 +4875,14 @@
      "text": "N71 (TOOLPATH BOHREN_3.20MM)"
     },
     {
-     "file": "O0106624.X20",
-     "line": 65,
-     "text": "N63 (TOOLPATH BOHREN_2.6MM)"
+     "file": "O0125596.X20",
+     "line": 98,
+     "text": "N96 (TOOLPATH BOHREN_6MM)"
     },
     {
-     "file": "O0106604.X20",
-     "line": 318,
-     "text": "N316 (TOOLPATH BOHREN_2.6MM)"
+     "file": "O0095457.X20",
+     "line": 49,
+     "text": "N47 (TOOLPATH BOHREN_3.2MM)"
     }
    ],
    "label": "majority"
@@ -5425,22 +5521,22 @@
   },
   {
    "id": "tools.dataForPartMaterial",
-   "rule": "The tool's cutting data is for the part's material: the code's material is the header's.",
+   "rule": "On aluminium, POM and FH parts, the tool's cutting data is for the part's material: the code's material (ALHS, KS, FH) is the header's.",
    "perType": {
     "contourInsert": {
-     "applies": 9,
-     "holds": 4
+     "applies": 5,
+     "holds": 3
     },
     "other": {
-     "applies": 36,
-     "holds": 18
+     "applies": 24,
+     "holds": 15
     },
     "pinPlate": {
-     "applies": 11,
-     "holds": 6
+     "applies": 10,
+     "holds": 5
     },
     "sealCage": {
-     "applies": 5,
+     "applies": 4,
      "holds": 2
     },
     "subPlate": {
@@ -5461,8 +5557,12 @@
    "parts": 9,
    "materials": [
     [
+     "PC GF",
+     6
+    ],
+    [
      "ALU",
-     12
+     6
     ],
     [
      "POM",
@@ -5519,18 +5619,18 @@
    "materials": [
     [
      "ALU",
-     29
+     18
+    ],
+    [
+     "PC GF",
+     11
     ],
     [
      "POM",
-     10
+     8
     ],
     [
      "FH",
-     2
-    ],
-    [
-     "VAHS",
      2
     ]
    ],
@@ -5596,7 +5696,11 @@
     ],
     [
      "FH",
-     3
+     2
+    ],
+    [
+     "EPO",
+     1
     ]
    ],
    "setups": [
@@ -5645,7 +5749,11 @@
    "materials": [
     [
      "ALU",
-     7
+     6
+    ],
+    [
+     "MS",
+     1
     ]
    ],
    "setups": [
@@ -6041,49 +6149,49 @@
    "type": "MK",
    "d": 40,
    "kind": "face",
-   "operations": 118,
-   "parts": 46,
+   "operations": 84,
+   "parts": 34,
    "rpm": {
     "median": 8000,
     "min": 3000,
     "max": 8000,
-    "n": 118,
+    "n": 84,
     "mode": 8000,
-    "modeShare": 0.86
+    "modeShare": 0.8
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 3000,
     "min": 500,
     "max": 3000,
-    "n": 118,
+    "n": 84,
     "mode": 3000,
-    "modeShare": 0.89
+    "modeShare": 0.85
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 3000,
     "min": 500,
     "max": 3000,
-    "n": 118,
+    "n": 84,
     "mode": 3000,
-    "modeShare": 0.89
+    "modeShare": 0.85
    },
    "depthPerPass": {
-    "median": 1.25,
+    "median": 1,
     "min": 0.7,
     "max": 2,
-    "n": 112,
+    "n": 80,
     "mode": 1,
-    "modeShare": 0.48
+    "modeShare": 0.54
    },
    "stepOver": {
     "median": 26,
     "min": 24.73,
-    "max": 35.17,
-    "n": 20,
+    "max": 34,
+    "n": 16,
     "mode": 26,
-    "modeShare": 0.4
+    "modeShare": 0.5
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -6100,59 +6208,15 @@
   {
    "material": "ALU",
    "type": "SB",
-   "d": 0.8,
-   "kind": "drill",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 2,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 350,
-    "min": 350,
-    "max": 350,
-    "n": 2,
-    "mode": 350,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 0.3,
-    "min": 0.3,
-    "max": 0.3,
-    "n": 2,
-    "mode": 0.3,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
    "d": 1,
    "kind": "drill",
-   "operations": 16,
-   "parts": 9,
+   "operations": 7,
+   "parts": 5,
    "rpm": {
     "median": 27000,
     "min": 27000,
     "max": 27000,
-    "n": 16,
+    "n": 7,
     "mode": 27000,
     "modeShare": 1
    },
@@ -6160,22 +6224,22 @@
    "feed": null,
    "feedLabel": "",
    "plunge": {
-    "median": 350,
+    "median": 300,
     "min": 300,
     "max": 350,
-    "n": 16,
+    "n": 7,
     "mode": 300,
-    "modeShare": 0.5
+    "modeShare": 0.57
    },
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
     "median": 0.3,
     "min": 0.1,
-    "max": 1,
-    "n": 16,
+    "max": 0.3,
+    "n": 7,
     "mode": 0.3,
-    "modeShare": 0.56
+    "modeShare": 0.71
    },
    "toolCodeMaterials": [
     "ALU"
@@ -6185,51 +6249,7 @@
     "O0134813_2.X20",
     "O0155036.X20",
     "O0155153.X20",
-    "O0155317.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
-   "d": 1.1,
-   "kind": "drill",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 2,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 300,
-    "min": 300,
-    "max": 300,
-    "n": 2,
-    "mode": 300,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 0.3,
-    "min": 0.3,
-    "max": 0.3,
-    "n": 2,
-    "mode": 0.3,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O1335033.105",
-    "O1335033_2.105"
+    "O0161424.X20"
    ]
   },
   {
@@ -6322,61 +6342,17 @@
   {
    "material": "ALU",
    "type": "SB",
-   "d": 1.4,
-   "kind": "drill",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 26000,
-    "min": 26000,
-    "max": 26000,
-    "n": 2,
-    "mode": 26000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 350,
-    "min": 350,
-    "max": 350,
-    "n": 2,
-    "mode": 350,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 0.4,
-    "min": 0.4,
-    "max": 0.4,
-    "n": 2,
-    "mode": 0.4,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0155317.X20",
-    "O0155317_2.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
    "d": 1.5,
    "kind": "drill",
-   "operations": 5,
-   "parts": 3,
+   "operations": 3,
+   "parts": 2,
    "rpm": {
-    "median": 26000,
+    "median": 10000,
     "min": 10000,
     "max": 26000,
-    "n": 5,
-    "mode": 26000,
-    "modeShare": 0.6
+    "n": 3,
+    "mode": 10000,
+    "modeShare": 0.67
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -6385,7 +6361,7 @@
     "median": 350,
     "min": 350,
     "max": 350,
-    "n": 5,
+    "n": 3,
     "mode": 350,
     "modeShare": 1
    },
@@ -6395,7 +6371,7 @@
     "median": 0.6,
     "min": 0.6,
     "max": 0.6,
-    "n": 5,
+    "n": 3,
     "mode": 0.6,
     "modeShare": 1
    },
@@ -6404,8 +6380,6 @@
    ],
    "sources": [
     "O0168459.X20",
-    "O1335033.105",
-    "O1335033_2.105",
     "O2613201.000",
     "O2613201_2.000"
    ]
@@ -6415,26 +6389,26 @@
    "type": "SB",
    "d": 2,
    "kind": "drill",
-   "operations": 26,
-   "parts": 20,
+   "operations": 17,
+   "parts": 14,
    "rpm": {
-    "median": 19000,
+    "median": 10000,
     "min": 8000,
     "max": 19000,
-    "n": 26,
-    "mode": 19000,
-    "modeShare": 0.58
+    "n": 17,
+    "mode": 10000,
+    "modeShare": 0.41
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "varies",
    "feed": null,
    "feedLabel": "",
    "plunge": {
     "median": 400,
     "min": 150,
     "max": 400,
-    "n": 26,
+    "n": 17,
     "mode": 400,
-    "modeShare": 0.85
+    "modeShare": 0.76
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -6442,106 +6416,19 @@
     "median": 1.5,
     "min": 0.5,
     "max": 1.5,
-    "n": 26,
+    "n": 17,
     "mode": 1.5,
-    "modeShare": 0.92
+    "modeShare": 0.88
    },
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
     "O0104049.X20",
-    "O0106604.X20",
-    "O0106612.X20",
-    "O0106623.X20",
-    "O0131784.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
-   "d": 2.1,
-   "kind": "drill",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 19000,
-    "min": 19000,
-    "max": 19000,
-    "n": 1,
-    "mode": 19000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 400,
-    "min": 400,
-    "max": 400,
-    "n": 1,
-    "mode": 400,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 1.5,
-    "min": 1.5,
-    "max": 1.5,
-    "n": 1,
-    "mode": 1.5,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0106606.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
-   "d": 2.3,
-   "kind": "drill",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 16192,
-    "min": 16192,
-    "max": 16192,
-    "n": 2,
-    "mode": 16192,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 450,
-    "min": 450,
-    "max": 450,
-    "n": 2,
-    "mode": 450,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 2,
-    "min": 2,
-    "max": 2,
-    "n": 2,
-    "mode": 2,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20"
+    "O0131784.X20",
+    "O0131784_2.X20",
+    "O0134813.X20",
+    "O0134813_2.X20"
    ]
   },
   {
@@ -6549,13 +6436,13 @@
    "type": "SB",
    "d": 2.5,
    "kind": "drill",
-   "operations": 21,
-   "parts": 12,
+   "operations": 19,
+   "parts": 11,
    "rpm": {
     "median": 15000,
     "min": 15000,
     "max": 15000,
-    "n": 21,
+    "n": 19,
     "mode": 15000,
     "modeShare": 1
    },
@@ -6566,7 +6453,7 @@
     "median": 450,
     "min": 450,
     "max": 450,
-    "n": 21,
+    "n": 19,
     "mode": 450,
     "modeShare": 1
    },
@@ -6576,7 +6463,7 @@
     "median": 2,
     "min": 0.5,
     "max": 2,
-    "n": 21,
+    "n": 19,
     "mode": 2,
     "modeShare": 0.95
    },
@@ -6594,74 +6481,26 @@
   {
    "material": "ALU",
    "type": "SB",
-   "d": 2.6,
-   "kind": "drill",
-   "operations": 5,
-   "parts": 4,
-   "rpm": {
-    "median": 16192,
-    "min": 16192,
-    "max": 19000,
-    "n": 5,
-    "mode": 16192,
-    "modeShare": 0.6
-   },
-   "rpmLabel": "majority",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 450,
-    "min": 400,
-    "max": 450,
-    "n": 5,
-    "mode": 450,
-    "modeShare": 0.6
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 2,
-    "min": 1.5,
-    "max": 2,
-    "n": 5,
-    "mode": 2,
-    "modeShare": 0.6
-   },
-   "toolCodeMaterials": [
-    "FH",
-    "POM"
-   ],
-   "sources": [
-    "O0106604.X20",
-    "O0106605.X20",
-    "O0106612.X20",
-    "O0106623.X20",
-    "O0106624.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
    "d": 2.96,
    "kind": "drill",
-   "operations": 3,
-   "parts": 3,
+   "operations": 1,
+   "parts": 1,
    "rpm": {
     "median": 13000,
     "min": 13000,
     "max": 13000,
-    "n": 3,
+    "n": 1,
     "mode": 13000,
     "modeShare": 1
    },
-   "rpmLabel": "consistent across the library",
+   "rpmLabel": "seen once",
    "feed": null,
    "feedLabel": "",
    "plunge": {
     "median": 400,
     "min": 400,
     "max": 400,
-    "n": 3,
+    "n": 1,
     "mode": 400,
     "modeShare": 1
    },
@@ -6671,7 +6510,7 @@
     "median": 3,
     "min": 3,
     "max": 3,
-    "n": 3,
+    "n": 1,
     "mode": 3,
     "modeShare": 1
    },
@@ -6679,8 +6518,6 @@
     "ALU"
    ],
    "sources": [
-    "O0106604.X20",
-    "O0106612.X20",
     "O0155153.X20"
    ]
   },
@@ -6689,15 +6526,15 @@
    "type": "SB",
    "d": 3,
    "kind": "drill",
-   "operations": 15,
-   "parts": 11,
+   "operations": 13,
+   "parts": 10,
    "rpm": {
     "median": 13000,
     "min": 8000,
     "max": 13000,
-    "n": 15,
+    "n": 13,
     "mode": 13000,
-    "modeShare": 0.8
+    "modeShare": 0.77
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -6706,9 +6543,9 @@
     "median": 400,
     "min": 230,
     "max": 400,
-    "n": 15,
+    "n": 13,
     "mode": 400,
-    "modeShare": 0.8
+    "modeShare": 0.77
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -6716,9 +6553,9 @@
     "median": 3,
     "min": 1,
     "max": 3.3,
-    "n": 15,
+    "n": 13,
     "mode": 3,
-    "modeShare": 0.67
+    "modeShare": 0.62
    },
    "toolCodeMaterials": [
     "ALU"
@@ -6736,15 +6573,15 @@
    "type": "SB",
    "d": 3.2,
    "kind": "drill",
-   "operations": 15,
-   "parts": 11,
+   "operations": 12,
+   "parts": 9,
    "rpm": {
     "median": 13000,
     "min": 4500,
-    "max": 19000,
-    "n": 15,
+    "max": 15000,
+    "n": 12,
     "mode": 13000,
-    "modeShare": 0.4
+    "modeShare": 0.5
    },
    "rpmLabel": "varies",
    "feed": null,
@@ -6753,19 +6590,19 @@
     "median": 400,
     "min": 400,
     "max": 450,
-    "n": 15,
+    "n": 12,
     "mode": 400,
-    "modeShare": 0.73
+    "modeShare": 0.67
    },
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
     "median": 3.3,
-    "min": 1.5,
+    "min": 2,
     "max": 4.5,
-    "n": 15,
+    "n": 12,
     "mode": 3.3,
-    "modeShare": 0.6
+    "modeShare": 0.75
    },
    "toolCodeMaterials": [
     "FH"
@@ -6775,7 +6612,7 @@
     "O0037181_2.X20",
     "O0084691.X20",
     "O0095457.X20",
-    "O0096795.X20"
+    "O0104049.X20"
    ]
   },
   {
@@ -6783,36 +6620,36 @@
    "type": "SB",
    "d": 3.3,
    "kind": "drill",
-   "operations": 23,
-   "parts": 11,
+   "operations": 17,
+   "parts": 8,
    "rpm": {
     "median": 12000,
     "min": 5000,
     "max": 12000,
-    "n": 23,
+    "n": 17,
     "mode": 12000,
-    "modeShare": 0.83
+    "modeShare": 0.88
    },
    "rpmLabel": "majority",
    "feed": null,
    "feedLabel": "",
    "plunge": {
     "median": 450,
-    "min": 400,
+    "min": 450,
     "max": 500,
-    "n": 23,
+    "n": 17,
     "mode": 450,
-    "modeShare": 0.74
+    "modeShare": 0.88
    },
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
     "median": 3.3,
-    "min": 1.3,
-    "max": 3.5,
-    "n": 23,
+    "min": 3,
+    "max": 3.3,
+    "n": 17,
     "mode": 3.3,
-    "modeShare": 0.7
+    "modeShare": 0.88
    },
    "toolCodeMaterials": [
     "ALU",
@@ -6831,15 +6668,15 @@
    "type": "SB",
    "d": 3.5,
    "kind": "drill",
-   "operations": 11,
-   "parts": 9,
+   "operations": 8,
+   "parts": 7,
    "rpm": {
     "median": 11000,
     "min": 8000,
     "max": 12000,
-    "n": 11,
+    "n": 8,
     "mode": 11000,
-    "modeShare": 0.73
+    "modeShare": 0.63
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -6848,9 +6685,9 @@
     "median": 440,
     "min": 320,
     "max": 500,
-    "n": 11,
+    "n": 8,
     "mode": 440,
-    "modeShare": 0.73
+    "modeShare": 0.63
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -6858,9 +6695,9 @@
     "median": 3.5,
     "min": 0.5,
     "max": 3.5,
-    "n": 11,
+    "n": 8,
     "mode": 3.5,
-    "modeShare": 0.73
+    "modeShare": 0.63
    },
    "toolCodeMaterials": [
     "ALU"
@@ -6868,9 +6705,9 @@
    "sources": [
     "O0073078.X20",
     "O0073078_2.X20",
-    "O0106605.X20",
-    "O0106606.X20",
-    "O0106624.X20"
+    "O0155139.X20",
+    "O1268043.128",
+    "O1268043_2.128"
    ]
   },
   {
@@ -6914,15 +6751,15 @@
    "type": "SB",
    "d": 4,
    "kind": "drill",
-   "operations": 34,
-   "parts": 25,
+   "operations": 22,
+   "parts": 16,
    "rpm": {
     "median": 9500,
     "min": 8000,
     "max": 9500,
-    "n": 34,
+    "n": 22,
     "mode": 9500,
-    "modeShare": 0.82
+    "modeShare": 0.77
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -6930,18 +6767,18 @@
    "plunge": {
     "median": 500,
     "min": 430,
-    "max": 520,
-    "n": 34,
+    "max": 500,
+    "n": 22,
     "mode": 500,
-    "modeShare": 0.82
+    "modeShare": 0.77
    },
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
     "median": 4,
     "min": 0.5,
-    "max": 5,
-    "n": 34,
+    "max": 4,
+    "n": 22,
     "mode": 4,
     "modeShare": 0.82
    },
@@ -6951,9 +6788,9 @@
    "sources": [
     "O0024263.X20",
     "O0038963.X20",
-    "O0096795.X20",
-    "O0106604.X20",
-    "O0106605.X20"
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0131775.X20"
    ]
   },
   {
@@ -6961,13 +6798,13 @@
    "type": "SB",
    "d": 4.2,
    "kind": "drill",
-   "operations": 6,
-   "parts": 3,
+   "operations": 4,
+   "parts": 2,
    "rpm": {
     "median": 9000,
     "min": 9000,
     "max": 9000,
-    "n": 6,
+    "n": 4,
     "mode": 9000,
     "modeShare": 1
    },
@@ -6978,7 +6815,7 @@
     "median": 500,
     "min": 500,
     "max": 500,
-    "n": 6,
+    "n": 4,
     "mode": 500,
     "modeShare": 1
    },
@@ -6988,9 +6825,9 @@
     "median": 4,
     "min": 1,
     "max": 4,
-    "n": 6,
-    "mode": 4,
-    "modeShare": 0.67
+    "n": 4,
+    "mode": 1,
+    "modeShare": 0.5
    },
    "toolCodeMaterials": [
     "ALU"
@@ -6998,9 +6835,8 @@
    "sources": [
     "O1057063.C90",
     "O1057063_2.C90",
-    "O1161033.129",
-    "O1161033_2.129",
-    "O2613201.000"
+    "O2613201.000",
+    "O2613201_2.000"
    ]
   },
   {
@@ -7044,50 +6880,6 @@
    ],
    "sources": [
     "O0161108.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SB",
-   "d": 4.6,
-   "kind": "drill",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 3800,
-    "min": 3800,
-    "max": 3800,
-    "n": 2,
-    "mode": 3800,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 500,
-    "min": 500,
-    "max": 500,
-    "n": 2,
-    "mode": 500,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 4,
-    "min": 4,
-    "max": 4,
-    "n": 2,
-    "mode": 4,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20"
    ]
   },
   {
@@ -7138,15 +6930,15 @@
    "type": "SB",
    "d": 5,
    "kind": "drill",
-   "operations": 19,
-   "parts": 11,
+   "operations": 13,
+   "parts": 7,
    "rpm": {
     "median": 7600,
     "min": 6900,
     "max": 7600,
-    "n": 19,
+    "n": 13,
     "mode": 7600,
-    "modeShare": 0.89
+    "modeShare": 0.85
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -7155,9 +6947,9 @@
     "median": 475,
     "min": 450,
     "max": 475,
-    "n": 19,
+    "n": 13,
     "mode": 475,
-    "modeShare": 0.89
+    "modeShare": 0.85
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -7165,19 +6957,19 @@
     "median": 5,
     "min": 3,
     "max": 5.5,
-    "n": 19,
+    "n": 13,
     "mode": 5,
-    "modeShare": 0.84
+    "modeShare": 0.77
    },
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O0106605.X20",
     "O0134813.X20",
     "O0134813_2.X20",
     "O0155036.X20",
-    "O0155037.X20"
+    "O0155037.X20",
+    "O0161108.X20"
    ]
   },
   {
@@ -7367,101 +7159,50 @@
   {
    "material": "ALU",
    "type": "SF",
-   "d": 0.8,
-   "kind": "pocket",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 2,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 700,
-    "min": 700,
-    "max": 700,
-    "n": 2,
-    "mode": 700,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 350,
-    "min": 350,
-    "max": 350,
-    "n": 2,
-    "mode": 350,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.12,
-    "min": 0.12,
-    "max": 0.12,
-    "n": 2,
-    "mode": 0.12,
-    "modeShare": 1
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
    "d": 1,
    "kind": "contour",
-   "operations": 16,
-   "parts": 6,
+   "operations": 3,
+   "parts": 2,
    "rpm": {
     "median": 27000,
     "min": 27000,
     "max": 27000,
-    "n": 16,
+    "n": 3,
     "mode": 27000,
     "modeShare": 1
    },
    "rpmLabel": "consistent across the library",
    "feed": {
     "median": 700,
-    "min": 600,
-    "max": 800,
-    "n": 16,
+    "min": 700,
+    "max": 700,
+    "n": 3,
     "mode": 700,
-    "modeShare": 0.44
+    "modeShare": 1
    },
-   "feedLabel": "varies",
+   "feedLabel": "consistent across the library",
    "plunge": {
-    "median": 630,
-    "min": 300,
-    "max": 720,
-    "n": 16,
-    "mode": 630,
-    "modeShare": 0.38
+    "median": 700,
+    "min": 630,
+    "max": 700,
+    "n": 3,
+    "mode": 700,
+    "modeShare": 0.67
    },
    "depthPerPass": {
     "median": 0.2,
     "min": 0.2,
-    "max": 0.29,
-    "n": 16,
+    "max": 0.2,
+    "n": 3,
     "mode": 0.2,
-    "modeShare": 0.88
+    "modeShare": 1
    },
    "stepOver": {
-    "median": 0.5,
-    "min": 0.17,
+    "median": 0.96,
+    "min": 0.81,
     "max": 0.96,
-    "n": 8,
-    "mode": 0.17,
+    "n": 2,
+    "mode": 0.81,
     "modeShare": 0.5
    },
    "peck": null,
@@ -7470,10 +7211,7 @@
    ],
    "sources": [
     "O0024263.X20",
-    "O0106612.X20",
-    "O0155036.X20",
-    "O0155317.X20",
-    "O0155317_2.X20"
+    "O0155036.X20"
    ]
   },
   {
@@ -7532,126 +7270,6 @@
    "type": "SF",
    "d": 1,
    "kind": "pocket",
-   "operations": 4,
-   "parts": 2,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 4,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "consistent across the library",
-   "feed": {
-    "median": 700,
-    "min": 350,
-    "max": 700,
-    "n": 4,
-    "mode": 350,
-    "modeShare": 0.5
-   },
-   "feedLabel": "varies",
-   "plunge": {
-    "median": 350,
-    "min": 350,
-    "max": 350,
-    "n": 2,
-    "mode": 350,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.2,
-    "min": 0.02,
-    "max": 0.2,
-    "n": 4,
-    "mode": 0.02,
-    "modeShare": 0.5
-   },
-   "stepOver": {
-    "median": 0.52,
-    "min": 0.52,
-    "max": 0.52,
-    "n": 2,
-    "mode": 0.52,
-    "modeShare": 1
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0155317.X20",
-    "O0155317_2.X20",
-    "O0161424.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
-   "d": 1.5,
-   "kind": "contour",
-   "operations": 15,
-   "parts": 5,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 15,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "consistent across the library",
-   "feed": {
-    "median": 900,
-    "min": 700,
-    "max": 900,
-    "n": 15,
-    "mode": 900,
-    "modeShare": 0.67
-   },
-   "feedLabel": "majority",
-   "plunge": {
-    "median": 810,
-    "min": 350,
-    "max": 810,
-    "n": 15,
-    "mode": 810,
-    "modeShare": 0.6
-   },
-   "depthPerPass": {
-    "median": 0.38,
-    "min": 0.2,
-    "max": 0.4,
-    "n": 15,
-    "mode": 0.38,
-    "modeShare": 0.4
-   },
-   "stepOver": {
-    "median": 1,
-    "min": 0.35,
-    "max": 1,
-    "n": 4,
-    "mode": 0.35,
-    "modeShare": 0.5
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20",
-    "O0168459.X20",
-    "O1161033.129",
-    "O1161033_2.129"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
-   "d": 1.5,
-   "kind": "counterbore",
    "operations": 2,
    "parts": 1,
    "rpm": {
@@ -7663,9 +7281,7 @@
     "modeShare": 1
    },
    "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
+   "feed": {
     "median": 700,
     "min": 700,
     "max": 700,
@@ -7673,15 +7289,90 @@
     "mode": 700,
     "modeShare": 1
    },
-   "depthPerPass": null,
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 2,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2,
+    "mode": 0.2,
+    "modeShare": 1
+   },
    "stepOver": null,
    "peck": null,
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O1335033.105",
-    "O1335033_2.105"
+    "O0161424.X20"
+   ]
+  },
+  {
+   "material": "ALU",
+   "type": "SF",
+   "d": 1.5,
+   "kind": "contour",
+   "operations": 9,
+   "parts": 3,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 9,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 900,
+    "min": 700,
+    "max": 900,
+    "n": 9,
+    "mode": 900,
+    "modeShare": 0.67
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 810,
+    "min": 350,
+    "max": 810,
+    "n": 9,
+    "mode": 810,
+    "modeShare": 0.56
+   },
+   "depthPerPass": {
+    "median": 0.38,
+    "min": 0.2,
+    "max": 0.4,
+    "n": 9,
+    "mode": 0.38,
+    "modeShare": 0.44
+   },
+   "stepOver": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 2,
+    "mode": 1,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0168459.X20",
+    "O1272053.C96",
+    "O2613201.000",
+    "O2613201_2.000"
    ]
   },
   {
@@ -7689,56 +7380,55 @@
    "type": "SF",
    "d": 1.5,
    "kind": "pocket",
-   "operations": 5,
-   "parts": 3,
+   "operations": 4,
+   "parts": 2,
    "rpm": {
     "median": 27000,
     "min": 8000,
     "max": 27000,
-    "n": 5,
-    "mode": 27000,
-    "modeShare": 0.6
+    "n": 4,
+    "mode": 8000,
+    "modeShare": 0.5
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "varies",
    "feed": {
     "median": 900,
     "min": 260,
     "max": 900,
-    "n": 5,
-    "mode": 900,
-    "modeShare": 0.6
+    "n": 4,
+    "mode": 260,
+    "modeShare": 0.5
    },
-   "feedLabel": "majority",
+   "feedLabel": "varies",
    "plunge": {
     "median": 360,
     "min": 130,
     "max": 360,
-    "n": 5,
-    "mode": 360,
-    "modeShare": 0.6
+    "n": 4,
+    "mode": 130,
+    "modeShare": 0.5
    },
    "depthPerPass": {
     "median": 0.39,
     "min": 0.37,
-    "max": 0.4,
-    "n": 5,
+    "max": 0.39,
+    "n": 4,
     "mode": 0.37,
-    "modeShare": 0.4
+    "modeShare": 0.5
    },
    "stepOver": {
     "median": 0.12,
     "min": 0.12,
-    "max": 0.2,
-    "n": 3,
+    "max": 0.12,
+    "n": 2,
     "mode": 0.12,
-    "modeShare": 0.67
+    "modeShare": 1
    },
    "peck": null,
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O0106604.X20",
     "O0131019.X20",
     "O0131019_2.X20",
     "O1784033.129",
@@ -7750,49 +7440,49 @@
    "type": "SF",
    "d": 2,
    "kind": "contour",
-   "operations": 55,
-   "parts": 21,
+   "operations": 38,
+   "parts": 15,
    "rpm": {
     "median": 27000,
     "min": 8000,
     "max": 27000,
-    "n": 55,
+    "n": 38,
     "mode": 27000,
-    "modeShare": 0.84
+    "modeShare": 0.76
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1000,
     "min": 150,
     "max": 1200,
-    "n": 55,
+    "n": 38,
     "mode": 1000,
-    "modeShare": 0.71
+    "modeShare": 0.58
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 700,
     "min": 135,
     "max": 1080,
-    "n": 55,
+    "n": 38,
     "mode": 900,
-    "modeShare": 0.45
+    "modeShare": 0.42
    },
    "depthPerPass": {
     "median": 0.55,
     "min": 0.29,
     "max": 1.5,
-    "n": 55,
-    "mode": 0.29,
-    "modeShare": 0.11
+    "n": 38,
+    "mode": 0.4,
+    "modeShare": 0.16
    },
    "stepOver": {
     "median": 0.2,
     "min": 0.16,
-    "max": 1.52,
-    "n": 12,
+    "max": 1.44,
+    "n": 9,
     "mode": 0.2,
-    "modeShare": 0.5
+    "modeShare": 0.56
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -7803,8 +7493,8 @@
     "O0024263.X20",
     "O0073078.X20",
     "O0073078_2.X20",
-    "O0106612.X20",
-    "O0131019.X20"
+    "O0131019.X20",
+    "O0131019_2.X20"
    ]
   },
   {
@@ -7908,84 +7598,23 @@
    "type": "SF",
    "d": 2,
    "kind": "pocket",
-   "operations": 7,
-   "parts": 3,
+   "operations": 1,
+   "parts": 1,
    "rpm": {
     "median": 27000,
     "min": 27000,
     "max": 27000,
-    "n": 7,
+    "n": 1,
     "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "consistent across the library",
-   "feed": {
-    "median": 1000,
-    "min": 600,
-    "max": 1000,
-    "n": 7,
-    "mode": 1000,
-    "modeShare": 0.57
-   },
-   "feedLabel": "majority",
-   "plunge": {
-    "median": 600,
-    "min": 600,
-    "max": 600,
-    "n": 5,
-    "mode": 600,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.39,
-    "min": 0.01,
-    "max": 0.59,
-    "n": 7,
-    "mode": 0.09,
-    "modeShare": 0.29
-   },
-   "stepOver": {
-    "median": 0.2,
-    "min": 0.2,
-    "max": 0.2,
-    "n": 6,
-    "mode": 0.2,
-    "modeShare": 1
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20",
-    "O0161424.X20",
-    "O1161033.129",
-    "O1161033_2.129"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
-   "d": 2.5,
-   "kind": "pocket",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 26000,
-    "min": 26000,
-    "max": 26000,
-    "n": 2,
-    "mode": 26000,
     "modeShare": 1
    },
    "rpmLabel": "seen once",
    "feed": {
-    "median": 1000,
-    "min": 1000,
-    "max": 1000,
-    "n": 2,
-    "mode": 1000,
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 1,
+    "mode": 600,
     "modeShare": 1
    },
    "feedLabel": "seen once",
@@ -7993,33 +7622,25 @@
     "median": 600,
     "min": 600,
     "max": 600,
-    "n": 2,
+    "n": 1,
     "mode": 600,
     "modeShare": 1
    },
    "depthPerPass": {
-    "median": 0.04,
-    "min": 0.04,
-    "max": 0.04,
-    "n": 2,
-    "mode": 0.04,
+    "median": 0.01,
+    "min": 0.01,
+    "max": 0.01,
+    "n": 1,
+    "mode": 0.01,
     "modeShare": 1
    },
-   "stepOver": {
-    "median": 0.2,
-    "min": 0.2,
-    "max": 0.2,
-    "n": 2,
-    "mode": 0.2,
-    "modeShare": 1
-   },
+   "stepOver": null,
    "peck": null,
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O1335033.105",
-    "O1335033_2.105"
+    "O0161424.X20"
    ]
   },
   {
@@ -8088,47 +7709,47 @@
    "type": "SF",
    "d": 3,
    "kind": "pocket",
-   "operations": 21,
-   "parts": 13,
+   "operations": 7,
+   "parts": 6,
    "rpm": {
     "median": 21000,
     "min": 8000,
     "max": 21000,
-    "n": 21,
+    "n": 7,
     "mode": 21000,
-    "modeShare": 0.9
+    "modeShare": 0.71
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 600,
     "min": 450,
     "max": 1000,
-    "n": 21,
+    "n": 7,
     "mode": 600,
-    "modeShare": 0.52
+    "modeShare": 0.43
    },
-   "feedLabel": "majority",
+   "feedLabel": "varies",
    "plunge": {
     "median": 600,
     "min": 225,
     "max": 600,
-    "n": 12,
-    "mode": 600,
-    "modeShare": 0.83
+    "n": 4,
+    "mode": 225,
+    "modeShare": 0.5
    },
    "depthPerPass": {
-    "median": 0.55,
-    "min": 0.01,
+    "median": 0.81,
+    "min": 0.06,
     "max": 1.25,
-    "n": 18,
-    "mode": 0.01,
-    "modeShare": 0.17
+    "n": 5,
+    "mode": 0.06,
+    "modeShare": 0.4
    },
    "stepOver": {
-    "median": 0.52,
+    "median": 0.62,
     "min": 0.2,
     "max": 0.62,
-    "n": 6,
+    "n": 4,
     "mode": 0.2,
     "modeShare": 0.5
    },
@@ -8139,10 +7760,10 @@
    ],
    "sources": [
     "O0038963.X20",
-    "O0106604.X20",
-    "O0106612.X20",
-    "O0137238.X20",
-    "O0137238_2.X20"
+    "O0143118.X20",
+    "O0155139.X20",
+    "O1784033.129",
+    "O1784033_2.129"
    ]
   },
   {
@@ -8150,41 +7771,41 @@
    "type": "SF",
    "d": 4,
    "kind": "contour",
-   "operations": 47,
-   "parts": 23,
+   "operations": 34,
+   "parts": 18,
    "rpm": {
     "median": 16000,
     "min": 8000,
-    "max": 21000,
-    "n": 47,
+    "max": 16000,
+    "n": 34,
     "mode": 16000,
-    "modeShare": 0.77
+    "modeShare": 0.74
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1200,
     "min": 360,
     "max": 1200,
-    "n": 47,
+    "n": 34,
     "mode": 1200,
-    "modeShare": 0.57
+    "modeShare": 0.59
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 1080,
     "min": 300,
     "max": 1080,
-    "n": 47,
+    "n": 34,
     "mode": 1080,
-    "modeShare": 0.66
+    "modeShare": 0.65
    },
    "depthPerPass": {
     "median": 1.4,
     "min": 0.4,
-    "max": 4,
-    "n": 45,
+    "max": 1.63,
+    "n": 32,
     "mode": 1.5,
-    "modeShare": 0.18
+    "modeShare": 0.25
    },
    "stepOver": {
     "median": 0.54,
@@ -8202,9 +7823,9 @@
    "sources": [
     "O0037181.X20",
     "O0037181_2.X20",
-    "O0096795.X20",
     "O0131019.X20",
-    "O0131019_2.X20"
+    "O0131019_2.X20",
+    "O0131775.X20"
    ]
   },
   {
@@ -8212,26 +7833,26 @@
    "type": "SF",
    "d": 4,
    "kind": "counterbore",
-   "operations": 8,
-   "parts": 6,
+   "operations": 2,
+   "parts": 1,
    "rpm": {
-    "median": 9500,
-    "min": 9500,
+    "median": 16000,
+    "min": 16000,
     "max": 16000,
-    "n": 8,
-    "mode": 9500,
-    "modeShare": 0.75
+    "n": 2,
+    "mode": 16000,
+    "modeShare": 1
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "seen once",
    "feed": null,
    "feedLabel": "",
    "plunge": {
-    "median": 300,
-    "min": 300,
+    "median": 1200,
+    "min": 1200,
     "max": 1200,
-    "n": 8,
-    "mode": 300,
-    "modeShare": 0.75
+    "n": 2,
+    "mode": 1200,
+    "modeShare": 1
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -8240,11 +7861,8 @@
     "ALU"
    ],
    "sources": [
-    "O0106604.X20",
-    "O0106606.X20",
-    "O0106612.X20",
-    "O0106623.X20",
-    "O1057063.C90"
+    "O1057063.C90",
+    "O1057063_2.C90"
    ]
   },
   {
@@ -8252,13 +7870,13 @@
    "type": "SF",
    "d": 4,
    "kind": "pocket",
-   "operations": 38,
-   "parts": 20,
+   "operations": 26,
+   "parts": 13,
    "rpm": {
     "median": 16000,
     "min": 8000,
-    "max": 21000,
-    "n": 38,
+    "max": 16000,
+    "n": 26,
     "mode": 16000,
     "modeShare": 0.92
    },
@@ -8266,35 +7884,35 @@
    "feed": {
     "median": 1000,
     "min": 174,
-    "max": 1200,
-    "n": 38,
+    "max": 1000,
+    "n": 26,
     "mode": 1000,
-    "modeShare": 0.63
+    "modeShare": 0.54
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 600,
     "min": 500,
     "max": 600,
-    "n": 20,
+    "n": 12,
     "mode": 600,
-    "modeShare": 0.95
+    "modeShare": 0.92
    },
    "depthPerPass": {
-    "median": 0.57,
+    "median": 0.34,
     "min": 0.01,
     "max": 2,
-    "n": 38,
-    "mode": 1.5,
-    "modeShare": 0.13
+    "n": 26,
+    "mode": 0.03,
+    "modeShare": 0.15
    },
    "stepOver": {
-    "median": 1.54,
+    "median": 1.64,
     "min": 0.2,
     "max": 2,
-    "n": 13,
+    "n": 9,
     "mode": 0.2,
-    "modeShare": 0.38
+    "modeShare": 0.33
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -8303,9 +7921,9 @@
    "sources": [
     "O0024263.X20",
     "O0084691.X20",
-    "O0096795.X20",
-    "O0106604.X20",
-    "O0106612.X20"
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0131775.X20"
    ]
   },
   {
@@ -8313,13 +7931,13 @@
    "type": "SF",
    "d": 5,
    "kind": "contour",
-   "operations": 8,
-   "parts": 5,
+   "operations": 5,
+   "parts": 3,
    "rpm": {
     "median": 14000,
     "min": 14000,
     "max": 14000,
-    "n": 8,
+    "n": 5,
     "mode": 14000,
     "modeShare": 1
    },
@@ -8327,27 +7945,27 @@
    "feed": {
     "median": 720,
     "min": 720,
-    "max": 1080,
-    "n": 8,
+    "max": 720,
+    "n": 5,
     "mode": 720,
-    "modeShare": 0.88
+    "modeShare": 1
    },
-   "feedLabel": "majority",
+   "feedLabel": "consistent across the library",
    "plunge": {
     "median": 1080,
     "min": 1080,
     "max": 1080,
-    "n": 8,
+    "n": 5,
     "mode": 1080,
     "modeShare": 1
    },
    "depthPerPass": {
     "median": 1.5,
-    "min": 1.17,
-    "max": 1.58,
-    "n": 8,
-    "mode": 1.17,
-    "modeShare": 0.25
+    "min": 1.48,
+    "max": 1.54,
+    "n": 5,
+    "mode": 1.5,
+    "modeShare": 0.4
    },
    "stepOver": null,
    "peck": null,
@@ -8357,9 +7975,9 @@
    "sources": [
     "O0037181.X20",
     "O0037181_2.X20",
-    "O0106606.X20",
     "O0131019.X20",
-    "O0131019_2.X20"
+    "O0131019_2.X20",
+    "O0155153.X20"
    ]
   },
   {
@@ -8367,15 +7985,15 @@
    "type": "SF",
    "d": 5,
    "kind": "counterbore",
-   "operations": 18,
-   "parts": 11,
+   "operations": 11,
+   "parts": 6,
    "rpm": {
     "median": 7600,
     "min": 7600,
     "max": 8000,
-    "n": 18,
+    "n": 11,
     "mode": 7600,
-    "modeShare": 0.89
+    "modeShare": 0.82
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -8384,9 +8002,9 @@
     "median": 250,
     "min": 250,
     "max": 570,
-    "n": 18,
+    "n": 11,
     "mode": 250,
-    "modeShare": 0.89
+    "modeShare": 0.82
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -8396,10 +8014,10 @@
    ],
    "sources": [
     "O0038963.X20",
-    "O0106604.X20",
-    "O0106605.X20",
-    "O0106606.X20",
-    "O0106612.X20"
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0131775.X20",
+    "O0131775_2.X20"
    ]
   },
   {
@@ -8407,24 +8025,24 @@
    "type": "SF",
    "d": 5,
    "kind": "pocket",
-   "operations": 19,
-   "parts": 14,
+   "operations": 15,
+   "parts": 11,
    "rpm": {
     "median": 14000,
     "min": 8000,
     "max": 14000,
-    "n": 19,
+    "n": 15,
     "mode": 14000,
-    "modeShare": 0.74
+    "modeShare": 0.67
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 660,
     "min": 300,
     "max": 1100,
-    "n": 19,
+    "n": 15,
     "mode": 660,
-    "modeShare": 0.42
+    "modeShare": 0.33
    },
    "feedLabel": "varies",
    "plunge": {
@@ -8436,12 +8054,12 @@
     "modeShare": 0.75
    },
    "depthPerPass": {
-    "median": 0.36,
+    "median": 1,
     "min": 0.01,
     "max": 1.55,
-    "n": 19,
+    "n": 15,
     "mode": 0.02,
-    "modeShare": 0.16
+    "modeShare": 0.2
    },
    "stepOver": {
     "median": 2.93,
@@ -8457,10 +8075,10 @@
    ],
    "sources": [
     "O0084691.X20",
-    "O0106624.X20",
     "O0131775.X20",
     "O0131775_2.X20",
-    "O0134813.X20"
+    "O0134813.X20",
+    "O0134813_2.X20"
    ]
   },
   {
@@ -8468,41 +8086,41 @@
    "type": "SF",
    "d": 6,
    "kind": "contour",
-   "operations": 9,
-   "parts": 7,
+   "operations": 8,
+   "parts": 6,
    "rpm": {
     "median": 12000,
     "min": 11500,
     "max": 12000,
-    "n": 9,
+    "n": 8,
     "mode": 12000,
-    "modeShare": 0.67
+    "modeShare": 0.63
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1080,
     "min": 1000,
     "max": 1200,
-    "n": 9,
+    "n": 8,
     "mode": 1000,
-    "modeShare": 0.44
+    "modeShare": 0.5
    },
    "feedLabel": "varies",
    "plunge": {
     "median": 1080,
     "min": 500,
     "max": 1080,
-    "n": 9,
+    "n": 8,
     "mode": 1080,
-    "modeShare": 0.56
+    "modeShare": 0.5
    },
    "depthPerPass": {
     "median": 1.42,
     "min": 0.5,
-    "max": 1.94,
-    "n": 9,
+    "max": 1.75,
+    "n": 8,
     "mode": 1,
-    "modeShare": 0.22
+    "modeShare": 0.25
    },
    "stepOver": null,
    "peck": null,
@@ -8510,11 +8128,11 @@
     "ALU"
    ],
    "sources": [
-    "O0106623.X20",
     "O0131784.X20",
     "O0131784_2.X20",
     "O0143118.X20",
-    "O0155139.X20"
+    "O0155139.X20",
+    "O0168459.X20"
    ]
   },
   {
@@ -8522,15 +8140,15 @@
    "type": "SF",
    "d": 6,
    "kind": "counterbore",
-   "operations": 17,
-   "parts": 9,
+   "operations": 12,
+   "parts": 7,
    "rpm": {
     "median": 6300,
     "min": 1000,
     "max": 6300,
-    "n": 17,
+    "n": 12,
     "mode": 6300,
-    "modeShare": 0.88
+    "modeShare": 0.83
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -8539,9 +8157,9 @@
     "median": 250,
     "min": 250,
     "max": 500,
-    "n": 17,
+    "n": 12,
     "mode": 250,
-    "modeShare": 0.88
+    "modeShare": 0.83
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -8552,10 +8170,10 @@
    ],
    "sources": [
     "O0024263.X20",
-    "O0096795.X20",
     "O0131019.X20",
     "O0131019_2.X20",
-    "O0131784.X20"
+    "O0131784.X20",
+    "O0131784_2.X20"
    ]
   },
   {
@@ -8613,61 +8231,60 @@
    "type": "SF",
    "d": 6,
    "kind": "pocket",
-   "operations": 31,
-   "parts": 15,
+   "operations": 24,
+   "parts": 12,
    "rpm": {
     "median": 12000,
-    "min": 6500,
+    "min": 8000,
     "max": 12000,
-    "n": 31,
+    "n": 24,
     "mode": 12000,
-    "modeShare": 0.55
+    "modeShare": 0.63
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1000,
     "min": 600,
     "max": 1200,
-    "n": 31,
+    "n": 24,
     "mode": 1200,
-    "modeShare": 0.39
+    "modeShare": 0.42
    },
    "feedLabel": "varies",
    "plunge": {
-    "median": 500,
+    "median": 720,
     "min": 350,
     "max": 720,
-    "n": 26,
+    "n": 19,
     "mode": 720,
-    "modeShare": 0.46
+    "modeShare": 0.53
    },
    "depthPerPass": {
     "median": 1.23,
     "min": 0.01,
     "max": 2.9,
-    "n": 29,
+    "n": 22,
     "mode": 1.23,
-    "modeShare": 0.14
+    "modeShare": 0.18
    },
    "stepOver": {
     "median": 3,
-    "min": 1.52,
-    "max": 5,
-    "n": 17,
+    "min": 2.47,
+    "max": 3,
+    "n": 11,
     "mode": 3,
-    "modeShare": 0.53
+    "modeShare": 0.82
    },
    "peck": null,
    "toolCodeMaterials": [
-    "ALU",
-    "POM"
+    "ALU"
    ],
    "sources": [
     "O0084691.X20",
-    "O0096795.X20",
     "O0131019.X20",
     "O0131019_2.X20",
-    "O0134813.X20"
+    "O0134813.X20",
+    "O0134813_2.X20"
    ]
   },
   {
@@ -8675,41 +8292,41 @@
    "type": "SF",
    "d": 8,
    "kind": "contour",
-   "operations": 16,
-   "parts": 10,
+   "operations": 13,
+   "parts": 8,
    "rpm": {
-    "median": 12000,
+    "median": 8000,
     "min": 8000,
     "max": 12000,
-    "n": 16,
+    "n": 13,
     "mode": 8000,
-    "modeShare": 0.5
+    "modeShare": 0.62
    },
-   "rpmLabel": "varies",
+   "rpmLabel": "majority",
    "feed": {
-    "median": 2160,
+    "median": 1800,
     "min": 800,
     "max": 2400,
-    "n": 16,
-    "mode": 2160,
-    "modeShare": 0.25
+    "n": 13,
+    "mode": 2400,
+    "modeShare": 0.23
    },
    "feedLabel": "varies",
    "plunge": {
-    "median": 2160,
+    "median": 1280,
     "min": 640,
     "max": 2160,
-    "n": 16,
+    "n": 13,
     "mode": 2160,
-    "modeShare": 0.5
+    "modeShare": 0.38
    },
    "depthPerPass": {
-    "median": 2.25,
+    "median": 2,
     "min": 1.64,
-    "max": 3.88,
-    "n": 12,
+    "max": 3.5,
+    "n": 9,
     "mode": 1.83,
-    "modeShare": 0.17
+    "modeShare": 0.22
    },
    "stepOver": null,
    "peck": null,
@@ -8719,10 +8336,10 @@
    ],
    "sources": [
     "O0024263.X20",
-    "O0106605.X20",
-    "O0106624.X20",
     "O0134813.X20",
-    "O0134813_2.X20"
+    "O0134813_2.X20",
+    "O0155036.X20",
+    "O0156138.X20"
    ]
   },
   {
@@ -8818,108 +8435,50 @@
    "material": "ALU",
    "type": "SF",
    "d": 8,
-   "kind": "finish",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 12000,
-    "min": 12000,
-    "max": 12000,
-    "n": 2,
-    "mode": 12000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 2000,
-    "min": 2000,
-    "max": 2000,
-    "n": 2,
-    "mode": 2000,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 1.81,
-    "min": 1.81,
-    "max": 1.81,
-    "n": 2,
-    "mode": 1.81,
-    "modeShare": 1
-   },
-   "stepOver": {
-    "median": 3.2,
-    "min": 3.2,
-    "max": 3.2,
-    "n": 2,
-    "mode": 3.2,
-    "modeShare": 1
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O0137238.X20",
-    "O0137238_2.X20"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
-   "d": 8,
    "kind": "pocket",
-   "operations": 39,
-   "parts": 22,
+   "operations": 31,
+   "parts": 18,
    "rpm": {
-    "median": 12000,
+    "median": 8000,
     "min": 5500,
     "max": 12000,
-    "n": 39,
-    "mode": 12000,
-    "modeShare": 0.59
+    "n": 31,
+    "mode": 8000,
+    "modeShare": 0.48
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "varies",
    "feed": {
-    "median": 2000,
+    "median": 1800,
     "min": 480,
     "max": 2000,
-    "n": 39,
+    "n": 31,
     "mode": 2000,
-    "modeShare": 0.59
+    "modeShare": 0.48
    },
-   "feedLabel": "majority",
+   "feedLabel": "varies",
    "plunge": {
     "median": 1200,
     "min": 360,
     "max": 1200,
-    "n": 27,
+    "n": 20,
     "mode": 1200,
-    "modeShare": 0.78
+    "modeShare": 0.7
    },
    "depthPerPass": {
-    "median": 1.63,
+    "median": 0.98,
     "min": 0.02,
     "max": 4.9,
-    "n": 38,
+    "n": 30,
     "mode": 0.02,
-    "modeShare": 0.05
+    "modeShare": 0.07
    },
    "stepOver": {
     "median": 4,
-    "min": 2.4,
+    "min": 3.6,
     "max": 6.64,
-    "n": 29,
+    "n": 22,
     "mode": 4,
-    "modeShare": 0.72
+    "modeShare": 0.77
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -8928,10 +8487,10 @@
    ],
    "sources": [
     "O0095457.X20",
-    "O0096795.X20",
     "O0104049.X20",
-    "O0106604.X20",
-    "O0131019.X20"
+    "O0131019.X20",
+    "O0131019_2.X20",
+    "O0131775.X20"
    ]
   },
   {
@@ -8939,13 +8498,13 @@
    "type": "SF",
    "d": 16,
    "kind": "contour",
-   "operations": 14,
-   "parts": 7,
+   "operations": 10,
+   "parts": 5,
    "rpm": {
     "median": 6600,
     "min": 6600,
     "max": 6600,
-    "n": 14,
+    "n": 10,
     "mode": 6600,
     "modeShare": 1
    },
@@ -8954,32 +8513,31 @@
     "median": 1200,
     "min": 850,
     "max": 1200,
-    "n": 14,
+    "n": 10,
     "mode": 1200,
-    "modeShare": 0.71
+    "modeShare": 0.6
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 1080,
     "min": 425,
     "max": 1080,
-    "n": 14,
+    "n": 10,
     "mode": 1080,
-    "modeShare": 0.71
+    "modeShare": 0.6
    },
    "depthPerPass": {
     "median": 4.38,
-    "min": 3,
-    "max": 4.9,
-    "n": 11,
-    "mode": 3,
-    "modeShare": 0.18
+    "min": 3.5,
+    "max": 4.8,
+    "n": 7,
+    "mode": 4.1,
+    "modeShare": 0.29
    },
    "stepOver": null,
    "peck": null,
    "toolCodeMaterials": [
-    "ALU",
-    "FR"
+    "ALU"
    ],
    "sources": [
     "O0131775.X20",
@@ -8993,72 +8551,14 @@
    "material": "ALU",
    "type": "SF",
    "d": 16,
-   "kind": "face",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 8000,
-    "min": 8000,
-    "max": 8000,
-    "n": 2,
-    "mode": 8000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 3000,
-    "min": 3000,
-    "max": 3000,
-    "n": 2,
-    "mode": 3000,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 3000,
-    "min": 3000,
-    "max": 3000,
-    "n": 2,
-    "mode": 3000,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.5,
-    "min": 0.5,
-    "max": 0.5,
-    "n": 2,
-    "mode": 0.5,
-    "modeShare": 1
-   },
-   "stepOver": {
-    "median": 11.43,
-    "min": 11.43,
-    "max": 11.43,
-    "n": 2,
-    "mode": 11.43,
-    "modeShare": 1
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "FR"
-   ],
-   "sources": [
-    "O1161033.129",
-    "O1161033_2.129"
-   ]
-  },
-  {
-   "material": "ALU",
-   "type": "SF",
-   "d": 16,
    "kind": "finish",
-   "operations": 54,
-   "parts": 38,
+   "operations": 41,
+   "parts": 29,
    "rpm": {
     "median": 6600,
     "min": 6600,
     "max": 6600,
-    "n": 54,
+    "n": 41,
     "mode": 6600,
     "modeShare": 1
    },
@@ -9067,26 +8567,26 @@
     "median": 1200,
     "min": 850,
     "max": 1200,
-    "n": 54,
+    "n": 41,
     "mode": 1200,
-    "modeShare": 0.93
+    "modeShare": 0.9
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 1080,
     "min": 425,
     "max": 1080,
-    "n": 54,
+    "n": 41,
     "mode": 1080,
-    "modeShare": 0.78
+    "modeShare": 0.73
    },
    "depthPerPass": {
-    "median": 4.27,
+    "median": 4.75,
     "min": 1.1,
     "max": 9.5,
-    "n": 48,
+    "n": 35,
     "mode": 5.5,
-    "modeShare": 0.08
+    "modeShare": 0.11
    },
    "stepOver": {
     "median": 8,
@@ -9098,8 +8598,7 @@
    },
    "peck": null,
    "toolCodeMaterials": [
-    "ALU",
-    "FR"
+    "ALU"
    ],
    "sources": [
     "O0024263.X20",
@@ -9171,41 +8670,41 @@
    "type": "SFH",
    "d": 16,
    "kind": "contour",
-   "operations": 52,
-   "parts": 37,
+   "operations": 47,
+   "parts": 33,
    "rpm": {
     "median": 20000,
     "min": 8000,
     "max": 20000,
-    "n": 52,
+    "n": 47,
     "mode": 20000,
-    "modeShare": 0.81
+    "modeShare": 0.79
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 3000,
     "min": 700,
     "max": 3000,
-    "n": 52,
+    "n": 47,
     "mode": 3000,
-    "modeShare": 0.81
+    "modeShare": 0.79
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 2100,
     "min": 490,
     "max": 2100,
-    "n": 52,
+    "n": 47,
     "mode": 2100,
-    "modeShare": 0.65
+    "modeShare": 0.64
    },
    "depthPerPass": {
-    "median": 2.15,
+    "median": 2.58,
     "min": 1.4,
-    "max": 4.96,
-    "n": 49,
+    "max": 4.7,
+    "n": 44,
     "mode": 2.75,
-    "modeShare": 0.08
+    "modeShare": 0.09
    },
    "stepOver": {
     "median": 7.6,
@@ -9232,42 +8731,42 @@
    "type": "ST",
    "d": 4,
    "kind": "chamfer",
-   "operations": 172,
-   "parts": 46,
+   "operations": 124,
+   "parts": 34,
    "rpm": {
     "median": 16000,
     "min": 4500,
     "max": 16000,
-    "n": 172,
+    "n": 124,
     "mode": 16000,
-    "modeShare": 0.85
+    "modeShare": 0.8
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 920,
     "min": 300,
     "max": 1000,
-    "n": 172,
+    "n": 124,
     "mode": 920,
-    "modeShare": 0.73
+    "modeShare": 0.69
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 828,
     "min": 225,
-    "max": 900,
-    "n": 172,
+    "max": 828,
+    "n": 124,
     "mode": 828,
-    "modeShare": 0.66
+    "modeShare": 0.6
    },
    "depthPerPass": null,
    "stepOver": {
-    "median": 2.2,
+    "median": 2.25,
     "min": 0.45,
     "max": 4,
-    "n": 55,
+    "n": 44,
     "mode": 3.8,
-    "modeShare": 0.09
+    "modeShare": 0.11
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -9373,15 +8872,15 @@
    "type": "ZB",
    "d": 2.3,
    "kind": "centre",
-   "operations": 49,
-   "parts": 26,
+   "operations": 25,
+   "parts": 14,
    "rpm": {
     "median": 6500,
     "min": 2174,
     "max": 6500,
-    "n": 49,
+    "n": 25,
     "mode": 6500,
-    "modeShare": 0.92
+    "modeShare": 0.84
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -9390,9 +8889,9 @@
     "median": 300,
     "min": 87,
     "max": 300,
-    "n": 49,
+    "n": 25,
     "mode": 300,
-    "modeShare": 0.92
+    "modeShare": 0.84
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -9406,6 +8905,457 @@
     "O0037181_2.X20",
     "O0073078.X20",
     "O0073078_2.X20"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "MK",
+   "d": 93,
+   "kind": "face",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 2500,
+    "min": 1800,
+    "max": 2500,
+    "n": 2,
+    "mode": 1800,
+    "modeShare": 0.5
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 800,
+    "max": 1000,
+    "n": 2,
+    "mode": 800,
+    "modeShare": 0.5
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 900,
+    "min": 800,
+    "max": 900,
+    "n": 2,
+    "mode": 800,
+    "modeShare": 0.5
+   },
+   "depthPerPass": {
+    "median": 2,
+    "min": 1.5,
+    "max": 2,
+    "n": 2,
+    "mode": 1.5,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SB",
+   "d": 2,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 6000,
+    "min": 6000,
+    "max": 6000,
+    "n": 1,
+    "mode": 6000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1,
+    "mode": 200,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 1,
+    "mode": 2,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SB",
+   "d": 3,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 4500,
+    "min": 4500,
+    "max": 4500,
+    "n": 1,
+    "mode": 4500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 1,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 1,
+    "mode": 4,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SB",
+   "d": 4,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 3500,
+    "min": 3500,
+    "max": 3500,
+    "n": 1,
+    "mode": 3500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 320,
+    "min": 320,
+    "max": 320,
+    "n": 1,
+    "mode": 320,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 1,
+    "mode": 5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SF",
+   "d": 4,
+   "kind": "counterbore",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 4000,
+    "min": 4000,
+    "max": 4000,
+    "n": 2,
+    "mode": 4000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 2,
+    "mode": 200,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SF",
+   "d": 4,
+   "kind": "pocket",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 6000,
+    "min": 6000,
+    "max": 6000,
+    "n": 1,
+    "mode": 6000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 1,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1,
+    "mode": 200,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 1,
+    "mode": 3,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SF",
+   "d": 8,
+   "kind": "finish",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 5500,
+    "min": 5500,
+    "max": 5500,
+    "n": 1,
+    "mode": 5500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 1,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 1,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 10,
+    "min": 10,
+    "max": 10,
+    "n": 1,
+    "mode": 10,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "SF",
+   "d": 20,
+   "kind": "contour",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 2200,
+    "min": 2200,
+    "max": 2200,
+    "n": 1,
+    "mode": 2200,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 650,
+    "min": 650,
+    "max": 650,
+    "n": 1,
+    "mode": 650,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 585,
+    "min": 585,
+    "max": 585,
+    "n": 1,
+    "mode": 585,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 7.75,
+    "min": 7.75,
+    "max": 7.75,
+    "n": 1,
+    "mode": 7.75,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "ST",
+   "d": 4,
+   "kind": "chamfer",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 6000,
+    "min": 6000,
+    "max": 6000,
+    "n": 2,
+    "mode": 6000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 800,
+    "min": 800,
+    "max": 800,
+    "n": 2,
+    "mode": 800,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 2,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 3.6,
+    "min": 3.6,
+    "max": 3.6,
+    "n": 1,
+    "mode": 3.6,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
+   ]
+  },
+  {
+   "material": "EPO",
+   "type": "ZB",
+   "d": 2.3,
+   "kind": "centre",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 1,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 1,
+    "mode": 150,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O1027213.C96"
    ]
   },
   {
@@ -9523,39 +9473,39 @@
    "type": "MK",
    "d": 93,
    "kind": "face",
-   "operations": 18,
-   "parts": 14,
+   "operations": 16,
+   "parts": 13,
    "rpm": {
     "median": 2500,
     "min": 1800,
     "max": 2500,
-    "n": 18,
+    "n": 16,
     "mode": 2500,
-    "modeShare": 0.67
+    "modeShare": 0.69
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1000,
     "min": 450,
     "max": 1000,
-    "n": 18,
+    "n": 16,
     "mode": 1000,
-    "modeShare": 0.67
+    "modeShare": 0.69
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 900,
     "min": 450,
     "max": 900,
-    "n": 18,
+    "n": 16,
     "mode": 900,
-    "modeShare": 0.67
+    "modeShare": 0.69
    },
    "depthPerPass": {
-    "median": 2,
+    "median": 2.5,
     "min": 1.5,
     "max": 2.5,
-    "n": 4,
+    "n": 2,
     "mode": 1.5,
     "modeShare": 0.5
    },
@@ -9672,15 +9622,15 @@
    "type": "SB",
    "d": 2,
    "kind": "drill",
-   "operations": 9,
-   "parts": 7,
+   "operations": 8,
+   "parts": 6,
    "rpm": {
     "median": 6000,
     "min": 5000,
     "max": 6000,
-    "n": 9,
+    "n": 8,
     "mode": 6000,
-    "modeShare": 0.89
+    "modeShare": 0.88
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -9689,9 +9639,9 @@
     "median": 200,
     "min": 200,
     "max": 250,
-    "n": 9,
+    "n": 8,
     "mode": 200,
-    "modeShare": 0.89
+    "modeShare": 0.88
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -9699,7 +9649,7 @@
     "median": 2,
     "min": 2,
     "max": 2,
-    "n": 9,
+    "n": 8,
     "mode": 2,
     "modeShare": 1
    },
@@ -9712,7 +9662,7 @@
     "O0089654.X20",
     "O0173010.X20",
     "O0173781.X20",
-    "O1027213.C96"
+    "O1650603.C18"
    ]
   },
   {
@@ -9810,13 +9760,13 @@
    "type": "SB",
    "d": 3,
    "kind": "drill",
-   "operations": 9,
-   "parts": 8,
+   "operations": 8,
+   "parts": 7,
    "rpm": {
     "median": 4500,
     "min": 4500,
     "max": 4500,
-    "n": 9,
+    "n": 8,
     "mode": 4500,
     "modeShare": 1
    },
@@ -9827,7 +9777,7 @@
     "median": 350,
     "min": 350,
     "max": 350,
-    "n": 9,
+    "n": 8,
     "mode": 350,
     "modeShare": 1
    },
@@ -9837,7 +9787,7 @@
     "median": 4,
     "min": 4,
     "max": 4,
-    "n": 9,
+    "n": 8,
     "mode": 4,
     "modeShare": 1
    },
@@ -9947,13 +9897,13 @@
    "type": "SB",
    "d": 4,
    "kind": "drill",
-   "operations": 6,
-   "parts": 4,
+   "operations": 5,
+   "parts": 3,
    "rpm": {
     "median": 3500,
     "min": 3500,
     "max": 3500,
-    "n": 6,
+    "n": 5,
     "mode": 3500,
     "modeShare": 1
    },
@@ -9964,9 +9914,9 @@
     "median": 500,
     "min": 320,
     "max": 500,
-    "n": 6,
+    "n": 5,
     "mode": 500,
-    "modeShare": 0.67
+    "modeShare": 0.8
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -9974,7 +9924,7 @@
     "median": 5,
     "min": 5,
     "max": 5,
-    "n": 6,
+    "n": 5,
     "mode": 5,
     "modeShare": 1
    },
@@ -9984,8 +9934,7 @@
    "sources": [
     "O0024264.X20",
     "O0089654.X20",
-    "O0173781.X20",
-    "O1027213.C96"
+    "O0173781.X20"
    ]
   },
   {
@@ -10645,13 +10594,13 @@
    "type": "SF",
    "d": 4,
    "kind": "counterbore",
-   "operations": 8,
-   "parts": 4,
+   "operations": 6,
+   "parts": 3,
    "rpm": {
     "median": 4000,
     "min": 4000,
     "max": 4000,
-    "n": 8,
+    "n": 6,
     "mode": 4000,
     "modeShare": 1
    },
@@ -10662,9 +10611,9 @@
     "median": 250,
     "min": 200,
     "max": 250,
-    "n": 8,
+    "n": 6,
     "mode": 250,
-    "modeShare": 0.5
+    "modeShare": 0.67
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -10676,8 +10625,7 @@
    "sources": [
     "O0024264.X20",
     "O0089654.X20",
-    "O0173781.X20",
-    "O1027213.C96"
+    "O0173781.X20"
    ]
   },
   {
@@ -10747,41 +10695,41 @@
    "type": "SF",
    "d": 4,
    "kind": "pocket",
-   "operations": 7,
-   "parts": 6,
+   "operations": 6,
+   "parts": 5,
    "rpm": {
-    "median": 6000,
+    "median": 7000,
     "min": 6000,
     "max": 7000,
-    "n": 7,
+    "n": 6,
     "mode": 6000,
-    "modeShare": 0.57
+    "modeShare": 0.5
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "varies",
    "feed": {
-    "median": 350,
+    "median": 450,
     "min": 350,
     "max": 450,
-    "n": 7,
+    "n": 6,
     "mode": 350,
-    "modeShare": 0.57
+    "modeShare": 0.5
    },
-   "feedLabel": "majority",
+   "feedLabel": "varies",
    "plunge": {
-    "median": 200,
+    "median": 270,
     "min": 200,
     "max": 405,
-    "n": 7,
+    "n": 6,
     "mode": 200,
-    "modeShare": 0.57
+    "modeShare": 0.5
    },
    "depthPerPass": {
     "median": 2.74,
     "min": 1.93,
     "max": 3,
-    "n": 7,
+    "n": 6,
     "mode": 3,
-    "modeShare": 0.43
+    "modeShare": 0.33
    },
    "stepOver": {
     "median": 2,
@@ -10798,9 +10746,9 @@
    "sources": [
     "O0024264.X20",
     "O0173781.X20",
-    "O1027213.C96",
     "O1610603.C85",
-    "O1650603.C18"
+    "O1650603.C18",
+    "O4280166.001"
    ]
   },
   {
@@ -11150,41 +11098,41 @@
    "type": "SF",
    "d": 8,
    "kind": "finish",
-   "operations": 8,
-   "parts": 7,
+   "operations": 7,
+   "parts": 6,
    "rpm": {
     "median": 5500,
     "min": 5500,
     "max": 6000,
-    "n": 8,
+    "n": 7,
     "mode": 5500,
-    "modeShare": 0.63
+    "modeShare": 0.57
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 600,
     "min": 600,
     "max": 900,
-    "n": 8,
+    "n": 7,
     "mode": 600,
-    "modeShare": 0.63
+    "modeShare": 0.57
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 600,
     "min": 540,
     "max": 810,
-    "n": 8,
+    "n": 7,
     "mode": 600,
-    "modeShare": 0.5
+    "modeShare": 0.43
    },
    "depthPerPass": {
     "median": 5.5,
     "min": 1.25,
-    "max": 10,
-    "n": 7,
+    "max": 6.3,
+    "n": 6,
     "mode": 6.3,
-    "modeShare": 0.29
+    "modeShare": 0.33
    },
    "stepOver": {
     "median": 1.01,
@@ -11203,7 +11151,7 @@
     "O0131780.X20",
     "O0173579.X20",
     "O0173781.X20",
-    "O1027213.C96"
+    "O1610603.C85"
    ]
   },
   {
@@ -11273,41 +11221,41 @@
    "type": "SF",
    "d": 20,
    "kind": "contour",
-   "operations": 5,
-   "parts": 5,
+   "operations": 4,
+   "parts": 4,
    "rpm": {
     "median": 2200,
     "min": 2000,
     "max": 2200,
-    "n": 5,
+    "n": 4,
     "mode": 2200,
-    "modeShare": 0.8
+    "modeShare": 0.75
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 650,
     "min": 500,
     "max": 650,
-    "n": 5,
+    "n": 4,
     "mode": 650,
-    "modeShare": 0.8
+    "modeShare": 0.75
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 585,
     "min": 500,
     "max": 585,
-    "n": 5,
+    "n": 4,
     "mode": 585,
-    "modeShare": 0.8
+    "modeShare": 0.75
    },
    "depthPerPass": {
-    "median": 7.75,
+    "median": 9.5,
     "min": 5,
     "max": 10.1,
-    "n": 5,
+    "n": 4,
     "mode": 5,
-    "modeShare": 0.2
+    "modeShare": 0.25
    },
    "stepOver": {
     "median": 2.01,
@@ -11325,8 +11273,7 @@
     "O0024264.X20",
     "O0089654.X20",
     "O0131780.X20",
-    "O0173781.X20",
-    "O1027213.C96"
+    "O0173781.X20"
    ]
   },
   {
@@ -11377,42 +11324,42 @@
    "type": "ST",
    "d": 4,
    "kind": "chamfer",
-   "operations": 29,
-   "parts": 15,
+   "operations": 27,
+   "parts": 14,
    "rpm": {
     "median": 8000,
     "min": 5000,
     "max": 8000,
-    "n": 29,
+    "n": 27,
     "mode": 8000,
-    "modeShare": 0.69
+    "modeShare": 0.74
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 800,
     "min": 500,
     "max": 900,
-    "n": 29,
+    "n": 27,
     "mode": 900,
-    "modeShare": 0.34
+    "modeShare": 0.37
    },
    "feedLabel": "varies",
    "plunge": {
     "median": 630,
     "min": 200,
     "max": 630,
-    "n": 29,
+    "n": 27,
     "mode": 630,
-    "modeShare": 0.66
+    "modeShare": 0.7
    },
    "depthPerPass": null,
    "stepOver": {
-    "median": 2.15,
+    "median": 2,
     "min": 0.3,
-    "max": 3.6,
-    "n": 14,
+    "max": 3.1,
+    "n": 13,
     "mode": 2,
-    "modeShare": 0.29
+    "modeShare": 0.31
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -11432,15 +11379,15 @@
    "type": "ZB",
    "d": 2.3,
    "kind": "centre",
-   "operations": 24,
-   "parts": 14,
+   "operations": 23,
+   "parts": 13,
    "rpm": {
     "median": 3500,
     "min": 3000,
     "max": 3500,
-    "n": 24,
+    "n": 23,
     "mode": 3500,
-    "modeShare": 0.71
+    "modeShare": 0.74
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -11449,9 +11396,9 @@
     "median": 200,
     "min": 150,
     "max": 200,
-    "n": 24,
+    "n": 23,
     "mode": 200,
-    "modeShare": 0.71
+    "modeShare": 0.74
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -11468,7 +11415,57 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
+   "type": "MK",
+   "d": 40,
+   "kind": "face",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 2,
+    "mode": 8000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 2,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 2,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.5,
+    "min": 1.4,
+    "max": 1.5,
+    "n": 2,
+    "mode": 1.4,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
    "type": "SB",
    "d": 2,
    "kind": "drill",
@@ -11511,7 +11508,50 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
+   "type": "SB",
+   "d": 3.2,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 19000,
+    "min": 19000,
+    "max": 19000,
+    "n": 1,
+    "mode": 19000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 1,
+    "mode": 400,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 1,
+    "mode": 1.5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
    "type": "SB",
    "d": 3.5,
    "kind": "drill",
@@ -11554,7 +11594,50 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
+   "type": "SB",
+   "d": 4,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 9500,
+    "min": 9500,
+    "max": 9500,
+    "n": 1,
+    "mode": 9500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 1,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 1,
+    "mode": 4,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
    "type": "SF",
    "d": 3,
    "kind": "contour",
@@ -11604,7 +11687,193 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
+   "type": "SF",
+   "d": 4,
+   "kind": "contour",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 2,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 900,
+    "min": 900,
+    "max": 900,
+    "n": 2,
+    "mode": 900,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.6,
+    "min": 0.55,
+    "max": 0.6,
+    "n": 2,
+    "mode": 0.55,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
+   "type": "SF",
+   "d": 4,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 2,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 2,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.5,
+    "min": 1.45,
+    "max": 1.5,
+    "n": 2,
+    "mode": 1.45,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
+   "type": "SF",
+   "d": 6,
+   "kind": "counterbore",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 6300,
+    "min": 6300,
+    "max": 6300,
+    "n": 1,
+    "mode": 6300,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 250,
+    "min": 250,
+    "max": 250,
+    "n": 1,
+    "mode": 250,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
+   "type": "SF",
+   "d": 6,
+   "kind": "pocket",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 11500,
+    "min": 11500,
+    "max": 11500,
+    "n": 1,
+    "mode": 11500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 1,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 1,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.98,
+    "min": 0.98,
+    "max": 0.98,
+    "n": 1,
+    "mode": 0.98,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
    "type": "SF",
    "d": 8,
    "kind": "counterbore",
@@ -11640,7 +11909,57 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
+   "type": "SF",
+   "d": 8,
+   "kind": "pocket",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 1,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 2000,
+    "min": 2000,
+    "max": 2000,
+    "n": 1,
+    "mode": 2000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": null,
+   "depthPerPass": {
+    "median": 0.07,
+    "min": 0.07,
+    "max": 0.07,
+    "n": 1,
+    "mode": 0.07,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 2.4,
+    "min": 2.4,
+    "max": 2.4,
+    "n": 1,
+    "mode": 2.4,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0096795.X20"
+   ]
+  },
+  {
+   "material": "MS",
    "type": "SF",
    "d": 16,
    "kind": "face",
@@ -11690,45 +12009,45 @@
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
    "type": "SF",
    "d": 16,
    "kind": "finish",
-   "operations": 1,
-   "parts": 1,
+   "operations": 2,
+   "parts": 2,
    "rpm": {
     "median": 6600,
     "min": 6600,
     "max": 6600,
-    "n": 1,
+    "n": 2,
     "mode": 6600,
     "modeShare": 1
    },
-   "rpmLabel": "seen once",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 1200,
     "min": 1200,
     "max": 1200,
-    "n": 1,
+    "n": 2,
     "mode": 1200,
     "modeShare": 1
    },
-   "feedLabel": "seen once",
+   "feedLabel": "consistent across the library",
    "plunge": {
     "median": 1080,
-    "min": 1080,
+    "min": 900,
     "max": 1080,
-    "n": 1,
-    "mode": 1080,
-    "modeShare": 1
+    "n": 2,
+    "mode": 900,
+    "modeShare": 0.5
    },
    "depthPerPass": {
-    "median": 4,
+    "median": 4.92,
     "min": 4,
-    "max": 4,
-    "n": 1,
+    "max": 4.92,
+    "n": 2,
     "mode": 4,
-    "modeShare": 1
+    "modeShare": 0.5
    },
    "stepOver": null,
    "peck": null,
@@ -11736,49 +12055,50 @@
     "ALU"
    ],
    "sources": [
+    "O0096795.X20",
     "O0125675.X20"
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
    "type": "SFH",
    "d": 16,
    "kind": "contour",
-   "operations": 1,
-   "parts": 1,
+   "operations": 2,
+   "parts": 2,
    "rpm": {
     "median": 20000,
     "min": 20000,
     "max": 20000,
-    "n": 1,
+    "n": 2,
     "mode": 20000,
     "modeShare": 1
    },
-   "rpmLabel": "seen once",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 3000,
     "min": 3000,
     "max": 3000,
-    "n": 1,
+    "n": 2,
     "mode": 3000,
     "modeShare": 1
    },
-   "feedLabel": "seen once",
+   "feedLabel": "consistent across the library",
    "plunge": {
     "median": 2100,
-    "min": 2100,
+    "min": 2000,
     "max": 2100,
-    "n": 1,
-    "mode": 2100,
-    "modeShare": 1
+    "n": 2,
+    "mode": 2000,
+    "modeShare": 0.5
    },
    "depthPerPass": {
     "median": 2,
-    "min": 2,
+    "min": 1.95,
     "max": 2,
-    "n": 1,
-    "mode": 2,
-    "modeShare": 1
+    "n": 2,
+    "mode": 1.95,
+    "modeShare": 0.5
    },
    "stepOver": null,
    "peck": null,
@@ -11786,41 +12106,42 @@
     "ALU"
    ],
    "sources": [
+    "O0096795.X20",
     "O0125675.X20"
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
    "type": "ST",
    "d": 4,
    "kind": "chamfer",
-   "operations": 4,
-   "parts": 1,
+   "operations": 7,
+   "parts": 2,
    "rpm": {
     "median": 16000,
     "min": 16000,
     "max": 16000,
-    "n": 4,
+    "n": 7,
     "mode": 16000,
     "modeShare": 1
    },
-   "rpmLabel": "seen once",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 920,
-    "min": 920,
+    "min": 900,
     "max": 920,
-    "n": 4,
+    "n": 7,
     "mode": 920,
-    "modeShare": 1
+    "modeShare": 0.86
    },
-   "feedLabel": "seen once",
+   "feedLabel": "majority",
    "plunge": {
     "median": 828,
-    "min": 828,
+    "min": 450,
     "max": 828,
-    "n": 4,
+    "n": 7,
     "mode": 828,
-    "modeShare": 1
+    "modeShare": 0.86
    },
    "depthPerPass": {
     "median": 1.26,
@@ -11830,38 +12151,46 @@
     "mode": 1.26,
     "modeShare": 1
    },
-   "stepOver": null,
+   "stepOver": {
+    "median": 1.41,
+    "min": 1.41,
+    "max": 1.41,
+    "n": 1,
+    "mode": 1.41,
+    "modeShare": 1
+   },
    "peck": null,
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
+    "O0096795.X20",
     "O0125675.X20"
    ]
   },
   {
-   "material": "FR",
+   "material": "MS",
    "type": "ZB",
    "d": 2.3,
    "kind": "centre",
-   "operations": 2,
-   "parts": 1,
+   "operations": 3,
+   "parts": 2,
    "rpm": {
     "median": 6500,
     "min": 6500,
     "max": 6500,
-    "n": 2,
+    "n": 3,
     "mode": 6500,
     "modeShare": 1
    },
-   "rpmLabel": "seen once",
+   "rpmLabel": "consistent across the library",
    "feed": null,
    "feedLabel": "",
    "plunge": {
     "median": 300,
     "min": 300,
     "max": 300,
-    "n": 2,
+    "n": 3,
     "mode": 300,
     "modeShare": 1
    },
@@ -11872,6 +12201,7 @@
     "ALU"
    ],
    "sources": [
+    "O0096795.X20",
     "O0125675.X20"
    ]
   },
@@ -11949,16 +12279,125 @@
   },
   {
    "material": "PC GF",
+   "type": "MK",
+   "d": 40,
+   "kind": "face",
+   "operations": 28,
+   "parts": 10,
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 28,
+    "mode": 8000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 28,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 28,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.5,
+    "min": 1,
+    "max": 2,
+    "n": 26,
+    "mode": 1,
+    "modeShare": 0.27
+   },
+   "stepOver": {
+    "median": 35.17,
+    "min": 28.5,
+    "max": 35.17,
+    "n": 4,
+    "mode": 35.17,
+    "modeShare": 0.5
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
    "type": "SB",
    "d": 1,
    "kind": "drill",
-   "operations": 1,
+   "operations": 11,
+   "parts": 6,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 11,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 350,
+    "min": 300,
+    "max": 350,
+    "n": 11,
+    "mode": 350,
+    "modeShare": 0.55
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.3,
+    "min": 0.15,
+    "max": 1,
+    "n": 11,
+    "mode": 0.3,
+    "modeShare": 0.55
+   },
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1161033.129",
+    "O1161033_2.129",
+    "O1335033.105"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 1.1,
+   "kind": "drill",
+   "operations": 2,
    "parts": 1,
    "rpm": {
     "median": 27000,
     "min": 27000,
     "max": 27000,
-    "n": 1,
+    "n": 2,
     "mode": 27000,
     "modeShare": 1
    },
@@ -11969,7 +12408,7 @@
     "median": 300,
     "min": 300,
     "max": 300,
-    "n": 1,
+    "n": 2,
     "mode": 300,
     "modeShare": 1
    },
@@ -11979,7 +12418,7 @@
     "median": 0.3,
     "min": 0.3,
     "max": 0.3,
-    "n": 1,
+    "n": 2,
     "mode": 0.3,
     "modeShare": 1
    },
@@ -11987,21 +12426,22 @@
     "ALU"
    ],
    "sources": [
-    "O1754043.135"
+    "O1335033.105",
+    "O1335033_2.105"
    ]
   },
   {
    "material": "PC GF",
    "type": "SB",
-   "d": 1.5,
+   "d": 1.4,
    "kind": "drill",
-   "operations": 1,
+   "operations": 2,
    "parts": 1,
    "rpm": {
     "median": 26000,
     "min": 26000,
     "max": 26000,
-    "n": 1,
+    "n": 2,
     "mode": 26000,
     "modeShare": 1
    },
@@ -12012,7 +12452,51 @@
     "median": 350,
     "min": 350,
     "max": 350,
-    "n": 1,
+    "n": 2,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.4,
+    "min": 0.4,
+    "max": 0.4,
+    "n": 2,
+    "mode": 0.4,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 1.5,
+   "kind": "drill",
+   "operations": 3,
+   "parts": 2,
+   "rpm": {
+    "median": 26000,
+    "min": 26000,
+    "max": 26000,
+    "n": 3,
+    "mode": 26000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 3,
     "mode": 350,
     "modeShare": 1
    },
@@ -12022,7 +12506,7 @@
     "median": 0.6,
     "min": 0.6,
     "max": 0.6,
-    "n": 1,
+    "n": 3,
     "mode": 0.6,
     "modeShare": 1
    },
@@ -12030,7 +12514,52 @@
     "ALU"
    ],
    "sources": [
+    "O1335033.105",
+    "O1335033_2.105",
     "O1754043.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 1.8,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 1,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 1,
+    "mode": 150,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 1,
+    "mode": 1.5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O1723083.135"
    ]
   },
   {
@@ -12038,14 +12567,241 @@
    "type": "SB",
    "d": 2,
    "kind": "drill",
-   "operations": 2,
+   "operations": 12,
+   "parts": 8,
+   "rpm": {
+    "median": 19000,
+    "min": 19000,
+    "max": 19000,
+    "n": 12,
+    "mode": 19000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 12,
+    "mode": 400,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 12,
+    "mode": 1.5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0106623.X20",
+    "O1130153.113",
+    "O1130153_2.113"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 2.1,
+   "kind": "drill",
+   "operations": 1,
    "parts": 1,
    "rpm": {
     "median": 19000,
     "min": 19000,
     "max": 19000,
-    "n": 2,
+    "n": 1,
     "mode": 19000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 1,
+    "mode": 400,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 1.5,
+    "min": 1.5,
+    "max": 1.5,
+    "n": 1,
+    "mode": 1.5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106606.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 2.5,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 15000,
+    "min": 15000,
+    "max": 15000,
+    "n": 2,
+    "mode": 15000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 450,
+    "min": 450,
+    "max": 450,
+    "n": 2,
+    "mode": 450,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 2,
+    "mode": 2,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1130153.113",
+    "O1130153_2.113"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 2.6,
+   "kind": "drill",
+   "operations": 5,
+   "parts": 4,
+   "rpm": {
+    "median": 16192,
+    "min": 16192,
+    "max": 19000,
+    "n": 5,
+    "mode": 16192,
+    "modeShare": 0.6
+   },
+   "rpmLabel": "majority",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 450,
+    "min": 400,
+    "max": 450,
+    "n": 5,
+    "mode": 450,
+    "modeShare": 0.6
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 1.5,
+    "max": 2,
+    "n": 5,
+    "mode": 2,
+    "modeShare": 0.6
+   },
+   "toolCodeMaterials": [
+    "FH",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106612.X20",
+    "O0106623.X20",
+    "O0106624.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 2.96,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 2,
+   "rpm": {
+    "median": 13000,
+    "min": 13000,
+    "max": 13000,
+    "n": 2,
+    "mode": 13000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 2,
+    "mode": 400,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 2,
+    "mode": 3,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 3,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 13000,
+    "min": 13000,
+    "max": 13000,
+    "n": 2,
+    "mode": 13000,
     "modeShare": 1
    },
    "rpmLabel": "seen once",
@@ -12062,18 +12818,19 @@
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
-    "median": 1.5,
-    "min": 1.5,
-    "max": 1.5,
+    "median": 3,
+    "min": 3,
+    "max": 3,
     "n": 2,
-    "mode": 1.5,
+    "mode": 3,
     "modeShare": 1
    },
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O1754043.135"
+    "O1130153.113",
+    "O1130153_2.113"
    ]
   },
   {
@@ -12117,6 +12874,341 @@
    ],
    "sources": [
     "O1754043.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 3.2,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 2,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 400,
+    "min": 400,
+    "max": 400,
+    "n": 2,
+    "mode": 400,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 2,
+    "mode": 3,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "FH"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 3.3,
+   "kind": "drill",
+   "operations": 6,
+   "parts": 3,
+   "rpm": {
+    "median": 12000,
+    "min": 11000,
+    "max": 12000,
+    "n": 6,
+    "mode": 12000,
+    "modeShare": 0.67
+   },
+   "rpmLabel": "majority",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 440,
+    "min": 400,
+    "max": 450,
+    "n": 6,
+    "mode": 400,
+    "modeShare": 0.33
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.3,
+    "min": 1.3,
+    "max": 3.5,
+    "n": 6,
+    "mode": 3,
+    "modeShare": 0.33
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1130153.113",
+    "O1130153_2.113",
+    "O1161033.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 3.5,
+   "kind": "drill",
+   "operations": 3,
+   "parts": 2,
+   "rpm": {
+    "median": 11000,
+    "min": 11000,
+    "max": 11000,
+    "n": 3,
+    "mode": 11000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 440,
+    "min": 440,
+    "max": 440,
+    "n": 3,
+    "mode": 440,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 3.5,
+    "min": 3.5,
+    "max": 3.5,
+    "n": 3,
+    "mode": 3.5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106624.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 4,
+   "kind": "drill",
+   "operations": 11,
+   "parts": 8,
+   "rpm": {
+    "median": 9500,
+    "min": 8000,
+    "max": 9500,
+    "n": 11,
+    "mode": 9500,
+    "modeShare": 0.91
+   },
+   "rpmLabel": "majority",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 520,
+    "n": 11,
+    "mode": 500,
+    "modeShare": 0.91
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 2,
+    "max": 5,
+    "n": 11,
+    "mode": 4,
+    "modeShare": 0.82
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 4.2,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 9000,
+    "min": 9000,
+    "max": 9000,
+    "n": 2,
+    "mode": 9000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 2,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 2,
+    "mode": 4,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SB",
+   "d": 5,
+   "kind": "drill",
+   "operations": 6,
+   "parts": 4,
+   "rpm": {
+    "median": 7600,
+    "min": 7600,
+    "max": 7600,
+    "n": 6,
+    "mode": 7600,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 475,
+    "min": 475,
+    "max": 475,
+    "n": 6,
+    "mode": 475,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 6,
+    "mode": 5,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106605.X20",
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 1,
+   "kind": "contour",
+   "operations": 13,
+   "parts": 4,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 13,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 650,
+    "min": 600,
+    "max": 800,
+    "n": 13,
+    "mode": 600,
+    "modeShare": 0.31
+   },
+   "feedLabel": "varies",
+   "plunge": {
+    "median": 630,
+    "min": 300,
+    "max": 720,
+    "n": 13,
+    "mode": 630,
+    "modeShare": 0.38
+   },
+   "depthPerPass": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.29,
+    "n": 13,
+    "mode": 0.2,
+    "modeShare": 0.85
+   },
+   "stepOver": {
+    "median": 0.17,
+    "min": 0.17,
+    "max": 0.5,
+    "n": 6,
+    "mode": 0.17,
+    "modeShare": 0.67
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106612.X20",
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1161033.129",
+    "O1161033_2.129"
    ]
   },
   {
@@ -12165,8 +13257,154 @@
   {
    "material": "PC GF",
    "type": "SF",
-   "d": 2,
+   "d": 1,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 2,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": null,
+   "depthPerPass": {
+    "median": 0.02,
+    "min": 0.02,
+    "max": 0.02,
+    "n": 2,
+    "mode": 0.02,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.52,
+    "min": 0.52,
+    "max": 0.52,
+    "n": 2,
+    "mode": 0.52,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 1.5,
    "kind": "contour",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 900,
+    "min": 900,
+    "max": 900,
+    "n": 2,
+    "mode": 900,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 810,
+    "min": 810,
+    "max": 810,
+    "n": 2,
+    "mode": 810,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.38,
+    "min": 0.38,
+    "max": 0.38,
+    "n": 2,
+    "mode": 0.38,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.35,
+    "min": 0.35,
+    "max": 0.35,
+    "n": 2,
+    "mode": 0.35,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 1.5,
+   "kind": "counterbore",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 700,
+    "min": 700,
+    "max": 700,
+    "n": 2,
+    "mode": 700,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1335033.105",
+    "O1335033_2.105"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 1.5,
+   "kind": "pocket",
    "operations": 1,
    "parts": 1,
    "rpm": {
@@ -12179,37 +13417,106 @@
    },
    "rpmLabel": "seen once",
    "feed": {
-    "median": 1000,
-    "min": 1000,
-    "max": 1000,
+    "median": 900,
+    "min": 900,
+    "max": 900,
     "n": 1,
-    "mode": 1000,
+    "mode": 900,
     "modeShare": 1
    },
    "feedLabel": "seen once",
    "plunge": {
-    "median": 700,
-    "min": 700,
-    "max": 700,
+    "median": 360,
+    "min": 360,
+    "max": 360,
     "n": 1,
-    "mode": 700,
+    "mode": 360,
     "modeShare": 1
    },
    "depthPerPass": {
-    "median": 0.58,
-    "min": 0.58,
-    "max": 0.58,
+    "median": 0.4,
+    "min": 0.4,
+    "max": 0.4,
     "n": 1,
-    "mode": 0.58,
+    "mode": 0.4,
     "modeShare": 1
    },
-   "stepOver": null,
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 1,
+    "mode": 0.2,
+    "modeShare": 1
+   },
    "peck": null,
    "toolCodeMaterials": [
     "ALU"
    ],
    "sources": [
-    "O1754043.135"
+    "O0106604.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 2,
+   "kind": "contour",
+   "operations": 15,
+   "parts": 7,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 15,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 15,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 700,
+    "min": 500,
+    "max": 900,
+    "n": 15,
+    "mode": 900,
+    "modeShare": 0.47
+   },
+   "depthPerPass": {
+    "median": 0.5,
+    "min": 0.29,
+    "max": 1,
+    "n": 15,
+    "mode": 0.5,
+    "modeShare": 0.2
+   },
+   "stepOver": {
+    "median": 1.52,
+    "min": 0.2,
+    "max": 1.52,
+    "n": 4,
+    "mode": 0.2,
+    "modeShare": 0.5
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106612.X20",
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1161033.129",
+    "O1161033_2.129"
    ]
   },
   {
@@ -12251,43 +13558,264 @@
   {
    "material": "PC GF",
    "type": "SF",
-   "d": 4,
+   "d": 2,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": null,
+   "depthPerPass": {
+    "median": 0.09,
+    "min": 0.09,
+    "max": 0.09,
+    "n": 2,
+    "mode": 0.09,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2,
+    "mode": 0.2,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 2.5,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 26000,
+    "min": 26000,
+    "max": 26000,
+    "n": 2,
+    "mode": 26000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 2,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.04,
+    "min": 0.04,
+    "max": 0.04,
+    "n": 2,
+    "mode": 0.04,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2,
+    "mode": 0.2,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1335033.105",
+    "O1335033_2.105"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 3,
    "kind": "contour",
    "operations": 1,
    "parts": 1,
    "rpm": {
-    "median": 16000,
-    "min": 16000,
-    "max": 16000,
+    "median": 21000,
+    "min": 21000,
+    "max": 21000,
     "n": 1,
-    "mode": 16000,
+    "mode": 21000,
     "modeShare": 1
    },
    "rpmLabel": "seen once",
    "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
     "n": 1,
-    "mode": 1200,
+    "mode": 1000,
     "modeShare": 1
    },
    "feedLabel": "seen once",
    "plunge": {
-    "median": 700,
-    "min": 700,
-    "max": 700,
+    "median": 300,
+    "min": 300,
+    "max": 300,
     "n": 1,
-    "mode": 700,
+    "mode": 300,
     "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.83,
+    "min": 0.83,
+    "max": 0.83,
+    "n": 1,
+    "mode": 0.83,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 3,
+   "kind": "pocket",
+   "operations": 11,
+   "parts": 7,
+   "rpm": {
+    "median": 21000,
+    "min": 21000,
+    "max": 21000,
+    "n": 11,
+    "mode": 21000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 600,
+    "min": 400,
+    "max": 1000,
+    "n": 11,
+    "mode": 600,
+    "modeShare": 0.55
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 600,
+    "min": 400,
+    "max": 600,
+    "n": 5,
+    "mode": 600,
+    "modeShare": 0.8
+   },
+   "depthPerPass": {
+    "median": 0.03,
+    "min": 0.01,
+    "max": 1,
+    "n": 10,
+    "mode": 0.01,
+    "modeShare": 0.4
+   },
+   "stepOver": {
+    "median": 0.52,
+    "min": 0.2,
+    "max": 0.52,
+    "n": 2,
+    "mode": 0.2,
+    "modeShare": 0.5
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20",
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1130153.113"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 4,
+   "kind": "contour",
+   "operations": 10,
+   "parts": 4,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 10,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 1200,
+    "min": 720,
+    "max": 1200,
+    "n": 10,
+    "mode": 1200,
+    "modeShare": 0.8
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 1080,
+    "min": 700,
+    "max": 1080,
+    "n": 10,
+    "mode": 1080,
+    "modeShare": 0.9
    },
    "depthPerPass": {
     "median": 1.42,
-    "min": 1.42,
-    "max": 1.42,
-    "n": 1,
-    "mode": 1.42,
-    "modeShare": 1
+    "min": 1.25,
+    "max": 2.5,
+    "n": 10,
+    "mode": 1.25,
+    "modeShare": 0.2
    },
    "stepOver": null,
    "peck": null,
@@ -12295,141 +13823,192 @@
     "ALU"
    ],
    "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20",
+    "O1161033.129",
+    "O1161033_2.129",
     "O1754043.135"
    ]
   },
   {
    "material": "PC GF",
    "type": "SF",
-   "d": 16,
-   "kind": "face",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 6600,
-    "min": 6600,
-    "max": 6600,
-    "n": 2,
-    "mode": 6600,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 1,
-    "min": 1,
-    "max": 1,
-    "n": 2,
-    "mode": 1,
-    "modeShare": 1
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "FR"
-   ],
-   "sources": [
-    "O1754043.135"
-   ]
-  },
-  {
-   "material": "PC GF",
-   "type": "SF",
-   "d": 16,
-   "kind": "finish",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 6600,
-    "min": 6600,
-    "max": 6600,
-    "n": 1,
-    "mode": 6600,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 1,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 900,
-    "min": 900,
-    "max": 900,
-    "n": 1,
-    "mode": 900,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 1.83,
-    "min": 1.83,
-    "max": 1.83,
-    "n": 1,
-    "mode": 1.83,
-    "modeShare": 1
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "ALU"
-   ],
-   "sources": [
-    "O1754043.135"
-   ]
-  },
-  {
-   "material": "PC GF",
-   "type": "ST",
    "d": 4,
-   "kind": "chamfer",
-   "operations": 2,
-   "parts": 1,
+   "kind": "counterbore",
+   "operations": 7,
+   "parts": 6,
+   "rpm": {
+    "median": 9500,
+    "min": 9500,
+    "max": 9500,
+    "n": 7,
+    "mode": 9500,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 7,
+    "mode": 300,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20",
+    "O1130153.113"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 4,
+   "kind": "pocket",
+   "operations": 8,
+   "parts": 5,
    "rpm": {
     "median": 16000,
     "min": 16000,
-    "max": 16000,
-    "n": 2,
+    "max": 21000,
+    "n": 8,
     "mode": 16000,
-    "modeShare": 1
+    "modeShare": 0.88
    },
-   "rpmLabel": "seen once",
+   "rpmLabel": "majority",
    "feed": {
-    "median": 920,
-    "min": 920,
-    "max": 920,
-    "n": 2,
-    "mode": 920,
+    "median": 1000,
+    "min": 600,
+    "max": 1200,
+    "n": 8,
+    "mode": 1000,
+    "modeShare": 0.75
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 4,
+    "mode": 600,
     "modeShare": 1
    },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 828,
-    "min": 800,
-    "max": 828,
+   "depthPerPass": {
+    "median": 0.38,
+    "min": 0.01,
+    "max": 2,
+    "n": 8,
+    "mode": 0.22,
+    "modeShare": 0.25
+   },
+   "stepOver": {
+    "median": 2,
+    "min": 0.39,
+    "max": 2,
     "n": 2,
-    "mode": 800,
+    "mode": 0.39,
     "modeShare": 0.5
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106612.X20",
+    "O1161033.129",
+    "O1161033_2.129",
+    "O1335033.105"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 5,
+   "kind": "contour",
+   "operations": 3,
+   "parts": 2,
+   "rpm": {
+    "median": 14000,
+    "min": 14000,
+    "max": 14000,
+    "n": 3,
+    "mode": 14000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 720,
+    "min": 720,
+    "max": 1080,
+    "n": 3,
+    "mode": 720,
+    "modeShare": 0.67
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 1080,
+    "min": 1080,
+    "max": 1080,
+    "n": 3,
+    "mode": 1080,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.17,
+    "min": 1.17,
+    "max": 1.58,
+    "n": 3,
+    "mode": 1.17,
+    "modeShare": 0.67
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106606.X20",
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 5,
+   "kind": "counterbore",
+   "operations": 7,
+   "parts": 5,
+   "rpm": {
+    "median": 7600,
+    "min": 7600,
+    "max": 7600,
+    "n": 7,
+    "mode": 7600,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 250,
+    "min": 250,
+    "max": 250,
+    "n": 7,
+    "mode": 250,
+    "modeShare": 1
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -12438,7 +14017,612 @@
     "ALU"
    ],
    "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 5,
+   "kind": "pocket",
+   "operations": 5,
+   "parts": 4,
+   "rpm": {
+    "median": 14000,
+    "min": 14000,
+    "max": 14000,
+    "n": 5,
+    "mode": 14000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 660,
+    "min": 660,
+    "max": 1100,
+    "n": 5,
+    "mode": 660,
+    "modeShare": 0.6
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 1,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.07,
+    "min": 0.05,
+    "max": 1.08,
+    "n": 5,
+    "mode": 0.07,
+    "modeShare": 0.4
+   },
+   "stepOver": {
+    "median": 3,
+    "min": 3,
+    "max": 3,
+    "n": 1,
+    "mode": 3,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106624.X20",
+    "O1130153.113",
+    "O1130153_2.113",
+    "O1723083.135",
+    "O2625441.000"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 6,
+   "kind": "contour",
+   "operations": 2,
+   "parts": 2,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 2,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 2,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 1080,
+    "min": 700,
+    "max": 1080,
+    "n": 2,
+    "mode": 700,
+    "modeShare": 0.5
+   },
+   "depthPerPass": {
+    "median": 1.94,
+    "min": 1.94,
+    "max": 1.94,
+    "n": 1,
+    "mode": 1.94,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106623.X20",
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 6,
+   "kind": "counterbore",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 6300,
+    "min": 6300,
+    "max": 6300,
+    "n": 4,
+    "mode": 6300,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 250,
+    "min": 250,
+    "max": 250,
+    "n": 4,
+    "mode": 250,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0155317.X20",
+    "O0155317_2.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 6,
+   "kind": "pocket",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 11500,
+    "min": 6500,
+    "max": 11500,
+    "n": 4,
+    "mode": 6500,
+    "modeShare": 0.5
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 650,
+    "max": 1000,
+    "n": 4,
+    "mode": 650,
+    "modeShare": 0.5
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 500,
+    "min": 390,
+    "max": 500,
+    "n": 4,
+    "mode": 390,
+    "modeShare": 0.5
+   },
+   "depthPerPass": {
+    "median": 1.45,
+    "min": 0.9,
+    "max": 1.45,
+    "n": 4,
+    "mode": 0.9,
+    "modeShare": 0.5
+   },
+   "stepOver": {
+    "median": 5,
+    "min": 5,
+    "max": 5,
+    "n": 4,
+    "mode": 5,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 8,
+   "kind": "contour",
+   "operations": 3,
+   "parts": 2,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 3,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 2160,
+    "min": 2160,
+    "max": 2400,
+    "n": 3,
+    "mode": 2160,
+    "modeShare": 0.67
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 2160,
+    "min": 2160,
+    "max": 2160,
+    "n": 3,
+    "mode": 2160,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 2.77,
+    "min": 2.77,
+    "max": 3.88,
+    "n": 3,
+    "mode": 2.77,
+    "modeShare": 0.67
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106605.X20",
+    "O0106624.X20",
+    "O2625441.000"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 8,
+   "kind": "pocket",
+   "operations": 7,
+   "parts": 3,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 7,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 2000,
+    "min": 2000,
+    "max": 2000,
+    "n": 7,
+    "mode": 2000,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 7,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 2,
+    "min": 1.67,
+    "max": 4.67,
+    "n": 7,
+    "mode": 1.67,
+    "modeShare": 0.29
+   },
+   "stepOver": {
+    "median": 4,
+    "min": 3.72,
+    "max": 4,
+    "n": 6,
+    "mode": 4,
+    "modeShare": 0.67
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O1130153.113",
+    "O1130153_2.113",
+    "O1161033.129",
+    "O1161033_2.129"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 16,
+   "kind": "contour",
+   "operations": 6,
+   "parts": 3,
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 6600,
+    "n": 6,
+    "mode": 6600,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 6,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 1080,
+    "min": 900,
+    "max": 1080,
+    "n": 6,
+    "mode": 1080,
+    "modeShare": 0.67
+   },
+   "depthPerPass": {
+    "median": 4.9,
+    "min": 2.85,
+    "max": 5,
+    "n": 6,
+    "mode": 3,
+    "modeShare": 0.33
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "FR",
+    "POM"
+   ],
+   "sources": [
+    "O1130153.113",
+    "O1130153_2.113",
+    "O1335033.105",
+    "O1335033_2.105",
+    "O1723083.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 16,
+   "kind": "face",
+   "operations": 6,
+   "parts": 3,
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 8000,
+    "n": 6,
+    "mode": 6600,
+    "modeShare": 0.67
+   },
+   "rpmLabel": "majority",
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 3000,
+    "n": 6,
+    "mode": 1200,
+    "modeShare": 0.67
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 1200,
+    "min": 1200,
+    "max": 3000,
+    "n": 6,
+    "mode": 1200,
+    "modeShare": 0.67
+   },
+   "depthPerPass": {
+    "median": 1,
+    "min": 0.5,
+    "max": 1,
+    "n": 6,
+    "mode": 1,
+    "modeShare": 0.67
+   },
+   "stepOver": {
+    "median": 11.43,
+    "min": 11.43,
+    "max": 11.43,
+    "n": 2,
+    "mode": 11.43,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "FR",
+    "POM"
+   ],
+   "sources": [
+    "O1161033.129",
+    "O1161033_2.129",
+    "O1723083.135",
     "O1754043.135"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SF",
+   "d": 16,
+   "kind": "finish",
+   "operations": 13,
+   "parts": 9,
+   "rpm": {
+    "median": 6600,
+    "min": 6600,
+    "max": 6600,
+    "n": 13,
+    "mode": 6600,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 13,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 1080,
+    "min": 900,
+    "max": 1080,
+    "n": 13,
+    "mode": 1080,
+    "modeShare": 0.92
+   },
+   "depthPerPass": {
+    "median": 3.34,
+    "min": 1.79,
+    "max": 8.33,
+    "n": 13,
+    "mode": 1.79,
+    "modeShare": 0.15
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "FR"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "SFH",
+   "d": 16,
+   "kind": "contour",
+   "operations": 4,
+   "parts": 3,
+   "rpm": {
+    "median": 20000,
+    "min": 20000,
+    "max": 20000,
+    "n": 4,
+    "mode": 20000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 4,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "feedLabel": "consistent across the library",
+   "plunge": {
+    "median": 2100,
+    "min": 2100,
+    "max": 2100,
+    "n": 4,
+    "mode": 2100,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.92,
+    "min": 1.92,
+    "max": 4.96,
+    "n": 4,
+    "mode": 1.92,
+    "modeShare": 0.75
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106624.X20"
+   ]
+  },
+  {
+   "material": "PC GF",
+   "type": "ST",
+   "d": 4,
+   "kind": "chamfer",
+   "operations": 41,
+   "parts": 12,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 41,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": {
+    "median": 920,
+    "min": 900,
+    "max": 1000,
+    "n": 41,
+    "mode": 920,
+    "modeShare": 0.85
+   },
+   "feedLabel": "majority",
+   "plunge": {
+    "median": 828,
+    "min": 450,
+    "max": 900,
+    "n": 41,
+    "mode": 828,
+    "modeShare": 0.78
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 3.2,
+    "min": 0.83,
+    "max": 4,
+    "n": 7,
+    "mode": 0.83,
+    "modeShare": 0.29
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
    ]
   },
   {
@@ -12446,13 +14630,775 @@
    "type": "ZB",
    "d": 2.3,
    "kind": "centre",
-   "operations": 1,
+   "operations": 22,
+   "parts": 12,
+   "rpm": {
+    "median": 6500,
+    "min": 6500,
+    "max": 6500,
+    "n": 22,
+    "mode": 6500,
+    "modeShare": 1
+   },
+   "rpmLabel": "consistent across the library",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 300,
+    "min": 300,
+    "max": 300,
+    "n": 22,
+    "mode": 300,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU",
+    "POM"
+   ],
+   "sources": [
+    "O0106604.X20",
+    "O0106605.X20",
+    "O0106606.X20",
+    "O0106612.X20",
+    "O0106623.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "MK",
+   "d": 40,
+   "kind": "face",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 8000,
+    "min": 8000,
+    "max": 8000,
+    "n": 4,
+    "mode": 8000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 4,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 4,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1,
+    "min": 1,
+    "max": 1,
+    "n": 4,
+    "mode": 1,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SB",
+   "d": 0.8,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 2,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 0.3,
+    "min": 0.3,
+    "max": 0.3,
+    "n": 2,
+    "mode": 0.3,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SB",
+   "d": 2.3,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 16192,
+    "min": 16192,
+    "max": 16192,
+    "n": 2,
+    "mode": 16192,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 450,
+    "min": 450,
+    "max": 450,
+    "n": 2,
+    "mode": 450,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 2,
+    "mode": 2,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SB",
+   "d": 4.6,
+   "kind": "drill",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 3800,
+    "min": 3800,
+    "max": 3800,
+    "n": 2,
+    "mode": 3800,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 500,
+    "min": 500,
+    "max": 500,
+    "n": 2,
+    "mode": 500,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 2,
+    "mode": 4,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 0.8,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 2,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 700,
+    "min": 700,
+    "max": 700,
+    "n": 2,
+    "mode": 700,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 350,
+    "min": 350,
+    "max": 350,
+    "n": 2,
+    "mode": 350,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.12,
+    "min": 0.12,
+    "max": 0.12,
+    "n": 2,
+    "mode": 0.12,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 1.5,
+   "kind": "contour",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 4,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 900,
+    "min": 700,
+    "max": 900,
+    "n": 4,
+    "mode": 700,
+    "modeShare": 0.5
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 810,
+    "min": 350,
+    "max": 810,
+    "n": 4,
+    "mode": 350,
+    "modeShare": 0.5
+   },
+   "depthPerPass": {
+    "median": 0.39,
+    "min": 0.2,
+    "max": 0.39,
+    "n": 4,
+    "mode": 0.2,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 2,
+   "kind": "contour",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 4,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 4,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 900,
+    "min": 500,
+    "max": 900,
+    "n": 4,
+    "mode": 500,
+    "modeShare": 0.5
+   },
+   "depthPerPass": {
+    "median": 1.4,
+    "min": 1,
+    "max": 1.4,
+    "n": 4,
+    "mode": 1,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 2,
+   "kind": "pocket",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 27000,
+    "min": 27000,
+    "max": 27000,
+    "n": 4,
+    "mode": 27000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 600,
+    "max": 1000,
+    "n": 4,
+    "mode": 600,
+    "modeShare": 0.5
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 4,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 0.59,
+    "min": 0.39,
+    "max": 0.59,
+    "n": 4,
+    "mode": 0.39,
+    "modeShare": 0.5
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 4,
+    "mode": 0.2,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 3,
+   "kind": "pocket",
+   "operations": 4,
+   "parts": 1,
+   "rpm": {
+    "median": 21000,
+    "min": 21000,
+    "max": 21000,
+    "n": 4,
+    "mode": 21000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 600,
+    "max": 1000,
+    "n": 4,
+    "mode": 600,
+    "modeShare": 0.5
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 4,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1,
+    "min": 0.55,
+    "max": 1,
+    "n": 4,
+    "mode": 0.55,
+    "modeShare": 0.5
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 4,
+   "kind": "contour",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 21000,
+    "min": 21000,
+    "max": 21000,
+    "n": 2,
+    "mode": 21000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 900,
+    "min": 900,
+    "max": 900,
+    "n": 2,
+    "mode": 900,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 4,
+    "min": 4,
+    "max": 4,
+    "n": 2,
+    "mode": 4,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 4,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 2,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1000,
+    "min": 1000,
+    "max": 1000,
+    "n": 2,
+    "mode": 1000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 2,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.29,
+    "min": 1.29,
+    "max": 1.29,
+    "n": 2,
+    "mode": 1.29,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.2,
+    "min": 0.2,
+    "max": 0.2,
+    "n": 2,
+    "mode": 0.2,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 6,
+   "kind": "pocket",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 2,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 2,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 720,
+    "min": 720,
+    "max": 720,
+    "n": 2,
+    "mode": 720,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.75,
+    "min": 1.75,
+    "max": 1.75,
+    "n": 2,
+    "mode": 1.75,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 1.52,
+    "min": 1.52,
+    "max": 1.52,
+    "n": 2,
+    "mode": 1.52,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "SF",
+   "d": 8,
+   "kind": "finish",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 12000,
+    "min": 12000,
+    "max": 12000,
+    "n": 2,
+    "mode": 12000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 2000,
+    "min": 2000,
+    "max": 2000,
+    "n": 2,
+    "mode": 2000,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 1200,
+    "min": 1200,
+    "max": 1200,
+    "n": 2,
+    "mode": 1200,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 1.81,
+    "min": 1.81,
+    "max": 1.81,
+    "n": 2,
+    "mode": 1.81,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 3.2,
+    "min": 3.2,
+    "max": 3.2,
+    "n": 2,
+    "mode": 3.2,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "ST",
+   "d": 4,
+   "kind": "chamfer",
+   "operations": 8,
+   "parts": 1,
+   "rpm": {
+    "median": 16000,
+    "min": 16000,
+    "max": 16000,
+    "n": 8,
+    "mode": 16000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 920,
+    "min": 900,
+    "max": 920,
+    "n": 8,
+    "mode": 920,
+    "modeShare": 0.75
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 828,
+    "min": 450,
+    "max": 828,
+    "n": 8,
+    "mode": 828,
+    "modeShare": 0.75
+   },
+   "depthPerPass": null,
+   "stepOver": {
+    "median": 2.2,
+    "min": 1.8,
+    "max": 2.2,
+    "n": 4,
+    "mode": 1.8,
+    "modeShare": 0.5
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "ALU"
+   ],
+   "sources": [
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PEEK",
+   "type": "ZB",
+   "d": 2.3,
+   "kind": "centre",
+   "operations": 4,
    "parts": 1,
    "rpm": {
     "median": 6500,
     "min": 6500,
     "max": 6500,
-    "n": 1,
+    "n": 4,
     "mode": 6500,
     "modeShare": 1
    },
@@ -12463,7 +15409,7 @@
     "median": 300,
     "min": 300,
     "max": 300,
-    "n": 1,
+    "n": 4,
     "mode": 300,
     "modeShare": 1
    },
@@ -12474,7 +15420,316 @@
     "ALU"
    ],
    "sources": [
-    "O1754043.135"
+    "O0137238.X20",
+    "O0137238_2.X20"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "GB",
+   "d": 2.5,
+   "kind": "tap",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1,
+    "mode": 200,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 90,
+    "min": 90,
+    "max": 90,
+    "n": 1,
+    "mode": 90,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "MK",
+   "d": 93,
+   "kind": "face",
+   "operations": 3,
+   "parts": 1,
+   "rpm": {
+    "median": 2500,
+    "min": 2500,
+    "max": 2500,
+    "n": 3,
+    "mode": 2500,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 600,
+    "min": 600,
+    "max": 800,
+    "n": 3,
+    "mode": 600,
+    "modeShare": 0.67
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 800,
+    "n": 3,
+    "mode": 600,
+    "modeShare": 0.67
+   },
+   "depthPerPass": {
+    "median": 2.17,
+    "min": 2.17,
+    "max": 2.17,
+    "n": 1,
+    "mode": 2.17,
+    "modeShare": 1
+   },
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "SB",
+   "d": 2,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 3000,
+    "min": 3000,
+    "max": 3000,
+    "n": 1,
+    "mode": 3000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 180,
+    "min": 180,
+    "max": 180,
+    "n": 1,
+    "mode": 180,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 2,
+    "min": 2,
+    "max": 2,
+    "n": 1,
+    "mode": 2,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "SB",
+   "d": 5.4,
+   "kind": "drill",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 1400,
+    "min": 1400,
+    "max": 1400,
+    "n": 1,
+    "mode": 1400,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 1,
+    "mode": 150,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": {
+    "median": 6,
+    "min": 6,
+    "max": 6,
+    "n": 1,
+    "mode": 6,
+    "modeShare": 1
+   },
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "SF",
+   "d": 6,
+   "kind": "finish",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 3200,
+    "min": 3200,
+    "max": 3200,
+    "n": 1,
+    "mode": 3200,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 450,
+    "min": 450,
+    "max": 450,
+    "n": 1,
+    "mode": 450,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 200,
+    "min": 200,
+    "max": 200,
+    "n": 1,
+    "mode": 200,
+    "modeShare": 1
+   },
+   "depthPerPass": {
+    "median": 13,
+    "min": 13,
+    "max": 13,
+    "n": 1,
+    "mode": 13,
+    "modeShare": 1
+   },
+   "stepOver": {
+    "median": 0.3,
+    "min": 0.3,
+    "max": 0.3,
+    "n": 1,
+    "mode": 0.3,
+    "modeShare": 1
+   },
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "ST",
+   "d": 4,
+   "kind": "chamfer",
+   "operations": 2,
+   "parts": 1,
+   "rpm": {
+    "median": 4000,
+    "min": 4000,
+    "max": 4000,
+    "n": 2,
+    "mode": 4000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 2,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "feedLabel": "seen once",
+   "plunge": {
+    "median": 600,
+    "min": 600,
+    "max": 600,
+    "n": 2,
+    "mode": 600,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
+   ]
+  },
+  {
+   "material": "PETP",
+   "type": "ZB",
+   "d": 2.3,
+   "kind": "centre",
+   "operations": 1,
+   "parts": 1,
+   "rpm": {
+    "median": 2000,
+    "min": 2000,
+    "max": 2000,
+    "n": 1,
+    "mode": 2000,
+    "modeShare": 1
+   },
+   "rpmLabel": "seen once",
+   "feed": null,
+   "feedLabel": "",
+   "plunge": {
+    "median": 150,
+    "min": 150,
+    "max": 150,
+    "n": 1,
+    "mode": 150,
+    "modeShare": 1
+   },
+   "depthPerPass": null,
+   "stepOver": null,
+   "peck": null,
+   "toolCodeMaterials": [
+    "POM"
+   ],
+   "sources": [
+    "O2308115.000"
    ]
   },
   {
@@ -12482,13 +15737,13 @@
    "type": "GB",
    "d": 2.5,
    "kind": "tap",
-   "operations": 4,
-   "parts": 4,
+   "operations": 3,
+   "parts": 3,
    "rpm": {
     "median": 200,
     "min": 200,
     "max": 200,
-    "n": 4,
+    "n": 3,
     "mode": 200,
     "modeShare": 1
    },
@@ -12499,7 +15754,7 @@
     "median": 90,
     "min": 90,
     "max": 90,
-    "n": 4,
+    "n": 3,
     "mode": 90,
     "modeShare": 1
    },
@@ -12512,7 +15767,6 @@
    "sources": [
     "O1024043.C51",
     "O1860053.C46",
-    "O2308115.000",
     "O4230811.000"
    ]
   },
@@ -12702,13 +15956,13 @@
    "type": "MK",
    "d": 93,
    "kind": "face",
-   "operations": 53,
-   "parts": 23,
+   "operations": 50,
+   "parts": 22,
    "rpm": {
     "median": 2500,
     "min": 2500,
     "max": 2500,
-    "n": 53,
+    "n": 50,
     "mode": 2500,
     "modeShare": 1
    },
@@ -12717,7 +15971,7 @@
     "median": 600,
     "min": 600,
     "max": 1200,
-    "n": 53,
+    "n": 50,
     "mode": 600,
     "modeShare": 0.72
    },
@@ -12726,7 +15980,7 @@
     "median": 600,
     "min": 600,
     "max": 1200,
-    "n": 53,
+    "n": 50,
     "mode": 600,
     "modeShare": 0.72
    },
@@ -12734,9 +15988,9 @@
     "median": 1.5,
     "min": 0.5,
     "max": 3,
-    "n": 39,
+    "n": 38,
     "mode": 1.5,
-    "modeShare": 0.31
+    "modeShare": 0.32
    },
    "stepOver": {
     "median": 56.33,
@@ -12807,43 +16061,42 @@
    "type": "SB",
    "d": 1,
    "kind": "drill",
-   "operations": 2,
-   "parts": 2,
+   "operations": 1,
+   "parts": 1,
    "rpm": {
-    "median": 27000,
+    "median": 3100,
     "min": 3100,
-    "max": 27000,
-    "n": 2,
+    "max": 3100,
+    "n": 1,
     "mode": 3100,
-    "modeShare": 0.5
+    "modeShare": 1
    },
-   "rpmLabel": "varies",
+   "rpmLabel": "seen once",
    "feed": null,
    "feedLabel": "",
    "plunge": {
-    "median": 350,
+    "median": 80,
     "min": 80,
-    "max": 350,
-    "n": 2,
+    "max": 80,
+    "n": 1,
     "mode": 80,
-    "modeShare": 0.5
+    "modeShare": 1
    },
    "depthPerPass": null,
    "stepOver": null,
    "peck": {
     "median": 0.5,
-    "min": 0.3,
+    "min": 0.5,
     "max": 0.5,
-    "n": 2,
-    "mode": 0.3,
-    "modeShare": 0.5
+    "n": 1,
+    "mode": 0.5,
+    "modeShare": 1
    },
    "toolCodeMaterials": [
     "POM"
    ],
    "sources": [
-    "O1420213.C62",
-    "O1723083.135"
+    "O1420213.C62"
    ]
   },
   {
@@ -12939,49 +16192,6 @@
   {
    "material": "POM",
    "type": "SB",
-   "d": 1.8,
-   "kind": "drill",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 3000,
-    "min": 3000,
-    "max": 3000,
-    "n": 1,
-    "mode": 3000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": null,
-   "feedLabel": "",
-   "plunge": {
-    "median": 150,
-    "min": 150,
-    "max": 150,
-    "n": 1,
-    "mode": 150,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": {
-    "median": 1.5,
-    "min": 1.5,
-    "max": 1.5,
-    "n": 1,
-    "mode": 1.5,
-    "modeShare": 1
-   },
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SB",
    "d": 1.97,
    "kind": "drill",
    "operations": 11,
@@ -13031,13 +16241,13 @@
    "type": "SB",
    "d": 2,
    "kind": "drill",
-   "operations": 4,
-   "parts": 4,
+   "operations": 2,
+   "parts": 2,
    "rpm": {
     "median": 5000,
     "min": 3000,
-    "max": 19000,
-    "n": 4,
+    "max": 5000,
+    "n": 2,
     "mode": 3000,
     "modeShare": 0.5
    },
@@ -13047,8 +16257,8 @@
    "plunge": {
     "median": 250,
     "min": 180,
-    "max": 400,
-    "n": 4,
+    "max": 250,
+    "n": 2,
     "mode": 180,
     "modeShare": 0.5
    },
@@ -13056,20 +16266,18 @@
    "stepOver": null,
    "peck": {
     "median": 2,
-    "min": 1.5,
+    "min": 2,
     "max": 2,
-    "n": 4,
+    "n": 2,
     "mode": 2,
-    "modeShare": 0.75
+    "modeShare": 1
    },
    "toolCodeMaterials": [
     "POM"
    ],
    "sources": [
     "O0173595.X20",
-    "O1723083.135",
-    "O1754053.135",
-    "O2308115.000"
+    "O1754053.135"
    ]
   },
   {
@@ -13668,26 +16876,26 @@
    "type": "SB",
    "d": 5.4,
    "kind": "drill",
-   "operations": 7,
-   "parts": 7,
+   "operations": 6,
+   "parts": 6,
    "rpm": {
     "median": 2900,
-    "min": 1400,
+    "min": 2900,
     "max": 3000,
-    "n": 7,
+    "n": 6,
     "mode": 2900,
-    "modeShare": 0.71
+    "modeShare": 0.83
    },
    "rpmLabel": "majority",
    "feed": null,
    "feedLabel": "",
    "plunge": {
     "median": 700,
-    "min": 150,
+    "min": 700,
     "max": 800,
-    "n": 7,
+    "n": 6,
     "mode": 700,
-    "modeShare": 0.71
+    "modeShare": 0.83
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -13695,9 +16903,9 @@
     "median": 6,
     "min": 2.5,
     "max": 8,
-    "n": 7,
+    "n": 6,
     "mode": 6,
-    "modeShare": 0.71
+    "modeShare": 0.67
    },
    "toolCodeMaterials": [
     "FH",
@@ -13797,63 +17005,6 @@
     "O0173704.X20",
     "O1754053.135",
     "O2619723.000"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SF",
-   "d": 2,
-   "kind": "contour",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 27000,
-    "min": 27000,
-    "max": 27000,
-    "n": 1,
-    "mode": 27000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1000,
-    "min": 1000,
-    "max": 1000,
-    "n": 1,
-    "mode": 1000,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 700,
-    "min": 700,
-    "max": 700,
-    "n": 1,
-    "mode": 700,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.5,
-    "min": 0.5,
-    "max": 0.5,
-    "n": 1,
-    "mode": 0.5,
-    "modeShare": 1
-   },
-   "stepOver": {
-    "median": 0.2,
-    "min": 0.2,
-    "max": 0.2,
-    "n": 1,
-    "mode": 0.2,
-    "modeShare": 1
-   },
-   "peck": null,
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
    ]
   },
   {
@@ -13970,56 +17121,6 @@
    "material": "POM",
    "type": "SF",
    "d": 3,
-   "kind": "contour",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 21000,
-    "min": 21000,
-    "max": 21000,
-    "n": 1,
-    "mode": 21000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1000,
-    "min": 1000,
-    "max": 1000,
-    "n": 1,
-    "mode": 1000,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 300,
-    "min": 300,
-    "max": 300,
-    "n": 1,
-    "mode": 300,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 0.83,
-    "min": 0.83,
-    "max": 0.83,
-    "n": 1,
-    "mode": 0.83,
-    "modeShare": 1
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SF",
-   "d": 3,
    "kind": "finish",
    "operations": 6,
    "parts": 6,
@@ -14075,41 +17176,41 @@
    "type": "SF",
    "d": 3,
    "kind": "pocket",
-   "operations": 14,
-   "parts": 9,
+   "operations": 13,
+   "parts": 8,
    "rpm": {
     "median": 8000,
     "min": 8000,
-    "max": 21000,
-    "n": 14,
+    "max": 8000,
+    "n": 13,
     "mode": 8000,
-    "modeShare": 0.93
+    "modeShare": 1
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 500,
     "min": 51,
     "max": 500,
-    "n": 14,
+    "n": 13,
     "mode": 500,
-    "modeShare": 0.64
+    "modeShare": 0.69
    },
    "feedLabel": "majority",
    "plunge": {
     "median": 300,
     "min": 300,
     "max": 400,
-    "n": 14,
+    "n": 13,
     "mode": 300,
-    "modeShare": 0.86
+    "modeShare": 0.92
    },
    "depthPerPass": {
-    "median": 1.41,
-    "min": 0.01,
+    "median": 1.43,
+    "min": 0.3,
     "max": 2.8,
-    "n": 11,
+    "n": 10,
     "mode": 1.25,
-    "modeShare": 0.18
+    "modeShare": 0.2
    },
    "stepOver": {
     "median": 1.35,
@@ -14136,15 +17237,15 @@
    "type": "SF",
    "d": 4,
    "kind": "counterbore",
-   "operations": 7,
-   "parts": 7,
+   "operations": 6,
+   "parts": 6,
    "rpm": {
     "median": 1800,
     "min": 1800,
-    "max": 9500,
-    "n": 7,
+    "max": 3000,
+    "n": 6,
     "mode": 1800,
-    "modeShare": 0.57
+    "modeShare": 0.67
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -14153,9 +17254,9 @@
     "median": 500,
     "min": 200,
     "max": 500,
-    "n": 7,
+    "n": 6,
     "mode": 500,
-    "modeShare": 0.57
+    "modeShare": 0.67
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -14168,7 +17269,7 @@
     "O0155136.X20",
     "O0168461.X20",
     "O1420213.C62",
-    "O1723083.135"
+    "O1754053.135"
    ]
   },
   {
@@ -14442,50 +17543,43 @@
    "type": "SF",
    "d": 5,
    "kind": "pocket",
-   "operations": 8,
-   "parts": 8,
+   "operations": 7,
+   "parts": 7,
    "rpm": {
     "median": 8000,
     "min": 8000,
-    "max": 14000,
-    "n": 8,
+    "max": 8000,
+    "n": 7,
     "mode": 8000,
-    "modeShare": 0.88
+    "modeShare": 1
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 560,
     "min": 186,
-    "max": 1100,
-    "n": 8,
+    "max": 800,
+    "n": 7,
     "mode": 560,
-    "modeShare": 0.38
+    "modeShare": 0.43
    },
    "feedLabel": "varies",
    "plunge": {
     "median": 400,
     "min": 400,
     "max": 500,
-    "n": 7,
+    "n": 6,
     "mode": 400,
-    "modeShare": 0.71
+    "modeShare": 0.83
    },
    "depthPerPass": {
     "median": 2,
     "min": 0.02,
     "max": 2.5,
-    "n": 8,
+    "n": 7,
     "mode": 1.75,
-    "modeShare": 0.25
+    "modeShare": 0.29
    },
-   "stepOver": {
-    "median": 3,
-    "min": 3,
-    "max": 3,
-    "n": 1,
-    "mode": 3,
-    "modeShare": 1
-   },
+   "stepOver": null,
    "peck": null,
    "toolCodeMaterials": [
     "POM"
@@ -14496,49 +17590,6 @@
     "O0124681.X20",
     "O0173595.X20",
     "O0173596.X20"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SF",
-   "d": 6,
-   "kind": "contour",
-   "operations": 1,
-   "parts": 1,
-   "rpm": {
-    "median": 12000,
-    "min": 12000,
-    "max": 12000,
-    "n": 1,
-    "mode": 12000,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 1,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 700,
-    "min": 700,
-    "max": 700,
-    "n": 1,
-    "mode": 700,
-    "modeShare": 1
-   },
-   "depthPerPass": null,
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
    ]
   },
   {
@@ -14586,50 +17637,43 @@
    "type": "SF",
    "d": 6,
    "kind": "finish",
-   "operations": 4,
-   "parts": 4,
+   "operations": 3,
+   "parts": 3,
    "rpm": {
     "median": 8000,
-    "min": 3200,
+    "min": 8000,
     "max": 8000,
-    "n": 4,
+    "n": 3,
     "mode": 8000,
-    "modeShare": 0.75
+    "modeShare": 1
    },
-   "rpmLabel": "majority",
+   "rpmLabel": "consistent across the library",
    "feed": {
     "median": 980,
-    "min": 450,
+    "min": 540,
     "max": 1400,
-    "n": 4,
-    "mode": 450,
-    "modeShare": 0.25
+    "n": 3,
+    "mode": 540,
+    "modeShare": 0.33
    },
    "feedLabel": "varies",
    "plunge": {
     "median": 1260,
-    "min": 200,
+    "min": 540,
     "max": 1260,
-    "n": 4,
+    "n": 3,
     "mode": 1260,
-    "modeShare": 0.5
+    "modeShare": 0.67
    },
    "depthPerPass": {
-    "median": 5,
+    "median": 2.88,
     "min": 2.3,
-    "max": 13,
-    "n": 4,
+    "max": 5,
+    "n": 3,
     "mode": 2.3,
-    "modeShare": 0.25
+    "modeShare": 0.33
    },
-   "stepOver": {
-    "median": 0.3,
-    "min": 0.3,
-    "max": 0.3,
-    "n": 1,
-    "mode": 0.3,
-    "modeShare": 1
-   },
+   "stepOver": null,
    "peck": null,
    "toolCodeMaterials": [
     "POM"
@@ -14637,8 +17681,7 @@
    "sources": [
     "O0173595.X20",
     "O1754053.135",
-    "O1920213.105",
-    "O2308115.000"
+    "O1920213.105"
    ]
   },
   {
@@ -14959,106 +18002,6 @@
   {
    "material": "POM",
    "type": "SF",
-   "d": 16,
-   "kind": "contour",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 6600,
-    "min": 6600,
-    "max": 6600,
-    "n": 2,
-    "mode": 6600,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 900,
-    "min": 900,
-    "max": 900,
-    "n": 2,
-    "mode": 900,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 5,
-    "min": 2.85,
-    "max": 5,
-    "n": 2,
-    "mode": 2.85,
-    "modeShare": 0.5
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SF",
-   "d": 16,
-   "kind": "face",
-   "operations": 2,
-   "parts": 1,
-   "rpm": {
-    "median": 6600,
-    "min": 6600,
-    "max": 6600,
-    "n": 2,
-    "mode": 6600,
-    "modeShare": 1
-   },
-   "rpmLabel": "seen once",
-   "feed": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "feedLabel": "seen once",
-   "plunge": {
-    "median": 1200,
-    "min": 1200,
-    "max": 1200,
-    "n": 2,
-    "mode": 1200,
-    "modeShare": 1
-   },
-   "depthPerPass": {
-    "median": 1,
-    "min": 1,
-    "max": 1,
-    "n": 2,
-    "mode": 1,
-    "modeShare": 1
-   },
-   "stepOver": null,
-   "peck": null,
-   "toolCodeMaterials": [
-    "POM"
-   ],
-   "sources": [
-    "O1723083.135"
-   ]
-  },
-  {
-   "material": "POM",
-   "type": "SF",
    "d": 20,
    "kind": "contour",
    "operations": 24,
@@ -15267,42 +18210,42 @@
    "type": "ST",
    "d": 4,
    "kind": "chamfer",
-   "operations": 53,
-   "parts": 26,
+   "operations": 49,
+   "parts": 24,
    "rpm": {
     "median": 8000,
     "min": 4000,
-    "max": 16000,
-    "n": 53,
+    "max": 8000,
+    "n": 49,
     "mode": 8000,
-    "modeShare": 0.85
+    "modeShare": 0.92
    },
    "rpmLabel": "majority",
    "feed": {
     "median": 1500,
     "min": 600,
     "max": 1500,
-    "n": 53,
+    "n": 49,
     "mode": 1500,
-    "modeShare": 0.57
+    "modeShare": 0.61
    },
    "feedLabel": "majority",
    "plunge": {
-    "median": 800,
+    "median": 1050,
     "min": 300,
     "max": 1050,
-    "n": 53,
+    "n": 49,
     "mode": 1050,
-    "modeShare": 0.47
+    "modeShare": 0.51
    },
    "depthPerPass": null,
    "stepOver": {
-    "median": 3.3,
+    "median": 3.5,
     "min": 2,
     "max": 3.9,
-    "n": 11,
+    "n": 10,
     "mode": 2.9,
-    "modeShare": 0.18
+    "modeShare": 0.2
    },
    "peck": null,
    "toolCodeMaterials": [
@@ -15452,15 +18395,15 @@
    "type": "ZB",
    "d": 2.3,
    "kind": "centre",
-   "operations": 34,
-   "parts": 25,
+   "operations": 31,
+   "parts": 23,
    "rpm": {
     "median": 8000,
     "min": 2000,
     "max": 8000,
-    "n": 34,
+    "n": 31,
     "mode": 8000,
-    "modeShare": 0.56
+    "modeShare": 0.61
    },
    "rpmLabel": "majority",
    "feed": null,
@@ -15468,10 +18411,10 @@
    "plunge": {
     "median": 200,
     "min": 87,
-    "max": 300,
-    "n": 34,
+    "max": 200,
+    "n": 31,
     "mode": 200,
-    "modeShare": 0.62
+    "modeShare": 0.68
    },
    "depthPerPass": null,
    "stepOver": null,
@@ -15489,7 +18432,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SB",
    "d": 3,
    "kind": "drill",
@@ -15533,7 +18476,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SB",
    "d": 3.5,
    "kind": "drill",
@@ -15577,7 +18520,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SB",
    "d": 5,
    "kind": "drill",
@@ -15621,7 +18564,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SB",
    "d": 5.5,
    "kind": "centre",
@@ -15658,7 +18601,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SB",
    "d": 6.4,
    "kind": "drill",
@@ -15702,7 +18645,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 2,
    "kind": "contour",
@@ -15753,7 +18696,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 2,
    "kind": "pocket",
@@ -15804,7 +18747,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 3,
    "kind": "contour",
@@ -15855,7 +18798,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 4,
    "kind": "contour",
@@ -15906,7 +18849,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 6,
    "kind": "counterbore",
@@ -15943,7 +18886,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 6,
    "kind": "pocket",
@@ -15994,7 +18937,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 8,
    "kind": "contour",
@@ -16052,7 +18995,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SF",
    "d": 8,
    "kind": "pocket",
@@ -16103,7 +19046,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SR",
    "d": 16,
    "kind": "contour",
@@ -16154,7 +19097,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "SR",
    "d": 16,
    "kind": "face",
@@ -16212,7 +19155,7 @@
    ]
   },
   {
-   "material": "VAHS",
+   "material": "VA",
    "type": "ST",
    "d": 4,
    "kind": "chamfer",
@@ -16428,7 +19371,7 @@
    "file": "O0106624.X20",
    "dialect": "FANUC",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     21.2,
     25.1,
@@ -16471,7 +19414,7 @@
    "file": "O0106606.X20",
    "dialect": "FANUC",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     18,
     16,
@@ -16514,7 +19457,7 @@
    "file": "O0106605.X20",
    "dialect": "FANUC",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     21.2,
     25.1,
@@ -16557,7 +19500,7 @@
    "file": "O0106604.X20",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     19,
     20.5,
@@ -16600,7 +19543,7 @@
    "file": "O0106623.X20",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     16,
     13.1,
@@ -16643,7 +19586,7 @@
    "file": "O0106612.X20",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     25,
     16.25,
@@ -16747,7 +19690,7 @@
    "file": "O0125675.X20",
    "dialect": "FANUC",
    "type": "other",
-   "material": "FR",
+   "material": "MS",
    "finished": [
     17.8,
     10,
@@ -16881,7 +19824,7 @@
    "file": "O0096795.X20",
    "dialect": "FANUC",
    "type": "sealCage",
-   "material": "ALU",
+   "material": "MS",
    "finished": [
     55,
     30,
@@ -17978,7 +20921,7 @@
    "file": "O0155317.X20",
    "dialect": "HAAS",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     48,
     36,
@@ -18021,7 +20964,7 @@
    "file": "O0155317_2.X20",
    "dialect": "FANUC",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     48,
     36,
@@ -18064,7 +21007,7 @@
    "file": "O1335033.105",
    "dialect": "HAAS",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     13.6,
     9.6,
@@ -18116,7 +21059,7 @@
    "file": "O1335033_2.105",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     13.6,
     9.6,
@@ -19918,7 +22861,7 @@
    "file": "O1027213.C96",
    "dialect": "HAAS",
    "type": "pinPlate",
-   "material": "FH",
+   "material": "EPO",
    "finished": [
     37,
     47,
@@ -20802,7 +23745,7 @@
    "file": "O2625441.000",
    "dialect": "FANUC",
    "type": "contourInsert",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     45.5,
     35,
@@ -20845,7 +23788,7 @@
    "file": "O1161033.129",
    "dialect": "HAAS",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     64,
     65.5,
@@ -20897,7 +23840,7 @@
    "file": "O1161033_2.129",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     64,
     65.5,
@@ -20949,7 +23892,7 @@
    "file": "O1640053.C72",
    "dialect": "FANUC",
    "type": "other",
-   "material": "VAHS",
+   "material": "VA",
    "finished": [
     34,
     32,
@@ -20992,7 +23935,7 @@
    "file": "O1640053_2.C72",
    "dialect": "HAAS",
    "type": "other",
-   "material": "VAHS",
+   "material": "VA",
    "finished": [
     34,
     32,
@@ -21035,7 +23978,7 @@
    "file": "O1723083.135",
    "dialect": "HAAS",
    "type": "other",
-   "material": "POM",
+   "material": "PC GF",
    "finished": [
     28,
     8,
@@ -21148,7 +24091,7 @@
    "file": "O2308115.000",
    "dialect": "HAAS",
    "type": "other",
-   "material": "POM",
+   "material": "PETP",
    "finished": [
     32,
     10,
@@ -21226,7 +24169,7 @@
    "file": "O1130153.113",
    "dialect": "HAAS",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     50.5,
     27.5,
@@ -21269,7 +24212,7 @@
    "file": "O1130153_2.113",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PC GF",
    "finished": [
     50.5,
     27.5,
@@ -21500,7 +24443,7 @@
    "file": "O0137238.X20",
    "dialect": "HAAS",
    "type": "other",
-   "material": "ALU",
+   "material": "PEEK",
    "finished": [
     15,
     13,
@@ -21561,7 +24504,7 @@
    "file": "O0137238_2.X20",
    "dialect": "FANUC",
    "type": "other",
-   "material": "ALU",
+   "material": "PEEK",
    "finished": [
     15,
     13,
