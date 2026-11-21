@@ -1,9 +1,11 @@
 /*
  * CAM AI's program (HAAS code) as one machine gets it from Download: the machine rules Send applies
- * through the remapper (gcodeProcessor generateRemappedCode), so both ways give the machine the same
- * program. FANUC-2 runs HAAS code with G49 on each tool change, at most S5000, 2 mm pecks in aluminium
- * and brass, and FANUC numbers; each HAAS its air or coolant code; FH pecks at most 5 mm; the other
- * FANUCs (the Robodrills) the FANUC dialect.
+ * through the remapper (gcodeProcessor generateRemappedCode). FANUC-2 runs HAAS code with G49 on each
+ * tool change, at most S5000, 2 mm pecks in aluminium and brass, and FANUC numbers; each HAAS its air or
+ * coolant code; FH pecks at most 5 mm; the other FANUCs (the Robodrills) the FANUC dialect. Send differs
+ * in two things (docs/knowledge/cam-gaps.md, G4): the remapper picks the tools again from the machine's
+ * inventory, and reads the material from the program's text (a model named after another material reads
+ * as that one); Download keeps CAM AI's tools and takes the material CAM AI cut.
  */
 import { addG49AfterM6, applyMachineCoolant, detectMaterial, fanuc2Limits, fanucNumbers, fhPecks, isAluOrBrass } from '../gcodeProcessor';
 import { convertHaasToFanuc } from '../haasToFanucConverter';
