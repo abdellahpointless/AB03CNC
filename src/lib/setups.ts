@@ -274,8 +274,8 @@ export function readInstructions(notes: string[]) {
     t.match(new RegExp(`(?:CALCO|\\bCALES?\\s*(?:DE)?)\\s*${NUM}\\s*MM`)) ??
     t.match(new RegExp(`${NUM}\\s*MM\\s*CALES?\\b`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM"; also
-  // "UNTERLAGE / IN 8 MM", "UNTERLAGE // IN 8 MM" and "UNTERLAGEIN MASS 7 MM".
-  const thick = t.match(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|IN\\s*MASS|IN|SUR|AUF)\\s*${NUM}`));
+  // "UNTERLAGE / IN 8 MM", "UNTERLAGE // IN 8 MM", "UNTERLAGEIN MASS 7 MM" and "UNTERLAGE MASS 5 MM".
+  const thick = t.match(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|(?:IN\\s*)?MASS|IN|SUR|AUF)\\s*${NUM}`));
   // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
   const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
   // Every one written counts ("IN Y-" and "IN Y+": one plate on each side); the last one per side wins.

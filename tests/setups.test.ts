@@ -376,6 +376,7 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['40 MM UNTERLAGE/ IN 6MM'])).toMatchObject({ support: 40, restDepth: 6 });
     expect(readInstructions(['40 MM UNTERLAGEIN MASS 7 MM'])).toMatchObject({ support: 40, restDepth: 7 });
     expect(readInstructions(['28 MM UNTERLAGEIN MASS 19.5 MM'])).toMatchObject({ support: 28, restDepth: 19.5 });
+    expect(readInstructions(['41 MM UNTERLAGE MASS 5 MM '])).toMatchObject({ support: 41, restDepth: 5 });
     // A side ("IN Y-") is a spacer, not a rest depth.
     expect(readInstructions(['15 MM UNTERLAGE/ IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, restDepth: null, spacers: [{ mm: 15, side: 'Y-' }] });
   });
