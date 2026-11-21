@@ -12,6 +12,7 @@ import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures }
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
+import { shopStyle } from './style';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
@@ -957,7 +958,9 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // Planned again with them nested; each nest gets its own program (POM, held in the vise).
   const kept = best!;
   const fails = (x: CamResult) => x.setups.filter((st) => !st.physics.ok).map((st) => st.side);
-  if (input.noNest || !fails(kept).length) return kept;
+  // Written the shop's way at the end (style.ts proves the same moves; the check holds for it).
+  const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => ({ ...r, code: shopStyle(r.code, input.brand).code });
+  if (input.noNest || !fails(kept).length) return shop(kept);
   // Planned again with the failing sides nested, and again with any side that then fails.
   let sides = fails(kept);
   let nested: CamResult & { check: CamCheck } = kept;
@@ -970,14 +973,14 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     if (!more.length) break;
     sides = [...sides, ...more];
   }
-  if (!good(nested) && !(nested.check.match >= kept.check.match - 0.002 && fails(nested).length < fails(kept).length)) return kept;
+  if (!good(nested) && !(nested.check.match >= kept.check.match - 0.002 && fails(nested).length < fails(kept).length)) return shop(kept);
   nested.nests = nested.setups
     .filter((x) => x.nest)
     .map((x) => {
       const own = camProgram({ tris: x.nest!.tris, material: 'POM', tools: input.tools, brand: input.brand, limits: input.limits, speeds: input.speeds, name: `${input.name ?? 'TEIL'} NEST`, noNest: true });
       return { side: x.side, nest: x.nest!, code: own.code, check: own.check };
     });
-  return nested;
+  return shop(nested);
 }
 
 /** The program with the part's `vertical` model axis as its height in the first two setups. */
