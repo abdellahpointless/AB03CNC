@@ -181,284 +181,284 @@ Materials without tool codes of their own, and the data they are cut with (opera
 
 How much longer the tool is than its deepest cut (mm), per type: AB median 29.7 (29.5–29.8, 24 operations); GB median 21 (2–31, 18 operations); KF median 23.8 (12.2–27, 5 operations); MK median 23 (21–23, 2 operations); SB median 29.8 (-2–60, 460 operations); SF median 19 (-2.5–80, 808 operations); SFH median 34.2 (9.7–50.7, 53 operations); SR median 29.7 (29.7–29.7, 2 operations); ST median 24.4 (2.5–39.5, 272 operations); TF median 15 (15–15, 2 operations); UDM median 28 (28–28, 4 operations); ZB median 37.5 (20–43, 110 operations).
 
-Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation: the most common value with its share of the operations, then median and range. The label is the rpm's and the feed's: **consistent** (one value), **majority** (one value for more than half of the operations), **varies**, **seen once** (one part). Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named.
+Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation. First the rpm and feed one operation runs together most often, with its share of the operations and its label: **consistent** (every operation), **majority** (more than half), **varies**, **seen once** (one part). Then each value on its own: the most common with its share, median and range. Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named.
 
-| Material | Type | Ø | Kind | Ops | Parts | rpm | Feed mm/min | Plunge | Depth per pass | Step-over | Peck | Label (rpm / feed) |
+| Material | Type | Ø | Kind | Ops | Parts | Run together most (rpm / feed, share, label) | rpm | Feed mm/min | Plunge | Depth per pass | Step-over | Peck |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| ALU | AB | 5.5 | centre | 25 | 14 | 6500 (92%; 6500, 6500–8000) | – | 300 (300–440) | – | – | – | majority /  |
-| ALU | GB | 2.5 | tap | 1 | 1 | 400 (100%; 400, 400–400) | – | 180 (180–180) | – | – | – | seen once /  |
-| ALU | GB | 3 | tap | 2 | 1 | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – | seen once /  |
-| ALU | GB | 6 | tap | 2 | 2 | 300 (100%; 300, 300–300) | – | 225 (225–225) | – | – | – | consistent across the library /  |
-| ALU | KF | 6 | finish | 3 | 3 | 6500 (67%; 6500, 6500–13000) | 1300 (67%; 1300, 1300–1430) | 780 (780–1430) | 0.09 (0.08–0.09) | 5.02 (3.35–5.02) | – | majority / majority |
-| ALU | MK | 40 | face | 84 | 34 | 8000 (80%; 8000, 3000–8000) | 3000 (85%; 3000, 500–3000) | 3000 (500–3000) | 1 (0.7–2) | 26 (24.73–34) | – | majority / majority |
-| ALU | SB | 1 | drill | 7 | 5 | 27000 (100%; 27000, 27000–27000) | – | 300 (300–350) | – | – | 0.3 (0.1–0.3) | consistent across the library /  |
-| ALU | SB | 1.2 | drill | 1 | 1 | 8000 (100%; 8000, 8000–8000) | – | 150 (150–150) | – | – | 0.5 (0.5–0.5) | seen once /  |
-| ALU | SB | 1.3 | drill | 2 | 1 | 10000 (100%; 10000, 10000–10000) | – | 350 (350–350) | – | – | 0.5 (0.5–0.5) | seen once /  |
-| ALU | SB | 1.5 | drill | 3 | 2 | 10000 (67%; 10000, 10000–26000) | – | 350 (350–350) | – | – | 0.6 (0.6–0.6) | majority /  |
-| ALU | SB | 2 | drill | 17 | 14 | 10000 (41%; 10000, 8000–19000) | – | 400 (150–400) | – | – | 1.5 (0.5–1.5) | varies /  |
-| ALU | SB | 2.5 | drill | 19 | 11 | 15000 (100%; 15000, 15000–15000) | – | 450 (450–450) | – | – | 2 (0.5–2) | consistent across the library /  |
-| ALU | SB | 2.96 | drill | 1 | 1 | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) | seen once /  |
-| ALU | SB | 3 | drill | 13 | 10 | 13000 (77%; 13000, 8000–13000) | – | 400 (230–400) | – | – | 3 (1–3.3) | majority /  |
-| ALU (code FH) | SB | 3.2 | drill | 12 | 9 | 13000 (50%; 13000, 4500–15000) | – | 400 (400–450) | – | – | 3.3 (2–4.5) | varies /  |
-| ALU (code ALU/POM) | SB | 3.3 | drill | 17 | 8 | 12000 (88%; 12000, 5000–12000) | – | 450 (450–500) | – | – | 3.3 (3–3.3) | majority /  |
-| ALU | SB | 3.5 | drill | 8 | 7 | 11000 (63%; 11000, 8000–12000) | – | 440 (320–500) | – | – | 3.5 (0.5–3.5) | majority /  |
-| ALU | SB | 4 | centre | 1 | 1 | 8000 (100%; 8000, 8000–8000) | – | 400 (400–400) | – | – | – | seen once /  |
-| ALU | SB | 4 | drill | 22 | 16 | 9500 (77%; 9500, 8000–9500) | – | 500 (430–500) | – | – | 4 (0.5–4) | majority /  |
-| ALU | SB | 4.2 | drill | 4 | 2 | 9000 (100%; 9000, 9000–9000) | – | 500 (500–500) | – | – | 4 (1–4) | consistent across the library /  |
-| ALU | SB | 4.5 | drill | 1 | 1 | 8500 (100%; 8500, 8500–8500) | – | 510 (510–510) | – | – | 4.5 (4.5–4.5) | seen once /  |
-| ALU | SB | 4.8 | drill | 1 | 1 | 8000 (100%; 8000, 8000–8000) | – | 520 (520–520) | – | – | 5 (5–5) | seen once /  |
-| ALU | SB | 5 | drill | 13 | 7 | 7600 (85%; 7600, 6900–7600) | – | 475 (450–475) | – | – | 5 (3–5.5) | majority /  |
-| ALU (code FH/POM) | SB | 5.4 | drill | 5 | 3 | 2900 (40%; 3000, 2900–6900) | – | 700 (450–800) | – | – | 6 (5.5–8) | varies /  |
-| ALU | SB | 5.5 | drill | 4 | 3 | 6900 (100%; 6900, 6900–6900) | – | 450 (450–450) | – | – | 5.5 (1–5.5) | consistent across the library /  |
-| ALU (code FH) | SB | 6.2 | drill | 1 | 1 | 4500 (100%; 4500, 4500–4500) | – | 800 (800–800) | – | – | 8 (8–8) | seen once /  |
-| ALU | SB | 6.4 | drill | 8 | 6 | 6000 (100%; 6000, 6000–6000) | – | 400 (400–400) | – | – | 6.5 (1–6.5) | consistent across the library /  |
-| ALU | SF | 1 | contour | 3 | 2 | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 700 (630–700) | 0.2 (0.2–0.2) | 0.96 (0.81–0.96) | – | consistent across the library / consistent across the library |
-| ALU | SF | 1 | finish | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 600 (100%; 600, 600–600) | 300 (300–300) | 0.15 (0.15–0.15) | – | – | seen once / seen once |
-| ALU | SF | 1 | pocket | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 350 (350–350) | 0.2 (0.2–0.2) | – | – | seen once / seen once |
-| ALU | SF | 1.5 | contour | 9 | 3 | 27000 (100%; 27000, 27000–27000) | 900 (67%; 900, 700–900) | 810 (350–810) | 0.38 (0.2–0.4) | 1 (1–1) | – | consistent across the library / majority |
-| ALU | SF | 1.5 | pocket | 4 | 2 | 8000 (50%; 27000, 8000–27000) | 260 (50%; 900, 260–900) | 360 (130–360) | 0.39 (0.37–0.39) | 0.12 (0.12–0.12) | – | varies / varies |
-| ALU (code ALU/FH) | SF | 2 | contour | 38 | 15 | 27000 (76%; 27000, 8000–27000) | 1000 (58%; 1000, 150–1200) | 700 (135–1080) | 0.55 (0.29–1.5) | 0.2 (0.16–1.44) | – | majority / majority |
-| ALU | SF | 2 | counterbore | 1 | 1 | 19000 (100%; 19000, 19000–19000) | – | 300 (300–300) | – | – | – | seen once /  |
-| ALU | SF | 2 | finish | 6 | 2 | 8000 (67%; 8000, 8000–27000) | 700 (67%; 700, 280–700) | 350 (140–630) | 0.3 (0.02–0.39) | 1.3 (1.3–1.3) | – | majority / majority |
-| ALU | SF | 2 | pocket | 1 | 1 | 27000 (100%; 27000, 27000–27000) | 600 (100%; 600, 600–600) | 600 (600–600) | 0.01 (0.01–0.01) | – | – | seen once / seen once |
-| ALU | SF | 3 | contour | 14 | 7 | 21000 (50%; 21000, 8000–27000) | 1000 (57%; 1000, 300–1200) | 900 (200–900) | 1 (0.59–1.5) | 0.2 (0.2–0.2) | – | varies / majority |
-| ALU (code ALU/POM) | SF | 3 | pocket | 7 | 6 | 21000 (71%; 21000, 8000–21000) | 600 (43%; 600, 450–1000) | 600 (225–600) | 0.81 (0.06–1.25) | 0.62 (0.2–0.62) | – | majority / varies |
-| ALU (code ALU/POM) | SF | 4 | contour | 34 | 18 | 16000 (74%; 16000, 8000–16000) | 1200 (59%; 1200, 360–1200) | 1080 (300–1080) | 1.4 (0.4–1.63) | 0.54 (0.2–3.02) | – | majority / majority |
-| ALU | SF | 4 | counterbore | 2 | 1 | 16000 (100%; 16000, 16000–16000) | – | 1200 (1200–1200) | – | – | – | seen once /  |
-| ALU | SF | 4 | pocket | 26 | 13 | 16000 (92%; 16000, 8000–16000) | 1000 (54%; 1000, 174–1000) | 600 (500–600) | 0.34 (0.01–2) | 1.64 (0.2–2) | – | majority / majority |
-| ALU | SF | 5 | contour | 5 | 3 | 14000 (100%; 14000, 14000–14000) | 720 (100%; 720, 720–720) | 1080 (1080–1080) | 1.5 (1.48–1.54) | – | – | consistent across the library / consistent across the library |
-| ALU | SF | 5 | counterbore | 11 | 6 | 7600 (82%; 7600, 7600–8000) | – | 250 (250–570) | – | – | – | majority /  |
-| ALU | SF | 5 | pocket | 15 | 11 | 14000 (67%; 14000, 8000–14000) | 660 (33%; 660, 300–1100) | 660 (300–660) | 1 (0.01–1.55) | 2.93 (0.84–3) | – | majority / varies |
-| ALU | SF | 6 | contour | 8 | 6 | 12000 (63%; 12000, 11500–12000) | 1000 (50%; 1080, 1000–1200) | 1080 (500–1080) | 1.42 (0.5–1.75) | – | – | majority / varies |
-| ALU (code ALU/POM) | SF | 6 | counterbore | 12 | 7 | 6300 (83%; 6300, 1000–6300) | – | 250 (250–500) | – | – | – | majority /  |
-| ALU | SF | 6 | finish | 1 | 1 | 11500 (100%; 11500, 11500–11500) | 500 (100%; 500, 500–500) | 500 (500–500) | 0.2 (0.2–0.2) | – | – | seen once / seen once |
-| ALU | SF | 6 | pocket | 24 | 12 | 12000 (63%; 12000, 8000–12000) | 1200 (42%; 1000, 600–1200) | 720 (350–720) | 1.23 (0.01–2.9) | 3 (2.47–3) | – | majority / varies |
-| ALU (code ALU/FH) | SF | 8 | contour | 13 | 8 | 8000 (62%; 8000, 8000–12000) | 2400 (23%; 1800, 800–2400) | 1280 (640–2160) | 2 (1.64–3.5) | – | – | majority / varies |
-| ALU | SF | 8 | counterbore | 3 | 3 | 4700 (100%; 4700, 4700–4700) | – | 300 (300–300) | – | – | – | consistent across the library /  |
-| ALU | SF | 8 | face | 2 | 2 | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 0.5 (0.5–0.5) | – | – | consistent across the library / consistent across the library |
-| ALU (code ALU/POM) | SF | 8 | pocket | 31 | 18 | 8000 (48%; 8000, 5500–12000) | 2000 (48%; 1800, 480–2000) | 1200 (360–1200) | 0.98 (0.02–4.9) | 4 (3.6–6.64) | – | varies / varies |
-| ALU | SF | 16 | contour | 10 | 5 | 6600 (100%; 6600, 6600–6600) | 1200 (60%; 1200, 850–1200) | 1080 (425–1080) | 4.38 (3.5–4.8) | – | – | consistent across the library / majority |
-| ALU | SF | 16 | finish | 41 | 29 | 6600 (100%; 6600, 6600–6600) | 1200 (90%; 1200, 850–1200) | 1080 (425–1080) | 4.75 (1.1–9.5) | 8 (8–8) | – | consistent across the library / majority |
-| ALU | SF | 16 | pocket | 1 | 1 | 8000 (100%; 8000, 8000–8000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.96 (1.96–1.96) | 7.55 (7.55–7.55) | – | seen once / seen once |
-| ALU | SFH | 16 | contour | 47 | 33 | 20000 (79%; 20000, 8000–20000) | 3000 (79%; 3000, 700–3000) | 2100 (490–2100) | 2.58 (1.4–4.7) | 7.6 (3–7.6) | – | majority / majority |
-| ALU | ST | 4 | chamfer | 124 | 34 | 16000 (80%; 16000, 4500–16000) | 920 (69%; 920, 300–1000) | 828 (225–828) | – | 2.25 (0.45–4) | – | majority / majority |
-| ALU | ST | 8 | chamfer | 1 | 1 | 8000 (100%; 8000, 8000–8000) | 800 (100%; 800, 800–800) | 300 (300–300) | – | – | – | seen once / seen once |
-| ALU | TF | 19.5 | other | 2 | 1 | 4000 (100%; 4000, 4000–4000) | 500 (100%; 500, 500–500) | 450 (450–450) | – | – | – | seen once / seen once |
-| ALU | ZB | 2.3 | centre | 25 | 14 | 6500 (84%; 6500, 2174–6500) | – | 300 (87–300) | – | – | – | majority /  |
-| EPO (code FH) | MK | 93 | face | 2 | 1 | 1800 (50%; 2500, 1800–2500) | 800 (50%; 1000, 800–1000) | 900 (800–900) | 2 (1.5–2) | – | – | seen once / seen once |
-| EPO (code FH) | SB | 2 | drill | 1 | 1 | 6000 (100%; 6000, 6000–6000) | – | 200 (200–200) | – | – | 2 (2–2) | seen once /  |
-| EPO (code FH) | SB | 3 | drill | 1 | 1 | 4500 (100%; 4500, 4500–4500) | – | 350 (350–350) | – | – | 4 (4–4) | seen once /  |
-| EPO (code FH) | SB | 4 | drill | 1 | 1 | 3500 (100%; 3500, 3500–3500) | – | 320 (320–320) | – | – | 5 (5–5) | seen once /  |
-| EPO (code FH) | SF | 4 | counterbore | 2 | 1 | 4000 (100%; 4000, 4000–4000) | – | 200 (200–200) | – | – | – | seen once /  |
-| EPO (code FH) | SF | 4 | pocket | 1 | 1 | 6000 (100%; 6000, 6000–6000) | 350 (100%; 350, 350–350) | 200 (200–200) | 3 (3–3) | – | – | seen once / seen once |
-| EPO (code FH) | SF | 8 | finish | 1 | 1 | 5500 (100%; 5500, 5500–5500) | 600 (100%; 600, 600–600) | 600 (600–600) | 10 (10–10) | – | – | seen once / seen once |
-| EPO (code FH) | SF | 20 | contour | 1 | 1 | 2200 (100%; 2200, 2200–2200) | 650 (100%; 650, 650–650) | 585 (585–585) | 7.75 (7.75–7.75) | – | – | seen once / seen once |
-| EPO (code FH) | ST | 4 | chamfer | 2 | 1 | 6000 (100%; 6000, 6000–6000) | 800 (100%; 800, 800–800) | 500 (500–500) | – | 3.6 (3.6–3.6) | – | seen once / seen once |
-| EPO (code FH) | ZB | 2.3 | centre | 1 | 1 | 3000 (100%; 3000, 3000–3000) | – | 150 (150–150) | – | – | – | seen once /  |
-| FH | GB | 2.5 | tap | 1 | 1 | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – | seen once /  |
-| FH | GB | 3 | tap | 2 | 2 | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – | consistent across the library /  |
-| FH | GB | 5 | tap | 2 | 2 | 500 (100%; 500, 500–500) | – | 400 (400–400) | – | – | – | consistent across the library /  |
-| FH | MK | 93 | face | 16 | 13 | 2500 (69%; 2500, 1800–2500) | 1000 (69%; 1000, 450–1000) | 900 (450–900) | 2.5 (1.5–2.5) | 57 (56.33–64.33) | – | majority / majority |
-| FH | SB | 1.5 | drill | 3 | 3 | 7800 (67%; 7800, 6000–7800) | – | 200 (150–200) | – | – | 0.7 (0.7–0.7) | majority /  |
-| FH | SB | 1.8 | drill | 1 | 1 | 7800 (100%; 7800, 7800–7800) | – | 200 (200–200) | – | – | 0.7 (0.7–0.7) | seen once /  |
-| FH (code FH/POM) | SB | 2 | drill | 8 | 6 | 6000 (88%; 6000, 5000–6000) | – | 200 (200–250) | – | – | 2 (2–2) | majority /  |
-| FH | SB | 2.5 | drill | 5 | 5 | 5800 (60%; 5800, 5400–5800) | – | 300 (240–300) | – | – | 3.5 (3.5–3.5) | majority /  |
-| FH | SB | 2.96 | drill | 1 | 1 | 4500 (100%; 4500, 4500–4500) | – | 300 (300–300) | – | – | 4.5 (4.5–4.5) | seen once /  |
-| FH | SB | 3 | drill | 8 | 7 | 4500 (100%; 4500, 4500–4500) | – | 350 (350–350) | – | – | 4 (4–4) | consistent across the library /  |
-| FH | SB | 3.3 | drill | 7 | 4 | 4500 (100%; 4500, 4500–4500) | – | 400 (350–400) | – | – | 4.5 (4.5–4.5) | consistent across the library /  |
-| FH | SB | 3.5 | drill | 2 | 2 | 4000 (100%; 4000, 4000–4000) | – | 400 (310–400) | – | – | 4.5 (4.5–4.5) | consistent across the library /  |
-| FH | SB | 4 | drill | 5 | 3 | 3500 (100%; 3500, 3500–3500) | – | 500 (320–500) | – | – | 5 (5–5) | consistent across the library /  |
-| FH | SB | 4.2 | drill | 7 | 6 | 3500 (100%; 3500, 3500–3500) | – | 500 (320–500) | – | – | 5 (5–5) | consistent across the library /  |
-| FH | SB | 4.5 | drill | 2 | 2 | 3500 (100%; 3500, 3500–3500) | – | 500 (500–500) | – | – | 5.5 (5.5–5.5) | consistent across the library /  |
-| FH (code FH/POM) | SB | 4.8 | drill | 18 | 11 | 3500 (100%; 3500, 3500–3500) | – | 600 (300–600) | – | – | 8.5 (3.8–8.5) | consistent across the library /  |
-| FH | SB | 4.9 | drill | 1 | 1 | 4000 (100%; 4000, 4000–4000) | – | 600 (600–600) | – | – | 5 (5–5) | seen once /  |
-| FH | SB | 5 | drill | 2 | 2 | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) | consistent across the library /  |
-| FH | SB | 5.2 | drill | 1 | 1 | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) | seen once /  |
-| FH | SB | 5.4 | drill | 14 | 13 | 3000 (71%; 3000, 2800–3000) | – | 800 (300–800) | – | – | 8 (4–8) | majority /  |
-| FH | SB | 6.2 | drill | 1 | 1 | 4500 (100%; 4500, 4500–4500) | – | 800 (800–800) | – | – | 8 (8–8) | seen once /  |
-| FH | SB | 6.4 | drill | 12 | 8 | 4500 (100%; 4500, 4500–4500) | – | 800 (400–800) | – | – | 8 (8–13.5) | consistent across the library /  |
-| FH | SB | 10 | drill | 6 | 6 | 600 (100%; 600, 600–600) | – | 100 (60–100) | – | – | 5.5 (2–5.5) | consistent across the library /  |
-| FH | SF | 2 | counterbore | 2 | 1 | 4500 (100%; 4500, 4500–4500) | – | 180 (150–180) | – | – | – | seen once /  |
-| FH | SF | 2 | finish | 2 | 1 | 6000 (100%; 6000, 6000–6000) | 150 (100%; 150, 150–150) | 150 (150–150) | 0.9 (0.6–0.9) | – | – | seen once / seen once |
-| FH | SF | 3 | finish | 7 | 5 | 7500 (71%; 7500, 6000–7500) | 270 (71%; 270, 200–270) | 200 (135–243) | 1.83 (1.3–1.85) | – | – | majority / majority |
-| FH | SF | 3 | pocket | 4 | 3 | 7500 (75%; 7500, 6000–7500) | 189 (50%; 200, 189–270) | 162 (150–162) | 1.97 (1.2–3.75) | 1.5 (1.5–1.5) | – | majority / varies |
-| FH (code FH/POM) | SF | 4 | counterbore | 6 | 3 | 4000 (100%; 4000, 4000–4000) | – | 250 (200–250) | – | – | – | consistent across the library /  |
-| FH (code FH/POM) | SF | 4 | finish | 22 | 8 | 7000 (82%; 7000, 6000–7000) | 405 (27%; 400, 315–450) | 405 (225–405) | 3.07 (0.03–3.5) | 1.65 (1.65–1.65) | – | majority / varies |
-| FH | SF | 4 | pocket | 6 | 5 | 6000 (50%; 7000, 6000–7000) | 350 (50%; 450, 350–450) | 270 (200–405) | 2.74 (1.93–3) | 2 (0.2–2) | – | varies / varies |
-| FH | SF | 5 | counterbore | 2 | 2 | 3100 (100%; 3100, 3100–3100) | – | 300 (300–300) | – | – | – | consistent across the library /  |
-| FH | SF | 5 | finish | 2 | 2 | 6500 (100%; 6500, 6500–6500) | 580 (100%; 580, 580–580) | 522 (522–522) | 4.36 (0.11–4.36) | 1.01 (1.01–1.01) | – | consistent across the library / consistent across the library |
-| FH | SF | 5 | pocket | 1 | 1 | 6500 (100%; 6500, 6500–6500) | 550 (100%; 550, 550–550) | 330 (330–330) | 3.81 (3.81–3.81) | – | – | seen once / seen once |
-| FH (code FH/POM) | SF | 6 | counterbore | 9 | 8 | 2600 (89%; 2600, 1000–2600) | – | 300 (220–500) | – | – | – | majority /  |
-| FH | SF | 6 | finish | 5 | 5 | 6500 (80%; 6500, 5000–6500) | 585 (40%; 585, 500–650) | 585 (400–585) | 0.22 (0.17–4.5) | – | – | majority / varies |
-| FH | SF | 6 | pocket | 19 | 12 | 6500 (84%; 6500, 5000–6500) | 650 (74%; 650, 450–650) | 390 (200–390) | 4.25 (2.5–5) | 3.01 (2.01–6.01) | – | majority / majority |
-| FH (code FH/POM) | SF | 8 | counterbore | 10 | 8 | 2000 (90%; 2000, 800–2000) | – | 350 (210–500) | – | – | – | majority /  |
-| FH | SF | 8 | finish | 7 | 6 | 5500 (57%; 5500, 5500–6000) | 600 (57%; 600, 600–900) | 600 (540–810) | 5.5 (1.25–6.3) | 1.01 (1.01–1.01) | – | majority / majority |
-| FH (code FH/POM) | SF | 8 | pocket | 42 | 12 | 6000 (67%; 6000, 5500–8000) | 850 (38%; 850, 120–1200) | 595 (300–720) | 6.5 (0.02–9.8) | 4 (3.01–7.11) | – | majority / varies |
-| FH | SF | 20 | contour | 4 | 4 | 2200 (75%; 2200, 2000–2200) | 650 (75%; 650, 500–650) | 585 (500–585) | 9.5 (5–10.1) | 2.01 (2.01–2.01) | – | majority / majority |
-| FH | SF | 20 | pocket | 1 | 1 | 2000 (100%; 2000, 2000–2000) | 500 (100%; 500, 500–500) | 200 (200–200) | – | – | – | seen once / seen once |
-| FH (code FH/POM) | ST | 4 | chamfer | 27 | 14 | 8000 (74%; 8000, 5000–8000) | 900 (37%; 800, 500–900) | 630 (200–630) | – | 2 (0.3–3.1) | – | majority / varies |
-| FH | ZB | 2.3 | centre | 23 | 13 | 3500 (74%; 3500, 3000–3500) | – | 200 (150–200) | – | – | – | majority /  |
-| MS (code ALU) | MK | 40 | face | 2 | 1 | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1.5 (1.4–1.5) | – | – | seen once / seen once |
-| MS (code ALU) | SB | 2 | drill | 1 | 1 | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) | seen once /  |
-| MS (code FH) | SB | 3.2 | drill | 1 | 1 | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) | seen once /  |
-| MS (code ALU) | SB | 3.5 | drill | 1 | 1 | 11000 (100%; 11000, 11000–11000) | – | 440 (440–440) | – | – | 3.5 (3.5–3.5) | seen once /  |
-| MS (code ALU) | SB | 4 | drill | 1 | 1 | 9500 (100%; 9500, 9500–9500) | – | 500 (500–500) | – | – | 4 (4–4) | seen once /  |
-| MS (code ALU) | SF | 3 | contour | 1 | 1 | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 1 (1–1) | – | – | seen once / seen once |
-| MS (code ALU) | SF | 4 | contour | 2 | 1 | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 0.6 (0.55–0.6) | – | – | seen once / seen once |
-| MS (code ALU) | SF | 4 | pocket | 2 | 1 | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.5 (1.45–1.5) | – | – | seen once / seen once |
-| MS (code POM) | SF | 6 | counterbore | 1 | 1 | 6300 (100%; 6300, 6300–6300) | – | 250 (250–250) | – | – | – | seen once /  |
-| MS (code POM) | SF | 6 | pocket | 1 | 1 | 11500 (100%; 11500, 11500–11500) | 1000 (100%; 1000, 1000–1000) | 500 (500–500) | 0.98 (0.98–0.98) | – | – | seen once / seen once |
-| MS (code ALU) | SF | 8 | counterbore | 1 | 1 | 4700 (100%; 4700, 4700–4700) | – | 300 (300–300) | – | – | – | seen once /  |
-| MS (code ALU) | SF | 8 | pocket | 1 | 1 | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | – | 0.07 (0.07–0.07) | 2.4 (2.4–2.4) | – | seen once / seen once |
-| MS (code FR) | SF | 16 | face | 2 | 1 | 6000 (100%; 6000, 6000–6000) | 800 (100%; 800, 800–800) | 400 (400–400) | 1 (0.58–1) | – | – | seen once / seen once |
-| MS (code ALU) | SF | 16 | finish | 2 | 2 | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 4.92 (4–4.92) | – | – | consistent across the library / consistent across the library |
-| MS (code ALU) | SFH | 16 | contour | 2 | 2 | 20000 (100%; 20000, 20000–20000) | 3000 (100%; 3000, 3000–3000) | 2100 (2000–2100) | 2 (1.95–2) | – | – | consistent across the library / consistent across the library |
-| MS (code ALU) | ST | 4 | chamfer | 7 | 2 | 16000 (100%; 16000, 16000–16000) | 920 (86%; 920, 900–920) | 828 (450–828) | 1.26 (1.26–1.26) | 1.41 (1.41–1.41) | – | consistent across the library / majority |
-| MS (code ALU) | ZB | 2.3 | centre | 3 | 2 | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – | consistent across the library /  |
-| PC GF (code ALU) | AB | 5.5 | centre | 1 | 1 | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – | seen once /  |
-| PC GF (code ALU) | GB | 2 | tap | 1 | 1 | 200 (100%; 200, 200–200) | – | 80 (80–80) | – | – | – | seen once /  |
-| PC GF (code ALU) | MK | 40 | face | 28 | 10 | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1.5 (1–2) | 35.17 (28.5–35.17) | – | consistent across the library / consistent across the library |
-| PC GF (code ALU/POM) | SB | 1 | drill | 11 | 6 | 27000 (100%; 27000, 27000–27000) | – | 350 (300–350) | – | – | 0.3 (0.15–1) | consistent across the library /  |
-| PC GF (code ALU) | SB | 1.1 | drill | 2 | 1 | 27000 (100%; 27000, 27000–27000) | – | 300 (300–300) | – | – | 0.3 (0.3–0.3) | seen once /  |
-| PC GF (code ALU) | SB | 1.4 | drill | 2 | 1 | 26000 (100%; 26000, 26000–26000) | – | 350 (350–350) | – | – | 0.4 (0.4–0.4) | seen once /  |
-| PC GF (code ALU) | SB | 1.5 | drill | 3 | 2 | 26000 (100%; 26000, 26000–26000) | – | 350 (350–350) | – | – | 0.6 (0.6–0.6) | consistent across the library /  |
-| PC GF (code POM) | SB | 1.8 | drill | 1 | 1 | 3000 (100%; 3000, 3000–3000) | – | 150 (150–150) | – | – | 1.5 (1.5–1.5) | seen once /  |
-| PC GF (code ALU/POM) | SB | 2 | drill | 12 | 8 | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) | consistent across the library /  |
-| PC GF (code ALU) | SB | 2.1 | drill | 1 | 1 | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) | seen once /  |
-| PC GF (code ALU) | SB | 2.5 | drill | 2 | 1 | 15000 (100%; 15000, 15000–15000) | – | 450 (450–450) | – | – | 2 (2–2) | seen once /  |
-| PC GF (code FH/POM) | SB | 2.6 | drill | 5 | 4 | 16192 (60%; 16192, 16192–19000) | – | 450 (400–450) | – | – | 2 (1.5–2) | majority /  |
-| PC GF (code ALU) | SB | 2.96 | drill | 2 | 2 | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) | consistent across the library /  |
-| PC GF (code ALU) | SB | 3 | drill | 2 | 1 | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) | seen once /  |
-| PC GF (code FH) | SB | 3.1 | drill | 1 | 1 | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) | seen once /  |
-| PC GF (code FH) | SB | 3.2 | drill | 2 | 1 | 12000 (100%; 12000, 12000–12000) | – | 400 (400–400) | – | – | 3 (3–3) | seen once /  |
-| PC GF (code ALU) | SB | 3.3 | drill | 6 | 3 | 12000 (67%; 12000, 11000–12000) | – | 440 (400–450) | – | – | 3.3 (1.3–3.5) | majority /  |
-| PC GF (code ALU) | SB | 3.5 | drill | 3 | 2 | 11000 (100%; 11000, 11000–11000) | – | 440 (440–440) | – | – | 3.5 (3.5–3.5) | consistent across the library /  |
-| PC GF (code ALU) | SB | 4 | drill | 11 | 8 | 9500 (91%; 9500, 8000–9500) | – | 500 (500–520) | – | – | 4 (2–5) | majority /  |
-| PC GF (code ALU) | SB | 4.2 | drill | 2 | 1 | 9000 (100%; 9000, 9000–9000) | – | 500 (500–500) | – | – | 4 (4–4) | seen once /  |
-| PC GF (code ALU) | SB | 5 | drill | 6 | 4 | 7600 (100%; 7600, 7600–7600) | – | 475 (475–475) | – | – | 5 (5–5) | consistent across the library /  |
-| PC GF (code ALU) | SF | 1 | contour | 13 | 4 | 27000 (100%; 27000, 27000–27000) | 600 (31%; 650, 600–800) | 630 (300–720) | 0.2 (0.2–0.29) | 0.17 (0.17–0.5) | – | consistent across the library / varies |
-| PC GF (code ALU) | SF | 1 | other | 1 | 1 | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 630 (630–630) | – | – | – | seen once / seen once |
-| PC GF (code ALU) | SF | 1 | pocket | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 350 (100%; 350, 350–350) | – | 0.02 (0.02–0.02) | 0.52 (0.52–0.52) | – | seen once / seen once |
-| PC GF (code ALU) | SF | 1.5 | contour | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 900 (100%; 900, 900–900) | 810 (810–810) | 0.38 (0.38–0.38) | 0.35 (0.35–0.35) | – | seen once / seen once |
-| PC GF (code ALU) | SF | 1.5 | counterbore | 2 | 1 | 27000 (100%; 27000, 27000–27000) | – | 700 (700–700) | – | – | – | seen once /  |
-| PC GF (code ALU) | SF | 1.5 | pocket | 1 | 1 | 27000 (100%; 27000, 27000–27000) | 900 (100%; 900, 900–900) | 360 (360–360) | 0.4 (0.4–0.4) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| PC GF (code ALU/POM) | SF | 2 | contour | 15 | 7 | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | 700 (500–900) | 0.5 (0.29–1) | 1.52 (0.2–1.52) | – | consistent across the library / consistent across the library |
-| PC GF (code ALU) | SF | 2 | counterbore | 1 | 1 | 19000 (100%; 19000, 19000–19000) | – | 300 (300–300) | – | – | – | seen once /  |
-| PC GF (code ALU) | SF | 2 | pocket | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | – | 0.09 (0.09–0.09) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| PC GF (code ALU) | SF | 2.5 | pocket | 2 | 1 | 26000 (100%; 26000, 26000–26000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 0.04 (0.04–0.04) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| PC GF (code POM) | SF | 3 | contour | 1 | 1 | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 300 (300–300) | 0.83 (0.83–0.83) | – | – | seen once / seen once |
-| PC GF (code ALU/POM) | SF | 3 | pocket | 11 | 7 | 21000 (100%; 21000, 21000–21000) | 600 (55%; 600, 400–1000) | 600 (400–600) | 0.03 (0.01–1) | 0.52 (0.2–0.52) | – | consistent across the library / majority |
-| PC GF (code ALU) | SF | 4 | contour | 10 | 4 | 16000 (100%; 16000, 16000–16000) | 1200 (80%; 1200, 720–1200) | 1080 (700–1080) | 1.42 (1.25–2.5) | – | – | consistent across the library / majority |
-| PC GF (code ALU/POM) | SF | 4 | counterbore | 7 | 6 | 9500 (100%; 9500, 9500–9500) | – | 300 (300–300) | – | – | – | consistent across the library /  |
-| PC GF (code ALU) | SF | 4 | pocket | 8 | 5 | 16000 (88%; 16000, 16000–21000) | 1000 (75%; 1000, 600–1200) | 600 (600–600) | 0.38 (0.01–2) | 2 (0.39–2) | – | majority / majority |
-| PC GF (code ALU) | SF | 5 | contour | 3 | 2 | 14000 (100%; 14000, 14000–14000) | 720 (67%; 720, 720–1080) | 1080 (1080–1080) | 1.17 (1.17–1.58) | – | – | consistent across the library / majority |
-| PC GF (code ALU) | SF | 5 | counterbore | 7 | 5 | 7600 (100%; 7600, 7600–7600) | – | 250 (250–250) | – | – | – | consistent across the library /  |
-| PC GF (code ALU/POM) | SF | 5 | pocket | 5 | 4 | 14000 (100%; 14000, 14000–14000) | 660 (60%; 660, 660–1100) | 500 (500–500) | 0.07 (0.05–1.08) | 3 (3–3) | – | consistent across the library / majority |
-| PC GF (code ALU/POM) | SF | 6 | contour | 2 | 2 | 12000 (100%; 12000, 12000–12000) | 1200 (100%; 1200, 1200–1200) | 1080 (700–1080) | 1.94 (1.94–1.94) | – | – | consistent across the library / consistent across the library |
-| PC GF (code ALU) | SF | 6 | counterbore | 4 | 1 | 6300 (100%; 6300, 6300–6300) | – | 250 (250–250) | – | – | – | seen once /  |
-| PC GF (code ALU) | SF | 6 | pocket | 4 | 1 | 6500 (50%; 11500, 6500–11500) | 650 (50%; 1000, 650–1000) | 500 (390–500) | 1.45 (0.9–1.45) | 5 (5–5) | – | seen once / seen once |
-| PC GF (code ALU) | SF | 8 | contour | 3 | 2 | 12000 (100%; 12000, 12000–12000) | 2160 (67%; 2160, 2160–2400) | 2160 (2160–2160) | 2.77 (2.77–3.88) | – | – | consistent across the library / majority |
-| PC GF (code ALU) | SF | 8 | pocket | 7 | 3 | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | 1200 (1200–1200) | 2 (1.67–4.67) | 4 (3.72–4) | – | consistent across the library / consistent across the library |
-| PC GF (code FR/POM) | SF | 16 | contour | 6 | 3 | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 4.9 (2.85–5) | – | – | consistent across the library / consistent across the library |
-| PC GF (code FR/POM) | SF | 16 | face | 6 | 3 | 6600 (67%; 6600, 6600–8000) | 1200 (67%; 1200, 1200–3000) | 1200 (1200–3000) | 1 (0.5–1) | 11.43 (11.43–11.43) | – | majority / majority |
-| PC GF (code ALU/FR) | SF | 16 | finish | 13 | 9 | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 3.34 (1.79–8.33) | – | – | consistent across the library / consistent across the library |
-| PC GF (code ALU) | SFH | 16 | contour | 4 | 3 | 20000 (100%; 20000, 20000–20000) | 3000 (100%; 3000, 3000–3000) | 2100 (2100–2100) | 1.92 (1.92–4.96) | – | – | consistent across the library / consistent across the library |
-| PC GF (code ALU/POM) | ST | 4 | chamfer | 41 | 12 | 16000 (100%; 16000, 16000–16000) | 920 (85%; 920, 900–1000) | 828 (450–900) | – | 3.2 (0.83–4) | – | consistent across the library / majority |
-| PC GF (code ALU/POM) | ZB | 2.3 | centre | 22 | 12 | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – | consistent across the library /  |
-| PEEK (code ALU) | MK | 40 | face | 4 | 1 | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1 (1–1) | – | – | seen once / seen once |
-| PEEK (code ALU) | SB | 0.8 | drill | 2 | 1 | 27000 (100%; 27000, 27000–27000) | – | 350 (350–350) | – | – | 0.3 (0.3–0.3) | seen once /  |
-| PEEK (code ALU) | SB | 2.3 | drill | 2 | 1 | 16192 (100%; 16192, 16192–16192) | – | 450 (450–450) | – | – | 2 (2–2) | seen once /  |
-| PEEK (code POM) | SB | 4.6 | drill | 2 | 1 | 3800 (100%; 3800, 3800–3800) | – | 500 (500–500) | – | – | 4 (4–4) | seen once /  |
-| PEEK (code ALU) | SF | 0.8 | pocket | 2 | 1 | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 350 (350–350) | 0.12 (0.12–0.12) | – | – | seen once / seen once |
-| PEEK (code ALU) | SF | 1.5 | contour | 4 | 1 | 27000 (100%; 27000, 27000–27000) | 700 (50%; 900, 700–900) | 810 (350–810) | 0.39 (0.2–0.39) | – | – | seen once / seen once |
-| PEEK (code ALU) | SF | 2 | contour | 4 | 1 | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | 900 (500–900) | 1.4 (1–1.4) | – | – | seen once / seen once |
-| PEEK (code ALU) | SF | 2 | pocket | 4 | 1 | 27000 (100%; 27000, 27000–27000) | 600 (50%; 1000, 600–1000) | 600 (600–600) | 0.59 (0.39–0.59) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| PEEK (code ALU) | SF | 3 | pocket | 4 | 1 | 21000 (100%; 21000, 21000–21000) | 600 (50%; 1000, 600–1000) | 600 (600–600) | 1 (0.55–1) | – | – | seen once / seen once |
-| PEEK (code ALU) | SF | 4 | contour | 2 | 1 | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 4 (4–4) | – | – | seen once / seen once |
-| PEEK (code ALU) | SF | 4 | pocket | 2 | 1 | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.29 (1.29–1.29) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| PEEK (code ALU) | SF | 6 | pocket | 2 | 1 | 12000 (100%; 12000, 12000–12000) | 1200 (100%; 1200, 1200–1200) | 720 (720–720) | 1.75 (1.75–1.75) | 1.52 (1.52–1.52) | – | seen once / seen once |
-| PEEK (code ALU) | SF | 8 | finish | 2 | 1 | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | 1200 (1200–1200) | 1.81 (1.81–1.81) | 3.2 (3.2–3.2) | – | seen once / seen once |
-| PEEK (code ALU) | ST | 4 | chamfer | 8 | 1 | 16000 (100%; 16000, 16000–16000) | 920 (75%; 920, 900–920) | 828 (450–828) | – | 2.2 (1.8–2.2) | – | seen once / seen once |
-| PEEK (code ALU) | ZB | 2.3 | centre | 4 | 1 | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – | seen once /  |
-| PETP (code POM) | GB | 2.5 | tap | 1 | 1 | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – | seen once /  |
-| PETP (code POM) | MK | 93 | face | 3 | 1 | 2500 (100%; 2500, 2500–2500) | 600 (67%; 600, 600–800) | 600 (600–800) | 2.17 (2.17–2.17) | – | – | seen once / seen once |
-| PETP (code POM) | SB | 2 | drill | 1 | 1 | 3000 (100%; 3000, 3000–3000) | – | 180 (180–180) | – | – | 2 (2–2) | seen once /  |
-| PETP (code POM) | SB | 5.4 | drill | 1 | 1 | 1400 (100%; 1400, 1400–1400) | – | 150 (150–150) | – | – | 6 (6–6) | seen once /  |
-| PETP (code POM) | SF | 6 | finish | 1 | 1 | 3200 (100%; 3200, 3200–3200) | 450 (100%; 450, 450–450) | 200 (200–200) | 13 (13–13) | 0.3 (0.3–0.3) | – | seen once / seen once |
-| PETP (code POM) | ST | 4 | chamfer | 2 | 1 | 4000 (100%; 4000, 4000–4000) | 600 (100%; 600, 600–600) | 600 (600–600) | – | – | – | seen once / seen once |
-| PETP (code POM) | ZB | 2.3 | centre | 1 | 1 | 2000 (100%; 2000, 2000–2000) | – | 150 (150–150) | – | – | – | seen once /  |
-| POM | GB | 2.5 | tap | 3 | 3 | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – | consistent across the library /  |
-| POM (code FH/POM) | GB | 3 | tap | 2 | 2 | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – | consistent across the library /  |
-| POM (code FH) | GB | 5 | tap | 1 | 1 | 500 (100%; 500, 500–500) | – | 400 (400–400) | – | – | – | seen once /  |
-| POM | KF | 6 | finish | 1 | 1 | 6499 (100%; 6499, 6499–6499) | 1300 (100%; 1300, 1300–1300) | 1300 (1300–1300) | 0.2 (0.2–0.2) | – | – | seen once / seen once |
-| POM | KF | 12 | finish | 1 | 1 | 15915 (100%; 15915, 15915–15915) | 3000 (100%; 3000, 3000–3000) | 2700 (2700–2700) | 0.15 (0.15–0.15) | 1 (1–1) | – | seen once / seen once |
-| POM (code FH/POM) | MK | 93 | face | 50 | 22 | 2500 (100%; 2500, 2500–2500) | 600 (72%; 600, 600–1200) | 600 (600–1200) | 1.5 (0.5–3) | 56.33 (56.33–57) | – | consistent across the library / majority |
-| POM | SB | 0.98 | drill | 1 | 1 | 8000 (100%; 8000, 8000–8000) | – | 200 (200–200) | – | – | 0.5 (0.5–0.5) | seen once /  |
-| POM | SB | 1 | drill | 1 | 1 | 3100 (100%; 3100, 3100–3100) | – | 80 (80–80) | – | – | 0.5 (0.5–0.5) | seen once /  |
-| POM | SB | 1.33 | drill | 1 | 1 | 8000 (100%; 8000, 8000–8000) | – | 300 (300–300) | – | – | 1 (1–1) | seen once /  |
-| POM | SB | 1.5 | drill | 5 | 5 | 8000 (60%; 8000, 3100–8000) | – | 400 (150–400) | – | – | 1 (1–1) | majority /  |
-| POM | SB | 1.97 | drill | 11 | 11 | 3000 (82%; 3000, 3000–5000) | – | 180 (180–250) | – | – | 2 (2–2) | majority /  |
-| POM | SB | 2 | drill | 2 | 2 | 3000 (50%; 5000, 3000–5000) | – | 250 (180–250) | – | – | 2 (2–2) | varies /  |
-| POM | SB | 2.3 | drill | 1 | 1 | 5000 (100%; 5000, 5000–5000) | – | 250 (250–250) | – | – | 2 (2–2) | seen once /  |
-| POM (code FH/POM) | SB | 2.5 | drill | 5 | 5 | 6000 (60%; 6000, 2600–6000) | – | 500 (180–500) | – | – | 2.5 (2.5–3.5) | majority /  |
-| POM | SB | 2.6 | drill | 1 | 1 | 5000 (100%; 5000, 5000–5000) | – | 500 (500–500) | – | – | 2.5 (2.5–2.5) | seen once /  |
-| POM | SB | 2.96 | drill | 14 | 11 | 3000 (86%; 3000, 2600–3000) | – | 230 (200–230) | – | – | 2.5 (2.5–2.5) | majority /  |
-| POM (code FH) | SB | 3.2 | drill | 4 | 4 | 5000 (75%; 5000, 4500–5000) | – | 500 (400–500) | – | – | 3 (2.5–4.5) | majority /  |
-| POM | SB | 3.3 | drill | 7 | 6 | 5000 (86%; 5000, 2400–5000) | – | 500 (240–500) | – | – | 3 (3–3) | majority /  |
-| POM | SB | 3.5 | drill | 8 | 8 | 4500 (100%; 4500, 4500–4500) | – | 500 (500–500) | – | – | 3 (3–3) | consistent across the library /  |
-| POM | SB | 4 | drill | 11 | 9 | 4000 (64%; 4000, 1900–4000) | – | 500 (250–500) | – | – | 4 (4–4) | majority /  |
-| POM (code FH/POM) | SB | 4.2 | drill | 2 | 2 | 1900 (50%; 3500, 1900–3500) | – | 600 (250–600) | – | – | 5 (3–5) | varies /  |
-| POM | SB | 4.6 | drill | 8 | 6 | 3800 (100%; 3800, 3800–3800) | – | 500 (500–500) | – | – | 4 (4–4) | consistent across the library /  |
-| POM | SB | 4.7 | drill | 1 | 1 | 1650 (100%; 1650, 1650–1650) | – | 220 (220–220) | – | – | 4 (4–4) | seen once /  |
-| POM | SB | 5 | drill | 2 | 2 | 1500 (100%; 1500, 1500–1500) | – | 150 (150–150) | – | – | 4 (4–4) | consistent across the library /  |
-| POM (code FH) | SB | 5.2 | drill | 2 | 2 | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) | consistent across the library /  |
-| POM (code FH/POM) | SB | 5.4 | drill | 6 | 6 | 2900 (83%; 2900, 2900–3000) | – | 700 (700–800) | – | – | 6 (2.5–8) | majority /  |
-| POM (code FH) | SB | 6 | drill | 1 | 1 | 2900 (100%; 2900, 2900–2900) | – | 700 (700–700) | – | – | 6 (6–6) | seen once /  |
-| POM | SB | 6.4 | drill | 3 | 3 | 2500 (67%; 2500, 1200–2500) | – | 800 (120–800) | – | – | 6 (6–6) | majority /  |
-| POM | SF | 2 | finish | 5 | 4 | 8000 (100%; 8000, 8000–8000) | 700 (80%; 700, 490–700) | 630 (630–630) | 1 (0.91–1.92) | 1.5 (1.19–1.5) | – | consistent across the library / majority |
-| POM | SF | 2 | pocket | 1 | 1 | 8000 (100%; 8000, 8000–8000) | 400 (100%; 400, 400–400) | 240 (240–240) | 0.57 (0.57–0.57) | – | – | seen once / seen once |
-| POM | SF | 3 | finish | 6 | 6 | 8000 (100%; 8000, 8000–8000) | 800 (50%; 800, 300–1100) | 720 (100–990) | 1.46 (1–2.9) | – | – | consistent across the library / varies |
-| POM | SF | 3 | pocket | 13 | 8 | 8000 (100%; 8000, 8000–8000) | 500 (69%; 500, 51–500) | 300 (300–400) | 1.43 (0.3–2.8) | 1.35 (0.34–2.34) | – | consistent across the library / majority |
-| POM | SF | 4 | counterbore | 6 | 6 | 1800 (67%; 1800, 1800–3000) | – | 500 (200–500) | – | – | – | majority /  |
-| POM | SF | 4 | finish | 10 | 7 | 8000 (100%; 8000, 8000–8000) | 1100 (70%; 1100, 720–1100) | 990 (200–990) | 1.75 (1.34–2) | 2.24 (2.24–2.24) | – | consistent across the library / majority |
-| POM | SF | 4 | pocket | 8 | 7 | 8000 (75%; 8000, 4700–16000) | 800 (38%; 800, 300–1000) | 480 (200–600) | 1.88 (1–4.5) | 0.64 (0.64–0.64) | – | majority / varies |
-| POM | SF | 5 | contour | 1 | 1 | 14000 (100%; 14000, 14000–14000) | 1200 (100%; 1200, 1200–1200) | 1080 (1080–1080) | 1.57 (1.57–1.57) | – | – | seen once / seen once |
-| POM | SF | 5 | counterbore | 1 | 1 | 1400 (100%; 1400, 1400–1400) | – | 500 (500–500) | – | – | – | seen once /  |
-| POM | SF | 5 | finish | 2 | 2 | 8000 (100%; 8000, 8000–8000) | 770 (50%; 1100, 770–1100) | 990 (990–990) | 2.58 (1.75–2.58) | 2.21 (2.21–2.21) | – | consistent across the library / varies |
-| POM | SF | 5 | pocket | 7 | 7 | 8000 (100%; 8000, 8000–8000) | 560 (43%; 560, 186–800) | 400 (400–500) | 2 (0.02–2.5) | – | – | consistent across the library / varies |
-| POM | SF | 6 | counterbore | 10 | 9 | 1000 (90%; 1000, 1000–2000) | – | 500 (210–500) | – | – | – | majority /  |
-| POM | SF | 6 | finish | 3 | 3 | 8000 (100%; 8000, 8000–8000) | 540 (33%; 980, 540–1400) | 1260 (540–1260) | 2.88 (2.3–5) | – | – | consistent across the library / varies |
-| POM | SF | 6 | other | 1 | 1 | 8000 (100%; 8000, 8000–8000) | 800 (100%; 800, 800–800) | 720 (720–720) | – | – | – | seen once / seen once |
-| POM (code FH/POM) | SF | 6 | pocket | 13 | 9 | 8000 (77%; 8000, 3100–8000) | 900 (69%; 900, 450–900) | 450 (200–500) | 2.9 (1.5–4.23) | 2.7 (1.41–4.11) | – | majority / majority |
-| POM | SF | 8 | contour | 1 | 1 | 8000 (100%; 8000, 8000–8000) | 1200 (100%; 1200, 1200–1200) | 720 (720–720) | 2.95 (2.95–2.95) | 1 (1–1) | – | seen once / seen once |
-| POM | SF | 8 | counterbore | 2 | 2 | 800 (50%; 1500, 800–1500) | – | 500 (250–500) | – | – | – | varies /  |
-| POM | SF | 8 | finish | 7 | 6 | 8000 (57%; 8000, 3000–8000) | 500 (43%; 1120, 500–1400) | 1120 (250–1120) | 5.77 (3.5–6.75) | – | – | majority / varies |
-| POM (code FH/POM) | SF | 8 | pocket | 15 | 9 | 8000 (87%; 8000, 6000–8000) | 1200 (67%; 1200, 300–1200) | 720 (595–720) | 0.85 (0.08–4.56) | 4 (2.3–8.01) | – | majority / majority |
-| POM | SF | 20 | contour | 24 | 21 | 4000 (83%; 4000, 4000–12732) | 1200 (79%; 1200, 600–3000) | 600 (400–1500) | 6 (3.65–8.65) | 6 (6–6) | – | majority / majority |
-| POM | SF | 20 | face | 6 | 3 | 4000 (83%; 4000, 4000–6000) | 1000 (100%; 1000, 1000–1000) | 1000 (500–1000) | 1.4 (1–1.5) | – | – | majority / consistent across the library |
-| POM | SF | 20 | finish | 1 | 1 | 4000 (100%; 4000, 4000–4000) | 1000 (100%; 1000, 1000–1000) | 500 (500–500) | 5.79 (5.79–5.79) | – | – | seen once / seen once |
-| POM | SF | 20 | other | 1 | 1 | 6600 (100%; 6600, 6600–6600) | 1800 (100%; 1800, 1800–1800) | 900 (900–900) | – | – | – | seen once / seen once |
-| POM (code FH/POM) | ST | 4 | chamfer | 49 | 24 | 8000 (92%; 8000, 4000–8000) | 1500 (61%; 1500, 600–1500) | 1050 (300–1050) | – | 3.5 (2–3.9) | – | majority / majority |
-| POM | ST | 4 | other | 2 | 1 | 4000 (100%; 4000, 4000–4000) | 600 (100%; 600, 600–600) | 600 (600–600) | – | – | – | seen once / seen once |
-| POM | UDM | 10 | finish | 3 | 2 | 3282 (67%; 3282, 2000–3282) | 328 (67%; 328, 328–400) | 295 (295–360) | – | – | – | majority / majority |
-| POM | UDM | 12 | finish | 1 | 1 | 2500 (100%; 2500, 2500–2500) | 250 (100%; 250, 250–250) | 175 (175–175) | – | – | – | seen once / seen once |
-| POM (code FH/POM) | ZB | 2.3 | centre | 31 | 23 | 8000 (61%; 8000, 2000–8000) | – | 200 (87–200) | – | – | – | majority /  |
-| VA (code VAHS) | SB | 3 | drill | 2 | 1 | 4300 (100%; 4300, 4300–4300) | – | 100 (100–100) | – | – | 3 (3–3) | seen once /  |
-| VA (code VAHS) | SB | 3.5 | drill | 2 | 1 | 3700 (100%; 3700, 3700–3700) | – | 100 (100–100) | – | – | 3.5 (3.5–3.5) | seen once /  |
-| VA (code VAHS) | SB | 5 | drill | 2 | 1 | 2600 (100%; 2600, 2600–2600) | – | 100 (100–100) | – | – | 5 (5–5) | seen once /  |
-| VA (code VAHS) | SB | 5.5 | centre | 2 | 1 | 2400 (100%; 2400, 2400–2400) | – | 80 (80–80) | – | – | – | seen once /  |
-| VA (code VAHS) | SB | 6.4 | drill | 2 | 1 | 2000 (100%; 2000, 2000–2000) | – | 150 (150–150) | – | – | 3 (3–3) | seen once /  |
-| VA (code VAHS) | SF | 2 | contour | 2 | 1 | 10000 (100%; 10000, 10000–10000) | 126 (100%; 126, 126–126) | 75 (75–75) | 0.29 (0.29–0.29) | – | – | seen once / seen once |
-| VA (code VAHS) | SF | 2 | pocket | 2 | 1 | 10000 (100%; 10000, 10000–10000) | 75 (100%; 75, 75–75) | – | 0.02 (0.02–0.02) | 0.2 (0.2–0.2) | – | seen once / seen once |
-| VA (code VAHS) | SF | 3 | contour | 4 | 1 | 6400 (100%; 6400, 6400–6400) | 150 (100%; 150, 150–150) | 135 (135–135) | 0.69 (0.63–0.69) | – | – | seen once / seen once |
-| VA (code VAHS) | SF | 4 | contour | 4 | 1 | 5000 (100%; 5000, 5000–5000) | 113 (50%; 150, 113–150) | 75 (75–75) | 1 (0.95–1) | – | – | seen once / seen once |
-| VA (code VAHS) | SF | 6 | counterbore | 2 | 1 | 3600 (100%; 3600, 3600–3600) | – | 100 (100–100) | – | – | – | seen once /  |
-| VA (code VAHS) | SF | 6 | pocket | 2 | 1 | 3600 (100%; 3600, 3600–3600) | 150 (100%; 150, 150–150) | – | 0.04 (0.04–0.04) | 3.84 (3.84–3.84) | – | seen once / seen once |
-| VA (code VAHS) | SF | 8 | contour | 2 | 1 | 3000 (100%; 3000, 3000–3000) | 350 (100%; 350, 350–350) | 175 (175–175) | 2.58 (2.58–2.58) | 2.8 (2.8–2.8) | – | seen once / seen once |
-| VA (code VAHS) | SF | 8 | pocket | 2 | 1 | 3000 (100%; 3000, 3000–3000) | 245 (100%; 245, 245–245) | 175 (175–175) | 2.6 (2.6–2.6) | – | – | seen once / seen once |
-| VA (code VAHS) | SR | 16 | contour | 2 | 1 | 1200 (100%; 1200, 1200–1200) | 350 (100%; 350, 350–350) | 175 (175–175) | 5.1 (5.1–5.1) | – | – | seen once / seen once |
-| VA (code VAHS) | SR | 16 | face | 4 | 1 | 1200 (100%; 1200, 1200–1200) | 350 (100%; 350, 350–350) | 175 (175–175) | 2 (1–2) | 10 (10–10) | – | seen once / seen once |
-| VA (code VAHS) | ST | 4 | chamfer | 10 | 1 | 4800 (100%; 4800, 4800–4800) | 140 (40%; 180, 140–200) | 100 (90–100) | – | 3 (3–3) | – | seen once / seen once |
+| ALU | AB | 5.5 | centre | 25 | 14 | 6500 / – (92%, majority) | 6500 (92%; 6500, 6500–8000) | – | 300 (300–440) | – | – | – |
+| ALU | GB | 2.5 | tap | 1 | 1 | 400 / – (100%, seen once) | 400 (100%; 400, 400–400) | – | 180 (180–180) | – | – | – |
+| ALU | GB | 3 | tap | 2 | 1 | 300 / – (100%, seen once) | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – |
+| ALU | GB | 6 | tap | 2 | 2 | 300 / – (100%, consistent across the library) | 300 (100%; 300, 300–300) | – | 225 (225–225) | – | – | – |
+| ALU | KF | 6 | finish | 3 | 3 | 6500 / 1300 (67%, majority) | 6500 (67%; 6500, 6500–13000) | 1300 (67%; 1300, 1300–1430) | 780 (780–1430) | 0.09 (0.08–0.09) | 5.02 (3.35–5.02) | – |
+| ALU | MK | 40 | face | 84 | 34 | 8000 / 3000 (80%, majority) | 8000 (80%; 8000, 3000–8000) | 3000 (85%; 3000, 500–3000) | 3000 (500–3000) | 1 (0.7–2) | 26 (24.73–34) | – |
+| ALU | SB | 1 | drill | 7 | 5 | 27000 / – (100%, consistent across the library) | 27000 (100%; 27000, 27000–27000) | – | 300 (300–350) | – | – | 0.3 (0.1–0.3) |
+| ALU | SB | 1.2 | drill | 1 | 1 | 8000 / – (100%, seen once) | 8000 (100%; 8000, 8000–8000) | – | 150 (150–150) | – | – | 0.5 (0.5–0.5) |
+| ALU | SB | 1.3 | drill | 2 | 1 | 10000 / – (100%, seen once) | 10000 (100%; 10000, 10000–10000) | – | 350 (350–350) | – | – | 0.5 (0.5–0.5) |
+| ALU | SB | 1.5 | drill | 3 | 2 | 10000 / – (67%, majority) | 10000 (67%; 10000, 10000–26000) | – | 350 (350–350) | – | – | 0.6 (0.6–0.6) |
+| ALU | SB | 2 | drill | 17 | 14 | 10000 / – (41%, varies) | 10000 (41%; 10000, 8000–19000) | – | 400 (150–400) | – | – | 1.5 (0.5–1.5) |
+| ALU | SB | 2.5 | drill | 19 | 11 | 15000 / – (100%, consistent across the library) | 15000 (100%; 15000, 15000–15000) | – | 450 (450–450) | – | – | 2 (0.5–2) |
+| ALU | SB | 2.96 | drill | 1 | 1 | 13000 / – (100%, seen once) | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) |
+| ALU | SB | 3 | drill | 13 | 10 | 13000 / – (77%, majority) | 13000 (77%; 13000, 8000–13000) | – | 400 (230–400) | – | – | 3 (1–3.3) |
+| ALU (code FH) | SB | 3.2 | drill | 12 | 9 | 13000 / – (50%, varies) | 13000 (50%; 13000, 4500–15000) | – | 400 (400–450) | – | – | 3.3 (2–4.5) |
+| ALU (code ALU/POM) | SB | 3.3 | drill | 17 | 8 | 12000 / – (88%, majority) | 12000 (88%; 12000, 5000–12000) | – | 450 (450–500) | – | – | 3.3 (3–3.3) |
+| ALU | SB | 3.5 | drill | 8 | 7 | 11000 / – (63%, majority) | 11000 (63%; 11000, 8000–12000) | – | 440 (320–500) | – | – | 3.5 (0.5–3.5) |
+| ALU | SB | 4 | centre | 1 | 1 | 8000 / – (100%, seen once) | 8000 (100%; 8000, 8000–8000) | – | 400 (400–400) | – | – | – |
+| ALU | SB | 4 | drill | 22 | 16 | 9500 / – (77%, majority) | 9500 (77%; 9500, 8000–9500) | – | 500 (430–500) | – | – | 4 (0.5–4) |
+| ALU | SB | 4.2 | drill | 4 | 2 | 9000 / – (100%, consistent across the library) | 9000 (100%; 9000, 9000–9000) | – | 500 (500–500) | – | – | 4 (1–4) |
+| ALU | SB | 4.5 | drill | 1 | 1 | 8500 / – (100%, seen once) | 8500 (100%; 8500, 8500–8500) | – | 510 (510–510) | – | – | 4.5 (4.5–4.5) |
+| ALU | SB | 4.8 | drill | 1 | 1 | 8000 / – (100%, seen once) | 8000 (100%; 8000, 8000–8000) | – | 520 (520–520) | – | – | 5 (5–5) |
+| ALU | SB | 5 | drill | 13 | 7 | 7600 / – (85%, majority) | 7600 (85%; 7600, 6900–7600) | – | 475 (450–475) | – | – | 5 (3–5.5) |
+| ALU (code FH/POM) | SB | 5.4 | drill | 5 | 3 | 2900 / – (40%, varies) | 2900 (40%; 3000, 2900–6900) | – | 700 (450–800) | – | – | 6 (5.5–8) |
+| ALU | SB | 5.5 | drill | 4 | 3 | 6900 / – (100%, consistent across the library) | 6900 (100%; 6900, 6900–6900) | – | 450 (450–450) | – | – | 5.5 (1–5.5) |
+| ALU (code FH) | SB | 6.2 | drill | 1 | 1 | 4500 / – (100%, seen once) | 4500 (100%; 4500, 4500–4500) | – | 800 (800–800) | – | – | 8 (8–8) |
+| ALU | SB | 6.4 | drill | 8 | 6 | 6000 / – (100%, consistent across the library) | 6000 (100%; 6000, 6000–6000) | – | 400 (400–400) | – | – | 6.5 (1–6.5) |
+| ALU | SF | 1 | contour | 3 | 2 | 27000 / 700 (100%, consistent across the library) | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 700 (630–700) | 0.2 (0.2–0.2) | 0.96 (0.81–0.96) | – |
+| ALU | SF | 1 | finish | 2 | 1 | 27000 / 600 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 600 (100%; 600, 600–600) | 300 (300–300) | 0.15 (0.15–0.15) | – | – |
+| ALU | SF | 1 | pocket | 2 | 1 | 27000 / 700 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 350 (350–350) | 0.2 (0.2–0.2) | – | – |
+| ALU | SF | 1.5 | contour | 9 | 3 | 27000 / 900 (67%, majority) | 27000 (100%; 27000, 27000–27000) | 900 (67%; 900, 700–900) | 810 (350–810) | 0.38 (0.2–0.4) | 1 (1–1) | – |
+| ALU | SF | 1.5 | pocket | 4 | 2 | 27000 / 900 (50%, varies) | 8000 (50%; 27000, 8000–27000) | 260 (50%; 900, 260–900) | 360 (130–360) | 0.39 (0.37–0.39) | 0.12 (0.12–0.12) | – |
+| ALU (code ALU/FH) | SF | 2 | contour | 38 | 15 | 27000 / 1000 (58%, majority) | 27000 (76%; 27000, 8000–27000) | 1000 (58%; 1000, 150–1200) | 700 (135–1080) | 0.55 (0.29–1.5) | 0.2 (0.16–1.44) | – |
+| ALU | SF | 2 | counterbore | 1 | 1 | 19000 / – (100%, seen once) | 19000 (100%; 19000, 19000–19000) | – | 300 (300–300) | – | – | – |
+| ALU | SF | 2 | finish | 6 | 2 | 27000 / 700 (33%, varies) | 8000 (67%; 8000, 8000–27000) | 700 (67%; 700, 280–700) | 350 (140–630) | 0.3 (0.02–0.39) | 1.3 (1.3–1.3) | – |
+| ALU | SF | 2 | pocket | 1 | 1 | 27000 / 600 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 600 (100%; 600, 600–600) | 600 (600–600) | 0.01 (0.01–0.01) | – | – |
+| ALU | SF | 3 | contour | 14 | 7 | 21000 / 1000 (43%, varies) | 21000 (50%; 21000, 8000–27000) | 1000 (57%; 1000, 300–1200) | 900 (200–900) | 1 (0.59–1.5) | 0.2 (0.2–0.2) | – |
+| ALU (code ALU/POM) | SF | 3 | pocket | 7 | 6 | 21000 / 600 (43%, varies) | 21000 (71%; 21000, 8000–21000) | 600 (43%; 600, 450–1000) | 600 (225–600) | 0.81 (0.06–1.25) | 0.62 (0.2–0.62) | – |
+| ALU (code ALU/POM) | SF | 4 | contour | 34 | 18 | 16000 / 1200 (59%, majority) | 16000 (74%; 16000, 8000–16000) | 1200 (59%; 1200, 360–1200) | 1080 (300–1080) | 1.4 (0.4–1.63) | 0.54 (0.2–3.02) | – |
+| ALU | SF | 4 | counterbore | 2 | 1 | 16000 / – (100%, seen once) | 16000 (100%; 16000, 16000–16000) | – | 1200 (1200–1200) | – | – | – |
+| ALU | SF | 4 | pocket | 26 | 13 | 16000 / 1000 (54%, majority) | 16000 (92%; 16000, 8000–16000) | 1000 (54%; 1000, 174–1000) | 600 (500–600) | 0.34 (0.01–2) | 1.64 (0.2–2) | – |
+| ALU | SF | 5 | contour | 5 | 3 | 14000 / 720 (100%, consistent across the library) | 14000 (100%; 14000, 14000–14000) | 720 (100%; 720, 720–720) | 1080 (1080–1080) | 1.5 (1.48–1.54) | – | – |
+| ALU | SF | 5 | counterbore | 11 | 6 | 7600 / – (82%, majority) | 7600 (82%; 7600, 7600–8000) | – | 250 (250–570) | – | – | – |
+| ALU | SF | 5 | pocket | 15 | 11 | 14000 / 660 (33%, varies) | 14000 (67%; 14000, 8000–14000) | 660 (33%; 660, 300–1100) | 660 (300–660) | 1 (0.01–1.55) | 2.93 (0.84–3) | – |
+| ALU | SF | 6 | contour | 8 | 6 | 11500 / 1000 (38%, varies) | 12000 (63%; 12000, 11500–12000) | 1000 (50%; 1080, 1000–1200) | 1080 (500–1080) | 1.42 (0.5–1.75) | – | – |
+| ALU (code ALU/POM) | SF | 6 | counterbore | 12 | 7 | 6300 / – (83%, majority) | 6300 (83%; 6300, 1000–6300) | – | 250 (250–500) | – | – | – |
+| ALU | SF | 6 | finish | 1 | 1 | 11500 / 500 (100%, seen once) | 11500 (100%; 11500, 11500–11500) | 500 (100%; 500, 500–500) | 500 (500–500) | 0.2 (0.2–0.2) | – | – |
+| ALU | SF | 6 | pocket | 24 | 12 | 12000 / 1200 (42%, varies) | 12000 (63%; 12000, 8000–12000) | 1200 (42%; 1000, 600–1200) | 720 (350–720) | 1.23 (0.01–2.9) | 3 (2.47–3) | – |
+| ALU (code ALU/FH) | SF | 8 | contour | 13 | 8 | 12000 / 2400 (23%, varies) | 8000 (62%; 8000, 8000–12000) | 2400 (23%; 1800, 800–2400) | 1280 (640–2160) | 2 (1.64–3.5) | – | – |
+| ALU | SF | 8 | counterbore | 3 | 3 | 4700 / – (100%, consistent across the library) | 4700 (100%; 4700, 4700–4700) | – | 300 (300–300) | – | – | – |
+| ALU | SF | 8 | face | 2 | 2 | 8000 / 3000 (100%, consistent across the library) | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 0.5 (0.5–0.5) | – | – |
+| ALU (code ALU/POM) | SF | 8 | pocket | 31 | 18 | 12000 / 2000 (48%, varies) | 8000 (48%; 8000, 5500–12000) | 2000 (48%; 1800, 480–2000) | 1200 (360–1200) | 0.98 (0.02–4.9) | 4 (3.6–6.64) | – |
+| ALU | SF | 16 | contour | 10 | 5 | 6600 / 1200 (60%, majority) | 6600 (100%; 6600, 6600–6600) | 1200 (60%; 1200, 850–1200) | 1080 (425–1080) | 4.38 (3.5–4.8) | – | – |
+| ALU | SF | 16 | finish | 41 | 29 | 6600 / 1200 (90%, majority) | 6600 (100%; 6600, 6600–6600) | 1200 (90%; 1200, 850–1200) | 1080 (425–1080) | 4.75 (1.1–9.5) | 8 (8–8) | – |
+| ALU | SF | 16 | pocket | 1 | 1 | 8000 / 1000 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.96 (1.96–1.96) | 7.55 (7.55–7.55) | – |
+| ALU | SFH | 16 | contour | 47 | 33 | 20000 / 3000 (79%, majority) | 20000 (79%; 20000, 8000–20000) | 3000 (79%; 3000, 700–3000) | 2100 (490–2100) | 2.58 (1.4–4.7) | 7.6 (3–7.6) | – |
+| ALU | ST | 4 | chamfer | 124 | 34 | 16000 / 920 (69%, majority) | 16000 (80%; 16000, 4500–16000) | 920 (69%; 920, 300–1000) | 828 (225–828) | – | 2.25 (0.45–4) | – |
+| ALU | ST | 8 | chamfer | 1 | 1 | 8000 / 800 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 800 (100%; 800, 800–800) | 300 (300–300) | – | – | – |
+| ALU | TF | 19.5 | other | 2 | 1 | 4000 / 500 (100%, seen once) | 4000 (100%; 4000, 4000–4000) | 500 (100%; 500, 500–500) | 450 (450–450) | – | – | – |
+| ALU | ZB | 2.3 | centre | 25 | 14 | 6500 / – (84%, majority) | 6500 (84%; 6500, 2174–6500) | – | 300 (87–300) | – | – | – |
+| EPO (code FH) | MK | 93 | face | 2 | 1 | 1800 / 800 (50%, seen once) | 1800 (50%; 2500, 1800–2500) | 800 (50%; 1000, 800–1000) | 900 (800–900) | 2 (1.5–2) | – | – |
+| EPO (code FH) | SB | 2 | drill | 1 | 1 | 6000 / – (100%, seen once) | 6000 (100%; 6000, 6000–6000) | – | 200 (200–200) | – | – | 2 (2–2) |
+| EPO (code FH) | SB | 3 | drill | 1 | 1 | 4500 / – (100%, seen once) | 4500 (100%; 4500, 4500–4500) | – | 350 (350–350) | – | – | 4 (4–4) |
+| EPO (code FH) | SB | 4 | drill | 1 | 1 | 3500 / – (100%, seen once) | 3500 (100%; 3500, 3500–3500) | – | 320 (320–320) | – | – | 5 (5–5) |
+| EPO (code FH) | SF | 4 | counterbore | 2 | 1 | 4000 / – (100%, seen once) | 4000 (100%; 4000, 4000–4000) | – | 200 (200–200) | – | – | – |
+| EPO (code FH) | SF | 4 | pocket | 1 | 1 | 6000 / 350 (100%, seen once) | 6000 (100%; 6000, 6000–6000) | 350 (100%; 350, 350–350) | 200 (200–200) | 3 (3–3) | – | – |
+| EPO (code FH) | SF | 8 | finish | 1 | 1 | 5500 / 600 (100%, seen once) | 5500 (100%; 5500, 5500–5500) | 600 (100%; 600, 600–600) | 600 (600–600) | 10 (10–10) | – | – |
+| EPO (code FH) | SF | 20 | contour | 1 | 1 | 2200 / 650 (100%, seen once) | 2200 (100%; 2200, 2200–2200) | 650 (100%; 650, 650–650) | 585 (585–585) | 7.75 (7.75–7.75) | – | – |
+| EPO (code FH) | ST | 4 | chamfer | 2 | 1 | 6000 / 800 (100%, seen once) | 6000 (100%; 6000, 6000–6000) | 800 (100%; 800, 800–800) | 500 (500–500) | – | 3.6 (3.6–3.6) | – |
+| EPO (code FH) | ZB | 2.3 | centre | 1 | 1 | 3000 / – (100%, seen once) | 3000 (100%; 3000, 3000–3000) | – | 150 (150–150) | – | – | – |
+| FH | GB | 2.5 | tap | 1 | 1 | 200 / – (100%, seen once) | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – |
+| FH | GB | 3 | tap | 2 | 2 | 300 / – (100%, consistent across the library) | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – |
+| FH | GB | 5 | tap | 2 | 2 | 500 / – (100%, consistent across the library) | 500 (100%; 500, 500–500) | – | 400 (400–400) | – | – | – |
+| FH | MK | 93 | face | 16 | 13 | 2500 / 1000 (69%, majority) | 2500 (69%; 2500, 1800–2500) | 1000 (69%; 1000, 450–1000) | 900 (450–900) | 2.5 (1.5–2.5) | 57 (56.33–64.33) | – |
+| FH | SB | 1.5 | drill | 3 | 3 | 7800 / – (67%, majority) | 7800 (67%; 7800, 6000–7800) | – | 200 (150–200) | – | – | 0.7 (0.7–0.7) |
+| FH | SB | 1.8 | drill | 1 | 1 | 7800 / – (100%, seen once) | 7800 (100%; 7800, 7800–7800) | – | 200 (200–200) | – | – | 0.7 (0.7–0.7) |
+| FH (code FH/POM) | SB | 2 | drill | 8 | 6 | 6000 / – (88%, majority) | 6000 (88%; 6000, 5000–6000) | – | 200 (200–250) | – | – | 2 (2–2) |
+| FH | SB | 2.5 | drill | 5 | 5 | 5800 / – (60%, majority) | 5800 (60%; 5800, 5400–5800) | – | 300 (240–300) | – | – | 3.5 (3.5–3.5) |
+| FH | SB | 2.96 | drill | 1 | 1 | 4500 / – (100%, seen once) | 4500 (100%; 4500, 4500–4500) | – | 300 (300–300) | – | – | 4.5 (4.5–4.5) |
+| FH | SB | 3 | drill | 8 | 7 | 4500 / – (100%, consistent across the library) | 4500 (100%; 4500, 4500–4500) | – | 350 (350–350) | – | – | 4 (4–4) |
+| FH | SB | 3.3 | drill | 7 | 4 | 4500 / – (100%, consistent across the library) | 4500 (100%; 4500, 4500–4500) | – | 400 (350–400) | – | – | 4.5 (4.5–4.5) |
+| FH | SB | 3.5 | drill | 2 | 2 | 4000 / – (100%, consistent across the library) | 4000 (100%; 4000, 4000–4000) | – | 400 (310–400) | – | – | 4.5 (4.5–4.5) |
+| FH | SB | 4 | drill | 5 | 3 | 3500 / – (100%, consistent across the library) | 3500 (100%; 3500, 3500–3500) | – | 500 (320–500) | – | – | 5 (5–5) |
+| FH | SB | 4.2 | drill | 7 | 6 | 3500 / – (100%, consistent across the library) | 3500 (100%; 3500, 3500–3500) | – | 500 (320–500) | – | – | 5 (5–5) |
+| FH | SB | 4.5 | drill | 2 | 2 | 3500 / – (100%, consistent across the library) | 3500 (100%; 3500, 3500–3500) | – | 500 (500–500) | – | – | 5.5 (5.5–5.5) |
+| FH (code FH/POM) | SB | 4.8 | drill | 18 | 11 | 3500 / – (100%, consistent across the library) | 3500 (100%; 3500, 3500–3500) | – | 600 (300–600) | – | – | 8.5 (3.8–8.5) |
+| FH | SB | 4.9 | drill | 1 | 1 | 4000 / – (100%, seen once) | 4000 (100%; 4000, 4000–4000) | – | 600 (600–600) | – | – | 5 (5–5) |
+| FH | SB | 5 | drill | 2 | 2 | 3100 / – (100%, consistent across the library) | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) |
+| FH | SB | 5.2 | drill | 1 | 1 | 3100 / – (100%, seen once) | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) |
+| FH | SB | 5.4 | drill | 14 | 13 | 3000 / – (71%, majority) | 3000 (71%; 3000, 2800–3000) | – | 800 (300–800) | – | – | 8 (4–8) |
+| FH | SB | 6.2 | drill | 1 | 1 | 4500 / – (100%, seen once) | 4500 (100%; 4500, 4500–4500) | – | 800 (800–800) | – | – | 8 (8–8) |
+| FH | SB | 6.4 | drill | 12 | 8 | 4500 / – (100%, consistent across the library) | 4500 (100%; 4500, 4500–4500) | – | 800 (400–800) | – | – | 8 (8–13.5) |
+| FH | SB | 10 | drill | 6 | 6 | 600 / – (100%, consistent across the library) | 600 (100%; 600, 600–600) | – | 100 (60–100) | – | – | 5.5 (2–5.5) |
+| FH | SF | 2 | counterbore | 2 | 1 | 4500 / – (100%, seen once) | 4500 (100%; 4500, 4500–4500) | – | 180 (150–180) | – | – | – |
+| FH | SF | 2 | finish | 2 | 1 | 6000 / 150 (100%, seen once) | 6000 (100%; 6000, 6000–6000) | 150 (100%; 150, 150–150) | 150 (150–150) | 0.9 (0.6–0.9) | – | – |
+| FH | SF | 3 | finish | 7 | 5 | 7500 / 270 (71%, majority) | 7500 (71%; 7500, 6000–7500) | 270 (71%; 270, 200–270) | 200 (135–243) | 1.83 (1.3–1.85) | – | – |
+| FH | SF | 3 | pocket | 4 | 3 | 7500 / 189 (50%, varies) | 7500 (75%; 7500, 6000–7500) | 189 (50%; 200, 189–270) | 162 (150–162) | 1.97 (1.2–3.75) | 1.5 (1.5–1.5) | – |
+| FH (code FH/POM) | SF | 4 | counterbore | 6 | 3 | 4000 / – (100%, consistent across the library) | 4000 (100%; 4000, 4000–4000) | – | 250 (200–250) | – | – | – |
+| FH (code FH/POM) | SF | 4 | finish | 22 | 8 | 7000 / 405 (27%, varies) | 7000 (82%; 7000, 6000–7000) | 405 (27%; 400, 315–450) | 405 (225–405) | 3.07 (0.03–3.5) | 1.65 (1.65–1.65) | – |
+| FH | SF | 4 | pocket | 6 | 5 | 6000 / 350 (50%, varies) | 6000 (50%; 7000, 6000–7000) | 350 (50%; 450, 350–450) | 270 (200–405) | 2.74 (1.93–3) | 2 (0.2–2) | – |
+| FH | SF | 5 | counterbore | 2 | 2 | 3100 / – (100%, consistent across the library) | 3100 (100%; 3100, 3100–3100) | – | 300 (300–300) | – | – | – |
+| FH | SF | 5 | finish | 2 | 2 | 6500 / 580 (100%, consistent across the library) | 6500 (100%; 6500, 6500–6500) | 580 (100%; 580, 580–580) | 522 (522–522) | 4.36 (0.11–4.36) | 1.01 (1.01–1.01) | – |
+| FH | SF | 5 | pocket | 1 | 1 | 6500 / 550 (100%, seen once) | 6500 (100%; 6500, 6500–6500) | 550 (100%; 550, 550–550) | 330 (330–330) | 3.81 (3.81–3.81) | – | – |
+| FH (code FH/POM) | SF | 6 | counterbore | 9 | 8 | 2600 / – (89%, majority) | 2600 (89%; 2600, 1000–2600) | – | 300 (220–500) | – | – | – |
+| FH | SF | 6 | finish | 5 | 5 | 6500 / 585 (40%, varies) | 6500 (80%; 6500, 5000–6500) | 585 (40%; 585, 500–650) | 585 (400–585) | 0.22 (0.17–4.5) | – | – |
+| FH | SF | 6 | pocket | 19 | 12 | 6500 / 650 (74%, majority) | 6500 (84%; 6500, 5000–6500) | 650 (74%; 650, 450–650) | 390 (200–390) | 4.25 (2.5–5) | 3.01 (2.01–6.01) | – |
+| FH (code FH/POM) | SF | 8 | counterbore | 10 | 8 | 2000 / – (90%, majority) | 2000 (90%; 2000, 800–2000) | – | 350 (210–500) | – | – | – |
+| FH | SF | 8 | finish | 7 | 6 | 5500 / 600 (57%, majority) | 5500 (57%; 5500, 5500–6000) | 600 (57%; 600, 600–900) | 600 (540–810) | 5.5 (1.25–6.3) | 1.01 (1.01–1.01) | – |
+| FH (code FH/POM) | SF | 8 | pocket | 42 | 12 | 6000 / 850 (38%, varies) | 6000 (67%; 6000, 5500–8000) | 850 (38%; 850, 120–1200) | 595 (300–720) | 6.5 (0.02–9.8) | 4 (3.01–7.11) | – |
+| FH | SF | 20 | contour | 4 | 4 | 2200 / 650 (75%, majority) | 2200 (75%; 2200, 2000–2200) | 650 (75%; 650, 500–650) | 585 (500–585) | 9.5 (5–10.1) | 2.01 (2.01–2.01) | – |
+| FH | SF | 20 | pocket | 1 | 1 | 2000 / 500 (100%, seen once) | 2000 (100%; 2000, 2000–2000) | 500 (100%; 500, 500–500) | 200 (200–200) | – | – | – |
+| FH (code FH/POM) | ST | 4 | chamfer | 27 | 14 | 8000 / 900 (37%, varies) | 8000 (74%; 8000, 5000–8000) | 900 (37%; 800, 500–900) | 630 (200–630) | – | 2 (0.3–3.1) | – |
+| FH | ZB | 2.3 | centre | 23 | 13 | 3500 / – (74%, majority) | 3500 (74%; 3500, 3000–3500) | – | 200 (150–200) | – | – | – |
+| MS (code ALU) | MK | 40 | face | 2 | 1 | 8000 / 3000 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1.5 (1.4–1.5) | – | – |
+| MS (code ALU) | SB | 2 | drill | 1 | 1 | 19000 / – (100%, seen once) | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) |
+| MS (code FH) | SB | 3.2 | drill | 1 | 1 | 19000 / – (100%, seen once) | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) |
+| MS (code ALU) | SB | 3.5 | drill | 1 | 1 | 11000 / – (100%, seen once) | 11000 (100%; 11000, 11000–11000) | – | 440 (440–440) | – | – | 3.5 (3.5–3.5) |
+| MS (code ALU) | SB | 4 | drill | 1 | 1 | 9500 / – (100%, seen once) | 9500 (100%; 9500, 9500–9500) | – | 500 (500–500) | – | – | 4 (4–4) |
+| MS (code ALU) | SF | 3 | contour | 1 | 1 | 21000 / 1000 (100%, seen once) | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 1 (1–1) | – | – |
+| MS (code ALU) | SF | 4 | contour | 2 | 1 | 16000 / 1000 (100%, seen once) | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 0.6 (0.55–0.6) | – | – |
+| MS (code ALU) | SF | 4 | pocket | 2 | 1 | 16000 / 1000 (100%, seen once) | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.5 (1.45–1.5) | – | – |
+| MS (code POM) | SF | 6 | counterbore | 1 | 1 | 6300 / – (100%, seen once) | 6300 (100%; 6300, 6300–6300) | – | 250 (250–250) | – | – | – |
+| MS (code POM) | SF | 6 | pocket | 1 | 1 | 11500 / 1000 (100%, seen once) | 11500 (100%; 11500, 11500–11500) | 1000 (100%; 1000, 1000–1000) | 500 (500–500) | 0.98 (0.98–0.98) | – | – |
+| MS (code ALU) | SF | 8 | counterbore | 1 | 1 | 4700 / – (100%, seen once) | 4700 (100%; 4700, 4700–4700) | – | 300 (300–300) | – | – | – |
+| MS (code ALU) | SF | 8 | pocket | 1 | 1 | 12000 / 2000 (100%, seen once) | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | – | 0.07 (0.07–0.07) | 2.4 (2.4–2.4) | – |
+| MS (code FR) | SF | 16 | face | 2 | 1 | 6000 / 800 (100%, seen once) | 6000 (100%; 6000, 6000–6000) | 800 (100%; 800, 800–800) | 400 (400–400) | 1 (0.58–1) | – | – |
+| MS (code ALU) | SF | 16 | finish | 2 | 2 | 6600 / 1200 (100%, consistent across the library) | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 4.92 (4–4.92) | – | – |
+| MS (code ALU) | SFH | 16 | contour | 2 | 2 | 20000 / 3000 (100%, consistent across the library) | 20000 (100%; 20000, 20000–20000) | 3000 (100%; 3000, 3000–3000) | 2100 (2000–2100) | 2 (1.95–2) | – | – |
+| MS (code ALU) | ST | 4 | chamfer | 7 | 2 | 16000 / 920 (86%, majority) | 16000 (100%; 16000, 16000–16000) | 920 (86%; 920, 900–920) | 828 (450–828) | 1.26 (1.26–1.26) | 1.41 (1.41–1.41) | – |
+| MS (code ALU) | ZB | 2.3 | centre | 3 | 2 | 6500 / – (100%, consistent across the library) | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – |
+| PC GF (code ALU) | AB | 5.5 | centre | 1 | 1 | 6500 / – (100%, seen once) | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – |
+| PC GF (code ALU) | GB | 2 | tap | 1 | 1 | 200 / – (100%, seen once) | 200 (100%; 200, 200–200) | – | 80 (80–80) | – | – | – |
+| PC GF (code ALU) | MK | 40 | face | 28 | 10 | 8000 / 3000 (100%, consistent across the library) | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1.5 (1–2) | 35.17 (28.5–35.17) | – |
+| PC GF (code ALU/POM) | SB | 1 | drill | 11 | 6 | 27000 / – (100%, consistent across the library) | 27000 (100%; 27000, 27000–27000) | – | 350 (300–350) | – | – | 0.3 (0.15–1) |
+| PC GF (code ALU) | SB | 1.1 | drill | 2 | 1 | 27000 / – (100%, seen once) | 27000 (100%; 27000, 27000–27000) | – | 300 (300–300) | – | – | 0.3 (0.3–0.3) |
+| PC GF (code ALU) | SB | 1.4 | drill | 2 | 1 | 26000 / – (100%, seen once) | 26000 (100%; 26000, 26000–26000) | – | 350 (350–350) | – | – | 0.4 (0.4–0.4) |
+| PC GF (code ALU) | SB | 1.5 | drill | 3 | 2 | 26000 / – (100%, consistent across the library) | 26000 (100%; 26000, 26000–26000) | – | 350 (350–350) | – | – | 0.6 (0.6–0.6) |
+| PC GF (code POM) | SB | 1.8 | drill | 1 | 1 | 3000 / – (100%, seen once) | 3000 (100%; 3000, 3000–3000) | – | 150 (150–150) | – | – | 1.5 (1.5–1.5) |
+| PC GF (code ALU/POM) | SB | 2 | drill | 12 | 8 | 19000 / – (100%, consistent across the library) | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) |
+| PC GF (code ALU) | SB | 2.1 | drill | 1 | 1 | 19000 / – (100%, seen once) | 19000 (100%; 19000, 19000–19000) | – | 400 (400–400) | – | – | 1.5 (1.5–1.5) |
+| PC GF (code ALU) | SB | 2.5 | drill | 2 | 1 | 15000 / – (100%, seen once) | 15000 (100%; 15000, 15000–15000) | – | 450 (450–450) | – | – | 2 (2–2) |
+| PC GF (code FH/POM) | SB | 2.6 | drill | 5 | 4 | 16192 / – (60%, majority) | 16192 (60%; 16192, 16192–19000) | – | 450 (400–450) | – | – | 2 (1.5–2) |
+| PC GF (code ALU) | SB | 2.96 | drill | 2 | 2 | 13000 / – (100%, consistent across the library) | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) |
+| PC GF (code ALU) | SB | 3 | drill | 2 | 1 | 13000 / – (100%, seen once) | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) |
+| PC GF (code FH) | SB | 3.1 | drill | 1 | 1 | 13000 / – (100%, seen once) | 13000 (100%; 13000, 13000–13000) | – | 400 (400–400) | – | – | 3 (3–3) |
+| PC GF (code FH) | SB | 3.2 | drill | 2 | 1 | 12000 / – (100%, seen once) | 12000 (100%; 12000, 12000–12000) | – | 400 (400–400) | – | – | 3 (3–3) |
+| PC GF (code ALU) | SB | 3.3 | drill | 6 | 3 | 12000 / – (67%, majority) | 12000 (67%; 12000, 11000–12000) | – | 440 (400–450) | – | – | 3.3 (1.3–3.5) |
+| PC GF (code ALU) | SB | 3.5 | drill | 3 | 2 | 11000 / – (100%, consistent across the library) | 11000 (100%; 11000, 11000–11000) | – | 440 (440–440) | – | – | 3.5 (3.5–3.5) |
+| PC GF (code ALU) | SB | 4 | drill | 11 | 8 | 9500 / – (91%, majority) | 9500 (91%; 9500, 8000–9500) | – | 500 (500–520) | – | – | 4 (2–5) |
+| PC GF (code ALU) | SB | 4.2 | drill | 2 | 1 | 9000 / – (100%, seen once) | 9000 (100%; 9000, 9000–9000) | – | 500 (500–500) | – | – | 4 (4–4) |
+| PC GF (code ALU) | SB | 5 | drill | 6 | 4 | 7600 / – (100%, consistent across the library) | 7600 (100%; 7600, 7600–7600) | – | 475 (475–475) | – | – | 5 (5–5) |
+| PC GF (code ALU) | SF | 1 | contour | 13 | 4 | 27000 / 600 (31%, varies) | 27000 (100%; 27000, 27000–27000) | 600 (31%; 650, 600–800) | 630 (300–720) | 0.2 (0.2–0.29) | 0.17 (0.17–0.5) | – |
+| PC GF (code ALU) | SF | 1 | other | 1 | 1 | 27000 / 700 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 630 (630–630) | – | – | – |
+| PC GF (code ALU) | SF | 1 | pocket | 2 | 1 | 27000 / 350 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 350 (100%; 350, 350–350) | – | 0.02 (0.02–0.02) | 0.52 (0.52–0.52) | – |
+| PC GF (code ALU) | SF | 1.5 | contour | 2 | 1 | 27000 / 900 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 900 (100%; 900, 900–900) | 810 (810–810) | 0.38 (0.38–0.38) | 0.35 (0.35–0.35) | – |
+| PC GF (code ALU) | SF | 1.5 | counterbore | 2 | 1 | 27000 / – (100%, seen once) | 27000 (100%; 27000, 27000–27000) | – | 700 (700–700) | – | – | – |
+| PC GF (code ALU) | SF | 1.5 | pocket | 1 | 1 | 27000 / 900 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 900 (100%; 900, 900–900) | 360 (360–360) | 0.4 (0.4–0.4) | 0.2 (0.2–0.2) | – |
+| PC GF (code ALU/POM) | SF | 2 | contour | 15 | 7 | 27000 / 1000 (100%, consistent across the library) | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | 700 (500–900) | 0.5 (0.29–1) | 1.52 (0.2–1.52) | – |
+| PC GF (code ALU) | SF | 2 | counterbore | 1 | 1 | 19000 / – (100%, seen once) | 19000 (100%; 19000, 19000–19000) | – | 300 (300–300) | – | – | – |
+| PC GF (code ALU) | SF | 2 | pocket | 2 | 1 | 27000 / 1000 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | – | 0.09 (0.09–0.09) | 0.2 (0.2–0.2) | – |
+| PC GF (code ALU) | SF | 2.5 | pocket | 2 | 1 | 26000 / 1000 (100%, seen once) | 26000 (100%; 26000, 26000–26000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 0.04 (0.04–0.04) | 0.2 (0.2–0.2) | – |
+| PC GF (code POM) | SF | 3 | contour | 1 | 1 | 21000 / 1000 (100%, seen once) | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 300 (300–300) | 0.83 (0.83–0.83) | – | – |
+| PC GF (code ALU/POM) | SF | 3 | pocket | 11 | 7 | 21000 / 600 (55%, majority) | 21000 (100%; 21000, 21000–21000) | 600 (55%; 600, 400–1000) | 600 (400–600) | 0.03 (0.01–1) | 0.52 (0.2–0.52) | – |
+| PC GF (code ALU) | SF | 4 | contour | 10 | 4 | 16000 / 1200 (80%, majority) | 16000 (100%; 16000, 16000–16000) | 1200 (80%; 1200, 720–1200) | 1080 (700–1080) | 1.42 (1.25–2.5) | – | – |
+| PC GF (code ALU/POM) | SF | 4 | counterbore | 7 | 6 | 9500 / – (100%, consistent across the library) | 9500 (100%; 9500, 9500–9500) | – | 300 (300–300) | – | – | – |
+| PC GF (code ALU) | SF | 4 | pocket | 8 | 5 | 16000 / 1000 (75%, majority) | 16000 (88%; 16000, 16000–21000) | 1000 (75%; 1000, 600–1200) | 600 (600–600) | 0.38 (0.01–2) | 2 (0.39–2) | – |
+| PC GF (code ALU) | SF | 5 | contour | 3 | 2 | 14000 / 720 (67%, majority) | 14000 (100%; 14000, 14000–14000) | 720 (67%; 720, 720–1080) | 1080 (1080–1080) | 1.17 (1.17–1.58) | – | – |
+| PC GF (code ALU) | SF | 5 | counterbore | 7 | 5 | 7600 / – (100%, consistent across the library) | 7600 (100%; 7600, 7600–7600) | – | 250 (250–250) | – | – | – |
+| PC GF (code ALU/POM) | SF | 5 | pocket | 5 | 4 | 14000 / 660 (60%, majority) | 14000 (100%; 14000, 14000–14000) | 660 (60%; 660, 660–1100) | 500 (500–500) | 0.07 (0.05–1.08) | 3 (3–3) | – |
+| PC GF (code ALU/POM) | SF | 6 | contour | 2 | 2 | 12000 / 1200 (100%, consistent across the library) | 12000 (100%; 12000, 12000–12000) | 1200 (100%; 1200, 1200–1200) | 1080 (700–1080) | 1.94 (1.94–1.94) | – | – |
+| PC GF (code ALU) | SF | 6 | counterbore | 4 | 1 | 6300 / – (100%, seen once) | 6300 (100%; 6300, 6300–6300) | – | 250 (250–250) | – | – | – |
+| PC GF (code ALU) | SF | 6 | pocket | 4 | 1 | 11500 / 1000 (50%, seen once) | 6500 (50%; 11500, 6500–11500) | 650 (50%; 1000, 650–1000) | 500 (390–500) | 1.45 (0.9–1.45) | 5 (5–5) | – |
+| PC GF (code ALU) | SF | 8 | contour | 3 | 2 | 12000 / 2160 (67%, majority) | 12000 (100%; 12000, 12000–12000) | 2160 (67%; 2160, 2160–2400) | 2160 (2160–2160) | 2.77 (2.77–3.88) | – | – |
+| PC GF (code ALU) | SF | 8 | pocket | 7 | 3 | 12000 / 2000 (100%, consistent across the library) | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | 1200 (1200–1200) | 2 (1.67–4.67) | 4 (3.72–4) | – |
+| PC GF (code FR/POM) | SF | 16 | contour | 6 | 3 | 6600 / 1200 (100%, consistent across the library) | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 4.9 (2.85–5) | – | – |
+| PC GF (code FR/POM) | SF | 16 | face | 6 | 3 | 6600 / 1200 (67%, majority) | 6600 (67%; 6600, 6600–8000) | 1200 (67%; 1200, 1200–3000) | 1200 (1200–3000) | 1 (0.5–1) | 11.43 (11.43–11.43) | – |
+| PC GF (code ALU/FR) | SF | 16 | finish | 13 | 9 | 6600 / 1200 (100%, consistent across the library) | 6600 (100%; 6600, 6600–6600) | 1200 (100%; 1200, 1200–1200) | 1080 (900–1080) | 3.34 (1.79–8.33) | – | – |
+| PC GF (code ALU) | SFH | 16 | contour | 4 | 3 | 20000 / 3000 (100%, consistent across the library) | 20000 (100%; 20000, 20000–20000) | 3000 (100%; 3000, 3000–3000) | 2100 (2100–2100) | 1.92 (1.92–4.96) | – | – |
+| PC GF (code ALU/POM) | ST | 4 | chamfer | 41 | 12 | 16000 / 920 (85%, majority) | 16000 (100%; 16000, 16000–16000) | 920 (85%; 920, 900–1000) | 828 (450–900) | – | 3.2 (0.83–4) | – |
+| PC GF (code ALU/POM) | ZB | 2.3 | centre | 22 | 12 | 6500 / – (100%, consistent across the library) | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – |
+| PEEK (code ALU) | MK | 40 | face | 4 | 1 | 8000 / 3000 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 3000 (100%; 3000, 3000–3000) | 3000 (3000–3000) | 1 (1–1) | – | – |
+| PEEK (code ALU) | SB | 0.8 | drill | 2 | 1 | 27000 / – (100%, seen once) | 27000 (100%; 27000, 27000–27000) | – | 350 (350–350) | – | – | 0.3 (0.3–0.3) |
+| PEEK (code ALU) | SB | 2.3 | drill | 2 | 1 | 16192 / – (100%, seen once) | 16192 (100%; 16192, 16192–16192) | – | 450 (450–450) | – | – | 2 (2–2) |
+| PEEK (code POM) | SB | 4.6 | drill | 2 | 1 | 3800 / – (100%, seen once) | 3800 (100%; 3800, 3800–3800) | – | 500 (500–500) | – | – | 4 (4–4) |
+| PEEK (code ALU) | SF | 0.8 | pocket | 2 | 1 | 27000 / 700 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 700 (100%; 700, 700–700) | 350 (350–350) | 0.12 (0.12–0.12) | – | – |
+| PEEK (code ALU) | SF | 1.5 | contour | 4 | 1 | 27000 / 700 (50%, seen once) | 27000 (100%; 27000, 27000–27000) | 700 (50%; 900, 700–900) | 810 (350–810) | 0.39 (0.2–0.39) | – | – |
+| PEEK (code ALU) | SF | 2 | contour | 4 | 1 | 27000 / 1000 (100%, seen once) | 27000 (100%; 27000, 27000–27000) | 1000 (100%; 1000, 1000–1000) | 900 (500–900) | 1.4 (1–1.4) | – | – |
+| PEEK (code ALU) | SF | 2 | pocket | 4 | 1 | 27000 / 1000 (50%, seen once) | 27000 (100%; 27000, 27000–27000) | 600 (50%; 1000, 600–1000) | 600 (600–600) | 0.59 (0.39–0.59) | 0.2 (0.2–0.2) | – |
+| PEEK (code ALU) | SF | 3 | pocket | 4 | 1 | 21000 / 1000 (50%, seen once) | 21000 (100%; 21000, 21000–21000) | 600 (50%; 1000, 600–1000) | 600 (600–600) | 1 (0.55–1) | – | – |
+| PEEK (code ALU) | SF | 4 | contour | 2 | 1 | 21000 / 1000 (100%, seen once) | 21000 (100%; 21000, 21000–21000) | 1000 (100%; 1000, 1000–1000) | 900 (900–900) | 4 (4–4) | – | – |
+| PEEK (code ALU) | SF | 4 | pocket | 2 | 1 | 16000 / 1000 (100%, seen once) | 16000 (100%; 16000, 16000–16000) | 1000 (100%; 1000, 1000–1000) | 600 (600–600) | 1.29 (1.29–1.29) | 0.2 (0.2–0.2) | – |
+| PEEK (code ALU) | SF | 6 | pocket | 2 | 1 | 12000 / 1200 (100%, seen once) | 12000 (100%; 12000, 12000–12000) | 1200 (100%; 1200, 1200–1200) | 720 (720–720) | 1.75 (1.75–1.75) | 1.52 (1.52–1.52) | – |
+| PEEK (code ALU) | SF | 8 | finish | 2 | 1 | 12000 / 2000 (100%, seen once) | 12000 (100%; 12000, 12000–12000) | 2000 (100%; 2000, 2000–2000) | 1200 (1200–1200) | 1.81 (1.81–1.81) | 3.2 (3.2–3.2) | – |
+| PEEK (code ALU) | ST | 4 | chamfer | 8 | 1 | 16000 / 920 (75%, seen once) | 16000 (100%; 16000, 16000–16000) | 920 (75%; 920, 900–920) | 828 (450–828) | – | 2.2 (1.8–2.2) | – |
+| PEEK (code ALU) | ZB | 2.3 | centre | 4 | 1 | 6500 / – (100%, seen once) | 6500 (100%; 6500, 6500–6500) | – | 300 (300–300) | – | – | – |
+| PETP (code POM) | GB | 2.5 | tap | 1 | 1 | 200 / – (100%, seen once) | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – |
+| PETP (code POM) | MK | 93 | face | 3 | 1 | 2500 / 600 (67%, seen once) | 2500 (100%; 2500, 2500–2500) | 600 (67%; 600, 600–800) | 600 (600–800) | 2.17 (2.17–2.17) | – | – |
+| PETP (code POM) | SB | 2 | drill | 1 | 1 | 3000 / – (100%, seen once) | 3000 (100%; 3000, 3000–3000) | – | 180 (180–180) | – | – | 2 (2–2) |
+| PETP (code POM) | SB | 5.4 | drill | 1 | 1 | 1400 / – (100%, seen once) | 1400 (100%; 1400, 1400–1400) | – | 150 (150–150) | – | – | 6 (6–6) |
+| PETP (code POM) | SF | 6 | finish | 1 | 1 | 3200 / 450 (100%, seen once) | 3200 (100%; 3200, 3200–3200) | 450 (100%; 450, 450–450) | 200 (200–200) | 13 (13–13) | 0.3 (0.3–0.3) | – |
+| PETP (code POM) | ST | 4 | chamfer | 2 | 1 | 4000 / 600 (100%, seen once) | 4000 (100%; 4000, 4000–4000) | 600 (100%; 600, 600–600) | 600 (600–600) | – | – | – |
+| PETP (code POM) | ZB | 2.3 | centre | 1 | 1 | 2000 / – (100%, seen once) | 2000 (100%; 2000, 2000–2000) | – | 150 (150–150) | – | – | – |
+| POM | GB | 2.5 | tap | 3 | 3 | 200 / – (100%, consistent across the library) | 200 (100%; 200, 200–200) | – | 90 (90–90) | – | – | – |
+| POM (code FH/POM) | GB | 3 | tap | 2 | 2 | 300 / – (100%, consistent across the library) | 300 (100%; 300, 300–300) | – | 150 (150–150) | – | – | – |
+| POM (code FH) | GB | 5 | tap | 1 | 1 | 500 / – (100%, seen once) | 500 (100%; 500, 500–500) | – | 400 (400–400) | – | – | – |
+| POM | KF | 6 | finish | 1 | 1 | 6499 / 1300 (100%, seen once) | 6499 (100%; 6499, 6499–6499) | 1300 (100%; 1300, 1300–1300) | 1300 (1300–1300) | 0.2 (0.2–0.2) | – | – |
+| POM | KF | 12 | finish | 1 | 1 | 15915 / 3000 (100%, seen once) | 15915 (100%; 15915, 15915–15915) | 3000 (100%; 3000, 3000–3000) | 2700 (2700–2700) | 0.15 (0.15–0.15) | 1 (1–1) | – |
+| POM (code FH/POM) | MK | 93 | face | 50 | 22 | 2500 / 600 (72%, majority) | 2500 (100%; 2500, 2500–2500) | 600 (72%; 600, 600–1200) | 600 (600–1200) | 1.5 (0.5–3) | 56.33 (56.33–57) | – |
+| POM | SB | 0.98 | drill | 1 | 1 | 8000 / – (100%, seen once) | 8000 (100%; 8000, 8000–8000) | – | 200 (200–200) | – | – | 0.5 (0.5–0.5) |
+| POM | SB | 1 | drill | 1 | 1 | 3100 / – (100%, seen once) | 3100 (100%; 3100, 3100–3100) | – | 80 (80–80) | – | – | 0.5 (0.5–0.5) |
+| POM | SB | 1.33 | drill | 1 | 1 | 8000 / – (100%, seen once) | 8000 (100%; 8000, 8000–8000) | – | 300 (300–300) | – | – | 1 (1–1) |
+| POM | SB | 1.5 | drill | 5 | 5 | 8000 / – (60%, majority) | 8000 (60%; 8000, 3100–8000) | – | 400 (150–400) | – | – | 1 (1–1) |
+| POM | SB | 1.97 | drill | 11 | 11 | 3000 / – (82%, majority) | 3000 (82%; 3000, 3000–5000) | – | 180 (180–250) | – | – | 2 (2–2) |
+| POM | SB | 2 | drill | 2 | 2 | 3000 / – (50%, varies) | 3000 (50%; 5000, 3000–5000) | – | 250 (180–250) | – | – | 2 (2–2) |
+| POM | SB | 2.3 | drill | 1 | 1 | 5000 / – (100%, seen once) | 5000 (100%; 5000, 5000–5000) | – | 250 (250–250) | – | – | 2 (2–2) |
+| POM (code FH/POM) | SB | 2.5 | drill | 5 | 5 | 6000 / – (60%, majority) | 6000 (60%; 6000, 2600–6000) | – | 500 (180–500) | – | – | 2.5 (2.5–3.5) |
+| POM | SB | 2.6 | drill | 1 | 1 | 5000 / – (100%, seen once) | 5000 (100%; 5000, 5000–5000) | – | 500 (500–500) | – | – | 2.5 (2.5–2.5) |
+| POM | SB | 2.96 | drill | 14 | 11 | 3000 / – (86%, majority) | 3000 (86%; 3000, 2600–3000) | – | 230 (200–230) | – | – | 2.5 (2.5–2.5) |
+| POM (code FH) | SB | 3.2 | drill | 4 | 4 | 5000 / – (75%, majority) | 5000 (75%; 5000, 4500–5000) | – | 500 (400–500) | – | – | 3 (2.5–4.5) |
+| POM | SB | 3.3 | drill | 7 | 6 | 5000 / – (86%, majority) | 5000 (86%; 5000, 2400–5000) | – | 500 (240–500) | – | – | 3 (3–3) |
+| POM | SB | 3.5 | drill | 8 | 8 | 4500 / – (100%, consistent across the library) | 4500 (100%; 4500, 4500–4500) | – | 500 (500–500) | – | – | 3 (3–3) |
+| POM | SB | 4 | drill | 11 | 9 | 4000 / – (64%, majority) | 4000 (64%; 4000, 1900–4000) | – | 500 (250–500) | – | – | 4 (4–4) |
+| POM (code FH/POM) | SB | 4.2 | drill | 2 | 2 | 1900 / – (50%, varies) | 1900 (50%; 3500, 1900–3500) | – | 600 (250–600) | – | – | 5 (3–5) |
+| POM | SB | 4.6 | drill | 8 | 6 | 3800 / – (100%, consistent across the library) | 3800 (100%; 3800, 3800–3800) | – | 500 (500–500) | – | – | 4 (4–4) |
+| POM | SB | 4.7 | drill | 1 | 1 | 1650 / – (100%, seen once) | 1650 (100%; 1650, 1650–1650) | – | 220 (220–220) | – | – | 4 (4–4) |
+| POM | SB | 5 | drill | 2 | 2 | 1500 / – (100%, consistent across the library) | 1500 (100%; 1500, 1500–1500) | – | 150 (150–150) | – | – | 4 (4–4) |
+| POM (code FH) | SB | 5.2 | drill | 2 | 2 | 3100 / – (100%, consistent across the library) | 3100 (100%; 3100, 3100–3100) | – | 800 (800–800) | – | – | 6 (6–6) |
+| POM (code FH/POM) | SB | 5.4 | drill | 6 | 6 | 2900 / – (83%, majority) | 2900 (83%; 2900, 2900–3000) | – | 700 (700–800) | – | – | 6 (2.5–8) |
+| POM (code FH) | SB | 6 | drill | 1 | 1 | 2900 / – (100%, seen once) | 2900 (100%; 2900, 2900–2900) | – | 700 (700–700) | – | – | 6 (6–6) |
+| POM | SB | 6.4 | drill | 3 | 3 | 2500 / – (67%, majority) | 2500 (67%; 2500, 1200–2500) | – | 800 (120–800) | – | – | 6 (6–6) |
+| POM | SF | 2 | finish | 5 | 4 | 8000 / 700 (80%, majority) | 8000 (100%; 8000, 8000–8000) | 700 (80%; 700, 490–700) | 630 (630–630) | 1 (0.91–1.92) | 1.5 (1.19–1.5) | – |
+| POM | SF | 2 | pocket | 1 | 1 | 8000 / 400 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 400 (100%; 400, 400–400) | 240 (240–240) | 0.57 (0.57–0.57) | – | – |
+| POM | SF | 3 | finish | 6 | 6 | 8000 / 800 (50%, varies) | 8000 (100%; 8000, 8000–8000) | 800 (50%; 800, 300–1100) | 720 (100–990) | 1.46 (1–2.9) | – | – |
+| POM | SF | 3 | pocket | 13 | 8 | 8000 / 500 (69%, majority) | 8000 (100%; 8000, 8000–8000) | 500 (69%; 500, 51–500) | 300 (300–400) | 1.43 (0.3–2.8) | 1.35 (0.34–2.34) | – |
+| POM | SF | 4 | counterbore | 6 | 6 | 1800 / – (67%, majority) | 1800 (67%; 1800, 1800–3000) | – | 500 (200–500) | – | – | – |
+| POM | SF | 4 | finish | 10 | 7 | 8000 / 1100 (70%, majority) | 8000 (100%; 8000, 8000–8000) | 1100 (70%; 1100, 720–1100) | 990 (200–990) | 1.75 (1.34–2) | 2.24 (2.24–2.24) | – |
+| POM | SF | 4 | pocket | 8 | 7 | 8000 / 800 (38%, varies) | 8000 (75%; 8000, 4700–16000) | 800 (38%; 800, 300–1000) | 480 (200–600) | 1.88 (1–4.5) | 0.64 (0.64–0.64) | – |
+| POM | SF | 5 | contour | 1 | 1 | 14000 / 1200 (100%, seen once) | 14000 (100%; 14000, 14000–14000) | 1200 (100%; 1200, 1200–1200) | 1080 (1080–1080) | 1.57 (1.57–1.57) | – | – |
+| POM | SF | 5 | counterbore | 1 | 1 | 1400 / – (100%, seen once) | 1400 (100%; 1400, 1400–1400) | – | 500 (500–500) | – | – | – |
+| POM | SF | 5 | finish | 2 | 2 | 8000 / 1100 (50%, varies) | 8000 (100%; 8000, 8000–8000) | 770 (50%; 1100, 770–1100) | 990 (990–990) | 2.58 (1.75–2.58) | 2.21 (2.21–2.21) | – |
+| POM | SF | 5 | pocket | 7 | 7 | 8000 / 560 (43%, varies) | 8000 (100%; 8000, 8000–8000) | 560 (43%; 560, 186–800) | 400 (400–500) | 2 (0.02–2.5) | – | – |
+| POM | SF | 6 | counterbore | 10 | 9 | 1000 / – (90%, majority) | 1000 (90%; 1000, 1000–2000) | – | 500 (210–500) | – | – | – |
+| POM | SF | 6 | finish | 3 | 3 | 8000 / 1400 (33%, varies) | 8000 (100%; 8000, 8000–8000) | 540 (33%; 980, 540–1400) | 1260 (540–1260) | 2.88 (2.3–5) | – | – |
+| POM | SF | 6 | other | 1 | 1 | 8000 / 800 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 800 (100%; 800, 800–800) | 720 (720–720) | – | – | – |
+| POM (code FH/POM) | SF | 6 | pocket | 13 | 9 | 8000 / 900 (69%, majority) | 8000 (77%; 8000, 3100–8000) | 900 (69%; 900, 450–900) | 450 (200–500) | 2.9 (1.5–4.23) | 2.7 (1.41–4.11) | – |
+| POM | SF | 8 | contour | 1 | 1 | 8000 / 1200 (100%, seen once) | 8000 (100%; 8000, 8000–8000) | 1200 (100%; 1200, 1200–1200) | 720 (720–720) | 2.95 (2.95–2.95) | 1 (1–1) | – |
+| POM | SF | 8 | counterbore | 2 | 2 | 1500 / – (50%, varies) | 800 (50%; 1500, 800–1500) | – | 500 (250–500) | – | – | – |
+| POM | SF | 8 | finish | 7 | 6 | 3000 / 500 (43%, varies) | 8000 (57%; 8000, 3000–8000) | 500 (43%; 1120, 500–1400) | 1120 (250–1120) | 5.77 (3.5–6.75) | – | – |
+| POM (code FH/POM) | SF | 8 | pocket | 15 | 9 | 8000 / 1200 (67%, majority) | 8000 (87%; 8000, 6000–8000) | 1200 (67%; 1200, 300–1200) | 720 (595–720) | 0.85 (0.08–4.56) | 4 (2.3–8.01) | – |
+| POM | SF | 20 | contour | 24 | 21 | 4000 / 1200 (67%, majority) | 4000 (83%; 4000, 4000–12732) | 1200 (79%; 1200, 600–3000) | 600 (400–1500) | 6 (3.65–8.65) | 6 (6–6) | – |
+| POM | SF | 20 | face | 6 | 3 | 4000 / 1000 (83%, majority) | 4000 (83%; 4000, 4000–6000) | 1000 (100%; 1000, 1000–1000) | 1000 (500–1000) | 1.4 (1–1.5) | – | – |
+| POM | SF | 20 | finish | 1 | 1 | 4000 / 1000 (100%, seen once) | 4000 (100%; 4000, 4000–4000) | 1000 (100%; 1000, 1000–1000) | 500 (500–500) | 5.79 (5.79–5.79) | – | – |
+| POM | SF | 20 | other | 1 | 1 | 6600 / 1800 (100%, seen once) | 6600 (100%; 6600, 6600–6600) | 1800 (100%; 1800, 1800–1800) | 900 (900–900) | – | – | – |
+| POM (code FH/POM) | ST | 4 | chamfer | 49 | 24 | 8000 / 1500 (61%, majority) | 8000 (92%; 8000, 4000–8000) | 1500 (61%; 1500, 600–1500) | 1050 (300–1050) | – | 3.5 (2–3.9) | – |
+| POM | ST | 4 | other | 2 | 1 | 4000 / 600 (100%, seen once) | 4000 (100%; 4000, 4000–4000) | 600 (100%; 600, 600–600) | 600 (600–600) | – | – | – |
+| POM | UDM | 10 | finish | 3 | 2 | 3282 / 328 (67%, majority) | 3282 (67%; 3282, 2000–3282) | 328 (67%; 328, 328–400) | 295 (295–360) | – | – | – |
+| POM | UDM | 12 | finish | 1 | 1 | 2500 / 250 (100%, seen once) | 2500 (100%; 2500, 2500–2500) | 250 (100%; 250, 250–250) | 175 (175–175) | – | – | – |
+| POM (code FH/POM) | ZB | 2.3 | centre | 31 | 23 | 8000 / – (61%, majority) | 8000 (61%; 8000, 2000–8000) | – | 200 (87–200) | – | – | – |
+| VA (code VAHS) | SB | 3 | drill | 2 | 1 | 4300 / – (100%, seen once) | 4300 (100%; 4300, 4300–4300) | – | 100 (100–100) | – | – | 3 (3–3) |
+| VA (code VAHS) | SB | 3.5 | drill | 2 | 1 | 3700 / – (100%, seen once) | 3700 (100%; 3700, 3700–3700) | – | 100 (100–100) | – | – | 3.5 (3.5–3.5) |
+| VA (code VAHS) | SB | 5 | drill | 2 | 1 | 2600 / – (100%, seen once) | 2600 (100%; 2600, 2600–2600) | – | 100 (100–100) | – | – | 5 (5–5) |
+| VA (code VAHS) | SB | 5.5 | centre | 2 | 1 | 2400 / – (100%, seen once) | 2400 (100%; 2400, 2400–2400) | – | 80 (80–80) | – | – | – |
+| VA (code VAHS) | SB | 6.4 | drill | 2 | 1 | 2000 / – (100%, seen once) | 2000 (100%; 2000, 2000–2000) | – | 150 (150–150) | – | – | 3 (3–3) |
+| VA (code VAHS) | SF | 2 | contour | 2 | 1 | 10000 / 126 (100%, seen once) | 10000 (100%; 10000, 10000–10000) | 126 (100%; 126, 126–126) | 75 (75–75) | 0.29 (0.29–0.29) | – | – |
+| VA (code VAHS) | SF | 2 | pocket | 2 | 1 | 10000 / 75 (100%, seen once) | 10000 (100%; 10000, 10000–10000) | 75 (100%; 75, 75–75) | – | 0.02 (0.02–0.02) | 0.2 (0.2–0.2) | – |
+| VA (code VAHS) | SF | 3 | contour | 4 | 1 | 6400 / 150 (100%, seen once) | 6400 (100%; 6400, 6400–6400) | 150 (100%; 150, 150–150) | 135 (135–135) | 0.69 (0.63–0.69) | – | – |
+| VA (code VAHS) | SF | 4 | contour | 4 | 1 | 5000 / 113 (50%, seen once) | 5000 (100%; 5000, 5000–5000) | 113 (50%; 150, 113–150) | 75 (75–75) | 1 (0.95–1) | – | – |
+| VA (code VAHS) | SF | 6 | counterbore | 2 | 1 | 3600 / – (100%, seen once) | 3600 (100%; 3600, 3600–3600) | – | 100 (100–100) | – | – | – |
+| VA (code VAHS) | SF | 6 | pocket | 2 | 1 | 3600 / 150 (100%, seen once) | 3600 (100%; 3600, 3600–3600) | 150 (100%; 150, 150–150) | – | 0.04 (0.04–0.04) | 3.84 (3.84–3.84) | – |
+| VA (code VAHS) | SF | 8 | contour | 2 | 1 | 3000 / 350 (100%, seen once) | 3000 (100%; 3000, 3000–3000) | 350 (100%; 350, 350–350) | 175 (175–175) | 2.58 (2.58–2.58) | 2.8 (2.8–2.8) | – |
+| VA (code VAHS) | SF | 8 | pocket | 2 | 1 | 3000 / 245 (100%, seen once) | 3000 (100%; 3000, 3000–3000) | 245 (100%; 245, 245–245) | 175 (175–175) | 2.6 (2.6–2.6) | – | – |
+| VA (code VAHS) | SR | 16 | contour | 2 | 1 | 1200 / 350 (100%, seen once) | 1200 (100%; 1200, 1200–1200) | 350 (100%; 350, 350–350) | 175 (175–175) | 5.1 (5.1–5.1) | – | – |
+| VA (code VAHS) | SR | 16 | face | 4 | 1 | 1200 / 350 (100%, seen once) | 1200 (100%; 1200, 1200–1200) | 350 (100%; 350, 350–350) | 175 (175–175) | 2 (1–2) | 10 (10–10) | – |
+| VA (code VAHS) | ST | 4 | chamfer | 10 | 1 | 4800 / 140 (40%, seen once) | 4800 (100%; 4800, 4800–4800) | 140 (40%; 180, 140–200) | 100 (90–100) | – | 3 (3–3) | – |
 
 ## G-code style
 

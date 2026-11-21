@@ -5936,6 +5936,13 @@
  ],
  "cuttingData": [
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 23,
+    "share": 0.92,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "AB",
    "d": 5.5,
@@ -5976,6 +5983,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 400,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "GB",
    "d": 2.5,
@@ -6012,6 +6026,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 300,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "GB",
    "d": 3,
@@ -6049,6 +6070,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 300,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "GB",
    "d": 6,
@@ -6086,6 +6114,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": 1300,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "KF",
    "d": 6,
@@ -6145,6 +6180,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 3000,
+    "operations": 67,
+    "share": 0.8,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "MK",
    "d": 40,
@@ -6206,6 +6248,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": null,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 1,
@@ -6253,6 +6302,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 1.2,
@@ -6296,6 +6352,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 10000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 1.3,
@@ -6340,6 +6403,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 10000,
+    "feed": null,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 1.5,
@@ -6385,6 +6455,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 10000,
+    "feed": null,
+    "operations": 7,
+    "share": 0.41,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 2,
@@ -6432,6 +6509,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 15000,
+    "feed": null,
+    "operations": 19,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 2.5,
@@ -6479,6 +6563,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 2.96,
@@ -6522,6 +6613,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 10,
+    "share": 0.77,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 3,
@@ -6569,6 +6667,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 6,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 3.2,
@@ -6616,6 +6721,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": null,
+    "operations": 15,
+    "share": 0.88,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 3.3,
@@ -6664,6 +6776,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11000,
+    "feed": null,
+    "operations": 5,
+    "share": 0.63,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 3.5,
@@ -6711,6 +6830,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 4,
@@ -6747,6 +6873,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9500,
+    "feed": null,
+    "operations": 17,
+    "share": 0.77,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 4,
@@ -6794,6 +6927,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9000,
+    "feed": null,
+    "operations": 4,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 4.2,
@@ -6840,6 +6980,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 4.5,
@@ -6883,6 +7030,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 4.8,
@@ -6926,6 +7080,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7600,
+    "feed": null,
+    "operations": 11,
+    "share": 0.85,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 5,
@@ -6973,6 +7134,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2900,
+    "feed": null,
+    "operations": 2,
+    "share": 0.4,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 5.4,
@@ -7021,6 +7189,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6900,
+    "feed": null,
+    "operations": 4,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 5.5,
@@ -7067,6 +7242,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 6.2,
@@ -7110,6 +7292,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": null,
+    "operations": 8,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SB",
    "d": 6.4,
@@ -7157,6 +7346,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 1,
@@ -7215,6 +7411,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 600,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 1,
@@ -7266,6 +7469,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 1,
@@ -7316,6 +7526,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 900,
+    "operations": 6,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 1.5,
@@ -7376,6 +7593,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 900,
+    "operations": 2,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 1.5,
@@ -7436,6 +7660,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 1000,
+    "operations": 22,
+    "share": 0.58,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 2,
@@ -7498,6 +7729,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 2,
@@ -7534,6 +7772,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 2,
+    "share": 0.33,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 2,
@@ -7594,6 +7839,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 600,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 2,
@@ -7644,6 +7896,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 1000,
+    "operations": 6,
+    "share": 0.43,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 3,
@@ -7705,6 +7964,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 600,
+    "operations": 3,
+    "share": 0.43,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 3,
@@ -7767,6 +8033,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1200,
+    "operations": 20,
+    "share": 0.59,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 4,
@@ -7829,6 +8102,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 4,
@@ -7866,6 +8146,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1000,
+    "operations": 14,
+    "share": 0.54,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 4,
@@ -7927,6 +8214,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 14000,
+    "feed": 720,
+    "operations": 5,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 5,
@@ -7981,6 +8275,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7600,
+    "feed": null,
+    "operations": 9,
+    "share": 0.82,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 5,
@@ -8021,6 +8322,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 14000,
+    "feed": 660,
+    "operations": 5,
+    "share": 0.33,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 5,
@@ -8082,6 +8390,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11500,
+    "feed": 1000,
+    "operations": 3,
+    "share": 0.38,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 6,
@@ -8136,6 +8451,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6300,
+    "feed": null,
+    "operations": 10,
+    "share": 0.83,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 6,
@@ -8177,6 +8499,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11500,
+    "feed": 500,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 6,
@@ -8227,6 +8556,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 1200,
+    "operations": 10,
+    "share": 0.42,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 6,
@@ -8288,6 +8624,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2400,
+    "operations": 3,
+    "share": 0.23,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 8,
@@ -8343,6 +8686,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4700,
+    "feed": null,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 8,
@@ -8381,6 +8731,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 3000,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 8,
@@ -8432,6 +8789,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2000,
+    "operations": 15,
+    "share": 0.48,
+    "label": "varies"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 8,
@@ -8494,6 +8858,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 6,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 16,
@@ -8548,6 +8919,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 37,
+    "share": 0.9,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 16,
@@ -8609,6 +8987,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "SF",
    "d": 16,
@@ -8666,6 +9051,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 20000,
+    "feed": 3000,
+    "operations": 37,
+    "share": 0.79,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "SFH",
    "d": 16,
@@ -8727,6 +9119,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 920,
+    "operations": 86,
+    "share": 0.69,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "ST",
    "d": 4,
@@ -8781,6 +9180,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 800,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "ST",
    "d": 8,
@@ -8824,6 +9230,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 500,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "ALU",
    "type": "TF",
    "d": 19.5,
@@ -8868,6 +9281,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 21,
+    "share": 0.84,
+    "label": "majority"
+   },
    "material": "ALU",
    "type": "ZB",
    "d": 2.3,
@@ -8908,6 +9328,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1800,
+    "feed": 800,
+    "operations": 1,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "MK",
    "d": 93,
@@ -8958,6 +9385,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SB",
    "d": 2,
@@ -9001,6 +9435,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SB",
    "d": 3,
@@ -9044,6 +9485,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SB",
    "d": 4,
@@ -9087,6 +9535,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SF",
    "d": 4,
@@ -9123,6 +9578,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 350,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SF",
    "d": 4,
@@ -9173,6 +9635,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5500,
+    "feed": 600,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SF",
    "d": 8,
@@ -9223,6 +9692,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2200,
+    "feed": 650,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "SF",
    "d": 20,
@@ -9273,6 +9749,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 800,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "ST",
    "d": 4,
@@ -9323,6 +9806,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "EPO",
    "type": "ZB",
    "d": 2.3,
@@ -9359,6 +9849,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 200,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "GB",
    "d": 2.5,
@@ -9395,6 +9892,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 300,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "GB",
    "d": 3,
@@ -9432,6 +9936,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 500,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "GB",
    "d": 5,
@@ -9469,6 +9980,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2500,
+    "feed": 1000,
+    "operations": 11,
+    "share": 0.69,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "MK",
    "d": 93,
@@ -9530,6 +10048,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7800,
+    "feed": null,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SB",
    "d": 1.5,
@@ -9575,6 +10100,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7800,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SB",
    "d": 1.8,
@@ -9618,6 +10150,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": null,
+    "operations": 7,
+    "share": 0.88,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SB",
    "d": 2,
@@ -9666,6 +10205,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5800,
+    "feed": null,
+    "operations": 3,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SB",
    "d": 2.5,
@@ -9713,6 +10259,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SB",
    "d": 2.96,
@@ -9756,6 +10309,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 8,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 3,
@@ -9803,6 +10363,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 3.3,
@@ -9849,6 +10416,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 3.5,
@@ -9893,6 +10467,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 5,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 4,
@@ -9938,6 +10519,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 4.2,
@@ -9985,6 +10573,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 4.5,
@@ -10029,6 +10624,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 18,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 4.8,
@@ -10077,6 +10679,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SB",
    "d": 4.9,
@@ -10120,6 +10729,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3100,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 5,
@@ -10164,6 +10780,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3100,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SB",
    "d": 5.2,
@@ -10207,6 +10830,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 10,
+    "share": 0.71,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SB",
    "d": 5.4,
@@ -10254,6 +10884,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SB",
    "d": 6.2,
@@ -10297,6 +10934,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 12,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 6.4,
@@ -10344,6 +10988,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 600,
+    "feed": null,
+    "operations": 6,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SB",
    "d": 10,
@@ -10391,6 +11042,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SF",
    "d": 2,
@@ -10427,6 +11085,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 150,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SF",
    "d": 2,
@@ -10477,6 +11142,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7500,
+    "feed": 270,
+    "operations": 5,
+    "share": 0.71,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 3,
@@ -10531,6 +11203,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7500,
+    "feed": 189,
+    "operations": 2,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "SF",
    "d": 3,
@@ -10590,6 +11269,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": null,
+    "operations": 6,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SF",
    "d": 4,
@@ -10629,6 +11315,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7000,
+    "feed": 405,
+    "operations": 6,
+    "share": 0.27,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "SF",
    "d": 4,
@@ -10691,6 +11384,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 350,
+    "operations": 3,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "SF",
    "d": 4,
@@ -10752,6 +11452,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3100,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SF",
    "d": 5,
@@ -10789,6 +11496,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": 580,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "FH",
    "type": "SF",
    "d": 5,
@@ -10847,6 +11561,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": 550,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SF",
    "d": 5,
@@ -10897,6 +11618,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2600,
+    "feed": null,
+    "operations": 8,
+    "share": 0.89,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 6,
@@ -10938,6 +11666,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": 585,
+    "operations": 2,
+    "share": 0.4,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "SF",
    "d": 6,
@@ -10992,6 +11727,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": 650,
+    "operations": 14,
+    "share": 0.74,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 6,
@@ -11053,6 +11795,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2000,
+    "feed": null,
+    "operations": 9,
+    "share": 0.9,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 8,
@@ -11094,6 +11843,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5500,
+    "feed": 600,
+    "operations": 4,
+    "share": 0.57,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 8,
@@ -11155,6 +11911,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 850,
+    "operations": 16,
+    "share": 0.38,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "SF",
    "d": 8,
@@ -11217,6 +11980,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2200,
+    "feed": 650,
+    "operations": 3,
+    "share": 0.75,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "SF",
    "d": 20,
@@ -11277,6 +12047,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2000,
+    "feed": 500,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "FH",
    "type": "SF",
    "d": 20,
@@ -11320,6 +12097,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 900,
+    "operations": 10,
+    "share": 0.37,
+    "label": "varies"
+   },
    "material": "FH",
    "type": "ST",
    "d": 4,
@@ -11375,6 +12159,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3500,
+    "feed": null,
+    "operations": 17,
+    "share": 0.74,
+    "label": "majority"
+   },
    "material": "FH",
    "type": "ZB",
    "d": 2.3,
@@ -11415,6 +12206,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 3000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "MK",
    "d": 40,
@@ -11465,6 +12263,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SB",
    "d": 2,
@@ -11508,6 +12313,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SB",
    "d": 3.2,
@@ -11551,6 +12363,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SB",
    "d": 3.5,
@@ -11594,6 +12413,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SB",
    "d": 4,
@@ -11637,6 +12463,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 1000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 3,
@@ -11687,6 +12520,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 4,
@@ -11737,6 +12577,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 4,
@@ -11787,6 +12634,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6300,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 6,
@@ -11823,6 +12677,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11500,
+    "feed": 1000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 6,
@@ -11873,6 +12734,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4700,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 8,
@@ -11909,6 +12777,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 8,
@@ -11959,6 +12834,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": 800,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "MS",
    "type": "SF",
    "d": 16,
@@ -12009,6 +12891,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "MS",
    "type": "SF",
    "d": 16,
@@ -12060,6 +12949,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 20000,
+    "feed": 3000,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "MS",
    "type": "SFH",
    "d": 16,
@@ -12111,6 +13007,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 920,
+    "operations": 6,
+    "share": 0.86,
+    "label": "majority"
+   },
    "material": "MS",
    "type": "ST",
    "d": 4,
@@ -12169,6 +13072,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "MS",
    "type": "ZB",
    "d": 2.3,
@@ -12206,6 +13116,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "AB",
    "d": 5.5,
@@ -12242,6 +13159,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 200,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "GB",
    "d": 2,
@@ -12278,6 +13202,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 3000,
+    "operations": 28,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "MK",
    "d": 40,
@@ -12339,6 +13270,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": null,
+    "operations": 11,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 1,
@@ -12387,6 +13325,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 1.1,
@@ -12431,6 +13376,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 26000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 1.4,
@@ -12475,6 +13427,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 26000,
+    "feed": null,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 1.5,
@@ -12520,6 +13479,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 1.8,
@@ -12563,6 +13529,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 12,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 2,
@@ -12611,6 +13584,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 2.1,
@@ -12654,6 +13634,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 15000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 2.5,
@@ -12698,6 +13685,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16192,
+    "feed": null,
+    "operations": 3,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 2.6,
@@ -12746,6 +13740,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 2.96,
@@ -12790,6 +13791,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 3,
@@ -12834,6 +13842,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 13000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 3.1,
@@ -12877,6 +13892,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 3.2,
@@ -12921,6 +13943,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": null,
+    "operations": 4,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 3.3,
@@ -12968,6 +13997,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11000,
+    "feed": null,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 3.5,
@@ -13013,6 +14049,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9500,
+    "feed": null,
+    "operations": 10,
+    "share": 0.91,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 4,
@@ -13060,6 +14103,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 4.2,
@@ -13104,6 +14154,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7600,
+    "feed": null,
+    "operations": 6,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SB",
    "d": 5,
@@ -13151,6 +14208,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 600,
+    "operations": 4,
+    "share": 0.31,
+    "label": "varies"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1,
@@ -13212,6 +14276,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1,
@@ -13255,6 +14326,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 350,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1,
@@ -13306,6 +14384,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 900,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1.5,
@@ -13364,6 +14449,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1.5,
@@ -13401,6 +14493,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 900,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 1.5,
@@ -13458,6 +14557,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 1000,
+    "operations": 15,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 2,
@@ -13520,6 +14626,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 19000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 2,
@@ -13556,6 +14669,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 2,
@@ -13607,6 +14727,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 26000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 2.5,
@@ -13665,6 +14792,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 1000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 3,
@@ -13715,6 +14849,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 600,
+    "operations": 6,
+    "share": 0.55,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 3,
@@ -13777,6 +14918,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1200,
+    "operations": 8,
+    "share": 0.8,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 4,
@@ -13831,6 +14979,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 9500,
+    "feed": null,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 4,
@@ -13872,6 +15027,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1000,
+    "operations": 6,
+    "share": 0.75,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 4,
@@ -13933,6 +15095,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 14000,
+    "feed": 720,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 5,
@@ -13985,6 +15154,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 7600,
+    "feed": null,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 5,
@@ -14025,6 +15201,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 14000,
+    "feed": 660,
+    "operations": 3,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 5,
@@ -14087,6 +15270,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 1200,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 6,
@@ -14139,6 +15329,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6300,
+    "feed": null,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 6,
@@ -14176,6 +15373,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 11500,
+    "feed": 1000,
+    "operations": 2,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 6,
@@ -14234,6 +15438,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2160,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 8,
@@ -14286,6 +15497,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2000,
+    "operations": 7,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 8,
@@ -14347,6 +15565,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 6,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 16,
@@ -14402,6 +15627,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 4,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 16,
@@ -14463,6 +15695,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1200,
+    "operations": 13,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SF",
    "d": 16,
@@ -14518,6 +15757,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 20000,
+    "feed": 3000,
+    "operations": 4,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "SFH",
    "d": 16,
@@ -14571,6 +15817,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 920,
+    "operations": 35,
+    "share": 0.85,
+    "label": "majority"
+   },
    "material": "PC GF",
    "type": "ST",
    "d": 4,
@@ -14626,6 +15879,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 22,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "PC GF",
    "type": "ZB",
    "d": 2.3,
@@ -14667,6 +15927,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 3000,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "MK",
    "d": 40,
@@ -14718,6 +15985,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SB",
    "d": 0.8,
@@ -14762,6 +16036,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16192,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SB",
    "d": 2.3,
@@ -14806,6 +16087,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3800,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SB",
    "d": 4.6,
@@ -14850,6 +16138,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 0.8,
@@ -14901,6 +16196,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 700,
+    "operations": 2,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 1.5,
@@ -14952,6 +16254,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 1000,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 2,
@@ -15003,6 +16312,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 27000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 2,
@@ -15061,6 +16377,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 3,
@@ -15112,6 +16435,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 21000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 4,
@@ -15163,6 +16493,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 1000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 4,
@@ -15221,6 +16558,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 1200,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 6,
@@ -15279,6 +16623,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 12000,
+    "feed": 2000,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "SF",
    "d": 8,
@@ -15337,6 +16688,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 16000,
+    "feed": 920,
+    "operations": 6,
+    "share": 0.75,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "ST",
    "d": 4,
@@ -15388,6 +16746,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6500,
+    "feed": null,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PEEK",
    "type": "ZB",
    "d": 2.3,
@@ -15425,6 +16790,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 200,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "GB",
    "d": 2.5,
@@ -15461,6 +16833,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2500,
+    "feed": 600,
+    "operations": 2,
+    "share": 0.67,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "MK",
    "d": 93,
@@ -15511,6 +16890,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "SB",
    "d": 2,
@@ -15554,6 +16940,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1400,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "SB",
    "d": 5.4,
@@ -15597,6 +16990,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3200,
+    "feed": 450,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "SF",
    "d": 6,
@@ -15654,6 +17054,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 600,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "ST",
    "d": 4,
@@ -15697,6 +17104,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "PETP",
    "type": "ZB",
    "d": 2.3,
@@ -15733,6 +17147,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 200,
+    "feed": null,
+    "operations": 3,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "GB",
    "d": 2.5,
@@ -15771,6 +17192,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 300,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "GB",
    "d": 3,
@@ -15809,6 +17237,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 500,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "GB",
    "d": 5,
@@ -15845,6 +17280,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6499,
+    "feed": 1300,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "KF",
    "d": 6,
@@ -15895,6 +17337,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 15915,
+    "feed": 3000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "KF",
    "d": 12,
@@ -15952,6 +17401,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2500,
+    "feed": 600,
+    "operations": 36,
+    "share": 0.72,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "MK",
    "d": 93,
@@ -16014,6 +17470,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 0.98,
@@ -16057,6 +17520,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3100,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 1,
@@ -16100,6 +17570,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 1.33,
@@ -16143,6 +17620,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 3,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 1.5,
@@ -16190,6 +17674,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 9,
+    "share": 0.82,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 1.97,
@@ -16237,6 +17728,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 1,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SB",
    "d": 2,
@@ -16281,6 +17779,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 2.3,
@@ -16324,6 +17829,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6000,
+    "feed": null,
+    "operations": 3,
+    "share": 0.6,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 2.5,
@@ -16372,6 +17884,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5000,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 2.6,
@@ -16415,6 +17934,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": null,
+    "operations": 12,
+    "share": 0.86,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 2.96,
@@ -16462,6 +17988,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5000,
+    "feed": null,
+    "operations": 3,
+    "share": 0.75,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 3.2,
@@ -16508,6 +18041,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5000,
+    "feed": null,
+    "operations": 6,
+    "share": 0.86,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 3.3,
@@ -16555,6 +18095,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4500,
+    "feed": null,
+    "operations": 8,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "SB",
    "d": 3.5,
@@ -16602,6 +18149,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": null,
+    "operations": 7,
+    "share": 0.64,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 4,
@@ -16649,6 +18203,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1900,
+    "feed": null,
+    "operations": 1,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SB",
    "d": 4.2,
@@ -16694,6 +18255,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3800,
+    "feed": null,
+    "operations": 8,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "SB",
    "d": 4.6,
@@ -16741,6 +18309,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1650,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 4.7,
@@ -16784,6 +18359,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1500,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "SB",
    "d": 5,
@@ -16828,6 +18410,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3100,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "consistent across the library"
+   },
    "material": "POM",
    "type": "SB",
    "d": 5.2,
@@ -16872,6 +18461,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2900,
+    "feed": null,
+    "operations": 5,
+    "share": 0.83,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 5.4,
@@ -16920,6 +18516,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2900,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SB",
    "d": 6,
@@ -16963,6 +18566,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2500,
+    "feed": null,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SB",
    "d": 6.4,
@@ -17008,6 +18618,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 700,
+    "operations": 4,
+    "share": 0.8,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 2,
@@ -17068,6 +18685,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 400,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 2,
@@ -17118,6 +18742,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 800,
+    "operations": 3,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 3,
@@ -17172,6 +18803,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 500,
+    "operations": 9,
+    "share": 0.69,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 3,
@@ -17233,6 +18871,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1800,
+    "feed": null,
+    "operations": 4,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 4,
@@ -17273,6 +18918,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1100,
+    "operations": 7,
+    "share": 0.7,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 4,
@@ -17334,6 +18986,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 800,
+    "operations": 3,
+    "share": 0.38,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 4,
@@ -17395,6 +19054,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 14000,
+    "feed": 1200,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 5,
@@ -17445,6 +19111,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1400,
+    "feed": null,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 5,
@@ -17481,6 +19154,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1100,
+    "operations": 1,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 5,
@@ -17539,6 +19219,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 560,
+    "operations": 3,
+    "share": 0.43,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 5,
@@ -17593,6 +19280,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1000,
+    "feed": null,
+    "operations": 9,
+    "share": 0.9,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 6,
@@ -17633,6 +19327,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1400,
+    "operations": 1,
+    "share": 0.33,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 6,
@@ -17685,6 +19386,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 800,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 6,
@@ -17728,6 +19436,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 900,
+    "operations": 9,
+    "share": 0.69,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 6,
@@ -17790,6 +19505,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1200,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 8,
@@ -17847,6 +19569,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1500,
+    "feed": null,
+    "operations": 1,
+    "share": 0.5,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 8,
@@ -17884,6 +19613,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": 500,
+    "operations": 3,
+    "share": 0.43,
+    "label": "varies"
+   },
    "material": "POM",
    "type": "SF",
    "d": 8,
@@ -17938,6 +19674,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1200,
+    "operations": 10,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 8,
@@ -18000,6 +19743,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 1200,
+    "operations": 16,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 20,
@@ -18061,6 +19811,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 1000,
+    "operations": 5,
+    "share": 0.83,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "SF",
    "d": 20,
@@ -18113,6 +19870,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 1000,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 20,
@@ -18163,6 +19927,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6600,
+    "feed": 1800,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "SF",
    "d": 20,
@@ -18206,6 +19977,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": 1500,
+    "operations": 30,
+    "share": 0.61,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "ST",
    "d": 4,
@@ -18261,6 +20039,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4000,
+    "feed": 600,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "ST",
    "d": 4,
@@ -18304,6 +20089,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3282,
+    "feed": 328,
+    "operations": 2,
+    "share": 0.67,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "UDM",
    "d": 10,
@@ -18348,6 +20140,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2500,
+    "feed": 250,
+    "operations": 1,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "POM",
    "type": "UDM",
    "d": 12,
@@ -18391,6 +20190,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 8000,
+    "feed": null,
+    "operations": 19,
+    "share": 0.61,
+    "label": "majority"
+   },
    "material": "POM",
    "type": "ZB",
    "d": 2.3,
@@ -18432,6 +20238,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4300,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SB",
    "d": 3,
@@ -18476,6 +20289,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3700,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SB",
    "d": 3.5,
@@ -18520,6 +20340,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2600,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SB",
    "d": 5,
@@ -18564,6 +20391,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2400,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SB",
    "d": 5.5,
@@ -18601,6 +20435,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 2000,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SB",
    "d": 6.4,
@@ -18645,6 +20486,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 10000,
+    "feed": 126,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 2,
@@ -18696,6 +20544,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 10000,
+    "feed": 75,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 2,
@@ -18747,6 +20602,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 6400,
+    "feed": 150,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 3,
@@ -18798,6 +20660,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 5000,
+    "feed": 113,
+    "operations": 2,
+    "share": 0.5,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 4,
@@ -18849,6 +20718,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3600,
+    "feed": null,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 6,
@@ -18886,6 +20762,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3600,
+    "feed": 150,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 6,
@@ -18937,6 +20820,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": 350,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 8,
@@ -18995,6 +20885,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 3000,
+    "feed": 245,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SF",
    "d": 8,
@@ -19046,6 +20943,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1200,
+    "feed": 350,
+    "operations": 2,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SR",
    "d": 16,
@@ -19097,6 +21001,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 1200,
+    "feed": 350,
+    "operations": 4,
+    "share": 1,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "SR",
    "d": 16,
@@ -19155,6 +21066,13 @@
    ]
   },
   {
+   "together": {
+    "rpm": 4800,
+    "feed": 140,
+    "operations": 4,
+    "share": 0.4,
+    "label": "seen once"
+   },
    "material": "VA",
    "type": "ST",
    "d": 4,
