@@ -24,11 +24,22 @@ the validation run.
 | W7 | Program zero: 2 mm inside the X-/Y+ corner or the block centre (`workholding.firstZero`, 78 of 97). | The block centre. | none | kept |
 | W8 | Spacers in a jaw free a side to be cut below the jaw top (`workholding.spacerFreesSide`). | Not used (CAM AI holds the part directly in the jaws or in its POM nest). | none for now | kept |
 
-**W1 to W3 tried together** (not kept; `npm run cam-library` on six reference parts, one per family, CAM AI with the busier side first, 40 mm parallels in every clamping and outside cuts stopped 1.5 mm above the jaws):
-- **Clearly better on one part:** O0106612 went from 4 clampings with 2 collisions and 30.8 minutes to 2 clampings like the engineers, no collision, 17.7 minutes.
-- **Clearly worse on one part:** O0095457 went from 3 clampings and 4.7 minutes to 6 clampings, 9.2 minutes, 2 collisions, and a match of 0.979.
-- **Within 5 % on two parts**, correct both ways.
-- **Why:** the engineers grip much more in the later clampings (38, 36, 28, even 8 mm parallels); the trial kept 40 mm everywhere. The package needs that rule worked out before it can replace CAM AI's way.
+**W1 to W3 tried together** (not kept). `npm run cam-library` on six reference parts, one per family, both runs at commit 76ccead. The trial: the busier side first, a 5 mm grip (40 mm parallels) in every clamping or deeper where CAM AI's vise check asks, and outside cuts stopped 1.5 mm above the jaws. Each cell gives clampings, parallels, minutes, then for CAM AI the match with the model and the collisions:
+
+| Program | Engineers | CAM AI | Trial |
+|---|---|---|---|
+| O0106612.X20 | 2, 40/28, 12.0 | 4, 42/38/38/42, 30.8, 0.995, 2 | 2, 40/40, 17.7, 0.995, 0 |
+| O0096794.X20 | 2, 40/28, 11.9 | 2, 41/42, 53.1, 1.000, 0 | 2, 40/38, 34.3, 1.000, 0 |
+| O0161424.X20 | 3, 40/40/8, 11.7 | 3, 40/42/42, 87.9, 1.000, 0 | 3, 40/40/40, 83.5, 1.000, 0 |
+| O0106624.X20 | 2, 40/38, 4.0 | 2, 42/42, 9.4, 0.995, 0 | 2, 40/40, 9.7, 0.995, 0 |
+| O0125595.X20 | 2, 40/36, 14.2 | 3, 41/42/42, 56.1, 1.000, 0 | 4, 40/40/40/40, 89.0, 1.000, 0 |
+| O0095457.X20 | 3, 41/41/20, 3.0 | 3, 42/42/38, 4.7, 0.994, 0 | 6, 40/40/42/40/40/42, 9.2, 0.979, 2 |
+
+- **Better on two parts:** O0106612 had 2 clampings like the engineers, and no collision. O0096794 was 35 % faster.
+- **About the same on two parts.**
+- **Worse on two parts:** more clampings, on edges. On O0095457 there were also two collisions and a match under 0.99.
+- **Why, likely:** on the two worse parts the engineers finish in their last clamping on 36 and 20 mm parallels (a grip of 9 and 25 mm). The trial kept 40 mm there and needed edge clampings instead.
+- **What is missing:** how much to grip in the later clampings. The package needs that rule before it can replace CAM AI's way.
 
 ## Strategy
 
@@ -54,8 +65,8 @@ the validation run.
 
 | # | The shop | CAM AI now | Change | Status |
 |---|---|---|---|---|
-| G1 | A straight move writes only the axes that change (`gcode.onlyChangedAxes`, 91 of 92 parts), the feed only when it changes (`gcode.feedOnlyWhenChanged`), numbers without a leading zero (`gcode.shortNumbers`). | Every word on every line: on the plate above 12,101 of 40,082 moves repeat an axis, 2,277 of 7,383 feeds repeat, 1,844 numbers have a leading zero. | `style.ts`: the same moves in the shop's words, taken only when the app reads exactly the same moves, spindle, tool, offset and M words and clamping shifts from it. | done (9c730d5, 34cca39) |
-| G2 | Drilling: one cycle per depth, each further hole only its new X or Y, G80 when the depth changes. | Every hole its own full cycle line (X Y Z R Q F). | `style.ts` (as G1). | done (9c730d5) |
+| G1 | A straight move writes only the axes that change (`gcode.onlyChangedAxes`, 91 of 92 parts), the feed only when it changes (`gcode.feedOnlyWhenChanged`), numbers without a leading zero (`gcode.shortNumbers`). | Every word on every line: on the plate above 12,101 of 40,082 moves repeat an axis, 2,277 of 7,383 feeds repeat, 1,844 numbers have a leading zero. | `style.ts`: the same moves in the shop's words, taken only when the app reads exactly the same moves, spindle, tool, offset and M words and clamping shifts from it. | done (9c730d5, 34cca39; review fixes f768a2a, 6404b0f) |
+| G2 | Drilling: one cycle per depth, each further hole only its new X or Y, G80 when the depth changes. | Every hole its own full cycle line (X Y Z R Q F). | `style.ts` (as G1). | done (9c730d5; review fix 58db0c0) |
 | G3 | Arcs as G02/G03 with I and J (145,625 arc lines; contours 86,152 arcs and 125,150 lines). | Never an arc: a circle is many short G01 lines (0.35 mm apart on the plate above), most of CAM AI's lines. | `style.ts`: runs of straight moves on a circle written as G02/G03 with I and J, every point within 0.003 mm of the arc and every old piece within 0.012 mm (CAM AI's own offsets leave 0.002 to 0.01 mm); taken only when the simulation check of the arc program is no worse in anything (match never from a pass to below 0.99). | done (5fe1b84, 34cca39) |
 | G4 | HAAS programs end with `G0 G53 G49 Y0 Z0 M89` (64 of 65): table out, offset cancelled, through-spindle coolant off. | `M09`, `G53 Y0`, `M30`. | The shop's end line and the machining time comment (`program.ts:1554`). Checked as each machine gets it: the converter drops M89 for the Robodrills; FANUC-2 runs HAAS code and keeps it, as the app's sender already does for your HAAS programs (`tests/camExport.test.ts`). | done (d9714ed) |
 | G5 | Safety line, `G00 G43 H.. Z50. M08`, the spindle start on the first move, `(TOOLPATH ...)` names, tool comments, N numbers. | The same. | none | kept |
