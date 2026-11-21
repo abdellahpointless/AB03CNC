@@ -3,6 +3,7 @@ import { parseToolpath } from '../src/lib/toolpath';
 import { partLook } from '../src/lib/partLook';
 import { analyseProgram, analyseSetups, exportBlocked, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
+import { rewriteTurns } from '../src/lib/fixTurns';
 
 const S = { rapid: 30_000, toolChange: 2 };
 
@@ -433,5 +434,20 @@ describe("the shop's other ways of writing a setup", () => {
     expect(r.rotation).toEqual({ axis: 'X', deg: 90 });
     // A hint that fits the written axis only sets the direction, as before.
     expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X-']).turns).toEqual([{ axis: 'Y', deg: -90 }]);
+  });
+
+  it('n GRAD IN X+ (a chamfer or countersink side) is not a turn', () => {
+    expect(readInstructions(['FASE 45 GRAD IN X+']).turns).toEqual([]);
+    expect(readInstructions(['SENKUNG 90 GRAD IN Z-', 'TEIL 180 GRAD UM Y DREHEN']).turns).toEqual([{ axis: 'Y', deg: 180 }]);
+  });
+
+  it('a turn written GRAD IN X is replaced, not doubled, when a 3D model corrects it', () => {
+    const code = program(10).replace('M0 (TEIL 180 GRAD UM Y DREHEN/49 IN X UND 40 IN Y)', 'M0 (TEIL 180 GRAD IN X/49 IN X UND 40 IN Y)');
+    const tp = parseToolpath(code, S);
+    const y180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1] as const;
+    const fix = rewriteTurns(code, tp, [[1, 0, 0, 0, 1, 0, 0, 0, 1], [...y180]], { jawHeight: 42 });
+    expect(fix.unresolved).toEqual([]);
+    expect(fix.code).not.toMatch(/GRAD IN X/);
+    expect(analyseProgram(parseToolpath(fix.code, S), { jawHeight: 42 }).setups[1].orient).toEqual([...y180]);
   });
 });

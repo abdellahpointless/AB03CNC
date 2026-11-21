@@ -245,10 +245,10 @@ export function turnPhrase(rel: Mat3): string {
 
 // What readInstructions reads as a turn or a turn's direction (see setups.ts).
 const TURN_WORDS = [
-  /(?:TEIL\s*)?\d+\s*GRAD\s*UM\s*[XYZ](?:\s*DREHEN)?/gi,
+  /(?:TEIL\s*)?(?:MIT\s*)?\d+\s*GRAD\s*(?:UM|IN)\s*[XYZ](?!\s*[+-])(?:\s*DREHEN)?/gi,
   /ROTATE\s*(?:ON|AROUND|ABOUT|IN)?\s*[XYZ]\b(?:\s*,?\s*\d+\s*(?:DEG\w*|°|GRAD)?)?\s*,?/gi,
   new RegExp(`(?<![A-Z\\d.,Ø])(?:MIT\\s*\\/?\\s*)?(?:90|180|270)\\s*IN\\s*[XYZ]\\b(?!\\s*(?:UND|AND|ET|\\d|[+-]))`, 'gi'),
-  /[XYZ]\s*[+-]\s*(?:WIRD|TO)\s*[XYZ]\s*[+-]/gi,
+  /[XYZ]\s*[+-]\s*(?:WIRD(?:\s*(?:TO|IN|ZU)\b)?|TO|ZU)\s*[XYZ]\s*[+-]/gi,
   /Z\s*\+\s*IN\s*[XY]\s*[+-]/gi,
 ];
 const PERS = /(PERS\.?\s*(?:IN\s*)?)[XYZ]\s*[+-]/i;

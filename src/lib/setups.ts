@@ -227,7 +227,8 @@ export function readInstructions(notes: string[]) {
   let rotation: SetupInfo['rotation'] = null;
   // Turns in the order they are written: "180 GRAD UM Y", "180 GRAD IN X" (the same), "MIT/90 IN X", "MIT 180 IN Y".
   const found: { at: number; axis: Axis; deg: number }[] = [];
-  for (const m of t.matchAll(/(\d+)\s*GRAD\s*(?:UM|IN)\s*([XYZ])/g)) found.push({ at: m.index!, axis: m[2] as Axis, deg: Number(m[1]) });
+  // Not "FASE 45 GRAD IN X+" (a chamfer and the side it is on).
+  for (const m of t.matchAll(/(\d+)\s*GRAD\s*(?:UM|IN)\s*([XYZ])(?!\s*[+-])/g)) found.push({ at: m.index!, axis: m[2] as Axis, deg: Number(m[1]) });
   // English: "ROTATE ON X, Z+ TO Y-" (a quarter turn, the direction from the hint), "ROTATE ON X 180".
   for (const m of t.matchAll(/ROTATE\s*(?:ON|AROUND|ABOUT|IN)?\s*([XYZ])\b(?:\s*,?\s*(\d+)\s*(?:DEG\w*|°|GRAD)?)?/g)) found.push({ at: m.index!, axis: m[1] as Axis, deg: m[2] ? Number(m[2]) : 90 });
   // Not "D4.8 IN X-" (a hole's diameter and the side it is on).
