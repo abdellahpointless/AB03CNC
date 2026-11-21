@@ -12,7 +12,7 @@ import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures }
 import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
-import { arcs, shopStyle } from './style';
+import { arcs, shopStyle, shorten } from './style';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
@@ -1031,7 +1031,8 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // alike, the check holds), then circles as arcs, checked again in the simulation and taken only
   // when nothing is worse than before.
   const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => {
-    const words = shopStyle(r.code, input.brand).code;
+    // With improvement O1 (approved): a move to where the tool already is is left out.
+    const words = shopStyle(r.code, input.brand, (c) => shorten(c, true)).code;
     const arced = arcs(words);
     const was = r.check;
     const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose);

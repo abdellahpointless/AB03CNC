@@ -74,6 +74,14 @@ describe('CAM AI', () => {
     expect(gougeOf(r.check)).toBeLessThan(GOUGE_MM3);
   }, 300_000);
 
+  it('leaves out a move to where the tool already is (improvement O1, approved)', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const code = r.code.split('\n').map((l) => l.replace(/^N\d+ /, ''));
+    // The same rapid twice in a row (CAM AI wrote G00 Z4.5 so): the second moves nothing.
+    expect(code.filter((l, i) => i > 0 && /^G0?0( [XYZ]-?[\d.]+)+$/.test(l) && l === code[i - 1])).toEqual([]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
   it('never uses a tool the operator does not have', () => {
     const exclude = LIBRARY.ALU.filter((t) => t.type.startsWith('SF') && t.d === 16).map((t) => t.code);
     const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], exclude });

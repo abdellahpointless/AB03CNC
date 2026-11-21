@@ -78,7 +78,7 @@ describe("CAM AI's program in the shop's words", () => {
     expect(lines.slice(from, from + 10)).toEqual(['N16 G00 Z4.5', 'N17 G00 Z4.5', 'N18 G00 X-10. Y-5.', 'N19 G01 Z.5 F400.', 'N20 G01 X10. F1200.', 'N21 G01 Y5.', 'N22 G01 X-10.', 'N23 G01 Y-5. Z-.5', 'N24 G00 Z4.5', 'N25 G00 Z50.']);
   });
 
-  it('leaves out a move to where the tool already is only with improvement O1 (not approved yet)', () => {
+  it('leaves out a move to where the tool already is only with improvement O1 (approved; CAM AI uses it)', () => {
     const o1 = shopStyle(cam, 'HAAS', (code) => shorten(code, true));
     expect(o1.shortened).toBe(true);
     const at = o1.code.split('\n');
