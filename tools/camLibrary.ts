@@ -1,0 +1,109 @@
+/**
+ * CAM AI on the reference library (Phase 4 validation): for each part with a 3D model, the program
+ * CAM AI makes from the model, simulated and checked against the model, next to the engineers'
+ * program (setups, parallels, tools, cutting data, cycles, line count, time).
+ *
+ *   npm run cam-library -- <library folder> <out.jsonl> [program file ...]
+ *
+ * One JSON line per program, written as each is done (a long run keeps what it finished). Only
+ * program files and numbers are written, never part names (the results may be shared).
+ */
+import { createHash } from 'node:crypto';
+import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { readProgram } from '../src/lib/cam/learn';
+import { partTypeOf } from '../src/lib/cam/partType';
+import { camProgram } from '../src/lib/cam/program';
+import { CAM_MATERIALS, type CamMaterial } from '../src/lib/cam/tools';
+import { readTris } from '../src/lib/model';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, readInstructions } from '../src/lib/setups';
+import { parseToolpath, speedsFor } from '../src/lib/toolpath';
+
+const [LIB, OUT, ...ONLY] = process.argv.slice(2);
+if (!LIB || !OUT) throw new Error('usage: npm run cam-library -- <library folder> <out.jsonl> [program file ...]');
+
+/** The header's material as CAM AI names it (null: CAM AI does not cut it). */
+const MATERIAL: Record<string, CamMaterial> = { ALU: 'ALU', POM: 'POM', FH: 'FH', 'PC GF': 'PCGF' };
+
+/** What a program does, read the same way for both (the engineers' and CAM AI's). */
+function summary(code: string) {
+  const fanuc = /H#513|M254|G94\s+M95/.test(code);
+  const tp = parseToolpath(code, speedsFor(fanuc ? 'FANUC' : 'HAAS'));
+  const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
+  const read = readProgram(code);
+  const lines = code.split('\n');
+  const count = (re: RegExp) => lines.filter((l) => re.test(l.replace(/\([^)]*\)/g, ''))).length;
+  return {
+    setups: an.setups.length,
+    parallels: an.setups.map((s) => readInstructions(s.notes).support),
+    turns: an.setups.slice(1).map((s) => s.turns.map((t) => `${t.axis}${t.deg}`).join(' ') || '-'),
+    tools: [...new Set(read.samples.map((s) => `${s.type} ${s.d}`))].sort(),
+    cutting: read.samples.map((s) => ({ kind: s.kind, tool: `${s.type} ${s.d}`, s: s.s, f: s.f })),
+    order: read.order.map((o) => o.join(' > ')),
+    cycles: { G81: count(/(?<![A-Z])G81(?![0-9])/), G83: count(/(?<![A-Z])G83(?![0-9])/), G84: count(/(?<![A-Z])G84(?![0-9])/) },
+    arcs: count(/(?<![A-Z])G0*[23](?![0-9])/),
+    lines: lines.length,
+    minutes: Math.round(tp.totalSeconds / 6) / 10,
+  };
+}
+
+const seen = new Set<string>();
+if (!ONLY.length) writeFileSync(OUT, '');
+for (const folder of readdirSync(LIB).sort()) {
+  const dir = join(LIB, folder);
+  if (!/^\d+_/.test(folder) || !statSync(dir).isDirectory()) continue;
+  const files = readdirSync(dir).filter((n) => n !== 'info.json' && statSync(join(dir, n)).isFile()).sort();
+  const pdf = files.map((n) => readFileSync(join(dir, n))).find((b) => b.subarray(0, 5).toString('latin1') === '%PDF-');
+  if (!pdf) continue;
+  for (const file of files) {
+    if (ONLY.length && !ONLY.includes(file)) continue;
+    const bytes = readFileSync(join(dir, file));
+    const text = bytes.toString('latin1');
+    if (bytes.subarray(0, 5).toString('latin1') === '%PDF-' || !/[GMT]\d/.test(text)) continue;
+    const hash = createHash('sha1').update(bytes).digest('hex');
+    if (seen.has(hash)) continue;
+    seen.add(hash);
+    const read = readProgram(text, file);
+    const material = MATERIAL[read.material ?? ''] ?? null;
+    const row: Record<string, unknown> = { file, material: read.material };
+    const tris = await readTris(new Uint8Array(pdf));
+    if (!material || !CAM_MATERIALS.includes(material)) row.result = 'material not cut by CAM AI';
+    else if ('error' in tris) row.result = `model: ${tris.error}`;
+    else {
+      // The engineers' blank, its sides matched to the model's by size.
+      let raw: [number, number, number] | null = null;
+      if (read.raw) {
+        const xs: number[] = [];
+        for (let i = 0; i < tris.length; i += 3) xs.push(tris[i]);
+        const size = [0, 1, 2].map((k) => {
+          let lo = Infinity;
+          let hi = -Infinity;
+          for (let i = k; i < tris.length; i += 3) {
+            lo = Math.min(lo, tris[i]);
+            hi = Math.max(hi, tris[i]);
+          }
+          return hi - lo;
+        });
+        const bySize = [0, 1, 2].sort((a, b) => size[a] - size[b]);
+        const blank = [...read.raw].sort((a, b) => a - b);
+        raw = [0, 0, 0];
+        bySize.forEach((axis, k) => (raw![axis] = blank[k]));
+        if (raw.some((v, k) => v < size[k] - 0.01)) raw = null;
+      }
+      const named = text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
+      const t0 = Date.now();
+      try {
+        const r = camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
+        row.result = 'made';
+        row.seconds = Math.round((Date.now() - t0) / 1000);
+        row.check = { match: r.check.match, collisions: r.check.collisions, cales: r.check.cales, gougeMm3: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))), missing: r.missing.length };
+        row.cam = summary(r.code);
+      } catch (e) {
+        row.result = `failed: ${(e as Error).message}`;
+      }
+    }
+    row.engineers = summary(text);
+    appendFileSync(OUT, `${JSON.stringify(row)}\n`);
+    console.log(file, row.result, row.seconds ?? '', (row.check as { match?: number } | undefined)?.match ?? '');
+  }
+}
