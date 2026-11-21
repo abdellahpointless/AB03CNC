@@ -405,4 +405,10 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['MOD. HOCHKANT/PERS. Y+/150 IN X/RAFI X- Z+']).sizes).toEqual({ x: 150, y: NaN });
     expect(readInstructions(['TEIL MIT 32 IN X UND Y EINSPANNEN']).sizes).toEqual({ x: 32, y: 32 });
   });
+
+  it('two turn notes, each with its own size: the last size is the clamping (shop answer D5)', () => {
+    const r = readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+/53 IN X 36 IN Y', 'TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y-/53 IN X 50 IN Y']);
+    expect(r.sizes).toEqual({ x: 53, y: 50 });
+    expect(r.turns).toEqual([{ axis: 'Y', deg: 90 }, { axis: 'X', deg: 90 }]);
+  });
 });

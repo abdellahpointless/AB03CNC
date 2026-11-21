@@ -211,7 +211,9 @@ export function readInstructions(notes: string[]) {
   const sizeNotes = sizeForms
     .flatMap(([re, read]) => [...t.matchAll(re)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, size: read(m) })))
     .sort((a, b) => a.at - b.at);
-  let sizes: { x: number; y: number } | null = sizeNotes[0]?.size ?? null;
+  // Each turn note can carry its own size ("...DREHEN/53 IN X 36 IN Y", then the next turn's): the
+  // last one is how the part is clamped.
+  let sizes: { x: number; y: number } | null = sizeNotes.at(-1)?.size ?? null;
   let onlyX: number | null = null;
   let rotation: SetupInfo['rotation'] = null;
   // Turns in the order they are written: "180 GRAD UM Y", "180 GRAD IN X" (the same), "MIT/90 IN X", "MIT 180 IN Y".

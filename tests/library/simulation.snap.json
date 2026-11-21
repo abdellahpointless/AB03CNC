@@ -493,9 +493,7 @@
  "O0161108.X20 a839d8d8/d7ccec1c": {
   "result": "compared",
   "setups": 4,
-  "rejects": [
-   "setup 3: size X 300 (cut 145)"
-  ],
+  "rejects": [],
   "collisions": {},
   "conflicts": 0,
   "match": 1,
@@ -603,17 +601,14 @@
  "O0173835.X20 b3ff11d4/7141a37c": {
   "result": "compared",
   "setups": 5,
-  "rejects": [
-   "setup 5: size Y 36 (cut 50)"
-  ],
+  "rejects": [],
   "collisions": {
-   "cale": 3,
-   "jaw": 8,
-   "spacer": 24
+   "cale": 5,
+   "spacer": 20
   },
   "conflicts": 0,
-  "match": 0.97,
-  "pieces": 2
+  "match": 1,
+  "pieces": 0
  },
  "O0173954.X20 914a87fa/ca939280": {
   "result": "compared",
