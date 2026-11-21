@@ -498,4 +498,11 @@ describe("the shop's other ways of writing a setup", () => {
     const reject = s.rejects.find((r) => r.kind === 'cale')!;
     expect(programLines(tp, reject.line)).toMatch(/CALCO 39 MM/);
   });
+
+  it('a parallels note written as a plain comment is read for CALCO and CALE too, as for UNTERLAGE', () => {
+    for (const note of ['(CALCO 40 MM NA BASE DE 5 MM)', '(40 MM CALE)']) {
+      const tp = parseToolpath(program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', note), S);
+      expect(analyseProgram(tp, { jawHeight: 42 }).setups[1].support, note).toBe(40);
+    }
+  });
 });

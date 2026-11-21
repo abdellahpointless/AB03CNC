@@ -168,7 +168,7 @@ function toolSize(lines: string[], i: number): { diameter: number | null; length
 }
 
 /** Operator instructions that describe how the part is clamped. */
-const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|INTERCAL|UNTERCAL|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]|L'?\s*ET[EÉ]?AU/i;
+const SETUP_NOTE = /UNTERLAGE|ZWISCHENLAGE|INTERCAL|UNTERCAL|CALCO|NA BASE|(?<![A-ZÀ-Ý-])CALES?\b|EINSPANNEN|SPANNEN|DREHEN|HOCHKANT|RAFI|TASTER|GRAD|\bIN [XYZ]|L'?\s*ET[EÉ]?AU/i;
 
 export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   const lines = code.split('\n');
