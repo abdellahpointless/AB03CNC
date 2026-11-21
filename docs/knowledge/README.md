@@ -156,7 +156,13 @@ Spot drills used: ZB Ø2.3 for drills of Ø under 3 mm ×683; ZB Ø2.3 for drill
 
 ### Roughing and finishing
 
-What a finishing pass (SCHLICHT...) leaves to the roughing before it, measured on the tool centres (cutter compensation applied) where the finishing tool runs within reach of the roughing passes, over 131 finishing passes (27 not comparable: no roughing ran alongside them). On the walls (0.05 mm steps): -0.05 ×3, 0 ×36, 0.05 ×5, 0.1 ×2, 0.2 ×42, 0.25 ×2, 0.35 ×2, 0.6 ×1, 1 ×1, 1.55 ×1, 2 ×2, 2.4 ×1, 2.65 ×1, 2.8 ×1, 3 ×1, 3.2 ×1, 4.7 ×1, 6 ×1. On the floor (how much higher the roughing stopped): 0 ×27, 0.1 ×3, 0.2 ×40, 0.3 ×1, 0.5 ×1, 1 ×1, 1.45 ×1, 1.5 ×1, 1.95 ×1. Examples: `O0161108.X20:293` wall 0.22, floor 0.2; `O0161424.X20:395` wall 2.8, floor -7; `O0161424.X20:420` wall 0.22, floor 0.2; `O1420213.C62:122` wall 0, floor 0; `O1420213.C62:426` wall 0, floor 0. A measurement of the paths, not a value the programs write.
+What a finishing pass (SCHLICHT...) leaves to the roughing before it in its clamping, measured on the tool centres (cutter compensation applied) where it cuts within reach of the roughing: 142 finishing passes of 75 parts (twins once). 53 follow a roughing along their wall; 54 mostly clear corners and notches the roughing tool could not reach (rest machining); 23 work where no roughing ran (cut from solid); 1 run more than 1 mm off the roughing (a floor or a step, no wall); 11 round edges or finish 3D surfaces (radius cutters, ball mills, Z-level, cavity) and follow no wall.
+
+- On the walls (the value most of a pass's points give, 0.05 mm steps): 0 ×14, 0.05 ×4, 0.2 ×3, 0.25 ×32.
+- By finishing tool: Ø2: 0 ×1, 0.05 ×1; Ø3: 0 ×4, 0.05 ×1; Ø4: 0 ×5; Ø5: 0 ×1; Ø6: 0.05 ×2; Ø8: 0 ×3; Ø16: 0.2 ×3, 0.25 ×32.
+- On the floor (at the pass's lowest level, how much higher the roughing stopped): 0 ×13, 0.1 ×2, 0.2 ×33, 0.3 ×1, 1.5 ×1; 3 passes end above the roughing's floor (they finish only the top of a wall).
+- Examples: `O0161108.X20:293` Ø16 wall 0.23, floor 0.2; `O0161424.X20:420` Ø16 wall 0.23, floor 0.2; `O1420213.C62:122` Ø8 wall 0, floor 0; `O1420213.C62:426` Ø8 wall 0, floor 0; `O0106624.X20:276` Ø16 wall 0.23, floor 0.1.
+- A measurement of the paths, not a value the programs write.
 
 ## Tools and cutting data
 

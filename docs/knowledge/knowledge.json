@@ -973,142 +973,176 @@
    }
   ],
   "finishingAllowance": {
-   "passes": 131,
-   "notComparable": 27,
+   "passes": 142,
+   "parts": 75,
+   "allowance": 53,
+   "rest": 54,
+   "outOfReach": 23,
+   "edgeOr3D": 11,
+   "notAWall": 1,
    "wallMm": [
     [
-     -0.05,
-     3
-    ],
-    [
      0,
-     36
+     14
     ],
     [
      0.05,
-     5
-    ],
-    [
-     0.1,
-     2
+     4
     ],
     [
      0.2,
-     42
+     3
     ],
     [
      0.25,
-     2
-    ],
-    [
-     0.35,
-     2
-    ],
-    [
-     0.6,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     1.55,
-     1
-    ],
-    [
-     2,
-     2
-    ],
-    [
-     2.4,
-     1
-    ],
-    [
-     2.65,
-     1
-    ],
-    [
-     2.8,
-     1
-    ],
-    [
-     3,
-     1
-    ],
-    [
-     3.2,
-     1
-    ],
-    [
-     4.7,
-     1
-    ],
-    [
-     6,
-     1
+     32
     ]
    ],
    "floorMm": [
     [
      0,
-     27
+     13
     ],
     [
      0.1,
-     3
+     2
     ],
     [
      0.2,
-     40
+     33
     ],
     [
      0.3,
      1
     ],
     [
-     0.5,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     1.45,
-     1
-    ],
-    [
      1.5,
      1
-    ],
-    [
-     1.95,
-     1
     ]
+   ],
+   "floorVaries": 3,
+   "wallByTool": [
+    {
+     "d": 2,
+     "passes": 2,
+     "wallMm": [
+      [
+       0,
+       1
+      ],
+      [
+       0.05,
+       1
+      ]
+     ]
+    },
+    {
+     "d": 3,
+     "passes": 5,
+     "wallMm": [
+      [
+       0,
+       4
+      ],
+      [
+       0.05,
+       1
+      ]
+     ]
+    },
+    {
+     "d": 4,
+     "passes": 5,
+     "wallMm": [
+      [
+       0,
+       5
+      ]
+     ]
+    },
+    {
+     "d": 5,
+     "passes": 1,
+     "wallMm": [
+      [
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "d": 6,
+     "passes": 2,
+     "wallMm": [
+      [
+       0.05,
+       2
+      ]
+     ]
+    },
+    {
+     "d": 8,
+     "passes": 3,
+     "wallMm": [
+      [
+       0,
+       3
+      ]
+     ]
+    },
+    {
+     "d": 16,
+     "passes": 35,
+     "wallMm": [
+      [
+       0.2,
+       3
+      ],
+      [
+       0.25,
+       32
+      ]
+     ]
+    }
    ],
    "passesList": [
     {
      "file": "O0161108.X20",
      "line": 293,
      "text": "N291 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 4344
+    },
+    {
+     "file": "O0161108.X20",
+     "line": 1206,
+     "text": "N1204 (TOOLPATH SCHLICHT_16MM_1)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0161424.X20",
      "line": 395,
      "text": "N393 (TOOLPATH SCHLICHT_16MM_COPY)",
-     "wall": 2.8,
-     "floor": -7,
+     "kind": "not a wall",
+     "d": 16,
+     "wall": null,
+     "floor": null,
      "points": 522
     },
     {
      "file": "O0161424.X20",
      "line": 420,
      "text": "N418 (SCHLICHT_16MM MIT WERKZEUG SF_16.00_049_000_ALHS)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3155
     },
@@ -1116,14 +1150,18 @@
      "file": "O1420213.C62",
      "line": 122,
      "text": "N120 (TOOLPATH SCHLICHT_8MM)",
+     "kind": "allowance",
+     "d": 8,
      "wall": 0,
      "floor": 0,
-     "points": 1439
+     "points": 1422
     },
     {
      "file": "O1420213.C62",
      "line": 426,
      "text": "N424 (TOOLPATH SCHLICHT_8MM_1)",
+     "kind": "allowance",
+     "d": 8,
      "wall": 0,
      "floor": 0,
      "points": 334
@@ -1132,7 +1170,9 @@
      "file": "O0106624.X20",
      "line": 276,
      "text": "N274 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.1,
      "points": 2905
     },
@@ -1140,47 +1180,69 @@
      "file": "O0106606.X20",
      "line": 265,
      "text": "N263 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 2715
-    },
-    {
-     "file": "O0106605.X20",
-     "line": 295,
-     "text": "N293 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.1,
-     "points": 2905
     },
     {
      "file": "O0106604.X20",
      "line": 158,
      "text": "N156 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1647
+    },
+    {
+     "file": "O0106623.X20",
+     "line": 71,
+     "text": "N69 (TOOLPATH SCHLICHT_16MM)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0106612.X20",
+     "line": 92,
+     "text": "N90 (TOOLPATH SCHLICHT_16MM)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0125596.X20",
      "line": 1767,
      "text": "N1765 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -1.17,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 15975
     },
     {
      "file": "O0125596.X20",
      "line": 3705,
      "text": "N3703 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": -0.05,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 632
     },
     {
      "file": "O0125675.X20",
      "line": 313,
      "text": "N311 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1954
     },
@@ -1188,7 +1250,9 @@
      "file": "O0095457.X20",
      "line": 169,
      "text": "N167 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1452
     },
@@ -1196,22 +1260,28 @@
      "file": "O0125595.X20",
      "line": 1196,
      "text": "N1194 (SCHLICHT_6MM MIT WERKZEUG SF_06.00_033_000_FH)",
-     "wall": -0.8,
-     "floor": 1.4,
+     "kind": "rest",
+     "d": 6,
+     "wall": null,
+     "floor": null,
      "points": 122
     },
     {
      "file": "O0125595.X20",
      "line": 1222,
      "text": "N1220 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": 0.01,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 4273
     },
     {
      "file": "O0125595.X20",
      "line": 1756,
      "text": "N1754 (TOOLPATH SCHLICHT_3MM)",
+     "kind": "allowance",
+     "d": 3,
      "wall": 0.02,
      "floor": 0,
      "points": 212
@@ -1220,7 +1290,9 @@
      "file": "O0096795.X20",
      "line": 1314,
      "text": "N1312 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 5446
     },
@@ -1228,15 +1300,19 @@
      "file": "O0096794.X20",
      "line": 330,
      "text": "N328 (TOOLPATH SCHLICHT_5MM)",
-     "wall": -3.68,
-     "floor": 0,
+     "kind": "rest",
+     "d": 5,
+     "wall": null,
+     "floor": null,
      "points": 6658
     },
     {
      "file": "O0096794.X20",
      "line": 2052,
      "text": "N2050 (TOOLPATH SCHLICHT_3MM)",
-     "wall": 0.04,
+     "kind": "allowance",
+     "d": 3,
+     "wall": 0.03,
      "floor": 1.5,
      "points": 348
     },
@@ -1244,38 +1320,48 @@
      "file": "O0131784.X20",
      "line": 4556,
      "text": "N4554 (ZLEVEL_PROFILE MIT WERKZEUG SF_02.00_015_000_AL)",
-     "wall": 0.04,
-     "floor": -7.9,
-     "points": 2958
+     "kind": "edge or 3D",
+     "d": 2,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
-     "file": "O0131784_2.X20",
-     "line": 4569,
-     "text": "N4567 (ZLEVEL_PROFILE MIT WERKZEUG SF_02.00_015_000_AL)",
-     "wall": 0.04,
-     "floor": -7.9,
-     "points": 2958
+     "file": "O0131780.X20",
+     "line": 525,
+     "text": "N523 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_044_000_FH)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0131780.X20",
      "line": 659,
      "text": "N657 (TOOLPATH SCHLICHT_5MM)",
-     "wall": 0,
-     "floor": 0,
+     "kind": "rest",
+     "d": 5,
+     "wall": null,
+     "floor": null,
      "points": 4893
     },
     {
      "file": "O0132934.X20",
      "line": 1133,
      "text": "N1131 (TOOLPATH SCHLICHT_4MM)",
-     "wall": 0,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 2826
     },
     {
      "file": "O0143118.X20",
      "line": 351,
      "text": "N349 (TOOLPATH SCHLICHT_16MM)",
+     "kind": "allowance",
+     "d": 16,
      "wall": 0.23,
      "floor": 0.2,
      "points": 2838
@@ -1284,7 +1370,9 @@
      "file": "O0038963.X20",
      "line": 84,
      "text": "N82 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 470
     },
@@ -1292,15 +1380,9 @@
      "file": "O0131019.X20",
      "line": 429,
      "text": "N427 (TOOLPATH SCHLICHT_16MM_)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 3457
-    },
-    {
-     "file": "O0131019_2.X20",
-     "line": 422,
-     "text": "N420 (TOOLPATH SCHLICHT_16MM_)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3457
     },
@@ -1308,7 +1390,9 @@
      "file": "O2586546.000",
      "line": 198,
      "text": "N196 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.21,
      "floor": 0.2,
      "points": 1016
     },
@@ -1316,7 +1400,9 @@
      "file": "O0156138.X20",
      "line": 129,
      "text": "N127 (TOOLPATH SCHLICHT_16MM_)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 744
     },
@@ -1324,7 +1410,9 @@
      "file": "O0155037.X20",
      "line": 238,
      "text": "N236 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1542
     },
@@ -1332,23 +1420,29 @@
      "file": "O0155034.X20",
      "line": 181,
      "text": "N179 (TOOLPATH SCHLICHT_8MM)",
-     "wall": -0.95,
-     "floor": 0,
-     "points": 992
+     "kind": "rest",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 858
     },
     {
      "file": "O0155036.X20",
      "line": 553,
      "text": "N551 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.24,
-     "floor": 0,
+     "kind": "rest",
+     "d": 16,
+     "wall": null,
+     "floor": null,
      "points": 3030
     },
     {
      "file": "O0155153.X20",
      "line": 550,
      "text": "N548 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 5342
     },
@@ -1356,15 +1450,19 @@
      "file": "O0155153.X20",
      "line": 2612,
      "text": "N2610 (TOOLPATH ZLEVEL_PROFILE)",
-     "wall": -0.64,
-     "floor": -5.31,
-     "points": 26707
+     "kind": "edge or 3D",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0104049.X20",
      "line": 340,
      "text": "N338 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3659
     },
@@ -1372,79 +1470,89 @@
      "file": "O0104049.X20",
      "line": 788,
      "text": "N786 (TOOLPATH ZLEVEL_PROFILE)",
-     "wall": 1.57,
-     "floor": -1.83,
-     "points": 4600
+     "kind": "edge or 3D",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O2619723.000",
      "line": 351,
      "text": "N349 (TOOLPATH CAVITY_SCHLICHT)",
-     "wall": 4.7,
-     "floor": -7.68,
-     "points": 15054
+     "kind": "edge or 3D",
+     "d": 12,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O2619723.000",
+     "line": 2518,
+     "text": "N2516 (TOOLPATH SCHLICHT_8MM)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0155317.X20",
+     "line": 156,
+     "text": "N154 (TOOLPATH SCHL_KS_16MM)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O1057063.C90",
      "line": 5666,
      "text": "N5664 (TOOLPATH SCHLICHT_2MM)",
+     "kind": "allowance",
+     "d": 2,
      "wall": 0.01,
-     "floor": -28.5,
+     "floor": null,
      "points": 9834
     },
     {
      "file": "O1057063.C90",
      "line": 7917,
      "text": "N7915 (TOOLPATH SCHLICHT_2MM_1)",
-     "wall": -0.85,
-     "floor": -15.5,
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
      "points": 13545
     },
     {
      "file": "O1057063.C90",
      "line": 10676,
      "text": "N10674 (TOOLPATH SCHLICHT_1MM)",
-     "wall": 0.34,
-     "floor": -22.5,
-     "points": 31300
-    },
-    {
-     "file": "O1057063_2.C90",
-     "line": 5645,
-     "text": "N5643 (TOOLPATH SCHLICHT_2MM)",
-     "wall": 0.01,
-     "floor": -28.5,
-     "points": 9834
-    },
-    {
-     "file": "O1057063_2.C90",
-     "line": 7894,
-     "text": "N7892 (TOOLPATH SCHLICHT_2MM_1)",
-     "wall": -0.85,
-     "floor": -15.5,
-     "points": 13545
-    },
-    {
-     "file": "O1057063_2.C90",
-     "line": 10651,
-     "text": "N9999 (TOOLPATH SCHLICHT_1MM)",
-     "wall": 0.34,
-     "floor": -22.5,
+     "kind": "rest",
+     "d": 1,
+     "wall": null,
+     "floor": null,
      "points": 31300
     },
     {
      "file": "O1920213.105",
      "line": 129,
      "text": "N127 (TOOLPATH SCHLICHT_6MM)",
-     "wall": 0,
-     "floor": -11.5,
-     "points": 806
+     "kind": "rest",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 676
     },
     {
      "file": "O1920213.105",
      "line": 660,
      "text": "N658 (TOOLPATH SCHLICHT_4MM)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 4,
+     "wall": 0.01,
      "floor": 0,
      "points": 398
     },
@@ -1452,15 +1560,19 @@
      "file": "O1920213.105",
      "line": 749,
      "text": "N747 (SCHLICHT_3MM MIT WERKZEUG SF_03.00_025_000_KS)",
-     "wall": -0.05,
-     "floor": 0,
-     "points": 1972
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
+     "points": 1600
     },
     {
      "file": "O1944053_2.C94",
      "line": 80,
      "text": "N78 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 470
     },
@@ -1468,7 +1580,9 @@
      "file": "O1972033.121",
      "line": 207,
      "text": "N205 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1034
     },
@@ -1476,55 +1590,89 @@
      "file": "O1754053.135",
      "line": 232,
      "text": "N230 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": 0.02,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 450
+    },
+    {
+     "file": "O1754053.135",
+     "line": 474,
+     "text": "N472 (SCHLICHT_6MM MIT WERKZEUG SF_06.00_033_000_KS)",
+     "kind": "out of reach",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O1754053.135",
      "line": 1117,
      "text": "N1115 (TOOLPATH SCHLICHT_3MM_1)",
-     "wall": 0.01,
-     "floor": 1,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 6031
     },
     {
      "file": "O1754053.135",
      "line": 1751,
      "text": "N1749 (TOOLPATH SCHLICHT_2MM_1)",
-     "wall": 0.01,
-     "floor": 0,
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
      "points": 10918
     },
     {
      "file": "O1754053.135",
      "line": 3603,
      "text": "N3601 (TOOLPATH ZLEVEL_PROFILE)",
-     "wall": 2.64,
-     "floor": -1.5,
-     "points": 3866
+     "kind": "edge or 3D",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O1754043.135",
+     "line": 83,
+     "text": "N81 (TOOLPATH SCHLICHT_16MM)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0124681.X20",
      "line": 529,
      "text": "N527 (TOOLPATH SCHLICHT_2MM_COPY)",
-     "wall": -0.18,
-     "floor": 0,
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
      "points": 864
     },
     {
      "file": "O0124681.X20",
      "line": 631,
      "text": "N629 (SCHLICHT_2MM_1_COPY MIT WERKZEUG SF_02.00_025_000_KS)",
-     "wall": 0,
-     "floor": 0,
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
      "points": 665
     },
     {
      "file": "O2613201.000",
      "line": 327,
      "text": "N325 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.21,
      "floor": 0.2,
      "points": 1902
     },
@@ -1532,23 +1680,9 @@
      "file": "O2613201.000",
      "line": 1750,
      "text": "N1748 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 3331
-    },
-    {
-     "file": "O2613201_2.000",
-     "line": 321,
-     "text": "N319 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 1902
-    },
-    {
-     "file": "O2613201_2.000",
-     "line": 1734,
-     "text": "N1732 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3331
     },
@@ -1556,7 +1690,9 @@
      "file": "O1566213.134",
      "line": 268,
      "text": "N266 (TOOLPATH SCHLICHT_8MM)",
-     "wall": 0,
+     "kind": "allowance",
+     "d": 8,
+     "wall": -0.01,
      "floor": 0.3,
      "points": 1910
     },
@@ -1564,31 +1700,49 @@
      "file": "O1566213.134",
      "line": 374,
      "text": "N372 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -0.4,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 2160
     },
     {
      "file": "O1566213.134",
      "line": 835,
      "text": "N833 (TOOLPATH SCHLICHT_2MM)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 2,
+     "wall": 0.03,
      "floor": 0,
      "points": 432
+    },
+    {
+     "file": "O1650603.C18",
+     "line": 1195,
+     "text": "N1193 (TOOLPATH SCHLICHT_8MM_COPY)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0024264.X20",
      "line": 799,
      "text": "N797 (TOOLPATH SCHLICHT_5MM)",
-     "wall": 0,
-     "floor": -17.2,
+     "kind": "allowance",
+     "d": 5,
+     "wall": 0.01,
+     "floor": 0,
      "points": 1692
     },
     {
      "file": "O0024264.X20",
      "line": 1186,
      "text": "N1184 (SCHLICHT_4MM_4 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 4,
+     "wall": 0.01,
      "floor": 0,
      "points": 837
     },
@@ -1596,54 +1750,78 @@
      "file": "O0024264.X20",
      "line": 1242,
      "text": "N1240 (SCHLICHT_4MM_6 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 4,
+     "wall": 0.01,
      "floor": 0,
      "points": 6554
     },
     {
      "file": "O0024264.X20",
+     "line": 2405,
+     "text": "N2403 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_044_000_FH)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0024264.X20",
      "line": 2906,
      "text": "N2904 (TOOLPATH SCHL-TASTER-G41)",
+     "kind": "allowance",
+     "d": 6,
      "wall": 0.05,
-     "floor": -16.9,
+     "floor": null,
      "points": 262
     },
     {
      "file": "O0024264.X20",
      "line": 2987,
      "text": "N2985 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": -1.43,
-     "floor": -8.5,
-     "points": 4129
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
+     "points": 4028
     },
     {
      "file": "O0024264.X20",
      "line": 3235,
      "text": "N3233 (SCHLICHT_4MM_2 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": -0.57,
-     "floor": -3.5,
-     "points": 3544
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
+     "points": 3006
     },
     {
      "file": "O0024264.X20",
      "line": 3635,
      "text": "N3633 (SCHLICHT_4MM MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": -0.65,
-     "floor": -8.5,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 2660
     },
     {
      "file": "O0024264.X20",
      "line": 3997,
      "text": "N3995 (SCHLICHT_4MM_5 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": -1.6,
-     "floor": 9.9,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 162
     },
     {
      "file": "O0024264.X20",
      "line": 4231,
      "text": "N4229 (TOOLPATH SCHLICHT_3MM)",
+     "kind": "allowance",
+     "d": 3,
      "wall": 0.02,
      "floor": 0,
      "points": 209
@@ -1652,31 +1830,59 @@
      "file": "O0024264.X20",
      "line": 4254,
      "text": "N4252 (SCHLICHT_3MM_1 MIT WERKZEUG SF_03.00_025_000_FH)",
-     "wall": -0.77,
-     "floor": -10.2,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 1098
     },
     {
      "file": "O0024264.X20",
      "line": 4395,
      "text": "N4393 (TOOLPATH SCHLICHT_2MM)",
-     "wall": -1.68,
-     "floor": 0,
-     "points": 408
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
+     "points": 381
     },
     {
      "file": "O0024264.X20",
      "line": 4473,
      "text": "N4471 (SCHLICHT_2MM_1 MIT WERKZEUG SF_02.00_025_000_FH)",
-     "wall": -1.09,
-     "floor": -3.5,
-     "points": 1333
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
+     "points": 1210
+    },
+    {
+     "file": "O0036265.X20",
+     "line": 157,
+     "text": "N155 (SCHLICHT_6MM MIT WERKZEUG SF_06.00_033_000_FH)",
+     "kind": "out of reach",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0036265.X20",
+     "line": 230,
+     "text": "N228 (TOOLPATH SCHLICHT_4MM)",
+     "kind": "out of reach",
+     "d": 4,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0024263.X20",
      "line": 361,
      "text": "N359 (TOOLPATH SCHLICHT_16MM_COPY_COPY)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 2800
     },
@@ -1684,7 +1890,9 @@
      "file": "O1916043.C96",
      "line": 228,
      "text": "N226 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 2010
     },
@@ -1692,23 +1900,29 @@
      "file": "O1916043_2.C96",
      "line": 239,
      "text": "N237 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 2010
+    },
+    {
+     "file": "O1916043_2.C96",
+     "line": 1925,
+     "text": "N1923 (TOOLPATH SCHLICHT_16MM_1)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0037181.X20",
      "line": 167,
      "text": "N165 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 1196
-    },
-    {
-     "file": "O0037181_2.X20",
-     "line": 158,
-     "text": "N156 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1196
     },
@@ -1716,7 +1930,9 @@
      "file": "O0168459.X20",
      "line": 338,
      "text": "N336 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 5568
     },
@@ -1724,7 +1940,9 @@
      "file": "O1268043.128",
      "line": 326,
      "text": "N324 (TOOLPATH SCHLICHT_16MM_)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 4342
     },
@@ -1732,7 +1950,9 @@
      "file": "O1268043_2.128",
      "line": 334,
      "text": "N332 (TOOLPATH SCHLICHT_16MM__COPY)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 6181
     },
@@ -1740,71 +1960,79 @@
      "file": "O0089654.X20",
      "line": 724,
      "text": "N722 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -0.13,
-     "floor": -8,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 740
     },
     {
      "file": "O0089654.X20",
      "line": 830,
      "text": "N828 (SCHLICHT_4MM_7 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": -0.14,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1184
     },
     {
      "file": "O0089654.X20",
      "line": 992,
      "text": "N990 (SCHLICHT_4MM_5 MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": 0.01,
-     "floor": -5.8,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1330
     },
     {
      "file": "O0089654.X20",
      "line": 1174,
      "text": "N1172 (TOOLPATH SCHLICHT_4MM_2)",
-     "wall": 0.01,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 266
     },
     {
      "file": "O0089654.X20",
      "line": 2091,
      "text": "N2089 (TOOLPATH SCHL-TASTER-G41)",
+     "kind": "allowance",
+     "d": 6,
      "wall": 0.05,
-     "floor": -16.9,
+     "floor": null,
      "points": 265
     },
     {
      "file": "O0089654.X20",
      "line": 2159,
      "text": "N2157 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 4,
+     "wall": 0.01,
      "floor": 0,
-     "points": 6177
+     "points": 6100
     },
     {
      "file": "O0089654.X20",
      "line": 2608,
      "text": "N2606 (TOOLPATH SCHLICHT_3MM)",
-     "wall": 0.02,
-     "floor": 0,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 209
     },
     {
      "file": "O1784033.129",
      "line": 208,
      "text": "N206 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 3036
-    },
-    {
-     "file": "O1784033_2.129",
-     "line": 204,
-     "text": "N202 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3036
     },
@@ -1812,31 +2040,49 @@
      "file": "O1784233.129",
      "line": 262,
      "text": "N260 (TOOLPATH SCHLICHT_4MM)",
+     "kind": "allowance",
+     "d": 4,
      "wall": 0.02,
      "floor": 0,
-     "points": 1411
+     "points": 1356
     },
     {
      "file": "O1610603.C85",
      "line": 237,
      "text": "N235 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_044_000_FH)",
-     "wall": 1.02,
-     "floor": -11,
-     "points": 117
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O1610603.C85",
+     "line": 456,
+     "text": "N454 (TOOLPATH SCHLICHT_8MM_1)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0055194.X20",
      "line": 113,
      "text": "N111 (TOOLPATH SCHLICHT_8MM)",
-     "wall": -0.35,
-     "floor": 0,
+     "kind": "rest",
+     "d": 8,
+     "wall": null,
+     "floor": null,
      "points": 412
     },
     {
      "file": "O0055194.X20",
      "line": 167,
      "text": "N165 (TOOLPATH SCHLICHT_5MM)",
-     "wall": 6.02,
+     "kind": "rest",
+     "d": 5,
+     "wall": null,
      "floor": null,
      "points": 320
     },
@@ -1844,47 +2090,69 @@
      "file": "O0055194.X20",
      "line": 718,
      "text": "N716 (TOOLPATH SCHLICHT_4MM)",
-     "wall": 0.02,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 792
     },
     {
      "file": "O0037519.X20",
      "line": 192,
      "text": "N190 (TOOLPATH SCHLICHT_3MM)",
-     "wall": 0.02,
+     "kind": "allowance",
+     "d": 3,
+     "wall": 0.01,
      "floor": 0,
-     "points": 435
+     "points": 424
     },
     {
      "file": "O0037519.X20",
      "line": 232,
      "text": "N230 (TOOLPATH SCHL-RADIUS)",
-     "wall": 2,
-     "floor": -30.5,
-     "points": 328
+     "kind": "edge or 3D",
+     "d": 10,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0037519.X20",
+     "line": 325,
+     "text": "N323 (TOOLPATH SCHL-RADIUS_1)",
+     "kind": "edge or 3D",
+     "d": 10,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0037519.X20",
      "line": 825,
      "text": "N823 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -0.4,
-     "floor": 0,
-     "points": 5097
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
+     "points": 4348
     },
     {
      "file": "O1027213.C96",
      "line": 171,
      "text": "N169 (TOOLPATH SCHLICHT_8MM)",
-     "wall": 0,
-     "floor": 0.5,
-     "points": 383
+     "kind": "rest",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 338
     },
     {
      "file": "O1272053.C96",
      "line": 78,
      "text": "N76 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 556
     },
@@ -1892,7 +2160,9 @@
      "file": "O1272053.C96",
      "line": 1093,
      "text": "N1091 (TOOLPATH SCHLICHT_16MM_1)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 573
     },
@@ -1900,7 +2170,9 @@
      "file": "O1222033.113",
      "line": 304,
      "text": "N302 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 1662
     },
@@ -1908,71 +2180,89 @@
      "file": "O1222033.113",
      "line": 833,
      "text": "N831 (TOOLPATH CAVITY_SCHLICHT)",
-     "wall": 0.58,
-     "floor": -23.1,
-     "points": 4544
+     "kind": "edge or 3D",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O1222033.113",
      "line": 1751,
      "text": "N1749 (TOOLPATH FIXED_CONTOUR)",
-     "wall": 3.19,
-     "floor": -20.82,
-     "points": 2705
+     "kind": "edge or 3D",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0041108.X20",
      "line": 205,
      "text": "N203 (TOOLPATH SCHL-RADIUS)",
-     "wall": 1.99,
-     "floor": -31,
-     "points": 325
+     "kind": "edge or 3D",
+     "d": 10,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0173704.X20",
      "line": 228,
      "text": "N226 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_044_000_KS)",
-     "wall": -0.11,
-     "floor": 0,
+     "kind": "rest",
+     "d": 8,
+     "wall": null,
+     "floor": null,
      "points": 708
     },
     {
      "file": "O0173595.X20",
      "line": 688,
      "text": "N686 (TOOLPATH SCHLICHT_6MM)",
-     "wall": -0.5,
-     "floor": 0,
+     "kind": "rest",
+     "d": 6,
+     "wall": null,
+     "floor": null,
      "points": 9384
     },
     {
      "file": "O0173595.X20",
      "line": 3486,
      "text": "N3484 (TOOLPATH SCHLICHT_4MM)",
-     "wall": 0.02,
-     "floor": 0,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 16339
     },
     {
      "file": "O0173595.X20",
      "line": 5161,
      "text": "N5159 (TOOLPATH SCHLICHT_2MM)",
-     "wall": 0.01,
-     "floor": -10.9,
+     "kind": "rest",
+     "d": 2,
+     "wall": null,
+     "floor": null,
      "points": 22550
+    },
+    {
+     "file": "O0173579.X20",
+     "line": 98,
+     "text": "N96 (TOOLPATH SCHLICHT_8MM)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0073078.X20",
      "line": 701,
      "text": "N699 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 2840
-    },
-    {
-     "file": "O0073078_2.X20",
-     "line": 703,
-     "text": "N701 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 2840
     },
@@ -1980,160 +2270,260 @@
      "file": "O0173835.X20",
      "line": 1019,
      "text": "N1017 (TOOLPATH SCHLICHT_4MM_2)",
-     "wall": 0.02,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 4146
     },
     {
      "file": "O0173835.X20",
      "line": 1643,
      "text": "N1641 (TOOLPATH SCHL-RADIUS)",
-     "wall": 2.99,
-     "floor": -48.5,
-     "points": 618
+     "kind": "edge or 3D",
+     "d": 12,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0173835.X20",
      "line": 1921,
      "text": "N1919 (TOOLPATH SCHLICHT_4MM_1)",
-     "wall": -0.72,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1759
     },
     {
      "file": "O0173835.X20",
      "line": 2300,
      "text": "N2298 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -0.72,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1759
     },
     {
      "file": "O0084691.X20",
      "line": 1003,
      "text": "N1001 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.2,
      "points": 3428
+    },
+    {
+     "file": "O0173954.X20",
+     "line": 61,
+     "text": "N59 (TOOLPATH SCHLICHT_20MM)",
+     "kind": "out of reach",
+     "d": 20,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O0173010.X20",
+     "line": 113,
+     "text": "N111 (SCHLICHT_6MM MIT WERKZEUG SF_06.00_033_000_FH)",
+     "kind": "out of reach",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O0173781.X20",
      "line": 577,
      "text": "N575 (SCHLICHT_8MM MIT WERKZEUG SF_08.00_044_000_FH)",
-     "wall": 2.4,
-     "floor": -11,
+     "kind": "rest",
+     "d": 8,
+     "wall": null,
+     "floor": null,
      "points": 84
     },
     {
      "file": "O0173781.X20",
      "line": 980,
      "text": "N978 (SCHLICHT_4MM_COPY MIT WERKZEUG SF_04.00_033_000_FH)",
-     "wall": -0.05,
-     "floor": -19,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 930
     },
     {
      "file": "O0173781.X20",
      "line": 2624,
      "text": "N2622 (TOOLPATH SCHLICHT_4MM_3)",
-     "wall": 0.01,
-     "floor": -0.2,
-     "points": 20568
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
+     "points": 19696
     },
     {
      "file": "O0173781.X20",
      "line": 6264,
      "text": "N6262 (TOOLPATH SCHLICHT_3MM_)",
-     "wall": 0.09,
-     "floor": 0,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 1284
     },
     {
      "file": "O0173781.X20",
      "line": 6370,
      "text": "N6368 (TOOLPATH SCHLICHT_3MM_1)",
-     "wall": 0.08,
-     "floor": -0.2,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 7776
     },
     {
      "file": "O0173781.X20",
      "line": 8368,
      "text": "N8366 (TOOLPATH SCHLICHT_4MM_6)",
-     "wall": -0.14,
-     "floor": -3.25,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1694
     },
     {
      "file": "O0173781.X20",
      "line": 8616,
      "text": "N8614 (TOOLPATH SCHLICHT_4MM_6_COPY)",
-     "wall": -0.02,
-     "floor": 1.45,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 747
     },
     {
      "file": "O0173781.X20",
      "line": 8933,
      "text": "N8931 (TOOLPATH SCHLICHT_4MM_5)",
-     "wall": -0.14,
-     "floor": -3.25,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1694
     },
     {
      "file": "O0173781.X20",
      "line": 9181,
      "text": "N9179 (TOOLPATH SCHLICHT_4MM_5_COPY)",
-     "wall": -0.02,
-     "floor": 1.95,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 1032
     },
     {
      "file": "O2633759.000",
      "line": 1964,
      "text": "N1962 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.23,
      "floor": 0.1,
      "points": 12280
+    },
+    {
+     "file": "O2625441.000",
+     "line": 184,
+     "text": "N182 (TOOLPATH SCHL_KS_16MM_1)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O2625441.000",
+     "line": 477,
+     "text": "N475 (SCHL_KS_16MM MIT WERKZEUG SF_16.00_049_000_FRHS)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O1161033.129",
+     "line": 202,
+     "text": "N200 (TOOLPATH SCHL_KS_16MM)",
+     "kind": "out of reach",
+     "d": 16,
+     "wall": null,
+     "floor": null,
+     "points": 0
+    },
+    {
+     "file": "O2308115.000",
+     "line": 89,
+     "text": "N87 (TOOLPATH SCHLICHT_6MM)",
+     "kind": "out of reach",
+     "d": 6,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O4280166.001",
      "line": 207,
      "text": "N205 (TOOLPATH SCHLICHT_3MM_1)",
-     "wall": 0,
-     "floor": 0,
+     "kind": "rest",
+     "d": 3,
+     "wall": null,
+     "floor": null,
      "points": 1140
     },
     {
      "file": "O4280166.001",
      "line": 767,
      "text": "N765 (TOOLPATH SCHLICHT_4MM)",
-     "wall": -0.95,
-     "floor": 0,
+     "kind": "rest",
+     "d": 4,
+     "wall": null,
+     "floor": null,
      "points": 4456
     },
     {
      "file": "O0134813.X20",
      "line": 291,
      "text": "N289 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
+     "kind": "allowance",
+     "d": 16,
+     "wall": 0.21,
      "floor": 0.2,
      "points": 2552
     },
     {
-     "file": "O0134813_2.X20",
-     "line": 282,
-     "text": "N280 (TOOLPATH SCHLICHT_16MM)",
-     "wall": 0.22,
-     "floor": 0.2,
-     "points": 2552
+     "file": "O0137238.X20",
+     "line": 75,
+     "text": "N73 (TOOLPATH SCHLICHT_8MM)",
+     "kind": "out of reach",
+     "d": 8,
+     "wall": null,
+     "floor": null,
+     "points": 0
     },
     {
      "file": "O2500009.002",
      "line": 726,
      "text": "N724 (TOOLPATH SCHLICHT_3MM)",
-     "wall": 0.02,
-     "floor": -8.5,
+     "kind": "allowance",
+     "d": 3,
+     "wall": 0.01,
+     "floor": 0,
      "points": 424
     }
    ]
