@@ -454,4 +454,9 @@ describe("the shop's other ways of writing a setup", () => {
   it('15 MM UNTERLAGE // IN Y- is a 15 mm spacer in the jaw at Y-, not the parallels (shop answer)', () => {
     expect(readInstructions(['15 MM UNTERLAGE // IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, restDepth: null, spacers: [{ mm: 15, side: 'Y-' }] });
   });
+
+  it('50 IN X/Y is 50 mm in X and 50 mm in Y (a standard top plate size; shop answer)', () => {
+    expect(readInstructions(['MOD. SPANNEN F. FRONTSEITE/50 IN X/Y']).sizes).toEqual({ x: 50, y: 50 });
+    expect(readInstructions(['TEIL MIT 64 IN X /40 IN Y SPANNEN']).sizes).toEqual({ x: 64, y: 40 });
+  });
 });

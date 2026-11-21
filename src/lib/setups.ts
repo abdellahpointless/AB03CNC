@@ -211,11 +211,12 @@ export function readInstructions(notes: string[]) {
   const t = notes.join(' / ').toUpperCase();
   // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y", "36 IN X AND 41 IN Y",
   // "30 IN X 20.5 IN Y", "64 IN X /40 IN Y", and "TOP 14X AND 22 IN Y" (14 along X, 22 along Y);
-  // "30 IN X 13 UND Y" (13 along Y); "30 IN X UND Y", "100 IN XY" and "100 IN X Y": the same both ways.
+  // "30 IN X 13 UND Y" (13 along Y); "30 IN X UND Y", "100 IN XY", "100 IN X Y" and "50 IN X/Y": the
+  // same both ways (shop answer: 50 x 50 is a standard top plate).
   const sizeForms: [RegExp, (m: RegExpMatchArray) => { x: number; y: number }][] = [
     [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:(?:IN|UM)\\s*)?X\\s*\\/?\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
     [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:IN|UM)\\s*X\\s*${NUM}\\s*(?:UND|AND|ET)\\s*Y\\b`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
-    [new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b|X\\s*Y(?!\\s*[+-])\\b)`, 'g'), (m) => ({ x: num(m[1]), y: num(m[1]) })],
+    [new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b|X\\s*\\/?\\s*Y(?!\\s*[+-])\\b)`, 'g'), (m) => ({ x: num(m[1]), y: num(m[1]) })],
   ];
   const sizeNotes = sizeForms
     .flatMap(([re, read]) => [...t.matchAll(re)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, size: read(m) })))
