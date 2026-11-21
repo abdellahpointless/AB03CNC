@@ -1156,7 +1156,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // Of one Ø, the mills with the shop's roughing data first: the SFH 16 roughs at 2,800 mm/min, the
   // SF 16 has only its finishing data (850) and finishes the walls (docs/knowledge: T4).
   const finishOnly = (t: CamTool) => !!t.template && t.template.ops.every((o) => o.kind === 'finish');
-  const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)));
+  // Then the machine's own, its roughing mill before its finishing one (HAAS-1: T2 roughs, T21 finishes).
+  const role = (t: CamTool) => (t.category === 'fraise ebauche' ? 0 : t.category === 'fraise finition' ? 2 : 1);
+  const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
   const addSetup = (si: number, least = 3): boolean => {
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
@@ -1447,7 +1449,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // Of the shop's templates, the one with its usual finishing data: the SF 16's SCHLICHT at 1,200 mm/min
       // and 10 mm deep (90 % of its SF 16 finishing operations), not the one at 850 and 5.
       const fin = (m: CamTool) => m.template?.ops.filter((o) => o.kind === 'finish').reduce((b, o) => Math.max(b, o.feed * (o.ap ?? 0)), 0) ?? 0;
-      const tool = plain.find((m) => m.inMachine) ?? [...plain].sort((p, q) => fin(q) - fin(p)).find((m) => fin(m) > 0) ?? op.tool;
+      const tool = plain.find((m) => m.inMachine && m.category === 'fraise finition') ?? plain.find((m) => m.inMachine && m.category !== 'fraise ebauche') ?? [...plain].sort((p, q) => fin(q) - fin(p)).find((m) => fin(m) > 0) ?? op.tool;
       const r = tool.diameter / 2;
       const work: Work[] = [];
       let thinAny = false;

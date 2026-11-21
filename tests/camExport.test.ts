@@ -130,11 +130,26 @@ describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
     }, 600_000);
   }
 
-  it("follows HAAS-1's rule for its two Ø16 mills: roughing with T2, finishing with T21", () => {
-    const tools = defaultToolbox['HAAS-1']!;
-    const ofType = (type: string) => catalog('ALU', tools).filter((t) => t.type === type && t.diameter === 16 && t.inMachine);
-    expect(ofType('SFH').map((t) => t.number)).toEqual([2]);
-    expect(ofType('SF').map((t) => t.number)).toContain(21);
-    expect(ofType('SF').map((t) => t.number)).not.toContain(2);
+  it("follows HAAS-1's rule for its two Ø16 mills: roughing with T2, finishing with T21, whatever the inventory's order", () => {
+    const own = defaultToolbox['HAAS-1']!;
+    // As listed, and with T2 last (deleted and added again, or imported in another order: a review found the order decided).
+    for (const tools of [own, [...own.filter((t) => t.number !== 2), own.find((t) => t.number === 2)!]]) {
+      const ofType = (type: string) => catalog('ALU', tools).filter((t) => t.type === type && t.diameter === 16 && t.inMachine);
+      expect(ofType('SFH').map((t) => t.number)).toEqual([2]);
+      expect(ofType('SF').map((t) => t.number)).toContain(21);
+      expect(ofType('SF').map((t) => t.number)).not.toContain(2);
+    }
   });
+
+  it('roughs a top plate on HAAS-1 with T2 and finishes it with T21, also when T2 is listed last', () => {
+    const own = defaultToolbox['HAAS-1']!;
+    const tools = [...own.filter((t) => t.number !== 2), own.find((t) => t.number === 2)!];
+    const top = pocketWithHole(60, 40, 12, [10, 8, 50, 32], 6, { c: [5, 5], d: 3 });
+    const r = camProgram({ tris: top, material: 'ALU', tools, brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false } });
+    const ops = r.setups.flatMap((s) => s.ops);
+    for (const o of ops.filter((x) => x.name === 'FRAESEN_16MM')) expect(o.tool.number).toBe(2);
+    const fin = ops.filter((x) => x.name === 'SCHLICHTEN_16MM');
+    expect(fin.length).toBeGreaterThan(0);
+    for (const o of fin) expect(o.tool.number).toBe(21);
+  }, 600_000);
 });
