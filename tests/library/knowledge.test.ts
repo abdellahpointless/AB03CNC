@@ -1,8 +1,8 @@
 /// <reference types="node" />
 /*
  * The knowledge base (docs/knowledge, written by `npm run knowledge`) against the reference library:
- * every line it cites is that line of that program, word for word, and it never names an order (the
- * repository is public). The citation check is skipped without CNC_LIBRARY=<folder>.
+ * every line it cites is that line of that program, word for word, it never names an order, a
+ * programmer or an article (the repository is public), and each rule's label is what its counts say. The citation check is skipped without CNC_LIBRARY=<folder>.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -29,9 +29,22 @@ describe('the knowledge base', () => {
       const text = readFileSync(f, 'utf8');
       expect(text).not.toMatch(/\b\d{12}_(?:HAAS|FANUC|MIXED)\b|\b[13]0000\d{7}\b/);
       expect(text).not.toMatch(/BEARBEITER\s*:\s*(?!<name>)\w/);
+      expect(text).not.toMatch(/F\.?\s*ART\.?\s*NR\.?\s*:\s*(?!<nr>)\w/);
     }
     // No part name: a cited header line shows only its sizes.
     for (const c of cites(kb).filter((x) => /ZUSCHNITT|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(x.text))) expect(c.text).toMatch(/\(<part>/);
+  });
+
+  it('labels each rule by the parts it applies to, as the counts say', () => {
+    expect(kb.rules.length).toBeGreaterThan(30);
+    for (const r of kb.rules) {
+      const { applies, holds } = r.parts;
+      expect(r.units.holds, r.id).toBeLessThanOrEqual(r.units.applies);
+      expect(holds, r.id).toBeLessThanOrEqual(applies);
+      expect(applies, r.id).toBeLessThanOrEqual(r.units.applies);
+      const want = applies === 1 ? 'seen once' : holds === applies ? 'consistent across the library' : holds * 2 > applies ? 'majority' : 'minority';
+      expect(r.label, r.id).toBe(want);
+    }
   });
 
   it.skipIf(!LIB)('cites each line as it is in the library', () => {
@@ -48,7 +61,8 @@ describe('the knowledge base', () => {
     const all = cites(kb);
     expect(all.length).toBeGreaterThan(50);
     // Header lines are cited with the part's (and programmer's) name masked, as tools/knowledge.ts does.
-    const mask = (t: string) => (/ZUSCHNITT|BEARBEITER|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(t) ? t.replace(/\(([^/)]*)(\/|\))/, (_w, _n: string, end: string) => `(<part>${end === '/' ? ' /' : ')'}`).replace(/BEARBEITER\s*:?[^/)]*/gi, 'BEARBEITER: <name>') : t);
+    const mask = (t: string) =>
+      (/ZUSCHNITT|BEARBEITER|\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(t) ? t.replace(/\(([^/)]*)(\/|\))/, (_w, _n: string, end: string) => `(<part>${end === '/' ? ' /' : ')'}`).replace(/BEARBEITER\s*:?[^/)]*/gi, 'BEARBEITER: <name>') : t).replace(/F\.?\s*ART\.?\s*NR\.?\s*:?[^/)]*/gi, 'F.ART.NR: <nr>');
     const wrong = all.filter((c) => !(texts.get(c.file) ?? []).some((lines) => mask(lines[c.line - 1]?.trim().slice(0, 90) ?? '') === c.text));
     expect(wrong).toEqual([]);
   });
