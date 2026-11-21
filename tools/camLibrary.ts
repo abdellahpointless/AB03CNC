@@ -126,7 +126,10 @@ for (const folder of readdirSync(LIB).sort()) {
         const r = camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
         row.result = 'made';
         row.seconds = Math.round((Date.now() - t0) / 1000);
-        row.check = { match: r.check.match, collisions: r.check.collisions, cales: r.check.cales, gougeMm3: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))), missing: r.missing.length };
+        row.check = { match: r.check.match, collisions: r.check.collisions, cales: r.check.cales, misplaced: r.check.misplaced, gougeMm3: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))), missing: r.missing.length };
+        // Per clamping, how far the stock above the jaws stands out past the held face at the stop (mm):
+        // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
+        row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
         row.cam = summary(r.code);
       } catch (e) {
         row.result = `failed: ${(e as Error).message}`;
