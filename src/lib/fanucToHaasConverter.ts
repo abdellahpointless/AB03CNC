@@ -79,11 +79,13 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     let line = input[index].trim();
     if (!line) continue;
 
-    const o = line.match(/^O(\d+)\s*(\(.*\))?\s*$/i);
+    const o = line.match(/^O(\d+)(\s*)(\(.*\))?\s*$/i);
     if (o && !stats.oCodeRenamed) {
       stats.oCodeRenamed = true;
-      // The file extension in brackets ("(X20)") goes; a program name stays.
-      const name = o[2] && !/^\(\s*[A-Z0-9]{1,4}\s*\)$/i.test(o[2]) ? ` ${o[2].trim()}` : '';
+      // The file extension in brackets right after the number ("O0131784(X20)", as all 49 of the
+      // shop's FANUC files) goes; a program name stays ("O01234 (ROD)").
+      const ext = !o[2] && !!o[3] && /^\(\s*[A-Z0-9]{1,4}\s*\)$/i.test(o[3]);
+      const name = o[3] && !ext ? ` ${o[3].trim()}` : '';
       const num = haasProgramNumber(o[1]);
       haasFilename = `O${num}.txt`;
       out.push(`O${num}${name}`);

@@ -552,3 +552,13 @@ describe('an O number on the % line', () => {
     expect(convertHaasToFanuc(h, 'x.nc').fanucCode.split('\n').slice(0, 3)).toEqual(['%', 'O1234', 'N1 G0 G53 G49 Z0 G94 M95']);
   });
 });
+
+describe('the O line of a FANUC program', () => {
+  it('drops the file extension written right after the number, keeps a name written after a space', () => {
+    const first = (o: string) => convertFanucToHaas(`${o}\nN1 M30`, 'x.nc').haasCode.split('\n')[1];
+    expect(first('O0131784(X20)')).toBe('O0784');
+    expect(first('O01234 (ROD)')).toBe('O0234 (ROD)');
+    expect(first('O01234 (V2)')).toBe('O0234 (V2)');
+    expect(first('O01203 (BRIDE ACIER)')).toBe('O0203 (BRIDE ACIER)');
+  });
+});
