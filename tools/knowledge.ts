@@ -816,8 +816,16 @@ const allowanceList = programs.filter((p, k) => programs.findIndex((q) => q.part
 // ---- Tools and cutting data ---------------------------------------------------------------------------
 rule('tools.codeFormat', 'tools', 'Tools are named by a code TYPE_D.DD_LLL_GGG_MAT (a copy carries a number after it, "_1"): type (MK face mill, SF end mill, SB drill, ZB or AB spot drill, GB tap, ST chamfer/graver...), diameter, length, and the material its data is for.', 'tool changes', (p) =>
   toolChanges(p).map((i) => ({ holds: /[A-Z]{2,3}_\d+\.\d{2}_\d{3}_[A-Z0-9]+_[A-Z]+(?:_\d+)?\s*\)/.test(p.lines.slice(i, i + 3).join(' ')), at: i + 1 })));
-rule('tools.dataForPartMaterial', 'tools', "The tool's cutting data is for the part's material: the code's material is the header's.", 'operations', (p) =>
-  p.read.material ? p.read.samples.map((s) => ({ holds: s.material === p.read.material, at: s.line })) : []);
+rule('tools.dataForPartMaterial', 'tools', "On aluminium, POM and FH parts, the tool's cutting data is for the part's material: the code's material (ALHS, KS, FH) is the header's.", 'operations on ALU, POM and FH parts', (p) =>
+  p.read.material && ['ALU', 'POM', 'FH'].includes(p.read.material) ? p.read.samples.map((s) => ({ holds: s.material === p.read.material, at: s.line })) : []);
+// The data the other materials are cut with (no tool codes of their own): header material -> code material.
+const dataFor = new Map<string, Map<string, number>>();
+for (const p of programs) {
+  const m = p.read.material ?? '?';
+  if (['ALU', 'POM', 'FH'].includes(m)) continue;
+  const c = dataFor.get(m) ?? dataFor.set(m, new Map()).get(m)!;
+  for (const s of p.read.samples) c.set(s.material, (c.get(s.material) ?? 0) + 1);
+}
 // How much longer than its deepest cut a tool is, per type.
 const reachByType = new Map<string, number[]>();
 for (const p of programs) for (const s of p.read.samples) if (s.length > 0 && s.depth > 0) (reachByType.get(s.type) ?? reachByType.set(s.type, []).get(s.type)!).push(round(s.length - s.depth));
@@ -950,6 +958,7 @@ const facts = {
       passesList: allowanceList.map((x) => ({ ...cite(x.p, x.a.at), kind: x.a.kind, d: x.a.d, wall: x.a.wall, floor: x.a.floor, points: x.a.points })),
     };
   })(),
+  otherMaterials: [...dataFor].sort().map(([material, c]) => ({ material, programs: programs.filter((p) => p.read.material === material).length, parts: partsOf(programs.filter((p) => p.read.material === material)), cutWith: [...c].sort((x, y) => y[1] - x[1]).map(([code, n]) => ({ code, operations: n })) })),
   g43Heights: [...programs.reduce((m, p) => {
     for (const i of g43Lines(p)) {
       const z = code(p.lines[i]).match(/(?<![A-Z])Z(-?\d*\.?\d+)/i)?.[1];
@@ -1077,6 +1086,8 @@ for (const [topic, title] of topics) {
   }
   if (topic === 'tools') {
     md.push(
+      '',
+      `Materials without tool codes of their own, and the data they are cut with (operations by the tool code's material): ${facts.otherMaterials.map((m) => `${m.material} (${m.parts} parts): ${m.cutWith.map((c) => `${c.code} ×${c.operations}`).join(', ')}`).join('; ')}.`,
       '',
       `How much longer the tool is than its deepest cut (mm), per type: ${Object.entries(facts.toolLongerThanCutMm).map(([t, s]) => (s ? `${t} median ${s.median} (${s.min}–${s.max}, ${s.n} operations)` : '')).filter(Boolean).join('; ')}.`,
       '',
