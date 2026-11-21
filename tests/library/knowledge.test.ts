@@ -29,8 +29,9 @@ describe('the knowledge base', () => {
     for (const f of ['docs/knowledge/knowledge.json', 'docs/knowledge/README.md', 'docs/knowledge/cam-gaps.md']) {
       const text = readFileSync(f, 'utf8');
       expect(text).not.toMatch(/\b\d{12}_(?:HAAS|FANUC|MIXED)\b|\b[13]0000\d{7}\b/);
-      // Nor a program file's name (it can carry a material number): programs are cited by id.
-      expect(text).not.toMatch(/\bO\d{7}(?:_\d)?\.[A-Z0-9]{2,3}\b/);
+      // Nor a program file's name or number, dotted, bare or as its O line (it can carry a material
+      // number): programs are cited by id, a program number line as O<nr>.
+      expect(text).not.toMatch(/\bO\d{7}/);
       expect(text).not.toMatch(/BEARBEITER\s*:\s*(?!<name>)\w/);
       expect(text).not.toMatch(/F\.?\s*ART\.?\s*NR\.?\s*:\s*(?!<nr>)\w/);
     }
