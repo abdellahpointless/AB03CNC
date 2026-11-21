@@ -45,18 +45,27 @@ describe('CAM AI', () => {
     }
   }, 180_000);
 
-  it('roughs with the SFH 16 and finishes its walls with the SF 16, as the shop does (T4, S4)', () => {
-    // No part family given: every part gets the finishing pass (the shop: 75 of 92 parts).
+  it('roughs with the SFH 16, as the shop does (T4), and adds no finishing pass that removes nothing', () => {
     const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
     const ops = r.setups.flatMap((s) => s.ops);
     const rough = ops.filter((o) => o.name === 'FRAESEN_16MM');
     expect(rough.length).toBeGreaterThan(0);
     // The SFH 16 has the shop's roughing data (2,800 mm/min); the SF 16 only its finishing (850).
     for (const o of rough) expect(o.tool.code).toMatch(/^SFH_16\./);
-    const finish = ops.filter((o) => o.name === 'SCHLICHTEN_16MM');
+    // No part family: the walls are roughed to size (0.02 mm in); a pass at size after it would cut air (a review found it).
+    expect(ops.some((o) => o.name.startsWith('SCHLICHTEN'))).toBe(false);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('finishes a top plate’s pocket after the SFH 16 with the SF 16 and the shop’s own data (S4)', () => {
+    // A 60 x 40 x 12 top plate with a 40 x 24 pocket 6 deep: the Ø16 roughs it, leaving 0.15 mm, and finishes it.
+    const top = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 10 && i < 50 && j >= 8 && j < 32 ? 6 : 12))));
+    const r = camProgram({ tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false } });
+    const finish = r.setups.flatMap((s) => s.ops).filter((o) => o.name === 'SCHLICHTEN_16MM');
     expect(finish.length).toBeGreaterThan(0);
     for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);
-    // With the shop's own finishing data: SCHLICHT_16MM at 1,200 mm/min (90 % of its SF 16 finishing), not the 850 one.
+    // SCHLICHT_16MM at 1,200 mm/min (90 % of the shop's SF 16 finishing), not the 850 one.
     for (const o of finish) expect(o.cut.template).toBe('SCHLICHT_16MM');
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);

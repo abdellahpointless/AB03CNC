@@ -1355,10 +1355,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     };
     const perTool = new Map<CamTool, Work[]>();
     // Precise families: the roughing leaves ALLOW on the walls for the finishing (it counts as done
-    // for the smaller tools that follow). Every other part gets the shop's finishing pass too (75 of
-    // 92 parts have one, docs/knowledge: S4), along the walls its largest mill roughed to size (the
-    // shop finishes aluminium with the SF 16: 41 operations on 29 parts). Leaving ALLOW there too kept
-    // that mill out of pockets of its own width: twice the time on a test part.
+    // for the smaller tools that follow). Other parts' walls are roughed to size (0.02 mm in): a pass at
+    // size after it would cut air, and leaving ALLOW on them kept the largest mill out of pockets of its
+    // own width (twice the time on a test part). Which walls the shop finishes on them: docs/knowledge S4.
     const precise = !!input.partType && PRECISE.includes(input.partType);
     // A top plate's or contour insert's precise contour is its pockets (where the part goes in): the
     // outside is cut as usual. A seal cage's thin walls have both faces finished.
@@ -1404,7 +1403,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise || (round === 0 && pick.tool.diameter >= (mills[0]?.diameter ?? 0) - 0.01) });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }
