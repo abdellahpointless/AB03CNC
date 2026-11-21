@@ -196,6 +196,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
   let op = '';
   let dia: number | null = null;
   let label = '';
+  const described = new Map<number, { label: string; dia: number | null; reach: number | null }>();
   let pendingTool: number | null = null;
   let toolChanges = 0;
   let cycle: number | null = null;
@@ -279,6 +280,11 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       tool = pendingTool;
       ({ length: reach, diameter: dia } = toolSize(lines, i));
       label = toolLabel(lines, i);
+      // A tool change with no description of its own (a bare "T5 M6" added by hand): the tool that
+      // number was the last time it was described.
+      const before = tool !== null ? described.get(tool) : undefined;
+      if (before && !label && dia === null) ({ label, dia, reach } = before);
+      if (tool !== null && (label || dia !== null)) described.set(tool, { label, dia, reach });
       toolChanges++;
       if (tool !== null && !tools.has(tool)) tools.set(tool, { tool, label, op: toolOp(lines, i), firstLine: i, seconds: 0, ...toolSize(lines, i) });
       addTime(speeds.toolChange);

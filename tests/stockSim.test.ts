@@ -389,4 +389,18 @@ describe('one T number loaded again with another tool', () => {
     // The tool list stays one entry per T number (the viewer and the texts name tools by number).
     expect(tp.tools.map((t) => t.tool)).toEqual([1]);
   });
+
+  it('a bare "T5 M6" with no description of its own is the tool that number was before', () => {
+    const code = ['%', 'O1', 'T5 M6', '(10MM FRAESER / SF_10.00_040_000_AL)', '(DIAMETER 10.00 MM/LENGTH 40.00 MM)', 'G0 G90 X-10. Y10. S4000 M3', 'G43 H5 Z5.', 'G1 Z-5. F300', 'G1 X70.', 'G0 Z50.',
+      'T6 M6', '(6MM FRAESER / SF_06.00_030_000_AL)', '(DIAMETER 6.00 MM/LENGTH 30.00 MM)', 'G0 G90 X20. Y20. S5000 M3', 'G43 H6 Z5.', 'G1 Z-3. F300', 'G1 X25.', 'G0 Z50.',
+      'T5 M6', 'G0 G90 X-10. Y-5. S4000 M3', 'G43 H5 Z5.', 'G1 Z-8. F300', 'G41 D5 G1 X0. Y-5.', 'G1 Y55.', 'G40 G1 X-10. Y55.', 'G0 Z50.', 'M30', '%'].join('\n');
+    const tp = parseToolpath(code, { rapid: 30000, toolChange: 5 });
+    const moves = simMoves(tp);
+    const last = tp.moves.map((m, i) => ({ m, i })).filter(({ m }) => m.tool === 5 && m.kind === 'feed').at(-1)!;
+    expect(moves[last.i].cutter?.radius).toBe(5);
+    expect(last.m.dia).toBe(10);
+    // Its G41 radius is the 10 mm tool's: along "G1 Y55." the path runs 5 mm left of the programmed X0.
+    const along = tp.moves.find((m) => code.split('\n')[m.line] === 'G1 Y55.')!;
+    for (const p of along.points) expect(p[0]).toBeCloseTo(-5, 5);
+  });
 });
