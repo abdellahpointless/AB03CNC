@@ -7,7 +7,11 @@ import { parseToolpath, speedsFor, type Move } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
 import { pocketWithHole } from './heightPart';
 
-/** What Send gives the machine: the program into the remapper, Process (its own tools), Export (ToolRemapper.tsx). */
+/**
+ * What Send gives the machine with the tools CAM AI chose: the program into the remapper, Process, Export
+ * (ToolRemapper.tsx). The app's Process picks the tools again from the machine's inventory and its rules
+ * (HAAS-1's T2 and T21 for the Ø16 mills): tool numbers are not what these tests compare.
+ */
 function send(code: string, machine: string): string {
   let src = code;
   // A Robodrill takes the FANUC dialect: the operator converts first (Process refuses HAAS code there).
@@ -54,7 +58,7 @@ describe("CAM AI's program as each machine gets it", () => {
     }
   });
 
-  it('gives each machine the same code as Send and Process in the remapper, FH pecks included', () => {
+  it('gives each machine the same code as Send and Process in the remapper, with the tools CAM AI chose, FH pecks included', () => {
     for (const machine of machines) expect(codeOf(forMachine(r.code, machine, 'O0001.NC')), machine).toEqual(codeOf(send(r.code, machine)));
     // The same part labelled FH with 8 mm pecks: at most 5 mm both ways.
     const fh = r.code.replace(/\bALU\b/g, 'FH').replace(/(?<![A-Z])Q[\d.]+/g, 'Q8.');
