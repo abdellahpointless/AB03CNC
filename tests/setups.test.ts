@@ -450,4 +450,8 @@ describe("the shop's other ways of writing a setup", () => {
     expect(fix.code).not.toMatch(/GRAD IN X/);
     expect(analyseProgram(parseToolpath(fix.code, S), { jawHeight: 42 }).setups[1].orient).toEqual([...y180]);
   });
+
+  it('15 MM UNTERLAGE // IN Y- is a 15 mm spacer in the jaw at Y-, not the parallels (shop answer)', () => {
+    expect(readInstructions(['15 MM UNTERLAGE // IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, restDepth: null, spacers: [{ mm: 15, side: 'Y-' }] });
+  });
 });

@@ -266,8 +266,9 @@ export function readInstructions(notes: string[]) {
   // The written angle, about the axis really turned (a hint can change it).
   if (found.length) rotation = { axis: turns[0].axis, deg: found[0].deg };
   if (!sizes && onlyX !== null) sizes = { x: onlyX, y: NaN };
-  // An UNTERLAGE written with a side ("15 MM UNTERLAGE/ IN Y-") stands beside the part: a spacer, not a support.
-  const SIDE = '\\s*\\/?\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
+  // An UNTERLAGE written with a side ("15 MM UNTERLAGE/ IN Y-", "15 MM UNTERLAGE // IN Y-") stands
+  // beside the part: a spacer in the jaw pushing it off that jaw (shop answer), not a support.
+  const SIDE = '\\s*\\/{0,2}\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
   // The parallels are also written "CALCO 40 MM" (Portuguese) or "40 MM CALE" / "CALES DE 40 MM"
   // (French, shop answer D1); UNTERCALE and INTERCALE are spacers (below).
   const sup =
