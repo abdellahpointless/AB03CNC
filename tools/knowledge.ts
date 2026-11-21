@@ -840,12 +840,14 @@ const stat = (v: number[]): Stat | null => {
 };
 // Only the values an operation of that kind has: no peck for milling, no step-over for drills.
 const MILLING = new Set<OpKind>(['face', 'pocket', 'contour', 'finish', 'counterbore', 'chamfer']);
-const cutting = new Map<string, { s: number[]; f: number[]; fz: number[]; ap: number[]; ae: number[]; q: number[]; parts: Set<string>; files: Set<string>; codeMaterials: Set<string> }>();
+const cutting = new Map<string, { s: number[]; f: number[]; fz: number[]; ap: number[]; ae: number[]; q: number[]; pairs: string[]; parts: Set<string>; files: Set<string>; codeMaterials: Set<string> }>();
 for (const p of programs) {
   for (const sm of p.read.samples) {
     const material = p.read.material ?? sm.material;
     const key = `${material}|${sm.type}|${sm.d}|${sm.kind}`;
-    const c = cutting.get(key) ?? { s: [], f: [], fz: [], ap: [], ae: [], q: [], parts: new Set<string>(), files: new Set<string>(), codeMaterials: new Set<string>() };
+    const c = cutting.get(key) ?? { s: [], f: [], fz: [], ap: [], ae: [], q: [], pairs: [], parts: new Set<string>(), files: new Set<string>(), codeMaterials: new Set<string>() };
+    // The rpm and the feed one operation runs together (a row's two most common values may never meet).
+    if (sm.s) c.pairs.push(`${sm.s}/${sm.f ?? '-'}`);
     if (sm.s) c.s.push(sm.s);
     if (sm.f) c.f.push(sm.f);
     if (sm.fz) c.fz.push(sm.fz);
@@ -865,7 +867,13 @@ const cuttingData = [...cutting.entries()]
     const [material, type, d, kind] = k.split('|');
     const rpm = stat(c.s);
     const feed = stat(c.f);
+    const pc = new Map<string, number>();
+    for (const x of c.pairs) pc.set(x, (pc.get(x) ?? 0) + 1);
+    const [top, n] = [...pc].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? ['', 0];
+    const share = c.pairs.length ? round(n / c.pairs.length, 100) : 0;
+    const together = top ? { rpm: Number(top.split('/')[0]), feed: top.split('/')[1] === '-' ? null : Number(top.split('/')[1]), operations: n, share, label: c.parts.size === 1 ? 'seen once' : share === 1 ? 'consistent across the library' : share > 0.5 ? 'majority' : 'varies' } : null;
     return {
+      together,
       material,
       type,
       d: Number(d),
@@ -1091,15 +1099,15 @@ for (const [topic, title] of topics) {
       '',
       `How much longer the tool is than its deepest cut (mm), per type: ${Object.entries(facts.toolLongerThanCutMm).map(([t, s]) => (s ? `${t} median ${s.median} (${s.min}–${s.max}, ${s.n} operations)` : '')).filter(Boolean).join('; ')}.`,
       '',
-      "Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation: the most common value with its share of the operations, then median and range. The label is the rpm's and the feed's: **consistent** (one value), **majority** (one value for more than half of the operations), **varies**, **seen once** (one part). Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named.",
+      "Cutting data per part material (the header's), tool type, Ø and kind of operation, as the app's learning reader (`src/lib/cam/learn.ts`) reads each operation. First the rpm and feed one operation runs together most often, with its share of the operations and its label: **consistent** (every operation), **majority** (more than half), **varies**, **seen once** (one part). Then each value on its own: the most common with its share, median and range. Depth per pass and step-over are given for milling only, the peck for drilling only. Where the tool's code is for another material, it is named.",
       '',
-      '| Material | Type | Ø | Kind | Ops | Parts | rpm | Feed mm/min | Plunge | Depth per pass | Step-over | Peck | Label (rpm / feed) |',
+      '| Material | Type | Ø | Kind | Ops | Parts | Run together most (rpm / feed, share, label) | rpm | Feed mm/min | Plunge | Depth per pass | Step-over | Peck |',
       '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     );
     const f = (s: Stat | null) => (s ? `${s.mode} (${Math.round(s.modeShare * 100)}%; ${s.median}, ${s.min}–${s.max})` : '–');
     const g = (s: Stat | null) => (s ? `${s.median} (${s.min}–${s.max})` : '–');
     for (const c of cuttingData)
-      md.push(`| ${c.material}${c.toolCodeMaterials.some((m) => m !== c.material) ? ` (code ${c.toolCodeMaterials.join('/')})` : ''} | ${c.type} | ${c.d} | ${c.kind} | ${c.operations} | ${c.parts} | ${f(c.rpm)} | ${f(c.feed)} | ${g(c.plunge)} | ${g(c.depthPerPass)} | ${g(c.stepOver)} | ${g(c.peck)} | ${c.rpmLabel} / ${c.feedLabel} |`);
+      md.push(`| ${c.material}${c.toolCodeMaterials.some((m) => m !== c.material) ? ` (code ${c.toolCodeMaterials.join('/')})` : ''} | ${c.type} | ${c.d} | ${c.kind} | ${c.operations} | ${c.parts} | ${c.together ? `${c.together.rpm} / ${c.together.feed ?? '–'} (${Math.round(c.together.share * 100)}%, ${c.together.label})` : '–'} | ${f(c.rpm)} | ${f(c.feed)} | ${g(c.plunge)} | ${g(c.depthPerPass)} | ${g(c.stepOver)} | ${g(c.peck)} |`);
   }
   if (topic === 'gcode') md.push('', `Heights the length offset line goes to (G43 ... Z): ${facts.g43Heights.slice(0, 10).map(([z, n]) => `Z${z} ×${n}`).join(', ')}. Why some operations start higher than Z50 is not clear from the programs: an open question.`);
   if (topic === 'gcode') md.push('', `Arcs against straight lines among feed lines, per kind of operation: ${Object.entries(facts.arcsPerKind).map(([k, v]) => `${k} ${v.arcLines} arcs / ${v.straightLines} lines`).join('; ')}.`);
