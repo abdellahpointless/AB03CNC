@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes } from '../src/lib/cam/layouts';
-import { camProgram } from '../src/lib/cam/program';
+import { camProgram, checkProgram } from '../src/lib/cam/program';
+import { analyseProgram, DEFAULT_JAW_HEIGHT } from '../src/lib/setups';
+import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
 import { heightPart } from './heightPart';
 
@@ -36,6 +38,28 @@ describe('how the part lies in the vise', () => {
     expect(r.code).toMatch(/M0 \(TEIL MIT 34 IN X UND 44 IN Y EINSPANNEN/);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 180_000);
+});
+
+describe('where a clamping puts the part', () => {
+  it('puts the faces the vise holds at the stop and the fixed jaw, and writes their size, in every clamping (gap P1)', () => {
+    // After the first clamping has cut the outside, the jaws hold the finished faces, not the raw stock above them.
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    expect(an.setups.length).toBeGreaterThanOrEqual(2);
+    an.setups.forEach((s, k) => {
+      expect(s.grip && s.clampBox, `clamping ${k + 1}`).toBeTruthy();
+      // The app's reader finds the held faces where the program puts the part (its grid: 0.3 mm).
+      expect(Math.abs(s.grip!.stop - s.clampBox!.min[0]), `clamping ${k + 1} at the stop`).toBeLessThanOrEqual(0.3);
+      expect(Math.abs(s.clampBox!.max[1] - s.grip!.back), `clamping ${k + 1} at the fixed jaw`).toBeLessThanOrEqual(0.3);
+    });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.misplaced).toBe(0);
+    // The second clamping written with the whole stock's size (44 x 34), as CAM AI wrote it before: the
+    // vise holds 40 x 30 there, the part would sit 2 mm off; the check counts it, and that locks the program.
+    const wrong = r.code.replace(/(DREHEN\/)(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/, (_m, pre: string, x: string, y: string) => `${pre}${Number(x) + 4} IN X UND ${Number(y) + 4} IN Y`);
+    expect(wrong).not.toBe(r.code);
+    expect(checkProgram(plate, wrong, 'HAAS', undefined, r.pose).misplaced).toBeGreaterThan(0);
+  }, 300_000);
 });
 
 describe('turning the part over', () => {

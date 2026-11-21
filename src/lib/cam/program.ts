@@ -132,6 +132,8 @@ export interface CamSetup {
   zones: Zone[];
   /** The part as held (setup frame: x0, y0, x1, y1; X along the jaws), and where the vise touches it. */
   box: [number, number, number, number];
+  /** The faces the vise holds, between the parallels and the jaw tops (as box): the stop and the fixed jaw touch these. */
+  held: [number, number, number, number];
   contact: Contact | null;
   ops: CamOp[];
 }
@@ -789,7 +791,17 @@ export interface CamCheck {
   grazes: number[];
   /** Spots where a tool goes into a cale under the part (move that cale: a warning). */
   cales: number;
+  /**
+   * Clampings where the faces the vise holds (between the parallels and the jaw tops) lie more than
+   * MISPLACED mm from where the program puts the part at the stop or the fixed jaw: on the machine the
+   * part would sit that far off, which the simulation (it places the part by the size written) cannot
+   * show. Blocks the program, like a collision.
+   */
+  misplaced: number;
 }
+
+/** How far the held faces may lie from where the program puts them (mm): the simulation's grid. */
+const MISPLACED = 0.5;
 
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
@@ -844,6 +856,7 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     rapids,
     grazes,
     cales: hits.filter((h) => h.what === 'cale').length,
+    misplaced: an.setups.filter((x) => x.grip && x.clampBox && Math.max(Math.abs(x.grip.stop - x.clampBox.min[0]), Math.abs(x.clampBox.max[1] - x.grip.back)) > MISPLACED).length,
   };
 }
 
@@ -946,7 +959,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   const order = input.orient ? [SIDES.find((s) => s.name === input.orient!.side)!.d.findIndex((v) => v !== 0)] : [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
   let best: (CamResult & { check: CamCheck }) | null = null;
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
-  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
+  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.check.misplaced === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
   let bestAxis = order[0];
   order.forEach((axis, i) => {
     const r = planFor(input, axis);
@@ -979,6 +992,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       c.rapids <= was.rapids &&
       c.grazes.length <= was.grazes.length &&
       c.cales <= was.cales &&
+      c.misplaced <= was.misplaced &&
       gougeOf(c) <= gougeOf(was);
     const [code, check] = ok ? [arced, c] : [words, was];
     return { ...r, code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
@@ -1126,9 +1140,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
-    const hold: [number, number] = [sb.hi[0] - sb.lo[0], sb.hi[1] - sb.lo[1]];
-    const cx = (sb.lo[0] + sb.hi[0]) / 2;
-    const cy = (sb.lo[1] + sb.hi[1]) / 2;
+    // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
+    // app's reader take them): the stop and the fixed jaw touch those, so the shift and the size written
+    // come from them, as the shop writes the size after a turn (docs/knowledge/cam-gaps.md, P1). Not from
+    // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
+    const held = (!nested && extent(left.at(sb.lo[2], jawTop))) || { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
+    const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
+    const cx = (held.lo[0] + held.hi[0]) / 2;
+    const cy = (held.lo[1] + held.hi[1]) / 2;
     // In the nest the part is the nest's wall off the stop and the fixed jaw, and on its floor.
     const shift: Vec = nested
       ? [STOP_X + NEST.wall + 2 * NEST.clearance + hold[0] / 2 - cx, STOP_Y - NEST.wall - hold[1] / 2 - cy, TABLE_Z - (floor - NEST.floor)]
@@ -1456,7 +1475,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], contact, ops: done });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);

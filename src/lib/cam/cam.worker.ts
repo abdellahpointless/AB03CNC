@@ -43,6 +43,8 @@ export interface CamSummary {
   toolChanges: number;
   collisions: number;
   cales: number;
+  /** Clampings where the vise would hold the part off where the program puts it (CamCheck.misplaced). */
+  misplaced: number;
   /** The largest piece cut out of the part that the model keeps (mm³): a gouge. */
   gouge: number;
   size: number[];
@@ -120,6 +122,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
         toolChanges: r.check.toolChanges,
         collisions: r.check.collisions,
         cales: r.check.cales,
+        misplaced: r.check.misplaced,
         gouge: gougeOf(r.check),
         size: r.size,
         raw: r.raw,

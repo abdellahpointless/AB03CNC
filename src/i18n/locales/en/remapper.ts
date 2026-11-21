@@ -520,6 +520,8 @@ const remapper = {
     intoCale_other: '{{count}} spots where a tool still goes into a cale under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
     collisions_one: '{{count}} collision in the simulation. Look at it in the toolpath viewer.',
     collisions_other: '{{count}} collisions in the simulation. Look at them in the toolpath viewer.',
+    misplaced_one: 'In {{count}} clamping the vise would hold the part off where the program puts it. Download is blocked.',
+    misplaced_other: 'In {{count}} clampings the vise would hold the part off where the program puts it. Download is blocked.',
     percent: '{{v}} %',
     minutes: '{{v}} min',
     match: 'Like the model',

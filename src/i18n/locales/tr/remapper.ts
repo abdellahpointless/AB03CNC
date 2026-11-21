@@ -510,6 +510,8 @@ const remapper: Translation<typeof en> = {
     intoCale_other: 'Bir takımın hâlâ parçanın altındaki kalelere girdiği {{count}} nokta var (üstlerinde baştan başa delinen delikler). İndirme engellendi: parçayı başka şekilde yerleştirin.',
     collisions_one: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
     collisions_other: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
+    misplaced_one: '{{count}} bağlamada mengene parçayı programın koyduğu yerden kaymış tutardı. İndirme engellendi.',
+    misplaced_other: '{{count}} bağlamada mengene parçayı programın koyduğu yerden kaymış tutardı. İndirme engellendi.',
     percent: '%{{v}}',
     minutes: '{{v}} dk',
     match: 'Modele benzerlik',
