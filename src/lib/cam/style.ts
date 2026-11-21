@@ -66,6 +66,8 @@ function shopDrilling(block: string[], at: { x: string | null; y: string | null 
  */
 export function shorten(code: string, still = false): string {
   const src = code.split('\n');
+  // Block delete: whether the control runs a "/" line is the operator's switch, so where the tool is after it is not known.
+  if (src.some((l) => l.trimStart().startsWith('/'))) return code;
   const out: string[] = [];
   const pos: Record<string, string | null> = { X: null, Y: null, Z: null };
   let feed: string | null = null;

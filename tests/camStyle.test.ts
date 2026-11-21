@@ -123,6 +123,11 @@ describe("CAM AI's program in the shop's words", () => {
     }
   });
 
+  it('leaves a program with block-delete lines as it is (whether the control runs them is the operator\'s switch)', () => {
+    const code = ['N1 T1 M6', 'N2 G00 G43 H01 Z50. M08', 'N3 G00 G90 X0. Y0. S1000 M03', 'N4 G00 Z5.', '/N5 G00 X20.', 'N6 G00 X20. Y10.', 'N7 G01 Z-1. F100.'].join('\n');
+    expect(shorten(code)).toBe(code);
+  });
+
   it('drills the shop way also when the cycle starts above its R plane, and still refuses a wrong hole', () => {
     // The G00 to the next depth's first hole and the cycle's way down to R then read as two rapids.
     const high = cam.replace('N48 G00 Z2.', 'N48 G00 Z7.');
