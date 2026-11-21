@@ -26,7 +26,7 @@ function cites(v: unknown, out: Cite[] = []): Cite[] {
 
 describe('the knowledge base', () => {
   it('names no order and no program file, only program ids', () => {
-    for (const f of ['docs/knowledge/knowledge.json', 'docs/knowledge/README.md']) {
+    for (const f of ['docs/knowledge/knowledge.json', 'docs/knowledge/README.md', 'docs/knowledge/cam-gaps.md']) {
       const text = readFileSync(f, 'utf8');
       expect(text).not.toMatch(/\b\d{12}_(?:HAAS|FANUC|MIXED)\b|\b[13]0000\d{7}\b/);
       // Nor a program file's name (it can carry a material number): programs are cited by id.
