@@ -72,6 +72,23 @@ describe('material cut free falls away', () => {
     // One piece only: nothing falls.
     expect(dropLoose(n, new Int32Array(removed.length).fill(KEPT), share, 6 * 1024)).toBe(0);
   });
+
+  it('several parts from one blank: the part is the one the last setup machined, not the largest', () => {
+    // A 16-sample bar cut in two at i = 9: the piece i < 9 is larger (9 wide) than i > 9 (6 wide);
+    // the last setup (moves from 5 on) drilled a sample of the smaller one.
+    const n: [number, number, number] = [16, 4, 1];
+    const removed = new Int32Array(16 * 4).fill(KEPT);
+    const share = new Uint16Array(removed.length);
+    for (let j = 0; j < 4; j++) removed[j * 16 + 9] = 2; // the cut that separates them
+    removed[1 * 16 + 12] = 6; // the last setup's hole in the smaller piece
+    expect(dropLoose(n, removed, share, 8 * 1024, 5)).toBe(9 * 4);
+    expect(removed[2 * 16 + 13]).toBe(KEPT); // the drilled piece stays
+    expect(removed[2 * 16 + 3]).not.toBe(KEPT); // the larger one falls
+    // Without the last setup's moves (from = 0), the largest piece stays, as before.
+    const again = new Int32Array(16 * 4).fill(KEPT);
+    for (let j = 0; j < 4; j++) again[j * 16 + 9] = 2;
+    expect(dropLoose(n, again, new Uint16Array(again.length), 8 * 1024)).toBe(6 * 4);
+  });
 });
 
 describe('touch: when the tool first reaches a point', () => {

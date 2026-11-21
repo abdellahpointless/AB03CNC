@@ -387,7 +387,13 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
       }
     }
   });
-  if (input.dropLoose !== false) dropLoose(n, removed, share, (input.moves.length + 1) * SUB);
+  if (input.dropLoose !== false) {
+    // Several parts from one blank: the last setup that cuts holds one of them, and that one is the part.
+    let last = -1;
+    for (let v = 0; v < removed.length; v++) if (removed[v] !== KEPT && removed[v] > last) last = removed[v];
+    const from = last < 0 ? 0 : input.moves.findIndex((m) => m.setup === input.moves[last].setup);
+    dropLoose(n, removed, share, (input.moves.length + 1) * SUB, from);
+  }
 
   // On the finished surface, also the move that reaches furthest past each cut sample. A later
   // pass that only skims a little more off (a finishing pass, a second circle a bit wider) may take
@@ -468,10 +474,12 @@ export function carve(input: SimInput, onProgress?: (share: number) => void): Gr
 /**
  * Material cut free from the part (a ring left round a contour, an offcut) falls away in the
  * machine: it goes at the instant the last bit holding it to the part is cut. The part is the
- * largest piece left at the end; a piece touching it, even at a corner (26 neighbours), stays.
- * Returns how many samples fell. `end`: an instant after the last move.
+ * largest piece left at the end that moves from `from` on cut into (the last setup: with several
+ * parts from one blank it holds one of them, the one compared), else the largest piece; a piece
+ * touching it, even at a corner (26 neighbours), stays. Returns how many samples fell. `end`: an
+ * instant after the last move.
  */
-export function dropLoose(n: [number, number, number], removed: Int32Array, share: Uint16Array, end: number): number {
+export function dropLoose(n: [number, number, number], removed: Int32Array, share: Uint16Array, end: number, from = 0): number {
   const [nx, ny, nz] = n;
   const inst = (v: number) => (removed[v] === KEPT ? Infinity : removed[v] * SUB + (share[v] >> 6));
   const label = new Int32Array(removed.length).fill(-1);
@@ -518,7 +526,22 @@ export function dropLoose(n: [number, number, number], removed: Int32Array, shar
     seeds.push(v);
   }
   if (sizes.length < 2) return 0;
-  const main = sizes.indexOf(Math.max(...sizes));
+  // The part: the largest piece next to what moves `from` on cut (the last setup's), else the largest.
+  const touched = new Set<number>();
+  for (let v = 0; v < removed.length; v++) {
+    if (removed[v] === KEPT || removed[v] < from) continue;
+    const i = v % nx;
+    const j = Math.floor(v / nx) % ny;
+    const k = Math.floor(v / (nx * ny));
+    for (let kk = Math.max(0, k - 1); kk <= Math.min(nz - 1, k + 1); kk++)
+      for (let jj = Math.max(0, j - 1); jj <= Math.min(ny - 1, j + 1); jj++)
+        for (let ii = Math.max(0, i - 1); ii <= Math.min(nx - 1, i + 1); ii++) {
+          const w = (kk * ny + jj) * nx + ii;
+          if (removed[w] === KEPT) touched.add(label[w]);
+        }
+  }
+  const pool = touched.size ? [...touched] : sizes.map((_, c) => c);
+  const main = pool.reduce((a, c) => (sizes[c] > sizes[a] ? c : a));
   let fell = 0;
   for (let c = 0; c < sizes.length; c++) {
     if (c === main || removed[seeds[c]] !== KEPT) continue;
