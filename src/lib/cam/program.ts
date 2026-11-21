@@ -965,10 +965,21 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => {
     const words = shopStyle(r.code, input.brand).code;
     const arced = arcs(words);
-    if (arced === words) return { ...r, code: words };
-    const c = checkProgram(input.tris, arced, input.brand, input.speeds, r.pose);
-    const ok = c.match >= r.check.match - 0.0005 && c.collisions <= r.check.collisions && c.cales <= r.check.cales && gougeOf(c) <= gougeOf(r.check);
-    return ok ? { ...r, code: arced, check: c } : { ...r, code: words };
+    const was = r.check;
+    const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose);
+    // Nothing worse: the match (never from a pass to below 0.99), collisions, holders, rapids, grazes, cales, gouges.
+    const ok =
+      arced !== words &&
+      c.match >= was.match - 0.0005 &&
+      (was.match < 0.99 || c.match >= 0.99) &&
+      c.collisions <= was.collisions &&
+      c.holders <= was.holders &&
+      c.rapids <= was.rapids &&
+      c.grazes.length <= was.grazes.length &&
+      c.cales <= was.cales &&
+      gougeOf(c) <= gougeOf(was);
+    const [code, check] = ok ? [arced, c] : [words, was];
+    return { ...r, code, check };
   };
   if (input.noNest || !fails(kept).length) return shop(kept);
   // Planned again with the failing sides nested, and again with any side that then fails.

@@ -128,12 +128,26 @@ export function shorten(code: string, still = false): string {
   }
   let k = 0;
   return out
-    .map((l) => (l === '%' || /^O\d/.test(l) || !l ? l : `N${++k} ${l.startsWith('G52') ? l : l.replace(new RegExp(`([XYZIJRQ])(${NUM})`, 'g'), (_w, a: string, v: string) => `${a}${short(v)}`)}`))
+    .map((l) => (l === '%' || /^O\d/.test(l) || !l ? l : `N${++k} ${l.startsWith('G52') ? l : codePart(l, (c) => c.replace(new RegExp(`([XYZIJRQ])(${NUM})`, 'g'), (_w, a: string, v: string) => `${a}${short(v)}`))}`))
     .join('\n');
 }
 
 /** A move that goes nowhere (a line repeating where the tool is) is no move. */
 const moving = (ms: Move[]) => ms.filter((m) => m.kind === 'drill' || m.points.some((p) => p.some((v, c) => Math.abs(v - m.points[0][c]) > 1e-9)));
+/** The line with `f` applied to its code only, its comment left as written. */
+function codePart(l: string, f: (code: string) => string): string {
+  const at = l.indexOf('(');
+  return at < 0 ? f(l) : `${f(l.slice(0, at))}${l.slice(at)}`;
+}
+
+/** The spindle, tool, offset and M words in order, and each clamping's shift: what the moves do not show. */
+const machineWords = (code: string) =>
+  code
+    .split('\n')
+    .map((l) => l.replace(/^N\d+ /, '').replace(/\([^)]*\)?/g, ''))
+    .flatMap((l) => [...l.matchAll(new RegExp(`(?<![A-Z])([STHMD])(${NUM})`, 'g'))].map((m) => `${m[1]}${num(m[2])}`))
+    .join(' ');
+
 const sameMoves = (a: Move[], b: Move[]) =>
   a.length === b.length &&
   a.every((m, i) => {
@@ -157,7 +171,11 @@ export function shopStyle(code: string, brand?: string, shortener: (code: string
   const short = shortener(code);
   const speeds = speedsFor(brand);
   const [a, b] = [parseToolpath(code, speeds), parseToolpath(short, speeds)];
-  const same = sameMoves(moving(a.moves), moving(b.moves)) && a.setups.length === b.setups.length && a.setups.every((s, i) => JSON.stringify(s.notes.map((x) => x.text)) === JSON.stringify(b.setups[i].notes.map((x) => x.text)));
+  const same =
+    sameMoves(moving(a.moves), moving(b.moves)) &&
+    machineWords(code) === machineWords(short) &&
+    a.setups.length === b.setups.length &&
+    a.setups.every((s, i) => JSON.stringify([s.shift, s.notes.map((x) => x.text)]) === JSON.stringify([b.setups[i].shift, b.setups[i].notes.map((x) => x.text)]));
   return same ? { code: short, shortened: true } : { code, shortened: false };
 }
 

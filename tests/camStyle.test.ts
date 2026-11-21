@@ -106,6 +106,16 @@ describe("CAM AI's program in the shop's words", () => {
     expect(after).toEqual(['N1 G00 G53 Z0', 'N2 G00 Z50.']);
   });
 
+  it('gives the program back as it was when the shortened one would change a spindle, tool, offset or M word, or a clamping shift', () => {
+    for (const wrong of [(code: string) => code.replace('S9000 M03', 'S900 M03'), (code: string) => code.replace('G52 X-28. Y33. Z-3.', 'G52 X-28. Y33. Z-2.'), (code: string) => code.replace('N25 G00 Z50.\nN26 M09', 'N25 G00 Z50.\nN26 M05')])
+      expect(shopStyle(cam, 'HAAS', (code) => wrong(shorten(code))).shortened).toBe(false);
+  });
+
+  it('leaves the numbers in comments as written', () => {
+    const header = shopStyle(cam.replace('(TEIL ALU / 40X30X10 / ZUSCHNITT:44X34X15)', '(TEIL ALU / 40X30X0.5 / ZUSCHNITT:44X34X5)'), 'HAAS').code;
+    expect(header).toContain('(TEIL ALU / 40X30X0.5 / ZUSCHNITT:44X34X5)');
+  });
+
   it('gives the program back as it was when the shortened one would move differently', () => {
     const wrong = (code: string) => code.replace('N21 G01 X10. Y5. F1200.', 'N21 G01 X10. Y6. F1200.');
     const back = shopStyle(cam, 'HAAS', wrong);
