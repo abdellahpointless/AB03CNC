@@ -395,4 +395,14 @@ describe("the shop's other ways of writing a setup", () => {
     // UNTERCALE / INTERCALE stay spacers beside the part (shop answers D1, D15).
     expect(readInstructions(['UNTERCALE 15 MM IN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, spacers: [{ mm: 15, side: 'Y-' }] });
   });
+
+  it('reads the clamping sizes written 30 IN X 13 UND Y, 64 IN X /40 IN Y and 100 IN X Y', () => {
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y-/30 IN X 13 UND Y']).sizes).toEqual({ x: 30, y: 13 });
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+/21 IN X 34.5 UND Y']).sizes).toEqual({ x: 21, y: 34.5 });
+    expect(readInstructions(['TEIL MIT 64 IN X /40 IN Y SPANNEN']).sizes).toEqual({ x: 64, y: 40 });
+    expect(readInstructions(['MOD. SPANNEN F. RUECKS./100 IN X Y']).sizes).toEqual({ x: 100, y: 100 });
+    // Unchanged: a size in X only, and a direction after X is not a Y size.
+    expect(readInstructions(['MOD. HOCHKANT/PERS. Y+/150 IN X/RAFI X- Z+']).sizes).toEqual({ x: 150, y: NaN });
+    expect(readInstructions(['TEIL MIT 32 IN X UND Y EINSPANNEN']).sizes).toEqual({ x: 32, y: 32 });
+  });
 });

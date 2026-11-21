@@ -200,12 +200,18 @@ function faces(text: string): Face[] {
 /** Reads one setup's instructions. */
 export function readInstructions(notes: string[]) {
   const t = notes.join(' / ').toUpperCase();
-  // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y".
-  // "36 IN X AND 41 IN Y", "30 IN X 20.5 IN Y"; "30 IN X UND Y" and "100 IN XY": the same both ways.
-  // Also "TOP 14X AND 22 IN Y" (14 along X, 22 along Y).
-  const both = t.match(new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:(?:IN|UM)\\s*)?X\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`));
-  const xy = t.match(new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b)`));
-  let sizes: { x: number; y: number } | null = both ? { x: num(both[1]), y: num(both[2]) } : xy ? { x: num(xy[1]), y: num(xy[1]) } : null;
+  // "104 IN X UND 54 IN Y", also written "104 UM X UND 54 UM Y", "36 IN X AND 41 IN Y",
+  // "30 IN X 20.5 IN Y", "64 IN X /40 IN Y", and "TOP 14X AND 22 IN Y" (14 along X, 22 along Y);
+  // "30 IN X 13 UND Y" (13 along Y); "30 IN X UND Y", "100 IN XY" and "100 IN X Y": the same both ways.
+  const sizeForms: [RegExp, (m: RegExpMatchArray) => { x: number; y: number }][] = [
+    [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:(?:IN|UM)\\s*)?X\\s*\\/?\\s*(?:UND|AND|ET)?\\s*${NUM}\\s*(?:IN|UM)\\s*Y`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
+    [new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*(?:IN|UM)\\s*X\\s*${NUM}\\s*(?:UND|AND|ET)\\s*Y\\b`, 'g'), (m) => ({ x: num(m[1]), y: num(m[2]) })],
+    [new RegExp(`${NUM}\\s*(?:IN|UM)\\s*(?:XY\\b|X\\s*UND\\s*Y\\b|X\\s*Y(?!\\s*[+-])\\b)`, 'g'), (m) => ({ x: num(m[1]), y: num(m[1]) })],
+  ];
+  const sizeNotes = sizeForms
+    .flatMap(([re, read]) => [...t.matchAll(re)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, size: read(m) })))
+    .sort((a, b) => a.at - b.at);
+  let sizes: { x: number; y: number } | null = sizeNotes[0]?.size ?? null;
   let onlyX: number | null = null;
   let rotation: SetupInfo['rotation'] = null;
   // Turns in the order they are written: "180 GRAD UM Y", "180 GRAD IN X" (the same), "MIT/90 IN X", "MIT 180 IN Y".
@@ -216,7 +222,7 @@ export function readInstructions(notes: string[]) {
   // Not "D4.8 IN X-" (a hole's diameter and the side it is on).
   for (const m of t.matchAll(new RegExp(`(?<![A-Z\\d.,Ø])${NUM}\\s*IN\\s*([XYZ])\\b(?!\\s*(?:UND|AND|ET|\\d|[+-]))`, 'g'))) {
     // Not the clamping sizes ("44 IN X UND 90 IN Y": the 90 is a size, not a turn).
-    if (both && m.index! >= both.index! && m.index! < both.index! + both[0].length) continue;
+    if (sizeNotes.some((n) => m.index! >= n.at && m.index! < n.end)) continue;
     const v = num(m[1]);
     if ([90, 180, 270].includes(v)) found.push({ at: m.index!, axis: m[2] as Axis, deg: v });
     else if (m[2] === 'X' && !sizes) onlyX = v;
