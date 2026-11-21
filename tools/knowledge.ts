@@ -138,7 +138,7 @@ rule('gcode.cycleReturn', 'gcode', 'Drilling and tapping cycles return to the st
   cycleLines(p).filter((i) => /G98|G99/.test(code(p.lines[i]))).map((i) => ({ holds: /(?<![A-Z])G98(?![0-9])/i.test(code(p.lines[i])), at: i })));
 rule('gcode.cycleR2', 'gcode', 'The R plane of a cycle is R2. (2 mm above Z0); lower R planes are written where the hole starts lower.', 'cycle lines with R', (p) =>
   cycleLines(p).filter((i) => /(?<![A-Z])R-?[\d.]/.test(code(p.lines[i]))).map((i) => ({ holds: /(?<![A-Z])R2\.?(?![0-9])/.test(code(p.lines[i])), at: i })));
-rule('gcode.cycleKinds', 'gcode', 'Spot drilling uses G81, drilling G83 (pecking with Q), tapping G84; G73 is not used.', 'cycle starts', (p) =>
+rule('gcode.cycleKinds', 'gcode', 'The drilling cycles are G81, G83 (always with a peck Q) and G84 (tapping); G73 is never used.', 'cycle starts', (p) =>
   cycleLines(p).filter((i) => /G98|G99/.test(code(p.lines[i]))).map((i) => ({ holds: /G8[134](?![0-9])/.test(code(p.lines[i])) && !(/G83/.test(code(p.lines[i])) && !/(?<![A-Z])Q[\d.]/.test(code(p.lines[i]))), at: i })));
 rule('gcode.arcsIJ', 'gcode', 'Arcs are written with I and J (centre), not with R.', 'arc lines', (p) =>
   p.lines.flatMap((l, i) => (/(?<![A-Z])G0*[23](?![0-9])/i.test(code(l)) && /(?<![A-Z])[IJR]-?[\d.]/i.test(code(l)) ? [{ holds: !/(?<![A-Z])R-?[\d.]/i.test(code(l)), at: i }] : [])));

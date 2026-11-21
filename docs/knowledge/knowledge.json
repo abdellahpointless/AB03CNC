@@ -547,7 +547,7 @@
   {
    "id": "gcode.cycleKinds",
    "topic": "gcode",
-   "rule": "Spot drilling uses G81, drilling G83 (pecking with Q), tapping G84; G73 is not used.",
+   "rule": "The drilling cycles are G81, G83 (always with a peck Q) and G84 (tapping); G73 is never used.",
    "unit": "cycle starts",
    "applies": 920,
    "holds": 920,

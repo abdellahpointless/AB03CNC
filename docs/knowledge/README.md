@@ -259,7 +259,7 @@ Cutting data per material (from the tool code), tool type and Ø, as the app's l
   - `O0161424.X20:55` `N53 G98 G81 Z-.5 R2. F300`
   - `O1420213.C62:236` `N234 G98 G83 P200 Z-4. R2. Q2. F210.`
   - Exceptions: `O0161108.X20:202` `N200 G98 G83 Z-10.94 R-2. Q4.5 F510`; `O1420213.C62:383` `N381 G98 G83 Z-15.389 R-6. Q2.5 F200.`; `O0106624.X20:59` `N57 G98 G81 Z-3.5 R-1. F300`
-- **Spot drilling uses G81, drilling G83 (pecking with Q), tapping G84; G73 is not used.** (consistent across the library: 920 of 920 cycle starts)
+- **The drilling cycles are G81, G83 (always with a peck Q) and G84 (tapping); G73 is never used.** (consistent across the library: 920 of 920 cycle starts)
   - `O0161108.X20:171` `N169 G98 G83 Z-7. R2. Q5. F475`
   - `O0161424.X20:55` `N53 G98 G81 Z-.5 R2. F300`
   - `O1420213.C62:236` `N234 G98 G83 P200 Z-4. R2. Q2. F210.`
