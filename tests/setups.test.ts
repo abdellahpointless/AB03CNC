@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
 import { partLook } from '../src/lib/partLook';
-import { analyseProgram, analyseSetups, partSizes, readInstructions, spacerAt, viseSpans } from '../src/lib/setups';
+import { analyseProgram, analyseSetups, exportBlocked, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 
 const S = { rapid: 30_000, toolChange: 2 };
@@ -410,5 +410,17 @@ describe("the shop's other ways of writing a setup", () => {
     const r = readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD X+/53 IN X 36 IN Y', 'TEIL 90 GRAD UM X DREHEN/Z+ WIRD Y-/53 IN X 50 IN Y']);
     expect(r.sizes).toEqual({ x: 53, y: 50 });
     expect(r.turns).toEqual([{ axis: 'Y', deg: 90 }, { axis: 'X', deg: 90 }]);
+  });
+
+  it('what stops the export: tools or holders into the jaws or the part, never for admins (D7, D8, D14)', () => {
+    const hit = (what?: Collision['what']): Collision => ({ move: 0, line: 0, tool: 1, point: [0, 0, 0], depth: 1, what });
+    expect(exportBlocked([hit()], false, false)).toBe(true);
+    expect(exportBlocked([hit('holder'), hit('holderPart')], false, false)).toBe(true);
+    expect(exportBlocked([], true, false)).toBe(true); // still checking
+    // A tool into a cale or a spacer is a warning; unknown cale heights and wrong sizes are not hits at all.
+    expect(exportBlocked([hit('cale'), hit('spacer')], false, false)).toBe(false);
+    expect(exportBlocked([], false, false)).toBe(false);
+    // Admins can always export (they see the same warnings).
+    expect(exportBlocked([hit(), hit('holderPart')], true, true)).toBe(false);
   });
 });

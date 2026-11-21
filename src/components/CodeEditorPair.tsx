@@ -7,6 +7,7 @@ const ToolpathSoon = lazy(() => import('./ToolpathSoon'));
 import { convertFanucToHaas, FanucToHaasResult } from '../lib/fanucToHaasConverter';
 import { convertHaasToFanuc, HaasToFanucResult } from '../lib/haasToFanucConverter';
 import { applyG53BeforeG52, isWholeProgram } from '../lib/gcodeProcessor';
+import { exportBlocked } from '../lib/setups';
 import { useT } from '../i18n';
 import { useSync } from '../contexts/SyncContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -342,14 +343,15 @@ export default function CodeEditorPair({
   // A tool into a cale is a warning (move the cale), not a reason to stop the export.
   const blocking = useMemo(() => collisions.hits.filter((h) => h.what !== 'cale' && h.what !== 'spacer'), [collisions.hits]);
   const caleHits = useMemo(() => collisions.hits.filter((h) => h.what === 'cale'), [collisions.hits]);
-  const exportBlocked = collisions.checking || blocking.length > 0 || collisions.rejects.length > 0;
+  const isAdmin = user?.role === 'ADMIN';
+  const blocked = exportBlocked(collisions.hits, collisions.checking, isAdmin);
   const holderHits = useMemo(() => collisions.hits.filter((h) => h.what === 'holderPart'), [collisions.hits]);
   // A collision in the code shown: the toolpath button turns red and opens where it happens.
   const hitShown = toolpathOn && !!outputCode && !isOutputStale && blocking.length > 0;
   const caleShown = toolpathOn && !!outputCode && !isOutputStale && !hitShown && caleHits.length > 0;
 
   const copyToClipboard = async () => {
-    if (!outputCode || isOutputStale || exportBlocked) return;
+    if (!outputCode || isOutputStale || blocked) return;
     const { lines: processedLines } = applyG53BeforeG52(outputCode.split('\n'));
     try {
       await navigator.clipboard.writeText(processedLines.join('\n'));
@@ -398,7 +400,7 @@ export default function CodeEditorPair({
   };
 
   const handleExportClick = (confirmed = false) => {
-    if (!outputCode || isOutputStale || exportBlocked) return;
+    if (!outputCode || isOutputStale || blocked) return;
     // Red safety findings: show them and ask before exporting.
     if (!confirmed && safety && safety.errors > 0) {
       setConfirmingExport(true);
@@ -796,9 +798,9 @@ export default function CodeEditorPair({
               </button>
               <button 
                 onClick={copyToClipboard}
-                disabled={!outputCode || isOutputStale || exportBlocked}
+                disabled={!outputCode || isOutputStale || blocked}
                 className="btn-secondary text-xs min-h-11 px-3.5"
-                title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : t('editor.copyTitle')}
+                title={blocked && outputCode ? t('editor.collisionBlockedTitle') : t('editor.copyTitle')}
               >
                 {isCopied ? <Check size={13} className="text-[var(--green-500)]" /> : <Copy size={13} />}
                 <span>{isCopied ? t('editor.copied') : t('editor.copy')}</span>
@@ -806,8 +808,8 @@ export default function CodeEditorPair({
               {onExport && (
                 <button 
                   onClick={() => handleExportClick()}
-                  disabled={!outputCode || isOutputStale || exportBlocked}
-                  title={exportBlocked && outputCode ? t('editor.collisionBlockedTitle') : `${t('editor.extractTitle')} (Ctrl+S)`}
+                  disabled={!outputCode || isOutputStale || blocked}
+                  title={blocked && outputCode ? t('editor.collisionBlockedTitle') : `${t('editor.extractTitle')} (Ctrl+S)`}
                   className="btn-warning text-xs min-h-11 px-3.5 font-semibold"
                 >
                   <Download size={13} />
@@ -829,7 +831,7 @@ export default function CodeEditorPair({
               ) : (
                 <>
                   <span className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)]">
-                    <ShieldAlert size={14} /> {t('editor.collisionBlocked', { count: blocking.length })}
+                    <ShieldAlert size={14} /> {t(isAdmin ? 'editor.collisionAdmin' : 'editor.collisionBlocked', { count: blocking.length })}
                   </span>
                   <span className="flex flex-wrap gap-1.5">
                     {blocking.slice(0, 6).map((h, i) => (
@@ -851,7 +853,7 @@ export default function CodeEditorPair({
             </div>
           )}
           {outputCode && !isOutputStale && !collisions.checking && collisions.rejects.length > 0 && (
-            <div role="alert" className="px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs space-y-2 bg-[var(--rose-500)]/10">
+            <div role="status" className="px-5 py-2.5 border-b border-[var(--border-subtle)] text-xs space-y-2 bg-[rgba(224,138,77,0.12)]">
               {collisions.rejects.map((b, i) => {
                 const all = outputLines;
                 const from = Math.max(0, b.line - 2);
@@ -860,7 +862,7 @@ export default function CodeEditorPair({
                     <button
                       type="button"
                       onClick={() => goToOutputLine(b.line)}
-                      className="inline-flex items-center gap-2 font-semibold text-[var(--rose-text)] hover:underline text-left"
+                      className="inline-flex items-center gap-2 font-semibold text-[var(--orange-text)] hover:underline text-left"
                     >
                       <ShieldAlert size={14} className="shrink-0" />{' '}
                       {b.kind === 'cale'
@@ -869,7 +871,7 @@ export default function CodeEditorPair({
                     </button>
                     <pre className="font-mono text-[11px] leading-5 rounded-md bg-[var(--bg-base)] border border-[var(--border-subtle)] px-2 py-1 overflow-x-auto">
                       {all.slice(from, b.line + 3).map((l, j) => (
-                        <div key={j} className={from + j === b.line ? 'text-[var(--rose-text)] font-semibold' : 'text-[var(--text-secondary)]'}>
+                        <div key={j} className={from + j === b.line ? 'text-[var(--orange-text)] font-semibold' : 'text-[var(--text-secondary)]'}>
                           {String(from + j + 1).padStart(5, ' ')}  {l}
                         </div>
                       ))}
