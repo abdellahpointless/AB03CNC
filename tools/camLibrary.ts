@@ -61,6 +61,9 @@ function summary(code: string) {
   return {
     sameFeed,
     time,
+    // Per clamping, how far inside the written box the held faces (between the vise floor and the jaw
+    // tops) lie at the stop and at the fixed jaw (mm): what the part would sit off where the program puts it.
+    placement: an.setups.map((s) => (s.grip && s.clampBox ? [Math.round((s.grip.stop - s.clampBox.min[0]) * 100) / 100, Math.round((s.clampBox.max[1] - s.grip.back) * 100) / 100] : null)),
     setups: an.setups.length,
     parallels: an.setups.map((s) => readInstructions(s.notes).support),
     turns: an.setups.slice(1).map((s) => s.turns.map((t) => `${t.axis}${t.deg}`).join(' ') || '-'),
