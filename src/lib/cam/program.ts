@@ -1526,7 +1526,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       o.key = `${base}|${n}`;
     }
     if (input.skip?.length) {
-      const kept = ops.filter((o) => !input.skip!.includes(o.key!));
+      const gone = ops.filter((o) => input.skip!.includes(o.key!));
+      // A finishing pass goes with the roughing of its Ø: alone it would plunge into what that roughing leaves.
+      const kept = ops.filter((o) => !gone.includes(o) && !(o.kind === 'finish' && gone.some((g) => g.kind === 'pocket' && Math.abs(g.tool.diameter - o.tool.diameter) < 0.01)));
       ops.length = 0;
       ops.push(...kept);
     }

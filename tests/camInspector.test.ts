@@ -71,4 +71,16 @@ describe('removing an operation', () => {
     expect(left).toEqual(keys.filter((k) => k !== gone.key));
     expect(less.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length).toBe(all.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length - 1);
   }, 900_000);
+
+  it('takes the finishing pass out with the roughing it finishes (alone it would plunge into what that roughing leaves; a review found it)', () => {
+    // A top plate: its pocket is roughed with the Ø16 leaving 0.15 mm, then finished.
+    const top = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 10 && i < 50 && j >= 8 && j < 32 ? 6 : 12))));
+    const input = { tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16] as [number, number, number], orient: { side: 'Z+', spin: false }, noNest: true, partType: 'topPlate' as const };
+    const all = camProgram(input);
+    const ops = all.setups[0].ops;
+    const rough = ops.find((o) => o.name === 'FRAESEN_16MM')!;
+    expect(ops.some((o) => o.name === 'SCHLICHTEN_16MM')).toBe(true);
+    const less = camProgram({ ...input, skip: [rough.key!] });
+    expect(less.setups[0].ops.some((o) => o.name === 'FRAESEN_16MM' || o.name === 'SCHLICHTEN_16MM')).toBe(false);
+  }, 900_000);
 });
