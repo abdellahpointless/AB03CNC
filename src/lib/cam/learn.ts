@@ -1,3 +1,5 @@
+import { BRASS_RE } from '../gcodeProcessor';
+
 /*
  * Reading the shop's programs for what CAM AI needs to program like them: per operation the tool
  * (type, Ø, length, the material its data is for), the rpm, the feeds, the depth per pass, the
@@ -68,6 +70,27 @@ export const kindOf = (op: string, type: string): OpKind => {
 /** The tool suffix names the material the data is for; the header names the part's. */
 const MATERIAL: Record<string, string> = { FH: 'FH', KS: 'POM', KSHS: 'POM', POM: 'POM', ALHS: 'ALU', AL: 'ALU', ALU: 'ALU', FRHS: 'FR', 'PC GF': 'PC GF' };
 
+/**
+ * The part's material as the header writes it (the library's spellings: PC GF30, PCGF, PC-GF30,
+ * MS58, PEEK, PETP, EPO, VA1.4305...). Not from the tool codes: the shop cuts PC GF and PEEK with
+ * its aluminium data, so the first tool's code would call them ALU.
+ */
+function headerMaterial(header: string): string | null {
+  const ways: [RegExp, string][] = [
+    [/\bPC[\s-]?GF/, 'PC GF'],
+    [BRASS_RE, 'MS'],
+    [/\bPEEK\b/, 'PEEK'],
+    [/\bPETP\b/, 'PETP'],
+    [/\bVA\s?1\.4\d{3}\b|\b1\.4\d{3}\b|\bINOX\b/, 'VA'],
+    [/\bEPO(?:XYDE?)?\b/, 'EPO'],
+    [/\bRESOPAL\b/, 'RESOPAL'],
+    [/\bALU(?:MINIUM)?\b/, 'ALU'],
+    [/\bPOM\b/, 'POM'],
+    [/\bFH\b/, 'FH'],
+  ];
+  return ways.find(([re]) => re.test(header))?.[1] ?? null;
+}
+
 const median = (v: number[]) => {
   if (!v.length) return null;
   const s = [...v].sort((a, b) => a - b);
@@ -84,7 +107,7 @@ export function readProgram(text: string, name = ''): PartRead {
   // Lines cut to a sane length: the regexes below are quadratic on a crafted endless line.
   const lines = text.split(/\r?\n/).map((l) => l.slice(0, 500));
   const header = lines.slice(0, 15).join(' ').toUpperCase();
-  const mat = header.match(/\b(FH|POM|ALU|PC GF|RESOPAL|EPOXYDE)\b/);
+  const mat = headerMaterial(header);
   const dims = [...header.matchAll(/(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)/g)].map((m) => [1, 2, 3].map((k) => Number(m[k].replace(',', '.'))));
   const raw = header.match(/ZUSCHNITT\s*:?\s*(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)/);
 
@@ -228,7 +251,7 @@ export function readProgram(text: string, name = ''): PartRead {
   close();
   return {
     name,
-    material: mat ? (MATERIAL[mat[1]] ?? mat[1]) : (samples[0]?.material ?? null),
+    material: mat ?? samples[0]?.material ?? null,
     size: dims[0] ?? null,
     raw: raw ? [1, 2, 3].map((k) => Number(raw[k].replace(',', '.'))) : null,
     setups: order.filter((o) => o.length).length,

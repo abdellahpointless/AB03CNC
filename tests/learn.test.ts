@@ -126,3 +126,23 @@ describe('the kind of an operation', () => {
   });
 });
 
+describe("the part's material, as the header writes it", () => {
+  const header = (h: string) => readProgram(['%', 'O0001', `N1 (TEIL ${h} / 40X30X10 / ZUSCHNITT:44X34X15)`, 'N2 (TOOLPATH PLAN)', 'N3 T1 M6', 'N4 (MK_40.00_030_000_ALHS)', 'N5 G00 G43 H1 Z50. M08', 'N6 G00 G90 X0 Y0 S8000 M03', 'N7 G01 Z0 F500.', 'N8 G01 X50. F3000.', '%'].join('\n')).material;
+  it('reads every spelling the library uses, not the first tool code (aluminium data on a PC GF part)', () => {
+    const cases: [string, string][] = [
+      ['ALU', 'ALU'],
+      ['PC GF30', 'PC GF'],
+      ['PCGF', 'PC GF'],
+      ['PC-GF30', 'PC GF'],
+      ['MS58', 'MS'],
+      ['PEEK', 'PEEK'],
+      ['PETP', 'PETP'],
+      ['EPO', 'EPO'],
+      ['VA1.4305', 'VA'],
+      ['POM', 'POM'],
+      ['FH', 'FH'],
+    ];
+    for (const [written, read] of cases) expect(header(written), written).toBe(read);
+  });
+});
+
