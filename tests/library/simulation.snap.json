@@ -113,8 +113,8 @@
   "rejects": [],
   "collisions": {},
   "conflicts": 0,
-  "match": 0.9967,
-  "pieces": 2
+  "match": 1,
+  "pieces": 0
  },
  "O0089654.X20 293fd65d/62b6a06f": {
   "result": "compared",
@@ -255,8 +255,8 @@
    "cale": 2
   },
   "conflicts": 0,
-  "match": 0.8672,
-  "pieces": 2
+  "match": 1,
+  "pieces": 0
  },
  "O0125674.X20 64b41497/cbf76cff": {
   "result": "compared",

@@ -362,4 +362,11 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['TEIL 90 GRAD IN X / Z+ IN Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
     expect(readInstructions(['TEIL 90 GRAD IN Y// Z+ IN X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
   });
+
+  it('Z+ WIRD TO X-, Z+ WIRD IN Y+ and Z+ ZU Y+ name the direction like Z+ WIRD', () => {
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD TO X-']).turns).toEqual([{ axis: 'Y', deg: -90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN/Z+ WIRD IN Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD IN X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
+    expect(readInstructions(['TEIL 90 GRAD UM X DREHEN /Z+ ZU Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
+  });
 });

@@ -224,9 +224,10 @@ export function readInstructions(notes: string[]) {
     else if (m[2] === 'X' && !sizes) onlyX = v;
   }
   found.sort((a, b) => a.at - b.at);
-  // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-). Each turn
-  // reads the hint written after it (before the next turn), else any hint that fits its axis.
-  const hints = [...t.matchAll(/([XYZ])\s*([+-])\s*(?:WIRD|IN|TO)\s*([XYZ])\s*([+-])/g)].map((h) => {
+  // A quarter turn's direction: "X+ WIRD Y+" (X+ becomes Y+), "Z+ IN Y-" (Z+ goes to Y-), also
+  // "Z+ WIRD TO X-", "Z+ WIRD IN Y+", "Z+ ZU Y-". Each turn reads the hint written after it (before
+  // the next turn), else any hint that fits its axis.
+  const hints = [...t.matchAll(/([XYZ])\s*([+-])\s*(?:WIRD(?:\s*(?:TO|IN|ZU)\b)?|IN|TO|ZU)\s*([XYZ])\s*([+-])/g)].map((h) => {
     const from: Vec = [0, 0, 0];
     const to: Vec = [0, 0, 0];
     from['XYZ'.indexOf(h[1])] = h[2] === '-' ? -1 : 1;
