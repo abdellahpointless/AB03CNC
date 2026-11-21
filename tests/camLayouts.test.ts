@@ -39,6 +39,17 @@ describe('how the part lies in the vise', () => {
 });
 
 describe('turning the part over', () => {
+  it('reaches a later clamping with one turn where one will do (a review found two after the turn about X)', () => {
+    // A 40 x 30 x 12 block with an off-centre pocket and a step on its top, laid X+ up first.
+    const tris = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 4 && i < 16 && j >= 5 && j < 14 ? 6 : i >= 30 && i < 38 && j >= 20 && j < 28 ? 9 : 12))));
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, orient: { side: 'X+', spin: false } });
+    expect(r.setups.length).toBeGreaterThanOrEqual(3);
+    expect(r.setups[1].notes[0]).toMatch(/^TEIL 180 GRAD UM X DREHEN\//);
+    for (const s of r.setups.slice(2)) expect((s.notes[0].match(/DREHEN/g) ?? []).length, s.notes[0]).toBe(1);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('turns it about X, as the shop mostly does (docs/knowledge: second clamping X180 in 63 of 100, Y180 in 31), laid along X or across', () => {
     for (const spin of [false, true]) {
       const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin } });

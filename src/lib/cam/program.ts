@@ -1088,6 +1088,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const tools = catalog(mat, input.tools, input);
   const mills = usable(tools, MILLS);
   const addSetup = (si: number, least = 3): boolean => {
+    // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
+    // the one the operator reaches from the clamping before with fewer turns.
+    if (prevR && setups.length >= 2) {
+      const turns = (R: Mat3) => {
+        const phrase = turnPhrase(mul(R, transpose(prevR!)));
+        return phrase ? phrase.match(/DREHEN/g)!.length : R.every((v, k) => Math.abs(v - prevR![k]) < 1e-9) ? 0 : 3;
+      };
+      const other = mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], feats[si].R);
+      if (turns(other) < turns(feats[si].R)) feats[si] = sideFeatures(tris, SIDES[si], false, other);
+    }
     // What this try changes, to undo when the vise asks for a deeper grip and it is planned again.
     const was = { drilled: new Map(drilled), notes: notes.length };
     input.live?.({ kind: 'stage', stage: 'setup', setup: setups.length, of: Math.max(chosen.length, setups.length + 1), side: SIDES[si].name });
