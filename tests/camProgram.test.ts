@@ -44,6 +44,17 @@ describe('CAM AI', () => {
     }
   }, 180_000);
 
+  it('roughs with the SFH 16, as the shop does (T4)', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const ops = r.setups.flatMap((s) => s.ops);
+    const rough = ops.filter((o) => o.name === 'FRAESEN_16MM');
+    expect(rough.length).toBeGreaterThan(0);
+    // The SFH 16 has the shop's roughing data (2,800 mm/min); the SF 16 only its finishing (850).
+    for (const o of rough) expect(o.tool.code).toMatch(/^SFH_16\./);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('never uses a tool the operator does not have', () => {
     const exclude = LIBRARY.ALU.filter((t) => t.type.startsWith('SF') && t.d === 16).map((t) => t.code);
     const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], exclude });

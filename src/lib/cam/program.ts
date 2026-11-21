@@ -1127,7 +1127,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
   let prevR: Mat3 | null = null;
   // The shop's template tools for this material, plus the machine's special ones (machine's first).
   const tools = catalog(mat, input.tools, input);
-  const mills = usable(tools, MILLS);
+  // Of one Ø, the mills with the shop's roughing data first: the SFH 16 roughs at 2,800 mm/min, the
+  // SF 16 has only its finishing data (850) and finishes the walls (docs/knowledge: T4).
+  const finishOnly = (t: CamTool) => !!t.template && t.template.ops.every((o) => o.kind === 'finish');
+  const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)));
   const addSetup = (si: number, least = 3): boolean => {
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
