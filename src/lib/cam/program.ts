@@ -226,11 +226,11 @@ function grown(occ: Uint8Array, [nx, ny, nz]: number[]): Uint8Array {
 }
 
 /**
- * The cale under the part: the jaws grip as little as the cut needs (the outside is cut down to
- * 0.5 mm above the jaws), at least 3 mm to hold it, at most 6, never all of the part.
+ * The cale under the part for a grip of `want` mm (the nearest the cales give, not deeper), at least
+ * `least` (3 mm holds it), never all of the part.
  */
 function caleFor(height: number, want: number, least = 3): { cale: number; grip: number } {
-  const target = Math.max(3, least, Math.min(6, want, height - 1));
+  const target = Math.max(3, least, Math.min(want, height - 1));
   let best: { cale: number; grip: number } | null = null;
   for (const c of CALE_HEIGHTS) {
     const grip = JAW - c;
@@ -240,6 +240,24 @@ function caleFor(height: number, want: number, least = 3): { cale: number; grip:
     if (!best || score < (best.grip <= target + 1e-6 ? target - best.grip : 100 + best.grip - target)) best = { cale: c, grip };
   }
   return best ?? { cale: 42, grip: 3 };
+}
+
+/** The first clamping's grip (mm): the shop grips 4 to 5 mm (86 of 98 first clampings). */
+const FIRST_GRIP = 5;
+/** How far above the jaws the outside is cut down to (mm): the shop stops 0.5 to 2.5 mm above them (156 of 208). */
+const JAW_CLEAR = 1.5;
+
+/**
+ * The lowest height (setup frame, at most Z0) where stock still stands outside the part: what this
+ * clamping's outside cut must reach. Null when there is none (the outside is done).
+ */
+function lowestOutside(left: Left, P: Float32Array, sb: { lo: Vec; hi: Vec }): number | null {
+  let low: number | null = null;
+  for (let z = Math.min(0, sb.hi[2]) - 0.25; z > sb.lo[2] + 0.25; z -= 0.5) {
+    const out = difference(left.at(z - 0.25, z + 0.25), offset(filled(slice(P, z)), Math.max(0.05, left.skin)));
+    if (area(out) > 1) low = z - 0.25;
+  }
+  return low;
 }
 
 /** The cale under the nest in the vise: the jaws grip its floor and the foot of its walls (about 8 mm). */
@@ -1068,12 +1086,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
   input.live?.({ kind: 'stage', stage: 'features' });
   input.live?.({ kind: 'stage', stage: 'stock' });
-  // The simpler face first (fewer floors and holes), the finished front last of the two.
+  // The busier face first (more floors and holes): the shop's first clamping does most of the work
+  // (docs/knowledge: workholding.firstClampingMostWork, 76 of 100 programs).
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
   const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
   // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
   const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
-  for (const si of first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
+  for (const si of first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) >= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
   // Turned over about the machine's X, as the shop mostly does (docs/knowledge: X180 in 63 of 100
   // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
   const [s1, s2] = chosen;
@@ -1137,7 +1156,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
     // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
     const nestDepth = Math.min(stockH - 1, 30, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
-    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least);
+    // How deep the jaws grip, as the shop does (docs/knowledge: workholding.grip, outsideCutsAboveJaws):
+    // the first clamping 5 mm (86 of 98 first clampings grip 4 to 5); a later one as deep as the
+    // outside still to cut allows, JAW_CLEAR under it: the more the vise holds, the better.
+    const want = setups.length ? (lowestOutside(left, P, sb) ?? sb.hi[2]) - JAW_CLEAR - sb.lo[2] : FIRST_GRIP;
+    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, want, least);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
@@ -1254,8 +1277,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
     const bottom = -H - 0.2;
-    // Also a level at the jaw limit: the outside is cut down to there, never lower.
-    const jawLimit = jawTop + 0.5;
+    // Also a level at the jaw limit: the outside is cut down to there, never lower (the shop stops it
+    // above the jaws and finishes it from the other side).
+    const jawLimit = jawTop + JAW_CLEAR;
     const stops = [...new Set([...floors, bottom, ...(jawLimit < 0 && jawLimit > bottom ? [jawLimit] : [])])].sort((p, q) => q - p);
     const maxAp = mills.length ? cutData(mills[0], 'contour', mat, limits).ap : 2;
     const levels: number[] = [];
