@@ -56,6 +56,8 @@ describe('CAM AI', () => {
     const finish = ops.filter((o) => o.name === 'SCHLICHTEN_16MM');
     expect(finish.length).toBeGreaterThan(0);
     for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);
+    // With the shop's own finishing data: SCHLICHT_16MM at 1,200 mm/min (90 % of its SF 16 finishing), not the 850 one.
+    for (const o of finish) expect(o.cut.template).toBe('SCHLICHT_16MM');
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
