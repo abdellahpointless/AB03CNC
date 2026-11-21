@@ -6,6 +6,7 @@ import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 import { rewriteTurns } from '../src/lib/fixTurns';
 
 const S = { rapid: 30_000, toolChange: 2 };
+const programLines = (_tp: unknown, line: number) => program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (CALCO 39 MM NA BASE DE 5 MM)').split('\n')[line];
 
 // Two setups like the shop's programs: raw 54x44x30, finished 49x40x15, zero in the middle.
 const program = (side: number) =>
@@ -480,5 +481,21 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['TEIL 90 GRAD UM X DREHEN', 'TEIL 90 GRAD UM Z DREHEN / Z+ WIRD Y-']).turns).toEqual([{ axis: 'X', deg: 90 }, { axis: 'Z', deg: 90 }]);
     // The library's case still turns about X.
     expect(readInstructions(['TEIL 90 GRAD UM Y DREHEN/Z+ WIRD Y-']).turns).toEqual([{ axis: 'X', deg: 90 }]);
+  });
+
+  it('CALE is the parallels only on its own: not SANS CALE, not INTER CALE or DÉCALE; with a side it is a spacer', () => {
+    expect(readInstructions(['40 MM CALE'])).toMatchObject({ support: 40 });
+    expect(readInstructions(["SANS CALE 3 MM SUR L'ETAU"])).toMatchObject({ support: null, onJaw: 3 });
+    expect(readInstructions(['INTER CALE 10 MM EN Y+'])).toMatchObject({ support: null, spacers: [{ mm: 10, side: 'Y+' }] });
+    expect(readInstructions(['UNTER CALE 15 MM IN Y-'])).toMatchObject({ support: null, spacers: [{ mm: 15, side: 'Y-' }] });
+    expect(readInstructions(['PIÈCE DÉCALE DE 5 MM EN Y']).support).toBeNull();
+    expect(readInstructions(['CALE 15 MM EN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, spacers: [{ mm: 15, side: 'Y-' }] });
+  });
+
+  it('a cale height the box does not have points at the note that asks for it', () => {
+    const tp = parseToolpath(program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (CALCO 39 MM NA BASE DE 5 MM)'), S);
+    const s = analyseProgram(tp, { jawHeight: 42 }).setups[1];
+    const reject = s.rejects.find((r) => r.kind === 'cale')!;
+    expect(programLines(tp, reject.line)).toMatch(/CALCO 39 MM/);
   });
 });

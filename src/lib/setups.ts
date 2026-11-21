@@ -278,19 +278,22 @@ export function readInstructions(notes: string[]) {
   // beside the part: a spacer in the jaw pushing it off that jaw (shop answer), not a support.
   const SIDE = '\\s*\\/{0,2}\\s*(?:IN|EN|SUR|AUF)\\s*([XY]\\s*[+-])';
   // The parallels are also written "CALCO 40 MM" (Portuguese) or "40 MM CALE" / "CALES DE 40 MM"
-  // (French, shop answer D1); UNTERCALE and INTERCALE are spacers (below).
+  // (French, shop answer D1): CALE on its own only. "SANS CALE" says there are none; DÉCALE is
+  // another word; UNTER CALE, INTER CALE and a CALE with a side are spacers (below).
+  const CALE = '(?<![A-ZÀ-Ý-])(?<!(?:SANS|INTER|UNTER)\\s?-?\\s*)CALES?';
   const sup =
     inNote(new RegExp(`${NUM}\\s*MM\\s*UNTERLAGE(?!${SIDE})`)) ??
-    inNote(new RegExp(`(?:CALCO|\\bCALES?\\s*(?:DE)?)\\s*${NUM}\\s*MM`)) ??
-    inNote(new RegExp(`${NUM}\\s*MM\\s*CALES?\\b`));
+    inNote(new RegExp(`CALCO\\s*${NUM}\\s*MM`)) ??
+    inNote(new RegExp(`${CALE}\\s*(?:DE)?\\s*${NUM}\\s*MM(?!${SIDE})`)) ??
+    inNote(new RegExp(`${NUM}\\s*MM\\s*${CALE}\\b(?!${SIDE})`));
   // "UNTERLAGE IN EP 5 MM", "SUR EP 8 MM", "IN EPAISEUR 20", or just "UNTERLAGE IN 21MM"; also
   // "UNTERLAGE / IN 8 MM", "UNTERLAGE // IN 8 MM", "UNTERLAGEIN MASS 7 MM" and "UNTERLAGE MASS 5 MM".
   const thick = inNote(new RegExp(`UNTERLAGE\\s*\\/{0,2}\\s*(?:(?:IN|SUR|AUF)?\\s*EP(?:AISSEUR|AISEUR)?\\.?|(?:IN\\s*)?MASS|IN|SUR|AUF)\\s*${NUM}`));
   // The spacer pushing the part off a jaw or the stop: "15 MM ZWISCHENLAGE IN Y-", "INTERCALE 10MM Y+".
-  const SPACER = '(?:ZWISCHENLAGE|INTERCAL+E?|UNTERCAL+E?)';
+  const SPACER = `(?:ZWISCHENLAGE|INTER\\s*-?\\s*CAL+E?|UNTER\\s*-?\\s*CAL+E?|${CALE})`;
   // Every one written counts ("IN Y-" and "IN Y+": one plate on each side); the last one per side wins.
   const spacers = new Map<Face, number>();
-  for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${NUM}\\s*MM\\s*UNTERLAGE${SIDE}`])
+  for (const re of [`${NUM}\\s*(?:MM)?\\s*${SPACER}\\s*\\/{0,2}\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${SPACER}\\s*(?:DE)?\\s*${NUM}\\s*(?:MM)?\\s*(?:IN|EN|SUR|AUF)?\\s*([XY]\\s*[+-])`, `${NUM}\\s*MM\\s*UNTERLAGE${SIDE}`])
     for (const u of up) for (const m of u.matchAll(new RegExp(re, 'g'))) spacers.set(m[2].replace(/\s/g, '') as Face, num(m[1]));
   const nest = /\bNEST\b/.test(t);
   if (nest) {
@@ -940,7 +943,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       learned: !!learnedTurn && !override.has(k),
       rejects:
         ins.support !== null && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
-          ? [{ kind: 'cale', mm: ins.support, line: s.notes.find((n) => /UNTERLAGE/i.test(n.text))?.line ?? s.line }]
+          ? [{ kind: 'cale', mm: ins.support, line: s.notes.find((n) => /UNTERLAGE|CALCO|(?<![A-ZÀ-Ý-])CALES?\b/i.test(n.text))?.line ?? s.line }]
           : [],
       orient,
       alternatives,
