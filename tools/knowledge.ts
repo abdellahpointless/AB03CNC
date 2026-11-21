@@ -730,7 +730,7 @@ function mostOf(v: number[]): { value: number; share: number } {
  * most points (corners and notches the roughing tool could not reach); "out of reach": the roughing
  * never ran near it. Corner-rounding cutters (a description without a diameter) finish no wall.
  */
-interface Allowance { kind: 'allowance' | 'rest' | 'out of reach'; wall: number | null; floor: number | null; d: number; points: number; at: number }
+interface Allowance { kind: 'allowance' | 'rest' | 'out of reach' | 'edge or 3D' | 'not a wall'; wall: number | null; floor: number | null; d: number; points: number; at: number }
 function allowances(p: Program): Allowance[] {
   const out: Allowance[] = [];
   const samples = p.read.samples;
@@ -738,6 +738,11 @@ function allowances(p: Program): Allowance[] {
     if (f.kind !== 'finish' || !(f.d > 0)) return;
     const fm = movesOf(p, fi).filter((m) => m.kind === 'feed');
     if (!fm.length) return;
+    // Edge rounding (radius cutters) and 3D finishing (ball mills, Z-level, cavity) follow no wall of the roughing.
+    if (f.type === 'UDM' || f.type === 'KF' || /RADIUS|ZLEVEL|FIXED_CONTOUR|CAVITY/.test(f.op)) {
+      out.push({ kind: 'edge or 3D', wall: null, floor: null, d: f.d, points: 0, at: f.line });
+      return;
+    }
     const setup = fm[0].setup;
     const rough = samples.flatMap((s, i) => (i < fi && s.setup === f.setup && (s.kind === 'pocket' || s.kind === 'contour') ? [i] : []));
     const cell = 2;
@@ -797,7 +802,11 @@ function allowances(p: Program): Allowance[] {
     const atFloor = floors.filter((x) => Math.abs(x.z - zLow) < 0.011).map((x) => x.low - x.z);
     const floor = atFloor.length ? mostOf(atFloor) : null;
     const held = wall.share >= 0.5;
-    out.push({ kind: held ? 'allowance' : 'rest', wall: held ? wall.value : null, floor: held && floor && floor.share >= 0.5 ? floor.value : null, d: f.d, points: walls.length, at: f.line });
+    // More than a millimetre off the roughing is no finishing allowance: the pass skims a floor or a step away from the wall.
+    const kind = !held ? 'rest' : wall.value > 1 ? 'not a wall' : 'allowance';
+    // A floor below the pass's lowest level (the roughing went deeper there): the pass ends above the floor.
+    const onFloor = kind === 'allowance' && floor && floor.share >= 0.5 && floor.value >= -0.05 ? floor.value : null;
+    out.push({ kind, wall: kind === 'allowance' ? wall.value : null, floor: onFloor, d: f.d, points: walls.length, at: f.line });
   });
   return out;
 }
@@ -932,6 +941,8 @@ const facts = {
       allowance: held.length,
       rest: allowanceList.filter((x) => x.a.kind === 'rest').length,
       outOfReach: allowanceList.filter((x) => x.a.kind === 'out of reach').length,
+      edgeOr3D: allowanceList.filter((x) => x.a.kind === 'edge or 3D').length,
+      notAWall: allowanceList.filter((x) => x.a.kind === 'not a wall').length,
       wallMm: hist(held.map((x) => x.a.wall!), 0.05),
       floorMm: hist(held.filter((x) => x.a.floor !== null).map((x) => x.a.floor!), 0.05),
       floorVaries: held.filter((x) => x.a.floor === null).length,
@@ -1055,11 +1066,11 @@ for (const [topic, title] of topics) {
       '',
       '### Roughing and finishing',
       '',
-      `What a finishing pass (SCHLICHT...) leaves to the roughing before it in its clamping, measured on the tool centres (cutter compensation applied) where it cuts within reach of the roughing: ${fa.passes} finishing passes of ${fa.parts} parts (twins once). ${fa.allowance} follow a roughing along their wall; ${fa.rest} mostly clear corners and notches the roughing tool could not reach (rest machining); ${fa.outOfReach} work where no roughing ran (cut from solid). Corner-rounding cutters, whose description gives no diameter, are left out.`,
+      `What a finishing pass (SCHLICHT...) leaves to the roughing before it in its clamping, measured on the tool centres (cutter compensation applied) where it cuts within reach of the roughing: ${fa.passes} finishing passes of ${fa.parts} parts (twins once). ${fa.allowance} follow a roughing along their wall; ${fa.rest} mostly clear corners and notches the roughing tool could not reach (rest machining); ${fa.outOfReach} work where no roughing ran (cut from solid); ${fa.notAWall} run more than 1 mm off the roughing (a floor or a step, no wall); ${fa.edgeOr3D} round edges or finish 3D surfaces (radius cutters, ball mills, Z-level, cavity) and follow no wall.`,
       '',
       `- On the walls (the value most of a pass's points give, 0.05 mm steps): ${fa.wallMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}.`,
       `- By finishing tool: ${fa.wallByTool.map((t) => `Ø${t.d}: ${t.wallMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}`).join('; ')}.`,
-      `- On the floor (at the pass's lowest level, how much higher the roughing stopped): ${fa.floorMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}; ${fa.floorVaries} passes with no one value (they finish walls above the roughing's floor).`,
+      `- On the floor (at the pass's lowest level, how much higher the roughing stopped): ${fa.floorMm.map(([mm, n]) => `${mm} ×${n}`).join(', ')}; ${fa.floorVaries} passes end above the roughing's floor (they finish only the top of a wall).`,
       `- Examples: ${fa.passesList.filter((e) => e.kind === 'allowance').slice(0, 5).map((e) => `\`${e.file}:${e.line}\` Ø${e.d} wall ${e.wall}, floor ${e.floor ?? '–'}`).join('; ')}.`,
       '- A measurement of the paths, not a value the programs write.',
     );
