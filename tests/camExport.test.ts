@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { forMachine } from '../src/lib/cam/export';
 import { camProgram } from '../src/lib/cam/program';
+import { catalog } from '../src/lib/cam/tools';
+import { defaultToolbox } from '../src/lib/defaultTools';
 import { analyzeGCode, applyG53BeforeG52, generateRemappedCode, isHaasDialectForFanuc } from '../src/lib/gcodeProcessor';
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { parseToolpath, speedsFor, type Move } from '../src/lib/toolpath';
@@ -95,5 +97,44 @@ describe("CAM AI's program as each machine gets it", () => {
 
   it('numbers a FANUC-2 program as the FANUC files are: no N over 9999, whole coordinates with a dot', () => {
     expect(forMachine(['%', 'O0001', 'N10001 G00 X1 Y2', '%'].join('\n'), 'FANUC-2', 'O0001.NC')).toBe(['%', 'O0001', 'N9999 G00 X1. Y2.', '%'].join('\n'));
+  });
+});
+
+describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
+  /** Send with the machine's inventory and nothing picked by hand: Process matches every tool itself. */
+  const sendAuto = (code: string, machine: string, tools: Tool[]) => {
+    let src = code;
+    if (machine.startsWith('FANUC') && machine !== 'FANUC-2' && isHaasDialectForFanuc(src)) src = convertHaasToFanuc(src, 'O0001.NC').fanucCode;
+    src = applyG53BeforeG52(src.split('\n')).lines.join('\n');
+    const a = analyzeGCode(src, tools, machine);
+    return applyG53BeforeG52(generateRemappedCode(a.lines, a.blocks, {}, machine).finalCode.split('\n')).lines.join('\n');
+  };
+  const part = pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 });
+  const numbers = (code: string) => [...new Set(code.split('\n').flatMap((l) => [...l.replace(/\([^)]*\)/g, '').matchAll(/(?<![A-Z])T(\d+)/g)].map((m) => Number(m[1]))))];
+
+  for (const machine of ['HAAS-1', 'FANUC-1']) {
+    it(`plans with ${machine}'s own tools and numbers, and Send keeps them`, () => {
+      const tools = defaultToolbox[machine]!;
+      // Only what the machine holds: every template tool it lacks is left out.
+      const exclude = catalog('ALU', tools).filter((t) => !t.inMachine).map((t) => t.code);
+      const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], noNest: true, exclude });
+      expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+      for (const s of r.setups) for (const o of s.ops) expect(o.tool.inMachine, o.tool.code).toBe(true);
+      const own = new Set(tools.map((t) => t.number));
+      for (const n of numbers(r.code)) expect(own.has(n), `T${n}`).toBe(true);
+      // The face mill is the machine's (its length is not in the inventory).
+      const face = tools.find((t) => t.category === 'tourteau' && t.diameter === 40)!;
+      expect(numbers(r.code)).toContain(face.number);
+      // Download and Send give the same code, tool numbers included.
+      expect(codeOf(forMachine(r.code, machine, 'O0001.NC')), machine).toEqual(codeOf(sendAuto(r.code, machine, tools)));
+    }, 600_000);
+  }
+
+  it("follows HAAS-1's rule for its two Ø16 mills: roughing with T2, finishing with T21", () => {
+    const tools = defaultToolbox['HAAS-1']!;
+    const ofType = (type: string) => catalog('ALU', tools).filter((t) => t.type === type && t.diameter === 16 && t.inMachine);
+    expect(ofType('SFH').map((t) => t.number)).toEqual([2]);
+    expect(ofType('SF').map((t) => t.number)).toContain(21);
+    expect(ofType('SF').map((t) => t.number)).not.toContain(2);
   });
 });

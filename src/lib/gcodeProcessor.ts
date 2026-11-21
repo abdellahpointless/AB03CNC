@@ -629,6 +629,21 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
     }
   }
 
+  // CAM AI plans with the machine's own tools and simulates them: a tool change whose T number is that
+  // machine's tool of the same kind and Ø keeps it (the rules above give other programs' tools the
+  // machine's numbers), so Send gives the numbers CAM AI's Download gives.
+  if (/^\s*(?:N\d+\s*)?\(CAM AI\)/m.test(safeInput)) {
+    const mill = (c: string | null | undefined) => c === 'fraise' || c === 'fraise ebauche' || c === 'fraise finition';
+    for (const block of blocks) {
+      const n = Number(block.originalT?.match(/\d+/)?.[0] ?? NaN);
+      const own = tools.find((x) => x.number === n && x.category !== 'empty');
+      if (!own || block.parsedDiameter === null || Math.abs(own.diameter - block.parsedDiameter) >= 0.01) continue;
+      if (own.category !== block.parsedCategory && !(mill(own.category) && mill(block.parsedCategory))) continue;
+      block.matchedTool = own;
+      block.matchType = 'exact';
+    }
+  }
+
   const hasUnresolved = blocks.some(b => (!b.skipOperation && !b.matchedTool) || b.pendingSkipConfirmation || b.isHaasTaraudException);
 
   return {
