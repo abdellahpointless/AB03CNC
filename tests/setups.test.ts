@@ -352,3 +352,14 @@ describe('cales and the jaw tops', () => {
   });
 });
 
+
+// Wordings of the reference library the app read wrong (Phase 2), each as the library writes it.
+describe("the shop's other ways of writing a setup", () => {
+  it('TEIL n GRAD IN X is the turn TEIL n GRAD UM X DREHEN', () => {
+    expect(readInstructions(['TEIL 180 GRAD IN X']).turns).toEqual([{ axis: 'X', deg: 180 }]);
+    expect(readInstructions(['TEIL MIT  180 GRAD IN X']).turns).toEqual([{ axis: 'X', deg: 180 }]);
+    expect(readInstructions(['TEIL 180 GRAD IN Y']).turns).toEqual([{ axis: 'Y', deg: 180 }]);
+    expect(readInstructions(['TEIL 90 GRAD IN X / Z+ IN Y+']).turns).toEqual([{ axis: 'X', deg: -90 }]);
+    expect(readInstructions(['TEIL 90 GRAD IN Y// Z+ IN X+']).turns).toEqual([{ axis: 'Y', deg: 90 }]);
+  });
+});
