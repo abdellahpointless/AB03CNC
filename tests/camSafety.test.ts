@@ -125,5 +125,13 @@ describe('rapids the check is too coarse to see', () => {
     expect(stop).toBeGreaterThanOrEqual(1);
     expect(stop).toBeLessThanOrEqual(1.3);
     expect(fixed[k + 2]).toMatch(/ G01 Z-1\. F\d+\.?$/);
+    // The rest at the feed in force, when the moves after it go on without one (a review finding: it took the
+    // next F written further on, 1680, and the moves after it ran at that instead of 840).
+    const modal = [...lines.slice(0, at + 1), 'N0 G00 X-21. Y0.', 'N0 G01 X-21. Y.5 F840.', 'N0 G00 Z-1.', 'N0 G01 Z-1.5', 'N0 G01 X-21.1 Y0.', 'N0 G01 X-21. Y1. F1680.', 'N0 G00 Z2.', ...lines.slice(at + 1)].join('\n');
+    const out = finerRapids(modal, 'HAAS').split('\n');
+    const j = out.findIndex((l) => / G01 X-21\. Y\.5 F840\.$/.test(l));
+    expect(out[j + 1]).toMatch(/ G00 Z/);
+    expect(out[j + 2]).toMatch(/ G01 Z-1\. F840\.$/);
+    expect(out[j + 3]).toMatch(/ G01 Z-1\.5$/);
   }, 300_000);
 });

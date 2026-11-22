@@ -993,16 +993,25 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
   }
   if (!hit.size) return code;
   const lines = code.split('\n');
+  const from = new Map(tp.moves.filter((m) => m.kind === 'rapid').map((m) => [m.line, m.points[0][2]]));
+  const feedOf = (l: string) => l.replace(/\([^)]*\)/g, '').match(/(?<![A-Z])F(\d+\.?\d*)/)?.[1];
   const out: string[] = [];
+  // The feed in force (the moves after the rest keep it).
+  let feed: string | undefined;
   lines.forEach((l, i) => {
     const z = hit.get(i);
-    const down = l.match(/^N\d+ G0?0 Z(-?[\d.]+)$/);
-    const from = tp.moves.find((m) => m.line === i && m.kind === 'rapid')?.points[0][2];
-    if (z === undefined || !down || from === undefined) return void out.push(l);
-    const f = lines.slice(i + 1, i + 6).join(' ').match(/F(\d+)/)?.[1] ?? '300';
+    const down = z === undefined ? null : l.match(/^N\d+ G0?0 Z(-?[\d.]+)$/);
+    const z0 = from.get(i);
+    if (z === undefined || !down || z0 === undefined) {
+      out.push(l);
+      feed = feedOf(l) ?? feed;
+      return;
+    }
+    // At the feed the next move writes, else the one in force (a review finding: not the next one further on).
+    const f = Number(feedOf(lines[i + 1] ?? '') ?? feed ?? feedOf(lines.slice(i + 1, i + 6).join(' ')) ?? 300);
     const stop = Math.round((z + 1) * 1000) / 1000;
-    if (stop < from - 1e-3) out.push(`N0 G00 Z${n3(stop)}`);
-    out.push(`N0 G01 Z${down[1]} F${f}.`);
+    if (stop < z0 - 1e-3) out.push(`N0 G00 Z${n3(stop)}`);
+    out.push(`N0 G01 Z${down[1]} F${n3(f)}`);
   });
   let n = 0;
   return out.map((l) => (/^N\d+ /.test(l) ? `N${++n} ${l.replace(/^N\d+ /, '')}` : l)).join('\n');
