@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { camProgram, checkProgram, commentSafe } from '../src/lib/cam/program';
+import { camProgram, checkProgram, commentSafe, finerRapids } from '../src/lib/cam/program';
 import type { Tool } from '../src/types';
 import { heightPart, plateWithHoles, pocketWithHole } from './heightPart';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -109,3 +109,21 @@ describe('spot drilling as the shop does it', () => {
   }, 600_000);
 });
 
+
+describe('rapids the check is too coarse to see', () => {
+  it('feeds a rapid down through stock the last part of the way, from 1 mm above the highest it touches on a finer grid', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    expect(finerRapids(r.code, 'HAAS')).toBe(r.code);
+    // After the facing, a rapid down 1 mm into the outside stock (cut only later), beside the part's X- face.
+    const lines = r.code.split('\n');
+    const at = lines.findIndex((l, i) => i > lines.findIndex((x) => /TOOLPATH FRAESEN/.test(x)) && /^N\d+ G00 Z/.test(l));
+    const bad = [...lines.slice(0, at + 1), 'N0 G00 X-21. Y0.', 'N0 G00 Z-1.', 'N0 G00 Z2.', ...lines.slice(at + 1)].join('\n');
+    const fixed = finerRapids(bad, 'HAAS').split('\n');
+    const k = fixed.findIndex((l) => / G00 X-21\. Y0\.$/.test(l));
+    // The stock's top is Z0 (faced): the rapid stops 1 mm over it, plus up to a cell of the finer grid.
+    const stop = Number(fixed[k + 1].match(/ G00 Z(-?[\d.]+)$/)?.[1]);
+    expect(stop).toBeGreaterThanOrEqual(1);
+    expect(stop).toBeLessThanOrEqual(1.3);
+    expect(fixed[k + 2]).toMatch(/ G01 Z-1\. F\d+\.?$/);
+  }, 300_000);
+});

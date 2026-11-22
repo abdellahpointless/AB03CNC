@@ -962,6 +962,49 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
 }
 
 /**
+ * The rapids down past stock the check's grid is too coarse to see (a rim through a thin skin left along a
+ * wall: up to 0.1 mm, found at 2M voxels in Phase 6), on a finer grid: such a rapid stays a rapid down to
+ * 1 mm above the highest stock it touches and feeds the rest, at the feed of the move after it.
+ */
+export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds): string {
+  const tp = parseToolpath(code, speeds ?? speedsFor(brand));
+  const sim = buildInput(tp, analyseProgram(tp, { jawHeight: JAW }));
+  if (!sim) return code;
+  const g = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: 2_000_000, surfaceMoves: false, dropLoose: false });
+  // The highest stock each straight rapid down takes, in its program's Z.
+  const plane = g.n[0] * g.n[1];
+  const hit = new Map<number, number>();
+  for (let v = 0; v < g.removed.length; v++) {
+    const i = g.removed[v];
+    const m = i === KEPT ? undefined : tp.moves[i];
+    if (m?.kind !== 'rapid') continue;
+    const [a, b] = [m.points[0], m.points[m.points.length - 1]];
+    if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 1e-6 || b[2] >= a[2]) continue;
+    const { orient: R, offset: t } = sim.setups[m.setup];
+    const p = [g.origin[0] + ((v % g.n[0]) + 0.5) * g.step[0], g.origin[1] + ((Math.floor(v / g.n[0]) % g.n[1]) + 0.5) * g.step[1], g.origin[2] + (Math.floor(v / plane) + 0.5) * g.step[2]];
+    const path = movePath(m);
+    // Up to a cell above the highest sample it takes: the stock reaches no higher.
+    const z = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2] - (path[path.length - 1][2] - b[2]) + g.step[2];
+    hit.set(m.line, Math.max(hit.get(m.line) ?? -Infinity, z));
+  }
+  if (!hit.size) return code;
+  const lines = code.split('\n');
+  const out: string[] = [];
+  lines.forEach((l, i) => {
+    const z = hit.get(i);
+    const down = l.match(/^N\d+ G0?0 Z(-?[\d.]+)$/);
+    const from = tp.moves.find((m) => m.line === i && m.kind === 'rapid')?.points[0][2];
+    if (z === undefined || !down || from === undefined) return void out.push(l);
+    const f = lines.slice(i + 1, i + 6).join(' ').match(/F(\d+)/)?.[1] ?? '300';
+    const stop = Math.round((z + 1) * 1000) / 1000;
+    if (stop < from - 1e-3) out.push(`N0 G00 Z${n3(stop)}`);
+    out.push(`N0 G01 Z${down[1]} F${f}.`);
+  });
+  let n = 0;
+  return out.map((l) => (/^N\d+ /.test(l) ? `N${++n} ${l.replace(/^N\d+ /, '')}` : l)).join('\n');
+}
+
+/**
  * The program checked. A rapid down whose edge only grazes a sliver the rings left (the tool's
  * own path misses it by less than a grid cell) runs at the feed of the move after it; checked again.
  * Any other rapid into material stays a collision (it blocks the program).
@@ -1099,7 +1142,14 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       c.cales <= was.cales &&
       c.misplaced <= was.misplaced &&
       gougeOf(c) <= gougeOf(was);
-    const [code, check] = ok ? [arced, c] : [words, was];
+    let [code, check] = ok ? [arced, c] : [words, was];
+    // Last, on a finer grid than the check's: a rapid down past stock it cannot see feeds the rest of the
+    // way (checked again, kept when nothing is worse).
+    const finer = finerRapids(code, input.brand, input.speeds);
+    if (finer !== code) {
+      const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose);
+      if (f.match >= check.match - 0.0005 && f.collisions <= check.collisions && f.rapids <= check.rapids && f.cales <= check.cales && f.misplaced <= check.misplaced && gougeOf(f) <= gougeOf(check)) [code, check] = [finer, f];
+    }
     return { ...r, code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
   };
   if (input.noNest || !fails(kept).length) return shop(kept);
