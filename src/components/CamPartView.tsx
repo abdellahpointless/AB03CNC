@@ -178,6 +178,8 @@ type Api = {
   keyOf: (string | null)[];
   pos: Float32Array;
   size: number;
+  /** The model's box size along its own axes (mm). */
+  ext: THREE.Vector3;
   hover: THREE.Mesh | null;
   marks: THREE.Group;
   stock: THREE.Group;
@@ -272,7 +274,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, hover: null, marks, stock, paths };
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths };
     api.current = a;
 
     const resize = () => {
@@ -385,9 +387,13 @@ export default function CamPartView({
     if (!a) return;
     dispose(a.stock);
     a.stock.clear();
+    a.stock.position.y = 0;
     if (raw) {
       // The block's size in the vise (X along the jaws, Y between them, Z up).
       const v = [0, 1, 2].map((j) => Math.abs(R[j * 3] * raw[0] + R[j * 3 + 1] * raw[1] + R[j * 3 + 2] * raw[2]));
+      // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it.
+      const hz = Math.abs(R[6] * a.ext.x + R[7] * a.ext.y + R[8] * a.ext.z);
+      a.stock.position.y = hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
       const geo = new THREE.BoxGeometry(v[0], v[2], v[1]);
       const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: AMBER, transparent: true, opacity: 0.1, depthWrite: false }));
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: AMBER, transparent: true, opacity: 0.95 }));
