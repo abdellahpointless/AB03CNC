@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, type CamSetup } from '../src/lib/cam/program';
+import { simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { columnPart, heightPart, plateWithHoles } from './heightPart';
 
@@ -198,5 +199,54 @@ describe('entering a ring from the side', () => {
         });
       }
     }
+  }, 300_000);
+});
+
+describe('fewer points', () => {
+  const near = (p: P2, a: P2, b: P2) => {
+    const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  };
+  const off = (orig: P2[], out: P2[], closed: boolean) => {
+    const segs = out.map((p, i) => [p, out[i + 1] ?? (closed ? out[0] : p)] as [P2, P2]);
+    return Math.max(...orig.map((p) => Math.min(...segs.map(([a, b]) => near(p, a, b)))));
+  };
+
+  it('keeps every point of a path within the tolerance of the path written, its ends and a loop’s start', () => {
+    // A circle of 2,000 points (Clipper's arcs), a straight run with micro-steps, an L.
+    const circle = Array.from({ length: 2000 }, (_, i) => [10 * Math.cos((i * Math.PI) / 1000), 10 * Math.sin((i * Math.PI) / 1000)] as P2);
+    const c = simplify(circle, 0.005, true);
+    expect(c.length).toBeLessThan(200);
+    expect(c[0]).toEqual(circle[0]);
+    expect(off(circle, c, true)).toBeLessThanOrEqual(0.005 + 1e-9);
+    const run = Array.from({ length: 101 }, (_, i) => [i * 0.1, i % 2 ? 0.001 : 0] as P2);
+    expect(simplify(run, 0.005, false)).toEqual([run[0], run[100]]);
+    const L: P2[] = [[0, 0], [5, 0], [5, 0.004], [5, 5]];
+    const l = simplify(L, 0.005, false);
+    expect(l).toEqual([[0, 0], [5, 0], [5, 5]]);
+    expect(simplify([[0, 0], [1, 1]], 0.005, false)).toEqual([[0, 0], [1, 1]]);
+  });
+
+  it('writes a finely faceted round wall with as few points as keep it within 0.005 mm (roughing), not every facet', () => {
+    // A Ø30 x 12 cylinder of 1,000 facets (a 3D model's round faces).
+    const N = 1000;
+    const p = (i: number, z: number) => [15 + 15 * Math.cos((2 * Math.PI * i) / N), 15 + 15 * Math.sin((2 * Math.PI * i) / N), z];
+    const t: number[] = [];
+    for (let i = 0; i < N; i++) t.push(15, 15, 12, ...p(i, 12), ...p(i + 1, 12), 15, 15, 0, ...p(i + 1, 0), ...p(i, 0), ...p(i, 0), ...p(i + 1, 0), ...p(i + 1, 12), ...p(i, 0), ...p(i + 1, 12), ...p(i, 12));
+    const r = camProgram({ ...base, tris: new Float32Array(t), raw: [34, 34, 16] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    // The longest run of moves at one height in a roughing op: one ring round the cylinder.
+    let most = 0;
+    for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.name.startsWith('FRAESEN'))) {
+      let run = 0;
+      for (const [a, b] of feeds(o.lines)) {
+        run = Math.abs(a[2] - b[2]) < 1e-9 && Math.hypot(b[0] - a[0], b[1] - a[1]) > 0 ? run + 1 : 0;
+        most = Math.max(most, run);
+      }
+    }
+    expect(most).toBeGreaterThan(50);
+    expect(most).toBeLessThan(400);
   }, 300_000);
 });

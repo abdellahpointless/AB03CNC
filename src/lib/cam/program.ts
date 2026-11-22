@@ -9,7 +9,7 @@ import { analyseProgram, OVERHANG, STOP_PLATE, stopHits, VISE, viseSpans } from 
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
-import { area, bounds, difference, inside, intersection, offset, rect, slice, turnTris, union, type P2, type Region } from './geom';
+import { area, bounds, difference, inside, intersection, offset, rect, simplify, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
 import { arcs, shopStyle, shorten } from './style';
@@ -589,8 +589,13 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
  * in that ring's path by rapid to 1 mm above the pass, across, round, and lifted and over by
  * rapid for an open piece's next pass (never back over the cut at feed).
  */
-function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null): CamOp {
+function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null): CamOp {
   const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
+  // Each ring with as few points as keep its own within 0.005 mm (finishing 0.002), not every facet and
+  // step of the model's curves (CAM AI wrote 27 % of its roughing moves under 0.01 mm, the shop 2 %).
+  // The roughing's rings a finishing enters from, as the roughing wrote them.
+  const fewer = (tol: number) => (g: Ring): Ring => ({ ...g, pts: simplify(g.pts, tol, g.closed) });
+  const work = planned.map((w) => ({ ...w, rings: w.rings.map(fewer(finish ? 0.002 : 0.005)), done: w.done?.map(fewer(0.005)) }));
   const cut = cutData(tool, finish ? 'finish' : 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
   // (much deeper than in a pocket, where the first ring is a full slot). Finishing: one cut.

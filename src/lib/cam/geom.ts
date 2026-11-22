@@ -146,3 +146,33 @@ export function slice(tris: ArrayLike<number>, z0: number): Region {
   }
   return evenOdd(loops);
 }
+
+/**
+ * The path with as few points as keep every one of its own within `tol` of it (Douglas-Peucker): its ends
+ * stay, a loop keeps its start. Only points go: what is written stays within `tol` of the path planned.
+ */
+export function simplify(pts: P2[], tol: number, closed: boolean): P2[] {
+  const p = closed && pts.length > 2 ? [...pts, pts[0]] : pts;
+  if (p.length < 3) return pts;
+  const keep = new Uint8Array(p.length);
+  keep[0] = keep[p.length - 1] = 1;
+  const stack: [number, number][] = [[0, p.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop()!;
+    const [dx, dy] = [p[b][0] - p[a][0], p[b][1] - p[a][1]];
+    const l2 = dx * dx + dy * dy;
+    let far = -1;
+    let most = tol;
+    for (let i = a + 1; i < b; i++) {
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[i][0] - p[a][0]) * dx + (p[i][1] - p[a][1]) * dy) / l2)) : 0;
+      const d = Math.hypot(p[i][0] - p[a][0] - t * dx, p[i][1] - p[a][1] - t * dy);
+      if (d > most) [far, most] = [i, d];
+    }
+    if (far >= 0) {
+      keep[far] = 1;
+      stack.push([a, far], [far, b]);
+    }
+  }
+  const out = p.filter((_, i) => keep[i]);
+  return closed && pts.length > 2 ? out.slice(0, -1) : out;
+}
