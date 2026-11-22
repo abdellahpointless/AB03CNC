@@ -1341,7 +1341,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // graver's 0.3), and on the faces it holds at 3 mm (1 mm short of where they change).
     const deepest = () => {
       let jaw = -1.3;
-      for (let z = sb.lo[2] + 0.05; z < jaw + 1; z += 0.25)
+      // From the part's bottom: the stock under it is never cut here, the jaws may grip it (a review finding).
+      for (let z = Math.max(sb.lo[2], -H) + 0.05; z < jaw + 1; z += 0.25)
         if (area(opened(difference(left.at(z - 0.02, z + 0.02), offset(filled(slice(P, z)), Math.max(0.05, left.skin))))) > 1) {
           jaw = z - 1;
           break;

@@ -50,6 +50,14 @@ describe('a later clamping', () => {
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
+  it('grips into the stock it stands on: what is under the part is never cut there (a review finding)', () => {
+    // On an edge (X+ up) with 8 mm of stock under the part: gripped in it, not 3 mm.
+    const r = camProgram({ ...base, tris: plate, raw: [56, 34, 16], second: 'X+' });
+    const s = r.setups.find((x) => x.side === 'X+')!;
+    expect(s.grip).toBeGreaterThanOrEqual(5);
+    expect(s.physics.ok).toBe(true);
+  }, 300_000);
+
   it('stays on the faces it holds at 3 mm: a boss is gripped no deeper than the boss, its size written', () => {
     // A 30 x 30 x 6 flange with a 16 x 16 boss 10 high: turned over, the jaws hold the boss, 1 mm short of the flange.
     const flanged = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= 7 && i < 23 && j >= 7 && j < 23 ? 16 : 6))));
