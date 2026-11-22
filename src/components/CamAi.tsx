@@ -285,7 +285,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     if (result) setRun({ state: 'idle' });
     setSel({ kind: 'setup', i: k });
   };
-  // Another machine or material: the program made (its tools, speeds, coolant) is not for it.
+  // Another machine, material or stock: the program made (its tools, speeds, coolant, blank) is not for it.
   const choose = (set: () => void) => {
     set();
     if (result) setRun({ state: 'idle' });
@@ -524,7 +524,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
             {prep && chosen && sel.kind === 'stock' && (
               <>
-                <button type="button" role="switch" aria-checked={autoStock} onClick={() => setAutoStock(!autoStock)} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
+                <button type="button" role="switch" aria-checked={autoStock} onClick={() => choose(() => setAutoStock(!autoStock))} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
                   <span className={`relative w-9 h-5 rounded-full transition-colors ${autoStock ? 'bg-[var(--accent-primary)]' : 'bg-[rgba(var(--ov),0.22)]'}`} aria-hidden>
                     <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoStock ? 'translate-x-4' : ''}`} />
                   </span>
@@ -535,7 +535,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     <legend className="sr-only">{t('camAi.stock.manual')}</legend>
                     <div className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('camAi.stock.manual')}>
                       {(['total', 'side'] as const).map((m) => (
-                        <button key={m} type="button" role="radio" aria-checked={stockMode === m} onClick={() => setStockMode(m)} className={`no-glass text-xs px-3 min-h-9 rounded-[calc(var(--radius-md)-2px)] ${stockMode === m ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+                        <button key={m} type="button" role="radio" aria-checked={stockMode === m} onClick={() => choose(() => setStockMode(m))} className={`no-glass text-xs px-3 min-h-9 rounded-[calc(var(--radius-md)-2px)] ${stockMode === m ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
                           {t(`camAi.stock.${m}`)}
                         </button>
                       ))}
@@ -546,7 +546,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                       return (
                         <label key={axis} className="grid grid-cols-[1fr_7rem] items-center gap-2">
                           <span className="text-[var(--text-secondary)]">{t(stockMode === 'total' ? 'camAi.stock.totalAxis' : 'camAi.stock.sideAxis', { axis })}</span>
-                          <input className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums" type="number" min={0} step={0.5} inputMode="decimal" value={list[k]} onChange={(e) => set(list.map((v, i) => (i === k ? e.target.value : v)))} />
+                          <input className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums" type="number" min={0} step={0.5} inputMode="decimal" value={list[k]} onChange={(e) => choose(() => set(list.map((v, i) => (i === k ? e.target.value : v))))} />
                         </label>
                       );
                     })}
