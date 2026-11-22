@@ -246,6 +246,26 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
+  it('keeps a mill rounding the jaws\' end clear of them as the check takes it, by the tool\'s square (a review found 2 hits clear of the jaw)', () => {
+    // A 180 x 70 x 12 plate with a 170 x 34 boss 8 high (i 4..174, j 18..52), and a 36 x 30 pocket across the
+    // boss's Y- face and the jaws' end (142 mm from the boss's X- face): through the plate beside the boss,
+    // into it 1 mm short of its top.
+    const boss = (i: number, j: number) => i >= 4 && i < 174 && j >= 18 && j < 52;
+    const hole = (i: number, j: number) => i >= 130 && i < 166 && j >= 2 && j < 32;
+    const lo = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && boss(i, j) ? 19 : 0)));
+    const hi = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 20 : 12)));
+    const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 24], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
+    // The case: a mill of Ø8 or more cutting below the jaw top past the jaws' end, next to a held face.
+    const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
+    const nextToJaw = (p: number[], d: number) => p[1] < s.clampBox!.min[1] + d || p[1] > s.clampBox!.max[1] - d;
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && dia(m) >= 8 && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] > s.jawX[1] && nextToJaw(p, dia(m))))).toBe(true);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
   it('keeps off the second vise\'s jaws too, holding a part in both (a review found it untested)', () => {
     // A 230 mm plate with a 220 x 24 boss, held in both vises, and the 4 x 4 hole across the boss's Y- face
     // 200 mm from its X- face: in the second vise (from 192 mm).
