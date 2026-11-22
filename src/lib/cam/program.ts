@@ -1674,6 +1674,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
         return still.find((g) => g.z > z + 1e-6 && area(intersection(sw, g.rest)) > 0.05)?.above ?? null;
       };
       ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
+      // A ring run from a higher top (upTo) cut its way down there: what it swept is gone at those levels too (the
+      // tool's own sweep, never a wall's allowance), so a smaller mill is not sent up there for the same ground.
+      for (const w of work)
+        for (const ring of w.rings) {
+          const u = upTo(ring, w.z);
+          if (u === null || u <= w.above + 1e-6) continue;
+          const gone = swept([ring], r - 0.01);
+          for (const g of ground) if (g.z > w.z + 1e-6 && g.above <= u + 1e-6) g.took.push({ dia: tool.diameter, gone });
+        }
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
