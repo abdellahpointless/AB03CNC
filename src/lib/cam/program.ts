@@ -1255,7 +1255,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
     // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
     const nestDepth = Math.min(stockH - 1, 30, most, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
-    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least);
+    // The first clamping with stock under the part: on 40 mm parallels (5 mm), as the shop holds it (79 of 95
+    // first clampings, also where that grips the foot of the part's wall), as long as the outside cuts of both
+    // clampings still meet (each 1 mm over its jaws, the next one gripping 3 mm). Else: what is under the part.
+    const waste = -H - sb.lo[2];
+    const want = !setups.length && waste > 0.5 ? Math.min(5, -sb.lo[2] - 5) : waste - 0.5;
+    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, want, least);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the

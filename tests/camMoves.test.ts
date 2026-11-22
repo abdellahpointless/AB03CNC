@@ -77,8 +77,8 @@ describe('milling after the face is cut', () => {
   }, 300_000);
 
   it('plans no rings round a later clamping’s outside that the first clamping already cut through', () => {
-    // Raw 20 high: 5 mm under the part in the first clamping, gripped 4 mm, so its outside goes 0.2 mm under the part.
-    const r = camProgram({ ...base, tris: twoSided, raw: [34, 28, 20] });
+    // Raw 22 high: 6 mm under the part in the first clamping, gripped 5 mm, so its outside goes 0.2 mm under the part.
+    const r = camProgram({ ...base, tris: twoSided, raw: [34, 28, 22] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     expect(r.setups.map((s) => s.side)).toEqual(['Z+', 'Z-']);
