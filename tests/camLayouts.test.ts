@@ -104,25 +104,36 @@ describe('the jaws of a later clamping', () => {
   };
   // The hole across the boss's X- face, at the stop after the turn (6 x 6, i 1..7).
   const atStop = bossPlate((i, j) => i >= 1 && i < 7 && j >= 14 && j < 20);
-  /** Samples of moves whose tool goes into the stop plate below the jaw top, between the jaws. */
+  /** Points (every 0.5 mm along each move) where the tool goes into the stop plate below the jaw top, between the jaws. */
   const intoStop = (tp: ReturnType<typeof parseToolpath>, s: ReturnType<typeof analyseProgram>['setups'][number]) =>
-    tp.moves.filter((m) => m.setup === s.index).flatMap((m) =>
-      m.points.filter((p) => {
-        const r = (m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0) / 2;
-        return p[2] < s.jawTopZ! - 0.01 && p[0] - r < s.jawX[0] + STOP_PLATE && p[0] + r > s.jawX[0] && p[1] + r > s.clampBox!.min[1] && p[1] - r < s.clampBox!.max[1];
-      }),
-    );
+    tp.moves.filter((m) => m.setup === s.index).flatMap((m) => {
+      const r = (m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0) / 2 || 1;
+      const along = m.points.flatMap((p, k) => {
+        const q = m.points[k - 1] ?? p;
+        const n = Math.max(1, Math.ceil(Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) / 0.5));
+        return Array.from({ length: n }, (_, t) => q.map((v, d) => v + ((p[d] - v) * (t + 1)) / n));
+      });
+      return along.filter((p) => p[2] < s.jawTopZ! - 0.01 && p[0] - r < s.jawX[0] + STOP_PLATE && p[0] + r > s.jawX[0] && p[1] + r > s.clampBox!.min[1] && p[1] - r < s.clampBox!.max[1]);
+    });
 
   it('counts a tool into the X stop below the jaw top as a collision (a review found the check blind there)', () => {
     const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
     const s = an.setups[1];
-    // The program with one plunge more at its end, into the middle of the stop plate 1 mm below the jaw top.
+    const [x0, y, z] = [s.jawX[0], ((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3), (s.jawTopZ! - 1).toFixed(3)];
+    // The program with moves more at its end, 1 mm below the jaw top: a plunge into the middle of the stop
+    // plate, a rapid one into it, and a cut along X from before the plate through it into the hole (its ends
+    // clear of the plate: only the points between them go into it).
     const end = r.code.lastIndexOf('\n', r.code.lastIndexOf('M09')) + 1;
-    const plunge = `G00 X${(s.jawX[0] + STOP_PLATE / 2).toFixed(3)} Y${((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3)}\nG01 Z${(s.jawTopZ! - 1).toFixed(3)} F300.\nG00 Z50.\n`;
-    const c = checkProgram(atStop, r.code.slice(0, end) + plunge + r.code.slice(end), 'HAAS', undefined, r.pose);
-    expect(c.stops).toBeGreaterThan(r.check.stops);
-    expect(c.collisions).toBeGreaterThan(r.check.collisions);
+    for (const moves of [
+      `G00 X${(x0 + STOP_PLATE / 2).toFixed(3)} Y${y}\nG01 Z${z} F300.\nG00 Z50.\n`,
+      `G00 X${(x0 + 1.5).toFixed(3)} Y${y}\nG00 Z${z}\nG00 Z50.\n`,
+      `G00 X${(x0 - 3).toFixed(3)} Y${y}\nG01 Z${z} F300.\nG01 X${(s.clampBox!.min[0] + 2.5).toFixed(3)}\nG00 Z50.\n`,
+    ]) {
+      const c = checkProgram(atStop, r.code.slice(0, end) + moves + r.code.slice(end), 'HAAS', undefined, r.pose);
+      expect(c.stops, moves).toBeGreaterThan(r.check.stops);
+      expect(c.collisions, moves).toBeGreaterThan(r.check.collisions);
+    }
   }, 300_000);
 
   // Each as a plain part and as a top plate, whose walls are roughed 0.15 mm out and finished by other calls.
