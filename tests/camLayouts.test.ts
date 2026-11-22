@@ -171,6 +171,26 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
+  it('keeps off the jaws only where they stand: not past their end, 142 mm from the stop (a review found the whole length kept off)', () => {
+    // A 160 mm plate with a 150 x 24 boss, and the 4 x 4 hole across the boss's Y- face 144 mm from its X- face.
+    const len = 160;
+    const hole = (i: number, j: number) => i >= 148 && i < 152 && j >= 3 && j < 7;
+    const boss = (i: number, j: number) => i >= 4 && i < len - 6 && j >= 5 && j < 29;
+    const lo = Array.from({ length: 34 }, (_, j) => Array.from({ length: len }, (_, i) => (hole(i, j) && boss(i, j) ? 13 : 0)));
+    const hi = Array.from({ length: 34 }, (_, j) => Array.from({ length: len }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 14 : 8)));
+    const tris = columnPart(lo, hi);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
+    expect(r.setups[1].held[2] - r.setups[1].held[0]).toBeCloseTo(150, 0);
+    // The hole lies past the jaws' end: a mill wider than its half in the boss cuts it all, and no wall is left.
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && (m.dia ?? 0) > 2 && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] - m.dia! / 2 > s.jawX[1]))).toBe(true);
+    expect(r.notes.filter((n) => n.key === 'jawWall')).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
   it('notes the thin wall the jaws leave across a pocket that opens onto a held face, and plans no clamping more for it (a review found a third one, misplaced)', () => {
     // As above, on a blank whose grid shows that wall (under 0.1 mm thick) a whole cell thick.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);

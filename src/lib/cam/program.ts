@@ -5,7 +5,7 @@ import { differences, layModel, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram, OVERHANG, stopHits, VISE, viseSpans } from '../setups';
+import { analyseProgram, OVERHANG, STOP_PLATE, stopHits, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
@@ -1241,25 +1241,28 @@ function planFor(input: CamInput, vertical: number): CamResult {
       ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
       : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`];
     // Too long for one vise: both, as the checker reads it back (setups.ts).
-    if (!nested && hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
+    const twoVises = hold[0] > VISE.width + OVERHANG;
+    if (!nested && twoVises) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
     // Below their tops the jaws stand at the held Y faces and the stop at the X- one (kept off from 0.1 mm
     // inside them: the first ring runs 0.02 mm into what it keeps off). Held by a band narrower than what
     // stands above it, the part overhangs them, and a pocket in that overhang reaches over a jaw or the
-    // stop. In the nest its walls are cut into.
+    // stop. In the nest its walls are cut into. The jaws stand along the vise from the stop, and the
+    // second vise's beyond its gap, as the check takes them (viseSpans); kept off 1 mm past their ends
+    // (the check passes a clamping 0.5 mm off).
     // shortcut: only the end mills keep off them; a drill or graver there is left to the check, which
     // locks the program (none in the reference library); keep those off too if one ever is.
-    const beside = (d: number): Region =>
+    const spans = viseSpans({ jawX: [held.lo[0] - STOP_PLATE, held.lo[0] - STOP_PLATE + VISE.width], twoVises });
+    const beside = (d: number, end: number): Region =>
       union([
-        ...rect(sb.lo[0] - 50, held.lo[1] - 50, sb.hi[0] + 50, held.lo[1] + d),
-        ...rect(sb.lo[0] - 50, held.hi[1] - d, sb.hi[0] + 50, held.hi[1] + 50),
+        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] + d), ...rect(a - end, held.hi[1] - d, b + end, held.hi[1] + 50)]),
         ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
       ]);
-    const jaws = nested ? [] : beside(0.1);
-    const pastJaws = nested ? [] : beside(-0.05);
+    const jaws = nested ? [] : beside(0.1, 1);
+    const pastJaws = nested ? [] : beside(-0.05, 0);
     // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
-    const wallBand = nested ? [] : difference(jaws, beside(0));
+    const wallBand = nested ? [] : difference(jaws, beside(0, 1));
     const mine: { z: number; above: number; region: Region }[] = [];
 
     // 1. Face the top (the face mill, else the largest end mill).
@@ -1568,7 +1571,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // 5. The vise and the part (physics.ts): held without slipping, tipping, crushing or squeezing
     // it out of size, nothing bending past its limit. A deeper grip first (planned again), then
     // slower cuts.
-    const twoVises = hold[0] > VISE.width + OVERHANG;
     // shortcut: the plate checks use the whole part's thickness, not thin pocket floors (part families, step 7).
     const thin = Math.min(stockH, H);
     const squeeze = input.partType === 'topPlate' || input.partType === 'contourInsert' || input.partType === 'sealCage' ? SQUEEZE.precise : SQUEEZE.normal;
