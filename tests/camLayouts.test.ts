@@ -238,9 +238,10 @@ describe('the jaws of a later clamping', () => {
   };
 
   it('keeps off the jaws only where they stand: not past their end, 142 mm from the stop (a review found the whole length kept off)', () => {
-    // A 160 mm plate with a 150 x 24 boss, and the 4 x 4 hole across the boss's Y- face 144 mm from its X- face.
+    // A 160 mm plate with a 150 x 24 boss, and the 4 x 4 hole across the boss's Y- face from the jaws' end on,
+    // 142 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
     const len = 160;
-    const tris = longBossPlate(len, (i, j) => i >= 148 && i < 152 && j >= 3 && j < 7);
+    const tris = longBossPlate(len, (i, j) => i >= 146 && i < 150 && j >= 3 && j < 7);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
@@ -270,6 +271,20 @@ describe('the jaws of a later clamping', () => {
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && dia(m) >= 8 && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] > s.jawX[1] && nextToJaw(p, dia(m))))).toBe(true);
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
+  it('keeps a mill running down the jaws\' end, past the held face, 1 mm clear of it (a review found that margin untested)', () => {
+    // As above, the hole 12 x 6 from 2 mm before the jaws' end: 4 mm of it beside the boss, where a mill
+    // goes below the jaw top past the held face, along the jaws' end.
+    const tris = longBossPlate(160, (i, j) => i >= 144 && i < 156 && j >= 1 && j < 7);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [164, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
+    const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
+    const pastFace = (p: number[]) => p[1] < s.clampBox!.min[1] || p[1] > s.clampBox!.max[1];
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] - dia(m) / 2 < s.jawX[1] + 2))).toBe(true);
+    expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
