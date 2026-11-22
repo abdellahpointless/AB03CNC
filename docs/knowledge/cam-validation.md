@@ -1,10 +1,10 @@
 # CAM AI on the reference library: every program
 
-CAM AI on each of the 108 distinct programs of the reference library (all have a 3D model), next to the engineers' program read the same way: `npm run cam-library -- <library> <out.jsonl>` (`tools/camLibrary.ts`), CAM AI at commit a44254f, without a machine's tools or limits (12,000 rpm). Programs are named by id (P and the first 8 hex digits of the file's SHA-1; `npm run knowledge -- <library> --ids` lists which file each is). The findings: `docs/knowledge/cam-gaps.md`.
+CAM AI on each of the 108 distinct programs of the reference library (all have a 3D model), next to the engineers' program read the same way: `npm run cam-library -- <library> <out.jsonl>` (`tools/camLibrary.ts`), CAM AI at commit 0b9139e, without a machine's tools or limits (12,000 rpm). Programs are named by id (P and the first 8 hex digits of the file's SHA-1; `npm run knowledge -- <library> --ids` lists which file each is). The findings: `docs/knowledge/cam-gaps.md`.
 
 - **Each cell:** clampings / lines / minutes.
 - **Match:** the simulated part against the 3D model (1 = the same).
-- **Collisions:** what CAM AI's own check finds (tool or holder into jaws, parallels or part; rapids into material).
+- **Collisions:** what CAM AI's own check finds (tool or holder into the jaws, the X stop, parallels or part; rapids into material).
 - **Off at stop / fixed jaw (mm):** in the later clampings, the most the faces the vise really holds (between the parallels and the jaw tops) lie inside where the program puts the part, at the X stop and at the fixed jaw (gap P1). CAM AI's own check now counts a clamping more than 0.5 mm off (**Misplaced**).
 - **Vise:** CAM AI's vise check (the part held without slipping, tipping or being crushed, in every clamping).
 - **Passes:** match 0.99 or more, no collision, nothing cut out of the part, no clamping misplaced, the vise check passed. Only a passing program can be downloaded or sent.
@@ -29,13 +29,13 @@ CAM AI on each of the 108 distinct programs of the reference library (all have a
 | P1ffc5a14 | PC GF | 2 / 1345 / 4.9 | 0.0 / 0.0 | 3 / 22934 / 18.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P20dd9603 | ALU | 5 / 6015 / 14.9 | 0.0 / 0.0 | 5 / 38177 / 25.8 | 1.000 | 0 | 0.2 / 0.0 | 0 | ok | yes |
 | P242c06c0 | ALU | 3 / 2167 / 12.5 | 0.0 / 0.0 | 4 / 20567 / 15.2 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| P2591c9a9 | ALU | 2 / 6318 / 27 | 0.0 / 0.0 | 4 / 62503 / 148.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
+| P2591c9a9 | ALU | 2 / 6318 / 27 | 0.0 / 0.0 | 4 / 62518 / 148.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P293fd65d | FH | 5 / 2750 / 27.5 | 0.0 / 0.0 | 6 / 86122 / 150.5 | 0.999 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P29c8c5a5 | PC GF | 4 / 6153 / 9.4 | 0.0 / 0.0 | 4 / 11838 / 14.8 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P30b6c412 | PC GF | 3 / 16796 / 43.1 | 0.0 / 0.0 | 2 / 109132 / 178.9 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| P313bef3a | ALU | 2 / 6337 / 27.4 | 0.0 / 0.0 | 4 / 62503 / 148.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
+| P313bef3a | ALU | 2 / 6337 / 27.4 | 0.0 / 0.0 | 4 / 62518 / 148.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P32806ba5 | ALU | 3 / 4934 / 16.6 | 0.0 / 0.0 | 5 / 29884 / 79.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| P33d572dd | ALU | 2 / 1002 / 4.7 | 0.0 / 0.0 | 2 / 8515 / 7.9 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
+| P33d572dd | ALU | 2 / 1002 / 4.7 | 0.0 / 0.0 | 2 / 9838 / 9.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | fails | no |
 | P33da3aba | FH | 2 / 2170 / 13.9 | 0.0 / 0.0 | 2 / 31965 / 48.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P34a2a356 | POM | 2 / 734 / 7.7 | 0.0 / 0.0 | 4 / 17813 / 53.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | fails | no |
 | P361bccd0 | ALU | 4 / 1546 / 12.2 | 0.0 / 0.0 | 6 / 29553 / 39.2 | 1.000 | 1 | 0.0 / 0.0 | 0 | ok | no |
@@ -52,7 +52,7 @@ CAM AI on each of the 108 distinct programs of the reference library (all have a
 | P5eed3ed0 | ALU | 2 / 846 / 4.3 | 0.0 / 0.0 | 3 / 6508 / 5.6 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P64b41497 | FH | 2 / 1023 / 12.8 | 0.0 / 0.0 | 2 / 55354 / 46.7 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P699bed24 | PC GF | 2 / 50173 / 68.1 | 0.0 / 0.0 | 2 / 187158 / 114.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| P6b923b7f | ALU | 2 / 756 / 2.9 | 0.0 / 0.0 | 4 / 12653 / 13.8 | 1.000 | 270 | 0.0 / 0.0 | 0 | ok | no |
+| P6b923b7f | ALU | 2 / 756 / 2.9 | 0.0 / 0.0 | 4 / 10464 / 13.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P6d87b3da | FH | 2 / 926 / 9.6 | 0.0 / 0.0 | 2 / 27336 / 34.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P6e2531c4 | ALU | 3 / 5189 / 10 | 0.0 / 0.0 | 3 / 12018 / 13.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P70a8866f | ALU | 2 / 2184 / 5.6 | 0.0 / -0.0 | 4 / 17305 / 36 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
@@ -64,7 +64,7 @@ CAM AI on each of the 108 distinct programs of the reference library (all have a
 | P7ba6c2d8 | ALU | 2 / 1956 / 6.3 | 0.0 / 0.0 | 5 / 21389 / 50.1 | 0.995 | 2 | 0.0 / 0.0 | 0 | ok | no |
 | P809ee55c | ALU | 4 / 5743 / 14.3 | 0.0 / 0.0 | 4 / 54780 / 63.2 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P82d17888 | POM | 1 / 1417 / 18.4 | - | 3 / 1021 / 3.8 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| P82e80739 | POM | 2 / 405 / 6.8 | 0.0 / 0.0 | 2 / 15825 / 14.3 | 1.000 | 1 | 0.0 / 0.0 | 0 | ok | no |
+| P82e80739 | POM | 2 / 405 / 6.8 | 0.0 / 0.0 | 2 / 16642 / 20.5 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P85c0bcb0 | ALU | 5 / 5987 / 14.4 | 0.0 / 0.0 | 5 / 38177 / 25.8 | 1.000 | 0 | 0.2 / 0.0 | 0 | ok | yes |
 | P893f0b1f | FH | 2 / 1817 / 15.6 | 0.0 / 0.0 | 2 / 47645 / 51.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | P8db5660f | FH | 2 / 273 / 2.5 | 0.0 / 0.0 | 4 / 6835 / 11.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
@@ -90,7 +90,7 @@ CAM AI on each of the 108 distinct programs of the reference library (all have a
 | Pb1aa3a77 | ALU | 2 / 1853 / 8.8 | -31.0 / 12.0 | 3 / 1368 / 5.5 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pb26b5c88 | ALU | 2 / 525 / 2.5 | 0.0 / 0.0 | 3 / 3255 / 3.7 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pb361ad9d | FH | 5 / 4861 / 46.9 | 0.0 / 0.0 | 5 / 154353 / 316.9 | 0.998 | 0 | 11.0 / 0.0 | 1 | ok | no |
-| Pb3ff11d4 | POM | 5 / 2748 / 16.6 | 0.0 / 0.0 | 6 / 16462 / 25.5 | 1.000 | 0 | 0.5 / 0.0 | 0 | ok | yes |
+| Pb3ff11d4 | POM | 5 / 2748 / 16.6 | 0.0 / 0.0 | 6 / 15374 / 40.6 | 1.000 | 2 | 0.0 / 0.0 | 0 | ok | no |
 | Pb47e0fdf | PC GF | 2 / 1362 / 5 | 0.0 / 0.0 | 3 / 22934 / 18.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pb5bdcf63 | ALU | 2 / 806 / 2.8 | 0.0 / 0.0 | 2 / 7510 / 3.6 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pb8c4eaef | ALU | 4 / 4322 / 25.8 | 0.0 / 0.0 | 4 / 12474 / 15.9 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
@@ -112,10 +112,12 @@ CAM AI on each of the 108 distinct programs of the reference library (all have a
 | Pec0805f5 | POM | 4 / 1869 / 11.9 | 2.0 / 0.0 | 3 / 29179 / 28.4 | 1.000 | 0 | 0.1 / 0.0 | 0 | ok | yes |
 | Pedda39a5 | ALU | 3 / 1252 / 4.9 | 0.0 / 0.0 | 4 / 15940 / 11.5 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pf08a2c99 | ALU | 3 / 5317 / 11.7 | 0.0 / 0.0 | 3 / 72042 / 73.8 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| Pf2990f37 | ALU | 3 / 1671 / 5.8 | 0.0 / 0.0 | 4 / 33294 / 40.4 | 1.000 | 135 | 0.0 / 0.0 | 0 | ok | no |
+| Pf2990f37 | ALU | 3 / 1671 / 5.8 | 0.0 / 0.0 | 4 / 30022 / 40.1 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pf3d9b947 | PC GF | 3 / 947 / 4.6 | 0.0 / 0.0 | 4 / 6510 / 7.4 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
-| Pf807a2e2 | POM | 2 / 435 / 5 | 0.0 / 0.0 | 4 / 10563 / 15.3 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
+| Pf807a2e2 | POM | 2 / 435 / 5 | 0.0 / 0.0 | 2 / 18912 / 16.9 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pfae5765f | MS | 2 / 707 / 3.6 | 0.0 / 0.0 | 2 / 3212 / 3.3 | 0.996 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pfbe0e2c0 | ALU | 6 / 28637 / 62.7 | 0.0 / 0.0 | 4 / 266178 / 288.6 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pfe1a99e8 | POM | 2 / 979 / 16.4 | 0.0 / 0.0 | 5 / 135892 / 113.5 | 0.998 | 0 | 0.0 / 0.0 | 0 | ok | yes |
 | Pff9707d9 | POM | 3 / 839 / 5 | 0.0 / 0.0 | 3 / 4233 / 10 | 1.000 | 0 | 0.0 / 0.0 | 0 | ok | yes |
+
+Clampings in CAM AI's POM nest: 68, in 30 programs; each nest's top (its walls and set screws below it) stands 2.0 to 272.0 mm under the face the face mill cuts (0.5 mm at least).
