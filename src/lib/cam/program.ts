@@ -486,6 +486,41 @@ function ramp(start: P2, next: (k: number) => P2, z0: number, z1: number, slope:
   return { pts, end: p, k: 0 };
 }
 
+/**
+ * Down from z0 to z1 back and forth over an open piece's first stretch, no steeper than `slope`: as
+ * long as one way there and back needs (the whole piece, as often as it takes, when it is shorter).
+ * It ends at the piece's start at z1, where the pass along it begins (the shop's zigzag: no walk back).
+ */
+function zigzag(pts: P2[], z0: number, z1: number, slope: number): P3[] {
+  const need = Math.max(0.01, (z0 - z1) / slope);
+  const D = Math.min(pts.reduce((t, p, i) => (i ? t + dist2(pts[i - 1], p) : 0), 0), need / 2);
+  const n = Math.ceil(need / (2 * D) - 1e-9);
+  // The stretch: the vertices within D of the start, and the point at D.
+  const there: P2[] = [pts[0]];
+  for (let i = 1, s = 0; i < pts.length; i++) {
+    const d = dist2(pts[i - 1], pts[i]);
+    if (s + d >= D - 1e-9) {
+      const t = d > 1e-9 ? (D - s) / d : 0;
+      there.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]);
+      break;
+    }
+    there.push(pts[i]);
+    s += d;
+  }
+  const leg = [...there.slice(1), ...there.slice(0, -1).reverse()];
+  const out: P3[] = [];
+  let s = 0;
+  let p = pts[0];
+  for (let k = 0; k < n; k++)
+    for (const q of leg) {
+      s += dist2(p, q);
+      p = q;
+      out.push([q[0], q[1], z0 - ((z0 - z1) * s) / (2 * D * n)]);
+    }
+  out[out.length - 1][2] = z1;
+  return out;
+}
+
 const perimeter = (g: Ring) => g.pts.reduce((t, p, i) => (i || g.closed ? t + dist2(g.pts[i ? i - 1 : g.pts.length - 1], p) : t), 0);
 
 /** One level of an end mill: its rings, the level's bottom and top, and the part there (never touched). */
@@ -654,16 +689,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
           rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
           at = rp.end;
           k0 = (start + rp.k) % m;
-        } else {
-          // Back and forth along the open ring, then back to its start along it.
-          const idx = (q: number) => {
-            const w = q % (2 * (m - 1));
-            return w <= m - 1 ? w : 2 * (m - 1) - w;
-          };
-          const rp = ramp(pts[0], (k) => pts[idx(k + 1)], from, pz, slope);
-          rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
-          for (let v = Math.min(idx(rp.k), idx(rp.k + 1)); v >= 0; v--) lines.push(`G01 ${xy(pts[v])}`);
-        }
+        } else zigzag(pts, from, pz, slope).forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
         zAt = pz;
         // The ring at this depth, from where the tool is back to it.
         let fset = false;

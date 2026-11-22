@@ -180,4 +180,23 @@ describe('entering a ring from the side', () => {
       expect(entries).toBeGreaterThan(0);
     }
   }, 300_000);
+
+  it('never runs back over a cut at feed: an open piece’s zigzag down ends at its start, where its pass begins (the shop’s zigzag, no walk back)', () => {
+    for (const [tris, raw] of [
+      [plate, [44, 34, 16]],
+      [twoSided, [34, 28, 20]],
+    ] as const) {
+      const r = camProgram({ ...base, tris, raw: [...raw] });
+      expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+      expect(r.check.collisions).toBe(0);
+      for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.kind === 'pocket' || x.kind === 'finish')) {
+        const f = feeds(o.lines);
+        f.forEach(([a, b], i) => {
+          const p = f[i - 1];
+          const back = !!p && Math.hypot(...([0, 1, 2] as const).map((k) => a[k] - p[1][k])) < 1e-6 && Math.hypot(...([0, 1, 2] as const).map((k) => b[k] - p[0][k])) < 1e-6;
+          expect(back, `${o.name}: back over a cut at feed to ${b.map((v) => v.toFixed(3))}`).toBe(false);
+        });
+      }
+    }
+  }, 300_000);
 });
