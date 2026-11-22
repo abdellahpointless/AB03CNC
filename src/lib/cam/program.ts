@@ -487,37 +487,41 @@ function ramp(start: P2, next: (k: number) => P2, z0: number, z1: number, slope:
 }
 
 /**
- * Down from z0 to z1 back and forth over an open piece's first stretch, no steeper than `slope`: as
- * long as one way there and back needs (the whole piece, as often as it takes, when it is shorter).
- * It ends at the piece's start at z1, where the pass along it begins (the shop's zigzag: no walk back).
+ * Down from z0 to z1 back and forth over an open piece's first stretch, at `slope`: there and back over as
+ * much of it as the ramp still needs (the whole piece, then a shorter stretch, when it is shorter). It ends
+ * at the piece's start at z1, where the pass along it begins (the shop's zigzag: no walk back), no longer
+ * than the ramp needs.
  */
-function zigzag(pts: P2[], z0: number, z1: number, slope: number): P3[] {
+export function zigzag(pts: P2[], z0: number, z1: number, slope: number): P3[] {
   const need = Math.max(0.01, (z0 - z1) / slope);
-  const D = Math.min(pts.reduce((t, p, i) => (i ? t + dist2(pts[i - 1], p) : 0), 0), need / 2);
-  const n = Math.ceil(need / (2 * D) - 1e-9);
-  // The stretch: the vertices within D of the start, and the point at D.
-  const there: P2[] = [pts[0]];
-  for (let i = 1, s = 0; i < pts.length; i++) {
-    const d = dist2(pts[i - 1], pts[i]);
-    if (s + d >= D - 1e-9) {
-      const t = d > 1e-9 ? (D - s) / d : 0;
-      there.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]);
-      break;
+  const whole = pts.reduce((t, p, i) => (i ? t + dist2(pts[i - 1], p) : 0), 0);
+  // The vertices within D of the start, and the point at D.
+  const stretch = (D: number): P2[] => {
+    const there: P2[] = [pts[0]];
+    for (let i = 1, s = 0; i < pts.length; i++) {
+      const d = dist2(pts[i - 1], pts[i]);
+      if (s + d >= D - 1e-9) {
+        const t = d > 1e-9 ? (D - s) / d : 0;
+        there.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t]);
+        break;
+      }
+      there.push(pts[i]);
+      s += d;
     }
-    there.push(pts[i]);
-    s += d;
-  }
-  const leg = [...there.slice(1), ...there.slice(0, -1).reverse()];
+    return there;
+  };
   const out: P3[] = [];
-  let s = 0;
-  let p = pts[0];
-  for (let k = 0; k < n; k++)
-    for (const q of leg) {
+  let [s, p, rest] = [0, pts[0], need];
+  while (rest > 1e-6 && whole > 1e-9) {
+    const there = stretch(Math.min(whole, rest / 2));
+    for (const q of [...there.slice(1), ...there.slice(0, -1).reverse()]) {
       s += dist2(p, q);
       p = q;
-      out.push([q[0], q[1], z0 - ((z0 - z1) * s) / (2 * D * n)]);
+      out.push([q[0], q[1], z0 - ((z0 - z1) * Math.min(s, need)) / need]);
     }
-  out[out.length - 1][2] = z1;
+    rest = need - s;
+  }
+  if (out.length) out[out.length - 1][2] = z1;
   return out;
 }
 

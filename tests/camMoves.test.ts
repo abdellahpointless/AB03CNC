@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forMachine } from '../src/lib/cam/export';
-import { camProgram, type CamSetup } from '../src/lib/cam/program';
+import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -124,17 +124,18 @@ describe('the plane between cuts', () => {
 });
 
 describe('going down into material', () => {
-  /** The steepest ramp (its whole drop over its whole length: the lines are rounded to 0.001 mm) of each end mill's roughing, by tool code. */
+  /** The steepest and the least steep ramp (its whole drop over its whole length: the lines are rounded to 0.001 mm; over 2 mm long for the least) of each end mill's roughing, by tool code. */
   const slopes = (r: ReturnType<typeof camProgram>) => {
-    const out = new Map<string, { type: string; d: number; max: number }>();
+    const out = new Map<string, { type: string; d: number; max: number; min: number }>();
     for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.name.startsWith('FRAESEN'))) {
-      const e = out.get(o.tool.code) ?? out.set(o.tool.code, { type: o.tool.type, d: o.tool.diameter, max: 0 }).get(o.tool.code)!;
+      const e = out.get(o.tool.code) ?? out.set(o.tool.code, { type: o.tool.type, d: o.tool.diameter, max: 0, min: Infinity }).get(o.tool.code)!;
       let [dz, len] = [0, 0];
       for (const m of [...feeds(o.lines), null]) {
         const dxy = m ? Math.hypot(m[1][0] - m[0][0], m[1][1] - m[0][1]) : 0;
         if (m && dxy > 1e-6 && m[0][2] - m[1][2] > 1e-6) [dz, len] = [dz + m[0][2] - m[1][2], len + dxy];
         else {
           if (len > 0.5) e.max = Math.max(e.max, dz / len);
+          if (len > 2) e.min = Math.min(e.min, dz / len);
           [dz, len] = [0, 0];
         }
       }
@@ -142,6 +143,26 @@ describe('going down into material', () => {
     return [...out.values()].filter((e) => e.max > 0);
   };
   const tan = (deg: number) => Math.tan((deg * Math.PI) / 180);
+
+  it('zigzags down a piece shorter than its ramp as steeply as it may, no longer than it needs, back at its start', () => {
+    const slope = tan(15);
+    for (const piece of [
+      [[0, 0], [1.2, 0]],
+      [[0, 0], [0.7, 0], [0.7, 0.6]],
+      [[0, 0], [5, 0]],
+    ] as [number, number][][]) {
+      const z = zigzag(piece, 0, -1, slope);
+      let [len, p, zPrev] = [0, piece[0] as [number, number], 0];
+      for (const q of z) {
+        const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        expect(zPrev - q[2]).toBeLessThanOrEqual(d * slope + 1e-9);
+        expect(q[2]).toBeLessThanOrEqual(zPrev + 1e-12);
+        [len, p, zPrev] = [len + d, [q[0], q[1]], q[2]];
+      }
+      expect(len).toBeCloseTo(1 / slope, 6);
+      expect(z.at(-1)).toEqual([0, 0, -1]);
+    }
+  });
 
   it('ramps at 15° with the end mills the shop takes in that steeply (ALU Ø2 to 8), at 5° with the high-feed mill and where the shop never does', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16] });
@@ -152,6 +173,8 @@ describe('going down into material', () => {
     expect(steep.length).toBeGreaterThan(0);
     for (const e of steep) expect(e.max, `SF ${e.d}`).toBeLessThanOrEqual(tan(15) + 0.001);
     expect(Math.max(...steep.map((e) => e.max))).toBeGreaterThan(tan(10));
+    // Every ramp, round a ring or back and forth along a piece, as steep as it may be: no longer than it needs.
+    for (const e of steep.filter((x) => Number.isFinite(x.min))) expect(e.min, `SF ${e.d}`).toBeGreaterThanOrEqual(tan(15) - 0.003);
     for (const e of s.filter((x) => x.type !== 'SF' || x.d < 2 || x.d > 8)) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
     // Brass: no ramp or plunge into material in the shop's programs to go by: 5° throughout.
     const ms = camProgram({ ...base, material: 'MS', tris: plate, raw: [44, 34, 16] });
