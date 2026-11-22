@@ -455,7 +455,8 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pi
 const STEEP: Partial<Record<string, [number, number]>> = { ALU: [2, 8], FH: [3, 8], PCGF: [1, 8], PEEK: [2, 4], POM: [3, 8] };
 const rampOf = (tool: CamTool, mat: string) => {
   const s = STEEP[mat];
-  const steep = tool.type === 'SF' && !!s && tool.diameter >= s[0] - 1e-6 && tool.diameter <= s[1] + 1e-6;
+  // Only the shop's own (template) mills: a machine's mill without one has nothing in the library to go by (a review finding).
+  const steep = tool.type === 'SF' && !!tool.template && !!s && tool.diameter >= s[0] - 1e-6 && tool.diameter <= s[1] + 1e-6;
   return Math.tan(((steep ? 15 : 5) * Math.PI) / 180);
 };
 type P3 = [number, number, number];

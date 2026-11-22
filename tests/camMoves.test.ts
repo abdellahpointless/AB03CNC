@@ -176,9 +176,14 @@ describe('going down into material', () => {
     expect(steep.length).toBeGreaterThan(0);
     for (const e of steep) expect(e.max, `SF ${e.d}`).toBeLessThanOrEqual(tan(15) + 0.001);
     expect(Math.max(...steep.map((e) => e.max))).toBeGreaterThan(tan(10));
-    // Every ramp, round a ring or back and forth along a piece, as steep as it may be: no longer than it needs.
+    // Every ramp of these as steep as it may be (the zigzag along a short piece: its own test above).
     for (const e of steep.filter((x) => Number.isFinite(x.min))) expect(e.min, `SF ${e.d}`).toBeGreaterThanOrEqual(tan(15) - 0.003);
     for (const e of s.filter((x) => x.type !== 'SF' || x.d < 2 || x.d > 8)) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
+    // The machine's own roughing mill with no shop template: nothing in the library to go by, 5° (a review finding).
+    const own = camProgram({ ...base, tris: plate, raw: [44, 34, 16], tools: [{ id: 'x', number: 7, category: 'fraise ebauche', description: 'FRAISE EBAUCHE D8', diameter: 8, length: 40 }] });
+    const rougher = slopes(own).filter((e) => e.d === 8);
+    expect(rougher.length).toBeGreaterThan(0);
+    for (const e of rougher) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
     // Brass: no ramp or plunge into material in the shop's programs to go by: 5° throughout.
     const ms = camProgram({ ...base, material: 'MS', tris: plate, raw: [44, 34, 16] });
     expect(slopes(ms).length).toBeGreaterThan(0);
