@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes } from '../src/lib/cam/layouts';
 import { camProgram, checkProgram } from '../src/lib/cam/program';
-import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE } from '../src/lib/setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE, VISE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
 import { columnPart, heightPart } from './heightPart';
@@ -284,6 +284,12 @@ describe('the jaws of a later clamping', () => {
     const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
     const pastFace = (p: number[]) => p[1] < s.clampBox!.min[1] || p[1] > s.clampBox!.max[1];
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] - dia(m) / 2 < s.jawX[1] + 2))).toBe(true);
+    // Every such cut keeps its edge the 1 mm (less the first ring's 0.02) past the jaws' end, where the G52 puts them.
+    const end = s.clampBox!.min[0] - STOP_PLATE + VISE.width;
+    const clear = tp.moves
+      .filter((m) => m.setup === 1 && m.kind === 'feed')
+      .flatMap((m) => m.points.filter((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] > end).map((p) => p[0] - dia(m) / 2 - end));
+    expect(Math.min(...clear)).toBeGreaterThanOrEqual(0.979);
     expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
