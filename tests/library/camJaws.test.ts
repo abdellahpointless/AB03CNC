@@ -1,9 +1,9 @@
 /**
- * CAM AI on two reference programs whose later clamping holds the part by a band narrower than what
- * stands above it: the final validation of Phase 5 found end mills going into the jaws there (270 and 135
- * hits). Each is planned as tools/camLibrary.ts plans it (the engineers' blank, the part's family from the
- * header) and must not collide. Programs by id (P and the first 8 hex digits of the file's SHA-1).
- * Skipped without CNC_LIBRARY=<folder>.
+ * CAM AI on reference programs whose later clamping holds the part by a band narrower than what stands
+ * above it: the final validation of Phase 5 found end mills going into the jaws in two (270 and 135 hits),
+ * the Phase 6 validation a graver into a jaw in one of them and a part it could not hold in another. Each
+ * is planned as tools/camLibrary.ts plans it (the engineers' blank, the part's family from the header).
+ * Programs by id (P and the first 8 hex digits of the file's SHA-1). Skipped without CNC_LIBRARY=<folder>.
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -30,26 +30,41 @@ function find(id: string): { text: string; pdf: Uint8Array } | null {
   return null;
 }
 
+/** CAM AI on the program with this id, as tools/camLibrary.ts plans it: the engineers' blank, its sides matched to the model's by size, and the part's family from the header. */
+async function plan(id: string, material: 'ALU' | 'MS') {
+  const found = find(id);
+  expect(found, id).toBeTruthy();
+  const tris = await readTris(found!.pdf);
+  if ('error' in tris) throw new Error(String(tris.error));
+  const read = readProgram(found!.text, id);
+  const size = [0, 1, 2].map((k) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = k; i < tris.length; i += 3) [lo, hi] = [Math.min(lo, tris[i]), Math.max(hi, tris[i])];
+    return hi - lo;
+  });
+  const blank = [...read.raw!].sort((a, b) => a - b);
+  const raw: [number, number, number] = [0, 0, 0];
+  [0, 1, 2].sort((a, b) => size[a] - size[b]).forEach((axis, k) => (raw[axis] = blank[k]));
+  const named = found!.text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
+  return camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
+}
+
 describe.skipIf(!LIB)('reference library: CAM AI keeps off the jaws', () => {
   for (const id of ['P6b923b7f', 'Pf2990f37'])
     it(`${id}: no tool into the jaws, held by a narrow band`, { timeout: 30 * 60_000 }, async () => {
-      const found = find(id);
-      expect(found, id).toBeTruthy();
-      const tris = await readTris(found!.pdf);
-      if ('error' in tris) throw new Error(String(tris.error));
-      const read = readProgram(found!.text, id);
-      // The engineers' blank, its sides matched to the model's by size.
-      const size = [0, 1, 2].map((k) => {
-        let lo = Infinity;
-        let hi = -Infinity;
-        for (let i = k; i < tris.length; i += 3) [lo, hi] = [Math.min(lo, tris[i]), Math.max(hi, tris[i])];
-        return hi - lo;
-      });
-      const blank = [...read.raw!].sort((a, b) => a - b);
-      const raw: [number, number, number] = [0, 0, 0];
-      [0, 1, 2].sort((a, b) => size[a] - size[b]).forEach((axis, k) => (raw[axis] = blank[k]));
-      const named = found!.text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
-      const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
-      expect(r.check.collisions).toBe(0);
+      expect((await plan(id, 'ALU')).check.collisions).toBe(0);
     });
+});
+
+describe.skipIf(!LIB)('reference library: CAM AI holds a part whose later clamping has only a narrow face', () => {
+  // Pfae5765f (brass): with the blank 2 mm over the part the outside goes through first, and the turned part
+  // stands on a 3.8 mm face it cannot rest on (the shop rests it on a ledge). Planned again with the blank centred.
+  it('Pfae5765f: a program that passes every check', { timeout: 30 * 60_000 }, async () => {
+    const r = await plan('Pfae5765f', 'MS');
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.setups.every((x) => x.physics.ok)).toBe(true);
+  });
 });

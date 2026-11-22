@@ -60,6 +60,8 @@ export interface CamInput {
   cuts?: Record<string, CutEdit>;
   /** Operations the operator removed (CamOp.key): left out of the program, which is simulated and checked without them. */
   skip?: string[];
+  /** The blank centred on the part (camProgram's fallback when no plan with it 2 mm over the part passes). */
+  centred?: boolean;
   /** What is being done, as it is done: for the page's live console and 3D paths. */
   live?: (e: LiveEvent) => void;
 }
@@ -1122,15 +1124,21 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // The time a part takes: the machine's minutes and the operator's for each clamping (turning the part
   // over, the parallels, the stop): a plan with a clamping more must save more than that.
   const cost = (r: CamResult & { check: CamCheck }) => r.check.minutes + CLAMPING_MIN * r.setups.length;
-  order.forEach((axis, i) => {
-    const r = planFor(input, axis);
-    input.live?.({ kind: 'stage', stage: 'check' });
-    const now = checked(input, r);
-    input.live?.({ kind: 'stage', stage: 'post' });
-    progress(i + 1, order.length);
-    const better = !best || (good(now) && (!good(best) || cost(now) < cost(best))) || (!good(now) && !good(best) && now.check.match > best.check.match);
-    if (better) [best, bestAxis] = [now, axis];
-  });
+  let bestInput = input;
+  const plans = (inp: CamInput) =>
+    order.forEach((axis, i) => {
+      const r = planFor(inp, axis);
+      input.live?.({ kind: 'stage', stage: 'check' });
+      const now = checked(inp, r);
+      input.live?.({ kind: 'stage', stage: 'post' });
+      progress(i + 1, order.length);
+      const better = !best || (good(now) && (!good(best) || cost(now) < cost(best))) || (!good(now) && !good(best) && now.check.match > best.check.match);
+      if (better) [best, bestAxis, bestInput] = [now, axis, inp];
+    });
+  plans(input);
+  // None passes with the blank 2 mm over the part (e.g. the outside cut through first leaves the next clamping
+  // only a narrow face to hold, where the shop rests the part on a ledge): planned again with it centred.
+  if (!good(best!)) plans({ ...input, centred: true });
   // The last way (shop rule, rare): the setups no way of holding in the vise passes, in a POM nest.
   // Planned again with them nested; each nest gets its own program (POM, held in the vise).
   const kept = best!;
@@ -1171,7 +1179,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let sides = fails(kept);
   let nested: CamResult & { check: CamCheck } = kept;
   for (let round = 0; round < 3; round++) {
-    const r = planFor({ ...input, nestSides: sides }, bestAxis);
+    const r = planFor({ ...bestInput, nestSides: sides }, bestAxis);
     input.live?.({ kind: 'stage', stage: 'check' });
     nested = checked(input, r);
     input.live?.({ kind: 'stage', stage: 'post' });
@@ -1242,8 +1250,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // clampings), the rest under the part, where the jaws grip it and the outside goes through (a centred blank
   // left the jaws only the foot of the part's wall).
   const top0 = Math.max(0, Math.min(2, (raw[thin] - size[thin]) / 2));
-  if (SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
-  else [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
+  if (!input.centred && SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
+  else if (!input.centred) [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
   const { occ, reach, cell, grid } = reachable(tris, rawLo, rawHi);
   const covered = new Uint8Array(occ.length);
   const chosen: number[] = [];
