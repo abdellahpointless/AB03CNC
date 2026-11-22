@@ -141,6 +141,9 @@ for (const folder of readdirSync(LIB).sort()) {
         };
         // What CAM AI tells the operator it did not do (camAi.note.*), by key.
         row.notes = r.notes.map((n) => n.key);
+        // Clampings in the POM nest: how far its top (walls, set screws under it) stays under the face the face
+        // mill cuts, mm (0.5 or more).
+        row.nests = r.setups.filter((s) => s.nest).map((s) => Math.round(-(s.nest!.min[2] + s.nest!.size[2]) * 100) / 100);
         // Per clamping, how far the stock above the jaws stands out past the held face at the stop (mm):
         // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
         row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
