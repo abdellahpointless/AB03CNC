@@ -1752,8 +1752,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const physics = nest
       ? checkNest({ material: mat, loads: ops.map((op) => loadOf(op, mat, sb.lo[0], hold[1], limits)), screws: nest.screws.length })
       : physicsAt(grip);
-    // The contact of the grip used (physicsAt may have been tried at deeper grips).
-    if (!nest) physicsAt(grip);
     if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
       const grips = CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
       const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
@@ -1770,6 +1768,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         return addSetup(si, other);
       }
     }
+    // The contact of the grip used (the retry tried others; a review finding: it kept the last one's).
+    if (!nest) physicsAt(grip);
     if (!nest && grip > most + 1e-6) {
       physics.issues.push({ key: 'faceAtJaws' });
       physics.ok = false;
