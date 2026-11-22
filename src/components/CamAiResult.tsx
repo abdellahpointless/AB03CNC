@@ -48,7 +48,7 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
         : result.cales
           ? t('camAi.intoCale', { count: result.cales })
           : result.stops
-            ? t('camAi.intoStop', { count: result.stops })
+            ? [t('camAi.intoStop', { count: result.stops }), result.collisions > result.stops ? t('camAi.collisions', { count: result.collisions - result.stops }) : ''].filter(Boolean).join(' ')
             : result.collisions
             ? t('camAi.collisions', { count: result.collisions })
             : result.misplaced
