@@ -254,7 +254,7 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
-  it('keeps a mill rounding the jaws\' end clear of them as the check takes it, by the tool\'s square (a review found 2 hits clear of the jaw)', () => {
+  it.each([undefined, 'topPlate' as const])('keeps a mill rounding the jaws\' end clear of them as the check takes it, by the tool\'s square (a review found 2 hits clear of the jaw; part type %s)', (partType) => {
     // A 180 x 70 x 12 plate with a 170 x 34 boss 8 high (i 4..174, j 18..52), and a 36 x 30 pocket across the
     // boss's Y- face and the jaws' end (142 mm from the boss's X- face): through the plate beside the boss,
     // into it 1 mm short of its top.
@@ -262,7 +262,7 @@ describe('the jaws of a later clamping', () => {
     const hole = (i: number, j: number) => i >= 130 && i < 166 && j >= 2 && j < 32;
     const lo = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && boss(i, j) ? 19 : 0)));
     const hi = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 20 : 12)));
-    const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 24], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 24], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     // The case: a mill of Ø8 or more cutting below the jaw top past the jaws' end, next to a held face.
