@@ -42,6 +42,8 @@ export interface CamSummary {
   minutes: number;
   toolChanges: number;
   collisions: number;
+  /** Of them, tools or holders into the X stop below the jaw tops (the toolpath viewer does not draw the stop). */
+  stops: number;
   cales: number;
   /** Clampings where the vise would hold the part off where the program puts it (CamCheck.misplaced). */
   misplaced: number;
@@ -121,6 +123,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
         minutes: r.check.minutes,
         toolChanges: r.check.toolChanges,
         collisions: r.check.collisions,
+        stops: r.check.stops,
         cales: r.check.cales,
         misplaced: r.check.misplaced,
         gouge: gougeOf(r.check),
