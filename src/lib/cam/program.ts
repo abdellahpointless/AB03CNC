@@ -1620,6 +1620,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
     const wallMm3 = mine.reduce((v, w) => v + area(w.region) * (w.above - w.z), 0);
+    // shortcut: decided as this clamping is planned; a later one that cuts the wall (holding the part by another
+    // face) leaves the note standing. Decide it after the last clamping if one ever does.
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done });
