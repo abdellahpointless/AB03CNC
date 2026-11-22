@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
 import { partLook } from '../src/lib/partLook';
-import { analyseProgram, analyseSetups, exportBlocked, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
+import { analyseProgram, analyseSetups, exportBlocked, overJaws, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 import { rewriteTurns } from '../src/lib/fixTurns';
 
@@ -103,6 +103,25 @@ describe('setups', () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]).toMatchObject({ tool: 2, depth: 3 });
     expect(hits[0].line).toBe(18);
+  });
+
+  it('takes a tool by its circle against a jaw\'s end, not by its square (CAM AI\'s check had locked a program whose mill cleared the jaw)', () => {
+    // A vise from X-35 to X115, its jaw faces at Y-22 and Y22; a D10 (radius 5).
+    const at = (x: number, y: number) => overJaws([[-35, 115]], [-22, 22], [x, y, 0], 5);
+    // 4 mm past the Y+ jaw's end and 4 mm inside its face: the circle clears the jaw's corner (5.66 mm from it).
+    expect(at(119, 18)).toBe(false);
+    // The same before the Y- jaw's start.
+    expect(at(-39, -18)).toBe(false);
+    // 3 mm and 3 mm: it reaches the corner (4.24 mm).
+    expect(at(118, 19)).toBe(true);
+    // Beside the jaw: within its radius of the face, and clear of it.
+    expect(at(100, 18)).toBe(true);
+    expect(at(100, 16)).toBe(false);
+    // Past the end, over the jaw's side of its face: within its radius of the end, and further.
+    expect(at(119, 30)).toBe(true);
+    expect(at(121, 30)).toBe(false);
+    // Two vises 50 mm apart: in the gap, clear of both.
+    expect(overJaws([[-35, 115], [165, 315]], [-22, 22], [140, 30, 0], 5)).toBe(false);
   });
 
   it('checks the jaws of the modular clamp like a vise, but not a part held in a fixture', () => {

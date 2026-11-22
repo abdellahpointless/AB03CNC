@@ -391,6 +391,15 @@ export const OVERHANG = 50;
 export const viseSpans = (s: Pick<SetupInfo, 'jawX' | 'twoVises'>): [number, number][] =>
   s.twoVises ? [s.jawX, [s.jawX[0] + VISE.width + VISE.gap, s.jawX[0] + 2 * VISE.width + VISE.gap]] : [s.jawX];
 const inSpans = (spans: [number, number][], x: number, r: number) => spans.some(([a, b]) => x + r > a && x - r < b);
+/**
+ * Whether a tool's circle (centre p, radius r) reaches a jaw: along X a vise's span, across Y beyond the jaw
+ * faces jawY. Past a jaw's end only what the circle really reaches, not its square.
+ */
+export const overJaws = (spans: [number, number][], jawY: [number, number], p: Vec, r: number) =>
+  spans.some(([a, b]) => {
+    const dx = Math.max(a - p[0], 0, p[0] - b);
+    return (p[1] - r < jawY[0] && Math.hypot(dx, Math.max(p[1] - jawY[0], 0)) < r) || (p[1] + r > jawY[1] && Math.hypot(dx, Math.max(jawY[1] - p[1], 0)) < r);
+  });
 
 /**
  * Turns of the part between setups. Explicit turns ("180 GRAD UM Y") apply to the previous
@@ -1210,7 +1219,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
         info.collisions.push(hit);
       }
     };
-    const over = (p: Vec, r: number) => (p[1] - r < jawY[0] || p[1] + r > jawY[1]) && inSpans(spans, p[0], r);
+    const over = (p: Vec, r: number) => overJaws(spans, jawY, p, r);
     // The spacer ("ZWISCHENLAGE") between the part and a jaw or the stop, as high as the jaws.
     const spacerBoxes = ins.spacers.map((sp): [number, number, number, number] =>
       sp.side === 'Y-'
