@@ -55,8 +55,8 @@ export interface SideFeatures {
   floors: { z: number; area: number }[];
   /** Round holes reachable from this side (open towards +Z). */
   holes: Hole[];
-  /** 45° chamfer bands facing up: from height lo to hi (width hi - lo). */
-  chamfers: { lo: number; hi: number; area: number }[];
+  /** 45° chamfer bands facing up: from height lo to hi (width hi - lo), and where they lie (their box in X and Y). */
+  chamfers: { lo: number; hi: number; area: number; min: P2; max: P2 }[];
   /** Area of faces facing up that are flat, a wall or 45° to no axis at all (3D surfaces, ball mill). */
   freeform: number;
 }
@@ -157,7 +157,7 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
   const P = turnTris(tris, R);
   const { min, max } = bounds(P);
   const floors = new Map<number, number>();
-  const chamfers = new Map<string, { lo: number; hi: number; area: number }>();
+  const chamfers = new Map<string, { lo: number; hi: number; area: number; min: P2; max: P2 }>();
   let freeform = 0;
   for (let i = 0; i < P.length; i += 9) {
     const nv = norm(P, i);
@@ -170,8 +170,10 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
       const lo = Math.round(Math.min(P[i + 2], P[i + 5], P[i + 8]) * 100) / 100;
       const hi = Math.round(Math.max(P[i + 2], P[i + 5], P[i + 8]) * 100) / 100;
       const k = `${lo}:${hi}`;
-      const c = chamfers.get(k) ?? chamfers.set(k, { lo, hi, area: 0 }).get(k)!;
+      const c = chamfers.get(k) ?? chamfers.set(k, { lo, hi, area: 0, min: [Infinity, Infinity], max: [-Infinity, -Infinity] }).get(k)!;
       c.area += a;
+      for (let v = i; v < i + 9; v += 3)
+        for (const ax of [0, 1]) [c.min[ax], c.max[ax]] = [Math.min(c.min[ax], P[v + ax]), Math.max(c.max[ax], P[v + ax])];
     } else if (nz > 0.02 && nv.every((c) => Math.abs(c) > 0.02 && Math.abs(Math.abs(c) - Math.SQRT1_2) > 0.01)) {
       // Not a wall or a chamfer along any axis (those are machined from another side): a 3D surface.
       freeform += a;

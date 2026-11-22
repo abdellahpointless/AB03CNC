@@ -1337,9 +1337,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const waste = -H - sb.lo[2];
     // A later clamping: as deep as its own cuts beside the held faces allow, as the shop holds it (jaw tops under
     // every such cut in 159 of 160 later clampings, the deepest such grip in 101): 1 mm under the lowest stock
-    // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its outer
-    // chamfers (the outline shrinks there: the graver cuts beside the held faces), 1.3 mm under Z0 (the deburring
-    // graver's 0.3), and on the faces it holds at 3 mm (1 mm short of where they change).
+    // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its chamfers
+    // near the held faces, 1.3 mm under Z0 (the deburring graver's 0.3), and on the faces it holds at 3 mm
+    // (1 mm short of where they change).
     const deepest = () => {
       let jaw = -1.3;
       // From the part's bottom: the stock under it is never cut here, the jaws may grip it (a review finding).
@@ -1348,11 +1348,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
           jaw = z - 1;
           break;
         }
-      for (const c of f.chamfers) {
-        const [lo, hi] = [c.lo - top, c.hi - top];
-        if (lo < jaw + 1 && area(difference(filled(slice(P, lo - 0.05)), offset(filled(slice(P, (lo + hi) / 2)), 0.02))) > 0.5) jaw = Math.min(jaw, lo - 1);
-      }
       const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
+      // Its chamfers within a graver's reach (and 1 mm) of the faces it holds, outside or in: the graver's cone
+      // stands beside the jaws there (the validation found one 0.95 mm into a jaw, from an inner edge).
+      const reach = Math.max(4, ...usable(tools, ['ST']).map((g) => g.diameter / 2)) + 1;
+      for (const c of f.chamfers) {
+        const lo = c.lo - top;
+        if (lo < jaw + 1 && (!e3 || c.min[1] < e3.lo[1] + reach || c.max[1] > e3.hi[1] - reach || c.min[0] < e3.lo[0] + reach)) jaw = Math.min(jaw, lo - 1);
+      }
       let same = 3;
       for (const g of CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g > 3).sort((p, q) => p - q)) {
         const e = extent(left.at(sb.lo[2], sb.lo[2] + g + 1));
