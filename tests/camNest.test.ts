@@ -79,3 +79,17 @@ describe('CAM AI falls back on the nest only when no way of holding passes', () 
     }
   }, 900_000);
 });
+
+describe('the nest stays under the face the face mill cuts', () => {
+  it('nests no clamping whose nest would stand within 0.5 mm of the face, and does not prove a plate too thin for the vise (a review found a 3.4 mm plate nested, the face mill over its set screws)', async () => {
+    const { camProgram } = await import('../src/lib/cam/program');
+    const { heightPart } = await import('./heightPart');
+    // As the page plans it: the operator's layout, the nest allowed.
+    for (const [h, material] of [[3.4, 'ALU'], [4, 'POM']] as const) {
+      const plate = heightPart(Array.from({ length: 25 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i % 10 >= 3 && i % 10 < 7 && j % 10 >= 3 && j % 10 < 7 ? 1 : h))));
+      const r = camProgram({ tris: plate, material, tools: [], brand: 'HAAS', raw: [44, 30, h + 10], orient: { side: 'Z+', spin: false } });
+      for (const s of r.setups.filter((x) => x.nest)) expect(s.nest!.min[2] + s.nest!.size[2], `${h} mm, ${s.side}`).toBeLessThanOrEqual(-0.5 + 1e-6);
+      expect(r.setups.every((s) => s.physics.ok), `${h} mm`).toBe(false);
+    }
+  }, 900_000);
+});

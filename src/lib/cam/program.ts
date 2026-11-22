@@ -1201,16 +1201,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const pb = { lo: [f.min[0] - ss(0), f.min[1] - ss(1), -H - ss(2)] as Vec, hi: [f.max[0] + ss(0), f.max[1] + ss(1), ss(2)] as Vec };
     const sb = { lo: left.box.lo.map((v, k) => onFace(v, true, [pb.lo[k], rb.lo[k]], left.skin, 0)) as Vec, hi: left.box.hi.map((v, k) => onFace(v, false, [pb.hi[k], rb.hi[k]], left.skin, 0)) as Vec };
     const stockH = sb.hi[2] - sb.lo[2];
-    // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
-    // In the POM nest the pocket's walls stand where the jaws would: cut down to the nest's top only.
-    const nested = !!input.nestSides?.includes(side.name) && stockH >= NEST.minDepth + 1;
-    // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
-    // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
-    const nestDepth = Math.min(stockH - 1, 30, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
     // The jaw tops stay 0.5 mm under the top face (Z0): the face mill, wider than the vise, faces down to it and
     // the deburring graver runs round it 0.3 mm deep. A part too thin for that with a 3 mm grip is not held
-    // safely (faceAtJaws, below).
+    // safely (faceAtJaws, below). The POM nest's top, with its walls and set screws, stays under it too.
     const most = -0.5 - sb.lo[2];
+    // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
+    // In the POM nest the pocket's walls stand where the jaws would: cut down to the nest's top only.
+    const nested = !!input.nestSides?.includes(side.name) && stockH >= NEST.minDepth + 1 && most >= NEST.minDepth;
+    // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
+    // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
+    const nestDepth = Math.min(stockH - 1, 30, most, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
     const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least, most);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
