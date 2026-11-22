@@ -134,4 +134,19 @@ describe('rapids the check is too coarse to see', () => {
     expect(out[j + 2]).toMatch(/ G01 Z-1\. F840\.$/);
     expect(out[j + 3]).toMatch(/ G01 Z-1\.5$/);
   }, 300_000);
+
+  it('on the check’s own grid feeds only a rapid that grazes stock with its rim; one deeper in stays a collision', () => {
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const lines = r.code.split('\n');
+    const at = lines.findIndex((l, i) => i > lines.findIndex((x) => /TOOLPATH FRAESEN/.test(x)) && /^N\d+ G00 Z/.test(l));
+    const r0 = r.setups[0].ops.find((o) => o.name.startsWith('FRAESEN'))!.tool.diameter / 2;
+    const down = (x: number) => [...lines.slice(0, at + 1), `N0 G00 X${(Math.round(x * 1000) / 1000).toFixed(3)} Y0.`, 'N0 G00 Z-1.', 'N0 G00 Z2.', ...lines.slice(at + 1)].join('\n');
+    // Its rim 0.3 mm into the outside stock (the raw block's face at X-22): rewritten.
+    const rim = finerRapids(down(-22 - r0 + 0.3), 'HAAS', undefined, 2_000_000, true);
+    expect(rim).toMatch(/G01 Z-1\. F/);
+    // Its axis over the stock: left a rapid (the check locks it), unless asked to feed any.
+    const deep = down(-21);
+    expect(finerRapids(deep, 'HAAS', undefined, 2_000_000, true)).toBe(deep);
+    expect(finerRapids(deep, 'HAAS')).toMatch(/G01 Z-1\. F/);
+  }, 300_000);
 });

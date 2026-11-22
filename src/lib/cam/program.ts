@@ -971,16 +971,19 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
 /**
  * The rapids down past stock the check's grid is too coarse to see (a rim through a thin skin left along a
  * wall: up to 0.1 mm, found at 2M voxels in Phase 6), on a finer grid: such a rapid stays a rapid down to
- * 1 mm above the highest stock it touches and feeds the rest, at the feed of the move after it.
+ * 1 mm above the highest stock it touches and feeds the rest, at the feed of the move after it. `rimOnly`:
+ * only one that touches stock with its rim (half a mm, or a cell, in from its edge): deeper in, it stays a
+ * rapid into material, which the check counts.
  */
-export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds): string {
+export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds, voxels = 2_000_000, rimOnly = false): string {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const sim = buildInput(tp, analyseProgram(tp, { jawHeight: JAW }));
   if (!sim) return code;
-  const g = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: 2_000_000, surfaceMoves: false, dropLoose: false });
-  // The highest stock each straight rapid down takes, in its program's Z.
+  const g = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: voxels, surfaceMoves: false, dropLoose: false });
+  // The highest stock each straight rapid down takes, in its program's Z (and the lines one takes deeper in than its rim).
   const plane = g.n[0] * g.n[1];
   const hit = new Map<number, number>();
+  const deep = new Set<number>();
   for (let v = 0; v < g.removed.length; v++) {
     const i = g.removed[v];
     const m = i === KEPT ? undefined : tp.moves[i];
@@ -993,7 +996,10 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
     // Up to a cell above the highest sample it takes: the stock reaches no higher.
     const z = R[6] * p[0] + R[7] * p[1] + R[8] * p[2] + t[2] - (path[path.length - 1][2] - b[2]) + g.step[2];
     hit.set(m.line, Math.max(hit.get(m.line) ?? -Infinity, z));
+    const off = Math.hypot(R[0] * p[0] + R[1] * p[1] + R[2] * p[2] + t[0] - path[0][0], R[3] * p[0] + R[4] * p[1] + R[5] * p[2] + t[1] - path[0][1]);
+    if (rimOnly && !(off >= (m.dia ?? 0) / 2 - Math.max(0.5, g.size))) deep.add(m.line);
   }
+  for (const l of deep) hit.delete(l);
   if (!hit.size) return code;
   const lines = code.split('\n');
   const from = new Map(tp.moves.filter((m) => m.kind === 'rapid').map((m) => [m.line, m.points[0][2]]));
@@ -1036,6 +1042,13 @@ function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck }
       lines[i] = `${lines[i].replace(/\bG00\b/, 'G01')} F${f}.`;
     }
     check = again((code = lines.join('\n')));
+  }
+  // A rapid down whose rim grazes stock (the check's own grid, its 300k voxels): fed the rest of the way from
+  // 1 mm above it, and kept when nothing else is worse (the validation found one 0.2 mm in, from a floor's edge).
+  if (check.rapids) {
+    const fed = finerRapids(code, input.brand, input.speeds, 300_000, true);
+    const c = fed === code ? check : again(fed);
+    if (c.rapids < check.rapids && c.collisions < check.collisions && c.match >= check.match - 0.0005 && gougeOf(c) <= gougeOf(check)) [code, check] = [fed, c];
   }
   // Through-cuts over a parallel stop on it (the part's bottom rests there): checked again.
   if (check.cales) check = again((code = overParallels(code, input.speeds ?? speedsFor(input.brand))));
