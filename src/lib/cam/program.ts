@@ -227,14 +227,14 @@ function grown(occ: Uint8Array, [nx, ny, nz]: number[]): Uint8Array {
 
 /**
  * The cale under the part: the jaws grip as little as the cut needs (the outside is cut down to
- * 0.5 mm above the jaws), at least 3 mm to hold it, at most 6, never all of the part.
+ * 0.5 mm above the jaws), at least 3 mm to hold it, at most 6, never all of the part, never more than `most`.
  */
-function caleFor(height: number, want: number, least = 3): { cale: number; grip: number } {
+function caleFor(height: number, want: number, least = 3, most = Infinity): { cale: number; grip: number } {
   const target = Math.max(3, least, Math.min(6, want, height - 1));
   let best: { cale: number; grip: number } | null = null;
   for (const c of CALE_HEIGHTS) {
     const grip = JAW - c;
-    if (grip < 3 || grip > Math.max(3, height - 1)) continue;
+    if (grip < 3 || grip > Math.max(3, Math.min(height - 1, most))) continue;
     // The largest grip not over the target, else the smallest above it.
     const score = grip <= target + 1e-6 ? target - grip : 100 + grip - target;
     if (!best || score < (best.grip <= target + 1e-6 ? target - best.grip : 100 + best.grip - target)) best = { cale: c, grip };
@@ -1207,7 +1207,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // Under half the part (turned over, the two halves cut from either side overlap), at most 30 mm:
     // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
     const nestDepth = Math.min(stockH - 1, 30, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
-    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least);
+    // The jaw tops stay 0.5 mm under the top face (Z0): the face mill, wider than the vise, faces down to it and
+    // the deburring graver runs round it 0.3 mm deep.
+    // shortcut: a part under 3.5 mm thick is still gripped 3 mm, its face then under the jaw tops (the check
+    // locks such a program); hold it another way if one ever must be.
+    const most = -0.5 - sb.lo[2];
+    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least, most);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
@@ -1612,7 +1617,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (!nest) physicsAt(grip);
     if (!nested && least === 3 && (physics.feed < 1 || !physics.ok)) {
       const deeper = CALE_HEIGHTS.map((c) => JAW - c)
-        .filter((g) => g > grip && g <= stockH - 1)
+        .filter((g) => g > grip && g <= stockH - 1 && g <= most)
         .sort((p, q) => p - q)
         .find((g) => {
           const p = physicsAt(g);

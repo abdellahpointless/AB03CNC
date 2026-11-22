@@ -303,6 +303,17 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
+  it('keeps the jaw tops 0.5 mm under the top face, round which the face mill and the deburring graver run (the validation found the jaws on the stock above a plate\'s face)', () => {
+    // A 40 x 25 x 4 POM plate with four small pockets, from a 44 x 30 x 14 blank: turned over, the vise check
+    // asks for more than a 3 mm grip, which must not lift the jaws to the face.
+    const tris = heightPart(Array.from({ length: 25 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i % 10 >= 3 && i % 10 < 7 && j % 10 >= 3 && j % 10 < 7 ? 1 : 4))));
+    const r = camProgram({ tris, material: 'POM', tools: [], brand: 'HAAS', raw: [44, 30, 14], noNest: true, orient: { side: 'Z+', spin: false } });
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    for (const s of an.setups) expect(s.jawTopZ!, `clamping ${s.index + 1}`).toBeLessThanOrEqual(-0.5 + 1e-6);
+    expect(r.check.stops).toBe(0);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('notes the thin wall the jaws leave across a pocket that opens onto a held face, and plans no clamping more for it (a review found a third one, misplaced)', () => {
     // As above, on a blank whose grid shows that wall (under 0.1 mm thick) a whole cell thick.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
