@@ -119,3 +119,40 @@ describe('the plane between cuts', () => {
     expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
   }, 300_000);
 });
+
+describe('going down into material', () => {
+  /** The steepest ramp (its whole drop over its whole length: the lines are rounded to 0.001 mm) of each end mill's roughing, by tool code. */
+  const slopes = (r: ReturnType<typeof camProgram>) => {
+    const out = new Map<string, { type: string; d: number; max: number }>();
+    for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.name.startsWith('FRAESEN'))) {
+      const e = out.get(o.tool.code) ?? out.set(o.tool.code, { type: o.tool.type, d: o.tool.diameter, max: 0 }).get(o.tool.code)!;
+      let [dz, len] = [0, 0];
+      for (const m of [...feeds(o.lines), null]) {
+        const dxy = m ? Math.hypot(m[1][0] - m[0][0], m[1][1] - m[0][1]) : 0;
+        if (m && dxy > 1e-6 && m[0][2] - m[1][2] > 1e-6) [dz, len] = [dz + m[0][2] - m[1][2], len + dxy];
+        else {
+          if (len > 0.5) e.max = Math.max(e.max, dz / len);
+          [dz, len] = [0, 0];
+        }
+      }
+    }
+    return [...out.values()].filter((e) => e.max > 0);
+  };
+  const tan = (deg: number) => Math.tan((deg * Math.PI) / 180);
+
+  it('ramps at 15° with the end mills the shop takes in that steeply (ALU Ø2 to 8), at 5° with the high-feed mill and where the shop never does', () => {
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    const s = slopes(r);
+    const steep = s.filter((e) => e.type === 'SF' && e.d >= 2 && e.d <= 8);
+    expect(steep.length).toBeGreaterThan(0);
+    for (const e of steep) expect(e.max, `SF ${e.d}`).toBeLessThanOrEqual(tan(15) + 0.001);
+    expect(Math.max(...steep.map((e) => e.max))).toBeGreaterThan(tan(10));
+    for (const e of s.filter((x) => x.type !== 'SF' || x.d < 2 || x.d > 8)) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
+    // Brass: no ramp or plunge into material in the shop's programs to go by: 5° throughout.
+    const ms = camProgram({ ...base, material: 'MS', tris: plate, raw: [44, 34, 16] });
+    expect(slopes(ms).length).toBeGreaterThan(0);
+    for (const e of slopes(ms)) expect(e.max, `MS ${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
+  }, 300_000);
+});

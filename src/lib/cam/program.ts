@@ -446,17 +446,27 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pi
   return ops;
 }
 
-/** Steepest way an end mill goes down into material (5°): it never plunges straight into it. */
-const RAMP = Math.tan((5 * Math.PI) / 180);
+/**
+ * How steeply an end mill ramps into material (it never plunges straight into it): 15° in the SF Ø
+ * range per material where the shop's engineers go in that steeply (15-20° ramps or straight plunges,
+ * in two programs or more of the library), else 5°. The high-feed mills (SFH), the mills over Ø8 and
+ * the smallest ones never go into material in the library (they go down beside it).
+ */
+const STEEP: Partial<Record<string, [number, number]>> = { ALU: [2, 8], FH: [3, 8], PCGF: [1, 8], PEEK: [2, 4], POM: [3, 8] };
+const rampOf = (tool: CamTool, mat: string) => {
+  const s = STEEP[mat];
+  const steep = tool.type === 'SF' && !!s && tool.diameter >= s[0] - 1e-6 && tool.diameter <= s[1] + 1e-6;
+  return Math.tan(((steep ? 15 : 5) * Math.PI) / 180);
+};
 type P3 = [number, number, number];
 const dist2 = (a: P2, b: P2) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 
 /**
- * Down from z0 to z1 at the ramp's slope from `start`, through the vertices `next(k)` gives
+ * Down from z0 to z1 at `slope` (dz per mm) from `start`, through the vertices `next(k)` gives
  * (k = 0, 1, …): the points passed, where it ends, and the vertex it was heading for.
  */
-function ramp(start: P2, next: (k: number) => P2, z0: number, z1: number): { pts: P3[]; end: P2; k: number } {
-  const L = Math.max(0.01, (z0 - z1) / RAMP);
+function ramp(start: P2, next: (k: number) => P2, z0: number, z1: number, slope: number): { pts: P3[]; end: P2; k: number } {
+  const L = Math.max(0.01, (z0 - z1) / slope);
   const pts: P3[] = [];
   let p = start;
   let s = 0;
@@ -563,6 +573,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
     return { ...c, ap, s, f: Math.max(10, Math.round((c.f * k) / 10) * 10), fz: Math.max(10, Math.round((c.fz * k) / 10) * 10) };
   };
   const r = tool.diameter / 2;
+  const slope = rampOf(tool, mat);
   const airCache = new Map<string, Region>();
   const inAir = (p: P2, lo: number, hi: number) => {
     const key = `${lo.toFixed(3)}:${hi.toFixed(3)}`;
@@ -633,7 +644,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
           lines.push(`G01 Z${n3(pz)} F${c.fz}.`);
         } else if (ring.closed) {
           const start = k0;
-          const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zAt, pz);
+          const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zAt, pz, slope);
           rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
           at = rp.end;
           k0 = (start + rp.k) % m;
@@ -643,7 +654,7 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
             const w = q % (2 * (m - 1));
             return w <= m - 1 ? w : 2 * (m - 1) - w;
           };
-          const rp = ramp(pts[0], (k) => pts[idx(k + 1)], from, pz);
+          const rp = ramp(pts[0], (k) => pts[idx(k + 1)], from, pz, slope);
           rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
           for (let v = Math.min(idx(rp.k), idx(rp.k + 1)); v >= 0; v--) lines.push(`G01 ${xy(pts[v])}`);
         }
@@ -778,6 +789,7 @@ function loadOf(op: CamOp, mat: string, left: number, width: number, limits: Lim
     side = Math.max(side, PEAK * millForce(kc, o.ap, o.ae, o.f, o.s, d));
   }
   // Down: the helix pulls and pushes about half the side force; the mills ramp in (milling()).
+  // shortcut: the same at 5° and 15° (the steeper ramp's end-tooth load is not modelled); model it if a part ever slips on an entry.
   // shortcut: a ring no longer than 1 mm is plunged like a drill and not counted here; rare (a hole the tool's size).
   return { side, down: side / 2, reach };
 }
