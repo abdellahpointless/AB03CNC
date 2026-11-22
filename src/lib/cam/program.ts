@@ -1276,6 +1276,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const pastJaws = nested ? [] : beside(-0.05, 1 + (mills[0]?.diameter ?? 0));
     // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
     const wallBand = nested ? [] : difference(jaws, beside(0, 1));
+    // Where the operator leaves 0.1 mm or more on a held face, that wall lies in what is left there: not noted.
+    const leftOn = nested
+      ? []
+      : union([
+          ...(ss(1) >= 0.1 ? [...rect(sb.lo[0] - 50, held.lo[1] - 1, sb.hi[0] + 50, held.lo[1] + 0.1), ...rect(sb.lo[0] - 50, held.hi[1] - 0.1, sb.hi[0] + 50, held.hi[1] + 1)] : []),
+          ...(ss(0) >= 0.1 ? rect(held.lo[0] - 1, held.lo[1] - 1, held.lo[0] + 0.1, held.hi[1] + 1) : []),
+        ]);
     const mine: { z: number; above: number; region: Region }[] = [];
 
     // 1. Face the top (the face mill, else the largest end mill).
@@ -1619,7 +1626,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
-    const wallMm3 = mine.reduce((v, w) => v + area(w.region) * (w.above - w.z), 0);
+    const wallMm3 = mine.reduce((v, w) => v + area(leftOn.length ? difference(w.region, leftOn) : w.region) * (w.above - w.z), 0);
     // shortcut: decided as this clamping is planned; a later one that cuts the wall (holding the part by another
     // face) leaves the note standing. Decide it after the last clamping if one ever does.
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });

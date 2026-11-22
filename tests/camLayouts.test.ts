@@ -212,6 +212,13 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
+  it('notes no wall that lies in the side stock the operator leaves on the held face (a review found it noted)', () => {
+    const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, sideStock: 0.3, orient: { side: 'Z+', spin: false } });
+    expect(r.notes.filter((n) => n.key === 'jawWall')).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('asks for no smaller end mill for what lies where no tool may go (a review found a Ø1 asked for)', () => {
     // The hole across the boss's Y- face, 10 wide; a blank whose grid shows the cut face a quarter cell out.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
