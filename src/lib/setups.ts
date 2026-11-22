@@ -663,6 +663,40 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
 }
 
 /**
+ * Tools (and their holders) into the stop below the jaw tops: the plate before the held X- face, between
+ * the jaws. One hit per run of moves of one tool, the deepest.
+ * shortcut: CAM AI's own check only. How high the shop's stop stands is an open question
+ * (docs/knowledge/cam-gaps.md, P1), so the shop's programs are not judged by it and the viewer does not
+ * show these hits; add them to the reader's collisions once the shop has answered.
+ */
+export function stopHits(tp: Toolpath, s: SetupInfo): Collision[] {
+  if (s.jawTopZ === null || !s.clampBox || !s.moves) return [];
+  const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
+  const [x0, x1, y0, y1] = [s.jawX[0], s.jawX[0] + STOP_PLATE, s.clampBox.min[1] - spacerAt(s, 'Y-'), s.clampBox.max[1] + spacerAt(s, 'Y+')];
+  const into = (p: Vec, r: number) => p[0] + r > x0 && p[0] - r < x1 && p[1] + r > y0 && p[1] - r < y1;
+  const out: Collision[] = [];
+  let open: Collision | null = null;
+  for (let mi = s.moves[0]; mi <= s.moves[1]; mi++) {
+    const m = tp.moves[mi];
+    if (m.setup !== s.index) continue;
+    const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
+    const holder = m.reach ? holderOf(r * 2).radius : 0;
+    let here: Collision | null = null;
+    for (const p of samples(m)) {
+      const depth = s.jawTopZ - p[2];
+      if (into(p, r) && depth > 0.01 && (!here || depth > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: p, depth };
+      const below = s.jawTopZ - (p[2] + (m.reach ?? 0));
+      if (holder && into(p, holder) && below > 0.01 && (!here || below > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: [p[0], p[1], p[2] + m.reach!], depth: below, what: 'holder' };
+    }
+    if (!here) continue;
+    if (open && open.tool === here.tool && mi - open.move <= 3) {
+      if (here.depth > open.depth) Object.assign(open, { depth: here.depth, point: here.point, what: here.what });
+    } else out.push((open = here));
+  }
+  return out;
+}
+
+/**
  * Where the cales go under the part at the start of setup s: from the part's real underside
  * across Y (lowest material over the held X range), a cale stands where the underside sits at the
  * rest height and nothing hangs lower over its width. The front one as far forward and the back

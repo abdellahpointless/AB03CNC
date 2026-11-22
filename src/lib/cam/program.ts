@@ -5,7 +5,7 @@ import { differences, layModel, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram, OVERHANG, VISE, viseSpans } from '../setups';
+import { analyseProgram, OVERHANG, stopHits, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
@@ -828,9 +828,10 @@ export interface CamCheck {
   toolChanges: number;
   /** Tools or holders into the jaws or the part, rapids into material (all block it). */
   collisions: number;
-  /** Of those: the shop's holder (Ø50 then Ø63 from the typed length) into material, rapids through material. */
+  /** Of those: the shop's holder (Ø50 then Ø63 from the typed length) into material, rapids through material, tools or holders into the stop below the jaw tops. */
   holders: number;
   rapids: number;
+  stops: number;
   /** The rapids (code lines) that only graze a sliver: run at feed by camProgram. */
   grazes: number[];
   /** Spots where a tool goes into a cale under the part (move that cale: a warning). */
@@ -867,6 +868,7 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     diff = 'mismatch' in laid ? null : differences(laid);
   }
   const hits = an.setups.flatMap((x) => x.collisions);
+  const stops = an.setups.reduce((n, x) => n + stopHits(tp, x).length, 0);
   // Check 1, geometric, on every move against the stock as it is then: the shop's holder above the
   // typed length; and a rapid must not take any material (cut as if it were a feed: what it would
   // remove first is a crash).
@@ -900,9 +902,10 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     toolChanges: tp.toolChanges,
     // Unlike the remapper (a warning there), CAM AI's own program never goes into a parallel
     // (shop rule): its through-cuts stop on them (overParallels); one still going in blocks it.
-    collisions: hits.filter((h) => h.what !== 'spacer').length + holders + rapids,
+    collisions: hits.filter((h) => h.what !== 'spacer').length + holders + rapids + stops,
     holders,
     rapids,
+    stops,
     grazes,
     cales: hits.filter((h) => h.what === 'cale').length,
     misplaced: an.setups.filter((x) => x.grip && x.clampBox && Math.max(Math.abs(x.grip.stop - x.clampBox.min[0]), Math.abs(x.clampBox.max[1] - x.grip.back)) > MISPLACED).length,

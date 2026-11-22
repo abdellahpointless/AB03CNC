@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes } from '../src/lib/cam/layouts';
 import { camProgram, checkProgram } from '../src/lib/cam/program';
-import { analyseProgram, DEFAULT_JAW_HEIGHT } from '../src/lib/setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
 import { columnPart, heightPart } from './heightPart';
@@ -92,15 +92,42 @@ describe('where a clamping puts the part', () => {
 });
 
 describe('the jaws of a later clamping', () => {
-  it('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits)', () => {
-    // A 30 x 34 x 8 plate with a 12 x 24 boss 6 high, and a 4 x 4 hole from the plate's bottom: half of it
-    // beside the boss (through the plate), half up into the boss (1 mm short of its top). Turned over, the
-    // jaws hold the boss; the hole stands half over a jaw, and its part in the boss goes below the jaw top.
-    const hole = (i: number, j: number) => i >= 8 && i < 12 && j >= 3 && j < 7;
+  // A 30 x 34 x 8 plate with a 12 x 24 boss 6 high (cells i 4..16, j 5..29), and a hole from the plate's
+  // bottom: through the plate beside the boss, up into the boss 1 mm short of its top. Turned over, the
+  // jaws hold the boss and the stop touches its X- face (i 4): a hole across one of its faces stands half
+  // over a jaw or the stop, and its part in the boss goes below the jaw top.
+  const bossPlate = (hole: (i: number, j: number) => boolean) => {
     const boss = (i: number, j: number) => i >= 4 && i < 16 && j >= 5 && j < 29;
     const lo = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && boss(i, j) ? 13 : 0)));
     const hi = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 14 : 8)));
-    const tris = columnPart(lo, hi);
+    return columnPart(lo, hi);
+  };
+  // The hole across the boss's X- face, at the stop after the turn (6 x 6, i 1..7).
+  const atStop = bossPlate((i, j) => i >= 1 && i < 7 && j >= 14 && j < 20);
+  /** Samples of moves whose tool goes into the stop plate below the jaw top, between the jaws. */
+  const intoStop = (tp: ReturnType<typeof parseToolpath>, s: ReturnType<typeof analyseProgram>['setups'][number]) =>
+    tp.moves.filter((m) => m.setup === s.index).flatMap((m) =>
+      m.points.filter((p) => {
+        const r = (m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0) / 2;
+        return p[2] < s.jawTopZ! - 0.01 && p[0] - r < s.jawX[0] + STOP_PLATE && p[0] + r > s.jawX[0] && p[1] + r > s.clampBox!.min[1] && p[1] - r < s.clampBox!.max[1];
+      }),
+    );
+
+  it('counts a tool into the X stop below the jaw top as a collision (a review found the check blind there)', () => {
+    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    const s = an.setups[1];
+    // The program with one plunge more at its end, into the middle of the stop plate 1 mm below the jaw top.
+    const end = r.code.lastIndexOf('\n', r.code.lastIndexOf('M09')) + 1;
+    const plunge = `G00 X${(s.jawX[0] + STOP_PLATE / 2).toFixed(3)} Y${((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3)}\nG01 Z${(s.jawTopZ! - 1).toFixed(3)} F300.\nG00 Z50.\n`;
+    const c = checkProgram(atStop, r.code.slice(0, end) + plunge + r.code.slice(end), 'HAAS', undefined, r.pose);
+    expect(c.stops).toBeGreaterThan(r.check.stops);
+    expect(c.collisions).toBeGreaterThan(r.check.collisions);
+  }, 300_000);
+
+  it('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits)', () => {
+    // The hole across the boss's Y- face (4 x 4): half beside the boss, half in it.
+    const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
