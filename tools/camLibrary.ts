@@ -130,6 +130,8 @@ for (const folder of readdirSync(LIB).sort()) {
         row.check = {
           match: r.check.match,
           collisions: r.check.collisions,
+          // Of those, tools or holders into the stop below the jaw tops.
+          stops: r.check.stops,
           cales: r.check.cales,
           misplaced: r.check.misplaced,
           gougeMm3: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))),
@@ -137,6 +139,8 @@ for (const folder of readdirSync(LIB).sort()) {
           // The vise check (physics.ts): every clamping holds the part safely; else the app locks the program.
           vise: r.setups.every((s) => s.physics.ok),
         };
+        // What CAM AI tells the operator it did not do (camAi.note.*), by key.
+        row.notes = r.notes.map((n) => n.key);
         // Per clamping, how far the stock above the jaws stands out past the held face at the stop (mm):
         // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
         row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
