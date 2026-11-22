@@ -16,7 +16,9 @@ import { partTypeOf } from '../src/lib/cam/partType';
 import { camProgram } from '../src/lib/cam/program';
 import { CAM_MATERIALS, type CamMaterial } from '../src/lib/cam/tools';
 import { readTris } from '../src/lib/model';
+import { movePath } from '../src/lib/playback';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, readInstructions } from '../src/lib/setups';
+import { buildInput, carve, KEPT } from '../src/lib/stockSim';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 const [LIB, OUT, ...ONLY] = process.argv.slice(2);
@@ -75,6 +77,37 @@ function summary(code: string) {
     lines: lines.length,
     minutes: Math.round(tp.totalSeconds / 6) / 10,
   };
+}
+
+/**
+ * CAM_FINE=<voxels>: what the app's check (300k voxels) can miss, counted again on a finer grid:
+ * rapids that take material (a crash), and straight feed plunges of an end mill into material
+ * (over a quarter of its disc down their depth; reported only, the check has no rule for them).
+ */
+function fine(code: string, voxels: number) {
+  const tp = parseToolpath(code, speedsFor('HAAS'));
+  const sim = buildInput(tp, analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }));
+  if (!sim) return null;
+  // Every move cuts, rapids too, as in the check: what a rapid would take first.
+  const g = carve({ ...sim, moves: tp.moves.map((m) => ({ setup: m.setup, tool: m.tool, points: movePath(m) })), maxVoxels: voxels, surfaceMoves: false, dropLoose: false });
+  const vox = g.step[0] * g.step[1] * g.step[2];
+  const took = new Int32Array(tp.moves.length);
+  for (const i of g.removed) if (i !== KEPT) took[i]++;
+  let rapids = 0;
+  let rapidMm3 = 0;
+  let plunges = 0;
+  tp.moves.forEach((m, i) => {
+    if (!took[i]) return;
+    const [a, b] = [m.points[0], m.points[m.points.length - 1]];
+    if (m.kind === 'rapid') {
+      rapids++;
+      rapidMm3 += took[i] * vox;
+    } else if (m.kind === 'feed' && /FRAESEN|SCHLICHT/.test(m.op ?? '') && Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-4 && b[2] < a[2]) {
+      const r = (m.dia ?? 0) / 2;
+      if (r > 0 && took[i] * vox > 0.25 * Math.PI * r * r * (a[2] - b[2])) plunges++;
+    }
+  });
+  return { voxel: Math.round(g.size * 1000) / 1000, rapids, rapidMm3: Math.round(rapidMm3 * 10) / 10, plunges };
 }
 
 const seen = new Set<string>();
@@ -148,6 +181,7 @@ for (const folder of readdirSync(LIB).sort()) {
         // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
         row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
         row.cam = summary(r.code);
+        if (process.env.CAM_FINE) row.fine = fine(r.code, Number(process.env.CAM_FINE));
         // CAM_CODE_DIR=<folder>: also keep the program itself, named by the id (for studying its moves).
         if (process.env.CAM_CODE_DIR) writeFileSync(join(process.env.CAM_CODE_DIR, `${row.id}.nc`), r.code);
       } catch (e) {
