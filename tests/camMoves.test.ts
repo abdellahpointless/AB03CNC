@@ -117,9 +117,12 @@ describe('the plane between cuts', () => {
     for (const z of rPlanes(s)) expect(z).toBeLessThanOrEqual(2.001);
     // The cycles start from Z2: the move before each G98 G8x.
     for (const o of s.ops.filter((x) => x.kind === 'drill' || x.kind === 'centre')) expect(o.lines[o.lines.findIndex((l) => /G98 G8/.test(l)) - 1]).toBe('G00 Z2.');
-    // The facing removed by the operator: the raw top stays, the plane stays 2 mm above it (Z4).
+    // The facing removed by the operator: the raw top stays, the plane stays 2 mm above it (Z4), and so do
+    // the drill cycles' R (never on the raw top: a review finding).
     const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 12], skip: [s.ops[0].key!] });
     expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
+    expect(rPlanes(kept.setups[0]).length).toBeGreaterThan(0);
+    for (const z of rPlanes(kept.setups[0])) expect(z).toBeGreaterThanOrEqual(3.999);
   }, 300_000);
 });
 

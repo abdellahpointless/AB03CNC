@@ -1490,7 +1490,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     }
     // Where the material over each hole starts when it is drilled: the faced top, or lower where the
     // setups before already took it (sampled every 0.5 mm, from the grid of what they left).
-    const faced = Math.min(sb.hi[2], 0);
+    // Not faced (the operator removed the facing): the raw top (a review finding: R stood on it).
+    const faced = facedTop ? Math.min(sb.hi[2], 0) : sb.hi[2];
     const tops = new Map<Hole, number>();
     const surface = (h: Hole) => {
       let s = tops.get(h);
