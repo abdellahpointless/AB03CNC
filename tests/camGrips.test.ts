@@ -98,5 +98,14 @@ describe('the blank', () => {
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+    // Where it was planned, for the 3D view (model frame, centred on the part's box): 2 mm over the part's top.
+    expect(r.blank.hi.map((v) => Math.round(v * 1000) / 1000)).toEqual([22, 17, 8]);
+    expect(r.blank.lo.map((v) => Math.round(v * 1000) / 1000)).toEqual([-22, -17, -14]);
+  }, 300_000);
+
+  it('says where it was when CAM AI planned it centred (its fallback), for the 3D view to draw it there', () => {
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 22], centred: true });
+    expect(r.blank.hi.map((v) => Math.round(v * 1000) / 1000)).toEqual([22, 17, 11]);
+    expect(r.blank.lo.map((v) => Math.round(v * 1000) / 1000)).toEqual([-22, -17, -11]);
   }, 300_000);
 });

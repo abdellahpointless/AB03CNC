@@ -196,6 +196,7 @@ export default function CamPartView({
   tris,
   R,
   raw,
+  blank,
   picks,
   picking,
   onPick,
@@ -209,6 +210,8 @@ export default function CamPartView({
   R: Mat3;
   /** The raw block along the model's axes (mm), centred on the part, or none. */
   raw: number[] | null;
+  /** Where CAM AI planned the blank (model frame, centred on its box), once it has. */
+  blank?: { lo: number[]; hi: number[] } | null;
   picks: FacePick[];
   /** Which setup a click picks the top face of (null: not picking). */
   picking: number | null;
@@ -387,13 +390,20 @@ export default function CamPartView({
     if (!a) return;
     dispose(a.stock);
     a.stock.clear();
-    a.stock.position.y = 0;
+    a.stock.position.set(0, 0, 0);
     if (raw) {
       // The block's size in the vise (X along the jaws, Y between them, Z up).
       const v = [0, 1, 2].map((j) => Math.abs(R[j * 3] * raw[0] + R[j * 3 + 1] * raw[1] + R[j * 3 + 2] * raw[2]));
-      // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it.
-      const hz = Math.abs(R[6] * a.ext.x + R[7] * a.ext.y + R[8] * a.ext.z);
-      a.stock.position.y = hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
+      if (blank) {
+        // Where CAM AI planned it (also centred, its fallback): its centre turned as the model is (X, Z, -Y).
+        const c = [0, 1, 2].map((k) => (blank.lo[k] + blank.hi[k]) / 2);
+        const at = (j: number) => R[j * 3] * c[0] + R[j * 3 + 1] * c[1] + R[j * 3 + 2] * c[2];
+        a.stock.position.set(at(0), at(2), -at(1));
+      } else {
+        // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it.
+        const hz = Math.abs(R[6] * a.ext.x + R[7] * a.ext.y + R[8] * a.ext.z);
+        a.stock.position.y = hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
+      }
       const geo = new THREE.BoxGeometry(v[0], v[2], v[1]);
       const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: AMBER, transparent: true, opacity: 0.1, depthWrite: false }));
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: AMBER, transparent: true, opacity: 0.95 }));
@@ -412,7 +422,7 @@ export default function CamPartView({
       put(`Z ${fmtNumber(v[2], 1)} mm`, new THREE.Vector3(-x - h * 1.8, 0, z));
     }
     a.invalidate();
-  }, [raw, R]);
+  }, [raw, R, blank]);
 
   // The setups' top faces: green, with their triad; and the faces under the pointer while picking.
   useEffect(() => {

@@ -452,6 +452,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 tris={prep.tris}
                 R={chosen.R}
                 raw={raw}
+                blank={result?.blank}
                 picks={result || busy ? [] : picks}
                 picking={result ? null : picking}
                 onPick={pickFace}
@@ -828,7 +829,7 @@ const PURPOSE_HEX: Record<string, string> = { face: '#facc15', rough: '#facc15',
 
 /** The verdict, once there is a program. */
 function useVerdictOrNull(result: CamSummary | null, changed: number) {
-  const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, stops: 0, cales: 0, misplaced: 0, gouge: 0, size: [], raw: [], missing: [], notes: [], nests: [], setups: [] };
+  const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, stops: 0, cales: 0, misplaced: 0, gouge: 0, size: [], raw: [], blank: { lo: [], hi: [] }, missing: [], notes: [], nests: [], setups: [] };
   const v = useVerdict(result ?? empty, changed);
   return result ? v : null;
 }

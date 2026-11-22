@@ -51,6 +51,8 @@ export interface CamSummary {
   gouge: number;
   size: number[];
   raw: number[];
+  /** Where the blank was planned (model frame, centred on its box). */
+  blank: { lo: number[]; hi: number[] };
   missing: Need[];
   notes: CamNote[];
   /** The POM nests the part needs (rare): block size, pocket depth, screws, and the block's own program and check. */
@@ -129,6 +131,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
         gouge: gougeOf(r.check),
         size: r.size,
         raw: r.raw,
+        blank: r.blank,
         missing: r.missing,
         notes: r.notes,
         nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),

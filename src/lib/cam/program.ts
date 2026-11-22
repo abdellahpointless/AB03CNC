@@ -160,6 +160,8 @@ export interface CamResult {
   raw: Vec;
   /** Where the model lies in setup 1's program coordinates (p -> R p + t): how it was planned. */
   pose: { R: Mat3; t: Vec } | null;
+  /** Where the blank was planned, along the model's axes (the model centred on its box): for the 3D view. */
+  blank: { lo: Vec; hi: Vec };
   /** The POM nests the part needs (the last way to hold it), each with its own program. */
   nests?: { side: string; nest: Nest; code: string; check: CamCheck }[];
 }
@@ -1873,7 +1875,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
   // The model as planned: centred, turned as setup 1, its top at Z0.
   const pose = setups.length ? { R: setups[0].R, t: [0, 1, 2].map((k) => apply(setups[0].R, c0)[k] + setups[0].t[k]) as Vec } : null;
-  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose };
+  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi } };
 }
 
 /** The coolant word after the tool's first move: flood, air (HAAS 2 and 4 always get air when the program is sent), none. */
