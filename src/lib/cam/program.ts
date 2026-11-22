@@ -1276,9 +1276,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
         ...rect(a - c, held.hi[1] - c, a, held.hi[1]),
       ]);
     };
-    // Where the part above stands out past a held face, that far past the jaws' ends too: a mill in a pocket
-    // there reaches its Ø back toward the jaw.
-    const pastJaws = nested ? [] : beside(-0.05, 1 + (mills[0]?.diameter ?? 0));
+    // shortcut: kept off only where the part above stands out past a held face along the jaws or at the stop. Where
+    // it does so only beyond their end, a large mill rounding the part's own thin wall there could still come
+    // within its radius of the end and be counted (the check locks the program; no test part shows it). Look
+    // past the ends too (beside(-0.05, 1 + Ø)) if one ever does.
+    const pastJaws = nested ? [] : beside(-0.05, 0);
     // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
     const wallBand = nested ? [] : difference(jaws, beside(0, 1));
     // Where the operator leaves 0.1 mm or more on a held face, that wall lies in what is left there: not noted.
