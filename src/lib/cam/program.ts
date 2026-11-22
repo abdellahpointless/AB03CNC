@@ -598,7 +598,7 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
  * in that ring's path by rapid to 1 mm above the pass, across, round, and lifted and over by
  * rapid for an open piece's next pass (never back over the cut at feed).
  */
-function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null): CamOp {
+function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null, raised?: (ring: Ring, z: number, top: number) => void): CamOp {
   const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
   // Each ring with as few points as keep its own within 0.005 mm (finishing 0.002), not every facet and
   // step of the model's curves (CAM AI wrote 27 % of its roughing moves under 0.01 mm, the shop 2 %).
@@ -646,6 +646,8 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
       if (c.s !== rpm) lines.push(`S${(rpm = c.s)}`);
       // Ground a smaller mill takes above this level later is still there under this ring: from its top.
       const top = Math.max(top0, upTo?.(ring, z) ?? -Infinity);
+      // Run from above its own level: the ring as cut and where from.
+      if (top > above + 1e-6) raised?.(ring, z, top);
       const n = Math.max(1, Math.ceil((top - z) / c.ap - 1e-6));
       const passes = Array.from({ length: n }, (_, i) => top - ((top - z) * (i + 1)) / n);
       // Finishing looks through all the roughing's rings at this level (its rings lie next to them).
@@ -1673,16 +1675,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const sw = swept([ring], r - 0.02);
         return still.find((g) => g.z > z + 1e-6 && area(intersection(sw, g.rest)) > 0.05)?.above ?? null;
       };
-      ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
       // A ring run from a higher top (upTo) cut its way down there: what it swept is gone at those levels too (the
-      // tool's own sweep, never a wall's allowance), so a smaller mill is not sent up there for the same ground.
-      for (const w of work)
-        for (const ring of w.rings) {
-          const u = upTo(ring, w.z);
-          if (u === null || u <= w.above + 1e-6) continue;
-          const gone = swept([ring], r - 0.01);
-          for (const g of ground) if (g.z > w.z + 1e-6 && g.above <= u + 1e-6) g.took.push({ dia: tool.diameter, gone });
-        }
+      // ring as cut, the tool's own sweep, never a wall's allowance), so a smaller mill is not sent up there for it.
+      const raised = (ring: Ring, z: number, from: number) => {
+        const gone = swept([ring], r - 0.01);
+        for (const g of ground) if (g.z > z + 1e-6 && g.above <= from + 1e-6) g.took.push({ dia: tool.diameter, gone });
+      };
+      ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo, raised));
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
