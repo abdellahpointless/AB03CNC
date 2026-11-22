@@ -551,7 +551,8 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
  * one round and round, an open one back and forth), straight down only where its whole circle is
  * in the air (`material`: what is there between two heights at the start of the setup). Every
  * next ring is entered from the side, out of a ring already cut to the bottom (sideEntry): down
- * in that ring's path, across, round, back.
+ * in that ring's path by rapid to 1 mm above the pass, across, round, and lifted and over by
+ * rapid for an open piece's next pass (never back over the cut at feed).
  */
 function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null): CamOp {
   const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
@@ -605,19 +606,24 @@ function milling(tool: CamTool, work: Work[], mat: string, limits: Limits, stock
         // Start the ring where it is entered (an open piece from its nearer end).
         const pts = ring.closed ? [...ring.pts.slice(entry.at), ...ring.pts.slice(0, entry.at)] : entry.at ? [...ring.pts].reverse() : ring.pts;
         const q = pts[0];
-        lines.push(`G00 Z${n3(clear)}`, `G00 ${xy(entry.from)}`, `G00 Z${n3(Math.max(top, prevZ) + 1)}`);
         let fset = false;
         const feed = () => (fset ? '' : ((fset = true), ` F${c.f}.`));
-        for (const pz of passes) {
-          // Down in the cut ring's path (clear to the bottom), across into this one, round, back.
+        let zNow = clear;
+        passes.forEach((pz, pi) => {
+          // Over the entry in the cut ring's path, first and after an open piece (lifted and over by
+          // rapid as the shop does, never back over the cut at feed).
+          if (!pi || !ring.closed) lines.push(`G00 Z${n3((zNow = clear))}`, `G00 ${xy(entry.from)}`);
+          // Down in that path (its disc is cut to the level's bottom) by rapid, the last mm at the entry
+          // feed, across into this ring, round.
+          if (zNow - pz > 1 + 1e-6) lines.push(`G00 Z${n3(pz + 1)}`);
           lines.push(`G01 Z${n3(pz)} F${c.fz}.`, `G01 ${xy(q)}`);
           fset = false;
           for (const p of pts.slice(1)) lines.push(`G01 ${xy(p)}${feed()}`);
-          if (ring.closed) lines.push(`G01 ${xy(q)}`);
-          // An open piece: back along itself (cut at this depth) to where it was entered.
-          else for (const p of pts.slice(0, -1).reverse()) lines.push(`G01 ${xy(p)}`);
-          lines.push(`G01 ${xy(entry.from)} F${c.fz}.`);
-        }
+          zNow = pz;
+          // A closed ring: back across to the entry for its next pass.
+          if (ring.closed && pi < passes.length - 1) lines.push(`G01 ${xy(q)}`, `G01 ${xy(entry.from)} F${c.fz}.`);
+          else if (ring.closed) lines.push(`G01 ${xy(q)}`);
+        });
         continue;
       }
       const pts = ring.pts;

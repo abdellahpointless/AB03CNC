@@ -156,3 +156,28 @@ describe('going down into material', () => {
     for (const e of slopes(ms)) expect(e.max, `MS ${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
   }, 300_000);
 });
+
+describe('entering a ring from the side', () => {
+  it('goes down by rapid in the ring already cut and feeds only the last mm (the shop rapids to 2 mm above and feeds in)', () => {
+    for (const [tris, raw] of [
+      [plate, [44, 34, 16]],
+      [twoSided, [34, 28, 20]],
+    ] as const) {
+      const r = camProgram({ ...base, tris, raw: [...raw] });
+      expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+      expect(r.check.collisions).toBe(0);
+      let entries = 0;
+      for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.kind === 'pocket' || x.kind === 'finish'))
+        // A rapid down, a feed down, then across at that height (into the ring): the feed down is the last mm.
+        o.lines.forEach((l, i) => {
+          const zOf = (s: string) => Number(s.match(/Z(-?[\d.]+)/)?.[1]);
+          const [next, after] = [o.lines[i + 1] ?? '', o.lines[i + 2] ?? ''];
+          if (/^G00 Z/.test(l) && /^G01 Z\S+( F\S+)?$/.test(next) && /^G01 [XY]/.test(after) && !/Z/.test(after)) {
+            entries++;
+            expect(zOf(l) - zOf(next), `${o.name} line ${i}`).toBeLessThanOrEqual(1.001);
+          }
+        });
+      expect(entries).toBeGreaterThan(0);
+    }
+  }, 300_000);
+});
