@@ -4,7 +4,7 @@ import { camProgram, checkProgram } from '../src/lib/cam/program';
 import { analyseProgram, DEFAULT_JAW_HEIGHT } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
-import { heightPart } from './heightPart';
+import { columnPart, heightPart } from './heightPart';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top; a 300x60x20 bar.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -87,6 +87,32 @@ describe('where a clamping puts the part', () => {
     });
     expect(r.check.misplaced).toBe(0);
     expect(r.check.collisions).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+});
+
+describe('the jaws of a later clamping', () => {
+  it('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits)', () => {
+    // A 30 x 34 x 8 plate with a 12 x 24 boss 6 high, and a 4 x 4 hole from the plate's bottom: half of it
+    // beside the boss (through the plate), half up into the boss (1 mm short of its top). Turned over, the
+    // jaws hold the boss; the hole stands half over a jaw, and its part in the boss goes below the jaw top.
+    const hole = (i: number, j: number) => i >= 8 && i < 12 && j >= 3 && j < 7;
+    const boss = (i: number, j: number) => i >= 4 && i < 16 && j >= 5 && j < 29;
+    const lo = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && boss(i, j) ? 13 : 0)));
+    const hi = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 14 : 8)));
+    const tris = columnPart(lo, hi);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
+    expect(an.setups.length).toBeGreaterThanOrEqual(2);
+    // The case itself: the second clamping held by the boss (24 mm between the jaws, of the part's 34), and
+    // a mill cutting there below the jaw top.
+    expect(r.setups[1].held[3] - r.setups[1].held[1]).toBeCloseTo(24, 0);
+    const top = an.setups[1].jawTopZ!;
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < top - 0.5))).toBe(true);
+    expect(an.setups.flatMap((s) => s.collisions).filter((h) => h.what !== 'spacer')).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 });

@@ -1239,6 +1239,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (!nested && hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
+    // Below their tops the jaws stand at the held faces (kept off from 0.1 mm inside them: the first ring
+    // runs 0.02 mm into what it keeps off). Held by a band narrower than what stands above it, the part
+    // overhangs them, and a pocket in that overhang reaches over a jaw. In the nest its walls are cut into.
+    // shortcut: only the end mills keep off them; a drill or graver there is left to the check, which
+    // locks the program (none in the reference library); keep those off too if one ever is.
+    const beside = (d: number): Region => [...rect(sb.lo[0] - 50, held.lo[1] - 50, sb.hi[0] + 50, held.lo[1] + d), ...rect(sb.lo[0] - 50, held.hi[1] - d, sb.hi[0] + 50, held.hi[1] + 50)];
+    const jaws = nested ? [] : beside(0.1);
+    const pastJaws = nested ? [] : beside(-0.05);
 
     // 1. Face the top (the face mill, else the largest end mill).
     if (sb.hi[2] > 0.01) {
@@ -1380,6 +1388,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const inside = z < jawLimit - 0.001;
       if (inside) todo = intersection(todo, filled(keep));
       todo = opened(todo);
+      // What the tool keeps off: the part, and below the jaw tops the jaws where the part above reaches over them.
+      const off = inside && jaws.length && area(intersection(keep, pastJaws)) > 0.01 ? union(keep, jaws) : keep;
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
@@ -1393,7 +1403,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         for (const tool of cands) {
           const cut = cutData(tool, 'pocket', mat, limits);
           const r0 = tool.diameter / 2;
-          const rings = precise ? clearLevel(keep, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(keep, todo, r0, cut.ae, inside);
+          const rings = precise ? clearLevel(off, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(off, todo, r0, cut.ae, inside);
           if (!rings.length) continue;
           const gone = precise ? offset(swept(rings, tool.diameter / 2), ALLOW + 0.02) : swept(rings, tool.diameter / 2);
           const share = area(intersection(todo, gone)) / all;
@@ -1405,7 +1415,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }

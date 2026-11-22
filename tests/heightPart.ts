@@ -27,6 +27,32 @@ export function heightPart(h: number[][]): Float32Array {
 }
 
 /**
+ * A part from columns on a 1 mm grid: cell i, j is solid from lo[j][i] up to hi[j][i] (empty where they
+ * are equal), so a hole can also open downwards: its closed mesh.
+ */
+export function columnPart(lo: number[][], hi: number[][]): Float32Array {
+  const ny = hi.length;
+  const nx = hi[0].length;
+  const col = (i: number, j: number): [number, number] => (i < 0 || j < 0 || i >= nx || j >= ny ? [0, 0] : [lo[j][i], hi[j][i]]);
+  const t: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => t.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const [f, z] = col(i, j);
+      if (z <= f) continue;
+      quad([i, j, z], [i + 1, j, z], [i + 1, j + 1, z], [i, j + 1, z]);
+      quad([i, j, f], [i, j + 1, f], [i + 1, j + 1, f], [i + 1, j, f]);
+      // A wall facing each neighbour where it has no material: below its column and above it.
+      const open = ([n0, n1]: [number, number]) => (n1 <= n0 ? [[f, z]] : [[f, Math.min(z, n0)], [Math.max(f, n1), z]]).filter(([a, b]) => b > a);
+      for (const [a, b] of open(col(i + 1, j))) quad([i + 1, j, a], [i + 1, j + 1, a], [i + 1, j + 1, b], [i + 1, j, b]);
+      for (const [a, b] of open(col(i - 1, j))) quad([i, j, a], [i, j, b], [i, j + 1, b], [i, j + 1, a]);
+      for (const [a, b] of open(col(i, j + 1))) quad([i, j + 1, a], [i, j + 1, b], [i + 1, j + 1, b], [i + 1, j + 1, a]);
+      for (const [a, b] of open(col(i, j - 1))) quad([i, j, a], [i + 1, j, a], [i + 1, j, b], [i, j, b]);
+    }
+  return new Float32Array(t);
+}
+
+/**
  * A W x L x H plate (corner at the origin) with a rectangular pocket [x0, y0, x1, y1] `depth` deep in
  * its top and one round hole through the pocket's floor: its closed mesh (48-sided hole).
  */
