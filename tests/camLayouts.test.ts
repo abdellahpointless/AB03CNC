@@ -212,9 +212,15 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
-  it('notes no wall that lies in the side stock the operator leaves on the held face (a review found it noted)', () => {
-    const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, sideStock: 0.3, orient: { side: 'Z+', spin: false } });
+  // The hole across the boss's Y- face (at a jaw after the turn) and across its X- face (at the stop).
+  it.each([
+    ['a jaw', bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7)],
+    ['the stop', atStop],
+  ])('notes no wall that lies in the side stock the operator leaves on the held face, at %s (a review found it noted)', (_at, tris) => {
+    const plan = (sideStock: number) => camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, sideStock, orient: { side: 'Z+', spin: false } });
+    // Without side stock the wall is there, and noted.
+    expect(plan(0).notes.some((n) => n.key === 'jawWall')).toBe(true);
+    const r = plan(0.3);
     expect(r.notes.filter((n) => n.key === 'jawWall')).toEqual([]);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
