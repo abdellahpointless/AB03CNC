@@ -25,7 +25,18 @@ describe('the first clamping', () => {
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
-  it('grips a thin part as little as holds, so the outside cuts of its two clampings still meet', () => {
+  it('cuts the outside 0.2 mm under the part, or stops it clear above, never level with its bottom (a review finding)', () => {
+    // No blank given: 7.5 mm on the thickness, 2 on top, 5.5 under the part. A 5 mm grip would stop the outside
+    // exactly at the part's bottom, which the face mill cuts after the turn: no overlap.
+    const r = camProgram({ ...base, tris: plate });
+    const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
+    expect(lowest).toBeLessThanOrEqual(-12.2 + 1e-6);
+    expect(r.setups[0].grip).toBeLessThanOrEqual(4);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('grips a part too thin for 5 mm as little as holds (3 mm)', () => {
     // A 40 x 30 x 4 plate on a 6 mm blank: 5 mm would leave the outside between the clampings' jaws uncut.
     const thin = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, () => 4)));
     const r = camProgram({ ...base, tris: thin, raw: [44, 34, 6] });

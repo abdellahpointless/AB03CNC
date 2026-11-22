@@ -1361,7 +1361,18 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return Math.min(jaw - sb.lo[2], same);
     };
     const want = !setups.length ? (waste > 0.5 ? Math.min(5, -sb.lo[2] - 5) : waste - 0.5) : nested || fixed !== undefined ? 3 : deepest();
-    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, fixed ?? want, fixed ?? 3);
+    let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, fixed ?? want, fixed ?? 3);
+    // The first clamping's outside goes 0.2 mm or more under the part, or stops 0.5 mm or more above its bottom
+    // for the next clamping to cut from its side: never in between, where the wall would meet the face cut after
+    // the turn with no overlap (a review finding). The nearest grip that does, the smaller one first.
+    const clearOf = (g: number) => sb.lo[2] + g + 0.5 <= -H - 0.2 + 1e-6 || sb.lo[2] + g + 0.5 >= -H + 0.5 - 1e-6;
+    if (!nested && fixed === undefined && !setups.length && waste > 0.5 && !clearOf(pick.grip)) {
+      const g0 = pick.grip;
+      pick = CALE_HEIGHTS.map((c) => ({ cale: c, grip: JAW - c }))
+        .filter((p) => p.grip >= 3 && p.grip <= stockH - 1 && p.grip <= most && clearOf(p.grip))
+        .sort((p, q) => Math.abs(p.grip - g0) - Math.abs(q.grip - g0) || p.grip - q.grip)[0] ?? pick;
+    }
+    const { cale, grip } = pick;
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
