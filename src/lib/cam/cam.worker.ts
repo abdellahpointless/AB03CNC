@@ -42,7 +42,7 @@ export interface CamSummary {
   minutes: number;
   toolChanges: number;
   collisions: number;
-  /** Of them, tools or holders into the X stop below the jaw tops (the toolpath viewer does not draw the stop). */
+  /** Of them, tools or holders into the X stop below the jaw tops (the toolpath viewer does not mark these). */
   stops: number;
   cales: number;
   /** Clampings where the vise would hold the part off where the program puts it (CamCheck.misplaced). */
