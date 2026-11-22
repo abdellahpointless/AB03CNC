@@ -1263,22 +1263,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
         ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
       ]);
     const jaws = nested ? [] : beside(0.1, 1);
-    // The check takes a tool by its square (x and y ± its radius) against a jaw: a mill over Ø2 rounding a
-    // jaw's end would be counted, clear of it. Such a mill also keeps off a square on the held face's side of
-    // each end, large enough that its square never crosses the jaw (√2 (r - c) under r - 0.02, 0.05 to spare).
-    const ends = (r: number): Region => {
-      const c = 0.293 * r + 0.064;
-      return spans.flatMap(([a, b]) => [
-        ...rect(b, held.lo[1], b + c, held.lo[1] + c),
-        ...rect(a - c, held.lo[1], a, held.lo[1] + c),
-        ...rect(b, held.hi[1] - c, b + c, held.hi[1]),
-        ...rect(a - c, held.hi[1] - c, a, held.hi[1]),
-      ]);
-    };
-    // shortcut: kept off only where the part above stands out past a held face along the jaws or at the stop. Where
-    // it does so only beyond their end, a large mill rounding the part's own thin wall there could still come
-    // within its radius of the end and be counted (the check locks the program; no test part shows it). Look
-    // past the ends too (beside(-0.05, 1 + Ø)) if one ever does.
     const pastJaws = nested ? [] : beside(-0.05, 0);
     // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
     const wallBand = nested ? [] : difference(jaws, beside(0, 1));
@@ -1440,8 +1424,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
         todo = opened(difference(todo, jaws));
       }
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
-      // Each mill's keep-off at this level (with the jaws' ends for its size).
-      const offs = new Map<number, Region>();
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
       // one that takes most of it (80 %): the sizes in between would only add tool changes. A
@@ -1450,16 +1432,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
       let cands = mills.filter((m) => (m.length || 99) >= Math.max(0, sb.hi[2]) - z + 2);
       for (let round = 0; round < 6 && cands.length && area(todo) > 0.5; round++) {
         const all = area(todo);
-        let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number; off: Region } | null = null;
+        let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
         for (const tool of cands) {
           const cut = cutData(tool, 'pocket', mat, limits);
           const r0 = tool.diameter / 2;
-          const offR = off === keep || r0 <= 1 ? off : (offs.get(r0) ?? offs.set(r0, union(off, ends(r0))).get(r0)!);
-          const rings = precise ? clearLevel(offR, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(offR, todo, r0, cut.ae, inside);
+          const rings = precise ? clearLevel(off, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(off, todo, r0, cut.ae, inside);
           if (!rings.length) continue;
           const gone = precise ? offset(swept(rings, tool.diameter / 2), ALLOW + 0.02) : swept(rings, tool.diameter / 2);
           const share = area(intersection(todo, gone)) / all;
-          if (!pick || share > pick.share + 0.02) pick = { tool, rings, gone, share, off: offR };
+          if (!pick || share > pick.share + 0.02) pick = { tool, rings, gone, share };
           if (round === 0 || share >= 0.8) break;
         }
         if (!pick) break;
@@ -1467,7 +1448,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: pick.off, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }

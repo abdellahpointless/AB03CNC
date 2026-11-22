@@ -254,7 +254,7 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
-  it.each([undefined, 'topPlate' as const])('keeps a mill rounding the jaws\' end clear of them as the check takes it, by the tool\'s square (a review found 2 hits clear of the jaw; part type %s)', (partType) => {
+  it.each([undefined, 'topPlate' as const])('does not count a mill rounding the jaws\' end, clear of them, as in them (a review found 2 such hits that locked a program; part type %s)', (partType) => {
     // A 180 x 70 x 12 plate with a 170 x 34 boss 8 high (i 4..174, j 18..52), and a 36 x 30 pocket across the
     // boss's Y- face and the jaws' end (142 mm from the boss's X- face): through the plate beside the boss,
     // into it 1 mm short of its top.
