@@ -56,7 +56,7 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
               : result.gouge >= GOUGE_MM3
               ? t('camAi.gouge', { mm3: result.gouge })
               : unheld
-                ? t('camAi.cannotHold', { side: unheld.side })
+                ? t(unheld.physics.issues.some((i) => i.key === 'faceAtJaws') ? 'camAi.faceAtJaws' : 'camAi.cannotHold', { side: unheld.side })
                 : t('camAi.notProven');
   return { ok, text };
 }

@@ -391,6 +391,7 @@ const remapper: Translation<typeof en> = {
     proven: 'Simüle edildi ve kontrol edildi: parça modeldeki gibi çıkıyor, hiçbir takım veya tutucu mengene çenelerine ya da parçaya çarpmıyor.',
     notProven: 'Simüle edilen parça modele yeterince yakın değil (%99 gerekli). Takım yolu görüntüleyicisinde inceleyin.',
     cannotHold: 'Mengene parçayı {{side}} bağlamasında güvenle tutamıyor (kayar, devrilir veya şekli bozulur).',
+    faceAtJaws: '{{side}} bağlamasında parça mengene için fazla ince: 3 mm sıkıldığında üst yüzeyi çenelerin 0,5 mm’den az üstünde kalır; alın frezesi ve çapak alma takımı için fazla yakın.',
     step: {
       model: '1 · Parçanın 3B modeli',
       part: '2 · Parça',
@@ -484,6 +485,7 @@ const remapper: Translation<typeof en> = {
       jawContact: 'çenelere yalnızca {{mm}} mm boyunca değer',
       restContact: 'iki paralelin üzerine oturmaz',
       stopContact: 'dayamaya değmez',
+      faceAtJaws: '3 mm sıkıldığında üst yüzeyi çenelerin 0,5 mm’den az üstünde kalır',
       nest: 'yuvada',
     },
     zonesTitle: 'Hassasiyetin önemli olduğu yerler',

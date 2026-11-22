@@ -314,6 +314,14 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
+  it('holds no part so thin that its top face comes within 0.5 mm of the jaws (a 3.4 mm plate passed, its graver 0.1 mm over them)', () => {
+    const tris = heightPart(Array.from({ length: 25 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i % 10 >= 3 && i % 10 < 7 && j % 10 >= 3 && j % 10 < 7 ? 1 : 3.4))));
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 30, 13.4], noNest: true, orient: { side: 'Z+', spin: false } });
+    const turned = r.setups[1];
+    expect(turned.physics.issues).toContainEqual({ key: 'faceAtJaws' });
+    expect(turned.physics.ok).toBe(false);
+  }, 300_000);
+
   it('notes the thin wall the jaws leave across a pocket that opens onto a held face, and plans no clamping more for it (a review found a third one, misplaced)', () => {
     // As above, on a blank whose grid shows that wall (under 0.1 mm thick) a whole cell thick.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);

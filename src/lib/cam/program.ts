@@ -1208,9 +1208,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // the pocket's walls hold a tall part's foot all round, stiffer than any jaw grip.
     const nestDepth = Math.min(stockH - 1, 30, Math.max(NEST.minDepth, Math.floor(stockH / 2) - 1));
     // The jaw tops stay 0.5 mm under the top face (Z0): the face mill, wider than the vise, faces down to it and
-    // the deburring graver runs round it 0.3 mm deep.
-    // shortcut: a part under 3.5 mm thick is still gripped 3 mm, its face then under the jaw tops (the check
-    // locks such a program); hold it another way if one ever must be.
+    // the deburring graver runs round it 0.3 mm deep. A part too thin for that with a 3 mm grip is not held
+    // safely (faceAtJaws, below).
     const most = -0.5 - sb.lo[2];
     const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, -H - 0.5 - sb.lo[2], least, most);
     const jawTop = sb.lo[2] + grip;
@@ -1631,6 +1630,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
         notes.length = was.notes;
         return addSetup(si, deeper);
       }
+    }
+    if (!nest && grip > most + 1e-6) {
+      physics.issues.push({ key: 'faceAtJaws' });
+      physics.ok = false;
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
     const wallMm3 = mine.reduce((v, w) => v + area(leftOn.length ? difference(w.region, leftOn) : w.region) * (w.above - w.z), 0);

@@ -119,6 +119,8 @@ export type PhysicsIssue =
   | { key: 'jawContact'; mm: number }
   | { key: 'restContact' }
   | { key: 'stopContact' }
+  /** So thin that, gripped 3 mm, its top face stands less than 0.5 mm above the jaws (the face mill and the graver run there). */
+  | { key: 'faceAtJaws' }
   /** Held in the POM nest (the last way): the pocket holds it all round, the set screws keep it down. */
   | { key: 'nest'; screws: number };
 

@@ -402,6 +402,7 @@ const remapper = {
     proven: 'Simulated and checked: the part comes out like the model, and no tool or holder hits the jaws or the part.',
     notProven: 'The simulated part is not close enough to the model (99 % needed). Look at it in the toolpath viewer.',
     cannotHold: 'The vise cannot hold the part safely in setup {{side}} (it would slip, tip or deform).',
+    faceAtJaws: 'In setup {{side}} the part is too thin for the vise: gripped 3 mm, its top face stands less than 0.5 mm above the jaws, too close for the face mill and the deburring graver.',
     step: {
       model: '1 · The part’s 3D model',
       part: '2 · The part',
@@ -494,6 +495,7 @@ const remapper = {
       jawContact: 'touches the jaws over only {{mm}} mm',
       restContact: 'does not sit on both parallels',
       stopContact: 'does not touch the stop',
+      faceAtJaws: 'gripped 3 mm, its top face stands less than 0.5 mm above the jaws',
       nest: 'in the nest',
     },
     zonesTitle: 'Where precision matters',
