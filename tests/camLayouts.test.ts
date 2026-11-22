@@ -154,6 +154,8 @@ describe('the jaws of a later clamping', () => {
     const top = an.setups[1].jawTopZ!;
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < top - 0.5))).toBe(true);
     expect(an.setups.flatMap((s) => s.collisions).filter((h) => h.what !== 'spacer')).toEqual([]);
+    // What it leaves across the hole's opening on the held face, where the mill keeps off the jaw: noted.
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'jawWall', side: r.setups[1].side }));
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
@@ -166,6 +168,17 @@ describe('the jaws of a later clamping', () => {
     expect(r.setups[1].held[3] - r.setups[1].held[1]).toBeCloseTo(24, 0);
     expect(r.missing.filter((m) => m.why.key === 'narrow')).toEqual([]);
     expect(r.check.collisions).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
+  it('notes the thin wall the jaws leave across a pocket that opens onto a held face, and plans no clamping more for it (a review found a third one, misplaced)', () => {
+    // As above, on a blank whose grid shows that wall (under 0.1 mm thick) a whole cell thick.
+    const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    expect(r.setups).toHaveLength(2);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'jawWall', side: r.setups[1].side }));
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 });

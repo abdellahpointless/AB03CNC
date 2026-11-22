@@ -1083,6 +1083,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const mat = input.material;
   const missing: Need[] = [];
   const notes: CamNote[] = [];
+  // The walls left inside held faces where the jaws or the stop keep the tools off, in their setup's frame.
+  const walls: { R: Mat3; t: Vec; z: number; above: number; region: Region }[] = [];
   const needOnce = (n: Need) => {
     if (!missing.some((m) => m.category === n.category && Math.abs(m.diameter - n.diameter) < 0.01)) missing.push(n);
     else {
@@ -1256,6 +1258,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       ]);
     const jaws = nested ? [] : beside(0.1);
     const pastJaws = nested ? [] : beside(-0.05);
+    // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
+    const wallBand = nested ? [] : difference(jaws, beside(0));
+    const mine: { z: number; above: number; region: Region }[] = [];
 
     // 1. Face the top (the face mill, else the largest end mill).
     if (sb.hi[2] > 0.01) {
@@ -1400,7 +1405,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // What the tool keeps off: the part, and below the jaw tops the jaws and the stop where the part above reaches over them.
       const off = inside && jaws.length && area(intersection(keep, pastJaws)) > 0.01 ? union(keep, jaws) : keep;
       // Where no tool may go is not left to cut (no smaller end mill would reach it either).
-      if (off !== keep) todo = opened(difference(todo, jaws));
+      if (off !== keep) {
+        const wall = intersection(todo, wallBand);
+        if (area(wall) > 0.01) mine.push({ z, above: levelTop, region: wall });
+        todo = opened(difference(todo, jaws));
+      }
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
@@ -1592,6 +1601,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
     }
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
+    const wallMm3 = mine.reduce((v, w) => v + area(w.region) * (w.above - w.z), 0);
+    if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
+    walls.push(...mine.map((w) => ({ R, t, ...w })));
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
@@ -1619,15 +1631,26 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const t1 = setups[0].t;
     const gain = SIDES.map(() => 0);
     const { n: rn, origin: ro, step: rs } = grid;
+    // Nor the walls the jaws and the stop leave (noted): a clamping more for them costs more than they
+    // are. Grown by a cell of either grid, which never quite agree with them.
+    const e = Math.max(...g.step, ...rs);
+    const thinWalls = walls.map((w) => ({ ...w, region: offset(w.region, e) }));
     for (let i = 0; i < occ.length; i++) {
       if (near[i]) continue;
       const ix = i % rn[0];
       const iy = Math.floor(i / rn[0]) % rn[1];
       const iz = Math.floor(i / (rn[0] * rn[1]));
-      const q = apply(R1, [ro[0] + (ix + 0.5) * rs[0], ro[1] + (iy + 0.5) * rs[1], ro[2] + (iz + 0.5) * rs[2]]);
+      const p0: Vec = [ro[0] + (ix + 0.5) * rs[0], ro[1] + (iy + 0.5) * rs[1], ro[2] + (iz + 0.5) * rs[2]];
+      const q = apply(R1, p0);
       const c = [0, 1, 2].map((k) => Math.floor((q[k] + t1[k] - g.origin[k]) / g.step[k]));
       if (c.some((v, k) => v < 0 || v >= g.n[k])) continue;
       if (g.removed[c[2] * g.n[0] * g.n[1] + c[1] * g.n[0] + c[0]] !== KEPT) continue;
+      const inWall = thinWalls.some((w) => {
+        const p = apply(w.R, p0);
+        const z = p[2] + w.t[2];
+        return z > w.z - e && z < w.above + e && inside(w.region, [p[0] + w.t[0], p[1] + w.t[1]]) !== 0;
+      });
+      if (inWall) continue;
       for (let si = 0; si < 6; si++) if (reach[si][i]) gain[si]++;
     }
     const best = gain.map((v, si) => ({ v, si })).filter((x) => !setups.some((st) => st.side === SIDES[x.si].name)).sort((a2, b2) => b2.v - a2.v)[0];

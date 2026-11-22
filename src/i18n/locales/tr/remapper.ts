@@ -537,6 +537,7 @@ const remapper: Translation<typeof en> = {
       undercut: 'Hiçbir yüzden ulaşılamayan {{mm3}} mm³ (alttan kesme, yalnızca 3 eksen): elle yapılacak',
       notSimulated: '{{side}} yüzü: önceki bağlamalar simüle edilemedi',
       surface: '{{side}} yüzü: {{mm2}} mm² 3B yüzey basamaklı kaldı (küresel freze ile son işleme daha sonra gelecek)',
+      jawWall: '{{side}} yüzü: mengenenin tuttuğu yüze açılan cebin önünde, çene üstlerinin altında 0,1 mm’den ince bir duvar kalıyor ({{mm3}} mm³; oraya takım giremez): elle alınacak',
     },
     view: 'Takım yolu görüntüleyicisinde aç',
     download: 'İndir',

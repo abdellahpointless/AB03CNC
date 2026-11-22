@@ -547,6 +547,7 @@ const remapper = {
       undercut: '{{mm3}} mm³ that no side can reach (undercut, 3 axes only): to do by hand',
       notSimulated: 'Side {{side}}: the setups before it could not be simulated',
       surface: 'Side {{side}}: {{mm2}} mm² of 3D surface left in steps (ball mill finishing comes later)',
+      jawWall: 'Side {{side}}: where a pocket opens onto a face the vise holds, a wall under 0.1 mm thick stays across it below the jaw tops ({{mm3}} mm³; no tool may go there): to take off by hand',
     },
     view: 'Open in the toolpath viewer',
     download: 'Download',
