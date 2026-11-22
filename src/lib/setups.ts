@@ -663,8 +663,9 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
 }
 
 /**
- * Tools (and their holders) into the stop below the jaw tops: the plate before the held X- face, between
- * the jaws. One hit per run of moves of one tool, the deepest.
+ * Tools (and their holders) into the stop below the jaw tops: the plate before the held X- face where the
+ * program's G52 puts it (the part is pushed to the stop, the stop does not move: a part that sits off is
+ * CamCheck.misplaced), between the jaws. One hit per run of moves of one tool, the deepest.
  * shortcut: CAM AI's own check only. How high the shop's stop stands is an open question
  * (docs/knowledge/cam-gaps.md, P1), so the shop's programs are not judged by it and the viewer does not
  * show these hits; add them to the reader's collisions once the shop has answered.
@@ -672,7 +673,8 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
 export function stopHits(tp: Toolpath, s: SetupInfo): Collision[] {
   if (s.jawTopZ === null || !s.clampBox || !s.moves) return [];
   const diameter = new Map(tp.tools.map((t) => [t.tool, t.diameter ?? 0]));
-  const [x0, x1, y0, y1] = [s.jawX[0], s.jawX[0] + STOP_PLATE, s.clampBox.min[1] - spacerAt(s, 'Y-'), s.clampBox.max[1] + spacerAt(s, 'Y+')];
+  const x1 = s.clampBox.min[0] - spacerAt(s, 'X-');
+  const [x0, y0, y1] = [x1 - STOP_PLATE, s.clampBox.min[1] - spacerAt(s, 'Y-'), s.clampBox.max[1] + spacerAt(s, 'Y+')];
   const into = (p: Vec, r: number) => p[0] + r > x0 && p[0] - r < x1 && p[1] + r > y0 && p[1] - r < y1;
   const out: Collision[] = [];
   let open: Collision | null = null;

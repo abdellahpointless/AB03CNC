@@ -104,7 +104,7 @@ describe('the jaws of a later clamping', () => {
   };
   // The hole across the boss's X- face, at the stop after the turn (6 x 6, i 1..7).
   const atStop = bossPlate((i, j) => i >= 1 && i < 7 && j >= 14 && j < 20);
-  /** Points (every 0.5 mm along each move) where the tool goes into the stop plate below the jaw top, between the jaws. */
+  /** Points (every 0.5 mm along each move) where the tool goes into the stop plate below the jaw top, between the jaws (the plate before the face the G52 puts at the stop). */
   const intoStop = (tp: ReturnType<typeof parseToolpath>, s: ReturnType<typeof analyseProgram>['setups'][number]) =>
     tp.moves.filter((m) => m.setup === s.index).flatMap((m) => {
       const r = (m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0) / 2 || 1;
@@ -113,14 +113,14 @@ describe('the jaws of a later clamping', () => {
         const n = Math.max(1, Math.ceil(Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) / 0.5));
         return Array.from({ length: n }, (_, t) => q.map((v, d) => v + ((p[d] - v) * (t + 1)) / n));
       });
-      return along.filter((p) => p[2] < s.jawTopZ! - 0.01 && p[0] - r < s.jawX[0] + STOP_PLATE && p[0] + r > s.jawX[0] && p[1] + r > s.clampBox!.min[1] && p[1] - r < s.clampBox!.max[1]);
+      return along.filter((p) => p[2] < s.jawTopZ! - 0.01 && p[0] - r < s.clampBox!.min[0] && p[0] + r > s.clampBox!.min[0] - STOP_PLATE && p[1] + r > s.clampBox!.min[1] && p[1] - r < s.clampBox!.max[1]);
     });
 
   it('counts a tool into the X stop below the jaw top as a collision (a review found the check blind there)', () => {
     const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
     const s = an.setups[1];
-    const [x0, y, z] = [s.jawX[0], ((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3), (s.jawTopZ! - 1).toFixed(3)];
+    const [x0, y, z] = [s.clampBox!.min[0] - STOP_PLATE, ((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3), (s.jawTopZ! - 1).toFixed(3)];
     // The program with moves more at its end, 1 mm below the jaw top: a plunge into the middle of the stop
     // plate, a rapid one into it, and a cut along X from before the plate through it into the hole (its ends
     // clear of the plate: only the points between them go into it).
@@ -134,6 +134,25 @@ describe('the jaws of a later clamping', () => {
       expect(c.stops, moves).toBeGreaterThan(r.check.stops);
       expect(c.collisions, moves).toBeGreaterThan(r.check.collisions);
     }
+  }, 300_000);
+
+  it('looks for the stop where the G52 puts it, not where the simulation has the part (a review found a tool 0.075 mm into it unseen)', () => {
+    // A seal cage whose first clamping's finishing the operator left out: 0.15 mm stays on the faces held next,
+    // so the part sits that far from where the program puts it. The stop stands at the G52's face.
+    const input = { tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18] as [number, number, number], noNest: true, partType: 'sealCage' as const, orient: { side: 'Z+', spin: false } };
+    const all = camProgram(input);
+    const r = camProgram({ ...input, skip: all.setups[0].ops.filter((o) => o.kind === 'finish').map((o) => o.key!) });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
+    expect(s.clampBox!.min[0] - s.grip!.stop).toBeGreaterThan(0.1);
+    expect(r.check.stops).toBe(0);
+    // A plunge 1 mm below the jaw top, its edge 0.075 mm past the G52's face: in the stop on the machine.
+    const last = tp.moves.filter((m) => m.setup === 1 && m.tool != null).at(-1)!;
+    const radius = (last.dia ?? tp.tools.find((t) => t.tool === last.tool)!.diameter!) / 2;
+    const end = r.code.lastIndexOf('\n', r.code.lastIndexOf('M09')) + 1;
+    const plunge = `G00 X${(s.clampBox!.min[0] + radius - 0.075).toFixed(3)} Y${((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3)}\nG01 Z${(s.jawTopZ! - 1).toFixed(3)} F300.\nG00 Z50.\n`;
+    const c = checkProgram(atStop, r.code.slice(0, end) + plunge + r.code.slice(end), 'HAAS', undefined, r.pose);
+    expect(c.stops).toBeGreaterThan(r.check.stops);
   }, 300_000);
 
   // Each as a plain part and as a top plate, whose walls are roughed 0.15 mm out and finished by other calls.
