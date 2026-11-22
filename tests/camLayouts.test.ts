@@ -125,8 +125,9 @@ describe('the jaws of a later clamping', () => {
     expect(c.collisions).toBeGreaterThan(r.check.collisions);
   }, 300_000);
 
-  it('keeps every tool off the X stop below the jaw top where the part above stands out past the face it touches (a review found 3 mm into it)', () => {
-    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+  // Each as a plain part and as a top plate, whose walls are roughed 0.15 mm out and finished by other calls.
+  it.each([undefined, 'topPlate' as const])('keeps every tool off the X stop below the jaw top where the part above stands out past the face it touches (a review found 3 mm into it; part type %s)', (partType) => {
+    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
     // The case itself: held by the boss (12 along the jaws), a mill cutting the hole in it below the jaw top.
@@ -140,10 +141,10 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
-  it('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits)', () => {
+  it.each([undefined, 'topPlate' as const])('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits; part type %s)', (partType) => {
     // The hole across the boss's Y- face (4 x 4): half beside the boss, half in it.
     const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
     expect(an.setups.length).toBeGreaterThanOrEqual(2);
