@@ -148,6 +148,8 @@ for (const folder of readdirSync(LIB).sort()) {
         // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
         row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
         row.cam = summary(r.code);
+        // CAM_CODE_DIR=<folder>: also keep the program itself, named by the id (for studying its moves).
+        if (process.env.CAM_CODE_DIR) writeFileSync(join(process.env.CAM_CODE_DIR, `${row.id}.nc`), r.code);
       } catch (e) {
         row.result = `failed: ${(e as Error).message}`;
       }
