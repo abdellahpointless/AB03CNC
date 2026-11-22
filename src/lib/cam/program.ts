@@ -1281,6 +1281,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (!fm) needOnce({ category: 'tourteau', diameter: 50, minLength: 0, why: { key: 'face' } });
       else ops.push(facing(fm, mat, limits, sb, cy, clear));
     }
+    // Its passes at Z0 cover the whole stock: nothing stands above Z0 after it, so the end mills start
+    // there (the shop faces first: strategy.faceFirst). From the raw top only if the operator removed it.
+    const facedTop = ops.some((o) => o.kind === 'face') && !input.skip?.some((k) => k.startsWith(`${side.name}|PLAN|`));
+    const millTop = facedTop ? 0 : sb.hi[2];
 
     // 2. Holes from this side: drilled when the inventory has the drill, else milled with the rest.
     const holes = f.holes.map((h) => ({ ...h, top: h.top - top, bottom: h.bottom - top }));
@@ -1401,7 +1405,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const pocketsOnly = input.partType === 'topPlate' || input.partType === 'contourInsert';
     let narrow = 0;
     let narrowDepth = 0;
-    let zAbove = Math.max(sb.hi[2], 0);
+    let zAbove = Math.max(millTop, 0);
     // Each level's ground and what each end mill took of it. The mills run largest first, each
     // top down: one coming to a level can meet, above it, ground a smaller one takes there later.
     const ground: { z: number; above: number; todo: Region; took: { dia: number; gone: Region }[] }[] = [];
@@ -1477,7 +1481,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const sw = swept([ring], r - 0.02);
         return still.find((g) => g.z > z + 1e-6 && area(intersection(sw, g.rest)) > 0.05)?.above ?? null;
       };
-      ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
+      ops.push(milling(tool, work, mat, limits, millTop, clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
@@ -1512,7 +1516,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
         lastFin = fin;
       }
-      if (work.length) ops.push(milling(tool, work, mat, limits, sb.hi[2], clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+      if (work.length) ops.push(milling(tool, work, mat, limits, millTop, clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
