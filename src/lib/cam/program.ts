@@ -1285,6 +1285,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // there (the shop faces first: strategy.faceFirst). From the raw top only if the operator removed it.
     const facedTop = ops.some((o) => o.kind === 'face') && !input.skip?.some((k) => k.startsWith(`${side.name}|PLAN|`));
     const millTop = facedTop ? 0 : sb.hi[2];
+    // The plane the tool moves over between cuts, and every drill cycle starts from: 2 mm above the
+    // faced top, as the shop's programs (95 % of their links, 3,024 of 3,024 cycle lines), else above the raw top.
+    const plane = facedTop ? 2 : clear;
 
     // 2. Holes from this side: drilled when the inventory has the drill, else milled with the rest.
     const holes = f.holes.map((h) => ({ ...h, top: h.top - top, bottom: h.bottom - top }));
@@ -1364,7 +1367,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       return s;
     };
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, clear, stockTop, surface));
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface));
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
@@ -1481,7 +1484,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const sw = swept([ring], r - 0.02);
         return still.find((g) => g.z > z + 1e-6 && area(intersection(sw, g.rest)) > 0.05)?.above ?? null;
       };
-      ops.push(milling(tool, work, mat, limits, millTop, clear, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
+      ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo));
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
@@ -1516,7 +1519,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
         lastFin = fin;
       }
-      if (work.length) ops.push(milling(tool, work, mat, limits, millTop, clear, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+      if (work.length) ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     if (f.chamfers.length) {
@@ -1525,7 +1528,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const reachable = f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })).filter((c) => !graver || (graver.length || 99) >= stockTop - (c.lo - 0.3) + 2);
       const paths = graver ? chamferPaths(P, reachable, graver.diameter / 2, jawLimit) : [];
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
-      else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, clear));
+      else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, plane));
     }
     // 5. A top plate's lettering on this face: the graver along its grooves (engraving()).
     const zones: Zone[] = [];
@@ -1533,7 +1536,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const grooves = engravings(P, 0, f.floors.map((x) => x.z - top));
       const graver = usable(tools, ['ST']).find((g) => g.template?.shape === 'G45' || !g.template);
       if (grooves.length && graver) {
-        const op = engraving(graver, grooves, mat, limits, clear);
+        const op = engraving(graver, grooves, mat, limits, plane);
         if (op) ops.push(op);
         zones.push({ kind: 'engraving', loops: union(grooves.flatMap((g) => g.region)), lo: -Math.max(...grooves.map((g) => g.depth)), hi: 0 });
       } else if (grooves.length) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: grooves.length } });
@@ -1545,7 +1548,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const graver = [...gravers].sort((a, b) => Number(b.inMachine) - Number(a.inMachine) || a.diameter - b.diameter)[0];
       const paths = graver ? deburrPaths(P, graver.diameter / 2, input.sideStock ?? 0) : [];
       // Only in a clamping that cuts something: a side with nothing else to do gets no clamping for it.
-      if (graver && paths.length && ops.length) ops.push(chamfering(graver, paths, mat, limits, clear, 'ENTGRATEN'));
+      if (graver && paths.length && ops.length) ops.push(chamfering(graver, paths, mat, limits, plane, 'ENTGRATEN'));
     }
     // Where precision matters: the contour a top plate or contour insert takes its part in (the
     // pockets' walls, not round holes), a seal cage's thin walls.

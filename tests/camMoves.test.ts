@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, type CamSetup } from '../src/lib/cam/program';
 import { LIBRARY } from '../src/lib/cam/tools';
-import { columnPart, heightPart } from './heightPart';
+import { columnPart, heightPart, plateWithHoles } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
 
@@ -93,5 +93,29 @@ describe('milling after the face is cut', () => {
         expect(b[1], o.name).toBeGreaterThanOrEqual(y0 - 0.5);
         expect(b[1], o.name).toBeLessThanOrEqual(y1 + 0.5);
       }
+  }, 300_000);
+});
+
+describe('the plane between cuts', () => {
+  // The rapids' heights in one clamping's operations after its facing: the lifts (G00 Z) and each drill cycle's start (its R).
+  const lifts = (s: CamSetup) => s.ops.filter((o) => o.kind !== 'face').flatMap((o) => o.lines.flatMap((l) => (/^G00 Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])));
+  const rPlanes = (s: CamSetup) => s.ops.flatMap((o) => o.lines.flatMap((l) => (/ R(-?[\d.]+)/.test(l) ? [Number(l.match(/ R(-?[\d.]+)/)![1])] : [])));
+
+  it('is Z2, 2 mm above the faced top, for every operation after the facing and every drill cycle (the shop’s links and R2)', () => {
+    // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate, 2 mm of stock on top.
+    const holed = plateWithHoles(40, 30, 8, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 5 }]);
+    const r = camProgram({ ...base, tris: holed, raw: [44, 34, 12] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    const s = r.setups[0];
+    expect(s.ops[0].kind).toBe('face');
+    expect(s.ops.some((o) => o.kind === 'drill')).toBe(true);
+    expect(Math.max(...lifts(s))).toBeCloseTo(2, 3);
+    for (const z of rPlanes(s)) expect(z).toBeLessThanOrEqual(2.001);
+    // The cycles start from Z2: the move before each G98 G8x.
+    for (const o of s.ops.filter((x) => x.kind === 'drill' || x.kind === 'centre')) expect(o.lines[o.lines.findIndex((l) => /G98 G8/.test(l)) - 1]).toBe('G00 Z2.');
+    // The facing removed by the operator: the raw top stays, the plane stays 2 mm above it (Z4).
+    const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 12], skip: [s.ops[0].key!] });
+    expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
   }, 300_000);
 });
