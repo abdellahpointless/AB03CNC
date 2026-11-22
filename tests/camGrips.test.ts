@@ -66,3 +66,18 @@ describe('a later clamping', () => {
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 });
+
+describe('the blank', () => {
+  it('stands 2 mm over the part on the first clamping’s side, the rest under it (the shop faces 2-3 mm): the outside goes through there', () => {
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 22] });
+    expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 2MM$/);
+    // The other 8 mm under the part: faced off after the turn.
+    expect(r.setups[1].notes[0]).toMatch(/\/Z\+ IN 8MM$/);
+    // Gripped 5 mm of the 8 under the part, the outside cut 0.2 mm under its bottom, 2.8 mm over the jaws.
+    const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
+    expect(lowest).toBeCloseTo(-12.2, 3);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+});

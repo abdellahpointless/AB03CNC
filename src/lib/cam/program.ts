@@ -1153,13 +1153,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The operator's layout: its side first (then the opposite one), both turned as chosen.
   const first = input.orient ? SIDES.findIndex((s) => s.name === input.orient!.side) : -1;
   const thin = first >= 0 ? SIDES[first].d.findIndex((v) => v !== 0) : vertical;
-  const { occ, reach, cell, grid } = reachable(tris, rawLo, rawHi);
-  const covered = new Uint8Array(occ.length);
-  const chosen: number[] = [];
-  const take = (si: number) => {
-    chosen.push(si);
-    for (let i = 0; i < occ.length; i++) if (reach[si][i]) covered[i] = 1;
-  };
   // The operator's pair of sides turns as chosen; any other side turns a quarter when the jaws
   // would otherwise hold it by its short side (under half its long one), if it fits one vise.
   const across = (si: number) => {
@@ -1175,7 +1168,21 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
   // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
   const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
-  for (const si of first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a]) take(si);
+  const pair = first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a];
+  // The blank 2 mm over the part on the first clamping's side, as the shop faces it (2-3 mm in 64 of 95 first
+  // clampings), the rest under the part, where the jaws grip it and the outside goes through (a centred blank
+  // left the jaws only the foot of the part's wall).
+  const top0 = Math.max(0, Math.min(2, (raw[thin] - size[thin]) / 2));
+  if (SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
+  else [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
+  const { occ, reach, cell, grid } = reachable(tris, rawLo, rawHi);
+  const covered = new Uint8Array(occ.length);
+  const chosen: number[] = [];
+  const take = (si: number) => {
+    chosen.push(si);
+    for (let i = 0; i < occ.length; i++) if (reach[si][i]) covered[i] = 1;
+  };
+  for (const si of pair) take(si);
   // Turned over about the machine's X, as the shop mostly does (docs/knowledge: X180 in 63 of 100
   // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
   const [s1, s2] = chosen;
