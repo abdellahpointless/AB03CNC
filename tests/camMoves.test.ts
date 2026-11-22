@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { forMachine } from '../src/lib/cam/export';
 import { camProgram, type CamSetup } from '../src/lib/cam/program';
 import { simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
+import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import { columnPart, heightPart, plateWithHoles } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
@@ -248,5 +250,11 @@ describe('fewer points', () => {
     }
     expect(most).toBeGreaterThan(50);
     expect(most).toBeLessThan(400);
+    // Its rings written as whole circles (G02/G03 back to the start, as the shop does), the same on a FANUC.
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    expect(tp.moves.filter((m) => m.kind === 'feed' && m.points.length > 2 && Math.hypot(m.points[0][0] - m.points.at(-1)![0], m.points[0][1] - m.points.at(-1)![1]) < 1e-6).length).toBeGreaterThan(0);
+    const fanuc = parseToolpath(forMachine(r.code, 'FANUC-1', 'O0001.NC'), speedsFor('FANUC'));
+    const length = (t: typeof tp) => t.moves.filter((m) => m.kind === 'feed').reduce((a, m) => a + m.length, 0);
+    expect(length(fanuc)).toBeCloseTo(length(tp), 1);
   }, 300_000);
 });

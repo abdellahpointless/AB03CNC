@@ -291,6 +291,36 @@ function written(pts: P[], i: number, j: number): string | null {
 }
 
 /**
+ * Points i..j going once round one circle back to the start, as one whole circle ending where it starts
+ * ("G02 X.. Y.. I.. J..", X and Y written: the shop's 1,622 of them in 89 programs), or null. Every point
+ * within ON_ARC and every piece within CHORD of the circle as written, each point further round the same way.
+ */
+function wholeCircle(pts: P[], i: number, j: number): string | null {
+  const s = pts[i];
+  if (j - i < 4 || Math.hypot(pts[j][0] - s[0], pts[j][1] - s[1]) > 1e-6) return null;
+  const best = bestCircle(pts, i, j - 1);
+  if (!best) return null;
+  const [I, J] = [Math.round((best[0] - s[0]) * 1000) / 1000, Math.round((best[1] - s[1]) * 1000) / 1000];
+  const c: P = [s[0] + I, s[1] + J];
+  const r = Math.hypot(I, J);
+  if (r < 0.2 || r > 2000) return null;
+  let [swept, dir, prev] = [0, 0, Math.atan2(s[1] - c[1], s[0] - c[0])];
+  for (let k = i + 1; k <= j; k++) {
+    const p = pts[k];
+    if (Math.abs(Math.hypot(p[0] - c[0], p[1] - c[1]) - r) > ON_ARC || offCircle(pts[k - 1], p, c, r) > CHORD) return null;
+    const ang = Math.atan2(p[1] - c[1], p[0] - c[0]);
+    let step = ang - prev;
+    while (step > Math.PI) step -= 2 * Math.PI;
+    while (step < -Math.PI) step += 2 * Math.PI;
+    if (Math.abs(step) < 1e-9 || (dir && Math.sign(step) !== dir)) return null;
+    dir = Math.sign(step);
+    swept += Math.abs(step);
+    prev = ang;
+  }
+  return Math.abs(swept - 2 * Math.PI) < 1e-3 ? `${dir < 0 ? 'G02' : 'G03'} X${n3(s[0])} Y${n3(s[1])} I${n3(I)} J${n3(J)}` : null;
+}
+
+/**
  * Straight feed moves on one level that lie on a circle, as one arc: G02/G03 to the run's last point,
  * I and J from its first (the shop writes arcs this way, docs/knowledge: gcode.arcsIJ). At least three
  * pieces per arc, within ON_ARC of every point and CHORD of every piece. The program it gives must be
@@ -328,6 +358,14 @@ export function arcs(code: string): string {
     const feed = m[2] ?? '';
     let k = 0;
     while (k < at.length) {
+      // Once round a circle back to where it started: one whole circle.
+      const back = pts.findIndex((p, e) => e > k + 3 && Math.hypot(p[0] - pts[k][0], p[1] - pts[k][1]) < 1e-6);
+      const whole = back > 0 ? wholeCircle(pts, k, back) : null;
+      if (whole) {
+        out.push(`N0 ${whole}${k === 0 ? feed : ''}`);
+        k = back;
+        continue;
+      }
       // The longest run on one arc, cut back until the arc as written takes it.
       let last = -1;
       for (let e = k + 3; e < pts.length && e - k <= 2000 && arcThrough(pts, k, e); e++) last = e;

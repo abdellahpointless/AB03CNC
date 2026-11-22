@@ -236,6 +236,17 @@ describe('circles written as arcs', () => {
     expect(q.worst).toBeLessThanOrEqual(0.012);
   });
 
+  it('writes a whole circle as one G02 back to its start, as the shop does (1,622 in 89 programs), read back as one turn', () => {
+    // A circle of r 5 about 0,0 in 120 pieces, clockwise from (5, 0), then on straight.
+    const round = Array.from({ length: 120 }, (_, k) => [5 * Math.cos(-((k + 1) * Math.PI) / 60), 5 * Math.sin(-((k + 1) * Math.PI) / 60)]);
+    const before = ['N1 G00 G90 X5. Y0 S9000 M03', 'N2 G00 Z2.', 'N3 G01 Z-1. F300.', ...round.map(([x, y], k) => `N${k + 4} G01 X${fmt(x)} Y${fmt(y)}${k === 0 ? ' F900.' : ''}`), 'N124 G01 X8.'].join('\n');
+    const after = arcs(before);
+    expect(after.split('\n').slice(3)).toEqual(['N4 G02 X5. Y0. I-5. J0. F900.', 'N5 G01 X8.']);
+    const feed = (code: string) => parseToolpath(code, speedsFor('HAAS')).moves.filter((m) => m.kind === 'feed').reduce((t, m) => t + m.length, 0);
+    expect(feed(after)).toBeCloseTo(feed(before), 2);
+    expect(gaps(before, after).worst).toBeLessThanOrEqual(0.012);
+  });
+
   it('leaves pieces as they are where they are not a circle, or too coarse for one', () => {
     const line = ['N1 G00 G90 X0 Y0 S9000 M03', 'N2 G01 Z-1. F300.', 'N3 G01 X1. F900.', 'N4 G01 X2.', 'N5 G01 X3.', 'N6 G01 X4.'].join('\n');
     expect(arcs(line)).toBe(line);
