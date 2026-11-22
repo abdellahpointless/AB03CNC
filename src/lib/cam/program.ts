@@ -1242,12 +1242,18 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (!nested && hold[0] > VISE.width + OVERHANG) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
-    // Below their tops the jaws stand at the held faces (kept off from 0.1 mm inside them: the first ring
-    // runs 0.02 mm into what it keeps off). Held by a band narrower than what stands above it, the part
-    // overhangs them, and a pocket in that overhang reaches over a jaw. In the nest its walls are cut into.
+    // Below their tops the jaws stand at the held Y faces and the stop at the X- one (kept off from 0.1 mm
+    // inside them: the first ring runs 0.02 mm into what it keeps off). Held by a band narrower than what
+    // stands above it, the part overhangs them, and a pocket in that overhang reaches over a jaw or the
+    // stop. In the nest its walls are cut into.
     // shortcut: only the end mills keep off them; a drill or graver there is left to the check, which
     // locks the program (none in the reference library); keep those off too if one ever is.
-    const beside = (d: number): Region => [...rect(sb.lo[0] - 50, held.lo[1] - 50, sb.hi[0] + 50, held.lo[1] + d), ...rect(sb.lo[0] - 50, held.hi[1] - d, sb.hi[0] + 50, held.hi[1] + 50)];
+    const beside = (d: number): Region =>
+      union([
+        ...rect(sb.lo[0] - 50, held.lo[1] - 50, sb.hi[0] + 50, held.lo[1] + d),
+        ...rect(sb.lo[0] - 50, held.hi[1] - d, sb.hi[0] + 50, held.hi[1] + 50),
+        ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
+      ]);
     const jaws = nested ? [] : beside(0.1);
     const pastJaws = nested ? [] : beside(-0.05);
 
@@ -1391,7 +1397,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const inside = z < jawLimit - 0.001;
       if (inside) todo = intersection(todo, filled(keep));
       todo = opened(todo);
-      // What the tool keeps off: the part, and below the jaw tops the jaws where the part above reaches over them.
+      // What the tool keeps off: the part, and below the jaw tops the jaws and the stop where the part above reaches over them.
       const off = inside && jaws.length && area(intersection(keep, pastJaws)) > 0.01 ? union(keep, jaws) : keep;
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);

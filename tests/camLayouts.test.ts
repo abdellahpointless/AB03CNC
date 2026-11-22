@@ -125,6 +125,21 @@ describe('the jaws of a later clamping', () => {
     expect(c.collisions).toBeGreaterThan(r.check.collisions);
   }, 300_000);
 
+  it('keeps every tool off the X stop below the jaw top where the part above stands out past the face it touches (a review found 3 mm into it)', () => {
+    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
+    // The case itself: held by the boss (12 along the jaws), a mill cutting the hole in it below the jaw top.
+    expect(r.setups[1].held[2] - r.setups[1].held[0]).toBeCloseTo(12, 0);
+    const s = an.setups[1];
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] < s.clampBox!.min[0] + 3))).toBe(true);
+    expect(intoStop(tp, s)).toEqual([]);
+    expect(r.check.stops).toBe(0);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
   it('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits)', () => {
     // The hole across the boss's Y- face (4 x 4): half beside the boss, half in it.
     const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
