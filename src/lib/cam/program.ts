@@ -226,11 +226,11 @@ function grown(occ: Uint8Array, [nx, ny, nz]: number[]): Uint8Array {
 }
 
 /**
- * The cale under the part: the jaws grip as little as the cut needs (the outside is cut down to
- * 0.5 mm above the jaws), at least 3 mm to hold it, at most 6, never all of the part.
+ * The cale under the part for the grip wanted (the outside is cut down to 0.5 mm above the jaws):
+ * at least 3 mm to hold it, never all of the part.
  */
 function caleFor(height: number, want: number, least = 3): { cale: number; grip: number } {
-  const target = Math.max(3, least, Math.min(6, want, height - 1));
+  const target = Math.max(3, least, Math.min(want, height - 1));
   let best: { cale: number; grip: number } | null = null;
   for (const c of CALE_HEIGHTS) {
     const grip = JAW - c;
@@ -1208,7 +1208,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // Then the machine's own, its roughing mill before its finishing one (HAAS-1: T2 roughs, T21 finishes).
   const role = (t: CamTool) => (t.category === 'fraise ebauche' ? 0 : t.category === 'fraise finition' ? 2 : 1);
   const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
-  const addSetup = (si: number, least = 3): boolean => {
+  const addSetup = (si: number, fixed?: number): boolean => {
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
     if (prevR && setups.length >= 2) {
@@ -1219,7 +1219,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const other = mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], feats[si].R);
       if (turns(other) < turns(feats[si].R)) feats[si] = sideFeatures(tris, SIDES[si], false, other);
     }
-    // What this try changes, to undo when the vise asks for a deeper grip and it is planned again.
+    // What this try changes, to undo when the vise asks for another grip and it is planned again.
     const was = { drilled: new Map(drilled), notes: notes.length };
     input.live?.({ kind: 'stage', stage: 'setup', setup: setups.length, of: Math.max(chosen.length, setups.length + 1), side: SIDES[si].name });
     const side = SIDES[si];
@@ -1259,8 +1259,33 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // first clampings, also where that grips the foot of the part's wall), as long as the outside cuts of both
     // clampings still meet (each 1 mm over its jaws, the next one gripping 3 mm). Else: what is under the part.
     const waste = -H - sb.lo[2];
-    const want = !setups.length && waste > 0.5 ? Math.min(5, -sb.lo[2] - 5) : waste - 0.5;
-    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, want, least);
+    // A later clamping: as deep as its own cuts beside the held faces allow, as the shop holds it (jaw tops under
+    // every such cut in 159 of 160 later clampings, the deepest such grip in 101): 1 mm under the lowest stock
+    // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its outer
+    // chamfers (the outline shrinks there: the graver cuts beside the held faces), 1.3 mm under Z0 (the deburring
+    // graver's 0.3), and on the faces it holds at 3 mm (1 mm short of where they change).
+    const deepest = () => {
+      let jaw = -1.3;
+      for (let z = sb.lo[2] + 0.05; z < jaw + 1; z += 0.25)
+        if (area(opened(difference(left.at(z - 0.02, z + 0.02), offset(filled(slice(P, z)), Math.max(0.05, left.skin))))) > 1) {
+          jaw = z - 1;
+          break;
+        }
+      for (const c of f.chamfers) {
+        const [lo, hi] = [c.lo - top, c.hi - top];
+        if (lo < jaw + 1 && area(difference(filled(slice(P, lo - 0.05)), offset(filled(slice(P, (lo + hi) / 2)), 0.02))) > 0.5) jaw = Math.min(jaw, lo - 1);
+      }
+      const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
+      let same = 3;
+      for (const g of CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g > 3).sort((p, q) => p - q)) {
+        const e = extent(left.at(sb.lo[2], sb.lo[2] + g + 1));
+        if (!e3 || !e || [0, 1].some((k) => Math.abs(e.lo[k] - e3.lo[k]) > 0.2 || Math.abs(e.hi[k] - e3.hi[k]) > 0.2)) break;
+        same = g;
+      }
+      return Math.min(jaw - sb.lo[2], same);
+    };
+    const want = !setups.length ? (waste > 0.5 ? Math.min(5, -sb.lo[2] - 5) : waste - 0.5) : nested || fixed !== undefined ? 3 : deepest();
+    const { cale, grip } = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, fixed ?? want, fixed ?? 3);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
@@ -1653,19 +1678,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
       : physicsAt(grip);
     // The contact of the grip used (physicsAt may have been tried at deeper grips).
     if (!nest) physicsAt(grip);
-    if (!nested && least === 3 && (physics.feed < 1 || !physics.ok)) {
-      const deeper = CALE_HEIGHTS.map((c) => JAW - c)
-        .filter((g) => g > grip && g <= stockH - 1 && g <= most)
-        .sort((p, q) => p - q)
-        .find((g) => {
-          const p = physicsAt(g);
-          return p.feed >= 1 && !p.issues.some((i) => i.key === 'cannotHold' || i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
-        });
-      if (deeper) {
+    if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
+      const grips = CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
+      const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
+      // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
+      const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
+      const other = (lost ? [...grips.filter((g) => g < grip).sort((p, q) => q - p), ...deeper] : deeper).find((g) => {
+        const p = physicsAt(g);
+        return p.feed >= 1 && !p.issues.some((i) => i.key === 'cannotHold' || i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
+      });
+      if (other !== undefined) {
         drilled.clear();
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;
-        return addSetup(si, deeper);
+        return addSetup(si, other);
       }
     }
     if (!nest && grip > most + 1e-6) {
