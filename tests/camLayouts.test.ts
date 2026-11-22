@@ -96,10 +96,10 @@ describe('the jaws of a later clamping', () => {
   // bottom: through the plate beside the boss, up into the boss 1 mm short of its top. Turned over, the
   // jaws hold the boss and the stop touches its X- face (i 4): a hole across one of its faces stands half
   // over a jaw or the stop, and its part in the boss goes below the jaw top.
-  const bossPlate = (hole: (i: number, j: number) => boolean) => {
+  const bossPlate = (hole: (i: number, j: number) => boolean, plate = (_i: number, _j: number) => true) => {
     const boss = (i: number, j: number) => i >= 4 && i < 16 && j >= 5 && j < 29;
     const lo = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && boss(i, j) ? 13 : 0)));
-    const hi = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 14 : 8)));
+    const hi = Array.from({ length: 34 }, (_, j) => Array.from({ length: 30 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 14 : plate(i, j) ? 8 : 0)));
     return columnPart(lo, hi);
   };
   // The hole across the boss's X- face, at the stop after the turn (6 x 6, i 1..7).
@@ -167,6 +167,27 @@ describe('the jaws of a later clamping', () => {
     expect(an.setups.flatMap((s) => s.collisions).filter((h) => h.what !== 'spacer')).toEqual([]);
     // What it leaves across the hole's opening on the held face, where the mill keeps off the jaw: noted.
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'jawWall', side: r.setups[1].side }));
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
+
+  // Each part stands out past one held side only: its plate as wide as the boss (past the face at the
+  // stop), or as long as it (over the jaws). Either alone must keep the tools off.
+  it.each([
+    { past: 'the stop', hole: (i: number, j: number) => i >= 1 && i < 7 && j >= 14 && j < 20, plate: (_i: number, j: number) => j >= 5 && j < 29, raw: [34, 28, 18] as [number, number, number] },
+    { past: 'the jaws', hole: (i: number, j: number) => i >= 8 && i < 12 && j >= 3 && j < 7, plate: (i: number) => i >= 4 && i < 16, raw: [16, 38, 18] as [number, number, number] },
+  ])('keeps every tool off what the part stands out past, $past only (a review found either half of that test untested)', ({ past, hole, plate, raw }) => {
+    const r = camProgram({ tris: bossPlate(hole, plate), material: 'ALU', tools: [], brand: 'HAAS', raw, noNest: true, orient: { side: 'Z+', spin: false } });
+    const tp = parseToolpath(r.code, speedsFor('HAAS'));
+    const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
+    // The case: held by the boss (12 x 24), a mill cutting the hole below the jaw top next to that held face.
+    const held = r.setups[1].held;
+    expect([held[2] - held[0], held[3] - held[1]].map(Math.round)).toEqual([12, 24]);
+    // (after the turn the hole across the boss's Y- face may lie at either jaw)
+    const near = (p: number[]) => (past === 'the stop' ? p[0] < s.clampBox!.min[0] + 3 : p[1] < s.clampBox!.min[1] + 3 || p[1] > s.clampBox!.max[1] - 3);
+    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && near(p)))).toBe(true);
+    expect(r.check.stops).toBe(0);
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
