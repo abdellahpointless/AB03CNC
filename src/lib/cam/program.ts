@@ -1399,6 +1399,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       todo = opened(todo);
       // What the tool keeps off: the part, and below the jaw tops the jaws and the stop where the part above reaches over them.
       const off = inside && jaws.length && area(intersection(keep, pastJaws)) > 0.01 ? union(keep, jaws) : keep;
+      // Where no tool may go is not left to cut (no smaller end mill would reach it either).
+      if (off !== keep) todo = opened(difference(todo, jaws));
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest

@@ -158,6 +158,16 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
+
+  it('asks for no smaller end mill for what lies where no tool may go (a review found a Ø1 asked for)', () => {
+    // The hole across the boss's Y- face, 10 wide; a blank whose grid shows the cut face a quarter cell out.
+    const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 39.3, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    expect(r.setups[1].held[3] - r.setups[1].held[1]).toBeCloseTo(24, 0);
+    expect(r.missing.filter((m) => m.why.key === 'narrow')).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
 });
 
 describe('where a clamping puts the part, with side stock or in the nest', () => {
