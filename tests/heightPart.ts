@@ -146,3 +146,43 @@ export function wallsOf(tris: ArrayLike<number>, near: (x: number, y: number) =>
   }
   return out;
 }
+
+/**
+ * A W x L x H plate (corner at the origin) with one blind round hole from its top, `depth` deep to where its wall
+ * ends, its bottom a drill point (118°, as CAD draws a drilled hole) or flat: its closed mesh (48-sided hole).
+ */
+export function plateWithBlindHole(W: number, L: number, H: number, hole: { c: [number, number]; d: number; depth: number; point: boolean }): Float32Array {
+  const N = 48;
+  const { c, d, depth } = hole;
+  const ring = Array.from({ length: N }, (_, k) => [c[0] + (d / 2) * Math.cos((2 * Math.PI * k) / N), c[1] + (d / 2) * Math.sin((2 * Math.PI * k) / N)] as [number, number]);
+  const t: number[] = [];
+  const tri = (a: number[], b: number[], e: number[], n: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [e[0] - a[0], e[1] - a[1], e[2] - a[2]];
+    const x = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    t.push(...(x[0] * n[0] + x[1] * n[1] + x[2] * n[2] >= 0 ? [...a, ...b, ...e] : [...a, ...e, ...b]));
+  };
+  const outer: [number, number][] = [[0, 0], [W, 0], [W, L], [0, L]];
+  const top = [...outer, ...ring];
+  for (const [i, j, k] of ShapeUtils.triangulateShape(outer.map(([x, y]) => new Vector2(x, y)), [ring.map(([x, y]) => new Vector2(x, y))])) tri([...top[i], H], [...top[j], H], [...top[k], H], [0, 0, 1]);
+  tri([0, 0, 0], [W, 0, 0], [W, L, 0], [0, 0, -1]);
+  tri([0, 0, 0], [W, L, 0], [0, L, 0], [0, 0, -1]);
+  const wall = (a: [number, number], b: [number, number], z0: number, z1: number, n: number[]) => {
+    tri([...a, z0], [...b, z0], [...b, z1], n);
+    tri([...a, z0], [...b, z1], [...a, z1], n);
+  };
+  wall([0, 0], [W, 0], 0, H, [0, -1, 0]);
+  wall([W, 0], [W, L], 0, H, [1, 0, 0]);
+  wall([W, L], [0, L], 0, H, [0, 1, 0]);
+  wall([0, L], [0, 0], 0, H, [-1, 0, 0]);
+  const zb = H - depth;
+  // The tip 0.3 x Ø under the end of the wall (118°).
+  const tip = [c[0], c[1], hole.point ? zb - 0.3 * d : zb];
+  ring.forEach((p, k) => {
+    const q = ring[(k + 1) % N];
+    const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    wall(p, q, zb, H, [c[0] - m[0], c[1] - m[1], 0]);
+    tri([...p, zb], [...q, zb], tip, [c[0] - m[0], c[1] - m[1], hole.point ? 1 : 0].map((v, i) => (hole.point ? v : i === 2 ? 1 : 0)));
+  });
+  return new Float32Array(t);
+}

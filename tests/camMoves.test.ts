@@ -4,7 +4,7 @@ import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
-import { columnPart, heightPart, plateWithHoles } from './heightPart';
+import { columnPart, heightPart, plateWithBlindHole, plateWithHoles } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
 
@@ -123,6 +123,23 @@ describe('the plane between cuts', () => {
     expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
     expect(rPlanes(kept.setups[0]).length).toBeGreaterThan(0);
     for (const z of rPlanes(kept.setups[0])) expect(z).toBeGreaterThanOrEqual(3.999);
+  }, 300_000);
+});
+
+describe('blind holes', () => {
+  // The study (docs/knowledge/cam-part-study.md, E3): CAM AI put the drill's point where the hole's wall ends, so
+  // the full Ø stopped 0.3 x Ø short; the engineers drill to the point CAD draws (Z-28.642 for a wall ending at 27.2).
+  const drillZ = (point: boolean) => {
+    const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    const cycle = r.setups[0].ops.filter((o) => o.kind === 'drill').flatMap((o) => o.lines).find((l) => /G83/.test(l));
+    return Number(cycle?.match(/ Z(-?[\d.]+)/)?.[1]);
+  };
+  it('drills a hole drawn with a drill point to that point (its wall 8 deep, Ø5: Z-9.5)', () => {
+    expect(drillZ(true)).toBeCloseTo(-9.5, 2);
+  }, 300_000);
+  it('stops a flat-bottomed hole where its wall ends', () => {
+    expect(drillZ(false)).toBeCloseTo(-8, 2);
   }, 300_000);
 });
 

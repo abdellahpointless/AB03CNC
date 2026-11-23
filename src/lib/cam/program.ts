@@ -1559,7 +1559,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const keepHoles: Hole[] = [];
     for (const h of holes) {
       const k = keyOf(h);
-      const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : 0);
+      // A blind hole CAD draws with a drill point (its middle open under where the wall ends, no smaller hole on
+      // from there): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
+      const pointed = !h.through && !holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05) && inside(slice(P, h.bottom - 0.3 * h.r), h.c) === 0;
+      const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
       const lip = drilled.get(k);
       if (lip !== undefined) {
         keepHoles.push(h);
@@ -1577,7 +1580,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
         // one its point goes 0.8 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
         // What that leaves narrow at the far end is drilled from the other side, else noted.
-        let z = h.through ? h.bottom - (0.3 * d.diameter + 0.5) : h.bottom;
+        let z = h.through ? h.bottom - (0.3 * d.diameter + 0.5) : pointed ? h.bottom - 0.6 * h.r : h.bottom;
         let rest = 0;
         if (h.through && z < sb.lo[2] + 0.1) {
           if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.8));
