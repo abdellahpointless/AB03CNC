@@ -471,13 +471,16 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pi
  * in two programs or more of the library), else 5°. The high-feed mills (SFH), the mills over Ø8 and
  * the smallest ones never go into material in the library (they go down beside it).
  */
-const STEEP: Partial<Record<string, [number, number]>> = { ALU: [2, 8], FH: [3, 8], PCGF: [1, 8], PEEK: [2, 4], POM: [3, 8] };
-const rampOf = (tool: CamTool, mat: string) => {
+const STEEP: Partial<Record<string, [number, number]>> = { ALU: [2, 8], FH: [3, 8], PCGF: [1, 8], PEEK: [2, 4], POM: [3, 8], RESOPAL: [3, 8] };
+const steepOf = (tool: CamTool, mat: string) => {
   const s = STEEP[mat];
   // Only the shop's own (template) mills: a machine's mill without one has nothing in the library to go by (a review finding).
-  const steep = tool.type === 'SF' && !!tool.template && !!s && tool.diameter >= s[0] - 1e-6 && tool.diameter <= s[1] + 1e-6;
-  return Math.tan(((steep ? 15 : 5) * Math.PI) / 180);
+  return tool.type === 'SF' && !!tool.template && !!s && tool.diameter >= s[0] - 1e-6 && tool.diameter <= s[1] + 1e-6;
 };
+const rampOf = (tool: CamTool, mat: string) => Math.tan(((steepOf(tool, mat) ? 15 : 5) * Math.PI) / 180);
+/** You: those mills go straight down into POM, FH and RESOPAL (the engineers' 2 mm plunges at the entry feed), not into the others. */
+const PLUNGES = new Set(['POM', 'FH', 'RESOPAL']);
+const plungesInto = (tool: CamTool, mat: string) => PLUNGES.has(mat) && steepOf(tool, mat);
 type P3 = [number, number, number];
 const dist2 = (a: P2, b: P2) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 
@@ -643,6 +646,7 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
   };
   const r = tool.diameter / 2;
   const slope = rampOf(tool, mat);
+  const straight = plungesInto(tool, mat);
   const airCache = new Map<string, Region>();
   const inAir = (p: P2, lo: number, hi: number) => {
     const key = `${lo.toFixed(3)}:${hi.toFixed(3)}`;
@@ -715,8 +719,8 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
           // Down to the material's top here (cleared above it) at the entry feed.
           lines.push(`G01 Z${n3(from)} F${c.fz}.`);
         }
-        if (tiny || (enter && inAir(pts[0], pz, from))) {
-          // Its whole circle in the air (or no ring to ramp along): straight down.
+        if (tiny || straight || (enter && inAir(pts[0], pz, from))) {
+          // Its whole circle in the air (or no ring to ramp along, or a plunging material): straight down.
           lines.push(`G01 Z${n3(pz)} F${c.fz}.`);
         } else if (ring.closed) {
           const start = k0;
