@@ -564,6 +564,8 @@ interface Work {
   zone?: Region;
 }
 
+/** The spacer the shop puts in the moving jaw (mm; docs/knowledge: 15 mm at Y- in 4 programs, 20 in 1). */
+const SPACER_Y = 15;
 /** Radial stock the roughing leaves on the walls for the finishing (mm). */
 const ALLOW = 0.15;
 /** A seal cage's walls thinner than this are cut gently (mm). */
@@ -1478,15 +1480,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // shortcut: only the end mills keep off them; a drill or graver there is left to the check, which
     // locks the program (none in the reference library); keep those off too if one ever is.
     const spans = viseSpans({ jawX: [held.lo[0] - STOP_PLATE, held.lo[0] - STOP_PLATE + VISE.width], twoVises });
+    // A spacer in the moving jaw (Y-, "15 MM ZWISCHENLAGE IN Y-") moves that jaw out by its thickness: the spacer
+    // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
+    let spacerY = 0;
     const beside = (d: number, end: number): Region =>
       union([
-        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] + d), ...rect(a - end, held.hi[1] - d, b + end, held.hi[1] + 50)]),
+        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] - d, b + end, held.hi[1] + 50)]),
         ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
       ]);
-    const jaws = nested ? [] : beside(0.1, 1);
-    const pastJaws = nested ? [] : beside(-0.05, 0);
+    let jaws = nested ? [] : beside(0.1, 1);
+    let pastJaws = nested ? [] : beside(-0.05, 0);
     // The 0.1 mm inside the held faces: what opens onto one keeps a wall that thin across it.
-    const wallBand = nested ? [] : difference(jaws, beside(0, 1));
+    let wallBand = nested ? [] : difference(jaws, beside(0, 1));
+    // The moving jaw's held face, for a wall there (the spacer frees it).
+    const atMovingJaw = rect(sb.lo[0] - 50, held.lo[1] - 1, sb.hi[0] + 50, held.lo[1] + 0.2);
     // Where the operator leaves 0.1 mm or more on a held face, that wall lies in what is left there: not noted.
     const leftOn = nested
       ? []
@@ -1664,7 +1671,18 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (inside) todo = intersection(todo, filled(keep));
       todo = opened(todo);
       // What the tool keeps off: the part, and below the jaw tops the jaws and the stop where the part above reaches over them.
-      const off = inside && jaws.length && area(intersection(keep, pastJaws)) > 0.01 ? union(keep, jaws) : keep;
+      const over = () => inside && jaws.length > 0 && area(intersection(keep, pastJaws)) > 0.01;
+      // A wall the moving jaw would leave across a pocket opening onto the face it holds: a spacer there instead
+      // (the shop's, 15 mm), from this level on; it moves nothing, so it needs no other reason (a fixed jaw's or
+      // the stop's would shift the part: not used).
+      if (!spacerY && !nested && over() && area(intersection(intersection(todo, wallBand), atMovingJaw)) > 0.01) {
+        spacerY = SPACER_Y;
+        jaws = beside(0.1, 1);
+        pastJaws = beside(-0.05, 0);
+        wallBand = difference(jaws, beside(0, 1));
+        setupNotes.push(`${SPACER_Y} MM ZWISCHENLAGE IN Y-`);
+      }
+      const off = over() ? union(keep, jaws) : keep;
       // Where no tool may go is not left to cut (no smaller end mill would reach it either).
       if (off !== keep) {
         const wall = intersection(todo, wallBand);

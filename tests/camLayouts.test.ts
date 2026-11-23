@@ -204,6 +204,21 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
+  it('a spacer in the moving jaw (shop: "15 MM ZWISCHENLAGE IN Y-") frees the face it holds: a pocket opening onto it is cut through into the spacer, no wall left', () => {
+    // The boss plate above, the hole across the boss's other long face: after the turn it opens onto the face the
+    // moving jaw (Y-) holds, under the jaw tops.
+    const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 27 && j < 31);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    expect(r.code).toMatch(/M0 \(15 MM ZWISCHENLAGE IN Y-\)/);
+    expect(r.notes.map((n) => n.key)).not.toContain('jawWall');
+    // The part stays where the program puts it (a spacer at Y- moves nothing), nothing hits the jaws.
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    // Only the clamping that needs it has it.
+    expect(r.setups.filter((s) => s.notes.some((n) => /ZWISCHENLAGE/.test(n)))).toHaveLength(1);
+  }, 300_000);
+
   // Each part stands out past one held side only: its plate as wide as the boss (past the face at the
   // stop), or as long as it (over the jaws). Either alone must keep the tools off.
   it.each([
