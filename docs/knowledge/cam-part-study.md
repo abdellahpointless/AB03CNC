@@ -118,3 +118,39 @@ deployed) came from this check, so errors under about 2 mm were never looked for
 - Hole sizes (3.5 for 3.2, 4.6 for 4.8, Ø6 for 6.3): the shop's sizes for screws in POM, or the PDF's model?
 - Straight 2 mm plunges into the next level of an open pocket: POM only, or every material?
 - The Ø30 SF's data (1000 rpm, F500): from which material?
+
+## What was fixed and changed (Phase 8.1 and 8.2)
+
+Your answers: inside corners at the pocket mill's radius (yes); straight plunges in POM, FH and RESOPAL only; the
+tighter holes are the threaded inserts'; the Z stock: what the engineers keep.
+
+| Step | Commit | The study's part (engineers' blank): lines, minutes |
+|---|---|---|
+| Before | 48f4ce2 | 14,738, 56.1 |
+| E2: a later clamping of CAM AI's own program stands where its G52 puts it (the 3D view showed 1 mm too deep) | f83c786 | the program unchanged; its view and check right |
+| E3: blind holes drawn with a drill point drilled to it (0.3 x Ø deeper) | 9e8c5c4 | holes now full depth |
+| E1: the program as it goes out checked again on a 7 times finer grid for cuts into the part | e4b8254 | no cut found |
+| Straight plunges in POM, FH and RESOPAL (Ø3 to 8 template mills) | 778bbf1 | 11,846, 51.2 |
+| Inside corners left at the pocket mill's radius (Ø8 or smaller); no clamping more for them | 5f9a747 | 4,930, 25.5 |
+| Those corners not counted as material left by the check | 85c914c | |
+| The first mill on a level: the one taking most a minute among its kind (POM: the Ø20, not the Ø30) | 28d84c6, c444c71 | 4,434, 18.2 |
+| The engineers | | 2,543, 16.9 |
+
+E4 (the Z stock lost on the app): not reproduced. The page's default (3.5 a side) gives 74.03 x 46 x 47 with the
+deployed planner and today's; the program shows 40, so that run's page sent 0 mm in Z.
+
+The 10 at c444c71 (against 48f4ce2): 182.9 minutes (241.0; the engineers 147.8), 80,705 lines (125,426; the
+engineers 31,782), 35 clampings (32; the engineers 24).
+- P441ba43c 4 clampings (2): CAM AI plans it three ways; its 2-clamping way is slower than the 4-clamping one by
+  more than 2 minutes a clamping. The engineers do it in 2 and 15.5 minutes.
+- Pedda39a5 5 (4): 5.6 minutes against 8.8 with 4.
+- Pfae5765f fails: the finer check finds a cut 0.5 mm into a wall (10 mm³, the Ø16 in clamping 4). It is there
+  before these changes (778bbf1 too): the old check could not see it. The program is refused now.
+
+The Z stock the engineers keep (175 headers with part and blank sizes, the smallest size): 10 mm in 33, 4 in 27,
+5 in 12, 7 in 12, 8.5 in 10, 9 in 9.
+
+Left for the next step (the part analysis): the rounded top edges are chamfered with the 45° graver along every
+edge (962 lines; the engineers: a corner-rounding mill, 24 lines); counterbores with the end mills in the program;
+the threaded inserts' holes; the face with most of the work first (W1, now that the corners no longer cost the
+time it lost before); the clampings that grip 17 mm where the engineers grip 37.
