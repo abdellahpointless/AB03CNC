@@ -289,10 +289,20 @@ const opened = (r: Region) => offset(offset(r, -0.15), 0.15);
  * The shop's pocket templates go up to Ø8; the engineers' pocket mills in the study: Ø6, Ø4 only where narrower.
  */
 const CORNER_R = 4;
-/** Of what a mill of radius r left, the pieces that reach further from where it went than a square corner's sliver (0.414 r). */
+/**
+ * Of what a mill of radius r left, all but its square corners' slivers: a piece within 0.414 r of where it went, as
+ * large as that sliver (0.215 r²: a strip along a wall is larger), and no smaller than 0.6 of it (smaller, the model
+ * draws a radius there, which a smaller mill makes: you, "unless the drawing asks for less").
+ */
 function pastCorners(left: Region, gone: Region, r: number): Region {
   const far = difference(left, offset(gone, 0.42 * r + 0.02));
-  const outers = left.filter((l) => area([l]) > 0 && area(intersection([l], far)) > 0.01);
+  const sliver = 0.215 * r * r;
+  const corner = (l: P2[]) => {
+    const a = area([l]);
+    const e = extent([l])!;
+    return a >= 0.6 * sliver && a <= 1.2 * sliver && e.hi[0] - e.lo[0] <= 1.1 * r && e.hi[1] - e.lo[1] <= 1.1 * r && area(intersection([l], far)) <= 0.01;
+  };
+  const outers = left.filter((l) => area([l]) > 0 && !corner(l));
   return [...outers, ...left.filter((l) => area([l]) < 0 && outers.some((o) => inside([o], l[0]) === 1))];
 }
 const circle = (c: [number, number], r: number) => Array.from({ length: 48 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 24), c[1] + r * Math.sin((i * Math.PI) / 24)] as P2);

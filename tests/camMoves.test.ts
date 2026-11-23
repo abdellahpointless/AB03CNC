@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { forMachine } from '../src/lib/cam/export';
 import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
-import { simplify, type P2 } from '../src/lib/cam/geom';
+import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import { columnPart, heightPart, plateWithBlindHole, plateWithHoles } from './heightPart';
@@ -172,6 +172,16 @@ describe('inside corners', () => {
     // The corners left on purpose are not counted as material left (they were 4 pieces of 5 mm³).
     expect(r.check.pieces.filter((p) => p.kind === 'left')).toEqual([]);
   }, 300_000);
+  it('cuts a strip along a wall that only lies near the pocket mill\'s path: no corner (a review found it left)', () => {
+    // The pocket 1 mm deeper into its wall over 10 mm (y 6 to 7, x -5 to 5): within reach of the Ø8's path, not a corner.
+    const recess = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => ((i >= 10 && i < 30 && j >= 9 && j < 21) || (i >= 15 && i < 25 && j === 21) ? 6 : 12))));
+    const { r } = mills(recess);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.pieces.filter((p) => p.kind === 'left' && p.max[1] > 5.9 && p.min[0] > -6 && p.max[0] < 6)).toEqual([]);
+    // What the check accepts as left on purpose: corner-sized pieces only (a Ø8's square corner: 0.215 x 16 mm²).
+    for (const c of r.corners ?? []) for (const loop of c.region) expect(Math.abs(area([loop]))).toBeLessThan(0.215 * 16 * 1.2 + 0.01);
+  }, 300_000);
+
   it('still sends one into a place narrower than the pocket mill', () => {
     const { r, d } = mills(slotted);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
