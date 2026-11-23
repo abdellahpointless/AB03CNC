@@ -658,10 +658,10 @@ export default function ToolpathViewer({
                   const change = before && calesKey(before) !== calesKey(sel) && before.support !== null && before.support !== sel.support;
                   return (
                     <div
-                      className={`absolute left-3 bottom-3 z-10 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${change ? 'border-[#FFD27A] bg-[#2A2210]/90 text-[#FFD27A]' : 'border-[var(--border-subtle)] bg-[#0E1421]/85 text-[var(--text-secondary)]'}`}
+                      className={`absolute left-3 bottom-3 z-10 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${change ? 'border-[#FFD27A] bg-[#2A2210]/90 text-[#FFD27A]' : 'border-[var(--border-subtle)] bg-[#0E1421]/85 text-[var(--text-secondary)]'}`}
                       title={t('toolpath.calesHelp')}
                     >
-                      <span className="font-mono text-[13px] leading-none">▭</span>
+                      <span className="font-mono text-[17px] leading-none" aria-hidden="true">▭</span>
                       {change ? t('toolpath.calesChange', { from: fmtNumber(before!.support!), to: fmtNumber(sel.support) }) : t('toolpath.cales', { mm: fmtNumber(sel.support) })}
                     </div>
                   );

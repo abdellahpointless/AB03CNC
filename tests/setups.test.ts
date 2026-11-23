@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseToolpath } from '../src/lib/toolpath';
 import { partLook } from '../src/lib/partLook';
-import { analyseProgram, analyseSetups, exportBlocked, overJaws, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
+import { analyseProgram, analyseSetups, caleSlide, exportBlocked, overJaws, partSizes, readInstructions, spacerAt, viseSpans, type Collision } from '../src/lib/setups';
 import { carve, KEPT, buildInput } from '../src/lib/stockSim';
 import { rewriteTurns } from '../src/lib/fixTurns';
 
@@ -534,3 +534,15 @@ describe("the shop's other ways of writing a setup", () => {
   });
 });
 
+
+describe('changing the parallels', () => {
+  it('slides the old pair out before the new pair slides in, and ends with the new pair in place', () => {
+    expect(caleSlide(0)).toEqual({ out: 0, inn: 0 });
+    const steps = Array.from({ length: 101 }, (_, i) => caleSlide(i / 100));
+    // Never both moving: the new pair starts only once the old one is out.
+    expect(steps.every(({ out, inn }) => inn === 0 || out === 1)).toBe(true);
+    // Each only moves one way.
+    expect(steps.every((x, i) => !i || (x.out >= steps[i - 1].out && x.inn >= steps[i - 1].inn))).toBe(true);
+    expect(caleSlide(1)).toEqual({ out: 1, inn: 1 });
+  });
+});

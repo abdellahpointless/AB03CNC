@@ -4,7 +4,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { CALE_MS, caleSlide, calesKey, parallelWidth, spacerAt, STOP_PLATE, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { between, holeAt, holeAxis, holeOfMesh, placeDimension, type Feature, type MeasureMode } from '../lib/measure';
 import { locale } from '../i18n/format';
@@ -387,7 +387,7 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
   });
   // Their height as a tag over the right end, shown while they are changed.
   const tag = label(`▭ ${text}`, '#FFD27A');
-  const h = Math.min(Math.max(length * 0.07, 5), 12);
+  const h = Math.min(Math.max(length * 0.13, 8), 18);
   tag.scale.set(h * tag.userData.aspect, h, 1);
   const top = Math.max(...cales.map((c) => c.top));
   tag.position.copy(v3([end, (cales[0].y[0] + cales[cales.length - 1].y[1]) / 2, top + h * 0.9]));
@@ -1764,6 +1764,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (fresh) onSolidRef.current?.({ state: 'jumping', share: 1 });
     const shown = () => onSolidRef.current?.({ state: 'ready', share: 1 });
     if (a.clamp) a.clamp.visible = true;
+    // A change cut off mid-slide leaves no pair outside the vise.
+    if (a.cales) a.cales.position.x = 0;
     const end = poseOf(setup);
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     disposeTree(a.overlay);
@@ -1840,12 +1842,15 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       return arrow;
     });
 
-    // Changing cales, slowly enough to see which ones: with the part up, the old pair is taken out
-    // and the new pair stands on the bed with its height shown; then the part sets down on them.
+    // Changing cales, slowly enough to see which ones: with the part up, the old pair slides out along
+    // the vise and the new pair slides in, its height shown; then the part sets down on them.
     // Both stand on the same table: nothing moves through it.
     const newCales = a.cales;
     const oldCales = buildCales(prev);
     const changing = calesKey(prev) !== calesKey(setup) && (!!newCales || !!oldCales);
+    // Out past the vise's right end (the stop is on the left), clear of any vise.
+    const spans = setup.jawTopZ !== null ? viseSpans(setup) : null;
+    const slide = spans ? spans[spans.length - 1][1] - spans[0][0] + 40 : 200;
     if (oldCales && changing) {
       oldCales.position.copy(lift0);
       a.overlay.add(oldCales);
@@ -1868,16 +1873,17 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const part = (ms: number, from: number, len: number) => (len > 0 ? Math.min(1, Math.max(0, (ms - from) / len)) : ms >= from ? 1 : 0);
     const placeCales = (ms: number) => {
       if (!changing) return;
-      // The old pair's height first, then the new pair in its place (halfway through the change).
-      const sw = part(ms, tSwap, SWAP);
-      const swapped = sw >= 0.5;
+      // The old pair slides out with its height shown, then the new pair slides in with its own.
+      const { out, inn } = caleSlide(part(ms, tSwap, SWAP));
       if (oldCales) {
-        oldCales.visible = !swapped;
-        tagOf(oldCales)!.visible = sw > 0 && !swapped;
+        oldCales.position.x = ease(out) * slide;
+        oldCales.visible = out < 1;
+        tagOf(oldCales)!.visible = ms >= tSwap && out < 1;
       }
       if (newCales) {
-        newCales.visible = swapped;
-        tagOf(newCales)!.visible = swapped && ms < tClamp;
+        newCales.position.x = (1 - ease(inn)) * slide;
+        newCales.visible = inn > 0;
+        tagOf(newCales)!.visible = inn > 0 && ms < tClamp;
       }
     };
     placeCales(0);
@@ -1946,6 +1952,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       setJaw(0);
       if (newClamp) newClamp.visible = true;
       if (newCales) {
+        newCales.position.x = 0;
         newCales.visible = true;
         tagOf(newCales)!.visible = false;
       }

@@ -532,6 +532,14 @@ export function analyseProgram(tp: Toolpath, opts: SetupOptions, fixed?: Mat3[])
 
 /** Extra time the 3D view takes when the cales change between two setups (ms): shown slowly. */
 export const CALE_MS = 2600;
+/**
+ * Through a cale change (0 to 1 of CALE_MS): how far the old pair has slid out along the vise and
+ * the new pair in (0 to 1 each). The old pair is out before the new one starts.
+ */
+export const caleSlide = (sw: number): { out: number; inn: number } => ({
+  out: Math.min(1, Math.max(0, sw / 0.28)),
+  inn: Math.min(1, Math.max(0, (sw - 0.33) / 0.37)),
+});
 
 /** The same cales (height and place) give the same key. */
 export const calesKey = (s: SetupInfo | null): string =>
