@@ -397,7 +397,8 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
   {
     // The weak-password reminder: shown at one sign-in per user, then never again.
     version: 16,
-    statements: ['ALTER TABLE users ADD COLUMN weak_password_notice_at INTEGER'],
+    // Everyone there already has seen it (it came at every sign-in): never again for them.
+    statements: ['ALTER TABLE users ADD COLUMN weak_password_notice_at INTEGER', 'UPDATE users SET weak_password_notice_at = 1'],
   },
 ];
 
