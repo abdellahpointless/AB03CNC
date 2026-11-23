@@ -383,11 +383,14 @@ interface LoginRow {
   mfa_enabled: number;
   toolpath_beta: number;
   cam_ai: number;
+  weak_password_notice_at: number | null;
 }
 
 async function finishLogin(ctx: Ctx, row: LoginRow, weakPassword: boolean, method: string, extra: Record<string, unknown> = {}): Promise<Response> {
   await ctx.env.DB.batch([
     ctx.env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(mfaKey(row.id)),
+    // Shown now: never again for this user.
+    ...(weakPassword ? [ctx.env.DB.prepare('UPDATE users SET weak_password_notice_at = ? WHERE id = ?').bind(Date.now(), row.id)] : []),
   ]);
   const { cookie } = await createSession(ctx.env, row.id, row.role);
   await audit(ctx.env, ctx.request, 'login', row, method);
@@ -439,7 +442,7 @@ async function loginWith(ctx: Ctx, username: string, password: string, extra: Re
   // recorded, so a flood of made-up usernames cannot fill the security log.
   const ipLocked = await isLocked(ctx.env, iKey);
 
-  const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai FROM users WHERE username = ?')
+  const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai, weak_password_notice_at FROM users WHERE username = ?')
     .bind(username)
     .first<LoginRow>();
 
@@ -470,7 +473,8 @@ async function loginWith(ctx: Ctx, username: string, password: string, extra: Re
   if (needsRehash(ctx.env, row.password_hash)) {
     await ctx.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(ctx.env, password), row.id).run();
   }
-  const weakPassword = passwordProblem(password, row.username, row.role) !== null;
+  // A soft reminder, shown at one sign-in only.
+  const weakPassword = !row.weak_password_notice_at && passwordProblem(password, row.username, row.role) !== null;
 
   if (row.mfa_enabled) {
     const challenge = b64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -507,7 +511,7 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     throw new HttpError(401, 'Sign-in expired. Please enter your password again.', { code: 'challenge_expired' });
   }
   const row = await ctx.env.DB.prepare(
-    'SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai, mfa_secret, mfa_last_step, mfa_recovery FROM users WHERE id = ?',
+    'SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai, weak_password_notice_at, mfa_secret, mfa_last_step, mfa_recovery FROM users WHERE id = ?',
   )
     .bind(ch.user_id)
     .first<LoginRow & { mfa_secret: string | null; mfa_last_step: number; mfa_recovery: string | null }>();
@@ -545,7 +549,7 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     throw new HttpError(401, 'Wrong code. Check the time on your phone and try again.');
   }
   await ctx.env.DB.prepare('DELETE FROM login_challenges WHERE token_hash = ?').bind(challengeHash).run();
-  return finishLogin(ctx, row, body.weakPassword === true, method, ctx.env.REGION === 'master' ? { master: true } : {});
+  return finishLogin(ctx, row, body.weakPassword === true && !row.weak_password_notice_at, method, ctx.env.REGION === 'master' ? { master: true } : {});
 }
 
 export async function handleLogout(ctx: Ctx): Promise<Response> {

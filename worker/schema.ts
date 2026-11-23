@@ -394,6 +394,11 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    // The weak-password reminder: shown at one sign-in per user, then never again.
+    version: 16,
+    statements: ['ALTER TABLE users ADD COLUMN weak_password_notice_at INTEGER'],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
