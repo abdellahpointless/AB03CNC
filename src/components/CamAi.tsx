@@ -68,6 +68,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // Setups, one after the other: setup 1's top face (the layout's side, or a face picked on the
   // model), confirmed; then setup 2's (CAM AI proposes the opposite side), confirmed.
   const [face1, setFace1] = useState<string | undefined>();
+  // The walls the operator picks to finish (each its model triangles): only those get a finishing pass.
+  const [finishWalls, setFinishWalls] = useState<number[][]>([]);
+  const finishTris = useMemo(() => finishWalls.flat(), [finishWalls]);
+  const [pickWalls, setPickWalls] = useState(false);
   const [locked1, setLocked1] = useState(false);
   const [second, setSecond] = useState<{ side: string; face?: string } | null>(null);
   const [locked2, setLocked2] = useState(false);
@@ -142,6 +146,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setPrep(null);
     setViews([]);
     setFace1(undefined);
+    setFinishWalls([]);
+    setPickWalls(false);
     setLocked1(false);
     setSecond(null);
     setLocked2(false);
@@ -200,6 +206,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       second: second && second.side !== opposite(chosen.side) ? second.side : undefined,
       cuts: edits,
       skip: skips,
+      finish: finishTris.length ? finishTris : undefined,
       limits: { maxRpm: machine.maxRpm ?? DEFAULT_LIMITS.maxRpm, maxFeed: machine.maxFeed ?? DEFAULT_LIMITS.maxFeed },
       speeds: { rapid: machine.rapid ?? speeds.rapid, toolChange: machine.toolChange ?? speeds.toolChange },
     };
@@ -288,6 +295,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     set();
     if (result) setRun({ state: 'idle' });
   };
+  // A click on a wall: picked, or taken off again.
+  const toggleWall = (wall: number[]) => choose(() => setFinishWalls((now) => (now.some((w) => w[0] === wall[0]) ? now.filter((w) => w[0] !== wall[0]) : [...now, wall])));
   const recalc = () => {
     setCuts(draft);
     setSkip(skipDraft);
@@ -454,6 +463,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 picks={result || busy ? [] : picks}
                 picking={result ? null : picking}
                 onPick={pickFace}
+                finish={{ on: pickWalls && !result && !busy, picked: finishTris, onToggle: toggleWall }}
                 paths={paths}
                 label={picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
                 className="h-full rounded-none bg-transparent"
@@ -477,7 +487,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             </div>
           )}
           {/* What the view is doing, top centre. */}
-          {prep && !result && picking !== null && (
+          {prep && !result && !busy && pickWalls && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.finish.hint')}
+            </p>
+          )}
+          {prep && !result && !pickWalls && picking !== null && (
             <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
               <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
               {t('camAi.pickHint', { n: picking + 1 })}
@@ -494,6 +510,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#2f80ff]/60 mr-1.5 align-middle" />{t('camAi.legend.hover')}</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22c55e] mr-1.5 align-middle" />{t('camAi.legend.top')}</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#f5a524] mr-1.5 align-middle" />{t('camAi.legend.stock')}</span>
+              {finishTris.length > 0 && <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22d3ee] mr-1.5 align-middle" />{t('camAi.legend.finish')}</span>}
             </p>
           )}
         </main>
@@ -517,6 +534,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
                 )}
                 {partFields()}
+                {finishFields()}
               </>
             )}
 
@@ -562,6 +580,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   </dl>
                 )}
                 {excess && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                {finishFields()}
               </>
             )}
 
@@ -715,6 +734,26 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   );
 
   /** Part type, machine and material: in the New program dialog and the Part's properties. */
+  function finishFields() {
+    return (
+      <section className="space-y-1.5" aria-labelledby={`cam-finish-${sel.kind}`}>
+        <h4 id={`cam-finish-${sel.kind}`} className="section-label">{t('camAi.finish.title')}</h4>
+        <p className="text-[var(--text-secondary)]">{t('camAi.finish.help')}{partType === 'sealCage' ? ` ${t('camAi.finish.sealCage')}` : ''}</p>
+        <p className="text-[var(--text-primary)]" aria-live="polite">{t('camAi.finish.count', { count: finishWalls.length })}</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${pickWalls ? 'btn-primary' : 'btn-secondary'} text-xs min-h-9 px-3`} aria-pressed={pickWalls} onClick={() => setPickWalls((v) => !v)} disabled={busy || !!result}>
+            {pickWalls ? t('camAi.finish.done') : t('camAi.finish.pick')}
+          </button>
+          {finishTris.length > 0 && (
+            <button type="button" className="btn-secondary text-xs min-h-9 px-3" onClick={() => choose(() => setFinishWalls([]))} disabled={busy}>
+              {t('camAi.finish.clear')}
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function partFields() {
     return (
       <div className="space-y-3">

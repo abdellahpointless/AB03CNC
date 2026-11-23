@@ -42,6 +42,56 @@ const PATH_COLOR: Record<Purpose, number> = {
 const HOVER = 0x2f80ff;
 const PICKED = 0x22c55e;
 const AMBER = 0xf5a524;
+/** Walls picked to finish (the finishing paths' cyan). */
+const FINISH = 0x22d3ee;
+
+/**
+ * The model's walls as setup 1 stands (`up`: its Z in the model's frame): triangles facing sideways, joined
+ * across shared edges where they turn less than 40° (a curved wall is one patch; two walls meeting at a
+ * corner are two). `patchOf[k]`: triangle k's patch, -1 for none.
+ */
+export function wallPatches(pos: ArrayLike<number>, up: number[]): { patchOf: Int32Array; patches: number[][] } {
+  const n = Math.floor(pos.length / 9);
+  const nrm = new Float32Array(n * 3);
+  const patchOf = new Int32Array(n).fill(-1);
+  const root = new Int32Array(n).map((_, k) => k);
+  const find = (k: number): number => (root[k] === k ? k : (root[k] = find(root[k])));
+  const edges = new Map<string, number[]>();
+  const key = (i: number) => `${Math.round(pos[i] * 1000)},${Math.round(pos[i + 1] * 1000)},${Math.round(pos[i + 2] * 1000)}`;
+  for (let k = 0; k < n; k++) {
+    const o = k * 9;
+    const u = [pos[o + 3] - pos[o], pos[o + 4] - pos[o + 1], pos[o + 5] - pos[o + 2]];
+    const v = [pos[o + 6] - pos[o], pos[o + 7] - pos[o + 1], pos[o + 8] - pos[o + 2]];
+    const c = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const len = Math.hypot(c[0], c[1], c[2]);
+    if (!len || Math.abs(c[0] * up[0] + c[1] * up[1] + c[2] * up[2]) / len > 0.3) continue;
+    for (let j = 0; j < 3; j++) nrm[k * 3 + j] = c[j] / len;
+    patchOf[k] = 0;
+    const vs = [key(o), key(o + 3), key(o + 6)];
+    for (let j = 0; j < 3; j++) {
+      const [a, b] = [vs[j], vs[(j + 1) % 3]];
+      const e = a < b ? `${a}|${b}` : `${b}|${a}`;
+      (edges.get(e) ?? edges.set(e, []).get(e)!).push(k);
+    }
+  }
+  const cos40 = Math.cos((40 * Math.PI) / 180);
+  for (const ts of edges.values())
+    for (let i = 1; i < ts.length; i++) {
+      const [p, q] = [ts[0], ts[i]];
+      if (nrm[p * 3] * nrm[q * 3] + nrm[p * 3 + 1] * nrm[q * 3 + 1] + nrm[p * 3 + 2] * nrm[q * 3 + 2] > cos40) root[find(q)] = find(p);
+    }
+  const ids = new Map<number, number>();
+  const patches: number[][] = [];
+  for (let k = 0; k < n; k++) {
+    if (patchOf[k] < 0) continue;
+    const r = find(k);
+    let id = ids.get(r);
+    if (id === undefined) ids.set(r, (id = patches.push([]) - 1));
+    patchOf[k] = id;
+    patches[id].push(k);
+  }
+  return { patchOf, patches };
+}
 
 interface Face {
   side: string;
@@ -184,6 +234,10 @@ type Api = {
   marks: THREE.Group;
   stock: THREE.Group;
   paths: THREE.Group;
+  /** The walls picked to finish (cyan). */
+  walls: THREE.Group;
+  /** The model's walls as setup 1 stands (wallPatches), for picking them. */
+  patches: ReturnType<typeof wallPatches>;
 };
 
 /**
@@ -200,6 +254,7 @@ export default function CamPartView({
   picks,
   picking,
   onPick,
+  finish,
   paths = [],
   label,
   className = '',
@@ -216,6 +271,8 @@ export default function CamPartView({
   /** Which setup a click picks the top face of (null: not picking). */
   picking: number | null;
   onPick?: (side: string, face: string) => void;
+  /** Picking the walls to finish (they take precedence over `picking`): those picked, and a click's wall's triangles. */
+  finish?: { on: boolean; picked: number[]; onToggle: (tris: number[]) => void };
   paths?: LivePath[];
   /** The canvas's accessible name. */
   label: string;
@@ -223,8 +280,8 @@ export default function CamPartView({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
-  const pickRef = useRef({ picking, onPick });
-  pickRef.current = { picking, onPick };
+  const pickRef = useRef({ picking, onPick, finish });
+  pickRef.current = { picking, onPick, finish };
 
   // The scene, once per model.
   useEffect(() => {
@@ -262,7 +319,8 @@ export default function CamPartView({
     world.add(part);
     const marks = new THREE.Group();
     const paths = new THREE.Group();
-    world.add(marks, paths);
+    const walls = new THREE.Group();
+    world.add(marks, paths, walls);
     const stock = new THREE.Group();
     scene.add(world, stock);
     const size = box.getSize(new THREE.Vector3()).length();
@@ -277,7 +335,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths };
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]) };
     api.current = a;
 
     const resize = () => {
@@ -300,13 +358,21 @@ export default function CamPartView({
     const ndc = new THREE.Vector2();
     let under: string | null = null;
     let queued: PointerEvent | null = null;
+    const walling = () => !!pickRef.current.finish?.on;
+    // The flat face under the pointer, or (picking walls) its wall: "w<patch>".
     const faceAt = (e: { clientX: number; clientY: number }) => {
       const r = renderer.domElement.getBoundingClientRect();
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
       const hit = ray.intersectObject(part, false)[0];
-      return hit?.faceIndex != null ? keyOf[hit.faceIndex] : null;
+      if (hit?.faceIndex == null) return null;
+      if (walling()) {
+        const id = a.patches.patchOf[hit.faceIndex];
+        return id >= 0 ? `w${id}` : null;
+      }
+      return keyOf[hit.faceIndex];
     };
+    const trisOf = (key: string) => (key.startsWith('w') ? a.patches.patches[Number(key.slice(1))] : faces.get(key)!.tris);
     const showHover = (key: string | null) => {
       if (key === under) return;
       under = key;
@@ -316,14 +382,14 @@ export default function CamPartView({
         a.hover = null;
       }
       if (key) {
-        a.hover = overlay(pos, faces.get(key)!.tris, HOVER, 0.4);
+        a.hover = overlay(pos, trisOf(key), HOVER, 0.4);
         world.add(a.hover);
       }
       renderer.domElement.style.cursor = key ? 'pointer' : '';
       invalidate();
     };
     const move = (e: PointerEvent) => {
-      if (pickRef.current.picking === null || e.buttons) return showHover(null);
+      if ((pickRef.current.picking === null && !walling()) || e.buttons) return showHover(null);
       if (!queued) requestAnimationFrame(() => {
         if (queued) showHover(faceAt(queued));
         queued = null;
@@ -335,10 +401,12 @@ export default function CamPartView({
     const release = (e: PointerEvent) => {
       const d = down;
       down = null;
-      const { picking: p, onPick: cb } = pickRef.current;
-      if (!d || p === null || !cb || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
+      const { picking: p, onPick: cb, finish: fin } = pickRef.current;
+      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
       const key = faceAt(e);
-      if (key) cb(faces.get(key)!.side, key);
+      if (!key) return;
+      if (walling()) fin!.onToggle(trisOf(key));
+      else if (p !== null && cb) cb(faces.get(key)!.side, key);
     };
     const leave = () => showHover(null);
     const c = renderer.domElement;
@@ -379,6 +447,7 @@ export default function CamPartView({
     const a = api.current;
     if (!a) return;
     const m = new THREE.Matrix4().set(R[0], R[1], R[2], 0, R[6], R[7], R[8], 0, -R[3], -R[4], -R[5], 0, 0, 0, 0, 1);
+    a.patches = wallPatches(a.pos, [R[6], R[7], R[8]]);
     a.world.matrix.copy(m);
     a.world.matrixWorldNeedsUpdate = true;
     a.invalidate();
@@ -439,6 +508,17 @@ export default function CamPartView({
     });
     a.invalidate();
   }, [picks, tris]);
+
+  // The walls picked to finish, cyan.
+  const picked = finish?.picked;
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    dispose(a.walls);
+    a.walls.clear();
+    if (picked?.length) a.walls.add(overlay(a.pos, picked, FINISH, 0.6));
+    a.invalidate();
+  }, [picked, tris]);
 
   // The paths as they come.
   useEffect(() => {
