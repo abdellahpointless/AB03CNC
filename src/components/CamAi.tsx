@@ -2,7 +2,8 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { WarningIcon as AlertTriangle, CubeIcon as Box, CheckIcon as Check, CheckCircleIcon as CheckCircle2, CircleIcon as Circle, CpuIcon as Cpu, DownloadIcon as Download, FileCodeIcon as FileCode2, FilePlusIcon as FilePlus2, CircleNotchIcon as Loader2, LockIcon as Lock, CursorClickIcon as MousePointerClick, PackageIcon as Package, PencilSimpleIcon as Pencil, PlayIcon as Play, ArrowsClockwiseIcon as RefreshCw, PathIcon as Route, PaperPlaneTiltIcon as Send, GearSixIcon as Settings2, SquareIcon as Square, UploadIcon as Upload } from '@phosphor-icons/react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
-import { useT } from '../i18n';
+import { useTranslation } from 'react-i18next';
+import '../i18n/camLocales';
 import { fmtNumber as fmt } from '../i18n/format';
 import { api } from '../lib/api';
 import { downloadBlob } from '../lib/download';
@@ -58,7 +59,7 @@ const toModelAxes = (R: Mat3, v: number[]) => [0, 1, 2].map((k) => v[[0, 1, 2].f
  */
 export default function CamAi({ onSend }: { onSend: (code: string, fileName: string, machine: string) => void }) {
   const { user } = useAuth();
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const { toolbox, toolMachines: allMachines } = useSync();
   // DMG machines are not programmed in the app for now (shop decision).
   const toolMachines = useMemo(() => allMachines.filter((m) => !isLockedMachine(m)), [allMachines]);
@@ -682,7 +683,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
             {run.state === 'error' && (
               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
-                {run.error === 'failed' ? t('camAi.failed') : t(`toolpath.model.errors.${run.error}`)}
+                {run.error === 'failed' ? t('camAi.failed') : t(`remapper:toolpath.model.errors.${run.error}`)}
               </p>
             )}
           </div>
@@ -775,13 +776,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
           <span className="section-label block">{t('camAi.machine')}</span>
           <select className="aurora-input w-full text-xs cursor-pointer" value={machine?.id ?? ''} onChange={(e) => choose(() => setMachineId(e.target.value))} disabled={busy}>
             {toolMachines.map((m) => (
-              <option key={m.id} value={m.id} className="bg-[var(--bg-panel)]">{t('controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}</option>
+              <option key={m.id} value={m.id} className="bg-[var(--bg-panel)]">{t('remapper:controls.machineOption', { name: m.name, count: (toolbox[m.id] || []).length })}</option>
             ))}
           </select>
         </label>
         {!tools.length && machine && <p className="text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</p>}
         {wrongCooling && machine && (
-          <p className="text-[var(--orange-text)]" role="alert">{t(need === 'air' ? 'alerts.needsAir' : 'alerts.needsLubricant', { machine: machine.name })}</p>
+          <p className="text-[var(--orange-text)]" role="alert">{t(need === 'air' ? 'remapper:alerts.needsAir' : 'remapper:alerts.needsLubricant', { machine: machine.name })}</p>
         )}
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.material')}</span>
@@ -878,7 +879,7 @@ function useVerdictOrNull(result: CamSummary | null, changed: number) {
 
 /** The planner's steps as they happen: done, now (with how far along all of it is), still to come. */
 function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess: number[] }) {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const has = (s: string) => done || live.stages.includes(s);
   const setups = Math.max(live.of, live.setup + 1, 1);
   type Row = { key: string; text: string; state: 'done' | 'now' | 'next' };

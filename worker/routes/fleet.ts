@@ -1,7 +1,7 @@
 import { HttpError, json, optNum, readJson, str } from '../http';
 import { bumpStmt, newId, type Ctx, type Env } from '../context';
 import { DEFAULT_CHECKS, DEFAULT_CHECKS_TR } from '../fleet';
-import { readFeatures } from '../features';
+import { featuresFor, readFeatures } from '../features';
 import { regionById } from '../../src/regions';
 import { MACHINE_BRANDS, MACHINE_IMAGES, type MachineBrand } from '../../src/regions';
 
@@ -182,5 +182,5 @@ export async function handleRemoveMachine(ctx: Ctx): Promise<Response> {
 export async function handleGetFeatures(ctx: Ctx): Promise<Response> {
   const region = regionById(ctx.env.REGION);
   if (!region) throw new HttpError(404, 'Not found');
-  return json({ features: await readFeatures(ctx.env.DB, region.id) });
+  return json({ features: featuresFor(region.id, ctx.user!, await readFeatures(ctx.env.DB, region.id)) });
 }

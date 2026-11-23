@@ -206,7 +206,7 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
   if (!found || found.token.length > 100) return null;
   const tokenHash = await sha256Hex(found.token);
   const row = await env.DB.prepare(
-    `SELECT s.created_at, s.expires_at, s.role AS session_role, u.id, u.username, u.role, u.toolpath_beta, u.cam_ai,
+    `SELECT s.created_at, s.expires_at, s.role AS session_role, u.id, u.username, u.role, u.toolpath_beta,
             (SELECT applied_at FROM schema_migrations WHERE version = 3) AS hardened_at
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
   )
@@ -219,7 +219,6 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
       username: string;
       role: Role;
       toolpath_beta: number;
-      cam_ai: number;
       hardened_at: number | null;
     }>();
   const now = Date.now();
@@ -234,7 +233,7 @@ export async function getSessionUser(env: Env, request: Request): Promise<{ user
     return null;
   }
 
-  const user: AuthedUser = { id: row.id, username: row.username, role: row.role, toolpathBeta: !!row.toolpath_beta, camAi: !!row.cam_ai };
+  const user: AuthedUser = { id: row.id, username: row.username, role: row.role, toolpathBeta: !!row.toolpath_beta };
   const setCookies: string[] = [];
   let expiresAt = Math.min(row.expires_at, row.created_at + life.max);
   if (expiresAt - now < life.renewBelow && row.created_at + life.max > now + life.renewBelow) {
@@ -382,7 +381,6 @@ interface LoginRow {
   password_hash: string;
   mfa_enabled: number;
   toolpath_beta: number;
-  cam_ai: number;
   weak_password_notice_at: number | null;
 }
 
@@ -394,7 +392,7 @@ async function finishLogin(ctx: Ctx, row: LoginRow, weakPassword: boolean, metho
   ]);
   const { cookie } = await createSession(ctx.env, row.id, row.role);
   await audit(ctx.env, ctx.request, 'login', row, method);
-  const user: AuthedUser = { id: row.id, username: row.username, role: row.role, toolpathBeta: !!row.toolpath_beta, camAi: !!row.cam_ai };
+  const user: AuthedUser = { id: row.id, username: row.username, role: row.role, toolpathBeta: !!row.toolpath_beta };
   const res = json({ user, weakPassword, mfaEnabled: !!row.mfa_enabled, ...extra });
   res.headers.append('Set-Cookie', cookie);
   const legacy = cookieSpec(ctx.env).legacy;
@@ -442,7 +440,7 @@ async function loginWith(ctx: Ctx, username: string, password: string, extra: Re
   // recorded, so a flood of made-up usernames cannot fill the security log.
   const ipLocked = await isLocked(ctx.env, iKey);
 
-  const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai, weak_password_notice_at FROM users WHERE username = ?')
+  const row = await ctx.env.DB.prepare('SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, weak_password_notice_at FROM users WHERE username = ?')
     .bind(username)
     .first<LoginRow>();
 
@@ -511,7 +509,7 @@ export async function handleMfaVerify(ctx: Ctx): Promise<Response> {
     throw new HttpError(401, 'Sign-in expired. Please enter your password again.', { code: 'challenge_expired' });
   }
   const row = await ctx.env.DB.prepare(
-    'SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, cam_ai, weak_password_notice_at, mfa_secret, mfa_last_step, mfa_recovery FROM users WHERE id = ?',
+    'SELECT id, username, role, password_hash, mfa_enabled, toolpath_beta, weak_password_notice_at, mfa_secret, mfa_last_step, mfa_recovery FROM users WHERE id = ?',
   )
     .bind(ch.user_id)
     .first<LoginRow & { mfa_secret: string | null; mfa_last_step: number; mfa_recovery: string | null }>();

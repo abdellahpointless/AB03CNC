@@ -9,6 +9,14 @@ import { setLanguage, useT } from '../i18n';
 import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, timeAgo } from '../i18n/format';
 import { MASTER_PATH } from '../lib/instance';
 import { regionById, type RegionFeatures, type RegionId } from '../regions';
+
+/** A country's switches as stored, CAM AI's with them (only the master dashboard names it). */
+type CountryFeatures = Omit<RegionFeatures, 'lab'> & { camAi: boolean };
+/** CAM AI's switch, worded here: the shared translations reach every signed-in person, who must not read its name. */
+const CAM_SWITCH = {
+  en: { label: 'CAM AI', hint: 'Programs written from the part’s 3D model, for Morocco’s admins only; when off, no trace of it in the app' },
+  tr: { label: 'CAM AI', hint: 'Parçanın 3B modelinden yazılan programlar, yalnızca Fas’ın yöneticileri için; kapalıyken uygulamada hiç görünmez' },
+};
 import { Flag } from './Flag';
 import Login from './Login';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -20,7 +28,7 @@ import { SPRING_POP } from '../lib/motion';
 interface CountryMetrics {
   configured: boolean;
   /** Optional parts of the app switched on for this country. */
-  features: RegionFeatures;
+  features: CountryFeatures;
   users: { admins: number; machinists: number; adminsWithMfa: number };
   programs: { total: number; last30Days: number; appSelected: number; manual: number; savedSecondsPerProgram: number; timeSavedSeconds: number; lastAt: number | null };
   monthly: { month: string; programs: number; partsQty: number; partsValue: number }[];
@@ -44,7 +52,7 @@ interface Overview {
 type ActiveCountry = Extract<Country, { available: true }>;
 const isActive = (c: Country): c is ActiveCountry => c.available && (c as ActiveCountry).configured;
 /** Whether a country uses an optional part of the app (Türkiye has no part tracking or preventive actions). */
-const uses = (c: { id: RegionId; features?: RegionFeatures }, feature: keyof RegionFeatures) =>
+const uses = (c: { id: RegionId; features?: CountryFeatures }, feature: keyof CountryFeatures) =>
   c.features?.[feature] ?? regionById(c.id)?.features[feature] ?? false;
 const SERIES: Record<RegionId, string> = { ma: 'var(--series-ma)', tr: 'var(--series-tr)' };
 
@@ -342,18 +350,18 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
  * screen follows within a few seconds) and closes its API; its data is kept.
  */
 function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onChanged: () => void }) {
-  const { t } = useT('master');
-  const [busy, setBusy] = useState<keyof RegionFeatures | null>(null);
+  const { t, i18n } = useT('master');
+  const [busy, setBusy] = useState<keyof CountryFeatures | null>(null);
   const [error, setError] = useState('');
-  const [local, setLocal] = useState<RegionFeatures>(() => ({ ...regionById(country.id)!.features, ...country.features }));
+  const [local, setLocal] = useState<CountryFeatures>(() => ({ ...regionById(country.id)!.features, ...country.features }));
   useEffect(() => setLocal({ ...regionById(country.id)!.features, ...country.features }), [country]);
 
-  const toggle = async (key: keyof RegionFeatures) => {
+  const toggle = async (key: keyof CountryFeatures) => {
     const next = !local[key];
     setBusy(key);
     setError('');
     try {
-      const res = await api<{ features: RegionFeatures }>(`/countries/${country.id}/features`, { method: 'PUT', body: { [key]: next } });
+      const res = await api<{ features: CountryFeatures }>(`/countries/${country.id}/features`, { method: 'PUT', body: { [key]: next } });
       setLocal(res.features);
       onChanged();
     } catch (e) {
@@ -363,12 +371,13 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
     }
   };
 
-  const items: { key: keyof RegionFeatures; label: string; hint: string }[] = [
+  const items: { key: keyof CountryFeatures; label: string; hint: string }[] = [
     { key: 'partTracking', label: t('features.partTracking'), hint: t('features.partTrackingHint') },
     { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
     { key: 'shiftChecks', label: t('features.shiftChecks'), hint: t('features.shiftChecksHint') },
     { key: 'toolpath', label: t('features.toolpath'), hint: t('features.toolpathHint') },
-    { key: 'camAi', label: t('features.camAi'), hint: t('features.camAiHint') },
+    // CAM AI: for Morocco's admins only (owner's rule), so its switch is shown for Morocco only.
+    ...(country.id === 'ma' ? [{ key: 'camAi' as const, ...CAM_SWITCH[i18n.language === 'tr' ? 'tr' : 'en'] }] : []),
   ];
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-3 space-y-2">
@@ -412,7 +421,7 @@ function ComparisonTable({ countries }: { countries: ActiveCountry[] }) {
   const { t } = useT('master');
   const pct = (a: number, b: number) => (a + b ? `${fmtNumber((a / (a + b)) * 100, 0)} %` : '-');
   const notUsed = t('compare.notUsed');
-  const ifUses = (feature: keyof RegionFeatures, value: (c: ActiveCountry) => string) => (c: ActiveCountry) => (uses(c, feature) ? value(c) : notUsed);
+  const ifUses = (feature: keyof CountryFeatures, value: (c: ActiveCountry) => string) => (c: ActiveCountry) => (uses(c, feature) ? value(c) : notUsed);
   const rows: { label: string; value: (c: ActiveCountry) => string }[] = [
     { label: t('compare.programsTotal'), value: (c) => fmtNumber(c.programs.total, 0) },
     { label: t('compare.programs30'), value: (c) => fmtNumber(c.programs.last30Days, 0) },

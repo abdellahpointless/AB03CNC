@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
-import { accessDir, privateChunks, workerAccess } from './vite-private-chunks';
+import { accessDir, fileName, privateChunks, workerAccess } from './vite-private-chunks';
 
 // The commit being built, shown in the account menu. Workers Builds sets WORKERS_CI_COMMIT_SHA; locally ask git.
 function commit(): string {
@@ -30,8 +30,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Web workers (CAM AI, the toolpath simulation) are private like the code that starts them.
-        entryFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
-        chunkFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
+        entryFileNames: (chunk) => fileName(workerAccess(chunk.name)),
+        chunkFileNames: (chunk) => fileName(workerAccess(chunk.name)),
         // Their files (the STEP reader's WebAssembly): for everyone who may use CAM AI or the toolpath.
         assetFileNames: `${accessDir('toolpath')}/[name]-[hash][extname]`,
       },

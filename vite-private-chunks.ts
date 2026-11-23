@@ -9,8 +9,10 @@ import type { Plugin } from 'vite';
  *
  *   app/user/      anyone signed in to a country
  *   app/admin/     a country admin
- *   app/toolpath/  the toolpath viewer: admins and people with the toolpath beta or CAM AI
- *   app/cam/       CAM AI and the shop's cutting data: admins and people with CAM AI
+ *   app/toolpath/  the toolpath viewer: admins and people with the toolpath beta (and CAM AI's people)
+ *   app/p/         CAM AI and the shop's cutting data (access "cam"): Morocco's admins only. A neutral
+ *                  folder and hash-only file names, and no other file may name CAM AI (the build checks):
+ *                  nobody else is to know it exists.
  *   app/master/    a master admin
  *   app/any/       anyone signed in (code shared by the country app and the master dashboard)
  *
@@ -31,6 +33,7 @@ const ROOTS: [RegExp, Access][] = [
   [/\/src\/components\/MasterApp\.tsx$/, 'master'],
   [/\/src\/components\/AdminExtractionAnalytics\.tsx$/, 'admin'],
   [/\/src\/components\/(CamAi|CamPartView)\.tsx$/, 'cam'],
+  [/\/src\/(i18n\/camLocales|lib\/cam\/news)\.ts$/, 'cam'],
   [/\/src\/components\/(ToolpathViewer|Toolpath3D)\.tsx$/, 'toolpath'],
 ];
 
@@ -68,8 +71,14 @@ const PUBLIC_SOURCES = new Set([
 ]);
 
 export function accessDir(access: Access): string {
-  return access === 'public' ? 'assets' : `app/${access}`;
+  return access === 'public' ? 'assets' : access === 'cam' ? 'app/p' : `app/${access}`;
 }
+
+/** A built file's name: hash only for CAM AI's (its parts' names would name it). */
+export const fileName = (access: Access, ext = '.js') => `${accessDir(access)}/${access === 'cam' ? '' : '[name]-'}[hash]${ext}`;
+
+/** What may only appear in CAM AI's own files and the master dashboard's. */
+export const NAMES_IT = /CAM[ _]?AI|camAi|CamAi|cam_ai/;
 
 /** The least strict access that still lets every one of these people in. */
 export function combine(set: Set<Access>): Access {
@@ -173,13 +182,19 @@ export function privateChunks(): Plugin {
       return {
         ...options,
         entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: (chunk) => `${accessDir(chunkAccess(chunk.moduleIds))}/[name]-[hash].js`,
+        chunkFileNames: (chunk) => fileName(chunkAccess(chunk.moduleIds)),
       };
     },
 
     generateBundle(_options, bundle) {
       for (const file of Object.values(bundle)) {
         const isPublic = file.fileName.startsWith('assets/');
+        // Nobody but CAM AI's people (and the master dashboard) may read its name in a file.
+        if (!/^app\/(p|master)\//.test(file.fileName)) {
+          const text = file.type === 'chunk' ? file.code : typeof file.source === 'string' ? file.source : '';
+          const hit = text.match(NAMES_IT);
+          if (hit) this.error(`${file.fileName} names CAM AI ("${text.slice(Math.max(0, hit.index! - 40), hit.index! + 40)}"): move it to CAM AI's own files.`);
+        }
         if (file.type === 'chunk') {
           if (file.isEntry && !isPublic) this.error(`The page's entry ${file.fileName} is not public: the sign-in page could not load.`);
           if (isPublic) {

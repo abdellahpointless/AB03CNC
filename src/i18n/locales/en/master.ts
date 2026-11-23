@@ -47,8 +47,6 @@ const master = {
     shiftChecksHint: 'With preventive actions: own checks per person, cales box every shift, lock, cales stock',
     toolpath: 'Toolpath viewer',
     toolpathHint: '3D simulation of programs in the remapper; when off, the button shows a padlock',
-    camAi: 'CAM AI',
-    camAiHint: 'Programs written from the part’s 3D model, for admins and the people they pick; when off, no trace of it in the app',
   },
   compare: {
     title: 'Comparison',

@@ -72,82 +72,84 @@ const get = async (path: string, token?: string, method = 'GET') => {
 
 describe('the app code is only for signed-in sessions', () => {
   it('nobody signed in gets nothing, whatever the access', async () => {
-    for (const tier of ['user', 'admin', 'toolpath', 'cam', 'master', 'any']) expect(await get(`/app/${tier}/real-x.js`)).toBe(403);
+    for (const tier of ['user', 'admin', 'toolpath', 'p', 'master', 'any']) expect(await get(`/app/${tier}/real-x.js`)).toBe(403);
     expect(await get('/app/user/real-x.js', 'not-a-session')).toBe(403);
   });
 
-  it('a machinist gets the app, not the admin, toolpath, CAM AI or master files', async () => {
+  it('a machinist gets the app, not the admin, toolpath, private (p) or master files', async () => {
     expect(await get('/app/user/real-x.js', 'tok-ali')).toBe(200);
     expect(await get('/app/any/real-x.js', 'tok-ali')).toBe(200);
     expect(await get('/app/admin/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tok-ali')).toBe(403);
-    expect(await get('/app/cam/real-x.js', 'tok-ali')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/master/real-x.js', 'tok-ali')).toBe(403);
   });
 
   it('only the STEP reader\'s own worker may build code at run time; the rest of the app stays strict', async () => {
     const csp = async (path: string) => {
       const url = new URL(`https://cnc.test${path}`);
-      const res = await handlePrivateAsset(new Request(url, { headers: { Cookie: `__Host-cnc_sid=tok-cam` } }), { DB, ASSETS } as Env, url, envFor);
+      const res = await handlePrivateAsset(new Request(url, { headers: { Cookie: `__Host-cnc_sid=tok-beta` } }), { DB, ASSETS } as Env, url, envFor);
       return res.headers.get('Content-Security-Policy') ?? '';
     };
     expect(await csp('/app/toolpath/step.worker-Ab12.js')).toMatch(/script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'/);
     expect(await csp('/app/toolpath/real-x.js')).not.toMatch(/unsafe-eval/);
   });
 
-  it('the STEP reader (WebAssembly) goes to CAM AI and toolpath users only', async () => {
+  it('the STEP reader (WebAssembly) goes to toolpath users and Morocco\'s admins only', async () => {
     expect(await get('/app/toolpath/real-x.wasm')).toBe(403);
     expect(await get('/app/toolpath/real-x.wasm', 'tok-ali')).toBe(403);
     expect(await get('/app/toolpath/real-x.wasm', 'tok-beta')).toBe(200);
-    expect(await get('/app/toolpath/real-x.wasm', 'tok-cam')).toBe(200);
+    expect(await get('/app/toolpath/real-x.wasm', 'tok-admin')).toBe(200);
+    // The old per-person switch gives nothing any more.
+    expect(await get('/app/toolpath/real-x.wasm', 'tok-cam')).toBe(403);
   });
 
-  it('the toolpath beta opens the viewer, CAM AI opens both, an admin opens all but the master files', async () => {
+  it('the private files (p) are for Morocco\'s admins only; the toolpath beta opens the viewer; nobody else either', async () => {
     expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(200);
-    expect(await get('/app/cam/real-x.js', 'tok-beta')).toBe(403);
-    expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(200);
-    expect(await get('/app/cam/real-x.js', 'tok-cam')).toBe(200);
-    for (const tier of ['user', 'admin', 'toolpath', 'cam', 'any']) expect(await get(`/app/${tier}/real-x.js`, 'tok-admin')).toBe(200);
+    expect(await get('/app/p/real-x.js', 'tok-beta')).toBe(403);
+    // A machinist with the old per-person switch on: nothing.
+    expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tok-cam')).toBe(403);
+    for (const tier of ['user', 'admin', 'toolpath', 'p', 'any']) expect(await get(`/app/${tier}/real-x.js`, 'tok-admin')).toBe(200);
     expect(await get('/app/master/real-x.js', 'tok-admin')).toBe(403);
   });
 
   it('each country switch closes its own files, even for an admin; CAM AI keeps the viewer it uses', async () => {
     const set = (f: object) => DB.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('features', ?, 0)").bind(JSON.stringify(f)).run();
-    // Toolpath off, CAM AI on (the default): CAM AI and its viewer stay, the beta viewer closes.
+    // Toolpath off, the private part on (the default): it and its viewer stay for the admin, the beta viewer closes.
     await set({ toolpath: false });
-    expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(200);
-    expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(200);
+    expect(await get('/app/p/real-x.js', 'tok-admin')).toBe(200);
+    expect(await get('/app/toolpath/real-x.js', 'tok-admin')).toBe(200);
     expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(403);
-    // CAM AI off, toolpath on: the CAM AI files close, the viewer stays.
+    // The private part off, toolpath on: its files close, the viewer stays.
     await set({ camAi: false });
-    expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(403);
-    expect(await get('/app/cam/real-x.js', 'tok-cam')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tok-admin')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(200);
     expect(await get('/app/toolpath/real-x.js', 'tok-admin')).toBe(200);
     // Both off: neither, for anyone.
     await set({ toolpath: false, camAi: false });
-    expect(await get('/app/cam/real-x.js', 'tok-admin')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tok-admin')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tok-admin')).toBe(403);
-    expect(await get('/app/toolpath/real-x.js', 'tok-cam')).toBe(403);
+    expect(await get('/app/toolpath/real-x.js', 'tok-beta')).toBe(403);
     expect(await get('/app/user/real-x.js', 'tok-admin')).toBe(200);
     await DB.prepare("DELETE FROM settings WHERE key = 'features'").run();
   });
 
-  it('Türkiye has no CAM AI until a master admin switches it on', async () => {
+  it('Türkiye never gets the private part, even with its switch on', async () => {
     expect(await get('/app/admin/real-x.js', 'tr-admin')).toBe(200);
-    expect(await get('/app/cam/real-x.js', 'tr-admin')).toBe(403);
-    expect(await get('/app/cam/real-x.js', 'tr-cam')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tr-admin')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tr-cam')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tr-admin')).toBe(403);
     const url = new URL('https://cnc.test/master/api/countries/tr/features');
     const request = new Request(url, { method: 'PUT', body: JSON.stringify({ camAi: true }), headers: { 'Content-Type': 'application/json' } });
     const env = { DB: HUB, COUNTRIES: { tr: TR }, REGION: 'master' } as unknown as Env;
     const res = await handleSetCountryFeatures({ env, request, url, params: { region: 'tr' }, user: { id: 'm-1', username: 'boss', role: 'ADMIN' } } as Ctx);
     expect(((await res.json()) as { features: { camAi: boolean } }).features.camAi).toBe(true);
-    expect(await get('/app/cam/real-x.js', 'tr-admin')).toBe(200);
-    expect(await get('/app/cam/real-x.js', 'tr-cam')).toBe(200);
-    expect(await get('/app/toolpath/real-x.js', 'tr-cam')).toBe(200);
+    expect(await get('/app/p/real-x.js', 'tr-admin')).toBe(403);
+    expect(await get('/app/p/real-x.js', 'tr-cam')).toBe(403);
+    expect(await get('/app/toolpath/real-x.js', 'tr-cam')).toBe(403);
     // Morocco is not affected by Türkiye's switch.
-    expect(await get('/app/cam/real-x.js', 'tok-cam')).toBe(200);
+    expect(await get('/app/p/real-x.js', 'tok-admin')).toBe(200);
   });
 
   it('a missing file, an odd path or a write is refused, never answered with the page', async () => {

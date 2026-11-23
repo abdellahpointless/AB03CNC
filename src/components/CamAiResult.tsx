@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
 import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, DownloadIcon as Download, RepeatIcon as Repeat, ArrowCounterClockwiseIcon as RotateCcw, TrashIcon as Trash2 } from '@phosphor-icons/react';
-import { useT } from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { fmtNumber as fmt } from '../i18n/format';
 import { downloadBlob } from '../lib/download';
 import { forMachine } from '../lib/cam/export';
@@ -29,13 +29,13 @@ export type ToolNamer = (o: { type: string; diameter: number; length: number }) 
 
 /** A tool's name for the operator ("End mill Ø8, 40 mm long"). */
 export function useToolName(): ToolNamer {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   return (o) => t('camAi.toolName', { name: t(`camAi.tools.${o.type}`, { defaultValue: o.type }), d: fmt(o.diameter, 2), l: fmt(o.length, 0) });
 }
 
 /** Why the program cannot go out yet, or that it can (one line, for the status). */
 export function useVerdict(result: CamSummary, changed: number): { ok: boolean; text: string } {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const ok = passed(result) && !changed;
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
@@ -66,7 +66,7 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
  * tools to load, what the machine lacks, the POM nests (each with its own program), notes.
  */
 export function ProgramPanel({ result, machineName, machineId, changed, removed, onRestore }: { result: CamSummary; machineName: string; machineId: string; changed: number; removed: { key: string; label: string }[]; onRestore: (key: string) => void }) {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const toolName = useToolName();
   const { ok, text } = useVerdict(result, changed);
   // Tools the program uses that are not in the machine yet, once each.
@@ -177,7 +177,7 @@ export function ProgramPanel({ result, machineName, machineId, changed, removed,
 
 /** A setup once made: its M0 text, the vise seen from above, how hard to clamp and any issue, the special zones. */
 export function SetupPanel({ setup }: { setup: Setup }) {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const s = setup;
   return (
     <div className="space-y-3 text-xs">
@@ -256,7 +256,7 @@ export function ToolCard({
   toolName: (o: { type: string; diameter: number; length: number }) => string;
   onSwap: (code: string, standIn: string) => void;
 }) {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const [asking, setAsking] = useState(false);
   const [pick, setPick] = useState(options[0]?.code ?? '');
   const op = ops[0];
@@ -369,7 +369,7 @@ export function ToolCard({
  * special zones' outlines.
  */
 export function ViseView({ setup }: { setup: Setup }) {
-  const { t } = useT('remapper');
+  const { t } = useTranslation(['cam', 'remapper', 'common']);
   const [x0, y0, x1, y1] = setup.box;
   const w = x1 - x0;
   const h = y1 - y0;

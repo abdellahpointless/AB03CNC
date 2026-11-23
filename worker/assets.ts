@@ -1,6 +1,6 @@
 import { getSessionUser } from './auth';
 import type { Env } from './context';
-import { readFeatures } from './features';
+import { camAllowed, readFeatures } from './features';
 import { getCookie } from './http';
 import { MASTER, REGIONS, type RegionId } from '../src/regions';
 
@@ -23,7 +23,8 @@ import { MASTER, REGIONS, type RegionId } from '../src/regions';
  * this keeps the app away from people without an account, not from the people who use it.
  */
 
-const PRIVATE_FILE = /^\/app\/(user|admin|toolpath|cam|master|any)\/[A-Za-z0-9._-]+\.(js|css|wasm)$/;
+// CAM AI's files sit under the neutral folder "p" (the address names nothing).
+const PRIVATE_FILE = /^\/app\/(user|admin|toolpath|p|master|any)\/[A-Za-z0-9._-]+\.(js|css|wasm)$/;
 
 type Tier = 'user' | 'admin' | 'toolpath' | 'cam' | 'master' | 'any';
 type Instance = RegionId | 'master';
@@ -60,12 +61,12 @@ async function allowed(env: Env, request: Request, instance: Instance, tier: Tie
   if (instance === 'master' || tier === 'user' || tier === 'any') return { ok: true, setCookies };
   if (tier === 'admin') return { ok: user.role === 'ADMIN', setCookies };
   const admin = user.role === 'ADMIN';
-  const cam = admin || !!user.camAi;
-  if (!cam && !(tier === 'toolpath' && user.toolpathBeta)) return { ok: false, setCookies };
+  if (!admin && !(tier === 'toolpath' && user.toolpathBeta)) return { ok: false, setCookies };
   const features = await readFeatures(env.DB, instance);
-  const camOk = features.camAi && cam;
-  if (tier === 'cam') return { ok: camOk, setCookies };
-  return { ok: camOk || (features.toolpath && (cam || !!user.toolpathBeta)), setCookies };
+  // CAM AI (and the viewer it uses): Morocco's admins only, where it is on.
+  const cam = camAllowed(instance, user, features);
+  if (tier === 'cam') return { ok: cam, setCookies };
+  return { ok: cam || (features.toolpath && (admin || !!user.toolpathBeta)), setCookies };
 }
 
 /**
@@ -76,7 +77,7 @@ export async function handlePrivateAsset(request: Request, env: Env, url: URL, e
   if (request.method !== 'GET' && request.method !== 'HEAD') return notFound(405);
   const m = url.pathname.match(PRIVATE_FILE);
   if (!m) return notFound();
-  const tier = m[1] as Tier;
+  const tier = (m[1] === 'p' ? 'cam' : m[1]) as Tier;
 
   let ok = false;
   const setCookies: string[] = [];

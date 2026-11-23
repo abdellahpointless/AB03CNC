@@ -246,8 +246,8 @@ export default function DataManagement() {
             {busy === 'lessons' ? <RefreshCw size={14} className="animate-spin" /> : <DownloadCloud size={14} />}
             <span>{t('lessons.download')}</span>
           </button>
-          {/* The server takes learned turns only where the toolpath or CAM AI is on. */}
-          {(features.toolpath || features.camAi) && (
+          {/* The server takes learned turns only where the toolpath or the private part is on. */}
+          {(features.toolpath || features.lab) && (
             <>
               <button onClick={() => turnsRef.current?.click()} disabled={busy !== null} className="btn-secondary text-xs py-2 px-4" title={t('lessons.turnsHelp')}>
                 {busy === 'turns' ? <RefreshCw size={14} className="animate-spin" /> : <UploadCloud size={14} />}

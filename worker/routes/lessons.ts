@@ -2,7 +2,7 @@ import { HttpError, intParam, json, num, readJson, str } from '../http';
 import type { Ctx } from '../context';
 import { consumeQuota } from '../security';
 import { ensureSchema } from '../schema';
-import { readFeatures } from '../features';
+import { camAllowed, readFeatures } from '../features';
 import { regionById } from '../../src/regions';
 
 /*
@@ -28,7 +28,7 @@ async function requireToolpath(ctx: Ctx): Promise<void> {
   const region = regionById(ctx.env.REGION);
   const f = region ? await readFeatures(ctx.env.DB, region.id) : null;
   const admin = u.role === 'ADMIN';
-  if (!f || !((f.toolpath && (admin || u.toolpathBeta)) || (f.camAi && (admin || u.camAi)))) throw new HttpError(403, 'The toolpath is not switched on for you.');
+  if (!f || !((f.toolpath && (admin || u.toolpathBeta)) || camAllowed(region?.id, u, f))) throw new HttpError(403, 'The toolpath is not switched on for you.');
 }
 
 // POST /api/toolpath/lessons  { kind?, fileName, start, match, data }

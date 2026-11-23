@@ -3,6 +3,7 @@ import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, FactoryIcon as Fact
 import { AnimatePresence, motion } from 'motion/react';
 import { api, errorMessage } from '../lib/api';
 import { useSync } from '../contexts/SyncContext';
+import { useTranslation } from 'react-i18next';
 import { useT } from '../i18n';
 import { currentRegion } from '../lib/instance';
 import { MACHINE_BRANDS, MACHINE_IMAGES, type MachineBrand, type MachineInfo } from '../regions';
@@ -34,6 +35,8 @@ const limitDefault = (k: (typeof LIMITS)[number], brand: MachineBrand) => (k ===
 /** Admin: the machines of this country (add, edit, remove, order on the floor). */
 export default function MachineManager() {
   const { t } = useT('machines');
+  // The private part's words (its own files load them, for the people it is for).
+  const { t: tLab } = useTranslation('cam');
   const { machines, reloadMachines, features } = useSync();
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -197,10 +200,10 @@ export default function MachineManager() {
                   {t('form.hasTools')}
                 </label>
               </div>
-              {features.camAi && (
+              {features.lab && (
                 <fieldset className="md:col-span-3 space-y-2">
-                  <legend className="section-label">{t('form.limits')}</legend>
-                  <p className="text-xs text-[var(--text-tertiary)]">{t('form.limitsHint')}</p>
+                  <legend className="section-label">{tLab('limits')}</legend>
+                  <p className="text-xs text-[var(--text-tertiary)]">{tLab('limitsHint')}</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {LIMITS.map((k) => (
                       <label key={k} className="space-y-1">

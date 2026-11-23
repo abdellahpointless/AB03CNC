@@ -58,7 +58,6 @@ const app: Translation<typeof en> = {
   },
 
   tabs: {
-    camAi: 'CAM AI',
     toolInventory: 'Takım Listesi',
     remapper: 'Takım Eşleştirici',
     history: 'Geçmiş',
@@ -215,10 +214,6 @@ const app: Translation<typeof en> = {
     toolpathTitle: 'Takım yolu görüntüleyici (beta): yalnızca burada açılan kişiler kullanabilir; yöneticiler her zaman kullanabilir',
     toolpathOn: '"{{name}}" artık takım yolu görüntüleyiciyi kullanabilir (uygulamayı yeniledikten sonra).',
     toolpathOff: '"{{name}}" artık takım yolu görüntüleyiciyi kullanamaz.',
-    camAi: 'CAM AI',
-    camAiTitle: 'CAM AI (beta): yalnızca burada açılan kişiler kullanabilir; yöneticiler her zaman kullanabilir',
-    camAiOn: '"{{name}}" artık CAM AI kullanabilir (uygulamayı yeniledikten sonra).',
-    camAiOff: '"{{name}}" artık CAM AI kullanamaz.',
     ownRoleTitle: 'Kendi rolünüzü değiştiremezsiniz',
     changeRoleTitle: 'Rolü değiştir',
     roleUpper: {

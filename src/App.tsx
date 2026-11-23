@@ -38,14 +38,13 @@ import { useT } from './i18n';
 
 // Admin-only screen with the chart library: loaded on demand so operator PCs start faster.
 const AdminExtractionAnalytics = lazy(() => import('./components/AdminExtractionAnalytics'));
-// CAM AI (beta): its planner and learned data load only when the tab is opened.
-const CamAi = lazy(() => import('./components/CamAi'));
+// The private part (only for the people the server names): its code and words load only for them.
+const Lab = lazy(() => import('./components/CamAi'));
 
-type Tab = 'DATABASE' | 'REMAP' | 'CAM_AI' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS' | 'PREVENTIVE_CALES';
+type Tab = 'DATABASE' | 'REMAP' | 'LAB' | 'ADMIN' | 'RECENT_CODES' | 'PART_ENTRY' | 'PART_REVIEW' | 'PREVENTIVE' | 'PREVENTIVE_REPORTS' | 'PREVENTIVE_CALES';
 const TAB_NAME = {
   DATABASE: 'tabs.toolInventory',
   REMAP: 'tabs.remapper',
-  CAM_AI: 'tabs.camAi',
   ADMIN: 'tabs.admin',
   RECENT_CODES: 'tabs.recentCodes',
   PART_ENTRY: 'tabs.partEntry',
@@ -197,11 +196,20 @@ function Workspace() {
     };
   }, [calesOn, versions.machines]);
 
-  // CAM AI (beta): where a master admin switched it on for the country, for admins and the people an admin picked.
-  const camOn = features.camAi && (user.role === 'ADMIN' || !!user.camAi);
+  // The private part: the server says who may use it (Morocco's admins). Its tab name comes with its own files.
+  const camOn = !!features.lab && user.role === 'ADMIN';
+  const [labName, setLabName] = useState('');
+  useEffect(() => {
+    if (!camOn) return;
+    let alive = true;
+    void import('./i18n/camLocales').then((m) => alive && setLabName(m.default.t('cam:tab')));
+    return () => {
+      alive = false;
+    };
+  }, [camOn]);
   // A master admin switched off the feature that is open on this screen: back to the remapper.
   useEffect(() => {
-    if ((!camOn && activeTab === 'CAM_AI') || (!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
+    if ((!camOn && activeTab === 'LAB') || (!features.partTracking && (activeTab === 'PART_ENTRY' || activeTab === 'PART_REVIEW')) || (!features.preventive && (activeTab === 'PREVENTIVE' || activeTab === 'PREVENTIVE_REPORTS')) || (!calesOn && activeTab === 'PREVENTIVE_CALES')) {
       setActiveTab('REMAP');
     }
   }, [features, activeTab, calesOn, camOn]);
@@ -212,7 +220,7 @@ function Workspace() {
     setRemapView('main');
   };
   // The browser tab and history name the screen that is open.
-  const pageName = activeTab === 'REMAP' && remapView === 'history' ? t('tabs.history') : t(TAB_NAME[activeTab]);
+  const pageName = activeTab === 'LAB' ? labName : activeTab === 'REMAP' && remapView === 'history' ? t('tabs.history') : t(TAB_NAME[activeTab]);
   useEffect(() => {
     document.title = `${pageName} · CNC Process Pro`;
   }, [pageName]);
@@ -492,20 +500,20 @@ function Workspace() {
             )}
           </button>
 
-          {/* Tab: CAM AI (beta) */}
-          {camOn && (
+          {/* Tab: the private part */}
+          {camOn && labName && (
             <button
-              onClick={() => openTab('CAM_AI')}
-              aria-current={activeTab === 'CAM_AI' ? 'page' : undefined}
+              onClick={() => openTab('LAB')}
+              aria-current={activeTab === 'LAB' ? 'page' : undefined}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer ${
-                activeTab === 'CAM_AI'
+                activeTab === 'LAB'
                   ? 'text-[var(--accent-primary)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.04)]'
               }`}
             >
               <Cpu size={15} />
-              <span>{t('tabs.camAi')}</span>
-              {activeTab === 'CAM_AI' && (
+              <span>{labName}</span>
+              {activeTab === 'LAB' && (
                 <>
                 <motion.span layoutId="tab-pill" className="tab-pill" style={{ background: 'rgba(59,111,212,0.12)' }} transition={SPRING_PILL} />
                 <motion.span layoutId="tab-underline" transition={SPRING_PILL} style={{ position: 'absolute' }} className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-full pointer-events-none" />
@@ -805,9 +813,9 @@ function Workspace() {
               />
               </motion.div>
             )}
-            {activeTab === 'CAM_AI' && camOn && (
+            {activeTab === 'LAB' && camOn && (
               <Suspense fallback={null}>
-                <CamAi
+                <Lab
                   onSend={(code, name, machine) => {
                     // Into the remapper for that machine, as if imported: remap, check, export as usual.
                     setRemapperMachine(machine);

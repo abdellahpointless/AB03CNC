@@ -17,27 +17,6 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
-    id: '2026-11-23-cam-rules',
-    date: '2026-11-23',
-    feature: 'camAi',
-    en: {
-      title: 'CAM AI: held like the shop holds it, finishing where you pick',
-      items: [
-        'Finishing passes only on the walls you pick on the 3D model (Walls to finish); every other wall is roughed to size. A seal cage’s thin walls are always finished.',
-        'The vise holds the part by its long faces, and later clampings grip as deep as their own cuts allow, on shorter parallels.',
-        'Tools may go up to 1 mm into a parallel, never at rapid. Through holes between the parallels are drilled out; one over a parallel that cannot be finished from the other side is listed for you.',
-      ],
-    },
-    tr: {
-      title: 'CAM AI: atölyenin bağladığı gibi bağlama, son paso seçtiğiniz yerde',
-      items: [
-        'Son paso yalnızca 3B modelde seçtiğiniz duvarlara yapılır (Son paso yapılacak duvarlar); diğer tüm duvarlar kaba işlemede ölçüsüne alınır. Sızdırmazlık kafesinin ince duvarlarına her zaman son paso yapılır.',
-        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa kalelerle tutar.',
-        'Takımlar bir kaleye en fazla 1 mm girebilir, hızlı harekette hiç giremez. Kaleler arasındaki boydan boya delikler tamamen delinir; bir kalenin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
-      ],
-    },
-  },
-  {
     id: '2026-11-23-look',
     date: '2026-11-23',
     en: {
@@ -75,48 +54,6 @@ export const RELEASES: Release[] = [
         'Parçanın 3B modeli artık STEP dosyası (.step veya .stp) da olabilir. Program içe aktarıldıktan sonra model istemek yerine 3B model düğmesi yanar.',
         'Kaleler değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
         'Ölçüm parça mengenedeyken çalışır; ölçüm panelindeki "Yalnızca parça" onu mengeneden çıkarır.',
-      ],
-    },
-  },
-  {
-    id: '2026-11-23-cam-ai',
-    date: '2026-11-23',
-    feature: 'camAi',
-    en: {
-      title: 'CAM AI: STEP models and a clearer progress',
-      items: [
-        'The part’s 3D model can also be a STEP file (.step or .stp).',
-        'While it makes the program it shows how far along it is (a percentage that only moves forward) and how long it has been working.',
-      ],
-    },
-    tr: {
-      title: 'CAM AI: STEP modeller ve daha anlaşılır ilerleme',
-      items: [
-        'Parçanın 3B modeli STEP dosyası (.step veya .stp) da olabilir.',
-        'Programı yaparken ne kadar ilerlediğini (yalnızca ileri giden bir yüzde) ve ne kadar süredir çalıştığını gösterir.',
-      ],
-    },
-  },
-  {
-    id: '2026-11-06-cam-ai',
-    date: '2026-11-06',
-    feature: 'camAi',
-    en: {
-      title: 'CAM AI: the program written from the 3D model (beta)',
-      items: [
-        'New CAM AI tab: give it the part’s 3D PDF or STL, pick the machine and the material, and it writes the program with that machine’s tools, including the setups, the cales and the M0 texts in the shop’s style.',
-        'Rpm, feeds and depths per pass are learned from the shop’s own programs. An admin can set each machine’s limits in Admin › Machines.',
-        'Every program is simulated and compared with the model. Download and Send to the remapper unlock only when the part comes out 99 % like the model with no collision. Tools missing from the machine are listed.',
-        'Every program CAM AI makes, and every program compared with its model in the toolpath viewer, goes into the learning records (Admin › Backup and data), so CAM AI can learn the shop’s parts.',
-      ],
-    },
-    tr: {
-      title: 'CAM AI: 3B modelden yazılan program (beta)',
-      items: [
-        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, kaleler ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
-        'Devir, ilerleme ve paso derinlikleri atölyenin kendi programlarından öğrenilir. Bir yönetici her tezgahın sınırlarını Yönetim › Tezgahlar’dan belirleyebilir.',
-        'Her program simüle edilir ve modelle karşılaştırılır. İndirme ve Takım eşleştiriciye gönderme, ancak parça modele %99 benzediğinde ve çarpışma olmadığında açılır. Tezgahta eksik olan takımlar listelenir.',
-        'CAM AI’nin yaptığı her program ve takım yolu görüntüleyicisinde modeliyle karşılaştırılan her program öğrenme kayıtlarına (Yönetim › Yedek ve veri) eklenir; böylece CAM AI atölyenin parçalarını öğrenir.',
       ],
     },
   },
@@ -239,7 +176,10 @@ export const RELEASES: Release[] = [
   },
 ];
 
-/** The entries for this country, with its switches as they are now. */
-export function releasesFor(region: RegionId, features: RegionFeatures): Release[] {
-  return RELEASES.filter((r) => (!r.region || r.region === region) && (!r.feature || features[r.feature]));
+/**
+ * The entries for this country, with its switches as they are now; `extra`: the private part's own
+ * entries, loaded from its own files for the people it is for. Newest first.
+ */
+export function releasesFor(region: RegionId, features: RegionFeatures, extra: Release[] = []): Release[] {
+  return [...extra, ...RELEASES].filter((r) => (!r.region || r.region === region) && (!r.feature || features[r.feature])).sort((a, b) => b.date.localeCompare(a.date));
 }

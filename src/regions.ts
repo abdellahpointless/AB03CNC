@@ -53,12 +53,8 @@ export interface RegionFeatures {
   shiftChecks: boolean;
   /** The 3D toolpath viewer in the remapper (locked, with a padlock, where it is off). */
   toolpath: boolean;
-  /**
-   * CAM AI: the program written from the part's 3D model (its tab, the per-person switch, the
-   * machines' CAM AI limits). It uses the toolpath viewer, which comes with it even where
-   * `toolpath` is off. Hidden everywhere it is off, and its code is not served.
-   */
-  camAi: boolean;
+  /** Set by the server for the people who may use the private part of the app (never stored, never a default). */
+  lab?: boolean;
 }
 
 export const REGIONS: RegionInfo[] = [
@@ -74,7 +70,7 @@ export const REGIONS: RegionInfo[] = [
     publicSetup: true,
     totpIssuer: 'CNC Process Pro',
     timeZone: 'Africa/Casablanca',
-    features: { partTracking: true, preventive: true, shiftChecks: true, toolpath: true, camAi: true },
+    features: { partTracking: true, preventive: true, shiftChecks: true, toolpath: true },
     gcodeComments: 'fr',
   },
   {
@@ -89,7 +85,7 @@ export const REGIONS: RegionInfo[] = [
     totpIssuer: 'CNC Process Pro TR',
     timeZone: 'Europe/Istanbul',
     // Türkiye uses the G-code remapper and what comes with it (tool inventory, history).
-    features: { partTracking: false, preventive: false, shiftChecks: false, toolpath: false, camAi: false },
+    features: { partTracking: false, preventive: false, shiftChecks: false, toolpath: false },
     gcodeComments: 'en',
   },
 ];
@@ -110,7 +106,7 @@ export interface UpcomingCountry {
 export const UPCOMING_COUNTRIES: UpcomingCountry[] = [{ id: 'tn', name: 'Tunisia', nativeName: 'Tunisie', languageName: 'Français' }];
 
 /** The optional features an API path needs, all of them switched on (path without the /xx/api prefix). */
-export function featuresOfApiPath(path: string): (keyof RegionFeatures)[] {
+export function featuresOfApiPath(path: string): Exclude<keyof RegionFeatures, 'lab'>[] {
   if (/^\/parts(\/|$)/.test(path) || /^\/admin\/import\/parts(\/|$)/.test(path)) return ['partTracking'];
   if (/^\/machines\/(required|cales)(\/|$)/.test(path) || /^\/machines\/[^/]+\/(cales\/|checks\/[^/]+\/missed$)/.test(path)) return ['preventive', 'shiftChecks'];
   if (/^\/machines(\/|$)/.test(path)) return ['preventive'];

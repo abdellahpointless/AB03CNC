@@ -7,14 +7,25 @@ import { fmtDate } from '../i18n/format';
 import { useSync } from '../contexts/SyncContext';
 import { currentRegion, scopedKey } from '../lib/instance';
 import { iosBackdrop, iosSurface } from '../lib/motion';
-import { releasesFor } from '../lib/whatsNew';
+import { releasesFor, type Release } from '../lib/whatsNew';
 
 const SEEN = scopedKey('cnc-whatsnew-seen');
 
 /** "What's new" in the header: a dot while the newest update is unread, the list in a sheet. */
 export function WhatsNewButton() {
   const { t, i18n } = useT('app');
-  const releases = releasesFor(currentRegion().id, useSync().features);
+  const { features } = useSync();
+  // The private part's own entries come with its own files, for the people it is for.
+  const [extra, setExtra] = useState<Release[]>([]);
+  useEffect(() => {
+    if (!features.lab) return setExtra([]);
+    let alive = true;
+    void import('../lib/cam/news').then((m) => alive && setExtra(m.CAM_RELEASES));
+    return () => {
+      alive = false;
+    };
+  }, [features.lab]);
+  const releases = releasesFor(currentRegion().id, features, extra);
   const newest = releases[0]?.id ?? '';
   const [seen, setSeen] = useState(() => {
     try {

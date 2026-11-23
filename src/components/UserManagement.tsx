@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth, Role } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { api } from '../lib/api';
-import { UserPlusIcon as UserPlus, TrashIcon as Trash2, ShieldIcon as Shield, UserIcon as UserIcon, KeyIcon as KeyRound, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, ShieldSlashIcon as ShieldOff, ScrollIcon as ScrollText, PathIcon as Route, CpuIcon as Cpu } from '@phosphor-icons/react';
+import { UserPlusIcon as UserPlus, TrashIcon as Trash2, ShieldIcon as Shield, UserIcon as UserIcon, KeyIcon as KeyRound, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, ShieldSlashIcon as ShieldOff, ScrollIcon as ScrollText, PathIcon as Route } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';
@@ -16,13 +16,11 @@ interface AccountRow {
   created_at: number;
   mfa_enabled?: number;
   toolpath_beta?: number;
-  cam_ai?: number;
 }
 
 /** Per-person beta switches (admins always have these). */
 const SWITCHES = [
   { key: 'toolpathBeta', column: 'toolpath_beta', icon: Route, label: 'users.toolpathBeta', title: 'users.toolpathTitle', on: 'users.toolpathOn', off: 'users.toolpathOff' },
-  { key: 'camAi', column: 'cam_ai', icon: Cpu, label: 'users.camAi', title: 'users.camAiTitle', on: 'users.camAiOn', off: 'users.camAiOff' },
 ] as const;
 
 interface AuditEvent {
@@ -229,7 +227,7 @@ export default function UserManagement() {
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { resetMfa: true } }), t('users.mfaReset', { name: u.username }));
   };
 
-  // Beta switches: only the people picked here (and every admin) get the toolpath viewer, CAM AI.
+  // Beta switches: only the people picked here (and every admin) get the toolpath viewer.
   const handleSwitch = (u: AccountRow, s: (typeof SWITCHES)[number]) => {
     const on = !u[s.column];
     run(u.id, () => api(`/users/${encodeURIComponent(u.id)}`, { method: 'PATCH', body: { [s.key]: on } }), t(on ? s.on : s.off, { name: u.username }));
@@ -357,7 +355,7 @@ export default function UserManagement() {
                           </span>
                         )}
                         {u.role !== 'ADMIN' &&
-                          SWITCHES.filter((s) => s.key !== 'camAi' || features.camAi).map((s) => (
+                          SWITCHES.map((s) => (
                             <button
                               key={s.key}
                               type="button"
