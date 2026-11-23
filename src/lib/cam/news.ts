@@ -6,6 +6,27 @@ import type { Release } from '../whatsNew';
  */
 export const CAM_RELEASES: Release[] = [
   {
+    id: '2026-11-23-cam-white',
+    date: '2026-11-23',
+    feature: 'lab',
+    en: {
+      title: 'CAM AI: the white face and a spacer in the moving jaw',
+      items: [
+        'A top plate’s white face can be picked on the 3D model: it is never faced, all the stock comes off the other side.',
+        'Where a pocket opens onto the face the moving jaw holds, CAM AI puts a 15 mm spacer in that jaw ("15 MM ZWISCHENLAGE IN Y-") and cuts the pocket through, instead of leaving a thin wall to take off by hand.',
+        'Programs start with "(3D-MODELL)" and name the admin who made them.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: beyaz yüz ve hareketli çenede ara parça',
+      items: [
+        'Üst plakanın beyaz yüzü 3B modelde seçilebilir: hiç alınmaz, tüm fazlalık diğer taraftan alınır.',
+        'Bir cep hareketli çenenin tuttuğu yüze açılıyorsa CAM AI o çeneye 15 mm ara parça koyar ("15 MM ZWISCHENLAGE IN Y-") ve elle alınacak ince bir duvar bırakmak yerine cebi sonuna kadar keser.',
+        'Programlar "(3D-MODELL)" ile başlar ve onları yapan yöneticinin adını taşır.',
+      ],
+    },
+  },
+  {
     id: '2026-11-23-cam-rules',
     date: '2026-11-23',
     feature: 'lab',
