@@ -49,6 +49,18 @@ describe('the safety double check', () => {
   }, 300_000);
 });
 
+describe('a machine tool without a length (safety)', () => {
+  it('is never sent down into the part: its holder could not be checked', () => {
+    // A 40x30x12 plate with a slot 7.5 wide, 20 long, 6 deep: the machine's Ø7 mill (no length typed in the
+    // inventory) is the largest that fits it. Taken as 99 mm long, it went in with "LENGTH 0.00 MM", its holder unchecked.
+    const slot = pocketWithHole(40, 30, 12, [10, 11.25, 30, 18.75], 6, { c: [20, 15], d: 2 });
+    const tools: Tool[] = [{ id: 'm7', number: 7, category: 'fraise', description: 'Fraise', diameter: 7, length: 0 }];
+    const r = camProgram({ tris: slot, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], orient: { side: 'Z+', spin: false } });
+    expect(r.code).not.toMatch(/DIAMETER 7\.00 MM/);
+    expect(r.check).toMatchObject({ holders: 0, collisions: 0 });
+  }, 300_000);
+});
+
 describe('drilling before the pocket above the hole is milled (shop order)', () => {
   // A 40x30x12 plate, a 20x14 pocket 6 deep, a Ø4 hole through the pocket's floor.
   const part = pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 });

@@ -427,7 +427,7 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pi
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one). The shop spots
   // only what it drills under 4 mm (docs/knowledge: strategy.spotSmallDrills, 1,572 of 1,636 holes).
-  const fresh = list.filter((x) => !x.again && x.tool.diameter < 4 && (!spot || (spot.length || 99) >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
+  const fresh = list.filter((x) => !x.again && x.tool.diameter < 4 && (!spot || spot.length >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
@@ -1497,7 +1497,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const reachTo = (zEnd: number) => stockTop - zEnd + 2;
     const pinOf = (h: Hole) => (input.partType === 'pinPlate' ? PIN_DRILLS.find(([n]) => Math.abs(h.r * 2 - n) < 0.03)?.[1] : undefined);
     const drillFor = (h: Hole, zEnd: number) => {
-      const long = drills.filter((x) => (x.length || 99) >= reachTo(zEnd));
+      const long = drills.filter((x) => x.length >= reachTo(zEnd));
       const pin = pinOf(h);
       const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
       return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
@@ -1630,8 +1630,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
       // one that takes most of it (80 %): the sizes in between would only add tool changes. A
       // small tool on open ground is the slowest program there is.
-      // Long enough from the stock's top, 2 mm to spare for the holder.
-      let cands = mills.filter((m) => (m.length || 99) >= Math.max(0, sb.hi[2]) - z + 2);
+      // Long enough from the stock's top, 2 mm to spare for the holder. A machine tool with no length typed
+      // (0) never goes down: its holder could not be checked.
+      let cands = mills.filter((m) => m.length >= Math.max(0, sb.hi[2]) - z + 2);
       for (let round = 0; round < 6 && cands.length && area(todo) > 0.5; round++) {
         const all = area(todo);
         let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
@@ -1696,7 +1697,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const roughed = (byDia.get(op.tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).filter((w) => w.finish);
       if (!roughed.length) continue;
       const deepest = Math.min(...roughed.map((w) => w.z));
-      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && (m.length || 99) >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
+      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && m.length >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
       // Of the shop's templates, the one with its usual finishing data: the SF 16's SCHLICHT at 1,200 mm/min
       // and 10 mm deep (90 % of its SF 16 finishing operations), not the one at 850 and 5.
       const fin = (m: CamTool) => m.template?.ops.filter((o) => o.kind === 'finish').reduce((b, o) => Math.max(b, o.feed * (o.ap ?? 0)), 0) ?? 0;
@@ -1726,7 +1727,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (f.chamfers.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
       // Only the chamfers the graver reaches with its holder above the stock's top.
-      const reachable = f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })).filter((c) => !graver || (graver.length || 99) >= stockTop - (c.lo - 0.3) + 2);
+      const reachable = f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })).filter((c) => !graver || graver.length >= stockTop - (c.lo - 0.3) + 2);
       const paths = graver ? chamferPaths(P, reachable, graver.diameter / 2, jawLimit) : [];
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
       else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, plane));
