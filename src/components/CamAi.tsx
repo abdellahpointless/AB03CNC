@@ -75,6 +75,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [finishWalls, setFinishWalls] = useState<number[][]>([]);
   const finishTris = useMemo(() => finishWalls.flat(), [finishWalls]);
   const [pickWalls, setPickWalls] = useState(false);
+  // A top plate's white face (a side name), never faced: picked on the model.
+  const [white, setWhite] = useState<string | undefined>();
+  const [pickWhite, setPickWhite] = useState(false);
   const [locked1, setLocked1] = useState(false);
   const [second, setSecond] = useState<{ side: string; face?: string } | null>(null);
   const [locked2, setLocked2] = useState(false);
@@ -151,6 +154,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setFace1(undefined);
     setFinishWalls([]);
     setPickWalls(false);
+    setWhite(undefined);
+    setPickWhite(false);
     setLocked1(false);
     setSecond(null);
     setLocked2(false);
@@ -211,6 +216,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       cuts: edits,
       skip: skips,
       finish: finishTris.length ? finishTris : undefined,
+      white: partType === 'topPlate' ? white : undefined,
       limits: { maxRpm: machine.maxRpm ?? DEFAULT_LIMITS.maxRpm, maxFeed: machine.maxFeed ?? DEFAULT_LIMITS.maxFeed },
       speeds: { rapid: machine.rapid ?? speeds.rapid, toolChange: machine.toolChange ?? speeds.toolChange },
     };
@@ -469,7 +475,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 picks={result || busy ? [] : picks}
                 picking={result ? null : picking}
                 onPick={pickFace}
-                finish={{ on: pickWalls && !result && !busy, picked: finishTris, onToggle: toggleWall }}
+                finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
+                white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
                 paths={paths}
                 label={picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
                 className="h-full rounded-none bg-transparent"
@@ -493,13 +500,19 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             </div>
           )}
           {/* What the view is doing, top centre. */}
-          {prep && !result && !busy && pickWalls && (
+          {prep && !result && !busy && pickWhite && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.white.hint')}
+            </p>
+          )}
+          {prep && !result && !busy && pickWalls && !pickWhite && (
             <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
               <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
               {t('camAi.finish.hint')}
             </p>
           )}
-          {prep && !result && !pickWalls && picking !== null && (
+          {prep && !result && !pickWalls && !pickWhite && picking !== null && (
             <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
               <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
               {t('camAi.pickHint', { n: picking + 1 })}
@@ -540,6 +553,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
                 )}
                 {partFields()}
+                {whiteFields()}
                 {finishFields()}
               </>
             )}
@@ -586,6 +600,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   </dl>
                 )}
                 {excess && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                {whiteFields()}
                 {finishFields()}
               </>
             )}
@@ -740,6 +755,27 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   );
 
   /** Part type, machine and material: in the New program dialog and the Part's properties. */
+  function whiteFields() {
+    if (partType !== 'topPlate') return null;
+    return (
+      <section className="space-y-1.5" aria-labelledby={`cam-white-${sel.kind}`}>
+        <h4 id={`cam-white-${sel.kind}`} className="section-label">{t('camAi.white.title')}</h4>
+        <p className="text-[var(--text-secondary)]">{t('camAi.white.help')}</p>
+        <p className="text-[var(--text-primary)]" aria-live="polite">{white ? t('camAi.white.picked', { side: white }) : t('camAi.white.none')}</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={`${pickWhite ? 'btn-primary' : 'btn-secondary'} text-xs min-h-9 px-3`} aria-pressed={pickWhite} onClick={() => setPickWhite((v) => !v)} disabled={busy || !!result}>
+            {pickWhite ? t('camAi.white.cancel') : t('camAi.white.pick')}
+          </button>
+          {white && (
+            <button type="button" className="btn-secondary text-xs min-h-9 px-3" onClick={() => choose(() => setWhite(undefined))} disabled={busy}>
+              {t('camAi.white.clear')}
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function finishFields() {
     return (
       <section className="space-y-1.5" aria-labelledby={`cam-finish-${sel.kind}`}>

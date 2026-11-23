@@ -51,6 +51,16 @@ const cam: Translation<typeof en> = {
     confirmSetup: 'Bağlama {{n}}’i onayla',
     changeSetup: 'Bağlama {{n}}’i değiştir',
     useProposal: 'CAM AI önerisini kullan',
+    white: {
+      title: 'Beyaz yüz',
+      help: 'Üst plakanın beyaz yüzü hiç alınmaz: modelde seçin. O yöndeki tüm fazlalık diğer taraftan alınır.',
+      none: 'Seçilmedi: ham parça her zamanki gibi üstte 2 mm fazla',
+      picked: 'Beyaz yüz: {{side}} (hiç alınmaz)',
+      pick: 'Beyaz yüzü seç',
+      cancel: 'Vazgeç',
+      clear: 'Temizle',
+      hint: 'Plakanın beyaz yüzüne tıklayın. Görünümü çevirmek için sürükleyin.',
+    },
     finish: {
       title: 'Son paso yapılacak duvarlar',
       help: 'Yalnızca seçtiğiniz duvarlara son paso yapılır (kaba işleme 0,15 mm bırakır, ardından ölçüsünde tek paso); diğer tüm duvarlar kaba işlemede ölçüsüne alınır.',

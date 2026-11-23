@@ -255,6 +255,7 @@ export default function CamPartView({
   picking,
   onPick,
   finish,
+  white,
   paths = [],
   label,
   className = '',
@@ -273,6 +274,8 @@ export default function CamPartView({
   onPick?: (side: string, face: string) => void;
   /** Picking the walls to finish (they take precedence over `picking`): those picked, and a click's wall's triangles. */
   finish?: { on: boolean; picked: number[]; onToggle: (tris: number[]) => void };
+  /** A top plate's white face: picking it (a click on a flat face gives its side), and the one picked (shown white). */
+  white?: { on: boolean; side?: string; onPick: (side: string) => void };
   paths?: LivePath[];
   /** The canvas's accessible name. */
   label: string;
@@ -280,8 +283,9 @@ export default function CamPartView({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
-  const pickRef = useRef({ picking, onPick, finish });
-  pickRef.current = { picking, onPick, finish };
+  const pickRef = useRef({ picking, onPick, finish, white });
+  pickRef.current = { picking, onPick, finish, white };
+  const whiteSide = white?.side;
 
   // The scene, once per model.
   useEffect(() => {
@@ -389,7 +393,7 @@ export default function CamPartView({
       invalidate();
     };
     const move = (e: PointerEvent) => {
-      if ((pickRef.current.picking === null && !walling()) || e.buttons) return showHover(null);
+      if ((pickRef.current.picking === null && !walling() && !pickRef.current.white?.on) || e.buttons) return showHover(null);
       if (!queued) requestAnimationFrame(() => {
         if (queued) showHover(faceAt(queued));
         queued = null;
@@ -401,11 +405,12 @@ export default function CamPartView({
     const release = (e: PointerEvent) => {
       const d = down;
       down = null;
-      const { picking: p, onPick: cb, finish: fin } = pickRef.current;
+      const { picking: p, onPick: cb, finish: fin, white: wh } = pickRef.current;
       if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
       const key = faceAt(e);
       if (!key) return;
       if (walling()) fin!.onToggle(trisOf(key));
+      else if (wh?.on) wh.onPick(faces.get(key)!.side);
       else if (p !== null && cb) cb(faces.get(key)!.side, key);
     };
     const leave = () => showHover(null);
@@ -469,9 +474,12 @@ export default function CamPartView({
         const at = (j: number) => R[j * 3] * c[0] + R[j * 3 + 1] * c[1] + R[j * 3 + 2] * c[2];
         a.stock.position.set(at(0), at(2), -at(1));
       } else {
-        // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it.
+        // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it;
+        // flush with a white face up or down (all the stock on the other side).
         const hz = Math.abs(R[6] * a.ext.x + R[7] * a.ext.y + R[8] * a.ext.z);
-        a.stock.position.y = hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
+        const d = SIDES.find((x) => x.name === whiteSide)?.d;
+        const up = d ? R[6] * d[0] + R[7] * d[1] + R[8] * d[2] : 0;
+        a.stock.position.y = up > 0.5 ? hz / 2 - v[2] / 2 : up < -0.5 ? v[2] / 2 - hz / 2 : hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
       }
       const geo = new THREE.BoxGeometry(v[0], v[2], v[1]);
       const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: AMBER, transparent: true, opacity: 0.1, depthWrite: false }));
@@ -491,7 +499,7 @@ export default function CamPartView({
       put(`Z ${fmtNumber(v[2], 1)} mm`, new THREE.Vector3(-x - h * 1.8, 0, z));
     }
     a.invalidate();
-  }, [raw, R, blank]);
+  }, [raw, R, blank, whiteSide]);
 
   // The setups' top faces: green, with their triad; and the faces under the pointer while picking.
   useEffect(() => {
@@ -509,7 +517,7 @@ export default function CamPartView({
     a.invalidate();
   }, [picks, tris]);
 
-  // The walls picked to finish, cyan.
+  // The walls picked to finish, cyan; the white face, white.
   const picked = finish?.picked;
   useEffect(() => {
     const a = api.current;
@@ -517,8 +525,10 @@ export default function CamPartView({
     dispose(a.walls);
     a.walls.clear();
     if (picked?.length) a.walls.add(overlay(a.pos, picked, FINISH, 0.6));
+    const face = whiteSide ? faceFor(a.faces, { side: whiteSide, locked: true }) : null;
+    if (face) a.walls.add(overlay(a.pos, face[1].tris, 0xffffff, 0.85));
     a.invalidate();
-  }, [picked, tris]);
+  }, [picked, whiteSide, tris]);
 
   // The paths as they come.
   useEffect(() => {

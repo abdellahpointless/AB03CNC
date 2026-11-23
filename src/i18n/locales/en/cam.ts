@@ -48,6 +48,16 @@ const cam = {
     confirmSetup: 'Confirm setup {{n}}',
     changeSetup: 'Change setup {{n}}',
     useProposal: 'Use CAM AI’s proposal',
+    white: {
+      title: 'White face',
+      help: 'A top plate’s white face is never faced: pick it on the model. All the stock in that direction comes off the other side.',
+      none: 'Not picked: the blank 2 mm over the top, as usual',
+      picked: 'White face: {{side}} (never faced)',
+      pick: 'Pick the white face',
+      cancel: 'Cancel',
+      clear: 'Clear',
+      hint: 'Click the plate’s white face. Drag to turn the view.',
+    },
     finish: {
       title: 'Walls to finish',
       help: 'Only the walls you pick get a finishing pass (0.15 mm left by the roughing, then one pass at size); every other wall is roughed to size.',
