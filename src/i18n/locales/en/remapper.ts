@@ -636,8 +636,6 @@ const remapper = {
       byLine: 'line {{n}} · T{{t}}',
       add: '3D model',
       addHelp: "The part's 3D PDF or STL: the toolpath checks the program against the real part",
-      ask: "Add the part's 3D PDF or STL? The toolpath then checks the program against the real part and finds wrong turns.",
-      skip: 'Skip',
       import: 'Import model',
       importHelp: "Load the part's 3D PDF or STL: it is laid on the simulated part to compare them",
       view: 'Show',

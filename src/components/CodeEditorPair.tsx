@@ -427,7 +427,7 @@ export default function CodeEditorPair({
         const fileLines = text.split('\n');
         const { lines: processedLines, addedCount } = applyG53BeforeG52(fileLines);
         setSourceCode(processedLines.join('\n'));
-        // A new program: ask for its 3D model (the one given before was for another program).
+        // A new program: its 3D model button lights up (the one given before was for another program).
         setModel(null);
         setAskModel(true);
         if (addedCount > 0) {
@@ -679,7 +679,7 @@ export default function CodeEditorPair({
                       </button>
                     </span>
                   ) : (
-                    <button onClick={() => modelInputRef.current?.click()} className="btn-secondary text-xs min-h-11 px-3.5" title={t('toolpath.model.addHelp')}>
+                    <button onClick={() => modelInputRef.current?.click()} className={`btn-secondary text-xs min-h-11 px-3.5${askModel && sourceCode.trim() ? ' model-wanted' : ''}`} title={t('toolpath.model.addHelp')}>
                       <Box size={13} />
                       <span>{t('toolpath.model.add')}</span>
                     </button>
@@ -689,19 +689,6 @@ export default function CodeEditorPair({
             </div>
           </div>
 
-          {toolpathOn && askModel && !model && sourceCode.trim() && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] bg-[#8fb3e0]/10 px-5 py-2 text-xs text-[var(--text-primary)]" role="status">
-              <Box size={14} className="text-[#8fb3e0] shrink-0" />
-              <span className="flex-1 min-w-[12rem]">{t('toolpath.model.ask')}</span>
-              <button onClick={() => modelInputRef.current?.click()} className="btn-primary text-xs py-1 px-2.5">
-                <Upload size={12} />
-                {t('toolpath.model.add')}
-              </button>
-              <button onClick={() => setAskModel(false)} className="btn-secondary text-xs min-h-11 px-3.5">
-                {t('toolpath.model.skip')}
-              </button>
-            </div>
-          )}
           {/* Textarea */}
           <textarea
             value={sourceCode}

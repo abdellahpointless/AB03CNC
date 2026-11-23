@@ -626,8 +626,6 @@ const remapper: Translation<typeof en> = {
       byLine: 'satır {{n}} · T{{t}}',
       add: '3D model',
       addHelp: 'Parçanın 3D PDF veya STL dosyası: takım yolu programı gerçek parçayla karşılaştırır',
-      ask: 'Parçanın 3D PDF veya STL dosyasını eklemek ister misiniz? Takım yolu programı gerçek parçayla karşılaştırır ve yanlış dönüşleri bulur.',
-      skip: 'Geç',
       import: 'Model içe aktar',
       importHelp: 'Parçanın 3D PDF veya STL dosyasını yükleyin: karşılaştırmak için simüle edilen parçanın üzerine yerleştirilir',
       view: 'Göster',

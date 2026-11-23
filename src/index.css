@@ -1163,6 +1163,11 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3); 
 @media (prefers-reduced-motion: reduce) { .shift-bell { animation: none; } }
 @keyframes shift-bell { 0%, 50%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20%, 40% { transform: rotate(-14deg); } }
 
+/* Remapper: the 3D model button glows while the imported program has no model (gentler, not moving, with reduced motion). */
+.btn-secondary.model-wanted { border-color: var(--accent-primary); animation: model-wanted 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .btn-secondary.model-wanted { animation: none; box-shadow: 0 0 14px var(--accent-glow); } }
+@keyframes model-wanted { 0%, 100% { box-shadow: 0 0 6px var(--accent-glow); } 50% { box-shadow: 0 0 20px var(--accent-glow); } }
+
 /* History: a problem reported after someone else said the same check was OK in that period. */
 .history-clash {
   margin: 0 -6px;
