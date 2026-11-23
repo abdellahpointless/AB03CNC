@@ -1780,17 +1780,39 @@ function planFor(input: CamInput, vertical: number): CamResult {
       let cands = mills.filter((m) => m.length >= Math.max(0, sb.hi[2]) - z + 2);
       for (let round = 0; round < 6 && cands.length && area(todo) > 0.5; round++) {
         const all = area(todo);
-        let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
-        for (const tool of cands) {
+        const attempt = (tool: CamTool) => {
           const cut = cutData(tool, 'pocket', mat, limits);
-          const r0 = tool.diameter / 2;
-          const rings = clearLevel(offR, todo, r0, cut.ae, inside);
-          if (!rings.length) continue;
+          const rings = clearLevel(offR, todo, tool.diameter / 2, cut.ae, inside);
+          if (!rings.length) return null;
           const gone = swept(rings, tool.diameter / 2);
-          const share = area(intersection(todo, gone)) / all;
-          if (!pick || share > pick.share + 0.02) pick = { tool, rings, gone, share };
-          if (round === 0 || share >= 0.8) break;
-        }
+          return { tool, rings, gone, share: area(intersection(todo, gone)) / all };
+        };
+        let pick: { tool: CamTool; rings: Ring[]; gone: Region; share: number } | null = null;
+        if (round === 0) {
+          // The first: of the mills that clear about as much as the largest, the one that takes the most a minute,
+          // not the largest (the study: the shop's POM Ø30 runs 1000 rpm, F500; its Ø20, which the engineers took, 4000, F1200).
+          const rate = (t: CamTool) => {
+            const c = cutData(t, 'pocket', mat, limits);
+            return c.ap * c.ae * c.f;
+          };
+          let big: ReturnType<typeof attempt> = null;
+          for (const tool of cands) if ((big = attempt(tool))) break;
+          if (big) for (const tool of [...cands].sort((p, q) => rate(q) - rate(p))) {
+            if (rate(tool) <= rate(big.tool)) break;
+            const a = attempt(tool);
+            if (a && a.share >= big.share - 0.05) {
+              pick = a;
+              break;
+            }
+          }
+          pick ??= big;
+        } else
+          for (const tool of cands) {
+            const a = attempt(tool);
+            if (!a) continue;
+            if (!pick || a.share > pick.share + 0.02) pick = a;
+            if (a.share >= 0.8) break;
+          }
         if (!pick) break;
         // Smaller tools only from here on (a bigger one cannot do better on what is left).
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);

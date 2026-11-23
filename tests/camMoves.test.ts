@@ -143,6 +143,18 @@ describe('blind holes', () => {
   }, 300_000);
 });
 
+describe('the roughing mill', () => {
+  // The study: CAM AI roughed with the largest mill, the Ø30 (the shop's POM data: 1000 rpm, F500, 8 deep), 10 minutes;
+  // the engineers took the Ø20 (4000 rpm, F1200), 1.7 minutes for the whole outline.
+  it('is the one that takes the most material a minute, not the largest', () => {
+    const r = camProgram({ ...base, material: 'POM', tris: plate, raw: [44, 34, 16] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    const d = r.setups.flatMap((s) => s.ops).filter((o) => o.name.startsWith('FRAESEN')).map((o) => o.tool.diameter);
+    expect(d).not.toContain(30);
+    expect(d).toContain(20);
+  }, 300_000);
+});
+
 describe('inside corners', () => {
   // You: inside corners are left at the radius of the pocket mill (the study: a Ø1 ran 12 minutes in 0.4 mm corner
   // slivers 30 mm deep; the engineers stop at Ø6, Ø4 only where it is narrower).
