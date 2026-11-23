@@ -4,7 +4,7 @@ import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
-import { columnPart, heightPart, plateWithBlindHole, plateWithHoles } from './heightPart';
+import { columnPart, heightPart, plateWithBlindHole, plateWithHoles, pocketPart, roundedRect } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
 
@@ -180,6 +180,21 @@ describe('inside corners', () => {
     expect(r.check.pieces.filter((p) => p.kind === 'left' && p.max[1] > 5.9 && p.min[0] > -6 && p.max[0] < 6)).toEqual([]);
     // What the check accepts as left on purpose: corner-sized pieces only (a Ø8's square corner: 0.215 x 16 mm²).
     for (const c of r.corners ?? []) for (const loop of c.region) expect(Math.abs(area([loop]))).toBeLessThan(0.215 * 16 * 1.2 + 0.01);
+  }, 300_000);
+
+  it('makes a corner the model draws with a radius (R2): a mill that small, nothing of it taken as left on purpose', () => {
+    const { r, d } = mills(pocketPart(40, 30, 12, roundedRect([10, 9, 30, 21], 2), 6));
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    // A Ø5 at most (from R2.5 to R2 is under 0.5 mm² a level: not worth a tool change, the planner's own rule).
+    expect(Math.min(...d)).toBeLessThanOrEqual(5);
+    expect(r.corners ?? []).toEqual([]);
+  }, 300_000);
+
+  it('leaves sharp corners of any angle at the pocket mill\'s radius (a hexagon: 120°)', () => {
+    const hex = Array.from({ length: 6 }, (_, k) => [20 + 9 * Math.cos((k * Math.PI) / 3), 15 + 9 * Math.sin((k * Math.PI) / 3)] as [number, number]);
+    const { r, d } = mills(pocketPart(40, 30, 12, hex, 6));
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(Math.min(...d)).toBeGreaterThanOrEqual(6);
   }, 300_000);
 
   it('still sends one into a place narrower than the pocket mill', () => {

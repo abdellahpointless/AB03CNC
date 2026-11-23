@@ -290,17 +290,29 @@ const opened = (r: Region) => offset(offset(r, -0.15), 0.15);
  */
 const CORNER_R = 4;
 /**
- * Of what a mill of radius r left, all but its square corners' slivers: a piece within 0.414 r of where it went, as
- * large as that sliver (0.215 r²: a strip along a wall is larger), and no smaller than 0.6 of it (smaller, the model
- * draws a radius there, which a smaller mill makes: you, "unless the drawing asks for less").
+ * Of what a mill of radius r left, all but the slivers in the model's sharp corners: a piece within 0.414 r of where
+ * it went, no larger than a square corner's sliver (0.215 r²: a strip along a wall is larger), with a sharp corner of
+ * the model in it: a vertex of its outline (keep) turning 40° or more. A corner the model draws with a radius turns in
+ * small steps (its facets): a smaller mill makes it (you, "unless the drawing asks for less").
  */
-function pastCorners(left: Region, gone: Region, r: number): Region {
+function pastCorners(left: Region, gone: Region, r: number, keep: Region): Region {
   const far = difference(left, offset(gone, 0.42 * r + 0.02));
   const sliver = 0.215 * r * r;
+  const sharp: P2[] = [];
+  for (const loop of keep)
+    loop.forEach((p, i) => {
+      const a = loop[(i + loop.length - 1) % loop.length];
+      const b = loop[(i + 1) % loop.length];
+      const [ux, uy, vx, vy] = [p[0] - a[0], p[1] - a[1], b[0] - p[0], b[1] - p[1]];
+      const n = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+      if (n > 1e-9 && (ux * vx + uy * vy) / n <= Math.cos((40 * Math.PI) / 180)) sharp.push(p);
+    });
   const corner = (l: P2[]) => {
-    const a = area([l]);
     const e = extent([l])!;
-    return a >= 0.6 * sliver && a <= 1.2 * sliver && e.hi[0] - e.lo[0] <= 1.1 * r && e.hi[1] - e.lo[1] <= 1.1 * r && area(intersection([l], far)) <= 0.01;
+    if (area([l]) > 1.2 * sliver || e.hi[0] - e.lo[0] > 1.5 * r || e.hi[1] - e.lo[1] > 1.5 * r || area(intersection([l], far)) > 0.01) return false;
+    // The piece stops short of the corner: the grid's skin and the 0.15 mm opening round its tip off.
+    const near = offset([l], 0.6);
+    return sharp.some((p) => inside(near, p) !== 0);
   };
   const outers = left.filter((l) => area([l]) > 0 && !corner(l));
   return [...outers, ...left.filter((l) => area([l]) < 0 && outers.some((o) => inside([o], l[0]) === 1))];
@@ -1847,7 +1859,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
         if (pick.tool.diameter / 2 <= CORNER_R + 1e-6) {
-          const past = pastCorners(todo, pick.gone, pick.tool.diameter / 2);
+          const past = pastCorners(todo, pick.gone, pick.tool.diameter / 2, keep);
           const dropped = difference(todo, past);
           if (area(dropped) > 0.01) myCorners.push({ z, above: levelTop, region: dropped });
           todo = past;

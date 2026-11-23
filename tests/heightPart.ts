@@ -186,3 +186,50 @@ export function plateWithBlindHole(W: number, L: number, H: number, hole: { c: [
   });
   return new Float32Array(t);
 }
+
+/** A W x L x H plate (corner at the origin) with a pocket `depth` deep in its top, its outline any polygon (anticlockwise): its closed mesh. */
+export function pocketPart(W: number, L: number, H: number, outline: [number, number][], depth: number): Float32Array {
+  const floorZ = H - depth;
+  const outer: [number, number][] = [[0, 0], [W, 0], [W, L], [0, L]];
+  const t: number[] = [];
+  const tri = (a: number[], b: number[], c: number[], n: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const x = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    t.push(...(x[0] * n[0] + x[1] * n[1] + x[2] * n[2] >= 0 ? [...a, ...b, ...c] : [...a, ...c, ...b]));
+  };
+  const face = (contour: [number, number][], holes: [number, number][][], z: number, nz: number) => {
+    const all = [...contour, ...holes.flat()];
+    for (const [i, j, k] of ShapeUtils.triangulateShape(contour.map(([x, y]) => new Vector2(x, y)), holes.map((h) => h.map(([x, y]) => new Vector2(x, y)))))
+      tri([...all[i], z], [...all[j], z], [...all[k], z], [0, 0, nz]);
+  };
+  const wall = (a: [number, number], b: [number, number], za: number, zb: number, n: number[]) => {
+    tri([...a, za], [...b, za], [...b, zb], n);
+    tri([...a, za], [...b, zb], [...a, zb], n);
+  };
+  face(outer, [outline], H, 1);
+  face(outline, [], floorZ, 1);
+  face(outer, [], 0, -1);
+  wall([0, 0], [W, 0], 0, H, [0, -1, 0]);
+  wall([W, 0], [W, L], 0, H, [1, 0, 0]);
+  wall([W, L], [0, L], 0, H, [0, 1, 0]);
+  wall([0, L], [0, 0], 0, H, [-1, 0, 0]);
+  // The pocket's walls face into it: left of each edge of the anticlockwise outline.
+  outline.forEach((p, k) => {
+    const q = outline[(k + 1) % outline.length];
+    wall(p, q, floorZ, H, [-(q[1] - p[1]), q[0] - p[0], 0]);
+  });
+  return new Float32Array(t);
+}
+
+/** A rectangle [x0, y0, x1, y1] with its corners rounded to radius rc (n segments each), anticlockwise. */
+export function roundedRect([x0, y0, x1, y1]: [number, number, number, number], rc: number, n = 8): [number, number][] {
+  const out: [number, number][] = [];
+  const corners: [number, number, number][] = [[x1 - rc, y0 + rc, -90], [x1 - rc, y1 - rc, 0], [x0 + rc, y1 - rc, 90], [x0 + rc, y0 + rc, 180]];
+  for (const [cx, cy, a0] of corners)
+    for (let i = 0; i <= n; i++) {
+      const a = ((a0 + (90 * i) / n) * Math.PI) / 180;
+      out.push([cx + rc * Math.cos(a), cy + rc * Math.sin(a)]);
+    }
+  return out;
+}
