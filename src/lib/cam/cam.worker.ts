@@ -1,8 +1,4 @@
 import { readTris } from '../model';
-import { setStepWasm } from '../step';
-// The STEP reader's WebAssembly, a private file like this worker.
-import stepWasm from 'occt-import-js/dist/occt-import-js.wasm?url';
-setStepWasm(stepWasm);
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';

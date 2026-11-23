@@ -108,6 +108,11 @@ export async function handlePrivateAsset(request: Request, env: Env, url: URL, e
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
   res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  // The STEP reader's worker (src/lib/step.worker.ts) only: OpenCascade's loader builds functions at run time
+  // and compiles WebAssembly. It gets the file's bytes and returns triangles; everything else stays strict.
+  if (/\/step\.worker-[A-Za-z0-9_-]+\.js$/.test(url.pathname)) {
+    res.headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self'");
+  }
   for (const c of setCookies) res.headers.append('Set-Cookie', c);
   return res;
 }

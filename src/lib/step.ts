@@ -1,11 +1,5 @@
-// STEP (.step/.stp) models: read with OpenCascade (occt-import-js, WebAssembly), in a web worker only.
+// STEP (.step/.stp) models: read with OpenCascade (occt-import-js, WebAssembly).
 import occtimportjs from 'occt-import-js';
-
-/** Where the browser fetches the WebAssembly part (a private file), set by the worker that reads models. */
-let wasmUrl: string | null = null;
-export const setStepWasm = (url: string) => {
-  wasmUrl = url;
-};
 
 type Occt = { ReadStepFile: (buf: Uint8Array, params: Record<string, unknown> | null) => { success: boolean; meshes: { attributes: { position: { array: number[] } }; index: { array: number[] } }[] } };
 let occt: Promise<Occt> | null = null;
@@ -13,9 +7,8 @@ let occt: Promise<Occt> | null = null;
 /** A STEP file starts with this header line. */
 export const isStep = (buf: Uint8Array) => new TextDecoder().decode(buf.subarray(0, 64)).trimStart().startsWith('ISO-10303-21');
 
-/** Triangles (9 numbers each, mm) of a STEP file; empty when it cannot be read. */
-export async function readStep(buf: Uint8Array): Promise<Float32Array> {
-  // In Node (tests, tools) the library finds its .wasm next to itself; a browser fetches it from wasmUrl.
+/** Triangles (9 numbers each, mm) of a STEP file; empty when it cannot be read. `wasmUrl`: where a browser fetches the library. */
+export async function stepTriangles(buf: Uint8Array, wasmUrl?: string): Promise<Float32Array> {
   occt ??= (occtimportjs as unknown as (o?: object) => Promise<Occt>)(wasmUrl ? { locateFile: () => wasmUrl } : undefined);
   const lib = await occt;
   // shortcut: 0.01 mm chords, well inside the shop's 0.1 mm; finer only if a part ever needs it.
@@ -34,4 +27,19 @@ export async function readStep(buf: Uint8Array): Promise<Float32Array> {
     }
   }
   return out;
+}
+
+/** A STEP file's triangles: in a browser read in its own worker (step.worker.ts), in Node (tests, tools) here. */
+export function readStep(buf: Uint8Array): Promise<Float32Array> {
+  if (typeof Worker === 'undefined') return stepTriangles(buf);
+  return new Promise((resolve) => {
+    const w = new Worker(new URL('./step.worker.ts', import.meta.url), { type: 'module' });
+    const done = (t: Float32Array) => {
+      w.terminate();
+      resolve(t);
+    };
+    w.onmessage = (e: MessageEvent<Float32Array>) => done(e.data);
+    w.onerror = () => done(new Float32Array());
+    w.postMessage(buf);
+  });
 }

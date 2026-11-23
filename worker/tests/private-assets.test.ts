@@ -17,7 +17,7 @@ let HUB: D1Database;
 const ASSETS = {
   fetch: async (input: RequestInfo) => {
     const path = new URL(typeof input === 'string' ? input : input.url).pathname;
-    if (/^\/app\/[a-z]+\/real-[a-z]+\.js$/.test(path)) return new Response('export {}', { headers: { 'Content-Type': 'text/javascript' } });
+    if (/^\/app\/[a-z]+\/(real-[a-z]+|step\.worker-[A-Za-z0-9]+)\.js$/.test(path)) return new Response('export {}', { headers: { 'Content-Type': 'text/javascript', 'Content-Security-Policy': "script-src 'self'" } });
     if (/^\/app\/[a-z]+\/real-[a-z]+\.wasm$/.test(path)) return new Response(new Uint8Array([0, 97, 115, 109]), { headers: { 'Content-Type': 'application/wasm' } });
     return new Response('<!doctype html>', { headers: { 'Content-Type': 'text/html' } });
   },
@@ -83,6 +83,16 @@ describe('the app code is only for signed-in sessions', () => {
     expect(await get('/app/toolpath/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/cam/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/master/real-x.js', 'tok-ali')).toBe(403);
+  });
+
+  it('only the STEP reader\'s own worker may build code at run time; the rest of the app stays strict', async () => {
+    const csp = async (path: string) => {
+      const url = new URL(`https://cnc.test${path}`);
+      const res = await handlePrivateAsset(new Request(url, { headers: { Cookie: `__Host-cnc_sid=tok-cam` } }), { DB, ASSETS } as Env, url, envFor);
+      return res.headers.get('Content-Security-Policy') ?? '';
+    };
+    expect(await csp('/app/toolpath/step.worker-Ab12.js')).toMatch(/script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'/);
+    expect(await csp('/app/toolpath/real-x.js')).not.toMatch(/unsafe-eval/);
   });
 
   it('the STEP reader (WebAssembly) goes to CAM AI and toolpath users only', async () => {
