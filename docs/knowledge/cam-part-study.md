@@ -15,7 +15,7 @@ each operation take first (4 million voxels). Scripts: one-off, not in the repos
 | | Engineers | CAM AI on the app | CAM AI today, engineers' blank |
 |---|---|---|---|
 | Lines | 2,543 | 26,376 | 14,738 |
-| Minutes | 16.9 | 51.3 | 56.1 |
+| Minutes | 16.9 (their own file: 23.6) | 51.3 | 56.1 |
 | Clampings | 3 | 3 (the third in the POM nest) | 3 |
 | Parallels / grip (mm) | 40/5, 8/37, 8/37 | 42/3, 40/5, nest on 38 | 40/5, 28/17, 28/17 |
 | Tool changes / different tools | 21 / 14 | 35 / 23 | 33 / 21 |
@@ -24,8 +24,8 @@ each operation take first (4 million voxels). Scripts: one-off, not in the repos
 
 ## Where CAM AI's time and lines go
 
-1. **End mills under Ø6 chasing corners.** Today: Ø1 12.0 min, Ø3 4.2 + 9.3, Ø4 2.8, Ø2.5 1.3, Ø5 0.9: 30.5
-   of 56.1 minutes and about 9,700 of 14,738 lines, for about 560 mm³ (0.5 % of what is cut). The Ø1 takes
+1. **End mills under Ø6 chasing corners.** Today: Ø1 12.0 min, Ø3 4.2 + 9.3, Ø4 2.8, Ø2.5 1.3, Ø5 0.9: 30.4
+   of 56.1 minutes and 8,663 of 14,738 lines (59 %), for 541 mm³ (0.5 % of what is cut). The Ø1 takes
    29 mm³ in 12 minutes: 0.4 mm slivers in the inside corners of a pocket, 30 mm deep. The engineers leave those
    corners at the radius of their pocket mills (Ø6, then Ø4 where narrow: 1.4 min for the Ø4) and their part
    matches the model at a 0.26 mm grid (99.7 %, nothing cut that should stay).
@@ -54,11 +54,23 @@ each operation take first (4 million voxels). Scripts: one-off, not in the repos
   once it is cut a later clamping can grip it almost its full height.
 
 CAM AI on the app had no Z stock: its first clamping gripped the part itself 3 mm (42 mm parallels), could not
-cut the outline through, finished it in clamping 2 on 5 mm, and needed the POM nest for the third. With the
-engineers' blank it cuts the outline through in clamping 1 but starts from the other face (the one with fewer
-features). It leaves for clamping 2 stock beside the part that the first face could not see. The jaws must stay
-under that, so the grip is 17 mm. In clamping 3 it goes 51 mm deep into the end (Ø8, Ø3), the engineers 34,
-so again 28 mm parallels and 17 mm of grip.
+cut the outline through, finished it in clamping 2 on 5 mm, and needed the POM nest for the third.
+
+With the engineers' blank, what limits each later grip (logged in the planner's grip choice, `deepest()`):
+
+| Plan | Clamping | Outline allows | Limited by stock left beside the part at | Grip taken |
+|---|---|---|---|---|
+| CAM AI's own (bottom face first) | 2, top face up | 37 mm | 18.3 mm | 17 (28 mm parallels) |
+| CAM AI's own | 3, on its end | 37 mm | 17.8 mm | 17 (28 mm parallels) |
+| Forced to the engineers' first face | 2, bottom face up | 37 mm | 1.05 mm | 3 (42 mm parallels) |
+
+- Starting from the bottom face, CAM AI leaves for clamping 2 stock beside the part that only the top face
+  sees; the jaws must stay under it.
+- Started from the engineers' face, it is worse: CAM AI does not cut the rounded top edges (it notes them as a
+  surface it leaves), so that square stock sits at the bottom of clamping 2 and the jaws can take 1 mm. The
+  engineers cut the radius in clamping 1 (corner-rounding mill, 1 minute), which is what lets them grip 37.
+- On its end, CAM AI leaves stock beside the part that it then cuts from the end, 51 mm deep (Ø8, Ø3); the
+  engineers never go deeper than 34 from that end.
 
 ## Why each engineers' operation, in order
 
@@ -79,18 +91,22 @@ so again 28 mm parallels and 17 mm of grip.
 | 2 | Face, 4 passes | Ø93 (loaded before the turn) | The remaining blank, down to the part |
 | 2 | Pocket 15 deep | Ø5 SF | The bottom pocket |
 | 2 | Deburr | Deburring tool | Edges of this side |
-| 3 | Drill 3 holes | Ø4 (loaded before the turn) | Side holes / pilots |
-| 3 | Side pocket 34 deep | Ø6 SF | The pocket on the end |
+| 3 | Drill 3 holes | Ø4 (loaded before the turn) | Not holes of the model: the inside corners of the end pocket's narrow part, to its depth (22.6 and 34). The drill makes those corners and the mills' way in |
+| 3 | Side pocket 34 deep | Ø6 SF | The pocket on the end; in with a straight 2 mm plunge, no ramp |
 | 3 | Narrow parts | Ø4 SF | Finishing in the side pocket |
 | 3 | Holes | Ø4.6, centre drill, Ø2.5 | The end's holes |
 
 ## Errors found on the way
 
+E1 matters for everything checked so far: every pass reported until now (the 10, the 14, the 108, what is
+deployed) came from this check, so errors under about 2 mm were never looked for. The order to fix: E2 first
+(else a finer check reports the 1 mm of E2 as cuts), then a finer check.
+
 | # | Error | Effect | Evidence |
 |---|---|---|---|
 | E1 | The app's model check counts a difference only where a sample and its 6 neighbours all differ: at its grid (about 0.8 mm) anything thinner than about 2 mm is never seen. | "100 % like the model" while 1 mm is wrong. | At 0.24 mm: 98.2 % with cuts of up to 313 mm³ (see E2). |
-| E2 | The simulation places the part in a later clamping by a guess from the facing passes, and ignores the program's own height (G52, parallels, nest floor) when the two differ by under 1.5 mm. In the nest clamping it stood the part 1.04 mm too high. | The 3D "Part" view shows every floor of that clamping 1 mm too deep. The program itself is right: placed by its G52, nothing is cut that should stay (0.24 mm grid). | P8bf16da4, clamping 3 |
-| E3 | Blind holes are drilled with the tip at the depth where the full diameter should end. | Blind holes are 0.3 x Ø short at full diameter (Ø4.8: 1.4 mm). The engineers add the tip: Z-28.642 against CAM AI's Z-27.2. | P8bf16da4 and today's code |
+| E2 | The simulation places the part in a later clamping by a guess from the facing passes, and ignores the program's own height (G52, parallels, nest floor) when the two differ by under 1.5 mm. In the nest clamping it stood the part 1.04 mm too high. | The 3D "Part" view shows every floor of that clamping 1 mm too deep (probably the extra milling seen on the app). The program itself is right: placed by its G52, nothing is cut that should stay (0.24 mm grid). | P8bf16da4, clamping 3 |
+| E3 | Blind holes are drilled with the tip at the depth where the full diameter should end. | Blind holes are 0.3 x Ø short at full diameter (Ø4.8: 1.4 mm). The engineers add the tip: Z-28.642 against CAM AI's Z-27.2. Seen on this part's 6 holes; to check on the library before it becomes a rule. | P8bf16da4 and today's code |
 
 ## Open questions
 
