@@ -171,3 +171,13 @@ The study's part at dcc1d36: 6,841 lines, 31.9 minutes (3 clampings, 40/28/28 mm
 third clamping cutting 762 mm of path at about 74 mm/min: the vise check slows it, as the part stands 70 mm tall
 on its end held 17 mm deep. The engineers hold that clamping 37 mm deep on 8 mm parallels. The holding is the next
 lever, not the corners.
+
+## Holding (Phase 8.4, started)
+
+- W1 (the busier face first) tried a third time at 281ae56 on the 24: clampings 35 to 32 (the 10) and 59 to 52 (the
+  14), but 198.1 to 250.8 minutes on the 10 (P51d8d6c6 47.9 to 94.0, P8e294283 21.6 to 31.8) and P52e28c09 failing.
+  Not kept. It reaches only the library runs anyway: on the CAM AI page the operator picks the first two clampings,
+  from the page's best layout (for the study's part, the engineers' face).
+- The study's part with the page's default layout: clamping 2's grip is limited to about 1 mm by a strip of stock
+  21 x 1.2 mm on the far end face (not the stop's), within 2 mm of the top face, that clamping 1 left; clamping 3's by
+  stock 36 mm up. The engineers' clamping 2 never cuts the outline. Next: why clamping 1 leaves it.
