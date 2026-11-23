@@ -154,3 +154,20 @@ Left for the next step (the part analysis): the rounded top edges are chamfered 
 edge (962 lines; the engineers: a corner-rounding mill, 24 lines); counterbores with the end mills in the program;
 the threaded inserts' holes; the face with most of the work first (W1, now that the corners no longer cost the
 time it lost before); the clampings that grip 17 mm where the engineers grip 37.
+
+### The review round (after c444c71)
+
+A review of the round above found three rules going further than the evidence; each was narrowed, test first:
+
+| Change | Commit | Why |
+|---|---|---|
+| Straight plunges go 2 mm into material at most; the rest of a deeper pass ramps (15°) | c684e5c | The engineers plunge 2 mm (Z-1.75 to Z-3.75; Z2 to Z-2); CAM AI went up to 6.35 mm on the study's part and 8 on two FH plates. |
+| Only corner-sized slivers left (no larger than a square corner's, 0.215 r²) | c53c9e8 | The first rule also left strips along walls: 197 mm³ left on the study's part (82 in one strip) where the engineers leave nothing at 0.26 mm. |
+| A corner left at the pocket mill's radius only where the model's outline turns sharply (40° or more at one vertex) | dcc1d36 | A corner the model draws with a radius is made with a smaller mill ("unless the drawing asks for less"); sharp corners of any angle (a hexagon's) are left. |
+| A drill point only where the material round the hole's middle is solid under it | 68e4465 | Not a cross hole or a cavity under a blind hole. |
+
+The study's part at dcc1d36: 6,841 lines, 31.9 minutes (3 clampings, 40/28/28 mm parallels, nothing cut into the part,
+84 mm³ left against the model on a 0.26 mm grid, the engineers' nothing). Of the 31.9 minutes, 10.3 are a Ø3 in the
+third clamping cutting 762 mm of path at about 74 mm/min: the vise check slows it, as the part stands 70 mm tall
+on its end held 17 mm deep. The engineers hold that clamping 37 mm deep on 8 mm parallels. The holding is the next
+lever, not the corners.
