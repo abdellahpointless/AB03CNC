@@ -1797,7 +1797,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
           };
           let big: ReturnType<typeof attempt> = null;
           for (const tool of cands) if ((big = attempt(tool))) break;
-          if (big) for (const tool of [...cands].sort((p, q) => rate(q) - rate(p))) {
+          // Only a mill of the same kind (type, the shop's template or the machine's own, a roughing one): the shop's
+          // own choices stand (the SFH 16 roughs aluminium, HAAS-1's T2 roughs), and a finishing template's data is no rate.
+          const like = (t: CamTool) => !!big && t.type === big.tool.type && !!t.template === !!big.tool.template && !!t.inMachine === !!big.tool.inMachine && !finishOnly(t);
+          if (big) for (const tool of cands.filter(like).sort((p, q) => rate(q) - rate(p))) {
             if (rate(tool) <= rate(big.tool)) break;
             const a = attempt(tool);
             if (a && a.share >= big.share - 0.05) {
