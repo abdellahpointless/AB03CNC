@@ -1,4 +1,5 @@
 import { CALE_HEIGHTS } from './cales';
+import { markedHeader } from './programMark';
 import type { Move, Toolpath, Vec } from './toolpath';
 import { buildInput, carve, FLIP_MS, holderOf, KEPT, materialExtreme, type Grid, type SimInput } from './stockSim';
 import { ALL, IDENTITY, apply, direction, mul, rotation as turn, same, transpose, turnSize, turnedBox, type Axis, type Mat3 } from './orient';
@@ -936,6 +937,7 @@ function meetShare(tp: Toolpath, r: ProgramSetups, k: number): number {
 }
 
 function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat3>, ledges?: Map<number, number>, boxes?: Map<number, Box>, helds?: Map<number, Held>): ProgramSetups {
+  const exactFloor = markedHeader(tp.header);
   const { raw } = partSizes(tp.header);
   let { finished } = partSizes(tp.header);
   // A side written 0 ("TOP PLATE FH / 100X50X0"): the height the first clamping shows. Z0 is the top,
@@ -1157,8 +1159,9 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       const top = floorRule + ins.support + (ins.nest ? NEST_FLOOR : 0) + size[2];
       // Only when the guess is clearly off (more than 1.5 mm): small differences are the floor's
       // own tolerance. On a later side Z0 is the finished top; a top below it means the part's
-      // height was underestimated by the first pass, which a later pass measures.
-      if (Math.abs(top - topZ) > 1.5 && Math.abs(top - topZ) <= FLOOR_TRUST && (k === 0 || top >= -0.5)) topZ = k === 0 ? top : Math.max(0, top);
+      // height was underestimated by the first pass, which a later pass measures. The planner's own
+      // program has no tolerance: its G52 is worked out from the parallels (the study's E2).
+      if (Math.abs(top - topZ) > (exactFloor ? 0.01 : 1.5) && Math.abs(top - topZ) <= FLOOR_TRUST && (k === 0 || top >= -0.5)) topZ = k === 0 ? top : Math.max(0, top);
     }
 
     const min: Vec = [cx - size[0] / 2, cy - size[1] / 2, topZ - size[2]];

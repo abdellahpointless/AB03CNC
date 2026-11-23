@@ -162,6 +162,22 @@ describe('setups', () => {
     setups.forEach((s, i) => expect(s.floorZ! + g52z[i]).toBeCloseTo(-57, 5));
   });
 
+  it("stands a later clamping of CAM AI's own program where its G52 and parallels put it, even 1 mm from the facing guess", () => {
+    // The study (docs/knowledge/cam-part-study.md, E2): the facing guess stood a part 1.04 mm too high in a later
+    // clamping, so the 3D view showed every floor there 1 mm too deep. An engineers' G52 keeps 1.5 mm of tolerance.
+    const two = (mark: boolean) =>
+      program(10)
+        .replace('O1061213 ', mark ? 'O1061213\n(3D-MODELL)\n' : 'O1061213\n')
+        .replace('G52 X-23. Y28. Z10.', 'G52 X-23. Y28. Z11.')
+        .replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (38 MM UNTERLAGE)')
+        .replace('G52 X-25.5 Y30. Z-4.', 'G52 X-25.5 Y30. Z-3.');
+    const top = (mark: boolean) => analyseProgram(parseToolpath(two(mark), S), { jawHeight: 45 }).setups[1].stock!.max[2];
+    // Clamping 1 as the planner writes it (floor G54 Z-57 - 11, 38 mm parallels, 30 mm of stock: its top at Z0).
+    // Clamping 2: floor Z-57 + 3, the same parallels and stock: its top at 14, not the guess's 15.
+    expect(top(true)).toBeCloseTo(14, 5);
+    expect(top(false)).toBeCloseTo(15, 5);
+  });
+
   it('reads where the part rests on the parallels (EP)', () => {
     expect(readInstructions(['38 MM UNTERLAGE SUR EP 8 MM']).restDepth).toBe(8);
     expect(readInstructions(['38 MM UNTERLAGE IN EPAISEUR 20']).restDepth).toBe(20);
