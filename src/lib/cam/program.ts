@@ -71,6 +71,8 @@ export interface CamInput {
   finish?: number[];
   /** Who makes it (the signed-in admin), written as the programmer ("BEARBEITER"), as the shop's programs do. */
   author?: string;
+  /** A top plate's white face (the operator's pick, a side name): never faced; the blank flush with it, all its stock on the other side. */
+  white?: string;
   /** What is being done, as it is done: for the page's live console and 3D paths. */
   live?: (e: LiveEvent) => void;
 }
@@ -1286,6 +1288,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const top0 = Math.max(0, Math.min(2, (raw[thin] - size[thin]) / 2));
   if (!input.centred && SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
   else if (!input.centred) [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
+  // A top plate's white face (shop rule): the blank flush with it, so nothing faces it; the stock on the other side.
+  const white = SIDES.find((x) => x.name === input.white);
+  if (white) {
+    const k = white.d.findIndex((v) => v !== 0);
+    [rawLo[k], rawHi[k]] = white.d[k] > 0 ? [size[k] / 2 - raw[k], size[k] / 2] : [-size[k] / 2, -size[k] / 2 + raw[k]];
+  }
   const { occ, reach, cell, grid } = reachable(tris, rawLo, rawHi);
   const covered = new Uint8Array(occ.length);
   const chosen: number[] = [];

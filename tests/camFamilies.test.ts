@@ -48,6 +48,23 @@ describe('part families', () => {
     expect(none.check.match).toBeGreaterThanOrEqual(0.99);
   }, 900_000);
 
+  it('a top plate\'s white face (the operator\'s pick) is never faced: all the Z stock comes off the other side', () => {
+    // 40 x 30 x 10 with a 20 x 12 pocket 6 deep, a blank 7 mm thicker.
+    const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 4 : 10))));
+    for (const white of ['Z+', 'Z-']) {
+      const r = camProgram({ tris: plate, material: 'FH', tools: [], brand: 'HAAS', raw: [44, 34, 17], partType: 'topPlate', noNest: true, white });
+      // The blank flush with the white face, all 7 mm on the other side.
+      if (white === 'Z+') expect(r.blank.hi[2]).toBeCloseTo(5, 5);
+      else expect(r.blank.lo[2]).toBeCloseTo(-5, 5);
+      const up = r.setups.find((s) => s.side === white)!;
+      expect(up, white).toBeTruthy();
+      expect(up.ops.map((o) => o.kind)).not.toContain('face');
+      expect(r.setups.find((s) => s.side === (white === 'Z+' ? 'Z-' : 'Z+'))!.ops.map((o) => o.kind)).toContain('face');
+      expect(r.check).toMatchObject({ collisions: 0, holders: 0, rapids: 0 });
+      expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    }
+  }, 900_000);
+
   it('a seal cage: its 2 mm walls finished gently (half depth, slower feed, faster spindle)', () => {
     // 40 x 40 x 15, a 36 x 36 pocket 12 deep: 2 mm walls.
     const cage = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 2 && i < 38 && j >= 2 && j < 38 ? 3 : 15))));
