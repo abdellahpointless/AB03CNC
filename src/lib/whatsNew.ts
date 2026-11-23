@@ -17,6 +17,27 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-23-cam-rules',
+    date: '2026-11-23',
+    feature: 'camAi',
+    en: {
+      title: 'CAM AI: held like the shop holds it, finishing where you pick',
+      items: [
+        'Finishing passes only on the walls you pick on the 3D model (Walls to finish); every other wall is roughed to size. A seal cage’s thin walls are always finished.',
+        'The vise holds the part by its long faces, and later clampings grip as deep as their own cuts allow, on shorter parallels.',
+        'Tools may go up to 1 mm into a parallel, never at rapid. Through holes between the parallels are drilled out; one over a parallel that cannot be finished from the other side is listed for you.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: atölyenin bağladığı gibi bağlama, son paso seçtiğiniz yerde',
+      items: [
+        'Son paso yalnızca 3B modelde seçtiğiniz duvarlara yapılır (Son paso yapılacak duvarlar); diğer tüm duvarlar kaba işlemede ölçüsüne alınır. Sızdırmazlık kafesinin ince duvarlarına her zaman son paso yapılır.',
+        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa kalelerle tutar.',
+        'Takımlar bir kaleye en fazla 1 mm girebilir, hızlı harekette hiç giremez. Kaleler arasındaki boydan boya delikler tamamen delinir; bir kalenin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
+      ],
+    },
+  },
+  {
     id: '2026-11-23-look',
     date: '2026-11-23',
     en: {
