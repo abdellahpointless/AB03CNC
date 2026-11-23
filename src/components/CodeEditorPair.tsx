@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { CopyIcon as Copy, CheckIcon as Check, UploadIcon as Upload, DownloadIcon as Download, SparkleIcon as Sparkles, CheckCircleIcon as CheckCircle2, ArrowsLeftRightIcon as ArrowLeftRight, WarningIcon as AlertTriangle, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, ShieldWarningIcon as ShieldAlert, XCircleIcon as XCircle, XIcon as X, RulerIcon as Ruler, ArrowClockwiseIcon as RotateCw, GaugeIcon as Gauge, CrosshairIcon as Crosshair, ArrowsVerticalIcon as MoveVertical, FlagIcon as Flag, PathIcon as Route, CaretDownIcon as ChevronDown, LockIcon as Lock, CubeIcon as Box, HardDriveIcon as HardDrive } from '@phosphor-icons/react';
+import { IconCopy as Copy, IconCheck as Check, IconUpload as Upload, IconDownload as Download, IconSparkles as Sparkles, IconCircleCheck as CheckCircle2, IconArrowsLeftRight as ArrowLeftRight, IconAlertTriangle as AlertTriangle, IconRefresh as RefreshCw, IconShieldCheck as ShieldCheck, IconShieldExclamation as ShieldAlert, IconCircleX as XCircle, IconX as X, IconRuler as Ruler, IconRotateClockwise as RotateCw, IconGauge as Gauge, IconCrosshair as Crosshair, IconArrowsVertical as MoveVertical, IconFlag as Flag, IconRoute as Route, IconChevronDown as ChevronDown, IconLock as Lock, IconBox as Box, IconServer2 as HardDrive } from '@tabler/icons-react';
 import { type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -177,7 +177,7 @@ function SafetyPanel({
             >
               <Icon size={11} />
               {code}
-              <Mark size={10} weight="bold" />
+              <Mark size={10} className="icon-bold" />
             </button>
           );
         })}

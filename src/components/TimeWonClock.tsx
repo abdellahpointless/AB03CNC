@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { formatTimeWon, DEFAULT_SAVED_SECONDS_PER_EXTRACTION } from '../lib/extractionAnalytics';
 import { useSync } from '../contexts/SyncContext';
-import { ClockIcon as Clock, SparkleIcon as Sparkles } from '@phosphor-icons/react';
+import { IconClock as Clock, IconSparkles as Sparkles } from '@tabler/icons-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { iosMenu } from '../lib/motion';
 import { Trans } from 'react-i18next';

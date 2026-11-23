@@ -124,6 +124,18 @@ html, body {
   overflow-x: hidden;
 }
 
+
+/* Icons (Tabler, outline): one fine line weight across the app; heavier at 14 px and under, where 1.5 reads faint. */
+svg.tabler-icon {
+  stroke-width: 1.5;
+}
+svg.tabler-icon:is([width='10'], [width='11'], [width='12'], [width='13'], [width='14']) {
+  stroke-width: 1.9;
+}
+svg.tabler-icon.icon-bold {
+  stroke-width: 2.6;
+}
+
 body {
   background: 
     radial-gradient(ellipse 90% 40% at 50% -5%, rgba(59, 111, 212, 0.07), transparent 60%),

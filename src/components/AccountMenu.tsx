@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CaretDownIcon as ChevronDown, KeyIcon as KeyRound, SignOutIcon as LogOut, MonitorIcon as Monitor, MoonIcon as Moon, ArrowsClockwiseIcon as RefreshCw, SunIcon as Sun } from '@phosphor-icons/react';
+import { IconChevronDown as ChevronDown, IconKey as KeyRound, IconLogout as LogOut, IconDeviceDesktop as Monitor, IconMoon as Moon, IconRefresh as RefreshCw, IconSun as Sun } from '@tabler/icons-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, type ThemeMode } from '../hooks/useTheme';
 import { iosMenu } from '../lib/motion';

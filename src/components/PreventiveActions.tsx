@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { PulseIcon as Activity, WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, FlagIcon as Flag, LockIcon as Lock, ClockCounterClockwiseIcon as HistoryIcon, MonitorIcon as Monitor, ProhibitIcon as OctagonX, PencilSimpleIcon as Pencil, PlusIcon as Plus, QrCodeIcon as QrCode, ArrowsClockwiseIcon as RefreshCw, TrashIcon as Trash2, UsersIcon as Users, WrenchIcon as Wrench, XIcon as X } from '@phosphor-icons/react';
+import { IconActivity as Activity, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconFlag as Flag, IconLock as Lock, IconHistory as HistoryIcon, IconDeviceDesktop as Monitor, IconBan as OctagonX, IconPencil as Pencil, IconPlus as Plus, IconQrcode as QrCode, IconRefresh as RefreshCw, IconTrash as Trash2, IconUsers as Users, IconTool as Wrench, IconX as X } from '@tabler/icons-react';
 import StatusBoard from './StatusBoard';
 import MachineQrSheet from './MachineQrSheet';
 import CalesBox from './CalesBox';

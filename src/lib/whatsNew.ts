@@ -17,6 +17,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-24-icons',
+    date: '2026-11-24',
+    en: {
+      title: 'Cleaner icons',
+      items: ['A new set of icons across the whole app: one fine outline style, sharper on the shop screens and in print.'],
+    },
+    tr: {
+      title: 'Daha sade simgeler',
+      items: ['Uygulamanın tamamında yeni simgeler: tek, ince çizgili bir stil; atölye ekranlarında ve baskıda daha net.'],
+    },
+  },
+  {
     id: '2026-11-23-look',
     date: '2026-11-23',
     en: {

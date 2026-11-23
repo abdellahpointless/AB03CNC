@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { WarningIcon as AlertTriangle, CubeIcon as Box, CheckIcon as Check, CheckCircleIcon as CheckCircle2, CircleIcon as Circle, CpuIcon as Cpu, DownloadIcon as Download, FileCodeIcon as FileCode2, FilePlusIcon as FilePlus2, CircleNotchIcon as Loader2, LockIcon as Lock, CursorClickIcon as MousePointerClick, PackageIcon as Package, PencilSimpleIcon as Pencil, PlayIcon as Play, ArrowsClockwiseIcon as RefreshCw, PathIcon as Route, PaperPlaneTiltIcon as Send, GearSixIcon as Settings2, SquareIcon as Square, UploadIcon as Upload } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';

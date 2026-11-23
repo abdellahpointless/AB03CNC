@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { WarningIcon as AlertTriangle, ClipboardTextIcon as ClipboardX, FileXlsIcon as FileSpreadsheet, ProhibitIcon as OctagonX, XSquareIcon as PackageX, ArrowsClockwiseIcon as RefreshCw, ShieldWarningIcon as ShieldAlert, TrophyIcon as Trophy } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconClipboardX as ClipboardX, IconFileSpreadsheet as FileSpreadsheet, IconBan as OctagonX, IconSquareX as PackageX, IconRefresh as RefreshCw, IconShieldExclamation as ShieldAlert, IconTrophy as Trophy } from '@tabler/icons-react';
 import { useSync } from '../contexts/SyncContext';
 import { fetchMachinesReport, toFleet, type MachinesReport } from '../lib/fleet';
 import { payPeriod, periodMs } from '../lib/partsApi';

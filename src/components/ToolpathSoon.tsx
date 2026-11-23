@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'motion/react';
-import { LockIcon as Lock, XIcon as X } from '@phosphor-icons/react';
+import { IconLock as Lock, IconX as X } from '@tabler/icons-react';
 import { useT } from '../i18n';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 

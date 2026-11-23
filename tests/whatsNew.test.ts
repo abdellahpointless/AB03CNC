@@ -9,7 +9,7 @@ describe("what's new", () => {
     const tr = releasesFor('tr', regionById('tr')!.features).map((r) => r.id);
     expect(ma).toEqual(RELEASES.map((r) => r.id));
     // Türkiye: no toolpath (locked), no HAAS-2/4 rule, no preventive or cales entries.
-    expect(tr).toEqual(['2026-11-23-look', '2026-11-02-news']);
+    expect(tr).toEqual(['2026-11-24-icons', '2026-11-23-look', '2026-11-02-news']);
     // Once a master admin unlocks the toolpath for Türkiye, its entry shows there too.
     expect(releasesFor('tr', { ...regionById('tr')!.features, toolpath: true }).map((r) => r.id)).toContain('2026-11-02-toolpath');
     // The private part's news is not in the shared list; it shows only with its flag (the server sets it for its people).

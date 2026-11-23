@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ChartBarIcon as BarChart3, ClockIcon as Clock, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
+import { IconChartBar as BarChart3, IconClock as Clock, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useSync } from '../contexts/SyncContext';
 import { fetchAdminProduction, type OperatorProduction, type PartsPeriod } from '../lib/partsApi';
 import { useT } from '../i18n';

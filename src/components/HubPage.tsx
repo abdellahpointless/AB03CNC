@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRightIcon as ArrowRight, LockIcon as Lock } from '@phosphor-icons/react';
+import { IconArrowRight as ArrowRight, IconLock as Lock } from '@tabler/icons-react';
 import i18n from '../i18n';
 import { REGIONS, UPCOMING_COUNTRIES, type RegionInfo } from '../regions';
 import { countryPath, lastCountry, rememberCountry } from '../lib/instance';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, FactoryIcon as Factory, PencilSimpleIcon as Pencil, PlusIcon as Plus, TrashIcon as Trash2, XIcon as X } from '@phosphor-icons/react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconBuildingFactory2 as Factory, IconPencil as Pencil, IconPlus as Plus, IconTrash as Trash2, IconX as X } from '@tabler/icons-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { api, errorMessage } from '../lib/api';
 import { useSync } from '../contexts/SyncContext';

@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowLineDownIcon as ArrowDownToLine, PauseIcon as Pause, PlayIcon as Play, PathIcon as Route, SkipBackIcon as SkipBack, SkipForwardIcon as SkipForward, TimerIcon as Timer, WrenchIcon as Wrench, XIcon as X, ArrowsOutIcon as Maximize2, ShieldCheckIcon as ShieldCheck, ShieldWarningIcon as ShieldAlert, CubeIcon as Box, ArrowClockwiseIcon as RotateCw, StackIcon as Layers, InfoIcon as Info, FlameIcon as Flame, RulerIcon as Ruler, ScissorsIcon as Scissors, PenNibIcon as PenLine, EyeIcon as Eye, UploadIcon as Upload, SlidersHorizontalIcon as SlidersHorizontal, SidebarSimpleIcon as PanelRight } from '@phosphor-icons/react';
+import { IconArrowBarToDown as ArrowDownToLine, IconPlayerPause as Pause, IconPlayerPlay as Play, IconRoute as Route, IconPlayerSkipBack as SkipBack, IconPlayerSkipForward as SkipForward, IconStopwatch as Timer, IconTool as Wrench, IconX as X, IconMaximize as Maximize2, IconShieldCheck as ShieldCheck, IconShieldExclamation as ShieldAlert, IconBox as Box, IconRotateClockwise as RotateCw, IconStack2 as Layers, IconInfoCircle as Info, IconFlame as Flame, IconRuler as Ruler, IconScissors as Scissors, IconWriting as PenLine, IconEye as Eye, IconUpload as Upload, IconAdjustmentsHorizontal as SlidersHorizontal, IconLayoutSidebarRight as PanelRight } from '@tabler/icons-react';
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';

@@ -1,7 +1,7 @@
 import '../i18n/appLocales';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { PulseIcon as Activity, WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, CrownIcon as Crown, FactoryIcon as Factory, KeyIcon as KeyRound, SignOutIcon as LogOut, PackageIcon as Package, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, TimerIcon as Timer, UserPlusIcon as UserPlus, UsersIcon as Users, XIcon as X } from '@phosphor-icons/react';
+import { IconActivity as Activity, IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconCrown as Crown, IconBuildingFactory2 as Factory, IconKey as KeyRound, IconLogout as LogOut, IconPackage as Package, IconRefresh as RefreshCw, IconShieldCheck as ShieldCheck, IconStopwatch as Timer, IconUserPlus as UserPlus, IconUsers as Users, IconX as X } from '@tabler/icons-react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage } from '../lib/api';

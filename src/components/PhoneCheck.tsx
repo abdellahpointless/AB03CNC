@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, CaretDownIcon as ChevronDown, LockIcon as Lock, SignOutIcon as LogOut, ProhibitIcon as OctagonX, SquaresFourIcon as LayoutGrid, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconChevronDown as ChevronDown, IconLock as Lock, IconLogout as LogOut, IconBan as OctagonX, IconLayoutGrid as LayoutGrid, IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import {

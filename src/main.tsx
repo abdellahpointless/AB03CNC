@@ -1,7 +1,7 @@
 import { Component, StrictMode, Suspense, lazy, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
-import { IconContext } from '@phosphor-icons/react';
+
 import i18n from './i18n';
 import { installPressFeedback } from './lib/pressFeedback';
 import { INSTANCE, countryPath, homeCountry, rememberCountry, wantsCountryPicker } from './lib/instance';
@@ -88,13 +88,10 @@ if (!redirecting) createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Honour Windows "show animations" / reduced motion: Motion keeps fades, drops movement. */}
     <MotionConfig reducedMotion="user">
-      {/* One icon look across the app: Phosphor, duotone (outline with a soft fill). */}
-      <IconContext.Provider value={{ weight: 'duotone' }}>
-        <Suspense fallback={null}>
-          <Root />
-        </Suspense>
-        <UpdateBanner />
-      </IconContext.Provider>
+      <Suspense fallback={null}>
+        <Root />
+      </Suspense>
+      <UpdateBanner />
     </MotionConfig>
   </StrictMode>,
 );

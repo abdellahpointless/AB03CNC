@@ -11,7 +11,7 @@ import { api } from '../lib/api';
 
 /** A program comment as shown to the operator (in English where the country reads no French). */
 const shownComment = (text: string) => (currentRegion().gcodeComments === 'en' ? translateCommentText(text) : text);
-import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle, PlusIcon as Plus, WarningCircleIcon as AlertCircle, TrashIcon as Trash2, ClockIcon as Clock, SparkleIcon as Sparkles, DatabaseIcon as Database, ArrowUpRightIcon as ArrowUpRight, WrenchIcon as Wrench, ClockCounterClockwiseIcon as History } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle, IconPlus as Plus, IconAlertCircle as AlertCircle, IconTrash as Trash2, IconClock as Clock, IconSparkles as Sparkles, IconDatabase as Database, IconArrowUpRight as ArrowUpRight, IconTool as Wrench, IconHistory as History } from '@tabler/icons-react';
 import { GlassSelect } from './GlassSelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, SPRING_TOAST, iosBackdrop, iosSurface } from '../lib/motion';

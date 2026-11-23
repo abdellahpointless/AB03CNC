@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
-import { UserIcon as User, ChartBarIcon as BarChart3, SlidersIcon as Sliders, UsersIcon as Users, MedalIcon as Award, ChartPieIcon as PieIcon, SparkleIcon as Sparkles, WrenchIcon as Wrench, CheckCircleIcon as CheckCircle2, InfoIcon as Info } from '@phosphor-icons/react';
+import { IconUser as User, IconChartBar as BarChart3, IconAdjustments as Sliders, IconUsers as Users, IconAward as Award, IconChartPie as PieIcon, IconSparkles as Sparkles, IconTool as Wrench, IconCircleCheck as CheckCircle2, IconInfoCircle as Info } from '@tabler/icons-react';
 
 
 const BAR_COLORS = [

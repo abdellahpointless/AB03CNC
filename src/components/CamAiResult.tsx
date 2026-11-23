@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
-import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, DownloadIcon as Download, RepeatIcon as Repeat, ArrowCounterClockwiseIcon as RotateCcw, TrashIcon as Trash2 } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { fmtNumber as fmt } from '../i18n/format';
 import { downloadBlob } from '../lib/download';

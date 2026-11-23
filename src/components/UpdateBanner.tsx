@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
+import { IconRefresh as RefreshCw } from '@tabler/icons-react';
 import { useT } from '../i18n';
 
 /** How often an open page asks whether a newer version was deployed (and each time it is shown again). */

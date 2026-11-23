@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircleIcon as CheckCircle2, CopyIcon as Copy, DownloadIcon as Download, SquareIcon as Square, WarningIcon as AlertTriangle, SparkleIcon as Sparkles } from '@phosphor-icons/react';
+import { IconCircleCheck as CheckCircle2, IconCopy as Copy, IconDownload as Download, IconSquare as Square, IconAlertTriangle as AlertTriangle, IconSparkles as Sparkles } from '@tabler/icons-react';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import type { Mat3 } from '../lib/orient';
 import type { SearchProgress, TurnFix, TurnSearch } from '../lib/fixTurns';

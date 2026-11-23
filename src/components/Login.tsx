@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LockIcon as Lock, UserIcon as UserIcon, ArrowRightIcon as ArrowRight, DeviceMobileIcon as Smartphone, CrownIcon as Crown, GlobeIcon as Globe2 } from '@phosphor-icons/react';
+import { IconLock as Lock, IconUser as UserIcon, IconArrowRight as ArrowRight, IconDeviceMobile as Smartphone, IconCrown as Crown, IconWorld as Globe2 } from '@tabler/icons-react';
 import { Flag } from './Flag';
 import { CHOOSE_COUNTRY_PATH, INSTANCE } from '../lib/instance';
 import { scannedMachine } from '../lib/phoneCheck';
-import { QrCodeIcon as QrCode } from '@phosphor-icons/react';
+import { IconQrcode as QrCode } from '@tabler/icons-react';
 import { motion, useAnimate } from 'motion/react';
 import { useT } from '../i18n';
 

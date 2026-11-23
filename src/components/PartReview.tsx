@@ -14,7 +14,7 @@ import PartProduction from './PartProduction';
 import PeriodPicker from './PeriodPicker';
 import { useT } from '../i18n';
 import { fmtDateTime, locale } from '../i18n/format';
-import { ListChecksIcon as ClipboardCheck, CheckIcon as Check, XIcon as X, ArrowsClockwiseIcon as RefreshCw, FileXlsIcon as FileSpreadsheet, ChecksIcon as CheckCheck, CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight, UserIcon as User, WarningCircleIcon as AlertCircle } from '@phosphor-icons/react';
+import { IconClipboardCheck as ClipboardCheck, IconCheck as Check, IconX as X, IconRefresh as RefreshCw, IconFileSpreadsheet as FileSpreadsheet, IconChecks as CheckCheck, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconUser as User, IconAlertCircle as AlertCircle } from '@tabler/icons-react';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
 function fmtValue(n: number): string {

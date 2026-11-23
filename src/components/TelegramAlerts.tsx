@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
-import { BellRingingIcon as BellRing, CopyIcon as Copy, ArrowSquareOutIcon as ExternalLink, ChatCircleIcon as MessageCircle, PhoneIcon as Phone, PhoneCallIcon as PhoneCall, ArrowsClockwiseIcon as RefreshCw, PaperPlaneTiltIcon as Send, TrashIcon as Trash2, LinkBreakIcon as Unlink, BellSlashIcon as BellOff, UserPlusIcon as UserPlus, UsersIcon as Users } from '@phosphor-icons/react';
+import { IconBellRinging as BellRing, IconCopy as Copy, IconExternalLink as ExternalLink, IconMessageCircle as MessageCircle, IconPhone as Phone, IconPhoneCall as PhoneCall, IconRefresh as RefreshCw, IconSend as Send, IconTrash as Trash2, IconUnlink as Unlink, IconBellOff as BellOff, IconUserPlus as UserPlus, IconUsers as Users } from '@tabler/icons-react';
 import { api, errorMessage } from '../lib/api';
 import i18n, { useT } from '../i18n';
 

@@ -14,7 +14,7 @@ import {
 import { exportUserPartEntriesExcel } from '../lib/partExportExcel';
 import { useT } from '../i18n';
 import { fmtDateTime, fmtNumber, locale } from '../i18n/format';
-import { PlusSquareIcon as PackagePlus, CalendarIcon as Calendar, StackIcon as Layers, CaretDownIcon as ChevronDown, CaretUpIcon as ChevronUp, DownloadIcon as Download, ArrowsClockwiseIcon as RefreshCw, CheckCircleIcon as CheckCircle2, WarningCircleIcon as AlertCircle, FileXlsIcon as FileSpreadsheet } from '@phosphor-icons/react';
+import { IconSquarePlus as PackagePlus, IconCalendar as Calendar, IconStack2 as Layers, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconDownload as Download, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconFileSpreadsheet as FileSpreadsheet } from '@tabler/icons-react';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
 function fmtValue(n: number, useGrouping = true): string {

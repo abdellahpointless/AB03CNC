@@ -1,5 +1,5 @@
 import { DropdownMenu } from 'radix-ui';
-import { CheckIcon as Check, CaretDownIcon as ChevronDown } from '@phosphor-icons/react';
+import { IconCheck as Check, IconChevronDown as ChevronDown } from '@tabler/icons-react';
 
 export interface GlassOption {
   value: string;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CrownIcon as Crown, ArrowSquareOutIcon as ExternalLink } from '@phosphor-icons/react';
+import { IconCrown as Crown, IconExternalLink as ExternalLink } from '@tabler/icons-react';
 import { api, errorMessage } from '../lib/api';
 import { useT } from '../i18n';
 import { MASTER_PATH } from '../lib/instance';

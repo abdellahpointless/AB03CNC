@@ -1,4 +1,4 @@
-import { CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight } from '@phosphor-icons/react';
+import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight } from '@tabler/icons-react';
 import { shiftPeriod, type PartsPeriod } from '../lib/partsApi';
 import { useT } from '../i18n';
 

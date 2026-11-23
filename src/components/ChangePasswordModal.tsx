@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckIcon as Check, CopyIcon as Copy, DownloadIcon as Download, EyeIcon as Eye, EyeSlashIcon as EyeOff, KeyIcon as KeyRound, ShieldCheckIcon as ShieldCheck, ShieldSlashIcon as ShieldOff, DeviceMobileIcon as Smartphone, XIcon as X } from '@phosphor-icons/react';
+import { IconCheck as Check, IconCopy as Copy, IconDownload as Download, IconEye as Eye, IconEyeOff as EyeOff, IconKey as KeyRound, IconShieldCheck as ShieldCheck, IconShieldOff as ShieldOff, IconDeviceMobile as Smartphone, IconX as X } from '@tabler/icons-react';
 import qrcode from 'qrcode-generator';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';

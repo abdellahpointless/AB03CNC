@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, DownloadIcon as Download, FileXlsIcon as FileSpreadsheet, UploadIcon as Upload, XIcon as X } from '@phosphor-icons/react';
+import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconDownload as Download, IconFileSpreadsheet as FileSpreadsheet, IconUpload as Upload, IconX as X } from '@tabler/icons-react';
 import { motion } from 'motion/react';
 import { api, errorMessage } from '../lib/api';
 import { iosBackdrop, iosSurface } from '../lib/motion';

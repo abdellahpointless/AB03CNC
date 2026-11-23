@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CloudIcon as Cloud, CloudSlashIcon as CloudOff, ArrowsClockwiseIcon as RefreshCw, CloudArrowUpIcon as UploadCloud } from '@phosphor-icons/react';
+import { IconCloud as Cloud, IconCloudOff as CloudOff, IconRefresh as RefreshCw, IconCloudUpload as UploadCloud } from '@tabler/icons-react';
 import { useSync } from '../contexts/SyncContext';
 import { AnimatePresence, motion } from 'motion/react';
 import { iosMenu } from '../lib/motion';
