@@ -1635,8 +1635,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     for (const h of holes) {
       const k = keyOf(h);
       // A blind hole CAD draws with a drill point (its middle open under where the wall ends, no smaller hole on
-      // from there): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
-      const pointed = !h.through && !holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05) && inside(slice(P, h.bottom - 0.3 * h.r), h.c) === 0;
+      // from there, and solid 0.75 r off its middle at that height, under a point's cone: not a cross hole or a
+      // cavity): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
+      const under = h.through ? [] : slice(P, h.bottom - 0.3 * h.r);
+      const pointed =
+        !h.through &&
+        !holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05) &&
+        inside(under, h.c) === 0 &&
+        [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [h.c[0] + 0.75 * h.r * dx, h.c[1] + 0.75 * h.r * dy]) !== 0);
       const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
       const lip = drilled.get(k);
       if (lip !== undefined) {
