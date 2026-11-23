@@ -162,7 +162,9 @@ for (const folder of readdirSync(LIB).sort()) {
       const named = text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
       const t0 = Date.now();
       try {
-        const r = camProgram({ tris, material, tools: TOOLS, brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
+        // CAM_FINISH=all: every wall picked to finish (each clamping finishes the triangles that stand as walls in it).
+        const finish = process.env.CAM_FINISH === 'all' ? Array.from({ length: tris.length / 9 }, (_, k) => k) : undefined;
+        const r = camProgram({ tris, material, tools: TOOLS, brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined, finish });
         row.result = 'made';
         row.seconds = Math.round((Date.now() - t0) / 1000);
         row.check = {
@@ -191,6 +193,7 @@ for (const folder of readdirSync(LIB).sort()) {
         row.short = r.short;
         row.centred = r.centred;
         if (MACHINE) row.machine = MACHINE;
+        if (finish) row.finish = 'all';
         row.cam = summary(r.code);
         if (process.env.CAM_FINE) row.fine = fine(r.code, Number(process.env.CAM_FINE));
         // CAM_CODE_DIR=<folder>: also keep the program itself, named by the id (for studying its moves).
