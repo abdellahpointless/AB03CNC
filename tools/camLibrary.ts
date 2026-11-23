@@ -13,6 +13,7 @@ import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } fr
 import { join } from 'node:path';
 import { blankAlong, readProgram } from '../src/lib/cam/learn';
 import { partTypeOf } from '../src/lib/cam/partType';
+import { area } from '../src/lib/cam/geom';
 import { camProgram } from '../src/lib/cam/program';
 import { CAM_MATERIALS, type CamMaterial } from '../src/lib/cam/tools';
 import { defaultToolbox } from '../src/lib/defaultTools';
@@ -179,6 +180,8 @@ for (const folder of readdirSync(LIB).sort()) {
           // The vise check (physics.ts): every clamping holds the part safely; else the app locks the program.
           vise: r.setups.every((s) => s.physics.ok),
         };
+        // The inside corners left at a mill's radius on purpose (the check does not count them), mm³.
+        row.cornersMm3 = Math.round((r.corners ?? []).reduce((v, c) => v + area(c.region) * (c.above - c.z), 0));
         // What CAM AI tells the operator it did not do (camAi.note.*), by key.
         row.notes = r.notes.map((n) => n.key);
         // Clampings in the POM nest: how far its top (walls, set screws under it) stays under the face the face
