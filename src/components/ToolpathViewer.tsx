@@ -921,7 +921,7 @@ export default function ToolpathViewer({
                       <input
                         ref={modelInput}
                         type="file"
-                        accept=".pdf,.stl"
+                        accept=".pdf,.stl,.step,.stp"
                         hidden
                         aria-label={t('toolpath.model.import')}
                         onChange={(e) => {

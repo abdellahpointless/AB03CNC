@@ -661,7 +661,7 @@ export default function CodeEditorPair({
                   <input
                     type="file"
                     ref={modelInputRef}
-                    accept=".pdf,.stl"
+                    accept=".pdf,.stl,.step,.stp"
                     hidden
                     aria-label={t('toolpath.model.add')}
                     onChange={(e) => {

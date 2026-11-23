@@ -192,6 +192,8 @@ export function privateChunks(): Plugin {
           }
         } else if (/worker/i.test(file.fileName) && file.fileName.endsWith('.js') && isPublic) {
           this.error(`Web worker ${file.fileName} would be public.`);
+        } else if (file.fileName.endsWith('.wasm') && isPublic) {
+          this.error(`WebAssembly ${file.fileName} would be public.`);
         }
       }
     },

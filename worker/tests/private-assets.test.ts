@@ -18,6 +18,7 @@ const ASSETS = {
   fetch: async (input: RequestInfo) => {
     const path = new URL(typeof input === 'string' ? input : input.url).pathname;
     if (/^\/app\/[a-z]+\/real-[a-z]+\.js$/.test(path)) return new Response('export {}', { headers: { 'Content-Type': 'text/javascript' } });
+    if (/^\/app\/[a-z]+\/real-[a-z]+\.wasm$/.test(path)) return new Response(new Uint8Array([0, 97, 115, 109]), { headers: { 'Content-Type': 'application/wasm' } });
     return new Response('<!doctype html>', { headers: { 'Content-Type': 'text/html' } });
   },
 } as unknown as Fetcher;
@@ -82,6 +83,13 @@ describe('the app code is only for signed-in sessions', () => {
     expect(await get('/app/toolpath/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/cam/real-x.js', 'tok-ali')).toBe(403);
     expect(await get('/app/master/real-x.js', 'tok-ali')).toBe(403);
+  });
+
+  it('the STEP reader (WebAssembly) goes to CAM AI and toolpath users only', async () => {
+    expect(await get('/app/toolpath/real-x.wasm')).toBe(403);
+    expect(await get('/app/toolpath/real-x.wasm', 'tok-ali')).toBe(403);
+    expect(await get('/app/toolpath/real-x.wasm', 'tok-beta')).toBe(200);
+    expect(await get('/app/toolpath/real-x.wasm', 'tok-cam')).toBe(200);
   });
 
   it('the toolpath beta opens the viewer, CAM AI opens both, an admin opens all but the master files', async () => {

@@ -1,5 +1,9 @@
 import { carve, drilledHoles, mesher, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
 import { readTris } from './model';
+import { setStepWasm } from './step';
+// The STEP reader's WebAssembly, a private file like this worker.
+import stepWasm from 'occt-import-js/dist/occt-import-js.wasm?url';
+setStepWasm(stepWasm);
 import { differences, layModel, placeModel, type Placed } from './modelCompare';
 import type { ModelError } from './modelLimits';
 import { rewriteTurns, searchTurns } from './fixTurns';

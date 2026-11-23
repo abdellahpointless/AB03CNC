@@ -1,5 +1,6 @@
 import { PrcError, readPdfModel } from './prc';
 import { MODEL_MAX_BYTES, MODEL_MAX_TRIS, type ModelError } from './modelLimits';
+import { isStep, readStep } from './step';
 
 /** Triangles (9 numbers each, mm) of a binary or text STL. */
 export function readStl(buf: Uint8Array): Float32Array {
@@ -14,9 +15,10 @@ export function readStl(buf: Uint8Array): Float32Array {
   return Float32Array.from(v);
 }
 
-/** The part's model from a 3D PDF or an STL, by its first bytes. */
+/** The part's model from a 3D PDF, a STEP file or an STL, by its first bytes. */
 export function readModel(buf: Uint8Array): Promise<Float32Array> | Float32Array {
-  return String.fromCharCode(buf[0], buf[1], buf[2], buf[3], buf[4]) === '%PDF-' ? readPdfModel(buf) : readStl(buf);
+  if (String.fromCharCode(buf[0], buf[1], buf[2], buf[3], buf[4]) === '%PDF-') return readPdfModel(buf);
+  return isStep(buf) ? readStep(buf) : readStl(buf);
 }
 
 /** The model's triangles (mm), or why it cannot be used. */

@@ -32,6 +32,8 @@ export default defineConfig({
         // Web workers (CAM AI, the toolpath simulation) are private like the code that starts them.
         entryFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
         chunkFileNames: (chunk) => `${accessDir(workerAccess(chunk.name))}/[name]-[hash].js`,
+        // Their files (the STEP reader's WebAssembly): for everyone who may use CAM AI or the toolpath.
+        assetFileNames: `${accessDir('toolpath')}/[name]-[hash][extname]`,
       },
     },
   },

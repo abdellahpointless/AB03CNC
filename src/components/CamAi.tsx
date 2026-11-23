@@ -314,7 +314,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
   return (
     <div className="cam-ws glass-panel rounded-[var(--radius-lg)] w-full flex flex-col overflow-hidden h-[calc(100vh-12.5rem)] min-h-[640px]">
-      <input ref={fileRef} type="file" accept=".pdf,.stl" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
+      <input ref={fileRef} type="file" accept=".pdf,.stl,.step,.stp" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
 
       {/* Toolbar */}
       <header className="flex items-center gap-1 px-2 h-12 shrink-0 border-b border-[var(--border-subtle)]" role="toolbar" aria-label={t('camAi.ws.toolbar')}>
