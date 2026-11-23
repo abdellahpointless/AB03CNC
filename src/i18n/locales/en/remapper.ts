@@ -548,6 +548,8 @@ const remapper = {
       notSimulated: 'Side {{side}}: the setups before it could not be simulated',
       surface: 'Side {{side}}: {{mm2}} mm² of 3D surface left in steps (ball mill finishing comes later)',
       jawWall: 'Side {{side}}: where a pocket opens onto a face the vise holds, a wall under 0.1 mm thick stays across it, up to 0.5 mm above the jaw tops ({{mm3}} mm³; no tool may go there): to take off by hand',
+      holeShort_one: '{{count}} through hole ends over a parallel or the nest floor, so it does not come out at its full Ø at the bottom: drill it through by hand',
+      holeShort_other: '{{count}} through holes end over a parallel or the nest floor, so they do not come out at their full Ø at the bottom: drill them through by hand',
     },
     view: 'Open in the toolpath viewer',
     download: 'Download',

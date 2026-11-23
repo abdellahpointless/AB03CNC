@@ -551,6 +551,8 @@ export const turnMs = (prev: SetupInfo | null, next: SetupInfo | null): number =
 
 /** Width of the parallels drawn and checked under the held part (mm). */
 export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
+/** How deep a feed may go into a parallel (mm; shop rule): deeper, or a rapid at all, is a hit. */
+export const CALE_TOUCH = 1;
 
 type Box = { min: Vec; max: Vec };
 /** What the jaws and the stop really hold after a turn: the part's extent between the vise floor and the jaw tops, from its box's corner (X, Y). */
@@ -651,7 +653,8 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
 
 /**
  * Tools that go into a cale (a parallel) under the part: below its top, over its width, along the
- * length of the jaws, at feed or at rapid. One hit per run of moves of one tool, the deepest.
+ * length of the jaws, a feed more than CALE_TOUCH and a rapid at all (but straight up). One hit per run
+ * of moves of one tool, the deepest.
  */
 function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
   if (!s.cales?.length || !s.moves || !s.clampBox) return [];
@@ -663,12 +666,16 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
     const m = tp.moves[mi];
     if (m.setup !== s.index) continue;
     const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
+    // A rapid straight up (out of the hole the tool just made) only leaves the way it went in.
+    const [a, b] = [m.points[0], m.points[m.points.length - 1]];
+    const up = Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-6 && b[2] > a[2];
+    const allowed = m.kind === 'rapid' && !up ? 0.01 : CALE_TOUCH;
     let here: Collision | null = null;
     for (const p of samples(m)) {
       if (!inSpans(spans, p[0], r)) continue;
       for (const c of s.cales) {
         const depth = c.top - p[2];
-        if (depth > 0.01 && p[1] + r > c.y[0] && p[1] - r < c.y[1] && (!here || depth > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: p, depth, what: 'cale' };
+        if (depth > allowed && p[1] + r > c.y[0] && p[1] - r < c.y[1] && (!here || depth > here.depth)) here = { move: mi, line: m.line, tool: m.tool, point: p, depth, what: 'cale' };
       }
     }
     if (!here) continue;

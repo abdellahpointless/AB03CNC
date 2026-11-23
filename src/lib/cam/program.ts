@@ -5,7 +5,7 @@ import { differences, layModel, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram, OVERHANG, STOP_PLATE, stopHits, VISE, viseSpans } from '../setups';
+import { analyseProgram, OVERHANG, parallelWidth, STOP_PLATE, stopHits, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
@@ -964,8 +964,9 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     pieces: diff?.pieces ?? [],
     minutes: tp.totalSeconds / 60,
     toolChanges: tp.toolChanges,
-    // Unlike the remapper (a warning there), CAM AI's own program never goes into a parallel
-    // (shop rule): its through-cuts stop on them (overParallels); one still going in blocks it.
+    // Unlike the remapper (a warning there), CAM AI's own program goes no more than CALE_TOUCH into a
+    // parallel, never at rapid (shop rule): deeper through-cuts stop on them (overParallels); one still
+    // going in blocks it.
     collisions: hits.filter((h) => h.what !== 'spacer').length + holders + rapids + stops,
     holders,
     rapids,
@@ -1064,7 +1065,7 @@ function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck }
 }
 
 /**
- * Shop rule: no tool into a parallel. Every feed move over one (within the tool's radius, inside
+ * Shop rule: no tool more than CALE_TOUCH into a parallel. When one goes deeper, every feed move over one (within the tool's radius, inside
  * the vise) and below its top is raised to its top, the part's bottom resting there: a through-cut
  * stops there, not 0.2 below. A move that runs onto or off one is split at the edge, going up or
  * down beside it. Moves only ever go higher. A drilled hole over one keeps its depth (its point
@@ -1503,6 +1504,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
     };
     const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[] = [];
+    // The parallels stand under the held Y faces, 0.3 mm in, as wide as the app's reader puts them
+    // (setups.ts placeCales), where the underside lies flat on them; else the reader may move them in.
+    const caleW = parallelWidth(hold[1]);
+    const strips = [held.lo[1] + 0.3, held.hi[1] - 0.3 - caleW].map((y0) => rect(held.lo[0], y0, held.hi[0], y0 + caleW));
+    const flat = strips.every((st) => area(intersection(left.at(sb.lo[2], sb.lo[2] + 0.3), st)) >= 0.95 * area(st));
+    // A hole clear of both by half a mm: drilled out over the gap between them.
+    const betweenCales = (h: Hole) => flat && h.c[1] - h.r - 0.5 > held.lo[1] + 0.3 + caleW && h.c[1] + h.r + 0.5 < held.hi[1] - 0.3 - caleW;
     const keepHoles: Hole[] = [];
     for (const h of holes) {
       const k = keyOf(h);
@@ -1521,12 +1529,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       const d = drillFor(h, h.top - depth);
       if (d) {
-        // Through the part but not through the stock under it: the cales are there. What that
-        // leaves narrow at the far end is drilled from the other side.
+        // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
+        // one its point goes 0.8 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
+        // What that leaves narrow at the far end is drilled from the other side, else noted.
         let z = h.through ? h.bottom - (0.3 * d.diameter + 0.5) : h.bottom;
         let rest = 0;
         if (h.through && z < sb.lo[2] + 0.1) {
-          z = sb.lo[2] + 0.1;
+          if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.8));
           rest = Math.max(0, z + 0.3 * d.diameter - h.bottom);
         }
         toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005 });
@@ -1889,6 +1898,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The model as planned: centred, turned as setup 1, its top at Z0.
   const pose = setups.length ? { R: setups[0].R, t: [0, 1, 2].map((k) => apply(setups[0].R, c0)[k] + setups[0].t[k]) as Vec } : null;
   const short = [...drilled.values()].filter((rest) => rest > 0).length;
+  if (short) notes.push({ key: 'holeShort', count: short });
   return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi }, short, centred: !!input.centred };
 }
 

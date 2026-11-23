@@ -355,8 +355,9 @@ export interface Need {
 
 /** What CAM AI did not program (camAi.note.* on the page). */
 export interface CamNote {
-  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall';
+  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall' | 'holeShort';
   side?: string;
   mm3?: number;
   mm2?: number;
+  count?: number;
 }

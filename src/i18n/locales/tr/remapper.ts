@@ -538,6 +538,8 @@ const remapper: Translation<typeof en> = {
       notSimulated: '{{side}} yüzü: önceki bağlamalar simüle edilemedi',
       surface: '{{side}} yüzü: {{mm2}} mm² 3B yüzey basamaklı kaldı (küresel freze ile son işleme daha sonra gelecek)',
       jawWall: '{{side}} yüzü: mengenenin tuttuğu yüze açılan cebin önünde, çene üstlerinin 0,5 mm üstüne kadar 0,1 mm’den ince bir duvar kalıyor ({{mm3}} mm³; oraya takım giremez): elle alınacak',
+      holeShort_one: '{{count}} boydan boya delik bir kalenin veya nest tabanının üstünde bitiyor, bu yüzden altta tam çapında çıkmıyor: elle delip geçirin',
+      holeShort_other: '{{count}} boydan boya delik bir kalenin veya nest tabanının üstünde bitiyor, bu yüzden altta tam çaplarında çıkmıyor: elle delip geçirin',
     },
     view: 'Takım yolu görüntüleyicisinde aç',
     download: 'İndir',
