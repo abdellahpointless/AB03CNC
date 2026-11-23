@@ -71,6 +71,8 @@ With the engineers' blank, what limits each later grip (logged in the planner's 
   engineers cut the radius in clamping 1 (corner-rounding mill, 1 minute), which is what lets them grip 37.
 - On its end, CAM AI leaves stock beside the part that it then cuts from the end, 51 mm deep (Ø8, Ø3); the
   engineers never go deeper than 34 from that end.
+- The order alone is not the lever: forced to start from the engineers' face, CAM AI takes 40.0 to 54.2 minutes
+  and 15,545 to 16,134 lines (on 40, 38, 38 mm parallels), against 56.1 and 14,738 from its own order.
 
 ## Why each engineers' operation, in order
 
