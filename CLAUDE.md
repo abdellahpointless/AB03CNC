@@ -32,12 +32,15 @@ free plan.
 ## Security model (keep it)
 
 - Only the sign-in page is public (`dist/assets/`). All other code is built into
-  `dist/app/<access>/` (`user`, `admin`, `toolpath`, `cam`, `master`, `any`) by
+  `dist/app/<access>/` (`user`, `admin`, `toolpath`, `master`, `any`; CAM AI's in `p`, hash-only names) by
   `vite-private-chunks.ts`, and `worker/assets.ts` serves it only to sessions with that access.
+- CAM AI is for Morocco's admins (and the master dashboard) only; nobody else may learn it exists. Its words
+  live in `src/i18n/locales/*/cam.ts` (loaded by `src/i18n/camLocales.ts`), the browser gets the neutral
+  `features.lab` flag, and the build fails if any other file names it (`NAMES_IT`).
 - The build fails if a source file outside `PUBLIC_SOURCES` lands in a public file. When the
   sign-in page genuinely needs a new file, add it to that list; never move engine code there.
 - New lazy-loaded screens: add them to `ROOTS` in `vite-private-chunks.ts` with their access.
-- Role and per-user flags (`toolpathBeta`, `camAi`) are enforced on the server, not only in the UI.
+- Role, country and per-user flags (`toolpathBeta`) are enforced on the server, not only in the UI.
 - Free text written into G-code goes through `commentSafe` (a `)` would inject commands).
 
 ## Commands
