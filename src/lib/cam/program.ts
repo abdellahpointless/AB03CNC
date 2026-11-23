@@ -944,6 +944,22 @@ export function cheaper(p: { minutes: number; clampings: number }, q: { minutes:
   return p.clampings !== q.clampings && Math.abs(cp - cq) <= TIE_MIN ? p.clampings < q.clampings : cp < cq;
 }
 
+/** Samples of the finer last look at the tools' cuts into the part (the check's 300,000 see none under about 2 mm). */
+const FINE_VOXELS = 2_000_000;
+
+/**
+ * Where the tools take material the model keeps, on a grid about 7 times finer than the check's: a difference counts
+ * only 3 samples thick, so the check misses a cut under about 2 mm (the study's E1). Only cuts into the part: the
+ * inside corners left at a mill's radius (the shop's way) would read as material left on this grid.
+ */
+export function fineCuts(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): Piece[] {
+  const tp = parseToolpath(code, speeds ?? speedsFor(brand));
+  const sim = buildInput(tp, analyseProgram(tp, { jawHeight: JAW }));
+  if (!sim || !pose) return [];
+  const g = carve({ ...sim, maxVoxels: FINE_VOXELS, surfaceMoves: false });
+  return differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }).pieces.filter((p) => p.kind === 'cut');
+}
+
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const an = analyseProgram(tp, { jawHeight: JAW });
@@ -1219,6 +1235,8 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose);
       if (f.match >= check.match - 0.0005 && f.collisions <= check.collisions && f.rapids <= check.rapids && f.cales <= check.cales && f.misplaced <= check.misplaced && gougeOf(f) <= gougeOf(check)) [code, check] = [finer, f];
     }
+    // The program as it goes out, once more on the finer grid: its cuts into the part count as gouges too.
+    check = { ...check, pieces: [...check.pieces, ...fineCuts(input.tris, code, input.brand, input.speeds, r.pose)] };
     return { ...r, code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
   };
   if (input.noNest || !fails(kept).length) return shop(kept);

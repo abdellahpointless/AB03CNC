@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { camProgram, checkProgram, commentSafe, finerRapids } from '../src/lib/cam/program';
+import { camProgram, checkProgram, commentSafe, fineCuts, finerRapids, gougeOf } from '../src/lib/cam/program';
 import type { Tool } from '../src/types';
 import { heightPart, plateWithHoles, pocketWithHole } from './heightPart';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -46,6 +46,22 @@ describe('the safety double check', () => {
     const c = checkProgram(plate, planted, 'HAAS', undefined, r.pose);
     expect(c.holders).toBeGreaterThan(0);
     expect(c.collisions).toBeGreaterThan(0);
+  }, 300_000);
+
+  it('sees a cut 0.8 mm into the part that the check is too coarse to see (the study: E1)', () => {
+    // A groove 0.8 mm deep across the faced top, beside the pocket, by the first end mill. The check's grid (about
+    // 0.43 mm here) needs a difference 3 samples thick; the finer one's (about 0.23 mm) holds 3 in 0.8 mm.
+    const at = lines.findIndex((l) => /TOOLPATH FRAESEN/.test(l));
+    const start = lines.findIndex((l, i) => i > at && /G00 G90 X/.test(l));
+    // Back over its own start after the groove (the program goes on from there).
+    const back = `N9 G00 ${lines[start].match(/X-?[\d.]+ Y-?[\d.]+/)![0]}`;
+    const planted = [...lines.slice(0, start + 1), 'N9 G00 X-18. Y11.', 'N9 G00 Z1.', 'N9 G01 Z-.8 F200.', 'N9 G01 X18.', 'N9 G00 Z5.', back, ...lines.slice(start + 1)].join('\n');
+    expect(gougeOf(checkProgram(plate, planted, 'HAAS', undefined, r.pose))).toBeLessThan(5);
+    const fine = fineCuts(plate, planted, 'HAAS', undefined, r.pose);
+    expect(Math.max(0, ...fine.map((p) => p.mm3))).toBeGreaterThan(5);
+    // CAM AI's own program: nothing.
+    expect(fineCuts(plate, r.code, 'HAAS', undefined, r.pose)).toEqual([]);
+    expect(gougeOf(r.check)).toBeLessThan(5);
   }, 300_000);
 });
 
