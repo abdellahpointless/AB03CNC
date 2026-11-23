@@ -164,6 +164,10 @@ export interface CamResult {
   blank: { lo: Vec; hi: Vec };
   /** The POM nests the part needs (the last way to hold it), each with its own program. */
   nests?: { side: string; nest: Nest; code: string; check: CamCheck }[];
+  /** Through holes left closed at the far end: drilled short over the parallels, not finished from the other side. */
+  short: number;
+  /** Planned with the blank centred on the part (the fallback when none passes with it 2 mm over the part). */
+  centred: boolean;
 }
 
 const TABLE_Z = -57;
@@ -1883,7 +1887,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
   // The model as planned: centred, turned as setup 1, its top at Z0.
   const pose = setups.length ? { R: setups[0].R, t: [0, 1, 2].map((k) => apply(setups[0].R, c0)[k] + setups[0].t[k]) as Vec } : null;
-  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi } };
+  const short = [...drilled.values()].filter((rest) => rest > 0).length;
+  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi }, short, centred: !!input.centred };
 }
 
 /** The coolant word after the tool's first move: flood, air (HAAS 2 and 4 always get air when the program is sent), none. */

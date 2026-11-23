@@ -1,13 +1,13 @@
 /**
  * A reference program's part, planned by CAM AI as tools/camLibrary.ts plans it: the engineers' blank, its
- * sides matched to the model's by size, and the part's family from the header. Programs by id (P and the
+ * sides along the model's (blankAlong), and the part's family from the header. Programs by id (P and the
  * first 8 hex digits of the file's SHA-1), never by file name. The library: CNC_LIBRARY=<folder>.
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect } from 'vitest';
-import { readProgram } from '../../src/lib/cam/learn';
+import { blankAlong, readProgram } from '../../src/lib/cam/learn';
 import { partTypeOf } from '../../src/lib/cam/partType';
 import { camProgram, type CamInput } from '../../src/lib/cam/program';
 import { readTris } from '../../src/lib/model';
@@ -41,9 +41,7 @@ export async function plan(id: string, material: CamInput['material']) {
     for (let i = k; i < tris.length; i += 3) [lo, hi] = [Math.min(lo, tris[i]), Math.max(hi, tris[i])];
     return hi - lo;
   });
-  const blank = [...read.raw!].sort((a, b) => a - b);
-  const raw: [number, number, number] = [0, 0, 0];
-  [0, 1, 2].sort((a, b) => size[a] - size[b]).forEach((axis, k) => (raw[axis] = blank[k]));
+  const raw = blankAlong(read, size);
   const named = found!.text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
   return camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
 }

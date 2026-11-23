@@ -11,10 +11,11 @@
 import { createHash } from 'node:crypto';
 import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readProgram } from '../src/lib/cam/learn';
+import { blankAlong, readProgram } from '../src/lib/cam/learn';
 import { partTypeOf } from '../src/lib/cam/partType';
 import { camProgram } from '../src/lib/cam/program';
 import { CAM_MATERIALS, type CamMaterial } from '../src/lib/cam/tools';
+import { defaultToolbox } from '../src/lib/defaultTools';
 import { readTris } from '../src/lib/model';
 import { movePath } from '../src/lib/playback';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, readInstructions } from '../src/lib/setups';
@@ -69,6 +70,10 @@ function summary(code: string) {
     setups: an.setups.length,
     parallels: an.setups.map((s) => readInstructions(s.notes).support),
     turns: an.setups.slice(1).map((s) => s.turns.map((t) => `${t.axis}${t.deg}`).join(' ') || '-'),
+    // Per clamping, how close a tool comes to the jaw tops over the jaws (mm, under 0 = into them), and how
+    // deep the deepest move goes into a parallel (0: none).
+    jawClear: an.setups.map((s) => (s.jawClearance === null ? null : Math.round(s.jawClearance * 100) / 100)),
+    caleDepth: an.setups.map((s) => Math.round(Math.max(0, ...s.collisions.filter((c) => c.what === 'cale').map((c) => c.depth)) * 100) / 100),
     tools: [...new Set(read.samples.map((s) => `${s.type} ${s.d}`))].sort(),
     cutting: read.samples.map((s) => ({ kind: s.kind, tool: `${s.type} ${s.d}`, s: s.s, f: s.f })),
     order: read.order.map((o) => o.join(' > ')),
@@ -110,6 +115,11 @@ function fine(code: string, voxels: number) {
   return { voxel: Math.round(g.size * 1000) / 1000, rapids, rapidMm3: Math.round(rapidMm3 * 10) / 10, plunges };
 }
 
+// CAM_MACHINE=<machine id>: CAM AI gets that machine's tools (the app's seed inventory), as the app passes them.
+const MACHINE = process.env.CAM_MACHINE;
+if (MACHINE && !defaultToolbox[MACHINE]) throw new Error(`CAM_MACHINE: no machine ${MACHINE} (${Object.keys(defaultToolbox).join(', ')})`);
+const TOOLS = MACHINE ? defaultToolbox[MACHINE] : [];
+
 const seen = new Set<string>();
 if (!ONLY.length) writeFileSync(OUT, '');
 for (const folder of readdirSync(LIB).sort()) {
@@ -137,8 +147,6 @@ for (const folder of readdirSync(LIB).sort()) {
       // The engineers' blank, its sides matched to the model's by size.
       let raw: [number, number, number] | null = null;
       if (read.raw) {
-        const xs: number[] = [];
-        for (let i = 0; i < tris.length; i += 3) xs.push(tris[i]);
         const size = [0, 1, 2].map((k) => {
           let lo = Infinity;
           let hi = -Infinity;
@@ -148,16 +156,13 @@ for (const folder of readdirSync(LIB).sort()) {
           }
           return hi - lo;
         });
-        const bySize = [0, 1, 2].sort((a, b) => size[a] - size[b]);
-        const blank = [...read.raw].sort((a, b) => a - b);
-        raw = [0, 0, 0];
-        bySize.forEach((axis, k) => (raw![axis] = blank[k]));
-        if (raw.some((v, k) => v < size[k] - 0.01)) raw = null;
+        raw = blankAlong(read, size);
+        if (raw && raw.some((v, k) => v < size[k] - 0.01)) raw = null;
       }
       const named = text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
       const t0 = Date.now();
       try {
-        const r = camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
+        const r = camProgram({ tris, material, tools: TOOLS, brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
         row.result = 'made';
         row.seconds = Math.round((Date.now() - t0) / 1000);
         row.check = {
@@ -180,6 +185,12 @@ for (const folder of readdirSync(LIB).sort()) {
         // Per clamping, how far the stock above the jaws stands out past the held face at the stop (mm):
         // only there does the stop's height matter (a stop above the jaws would touch that stock instead).
         row.overhang = r.setups.map((s) => Math.round((s.held[0] - s.box[0]) * 100) / 100);
+        // Per clamping, the parallels' height and how deep the jaws grip (mm).
+        row.grips = r.setups.map((s) => [s.cale, Math.round(s.grip * 10) / 10]);
+        // Through holes left closed at the far end; the blank centred on the part (the planner's fallback).
+        row.short = r.short;
+        row.centred = r.centred;
+        if (MACHINE) row.machine = MACHINE;
         row.cam = summary(r.code);
         if (process.env.CAM_FINE) row.fine = fine(r.code, Number(process.env.CAM_FINE));
         // CAM_CODE_DIR=<folder>: also keep the program itself, named by the id (for studying its moves).

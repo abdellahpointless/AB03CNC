@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import plate from './models/O1042013.C60.txt?raw';
-import { kindOf, readProgram, summarise } from '../src/lib/cam/learn';
+import { blankAlong, kindOf, readProgram, summarise } from '../src/lib/cam/learn';
 import knowledge from '../src/lib/cam/shopKnowledge.json';
 
 describe('learning from a program (O1042013, FH top plate)', () => {
@@ -146,3 +146,16 @@ describe("the part's material, as the header writes it", () => {
   });
 });
 
+
+describe('the header blank along the model (blankAlong)', () => {
+  it('pairs each blank side with the finished side written in its place, not by size', () => {
+    // 35 x 18 x 15 from 40 x 22 x 25: the 15 mm thickness has 10 mm of blank, not 7.
+    expect(blankAlong({ size: [35, 18, 15], raw: [40, 22, 25] }, [18, 35, 15])).toEqual([22, 40, 25]);
+    expect(blankAlong({ size: [17.8, 10, 13.5], raw: [22, 14, 24] }, [17.8, 13.5, 10])).toEqual([22, 24, 14]);
+  });
+  it('falls back to size order when the finished size is missing or unlike the model', () => {
+    expect(blankAlong({ size: null, raw: [40, 22, 25] }, [18, 35, 15])).toEqual([25, 40, 22]);
+    expect(blankAlong({ size: [50, 20, 10], raw: [40, 22, 25] }, [18, 35, 15])).toEqual([25, 40, 22]);
+    expect(blankAlong({ size: [35, 18, 15], raw: null }, [18, 35, 15])).toBeNull();
+  });
+});

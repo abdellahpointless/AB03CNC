@@ -276,6 +276,28 @@ export interface CutRow {
   q: number | null;
 }
 
+/**
+ * The header's blank along the model's axes (`size`: the model's sides). The header writes the finished size
+ * and the blank in the same order, so each blank side goes with the finished side in its place, and that with
+ * the model's side of that size. Without a finished size like the model's: by size, smallest with smallest.
+ */
+export function blankAlong(read: Pick<PartRead, 'size' | 'raw'>, size: number[]): [number, number, number] | null {
+  if (!read.raw || read.raw.length !== 3) return null;
+  const raw: [number, number, number] = [0, 0, 0];
+  const used = new Set<number>();
+  const axes = (read.size ?? []).map((v) => {
+    const k = [0, 1, 2].filter((a) => !used.has(a)).sort((a, b) => Math.abs(size[a] - v) - Math.abs(size[b] - v))[0];
+    used.add(k);
+    return Math.abs(size[k] - v) < 0.05 ? k : -1;
+  });
+  if (axes.length === 3 && axes.every((k) => k >= 0)) axes.forEach((axis, k) => (raw[axis] = read.raw![k]));
+  else {
+    const blank = [...read.raw].sort((a, b) => a - b);
+    [0, 1, 2].sort((a, b) => size[a] - size[b]).forEach((axis, k) => (raw[axis] = blank[k]));
+  }
+  return raw;
+}
+
 /** What CAM AI learned: cutting data, the order of operations, raw stock allowance, setups. */
 export interface ShopKnowledge {
   version: 1;
