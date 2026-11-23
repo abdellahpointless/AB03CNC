@@ -132,3 +132,17 @@ export function plateWithHoles(W: number, L: number, H: number, holes: { c: [num
   return new Float32Array(t);
 }
 
+
+/** The walls (near-vertical triangles, by index in `tris`) whose middle `near` takes: what an operator picks to finish. */
+export function wallsOf(tris: ArrayLike<number>, near: (x: number, y: number) => boolean = () => true): number[] {
+  const out: number[] = [];
+  for (let k = 0; k * 9 + 8 < tris.length; k++) {
+    const t = Array.from({ length: 9 }, (_, i) => tris[k * 9 + i]);
+    const [u, v] = [[t[3] - t[0], t[4] - t[1], t[5] - t[2]], [t[6] - t[0], t[7] - t[1], t[8] - t[2]]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const len = Math.hypot(n[0], n[1], n[2]);
+    if (!len || Math.abs(n[2]) / len > 0.3) continue;
+    if (near((t[0] + t[3] + t[6]) / 3, (t[1] + t[4] + t[7]) / 3)) out.push(k);
+  }
+  return out;
+}

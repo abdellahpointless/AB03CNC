@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, opSegments, type LiveEvent } from '../src/lib/cam/program';
 import { cutData, LIBRARY, type CamTool } from '../src/lib/cam/tools';
-import { heightPart } from './heightPart';
+import { heightPart, wallsOf } from './heightPart';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -75,7 +75,7 @@ describe('removing an operation', () => {
   it('takes the finishing pass out with the roughing it finishes (alone it would plunge into what that roughing leaves; a review found it)', () => {
     // A top plate: its pocket is roughed with the Ø16 leaving 0.15 mm, then finished.
     const top = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 10 && i < 50 && j >= 8 && j < 32 ? 6 : 12))));
-    const input = { tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16] as [number, number, number], orient: { side: 'Z+', spin: false }, noNest: true, partType: 'topPlate' as const };
+    const input = { tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16] as [number, number, number], orient: { side: 'Z+', spin: false }, noNest: true, partType: 'topPlate' as const, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) };
     const all = camProgram(input);
     const ops = all.setups[0].ops;
     const rough = ops.find((o) => o.name === 'FRAESEN_16MM')!;

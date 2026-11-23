@@ -62,6 +62,12 @@ export interface CamInput {
   skip?: string[];
   /** The blank centred on the part (camProgram's fallback when no plan with it 2 mm over the part passes). */
   centred?: boolean;
+  /**
+   * The walls the operator picked to finish (shop rule: finishing only where it is asked for), as triangles of
+   * `tris` (index k: the 9 numbers from 9k): the roughing leaves ALLOW on those and one pass finishes them; the
+   * rest is roughed to size. None: no finishing pass. A seal cage's thin walls (under 3 mm) are finished too, gently.
+   */
+  finish?: number[];
   /** What is being done, as it is done: for the page's live console and 3D paths. */
   live?: (e: LiveEvent) => void;
 }
@@ -549,13 +555,15 @@ interface Work {
   thin?: Region;
   /** Its walls get a finishing pass. */
   finish?: boolean;
+  /** Where its walls are finished, seen from the top: along the picked walls and a seal cage's thin ones. */
+  zone?: Region;
 }
 
 /** Radial stock the roughing leaves on the walls for the finishing (mm). */
 const ALLOW = 0.15;
 /** A seal cage's walls thinner than this are cut gently (mm). */
 const THIN = 3;
-/** The families whose walls every roughing mill leaves ALLOW on and finishes. */
+/** The families whose precise contour is shown on the part (zones). */
 const PRECISE: PartType[] = ['topPlate', 'contourInsert', 'sealCage'];
 
 /** Thickness of the thinnest wall in a region (twice the deepest it can be shrunk). */
@@ -1609,14 +1617,25 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return input.sideStock ? offset(k, input.sideStock) : k;
     };
     const perTool = new Map<CamTool, Work[]>();
-    // Precise families: the roughing leaves ALLOW on the walls for the finishing (it counts as done
-    // for the smaller tools that follow). Other parts' walls are roughed to size (0.02 mm in): a pass at
-    // size after it would cut air, and leaving ALLOW on them kept the largest mill out of pockets of its
-    // own width (twice the time on a test part). Which walls the shop finishes on them: docs/knowledge S4.
+    // The walls the operator picked to finish: the roughing leaves ALLOW on them for the finishing (that
+    // strip counts as done for the smaller tools that follow). Every other wall is roughed to size (0.02 mm
+    // in): leaving ALLOW everywhere kept the largest mill out of pockets of its own width, and finishing
+    // every wall cost P441ba43c 52 of its 69 minutes. A seal cage's thin walls are finished too, gently (needed:
+    // roughed to size at full depth they would bend).
     const precise = !!input.partType && PRECISE.includes(input.partType);
-    // A top plate's or contour insert's precise contour is its pockets (where the part goes in): the
-    // outside is cut as usual. A seal cage's thin walls have both faces finished.
-    const pocketsOnly = input.partType === 'topPlate' || input.partType === 'contourInsert';
+    // Only where it stands as a wall in this clamping (facing sideways): a wall picked in setup 1 is a floor on its side.
+    const sideways = (t: Float32Array) => {
+      const [u, v] = [[t[3] - t[0], t[4] - t[1], t[5] - t[2]], [t[6] - t[0], t[7] - t[1], t[8] - t[2]]];
+      const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+      const len = Math.hypot(n[0], n[1], n[2]);
+      return len > 0 && Math.abs(n[2]) / len <= 0.3;
+    };
+    const picked = (input.finish ?? []).filter((k) => k >= 0 && k * 9 + 8 < P.length).map((k) => P.subarray(k * 9, k * 9 + 9)).filter(sideways);
+    // The picked walls between two heights, seen from the top: each triangle's outline (a wall's is a line).
+    const wallsAt = (lo: number, hi: number): Ring[] =>
+      picked.flatMap((t) =>
+        Math.max(t[2], t[5], t[8]) < lo - 0.01 || Math.min(t[2], t[5], t[8]) > hi + 0.01 ? [] : [{ pts: [[t[0], t[1]], [t[3], t[4]], [t[6], t[7]]] as P2[], closed: false, outside: false }],
+      );
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(millTop, 0);
@@ -1641,6 +1660,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (area(wall) > 0.01) mine.push({ z, above: levelTop, region: wall });
         todo = opened(difference(todo, jaws));
       }
+      // The stock left on the walls to finish here (ALLOW, along them only): not cut now, kept off like the part.
+      const walls = wallsAt(z, levelTop);
+      const thin = input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined;
+      const zone = union([...(walls.length ? swept(walls, ALLOW + 0.5) : []), ...(thin && area(thin) > 0.5 ? offset(thin, ALLOW + 0.5) : [])]);
+      const strip = zone.length ? intersection(offset(keep, ALLOW), zone) : [];
+      const offR = strip.length ? union(off, strip) : off;
+      if (strip.length) todo = opened(difference(todo, strip));
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest
@@ -1655,9 +1681,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
         for (const tool of cands) {
           const cut = cutData(tool, 'pocket', mat, limits);
           const r0 = tool.diameter / 2;
-          const rings = precise ? clearLevel(off, todo, r0, cut.ae, inside, r0 + ALLOW, pocketsOnly ? r0 - 0.02 : r0 + ALLOW) : clearLevel(off, todo, r0, cut.ae, inside);
+          const rings = clearLevel(offR, todo, r0, cut.ae, inside);
           if (!rings.length) continue;
-          const gone = precise ? offset(swept(rings, tool.diameter / 2), ALLOW + 0.02) : swept(rings, tool.diameter / 2);
+          const gone = swept(rings, tool.diameter / 2);
           const share = area(intersection(todo, gone)) / all;
           if (!pick || share > pick.share + 0.02) pick = { tool, rings, gone, share };
           if (round === 0 || share >= 0.8) break;
@@ -1667,7 +1693,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
         if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin: input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined, finish: precise });
+        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
       }
@@ -1725,7 +1751,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       for (const w of roughed.sort((p, q) => q.z - p.z)) {
         const near = (g: Ring) => !!w.thin && area(w.thin) > 0.5 && area(intersection(swept([g], r + 0.5), w.thin)) > 0.01;
         const t = w.thin && area(w.thin) > 0.5 ? thickness(w.thin) : 0;
-        const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside || pocketsOnly).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
+        // Only along the walls to finish (the tool's centre within its radius of them).
+        const ring = (d: number) => wallRings(w.keep, w.rings, d, ALLOW, !!w.inside, offset(w.zone ?? [], d + 0.1)).map((g) => (near(g) ? ((thinAny = true), { ...g, thin: t }) : g));
         const fin = ring(r);
         const rings = input.partType !== 'sealCage' ? fin : [...ring(r + 0.05), ...fin, ...fin.map((g) => ({ ...g }))];
         if (!rings.length) continue;

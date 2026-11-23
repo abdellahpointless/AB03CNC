@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GOUGE_MM3 } from '../src/lib/cam/limits';
 import { camProgram, gougeOf } from '../src/lib/cam/program';
 import { LIBRARY } from '../src/lib/cam/tools';
-import { heightPart } from './heightPart';
+import { heightPart, wallsOf } from './heightPart';
 import type { Tool } from '../src/types';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
@@ -59,9 +59,9 @@ describe('CAM AI', () => {
   }, 300_000);
 
   it('finishes a top plate’s pocket after the SFH 16 with the SF 16 and the shop’s own data (S4)', () => {
-    // A 60 x 40 x 12 top plate with a 40 x 24 pocket 6 deep: the Ø16 roughs it, leaving 0.15 mm, and finishes it.
+    // A 60 x 40 x 12 top plate with a 40 x 24 pocket 6 deep, its walls picked: the Ø16 roughs it, leaving 0.15 mm, and finishes it.
     const top = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 10 && i < 50 && j >= 8 && j < 32 ? 6 : 12))));
-    const r = camProgram({ tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
     const finish = r.setups.flatMap((s) => s.ops).filter((o) => o.name === 'SCHLICHTEN_16MM');
     expect(finish.length).toBeGreaterThan(0);
     for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);

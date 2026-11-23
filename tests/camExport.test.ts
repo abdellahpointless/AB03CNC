@@ -7,7 +7,7 @@ import { analyzeGCode, applyG53BeforeG52, generateRemappedCode, isHaasDialectFor
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { parseToolpath, speedsFor, type Move } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
-import { pocketWithHole } from './heightPart';
+import { pocketWithHole, wallsOf } from './heightPart';
 
 /**
  * What Send gives the machine with the tools CAM AI chose: the program into the remapper, Process, Export
@@ -155,7 +155,7 @@ describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
     const own = defaultToolbox['HAAS-1']!;
     const tools = [...own.filter((t) => t.number !== 2), own.find((t) => t.number === 2)!];
     const top = pocketWithHole(60, 40, 12, [10, 8, 50, 32], 6, { c: [5, 5], d: 3 });
-    const r = camProgram({ tris: top, material: 'ALU', tools, brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: top, material: 'ALU', tools, brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
     const ops = r.setups.flatMap((s) => s.ops);
     for (const o of ops.filter((x) => x.name === 'FRAESEN_16MM')) expect(o.tool.number).toBe(2);
     const fin = ops.filter((x) => x.name === 'SCHLICHTEN_16MM');

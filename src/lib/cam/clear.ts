@@ -1,5 +1,5 @@
 import ClipperLib, { type Paths } from 'clipper-lib';
-import { area, difference, offset, SCALE, union, type P2, type Region } from './geom';
+import { area, difference, intersection, offset, SCALE, union, type P2, type Region } from './geom';
 
 /*
  * Clearing one Z level of a setup: the tool's centre runs on rings around what must stay (the
@@ -98,12 +98,12 @@ export const filled = (r: Region): Region => union(r.filter((l) => signedArea(l)
 /**
  * The finishing rings of a tool at a level: round the part `d` from it (r: on the wall), only where
  * the roughing rings ran (`rough`, `allow` further out), so it never enters what a smaller tool is
- * left to rough. Climbing, the part on the right.
+ * left to rough, and only in `where` when given (the walls picked to finish). Climbing, the part on the right.
  */
-export function wallRings(keep: Region, rough: Ring[], d: number, allow: number, insideOnly: boolean): Ring[] {
+export function wallRings(keep: Region, rough: Ring[], d: number, allow: number, insideOnly: boolean, where?: Region): Ring[] {
   if (!rough.length) return [];
   // A finishing ring lies at most `allow` from the roughing ring next to it.
-  const near = swept(rough, allow + 0.08);
+  const near = where ? intersection(swept(rough, allow + 0.08), where) : swept(rough, allow + 0.08);
   const out: Ring[] = [];
   for (const l of offset(keep, d).filter((x) => x.length > 2)) {
     const outside = signedArea(l) > 0;
