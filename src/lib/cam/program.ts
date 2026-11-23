@@ -1252,11 +1252,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The operator's layout: its side first (then the opposite one), both turned as chosen.
   const first = input.orient ? SIDES.findIndex((s) => s.name === input.orient!.side) : -1;
   const thin = first >= 0 ? SIDES[first].d.findIndex((v) => v !== 0) : vertical;
-  // The operator's pair of sides turns as chosen; any other side turns a quarter when the jaws
-  // would otherwise hold it by its short side (under half its long one), if it fits one vise.
+  // The operator's pair of sides turns as chosen; any other side turns a quarter when the jaws would
+  // otherwise hold it by its short faces, if it fits one vise turned (the engineers hold the long faces
+  // in 21 of 24 clampings: more surface held, sturdier).
   const across = (si: number) => {
     const e = apply(upTurn(SIDES[si].d), size).map(Math.abs);
-    return e[0] < 0.5 * e[1] && e[1] <= VISE.width + OVERHANG;
+    return e[0] < e[1] - 0.5 && e[1] <= VISE.width + OVERHANG;
   };
   const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));

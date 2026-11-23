@@ -25,11 +25,24 @@ describe('how the part lies in the vise', () => {
     expect(best.size.map((v) => Math.round(v))).toEqual([60, 300, 20]);
   });
 
+  it('holds a block by its long faces when one vise holds it either way (22 x 40: 40 along the jaws)', () => {
+    const block = heightPart(Array.from({ length: 40 }, () => Array.from({ length: 22 }, () => 15)));
+    const best = layouts(block)[0];
+    expect(best.size.map((v) => Math.round(v))).toEqual([40, 22, 15]);
+  });
+
   it('excess given along the vise goes back on the model axes', () => {
     const turned = layouts(plate).find((l) => l.side === 'Z+' && l.spin)!;
     // Turned a quarter: the vise X is the model Y.
     expect(toModelAxes(turned.R, [1, 2, 3])).toEqual([2, 1, 3]);
   });
+
+  it('the planner holds a block by its long faces (the engineers: 21 of 24 clampings)', () => {
+    const block = heightPart(Array.from({ length: 40 }, () => Array.from({ length: 22 }, () => 15)));
+    const r = camProgram({ tris: block, material: 'ALU', tools: [], brand: 'HAAS', raw: [26, 44, 19] });
+    for (const s of r.setups) expect(s.held[2] - s.held[0]).toBeGreaterThanOrEqual(s.held[3] - s.held[1]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 300_000);
 
   it('the planner follows the chosen layout', () => {
     const tools: Tool[] = [{ id: 'f', number: 1, category: 'tourteau', description: '', diameter: 40, length: 30 }];

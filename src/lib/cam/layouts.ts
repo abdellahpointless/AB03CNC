@@ -69,8 +69,8 @@ export function layouts(tris: ArrayLike<number>): Layout[] {
       const twoVises = s[0] > VISE.width + OVERHANG;
       const fits = s[1] <= VISE.opening && s[0] <= VISE.width * 2 + VISE.gap;
       const topShare = total ? top / total : 1;
-      // The jaws hold a part best along its long side (as later setups are turned, program.ts).
-      const across = s[0] < 0.5 * s[1] && s[1] <= VISE.width + OVERHANG;
+      // The jaws hold a part best by its long faces (as later setups are turned, program.ts).
+      const across = s[0] < s[1] - 0.5 && s[1] <= VISE.width + OVERHANG;
       const score = (fits ? 0 : 1000) + setups * 10 + (twoVises ? 4 : 0) + (across ? 5 : 0) + (s[2] / Math.min(s[0], s[1])) * 3 - topShare * 6;
       out.push({ side: side.name, spin, R, size: s, topShare, setups, twoVises, fits, score });
     }
