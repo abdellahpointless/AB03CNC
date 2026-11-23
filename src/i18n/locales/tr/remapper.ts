@@ -327,6 +327,7 @@ const remapper: Translation<typeof en> = {
       setup_other: 'Bağlama {{n}} (OP{{op}}) · {{side}} · {{count}} işlem',
       check: 'Tutucu çarpışması ve takım boyu kontrolü',
       post: 'Program yazılıyor (G kodu)',
+      elapsed: 'Geçen süre {{time}}',
       state: { done: 'Bitti', now: 'Çalışıyor', next: 'Sırada' },
       rough: 'Kaba işleme',
       finish: 'Finiş',

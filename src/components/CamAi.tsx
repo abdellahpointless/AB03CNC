@@ -16,10 +16,11 @@ import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools'
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
-import type { LiveEvent, Purpose } from '../lib/cam/program';
+import type { Purpose } from '../lib/cam/program';
+import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { Mat3 } from '../lib/orient';
-import { passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
-import type { FacePick, LivePath } from './CamPartView';
+import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
+import type { FacePick } from './CamPartView';
 import type { CutEdit } from '../lib/cam/tools';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -29,9 +30,6 @@ const CamPartView = lazy(() => import('./CamPartView'));
 const AUTO_EXCESS = [4, 4, 7];
 /** The side facing the other way ('Z+' -> 'Z-'). */
 const opposite = (side: string) => side[0] + (side[1] === '+' ? '-' : '+');
-/** What the planner is doing, as it says (cam.worker 'live'). */
-type Live = { stages: string[]; setup: number; of: number; sides: string[]; paths: (LivePath & { setup: number })[] };
-const NO_LIVE: Live = { stages: [], setup: -1, of: 0, sides: [], paths: [] };
 
 type Model = { name: string; bytes: Uint8Array };
 type Run = { state: 'idle' } | { state: 'preparing' } | { state: 'busy'; done: number; of: number } | { state: 'error'; error: ModelError | 'failed' } | { state: 'done'; result: CamSummary };
@@ -834,15 +832,6 @@ function useVerdictOrNull(result: CamSummary | null, changed: number) {
   return result ? v : null;
 }
 
-/** One step of the planner into what the page shows (cam.worker 'live'). */
-function liveStep(l: Live, e: LiveEvent): Live {
-  if (e.kind === 'reset') return NO_LIVE;
-  if (e.kind === 'path') return { ...l, paths: [...l.paths, { setup: e.setup, purpose: e.purpose, pts: e.pts, key: e.key, tool: e.tool }] };
-  const sides = [...l.sides];
-  if (e.stage === 'setup' && e.setup !== undefined && e.side) sides[e.setup] = e.side;
-  return { ...l, stages: [...l.stages, e.stage], setup: e.stage === 'setup' ? (e.setup ?? l.setup) : l.setup, of: Math.max(l.of, e.of ?? 0), sides };
-}
-
 /** The planner's steps as they happen: done, now (with how far along all of it is), still to come. */
 function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess: number[] }) {
   const { t } = useT('remapper');
@@ -860,12 +849,21 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
     { key: 'check', text: t('camAi.live.check'), state: has('post') ? 'done' : has('check') ? 'now' : 'next' },
     { key: 'post', text: t('camAi.live.post'), state: done ? 'done' : live.stages.includes('post') ? 'now' : 'next' },
   ];
-  const share = Math.round((rows.filter((r) => r.state === 'done').length / rows.length) * 100);
+  const share = done ? 100 : live.pct;
+  // How long it has been working: the console is mounted for each run.
+  const [t0] = useState(Date.now);
+  const [now, setNow] = useState(t0);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)] p-3 space-y-3" role="status" aria-live="polite" aria-label={t('camAi.live.title')}>
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-[var(--text-primary)]">{t('camAi.live.title')}</span>
-        <span className="tabular-nums text-[var(--text-secondary)]">{share} %</span>
+        <span className="tabular-nums text-[var(--text-secondary)]">
+          {share} %<span aria-hidden="true"> · {t('camAi.live.elapsed', { time: fmtTime(Math.floor((now - t0) / 1000)) })}</span>
+        </span>
       </div>
       <div className="h-1 rounded-full bg-[rgba(var(--ov),0.08)] overflow-hidden" aria-hidden>
         <div className="h-full bg-[var(--accent-primary)] transition-[width] duration-500" style={{ width: `${Math.max(4, share)}%` }} />

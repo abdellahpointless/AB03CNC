@@ -337,6 +337,7 @@ const remapper = {
       setup_other: 'Setup {{n}} (OP{{op}}) · {{side}} · {{count}} operations',
       check: 'Holder collisions and tool stick-out check',
       post: 'Writing the program (G-code)',
+      elapsed: 'Elapsed {{time}}',
       state: { done: 'Done', now: 'Working', next: 'Queued' },
       rough: 'Roughing',
       finish: 'Finishing',
