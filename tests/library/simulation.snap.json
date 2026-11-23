@@ -4,7 +4,7 @@
   "setups": 1,
   "rejects": [],
   "collisions": {
-   "cale": 15
+   "cale": 4
   },
   "conflicts": 0,
   "match": 1,
@@ -35,7 +35,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 14,
+   "cale": 4,
    "spacer": 17
   },
   "conflicts": 0,
@@ -56,7 +56,7 @@
   "setups": 3,
   "rejects": [],
   "collisions": {
-   "cale": 15
+   "cale": 7
   },
   "conflicts": 0,
   "match": 1,
@@ -98,7 +98,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 5
+   "cale": 3
   },
   "conflicts": 0,
   "match": 0.9989,
@@ -254,7 +254,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 14,
+   "cale": 5,
    "spacer": 18
   },
   "conflicts": 0,
@@ -385,7 +385,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 10
+   "cale": 5
   },
   "conflicts": 0,
   "match": 1,
@@ -483,7 +483,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 2
+   "cale": 1
   },
   "conflicts": 0,
   "match": 1,
@@ -537,7 +537,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 10,
+   "cale": 5,
    "spacer": 18
   },
   "conflicts": 0,
@@ -549,7 +549,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 4,
+   "cale": 3,
    "spacer": 2
   },
   "conflicts": 0,
@@ -599,7 +599,7 @@
   "setups": 1,
   "rejects": [],
   "collisions": {
-   "cale": 8
+   "cale": 4
   },
   "conflicts": 0,
   "match": 1,
@@ -769,7 +769,7 @@
   "setups": 5,
   "rejects": [],
   "collisions": {
-   "cale": 5,
+   "cale": 2,
    "spacer": 20
   },
   "conflicts": 0,
@@ -819,7 +819,7 @@
   "setups": 1,
   "rejects": [],
   "collisions": {
-   "cale": 7
+   "cale": 2
   },
   "conflicts": 0,
   "match": 1,
