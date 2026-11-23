@@ -331,6 +331,18 @@ describe('cales and the jaw tops', () => {
     expect(setups[1].collisions).toEqual([]);
   });
 
+  it('a rapid into a parallel is a hit like a feed (shop rule: never a rapid below its top)', () => {
+    // One clamping on 38 mm parallels: their tops at Z-30, the front one over Y -21.7 to -15.7.
+    const one = program(-10).split('\n');
+    const at = one.indexOf('G1 X30.') + 1;
+    const into = (move: string, z: number) =>
+      analyseProgram(parseToolpath([...one.slice(0, at), `${move} X0. Y-18.`, `${move} Z${z}`, 'G0 Z50.', ...one.slice(at)].join('\n'), S), { jawHeight: 45 }).setups[0].collisions.filter((c) => c.what === 'cale');
+    expect(into('G1', -31).map((c) => Math.round(c.depth * 100) / 100)).toEqual([1]);
+    expect(into('G0', -31).map((c) => Math.round(c.depth * 100) / 100)).toEqual([1]);
+    expect(into('G0', -30.2)).toHaveLength(1);
+    expect(into('G0', -29.5)).toEqual([]);
+  });
+
   it('rejects a cale height the cales box does not have, with its line', () => {
     const code = program(-10);
     expect(analyseProgram(parseToolpath(code, S), { jawHeight: 45 }).setups[0].rejects).toEqual([]);

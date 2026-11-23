@@ -651,7 +651,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
 
 /**
  * Tools that go into a cale (a parallel) under the part: below its top, over its width, along the
- * length of the jaws. One hit per run of moves of one tool, the deepest.
+ * length of the jaws, at feed or at rapid. One hit per run of moves of one tool, the deepest.
  */
 function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
   if (!s.cales?.length || !s.moves || !s.clampBox) return [];
@@ -661,7 +661,7 @@ function caleHits(tp: Toolpath, s: SetupInfo): Collision[] {
   let open: Collision | null = null;
   for (let mi = s.moves[0]; mi <= s.moves[1]; mi++) {
     const m = tp.moves[mi];
-    if (m.setup !== s.index || m.kind === 'rapid') continue;
+    if (m.setup !== s.index) continue;
     const r = (m.dia ?? diameter.get(m.tool ?? -1) ?? 0) / 2 || 1;
     let here: Collision | null = null;
     for (const p of samples(m)) {
