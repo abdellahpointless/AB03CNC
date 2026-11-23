@@ -8,7 +8,7 @@ import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
 import { analyseProgram, OVERHANG, parallelWidth, STOP_PLATE, stopHits, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
-import { engravings, SIDES, sideFeatures, upTurn, type Hole, type SideFeatures } from './features';
+import { engravings, SIDES, sideFeatures, SPIN, upTurn, type Hole, type SideFeatures } from './features';
 import { area, bounds, difference, inside, intersection, offset, rect, simplify, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
@@ -1336,6 +1336,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // Then the machine's own, its roughing mill before its finishing one (HAAS-1: T2 roughs, T21 finishes).
   const role = (t: CamTool) => (t.category === 'fraise ebauche' ? 0 : t.category === 'fraise finition' ? 2 : 1);
   const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
+  // Sides planned again turned a quarter (no grip held them as they lay): once each.
+  const quartered = new Set<number>();
   const addSetup = (si: number, fixed?: number): boolean => {
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
@@ -1890,6 +1892,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;
         return addSetup(si, other);
+      }
+      // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
+      // preferred, but not over a clamping that holds), once; never against the operator's layout.
+      if (!quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
+        quartered.add(si);
+        feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));
+        drilled.clear();
+        was.drilled.forEach((v, k) => drilled.set(k, v));
+        notes.length = was.notes;
+        return addSetup(si);
       }
     }
     // The contact of the grip used (the retry tried others; a review finding: it kept the last one's).

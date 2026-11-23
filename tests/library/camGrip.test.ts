@@ -18,3 +18,15 @@ describe.skipIf(!LIB)('reference library: a later clamping grips by more than th
     expect(r.setups.every((s) => s.physics.ok)).toBe(true);
   });
 });
+
+describe.skipIf(!LIB)('reference library: every clamping held (the vise check), after the Phase 7b rules', () => {
+  // Passed in Phase 6; the long faces turned a side clamping so its 3 mm grip could not hold the part, and no other
+  // grip could. Turned the other way round it holds. (P5ea575e1 passed in Phase 6 only on a blank turned the wrong
+  // way by the harness; on its own blank no way of holding passes: an open question, not tested here.)
+  it.each([['Pf2990f37', 'ALU']] as const)('%s: every clamping holds', { timeout: 60 * 60_000 }, async (id, material) => {
+    const r = await plan(id, material);
+    expect(r.setups.filter((s) => !s.physics.ok).map((s) => `${s.side} ${s.physics.issues.map((i) => i.key).join(',')}`)).toEqual([]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  });
+});
