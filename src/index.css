@@ -189,13 +189,14 @@ body {
     0 24px 60px rgba(0, 0, 0, 0.65),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
-  overflow: hidden;
 }
-/* Default positioning lives in a cascade layer so Tailwind's fixed/absolute utilities can
-   override it (unlayered, it pinned the export toast and popovers into the page flow). */
+/* Default positioning and clipping live in a cascade layer so Tailwind's utilities can override
+   them (unlayered, they pinned the export toast and popovers into the page flow, and an
+   overflow-y-auto dialog could not scroll to its buttons). */
 @layer components {
   .glass-modal {
     position: relative;
+    overflow: hidden;
   }
 }
 

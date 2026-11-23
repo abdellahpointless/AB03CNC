@@ -224,7 +224,8 @@ export function ToolExcelImport({ onClose }: { onClose: () => void }) {
             )}
 
             {error && <div className="badge-danger w-full py-1.5 px-3 text-xs">{error}</div>}
-            <div className="flex justify-end gap-2">
+            {/* Always in reach: stays at the dialog's bottom while its body scrolls. */}
+            <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] flex justify-end gap-2">
               <button type="button" onClick={onClose} className="btn-secondary text-xs py-2 px-4">{t('common:actions.cancel')}</button>
               <button type="button" onClick={run} disabled={!canImport || busy} className="btn-primary text-xs py-2 px-5">
                 {busy ? t('common:status.working') : canImport ? t('import.importCount', { count: parsed!.tools.length }) : t('common:actions.import')}
