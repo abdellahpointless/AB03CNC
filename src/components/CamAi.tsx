@@ -264,6 +264,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const chooseLayout = (i: number, face?: string) => {
     setLayout(i);
     setFace1(face);
+    // Which faces are walls depends on how the part lies: picks for another layout would be stale.
+    if (i !== layout) setFinishWalls([]);
     setSecond(null);
     setLocked2(false);
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
