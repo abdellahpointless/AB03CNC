@@ -22,6 +22,7 @@ import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick } from './CamPartView';
 import type { CutEdit } from '../lib/cam/tools';
+import { useAuth } from '../contexts/AuthContext';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
 const CamPartView = lazy(() => import('./CamPartView'));
@@ -56,6 +57,7 @@ const toModelAxes = (R: Mat3, v: number[]) => [0, 1, 2].map((k) => v[[0, 1, 2].f
  * (lib/cam/program.ts); Download and Send only once every check passes (CamAiResult).
  */
 export default function CamAi({ onSend }: { onSend: (code: string, fileName: string, machine: string) => void }) {
+  const { user } = useAuth();
   const { t } = useT('remapper');
   const { toolbox, toolMachines: allMachines } = useSync();
   // DMG machines are not programmed in the app for now (shop decision).
@@ -100,7 +102,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
   const tools = machine ? toolbox[machine.id] ?? [] : [];
   const name = model ? model.name.replace(/\.(pdf|stl)$/i, '') : '';
-  const fileName = `${name || 'CAM_AI'}.nc`;
+  const fileName = `${name || 'PROGRAMM'}.nc`;
   // The material the templates are taken for (inox waits for the operator's yes to MS).
   const templatesFor: CamMaterial | null = material === 'INOX' ? null : material === 'OTHER' ? family : material;
   // Shop rule, for the material the program is made and labelled for (Process reads that label).
@@ -197,6 +199,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       tools,
       brand: machine.brand,
       name: name.slice(0, 40),
+      author: user?.username,
       raw,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },

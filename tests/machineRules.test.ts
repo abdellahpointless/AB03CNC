@@ -61,7 +61,7 @@ describe('machine rules', () => {
 
 describe('CAM AI and Process ask the same of a material', () => {
   it('the need CAM AI checks is the one Process reads from the part line CAM AI writes', () => {
-    for (const m of CAM_MATERIALS) expect(materialNeed(m), m).toBe(coolantNeed(`(CAM AI)\n(PART ${m} / 40X30X12 / ZUSCHNITT:44X34X16)`));
+    for (const m of CAM_MATERIALS) expect(materialNeed(m), m).toBe(coolantNeed(`(3D-MODELL)\n(PART ${m} / 40X30X12 / ZUSCHNITT:44X34X16)`));
     expect(materialNeed(null)).toBeNull();
   });
 });

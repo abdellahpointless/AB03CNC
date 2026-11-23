@@ -1,4 +1,5 @@
 import { Tool, ToolCategory, ToolChangeBlock, MATERIALS, Material } from '../types';
+import { hasProgramMark } from './programMark';
 
 export function detectMaterial(input: string): Material | undefined {
   if (typeof input !== 'string') return undefined;
@@ -632,7 +633,7 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
   // CAM AI plans with the machine's own tools and simulates them: a tool change whose T number is that
   // machine's tool of the same kind and Ø keeps it (the rules above give other programs' tools the
   // machine's numbers), so Send gives the numbers CAM AI's Download gives.
-  if (/^\s*(?:N\d+\s*)?\(CAM AI\)/m.test(safeInput)) {
+  if (hasProgramMark(safeInput)) {
     const mill = (c: string | null | undefined) => c === 'fraise' || c === 'fraise ebauche' || c === 'fraise finition';
     for (const block of blocks) {
       const n = Number(block.originalT?.match(/\d+/)?.[0] ?? NaN);

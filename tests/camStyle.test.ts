@@ -6,7 +6,7 @@ import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 const cam = [
   '%',
   'O0001',
-  'N1 (CAM AI)',
+  'N1 (3D-MODELL)',
   'N2 (TEIL ALU / 40X30X10 / ZUSCHNITT:44X34X15)',
   'N3 G40 G17 G53 G49 G80 G90',
   'N4 G54',

@@ -18,6 +18,7 @@ import type { OpKind } from './learn';
 import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
+import { PROGRAM_MARK } from '../programMark';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -68,6 +69,8 @@ export interface CamInput {
    * rest is roughed to size. None: no finishing pass. A seal cage's thin walls (under 3 mm) are finished too, gently.
    */
   finish?: number[];
+  /** Who makes it (the signed-in admin), written as the programmer ("BEARBEITER"), as the shop's programs do. */
+  author?: string;
   /** What is being done, as it is done: for the page's live console and 3D paths. */
   live?: (e: LiveEvent) => void;
 }
@@ -1961,8 +1964,8 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
   const d = new Date();
   const date = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
   const out: string[] = [
-    '(CAM AI)',
-    `(DATUM DER ERSTELLUNG: ${date} / BEARBEITER: CAM AI)`,
+    PROGRAM_MARK,
+    `(DATUM DER ERSTELLUNG: ${date} / BEARBEITER: ${commentSafe(input.author, 'CNC')})`,
     `(${commentSafe(input.name)} ${commentSafe(input.material, '')} / ${fin.map(mm).join('X')} / ZUSCHNITT:${rw.map(mm).join('X')})`,
     '(ERSTES TEIL MIT REDUZIERTEM VORSCHUB FAHREN)',
     'G40 G17 G53 G49 G80 G90',
