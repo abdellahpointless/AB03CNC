@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Boxes, CheckCircle2, ChevronDown, Download, FileSpreadsheet, FileText, History, X } from 'lucide-react';
+import { StackIcon as Boxes, CheckCircleIcon as CheckCircle2, CaretDownIcon as ChevronDown, DownloadIcon as Download, FileXlsIcon as FileSpreadsheet, FileTextIcon as FileText, ClockCounterClockwiseIcon as History, XIcon as X } from '@phosphor-icons/react';
 import { useSync } from '../contexts/SyncContext';
 import { CALE_HEIGHTS, MIN_SPARE, lowStock, orderRows } from '../lib/cales';
 import { decideCales, fetchCalesLog, fetchCalesStock, setCalesOnMachine, setCalesStock, timeAgo, toFleet, type CaleTaken } from '../lib/fleet';

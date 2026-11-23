@@ -1,25 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Flag,
-  Lock,
-  History as HistoryIcon,
-  Monitor,
-  OctagonX,
-  Pencil,
-  Plus,
-  QrCode,
-  RefreshCw,
-  Trash2,
-  Users,
-  Wrench,
-  X,
-} from 'lucide-react';
+import { PulseIcon as Activity, WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, FlagIcon as Flag, LockIcon as Lock, ClockCounterClockwiseIcon as HistoryIcon, MonitorIcon as Monitor, ProhibitIcon as OctagonX, PencilSimpleIcon as Pencil, PlusIcon as Plus, QrCodeIcon as QrCode, ArrowsClockwiseIcon as RefreshCw, TrashIcon as Trash2, UsersIcon as Users, WrenchIcon as Wrench, XIcon as X } from '@phosphor-icons/react';
 import StatusBoard from './StatusBoard';
 import MachineQrSheet from './MachineQrSheet';
 import CalesBox from './CalesBox';

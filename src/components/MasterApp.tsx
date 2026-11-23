@@ -1,23 +1,7 @@
 import '../i18n/appLocales';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Crown,
-  Factory,
-  KeyRound,
-  LogOut,
-  Package,
-  RefreshCw,
-  ShieldCheck,
-  Timer,
-  UserPlus,
-  Users,
-  X,
-} from 'lucide-react';
+import { PulseIcon as Activity, WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, CrownIcon as Crown, FactoryIcon as Factory, KeyIcon as KeyRound, SignOutIcon as LogOut, PackageIcon as Package, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, TimerIcon as Timer, UserPlusIcon as UserPlus, UsersIcon as Users, XIcon as X } from '@phosphor-icons/react';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage } from '../lib/api';

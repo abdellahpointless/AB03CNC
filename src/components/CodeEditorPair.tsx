@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
-import { Copy, Check, Upload, Download, Sparkles, CheckCircle2, ArrowLeftRight, AlertTriangle, RefreshCw, ShieldCheck, ShieldAlert, XCircle, X, Ruler, RotateCw, Gauge, Crosshair, MoveVertical, Flag, Route, ChevronDown, Lock, Box, HardDrive } from 'lucide-react';
+import { CopyIcon as Copy, CheckIcon as Check, UploadIcon as Upload, DownloadIcon as Download, SparkleIcon as Sparkles, CheckCircleIcon as CheckCircle2, ArrowsLeftRightIcon as ArrowLeftRight, WarningIcon as AlertTriangle, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, ShieldWarningIcon as ShieldAlert, XCircleIcon as XCircle, XIcon as X, RulerIcon as Ruler, ArrowClockwiseIcon as RotateCw, GaugeIcon as Gauge, CrosshairIcon as Crosshair, ArrowsVerticalIcon as MoveVertical, FlagIcon as Flag, PathIcon as Route, CaretDownIcon as ChevronDown, LockIcon as Lock, CubeIcon as Box, HardDriveIcon as HardDrive } from '@phosphor-icons/react';
 import { type SafetyCode, type SafetyReport } from '../lib/safetyCheck';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -177,7 +177,7 @@ function SafetyPanel({
             >
               <Icon size={11} />
               {code}
-              <Mark size={10} strokeWidth={3} />
+              <Mark size={10} weight="bold" />
             </button>
           );
         })}

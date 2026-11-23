@@ -29,7 +29,7 @@ import { useAuth } from './contexts/AuthContext';
 import { SyncProvider, useSync } from './contexts/SyncContext';
 import { MachineId, ToolChangeBlock, Tool } from './types';
 import { fetchCalesStock, fetchRequired, type RequiredItem } from './lib/fleet';
-import { Cpu, Database, Wrench, History, Shield, RefreshCw, PackagePlus, ClipboardCheck, ClipboardX, Boxes, Activity, KeyRound, ShieldCheck, AlertTriangle, X, ChevronDown, ChevronLeft, ChevronRight, Lock, BellRing } from 'lucide-react';
+import { CpuIcon as Cpu, DatabaseIcon as Database, WrenchIcon as Wrench, ClockCounterClockwiseIcon as History, ShieldIcon as Shield, ArrowsClockwiseIcon as RefreshCw, PlusSquareIcon as PackagePlus, ListChecksIcon as ClipboardCheck, ClipboardTextIcon as ClipboardX, StackIcon as Boxes, PulseIcon as Activity, KeyIcon as KeyRound, ShieldCheckIcon as ShieldCheck, WarningIcon as AlertTriangle, XIcon as X, CaretDownIcon as ChevronDown, CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight, LockIcon as Lock, BellRingingIcon as BellRing } from '@phosphor-icons/react';
 import { ring, unlockSound } from './lib/alarm';
 import { fmtTime } from './i18n/format';
 import { motion, AnimatePresence } from 'motion/react';

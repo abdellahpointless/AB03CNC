@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { DownloadCloud, UploadCloud, Archive, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Route } from 'lucide-react';
+import { CloudArrowDownIcon as DownloadCloud, CloudArrowUpIcon as UploadCloud, ArchiveIcon as Archive, TrashIcon as Trash2, ArrowsClockwiseIcon as RefreshCw, CheckCircleIcon as CheckCircle2, WarningIcon as AlertTriangle, PathIcon as Route } from '@phosphor-icons/react';
 import { api } from '../lib/api';
 import { buildFullBackup, restoreBackup, type LogKind } from '../lib/migration';
 import { fetchAllHistory } from '../lib/historyApi';

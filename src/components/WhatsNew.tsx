@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Sparkles, X } from 'lucide-react';
+import { SparkleIcon as Sparkles, XIcon as X } from '@phosphor-icons/react';
 import { useT } from '../i18n';
 import { fmtDate } from '../i18n/format';
 import { useSync } from '../contexts/SyncContext';

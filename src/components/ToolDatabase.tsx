@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Tool, MachineId, TOOL_CATEGORIES, ToolCategory, MATERIALS, Material } from '../types';
-import { Plus, Trash2, Check, Server, CircleDashed, AlertCircle, RefreshCw, FileSpreadsheet, Search } from 'lucide-react';
+import { PlusIcon as Plus, TrashIcon as Trash2, CheckIcon as Check, HardDrivesIcon as Server, CircleDashedIcon as CircleDashed, WarningCircleIcon as AlertCircle, ArrowsClockwiseIcon as RefreshCw, FileXlsIcon as FileSpreadsheet, MagnifyingGlassIcon as Search } from '@phosphor-icons/react';
 import { AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { ToolExcelImport } from './ToolExcelImport';

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Box, Check, CheckCircle2, Circle, Cpu, Download, FileCode2, FilePlus2, Loader2, Lock, MousePointerClick, Package, Pencil, Play, RefreshCw, Route, Send, Settings2, Square, Upload } from 'lucide-react';
+import { WarningIcon as AlertTriangle, CubeIcon as Box, CheckIcon as Check, CheckCircleIcon as CheckCircle2, CircleIcon as Circle, CpuIcon as Cpu, DownloadIcon as Download, FileCodeIcon as FileCode2, FilePlusIcon as FilePlus2, CircleNotchIcon as Loader2, LockIcon as Lock, CursorClickIcon as MousePointerClick, PackageIcon as Package, PencilSimpleIcon as Pencil, PlayIcon as Play, ArrowsClockwiseIcon as RefreshCw, PathIcon as Route, PaperPlaneTiltIcon as Send, GearSixIcon as Settings2, SquareIcon as Square, UploadIcon as Upload } from '@phosphor-icons/react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useT } from '../i18n';

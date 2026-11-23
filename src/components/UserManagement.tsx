@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth, Role } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { api } from '../lib/api';
-import { UserPlus, Trash2, Shield, User as UserIcon, KeyRound, RefreshCw, ShieldCheck, ShieldOff, ScrollText, Route, Cpu } from 'lucide-react';
+import { UserPlusIcon as UserPlus, TrashIcon as Trash2, ShieldIcon as Shield, UserIcon as UserIcon, KeyIcon as KeyRound, ArrowsClockwiseIcon as RefreshCw, ShieldCheckIcon as ShieldCheck, ShieldSlashIcon as ShieldOff, ScrollIcon as ScrollText, PathIcon as Route, CpuIcon as Cpu } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { HistoryRecord } from '../types';
-import { Clock, FileText, User, Bot, Download, Eye, Search, Filter, X, Copy, Check, Cpu, ChevronDown, ChevronLeft, ChevronRight, Archive, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ClockIcon as Clock, FileTextIcon as FileText, UserIcon as User, RobotIcon as Bot, DownloadIcon as Download, EyeIcon as Eye, MagnifyingGlassIcon as Search, FunnelIcon as Filter, XIcon as X, CopyIcon as Copy, CheckIcon as Check, CpuIcon as Cpu, CaretDownIcon as ChevronDown, CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight, ArchiveIcon as Archive, ArrowsClockwiseIcon as RefreshCw, WarningIcon as AlertTriangle } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TimeWonClock } from './TimeWonClock';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';

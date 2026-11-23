@@ -14,18 +14,7 @@ import PartProduction from './PartProduction';
 import PeriodPicker from './PeriodPicker';
 import { useT } from '../i18n';
 import { fmtDateTime, locale } from '../i18n/format';
-import {
-  ClipboardCheck,
-  Check,
-  X,
-  RefreshCw,
-  FileSpreadsheet,
-  CheckCheck,
-  ChevronLeft,
-  ChevronRight,
-  User,
-  AlertCircle
-} from 'lucide-react';
+import { ListChecksIcon as ClipboardCheck, CheckIcon as Check, XIcon as X, ArrowsClockwiseIcon as RefreshCw, FileXlsIcon as FileSpreadsheet, ChecksIcon as CheckCheck, CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight, UserIcon as User, WarningCircleIcon as AlertCircle } from '@phosphor-icons/react';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
 function fmtValue(n: number): string {

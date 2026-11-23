@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Lock, X } from 'lucide-react';
+import { CheckCircleIcon as CheckCircle2, LockIcon as Lock, XIcon as X } from '@phosphor-icons/react';
 import { checkAction, reportVise, timeAgo, type FleetMachine, type MachineCheck } from '../lib/fleet';
 import { viseId } from '../lib/cales';
 import { iosBackdrop, iosSurface } from '../lib/motion';

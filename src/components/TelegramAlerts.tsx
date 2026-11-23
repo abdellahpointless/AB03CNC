@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
-import { BellRing, Copy, ExternalLink, MessageCircle, Phone, PhoneCall, RefreshCw, Send, Trash2, Unlink, BellOff, UserPlus, Users } from 'lucide-react';
+import { BellRingingIcon as BellRing, CopyIcon as Copy, ArrowSquareOutIcon as ExternalLink, ChatCircleIcon as MessageCircle, PhoneIcon as Phone, PhoneCallIcon as PhoneCall, ArrowsClockwiseIcon as RefreshCw, PaperPlaneTiltIcon as Send, TrashIcon as Trash2, LinkBreakIcon as Unlink, BellSlashIcon as BellOff, UserPlusIcon as UserPlus, UsersIcon as Users } from '@phosphor-icons/react';
 import { api, errorMessage } from '../lib/api';
 import i18n, { useT } from '../i18n';
 

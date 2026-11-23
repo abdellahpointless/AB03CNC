@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { machineName } from '../lib/machines';
 import { HistoryRecord } from '../types';
-import { Search, Download, FileText, UserCircle, RefreshCw } from 'lucide-react';
+import { MagnifyingGlassIcon as Search, DownloadIcon as Download, FileTextIcon as FileText, UserCircleIcon as UserCircle, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
 import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
 import { fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadText } from '../lib/download';

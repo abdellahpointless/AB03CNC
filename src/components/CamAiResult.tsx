@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
-import { AlertTriangle, CheckCircle2, Clock, Download, Repeat, RotateCcw, Trash2 } from 'lucide-react';
+import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, ClockIcon as Clock, DownloadIcon as Download, RepeatIcon as Repeat, ArrowCounterClockwiseIcon as RotateCcw, TrashIcon as Trash2 } from '@phosphor-icons/react';
 import { useT } from '../i18n';
 import { fmtNumber as fmt } from '../i18n/format';
 import { downloadBlob } from '../lib/download';

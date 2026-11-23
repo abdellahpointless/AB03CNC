@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowDown, ArrowUp, Factory, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp, FactoryIcon as Factory, PencilSimpleIcon as Pencil, PlusIcon as Plus, TrashIcon as Trash2, XIcon as X } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'motion/react';
 import { api, errorMessage } from '../lib/api';
 import { useSync } from '../contexts/SyncContext';

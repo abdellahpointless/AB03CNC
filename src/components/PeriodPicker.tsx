@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight } from '@phosphor-icons/react';
 import { shiftPeriod, type PartsPeriod } from '../lib/partsApi';
 import { useT } from '../i18n';
 

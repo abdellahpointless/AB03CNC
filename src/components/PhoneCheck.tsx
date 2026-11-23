@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Lock, LogOut, OctagonX, LayoutGrid, RefreshCw } from 'lucide-react';
+import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, CaretDownIcon as ChevronDown, LockIcon as Lock, SignOutIcon as LogOut, ProhibitIcon as OctagonX, SquaresFourIcon as LayoutGrid, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock, User as UserIcon, ArrowRight, Smartphone, Crown, Globe2 } from 'lucide-react';
+import { LockIcon as Lock, UserIcon as UserIcon, ArrowRightIcon as ArrowRight, DeviceMobileIcon as Smartphone, CrownIcon as Crown, GlobeIcon as Globe2 } from '@phosphor-icons/react';
 import { Flag } from './Flag';
 import { CHOOSE_COUNTRY_PATH, INSTANCE } from '../lib/instance';
 import { scannedMachine } from '../lib/phoneCheck';
-import { QrCode } from 'lucide-react';
+import { QrCodeIcon as QrCode } from '@phosphor-icons/react';
 import { motion, useAnimate } from 'motion/react';
 import { useT } from '../i18n';
 

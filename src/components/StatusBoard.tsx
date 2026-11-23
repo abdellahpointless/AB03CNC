@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { WifiOff, X } from 'lucide-react';
+import { WifiSlashIcon as WifiOff, XIcon as X } from '@phosphor-icons/react';
 import { machineSubtitle, type FleetMachine, type MachineCheck, type machineSummary } from '../lib/fleet';
 import { currentRegion } from '../lib/instance';
 import { Flag } from './Flag';

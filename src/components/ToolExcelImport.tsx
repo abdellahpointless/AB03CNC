@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload, X } from 'lucide-react';
+import { WarningIcon as AlertTriangle, CheckCircleIcon as CheckCircle2, DownloadIcon as Download, FileXlsIcon as FileSpreadsheet, UploadIcon as Upload, XIcon as X } from '@phosphor-icons/react';
 import { motion } from 'motion/react';
 import { api, errorMessage } from '../lib/api';
 import { iosBackdrop, iosSurface } from '../lib/motion';

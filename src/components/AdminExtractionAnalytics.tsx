@@ -17,18 +17,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
-import {
-  User,
-  BarChart3,
-  Sliders,
-  Users,
-  Award,
-  PieChart as PieIcon,
-  Sparkles,
-  Wrench,
-  CheckCircle2,
-  Info
-} from 'lucide-react';
+import { UserIcon as User, ChartBarIcon as BarChart3, SlidersIcon as Sliders, UsersIcon as Users, MedalIcon as Award, ChartPieIcon as PieIcon, SparkleIcon as Sparkles, WrenchIcon as Wrench, CheckCircleIcon as CheckCircle2, InfoIcon as Info } from '@phosphor-icons/react';
 
 
 const BAR_COLORS = [

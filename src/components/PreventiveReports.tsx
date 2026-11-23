@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ClipboardX, FileSpreadsheet, OctagonX, PackageX, RefreshCw, ShieldAlert, Trophy } from 'lucide-react';
+import { WarningIcon as AlertTriangle, ClipboardTextIcon as ClipboardX, FileXlsIcon as FileSpreadsheet, ProhibitIcon as OctagonX, XSquareIcon as PackageX, ArrowsClockwiseIcon as RefreshCw, ShieldWarningIcon as ShieldAlert, TrophyIcon as Trophy } from '@phosphor-icons/react';
 import { useSync } from '../contexts/SyncContext';
 import { fetchMachinesReport, toFleet, type MachinesReport } from '../lib/fleet';
 import { payPeriod, periodMs } from '../lib/partsApi';

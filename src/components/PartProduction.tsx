@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, Clock, RefreshCw } from 'lucide-react';
+import { ChartBarIcon as BarChart3, ClockIcon as Clock, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
 import { useSync } from '../contexts/SyncContext';
 import { fetchAdminProduction, type OperatorProduction, type PartsPeriod } from '../lib/partsApi';
 import { useT } from '../i18n';

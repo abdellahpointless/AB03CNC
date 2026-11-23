@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Printer, QrCode, ScanLine, X } from 'lucide-react';
+import { PrinterIcon as Printer, QrCodeIcon as QrCode, ScanIcon as ScanLine, XIcon as X } from '@phosphor-icons/react';
 import qrcode from 'qrcode-generator';
 import { machineSubtitle, type FleetMachine } from '../lib/fleet';
 import { checkUrl } from '../lib/phoneCheck';

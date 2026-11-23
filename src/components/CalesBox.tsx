@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCheck, CircleDashed, Hammer, Lock, PackageCheck, PackagePlus, Undo2, X } from 'lucide-react';
+import { ChecksIcon as CheckCheck, CircleDashedIcon as CircleDashed, HammerIcon as Hammer, LockIcon as Lock, SealCheckIcon as PackageCheck, PlusSquareIcon as PackagePlus, ArrowUUpLeftIcon as Undo2, XIcon as X } from '@phosphor-icons/react';
 import { CALE_HEIGHTS, calesSummary, statusOf, type CalesState } from '../lib/cales';
 import type { CalesScene, Preview, Rect, Theme } from '../lib/calesScene';
 import { confirmCales, reportCales, requestCales, type FleetMachine } from '../lib/fleet';

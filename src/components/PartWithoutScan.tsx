@@ -14,18 +14,7 @@ import {
 import { exportUserPartEntriesExcel } from '../lib/partExportExcel';
 import { useT } from '../i18n';
 import { fmtDateTime, fmtNumber, locale } from '../i18n/format';
-import {
-  PackagePlus,
-  Calendar,
-  Layers,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  FileSpreadsheet
-} from 'lucide-react';
+import { PlusSquareIcon as PackagePlus, CalendarIcon as Calendar, StackIcon as Layers, CaretDownIcon as ChevronDown, CaretUpIcon as ChevronUp, DownloadIcon as Download, ArrowsClockwiseIcon as RefreshCw, CheckCircleIcon as CheckCircle2, WarningCircleIcon as AlertCircle, FileXlsIcon as FileSpreadsheet } from '@phosphor-icons/react';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
 function fmtValue(n: number, useGrouping = true): string {

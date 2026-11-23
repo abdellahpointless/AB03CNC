@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Printer, RefreshCw } from 'lucide-react';
+import { CaretLeftIcon as ChevronLeft, CaretRightIcon as ChevronRight, PrinterIcon as Printer, ArrowsClockwiseIcon as RefreshCw } from '@phosphor-icons/react';
 import { useSync } from '../contexts/SyncContext';
 import { fetchMachinesReport, toFleet, type MachinesReport } from '../lib/fleet';
 import { reportPeople, reportRows } from '../lib/preventiveReport';

@@ -22,11 +22,11 @@
     "cam-library": "esbuild tools/camLibrary.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/cam-library.mjs --log-level=warning && node node_modules/.cache/cam-library.mjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
     "clipper-lib": "^6.4.2",
     "exceljs": "^4.4.0",
     "i18next": "26.4.2",
     "idb-keyval": "^6.2.4",
-    "lucide-react": "^0.546.0",
     "motion": "^12.40.0",
     "occt-import-js": "0.0.23",
     "qrcode-generator": "^1.4.4",

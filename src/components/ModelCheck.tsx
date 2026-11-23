@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Copy, Download, Square, AlertTriangle, Sparkles } from 'lucide-react';
+import { CheckCircleIcon as CheckCircle2, CopyIcon as Copy, DownloadIcon as Download, SquareIcon as Square, WarningIcon as AlertTriangle, SparkleIcon as Sparkles } from '@phosphor-icons/react';
 import type { Toolpath, Vec } from '../lib/toolpath';
 import type { Mat3 } from '../lib/orient';
 import type { SearchProgress, TurnFix, TurnSearch } from '../lib/fixTurns';
