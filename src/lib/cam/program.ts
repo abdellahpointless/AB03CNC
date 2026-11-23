@@ -179,6 +179,18 @@ export interface CamResult {
   short: number;
   /** Planned with the blank centred on the part (the fallback when none passes with it 2 mm over the part). */
   centred: boolean;
+  /**
+   * The inside corners left at a mill's radius on purpose (CORNER_R), each in its own clamping's frame: p' = M p + b
+   * from setup 1's program frame, between heights z and above, in region. The check does not count them as left.
+   */
+  corners?: Corner[];
+}
+export interface Corner {
+  M: Mat3;
+  b: Vec;
+  z: number;
+  above: number;
+  region: Region;
 }
 
 const TABLE_Z = -57;
@@ -976,7 +988,7 @@ export function fineCuts(tris: ArrayLike<number>, code: string, brand?: string, 
   return differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }).pieces.filter((p) => p.kind === 'cut');
 }
 
-export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
+export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose'], corners?: Corner[]): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const an = analyseProgram(tp, { jawHeight: JAW });
   const sim = buildInput(tp, an);
@@ -985,7 +997,17 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
   let diff: ReturnType<typeof differences> | null = null;
   if (sim && pose) {
     const g = carve({ ...sim, maxVoxels: 300_000, surfaceMoves: false });
-    diff = differences({ g, occ: voxelize(tris, pose.R, pose.t, g) });
+    // A corner's region grown by a sample, where the two grids never quite agree.
+    const e = Math.max(...g.step);
+    const grown = corners?.map((c) => ({ ...c, region: offset(c.region, e) }));
+    const accepted = grown?.length
+      ? (p: Vec) =>
+          grown.some((c) => {
+            const q = apply(c.M, p).map((v, k) => v + c.b[k]);
+            return q[2] > c.z - e && q[2] < c.above + e && inside(c.region, [q[0], q[1]]) !== 0;
+          })
+      : undefined;
+    diff = differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }, 2, accepted);
   } else if (sim) {
     const laid = layModel(tris, sim, an.setups);
     diff = 'mismatch' in laid ? null : differences(laid);
@@ -1100,7 +1122,7 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * Any other rapid into material stays a collision (it blocks the program).
  */
 function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
-  const again = (code: string) => checkProgram(input.tris, code, input.brand, input.speeds, r.pose);
+  const again = (code: string) => checkProgram(input.tris, code, input.brand, input.speeds, r.pose, r.corners);
   let code = r.code;
   let check = again(code);
   if (check.rapids && check.grazes.length === check.rapids) {
@@ -1230,7 +1252,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     const words = shopStyle(r.code, input.brand, (c) => shorten(c, true)).code;
     const arced = arcs(words);
     const was = r.check;
-    const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose);
+    const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose, r.corners);
     // Nothing worse: the match (never from a pass to below 0.99), collisions, holders, rapids, grazes, cales, gouges.
     const ok =
       arced !== words &&
@@ -1248,7 +1270,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     // way (checked again, kept when nothing is worse).
     const finer = finerRapids(code, input.brand, input.speeds);
     if (finer !== code) {
-      const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose);
+      const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose, r.corners);
       if (f.match >= check.match - 0.0005 && f.collisions <= check.collisions && f.rapids <= check.rapids && f.cales <= check.cales && f.misplaced <= check.misplaced && gougeOf(f) <= gougeOf(check)) [code, check] = [finer, f];
     }
     // The program as it goes out, once more on the finer grid: its cuts into the part count as gouges too.
@@ -2030,9 +2052,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
   // The model as planned: centred, turned as setup 1, its top at Z0.
   const pose = setups.length ? { R: setups[0].R, t: [0, 1, 2].map((k) => apply(setups[0].R, c0)[k] + setups[0].t[k]) as Vec } : null;
+  // Each corner's clamping frame from setup 1's: p = R1 c + t1 (c the centred model), the corner's q = R c + t.
+  const cornersOut: Corner[] = setups.length
+    ? corners.map((w) => {
+        const M = mul(w.R, transpose(setups[0].R));
+        const Mt = apply(M, setups[0].t);
+        return { M, b: [0, 1, 2].map((k) => w.t[k] - Mt[k]) as Vec, z: w.z, above: w.above, region: w.region };
+      })
+    : [];
   const short = [...drilled.values()].filter((rest) => rest > 0).length;
   if (short) notes.push({ key: 'holeShort', count: short });
-  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi }, short, centred: !!input.centred };
+  return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi }, short, centred: !!input.centred, corners: cornersOut };
 }
 
 /** The coolant word after the tool's first move: flood, air (HAAS 2 and 4 always get air when the program is sent), none. */

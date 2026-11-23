@@ -164,7 +164,7 @@ export interface Piece {
  * neighbours differ the same way: the one-sample skin where the sampled surface and the model's
  * flat facets disagree is not a difference. Pieces under `minMm3` are dropped.
  */
-export function differences(fit: Pick<ModelFit, 'g' | 'occ'>, minMm3 = 2): { match: number; pieces: Piece[] } {
+export function differences(fit: Pick<ModelFit, 'g' | 'occ'>, minMm3 = 2, accepted?: (p: Vec) => boolean): { match: number; pieces: Piece[] } {
   const { g, occ } = fit;
   const [nx, ny, nz] = g.n;
   const S = nx * ny;
@@ -176,6 +176,11 @@ export function differences(fit: Pick<ModelFit, 'g' | 'occ'>, minMm3 = 2): { mat
     const sim = g.removed[v] === KEPT;
     if (occ[v]) model++;
     cls[v] = sim && !occ[v] ? 1 : !sim && occ[v] ? 2 : 0;
+    // Material left on purpose (inside corners at a mill's radius): not a difference.
+    if (cls[v] === 1 && accepted) {
+      const c = [v % nx, Math.floor(v / nx) % ny, Math.floor(v / S)];
+      if (accepted(c.map((q, k) => g.origin[k] + (q + 0.5) * g.step[k]) as Vec)) cls[v] = 0;
+    }
   }
   const near = (v: number, f: (w: number) => void) => {
     const i = v % nx;

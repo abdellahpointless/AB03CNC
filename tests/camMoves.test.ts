@@ -157,6 +157,8 @@ describe('inside corners', () => {
     const { r, d } = mills(pocket);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(Math.min(...d)).toBeGreaterThanOrEqual(6);
+    // The corners left on purpose are not counted as material left (they were 4 pieces of 5 mm³).
+    expect(r.check.pieces.filter((p) => p.kind === 'left')).toEqual([]);
   }, 300_000);
   it('still sends one into a place narrower than the pocket mill', () => {
     const { r, d } = mills(slotted);
