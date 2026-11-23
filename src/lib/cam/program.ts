@@ -514,6 +514,8 @@ const steepOf = (tool: CamTool, mat: string) => {
 const rampOf = (tool: CamTool, mat: string) => Math.tan(((steepOf(tool, mat) ? 15 : 5) * Math.PI) / 180);
 /** You: those mills go straight down into POM, FH and RESOPAL (the engineers' 2 mm plunges at the entry feed), not into the others. */
 const PLUNGES = new Set(['POM', 'FH', 'RESOPAL']);
+/** How deep they go straight into material: the engineers' plunges (Z-1.75 to Z-3.75, Z2 to Z-2); a deeper pass ramps the rest. */
+const PLUNGE_MM = 2;
 const plungesInto = (tool: CamTool, mat: string) => PLUNGES.has(mat) && steepOf(tool, mat);
 type P3 = [number, number, number];
 const dist2 = (a: P2, b: P2) => Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -753,16 +755,20 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
           // Down to the material's top here (cleared above it) at the entry feed.
           lines.push(`G01 Z${n3(from)} F${c.fz}.`);
         }
-        if (tiny || straight || (enter && inAir(pts[0], pz, from))) {
-          // Its whole circle in the air (or no ring to ramp along, or a plunging material): straight down.
-          lines.push(`G01 Z${n3(pz)} F${c.fz}.`);
-        } else if (ring.closed) {
-          const start = k0;
-          const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zAt, pz, slope);
-          rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
-          at = rp.end;
-          k0 = (start + rp.k) % m;
-        } else zigzag(pts, from, pz, slope).forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
+        // Its whole circle in the air (or no ring to ramp along): straight down. A plunging material: straight down
+        // PLUNGE_MM into it at most, the rest ramped.
+        const z0 = tiny || (enter && inAir(pts[0], pz, from)) ? pz : straight ? Math.max(pz, (ring.closed ? zAt : from) - PLUNGE_MM) : null;
+        if (z0 !== null) lines.push(`G01 Z${n3(z0)} F${c.fz}.`);
+        const zs = z0 ?? (ring.closed ? zAt : from);
+        if (zs > pz + 1e-6) {
+          if (ring.closed) {
+            const start = k0;
+            const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zs, pz, slope);
+            rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
+            at = rp.end;
+            k0 = (start + rp.k) % m;
+          } else zigzag(pts, zs, pz, slope).forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
+        }
         zAt = pz;
         // The ring at this depth, from where the tool is back to it.
         let fset = false;

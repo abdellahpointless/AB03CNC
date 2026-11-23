@@ -256,17 +256,24 @@ describe('going down into material', () => {
     for (const e of slopes(ms)) expect(e.max, `MS ${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
   }, 300_000);
 
-  it('goes straight down into POM, FH and RESOPAL with the end mills the shop takes in steeply, no ramp (you: those three only)', () => {
+  it('goes straight down into POM, FH and RESOPAL with the end mills the shop takes in steeply, 2 mm at most (you: those three only)', () => {
     // The study (docs/knowledge/cam-part-study.md): the engineers ramp once into closed material and plunge 2 mm into
     // the next level; CAM AI's ramps were 61 % of its lines. Ø3 to 8, as the shop takes them in steeply.
     for (const material of ['POM', 'FH', 'RESOPAL'] as const) {
       const r = camProgram({ ...base, material, tris: plate, raw: [44, 34, 16] });
       expect(r.check.match, material).toBeGreaterThanOrEqual(0.99);
       expect(r.check.collisions, material).toBe(0);
-      expect(slopes(r).filter((e) => e.type === 'SF' && e.d >= 3 && e.d <= 8), material).toEqual([]);
+      // What a pass goes deeper than the plunge: ramped at the shop's steep 15°.
+      for (const e of slopes(r).filter((x) => x.type === 'SF' && x.d >= 3 && x.d <= 8)) expect(e.max, `${material} SF ${e.d}`).toBeLessThanOrEqual(tan(15) + 0.001);
       const ops = r.setups.flatMap((x) => x.ops).filter((o) => o.name.startsWith('FRAESEN') && o.tool.type === 'SF' && o.tool.diameter >= 3 && o.tool.diameter <= 8);
       expect(ops.length, material).toBeGreaterThan(0);
       expect(ops.some((o) => o.lines.some((l) => /^G01 Z-/.test(l))), material).toBe(true);
+      // Never more than the engineers' 2 mm straight into material (a review found 8): the rest of a deeper pass ramps.
+      for (const o of ops)
+        o.lines.forEach((l, i) => {
+          const [a, b] = [o.lines[i - 1] ?? '', l].map((x) => x.match(/^G01 Z(-?[\d.]+)( F\S+)?$/)?.[1]);
+          if (a !== undefined && b !== undefined) expect(Number(a) - Number(b), `${material} ${o.name} line ${i}`).toBeLessThanOrEqual(2.001);
+        });
     }
   }, 300_000);
 });
