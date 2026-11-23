@@ -23,13 +23,9 @@ function step(l: Live, e: LiveEvent): Live {
 const share = (l: Live) => Math.min(1, l.stages.length / (4 + Math.max(l.of, 1)));
 
 export function liveStep(l: Live, e: LiveEvent): Live {
-  const pass = l.next ?? l;
-  if (e.kind === 'reset') {
-    // The first pass, or one that had not got anywhere: start as new. Else the new pass runs hidden.
-    if (!pass.stages.length) return { ...NO_LIVE, pct: l.pct, base: l.base, next: l.next && NO_LIVE };
-    return { ...l, base: l.pct, next: NO_LIVE };
-  }
-  const now = step(pass, e);
+  // The first pass starts as new; once one is on screen, every new pass runs hidden behind it.
+  if (e.kind === 'reset') return l.stages.length ? { ...l, base: l.pct, next: NO_LIVE } : { ...NO_LIVE, pct: l.pct, base: l.base };
+  const now = step(l.next ?? l, e);
   // Each pass fills 85 % of what is left: the bar never goes back and stays under 100 until the end.
   const pct = Math.max(l.pct, Math.round(l.base + (100 - l.base) * 0.85 * share(now)));
   if (!l.next) return { ...now, pct, base: l.base, next: null };

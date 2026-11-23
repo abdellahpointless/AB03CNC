@@ -31,6 +31,16 @@ describe('CAM AI progress', () => {
     expect(l.pct).toBeGreaterThan(seen[7].pct);
   });
 
+  it('keeps a finished pass on screen when the planner starts over twice before the next one gets going', () => {
+    let l: Live = NO_LIVE;
+    for (const e of [...pass('a'), { kind: 'reset' } as LiveEvent, ...pass('c')]) l = liveStep(l, e);
+    expect(l.paths.map((p) => p.key)).toEqual(['c']);
+    let m: Live = NO_LIVE;
+    for (const e of [...pass('a'), { kind: 'reset' } as LiveEvent, { kind: 'reset' } as LiveEvent]) m = liveStep(m, e);
+    expect(m.paths.map((p) => p.key)).toEqual(['a']);
+    expect(m.stages).toContain('post');
+  });
+
   it('keeps the first pass on screen while the second one runs', () => {
     let l: Live = NO_LIVE;
     for (const e of [...pass('a'), ...pass('b').slice(0, 5)]) l = liveStep(l, e);
