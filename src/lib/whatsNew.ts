@@ -17,6 +17,66 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-23-look',
+    date: '2026-11-23',
+    en: {
+      title: 'New icons and fewer interruptions',
+      items: [
+        'New icons across the whole app, one consistent set.',
+        'Remapper: no banner after importing a program; the FANUC/HAAS buttons above the code convert it.',
+        'The weak-password reminder shows once, and long dialogs (the Excel tool import) scroll to their buttons.',
+      ],
+    },
+    tr: {
+      title: 'Yeni simgeler ve daha az kesinti',
+      items: [
+        'Uygulamanın tamamında yeni, tutarlı bir simge seti.',
+        'Takım eşleştirici: program içe aktarıldıktan sonra bant çıkmaz; kodun üstündeki FANUC/HAAS düğmeleri dönüştürür.',
+        'Zayıf parola hatırlatması bir kez gösterilir; uzun pencereler (Excel takım içe aktarma) düğmelerine kadar kaydırılabilir.',
+      ],
+    },
+  },
+  {
+    id: '2026-11-23-toolpath',
+    date: '2026-11-23',
+    feature: 'toolpath',
+    en: {
+      title: 'Toolpath: STEP models, parallels and measuring in the vise',
+      items: [
+        'A part’s 3D model can now also be a STEP file (.step or .stp). After importing a program, the 3D model button lights up instead of asking.',
+        'The parallels slide out along the vise and the new ones slide in when they change, with a bigger label.',
+        'Measure works with the part in the vise; "Part only" in the measure panel takes it out.',
+      ],
+    },
+    tr: {
+      title: 'Takım yolu: STEP modeller, kaleler ve mengenede ölçüm',
+      items: [
+        'Parçanın 3B modeli artık STEP dosyası (.step veya .stp) da olabilir. Program içe aktarıldıktan sonra model istemek yerine 3B model düğmesi yanar.',
+        'Kaleler değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
+        'Ölçüm parça mengenedeyken çalışır; ölçüm panelindeki "Yalnızca parça" onu mengeneden çıkarır.',
+      ],
+    },
+  },
+  {
+    id: '2026-11-23-cam-ai',
+    date: '2026-11-23',
+    feature: 'camAi',
+    en: {
+      title: 'CAM AI: STEP models and a clearer progress',
+      items: [
+        'The part’s 3D model can also be a STEP file (.step or .stp).',
+        'While it makes the program it shows how far along it is (a percentage that only moves forward) and how long it has been working.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: STEP modeller ve daha anlaşılır ilerleme',
+      items: [
+        'Parçanın 3B modeli STEP dosyası (.step veya .stp) da olabilir.',
+        'Programı yaparken ne kadar ilerlediğini (yalnızca ileri giden bir yüzde) ve ne kadar süredir çalıştığını gösterir.',
+      ],
+    },
+  },
+  {
     id: '2026-11-06-cam-ai',
     date: '2026-11-06',
     feature: 'camAi',
