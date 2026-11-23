@@ -296,7 +296,6 @@ export default function CodeEditorPair({
   const [confirmingExport, setConfirmingExport] = useState(false);
   const outputScrollRef = useRef<HTMLDivElement>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [hasImported, setHasImported] = useState(false);
   const [conversionNotification, setConversionNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The part's 3D PDF or STL (for the toolpath to check the program against): kept while the page is open.
@@ -428,7 +427,6 @@ export default function CodeEditorPair({
         const fileLines = text.split('\n');
         const { lines: processedLines, addedCount } = applyG53BeforeG52(fileLines);
         setSourceCode(processedLines.join('\n'));
-        setHasImported(true);
         // A new program: ask for its 3D model (the one given before was for another program).
         setModel(null);
         setAskModel(true);
@@ -475,7 +473,6 @@ export default function CodeEditorPair({
     setSourceCode(result.haasCode);
     // The file keeps its imported name: the export is named exactly like the imported program.
 
-    setHasImported(false);
     
     const details: string[] = [];
     if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLineUpdated'));
@@ -511,7 +508,6 @@ export default function CodeEditorPair({
     setSourceCode(result.fanucCode);
     // The file keeps its imported name: the export is named exactly like the imported program.
 
-    setHasImported(false);
     
     const details: string[] = [];
     if (result.stats.securityLinesReplaced > 0) details.push(t('convert.securityLines'));
@@ -564,41 +560,6 @@ export default function CodeEditorPair({
 
   return (
     <div className="flex-1 flex flex-col space-y-4 min-h-[540px]">
-      {/* Conversion Banner when file is imported */}
-      {hasImported && (
-        <div className="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--blue-500)]/20 border border-[var(--blue-500)]/40 flex items-center justify-center text-[var(--blue-text)] shrink-0">
-              <Sparkles size={16} />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-[var(--text-primary)]">
-                {t('editor.importedPrefix')} <code className="font-mono text-[var(--blue-text)] font-bold">{fileName}</code> {t('editor.importedSuffix')}
-              </span>
-              <p className="text-xs text-[var(--text-secondary)]">
-                {t('editor.importedHint')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={handleSwitchFanucToHaas}
-              className="btn-primary text-xs min-h-11 px-3.5"
-            >
-              <Sparkles size={13} />
-              <span>{t('editor.fromFanucToHaas')}</span>
-            </button>
-            <button
-              onClick={handleSwitchHaasToFanuc}
-              className="btn-warning text-xs min-h-11 px-3.5"
-            >
-              <ArrowLeftRight size={13} />
-              <span>{t('editor.fromHaasToFanuc')}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {conversionNotification && (
         <div className="badge-positive toast-bottom justify-between gap-3 py-2.5 pl-4 pr-2 text-xs font-medium" role="status">
           <div className="flex items-center gap-2">

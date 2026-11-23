@@ -185,11 +185,6 @@ const remapper = {
   },
   /** Source / processed code editors (CodeEditorPair). */
   editor: {
-    importedPrefix: 'File',
-    importedSuffix: 'imported.',
-    importedHint: 'Select your target machine dialect or switch between standards:',
-    fromFanucToHaas: 'from FANUC to HAAS',
-    fromHaasToFanuc: 'from HAAS to FANUC',
     fanucToHaasTitle: 'Convert source code from FANUC dialect to HAAS dialect',
     haasToFanucTitle: 'Convert source code from HAAS dialect to FANUC dialect',
     sampleFanuc: 'Sample FANUC',

@@ -177,11 +177,6 @@ const remapper: Translation<typeof en> = {
     generate: 'Onayla ve Oluştur',
   },
   editor: {
-    importedPrefix: '',
-    importedSuffix: 'dosyası içe aktarıldı.',
-    importedHint: 'Hedef tezgahın formatını seçin veya formatlar arasında dönüştürün:',
-    fromFanucToHaas: 'FANUC’tan HAAS’a',
-    fromHaasToFanuc: 'HAAS’tan FANUC’a',
     fanucToHaasTitle: 'Kaynak kodu FANUC formatından HAAS formatına dönüştür',
     haasToFanucTitle: 'Kaynak kodu HAAS formatından FANUC formatına dönüştür',
     sampleFanuc: 'Örnek FANUC',
