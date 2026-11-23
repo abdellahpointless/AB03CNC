@@ -691,7 +691,7 @@ const remapper = {
     measureMode: { faces: 'Faces', points: 'Points', diameter: 'Diameter', axes: 'Axes' },
     measureHint: {
       faces: 'Click two flat faces: the distance between them.',
-      points: 'Click two points on the part: the distance between them.',
+      points: 'Click two points on the part or the vise: the distance between them.',
       diameter: 'Click a hole: its Ø. Click another one for its Ø.',
       axes: 'Click two holes: the distance between their axes.',
     },

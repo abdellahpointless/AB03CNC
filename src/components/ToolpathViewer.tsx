@@ -628,7 +628,7 @@ export default function ToolpathViewer({
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate || measure} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -675,6 +675,16 @@ export default function ToolpathViewer({
                         </button>
                       ))}
                     </div>
+                    {/* Measured in the clamp; "part only" takes it out of the vise. */}
+                    <button
+                      onClick={() => setIsolate((x) => !x)}
+                      aria-pressed={isolate}
+                      className={`ml-1.5 inline-flex items-center gap-1 rounded-full border px-2.5 h-7 text-[11px] font-bold ${isolate ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.isolateHelp')}
+                    >
+                      <Box size={12} aria-hidden="true" />
+                      {t('toolpath.isolate')}
+                    </button>
                     <div aria-live="polite" className="text-[11px] text-[var(--text-secondary)] space-y-1">
                       {measured?.kind === 'hole' ? (
                         <>
@@ -887,7 +897,7 @@ export default function ToolpathViewer({
                       <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
                     </button>
                   )}
-{mode3d && !(isolate || measure) && (
+{mode3d && !isolate && (
                     <button
                       onClick={() => setSeeThrough((x) => !x)}
                       aria-pressed={seeThrough}

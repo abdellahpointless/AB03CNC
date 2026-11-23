@@ -1614,8 +1614,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       const r = el.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), a.camera);
       a.solid.updateMatrixWorld(true);
-      const hit = raycaster.intersectObjects(chunks(), false)[0];
+      const parts = chunks();
+      // In the clamp: the vise and parallels hide what is behind them; on them only a point is measured.
+      const held: THREE.Object3D[] = [];
+      if (a.world.visible && !a.seeThrough) a.fixture?.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
+      const hit = raycaster.intersectObjects([...parts, ...held], false)[0];
       if (!hit?.face) return;
+      if (!parts.includes(hit.object as THREE.Mesh) && modeRef.current !== 'points') return onMeasureRef.current?.({ kind: 'none' });
       const q = a.solid.worldToLocal(hit.point.clone());
       const f = pick([q.x, q.y, q.z], [hit.face.normal.x, hit.face.normal.y, hit.face.normal.z], hit);
       if (!f) return onMeasureRef.current?.({ kind: 'none' });

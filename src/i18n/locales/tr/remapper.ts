@@ -681,7 +681,7 @@ const remapper: Translation<typeof en> = {
     measureMode: { faces: 'Yüzeyler', points: 'Noktalar', diameter: 'Çap', axes: 'Eksenler' },
     measureHint: {
       faces: 'İki düz yüzeye tıklayın: aralarındaki mesafe.',
-      points: 'Parça üzerinde iki noktaya tıklayın: aralarındaki mesafe.',
+      points: 'Parça veya mengene üzerinde iki noktaya tıklayın: aralarındaki mesafe.',
       diameter: 'Bir deliğe tıklayın: çapı. Başka bir deliğe tıklayınca onun çapı.',
       axes: 'İki deliğe tıklayın: eksenleri arasındaki mesafe.',
     },
