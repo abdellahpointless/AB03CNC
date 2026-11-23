@@ -271,6 +271,18 @@ function nestCale(depth: number): number {
 /** One end mill per Ø (the longest), largest first. */
 /** Without slivers thinner than 0.3 mm (what a round tool leaves in sharp inside corners). */
 const opened = (r: Region) => offset(offset(r, -0.15), 0.15);
+/**
+ * You: inside corners are left at the radius of the pocket mill. What a mill of this radius or less leaves only in
+ * corners is not chased with a smaller one (the study: a Ø1 ran 12 minutes in 0.4 mm corner slivers 30 mm deep).
+ * The shop's pocket templates go up to Ø8; the engineers' pocket mills in the study: Ø6, Ø4 only where narrower.
+ */
+const CORNER_R = 4;
+/** Of what a mill of radius r left, the pieces that reach further from where it went than a square corner's sliver (0.414 r). */
+function pastCorners(left: Region, gone: Region, r: number): Region {
+  const far = difference(left, offset(gone, 0.42 * r + 0.02));
+  const outers = left.filter((l) => area([l]) > 0 && area(intersection([l], far)) > 0.01);
+  return [...outers, ...left.filter((l) => area([l]) < 0 && outers.some((o) => inside([o], l[0]) === 1))];
+}
 const circle = (c: [number, number], r: number) => Array.from({ length: 48 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 24), c[1] + r * Math.sin((i * Math.PI) / 24)] as P2);
 
 /** What is left of the part, per level, in a setup's frame. */
@@ -1275,6 +1287,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const notes: CamNote[] = [];
   // The walls left inside held faces where the jaws or the stop keep the tools off, in their setup's frame.
   const walls: { R: Mat3; t: Vec; z: number; above: number; region: Region }[] = [];
+  // The inside corners left at a mill's radius on purpose (CORNER_R), in their setup's frame: no clamping more for them.
+  const corners: { R: Mat3; t: Vec; z: number; above: number; region: Region }[] = [];
   const needOnce = (n: Need) => {
     if (!missing.some((m) => m.category === n.category && Math.abs(m.diameter - n.diameter) < 0.01)) missing.push(n);
     else {
@@ -1536,6 +1550,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
           ...(ss(0) >= 0.1 ? rect(held.lo[0] - 1, held.lo[1] - 1, held.lo[0] + 0.1, held.hi[1] + 1) : []),
         ]);
     const mine: { z: number; above: number; region: Region }[] = [];
+    const myCorners: { z: number; above: number; region: Region }[] = [];
 
     // 1. Face the top (the face mill, else the largest end mill).
     if (sb.hi[2] > 0.01) {
@@ -1762,6 +1777,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
         (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
+        if (pick.tool.diameter / 2 <= CORNER_R + 1e-6) {
+          const past = pastCorners(todo, pick.gone, pick.tool.diameter / 2);
+          const dropped = difference(todo, past);
+          if (area(dropped) > 0.01) myCorners.push({ z, above: levelTop, region: dropped });
+          todo = past;
+        }
       }
       // What no end mill here could reach: listed once it adds up to more than slivers.
       if (area(todo) > 0.5) {
@@ -1951,6 +1972,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // face) leaves the note standing. Decide it after the last clamping if one ever does.
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
     walls.push(...mine.map((w) => ({ R, t, ...w })));
+    corners.push(...myCorners.map((w) => ({ R, t, ...w })));
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
@@ -1979,9 +2001,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const gain = SIDES.map(() => 0);
     const { n: rn, origin: ro, step: rs } = grid;
     // Nor the walls the jaws and the stop leave (noted): a clamping more for them costs more than they
-    // are. Grown by a cell of either grid, which never quite agree with them.
+    // are; nor the inside corners left at a mill's radius (you: the shop's way). Grown by a cell of either
+    // grid, which never quite agree with them.
     const e = Math.max(...g.step, ...rs);
-    const thinWalls = walls.map((w) => ({ ...w, region: offset(w.region, e) }));
+    const thinWalls = [...walls, ...corners].map((w) => ({ ...w, region: offset(w.region, e) }));
     for (let i = 0; i < occ.length; i++) {
       if (near[i]) continue;
       const ix = i % rn[0];

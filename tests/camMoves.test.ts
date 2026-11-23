@@ -143,6 +143,31 @@ describe('blind holes', () => {
   }, 300_000);
 });
 
+describe('inside corners', () => {
+  // You: inside corners are left at the radius of the pocket mill (the study: a Ø1 ran 12 minutes in 0.4 mm corner
+  // slivers 30 mm deep; the engineers stop at Ø6, Ø4 only where it is narrower).
+  const pocket = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
+  // The same with a slot 3 wide, 6 long, 4 deep off the pocket's side (y 6 to 12): only a Ø3 or smaller reaches into it.
+  const slotted = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : i >= 19 && i < 22 && j >= 21 && j < 27 ? 8 : 12))));
+  const mills = (tris: Float32Array) => {
+    const r = camProgram({ ...base, material: 'POM', tris, raw: [44, 34, 16] });
+    return { r, d: r.setups.flatMap((s) => s.ops).filter((o) => /^(FRAESEN|SCHLICHT)/.test(o.name)).map((o) => o.tool.diameter) };
+  };
+  it('sends no smaller mill after the pocket mill only for its corners', () => {
+    const { r, d } = mills(pocket);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(Math.min(...d)).toBeGreaterThanOrEqual(6);
+  }, 300_000);
+  it('still sends one into a place narrower than the pocket mill', () => {
+    const { r, d } = mills(slotted);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(d.some((x) => x <= 3)).toBe(true);
+    expect(Math.min(...d)).toBeGreaterThanOrEqual(2);
+    // Nothing left in the slot; the pocket's corners only (at the pocket mill's radius).
+    expect(r.check.pieces.filter((p) => p.kind === 'left' && p.max[1] > 6.5)).toEqual([]);
+  }, 300_000);
+});
+
 describe('going down into material', () => {
   /** The steepest and the least steep ramp (its whole drop over its whole length: the lines are rounded to 0.001 mm; over 2 mm long for the least) of each end mill's roughing, by tool code. */
   const slopes = (r: ReturnType<typeof camProgram>) => {
@@ -224,14 +249,17 @@ describe('going down into material', () => {
 
 describe('entering a ring from the side', () => {
   it('goes down by rapid in the ring already cut and feeds only the last mm (the shop rapids to 2 mm above and feeds in)', () => {
+    // A pocket wide enough for more than one ring a level (the small ones are one ring since inside corners are
+    // left at the pocket mill's radius): 50 x 40 x 12, 30 x 24, 6 deep.
+    const wide = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 50 }, (_, i) => (i >= 10 && i < 40 && j >= 8 && j < 32 ? 6 : 12))));
+    let entries = 0;
     for (const [tris, raw] of [
-      [plate, [44, 34, 16]],
+      [wide, [54, 44, 16]],
       [twoSided, [34, 28, 20]],
     ] as const) {
       const r = camProgram({ ...base, tris, raw: [...raw] });
       expect(r.check.match).toBeGreaterThanOrEqual(0.99);
       expect(r.check.collisions).toBe(0);
-      let entries = 0;
       for (const o of r.setups.flatMap((s) => s.ops).filter((x) => x.kind === 'pocket' || x.kind === 'finish'))
         // A rapid down, a feed down, then across at that height (into the ring): the feed down is the last mm.
         o.lines.forEach((l, i) => {
@@ -242,8 +270,8 @@ describe('entering a ring from the side', () => {
             expect(zOf(l) - zOf(next), `${o.name} line ${i}`).toBeLessThanOrEqual(1.001);
           }
         });
-      expect(entries).toBeGreaterThan(0);
     }
+    expect(entries).toBeGreaterThan(0);
   }, 300_000);
 
   it('never runs back over a cut at feed: an open piece’s zigzag down ends at its start, where its pass begins (the shop’s zigzag, no walk back)', () => {
