@@ -526,8 +526,11 @@ const steepOf = (tool: CamTool, mat: string) => {
 const rampOf = (tool: CamTool, mat: string) => Math.tan(((steepOf(tool, mat) ? 15 : 5) * Math.PI) / 180);
 /** You: those mills go straight down into POM, FH and RESOPAL (the engineers' 2 mm plunges at the entry feed), not into the others. */
 const PLUNGES = new Set(['POM', 'FH', 'RESOPAL']);
-/** How deep they go straight into material: the engineers' plunges (Z-1.75 to Z-3.75, Z2 to Z-2); a deeper pass ramps the rest. */
-const PLUNGE_MM = 2;
+/**
+ * How deep they go straight into material: the engineers' plunges (Z-1.75 to Z-3.75, Z2 to Z-2), a deeper pass ramping
+ * the rest; in POM a whole pass (you).
+ */
+const plungeMm = (mat: string) => (mat === 'POM' ? Infinity : 2);
 const plungesInto = (tool: CamTool, mat: string) => PLUNGES.has(mat) && steepOf(tool, mat);
 type P3 = [number, number, number];
 const dist2 = (a: P2, b: P2) => Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -768,8 +771,8 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
           lines.push(`G01 Z${n3(from)} F${c.fz}.`);
         }
         // Its whole circle in the air (or no ring to ramp along): straight down. A plunging material: straight down
-        // PLUNGE_MM into it at most, the rest ramped.
-        const z0 = tiny || (enter && inAir(pts[0], pz, from)) ? pz : straight ? Math.max(pz, (ring.closed ? zAt : from) - PLUNGE_MM) : null;
+        // plungeMm into it at most, the rest ramped.
+        const z0 = tiny || (enter && inAir(pts[0], pz, from)) ? pz : straight ? Math.max(pz, (ring.closed ? zAt : from) - plungeMm(mat)) : null;
         if (z0 !== null) lines.push(`G01 Z${n3(z0)} F${c.fz}.`);
         const zs = z0 ?? (ring.closed ? zAt : from);
         if (zs > pz + 1e-6) {

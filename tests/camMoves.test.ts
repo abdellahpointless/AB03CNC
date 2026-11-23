@@ -271,7 +271,7 @@ describe('going down into material', () => {
     for (const e of slopes(ms)) expect(e.max, `MS ${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
   }, 300_000);
 
-  it('goes straight down into POM, FH and RESOPAL with the end mills the shop takes in steeply, 2 mm at most (you: those three only)', () => {
+  it('goes straight down into POM, FH and RESOPAL with the end mills the shop takes in steeply: a whole pass in POM, 2 mm in the others (you)', () => {
     // The study (docs/knowledge/cam-part-study.md): the engineers ramp once into closed material and plunge 2 mm into
     // the next level; CAM AI's ramps were 61 % of its lines. Ø3 to 8, as the shop takes them in steeply.
     for (const material of ['POM', 'FH', 'RESOPAL'] as const) {
@@ -283,12 +283,16 @@ describe('going down into material', () => {
       const ops = r.setups.flatMap((x) => x.ops).filter((o) => o.name.startsWith('FRAESEN') && o.tool.type === 'SF' && o.tool.diameter >= 3 && o.tool.diameter <= 8);
       expect(ops.length, material).toBeGreaterThan(0);
       expect(ops.some((o) => o.lines.some((l) => /^G01 Z-/.test(l))), material).toBe(true);
-      // Never more than the engineers' 2 mm straight into material (a review found 8): the rest of a deeper pass ramps.
+      // FH and RESOPAL: never more than the engineers' 2 mm straight into material (a review found 8), the rest of a
+      // deeper pass ramped. POM: a whole pass (you).
+      let deepest = 0;
       for (const o of ops)
         o.lines.forEach((l, i) => {
           const [a, b] = [o.lines[i - 1] ?? '', l].map((x) => x.match(/^G01 Z(-?[\d.]+)( F\S+)?$/)?.[1]);
-          if (a !== undefined && b !== undefined) expect(Number(a) - Number(b), `${material} ${o.name} line ${i}`).toBeLessThanOrEqual(2.001);
+          if (a !== undefined && b !== undefined) deepest = Math.max(deepest, Number(a) - Number(b));
         });
+      if (material === 'POM') expect(deepest, material).toBeGreaterThan(2.001);
+      else expect(deepest, material).toBeLessThanOrEqual(2.001);
     }
   }, 300_000);
 });
