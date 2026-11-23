@@ -8,11 +8,12 @@ import { describe, expect, it } from 'vitest';
 import { LIB, plan } from './plan';
 
 describe.skipIf(!LIB)('reference library: a smaller end mill is not sent up for ground a larger one took', () => {
-  // Pcbf6262d (PC GF): the Ø3 takes a band from Z0 (a sliver the Ø8 left at the top); the Ø1.5 that follows
+  // Pcbf6262d (PC GF): the Ø3 takes a band from Z0 (a sliver the Ø8 left at the top); the Ø1.5 that followed
   // under it ran one of its rings 73 passes from Z0 for that same sliver, already gone (0.8 of its 5.8 minutes).
-  it('Pcbf6262d: the Ø1.5 roughing starts under the band its Ø3 took', { timeout: 30 * 60_000 }, async () => {
+  // Since Phase 7b (the blank as the header writes it, walls roughed to size) a Ø2 is the smallest: the same holds.
+  it('Pcbf6262d: the end mills under Ø3 start under the band its Ø3 took', { timeout: 30 * 60_000 }, async () => {
     const r = await plan('Pcbf6262d', 'PCGF');
-    const lines = r.setups.flatMap((s) => s.ops).filter((o) => o.name === 'FRAESEN_1.5MM').flatMap((o) => o.lines);
+    const lines = r.setups.flatMap((s) => s.ops).filter((o) => o.kind === 'pocket' && o.tool.diameter < 3).flatMap((o) => o.lines);
     expect(lines.length).toBeGreaterThan(0);
     const highest = Math.max(...lines.flatMap((l) => (/^G01\b.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])));
     expect(highest).toBeLessThan(-9);
