@@ -159,3 +159,13 @@ describe('the header blank along the model (blankAlong)', () => {
     expect(blankAlong({ size: [35, 18, 15], raw: null }, [18, 35, 15])).toBeNull();
   });
 });
+
+describe('the blank allowance learned from the headers', () => {
+  it('takes each blank side with the finished side written in its place, smallest finished side first', () => {
+    const part = (size: number[], raw: number[]) => ({ ...readProgram('', 'x'), size, raw });
+    // 35 x 18 x 15 from 40 x 22 x 25: the 15 mm side has 10 of blank (by size it read 7).
+    expect(summarise([part([35, 18, 15], [40, 22, 25])]).allowance).toEqual([10, 4, 5]);
+    // A header whose blank is written in another order than the size: by size.
+    expect(summarise([part([35, 18, 15], [25, 22, 40])]).allowance).toEqual([7, 7, 5]);
+  });
+});

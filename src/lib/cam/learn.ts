@@ -347,7 +347,10 @@ export function summarise(parts: PartRead[]): ShopKnowledge {
   for (const p of parts) for (const o of p.order) o.forEach((k, i) => (pos.get(k) ?? pos.set(k, []).get(k)!).push(i / Math.max(1, o.length - 1)));
   const order = [...pos].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length] as const).sort((a, b) => a[1] - b[1]).map(([k]) => k);
   const allow = parts.filter((p) => p.raw && p.size).map((p) => {
-    // Pair raw and finished sides by size (headers write them in different orders).
+    // Each blank side with the finished side the header writes in its place (blankAlong), smallest finished
+    // side first; by size only where that leaves a side under the finished one.
+    const byPlace = p.size!.map((v, i) => [v, p.raw![i] - v]);
+    if (byPlace.every(([, d]) => d >= 0)) return byPlace.sort((x, y) => x[0] - y[0]).map(([, d]) => d);
     const a = [...p.size!].sort((x, y) => x - y);
     const b = [...p.raw!].sort((x, y) => x - y);
     return a.map((v, i) => b[i] - v);
