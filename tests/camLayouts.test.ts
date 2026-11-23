@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes } from '../src/lib/cam/layouts';
-import { camProgram, checkProgram } from '../src/lib/cam/program';
+import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE, VISE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
@@ -421,3 +421,15 @@ describe('turning the part over', () => {
   }, 600_000);
 });
 
+describe('which plan wins', () => {
+  // Minutes on the machine + 2 per clamping (you: 2 minutes per clamping is right); within a minute, fewer clampings.
+  it('takes the clamping more only when it saves more than the operator\'s 2 minutes and a minute more', () => {
+    expect(cheaper({ minutes: 6.6, clampings: 5 }, { minutes: 8.8, clampings: 4 })).toBe(false); // 16.6 against 16.8: a tie
+    expect(cheaper({ minutes: 8.8, clampings: 4 }, { minutes: 6.6, clampings: 5 })).toBe(true);
+    expect(cheaper({ minutes: 5.5, clampings: 5 }, { minutes: 8.8, clampings: 4 })).toBe(true); // 15.5 against 16.8
+  });
+  it('between as many clampings, the faster plan, however close', () => {
+    expect(cheaper({ minutes: 8.6, clampings: 4 }, { minutes: 8.8, clampings: 4 })).toBe(true);
+    expect(cheaper({ minutes: 8.8, clampings: 4 }, { minutes: 8.6, clampings: 4 })).toBe(false);
+  });
+});

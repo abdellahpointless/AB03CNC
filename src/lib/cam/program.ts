@@ -931,6 +931,18 @@ const MISPLACED = 0.5;
  * shortcut: an assumption, not measured at the shop; the shop's own figure replaces it.
  */
 const CLAMPING_MIN = 2;
+/** Plans whose times differ by no more than this are a tie, which the fewer clampings win (minutes). */
+const TIE_MIN = 1;
+
+/**
+ * Plan p takes less time than q: the machine's minutes and the operator's for each clamping (turning the part
+ * over, the parallels, the stop), so a clamping more must save more than that; within TIE_MIN of each other,
+ * the fewer clampings win (you: fewer setups).
+ */
+export function cheaper(p: { minutes: number; clampings: number }, q: { minutes: number; clampings: number }): boolean {
+  const [cp, cq] = [p.minutes + CLAMPING_MIN * p.clampings, q.minutes + CLAMPING_MIN * q.clampings];
+  return p.clampings !== q.clampings && Math.abs(cp - cq) <= TIE_MIN ? p.clampings < q.clampings : cp < cq;
+}
 
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose']): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
@@ -1158,9 +1170,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
   const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.check.misplaced === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
   let bestAxis = order[0];
-  // The time a part takes: the machine's minutes and the operator's for each clamping (turning the part
-  // over, the parallels, the stop): a plan with a clamping more must save more than that.
-  const cost = (r: CamResult & { check: CamCheck }) => r.check.minutes + CLAMPING_MIN * r.setups.length;
+  const at = (r: CamResult & { check: CamCheck }) => ({ minutes: r.check.minutes, clampings: r.setups.length });
   let bestInput = input;
   const plans = (inp: CamInput) =>
     order.forEach((axis, i) => {
@@ -1169,7 +1179,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       const now = checked(inp, r);
       input.live?.({ kind: 'stage', stage: 'post' });
       progress(i + 1, order.length);
-      const better = !best || (good(now) && (!good(best) || cost(now) < cost(best))) || (!good(now) && !good(best) && now.check.match > best.check.match);
+      const better = !best || (good(now) && (!good(best) || cheaper(at(now), at(best)))) || (!good(now) && !good(best) && now.check.match > best.check.match);
       if (better) [best, bestAxis, bestInput] = [now, axis, inp];
     });
   plans(input);
