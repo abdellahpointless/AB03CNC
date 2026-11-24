@@ -1386,7 +1386,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The blank 2 mm over the part on the first clamping's side, as the shop faces it (2-3 mm in 64 of 95 first
   // clampings), the rest under the part, where the jaws grip it and the outside goes through (a centred blank
   // left the jaws only the foot of the part's wall).
-  const top0 = Math.max(0, Math.min(2, (raw[thin] - size[thin]) / 2));
+  // You: the outline is cut whole in the first clamping, so 4 mm under the part where the Z stock allows it (3 gripped,
+  // the outline 0.5 under the part and 0.5 over the jaws) and 0.5 to 2 over it; else half of it, 2 at most.
+  const extra = raw[thin] - size[thin];
+  const top0 = extra >= 4.5 ? Math.max(0.5, Math.min(2, extra - 4)) : Math.max(0, Math.min(2, extra / 2));
   if (!input.centred && SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
   else if (!input.centred) [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
   // A top plate's white face (shop rule): the blank flush with it, so nothing faces it; the stock on the other side.

@@ -88,6 +88,18 @@ describe('a later clamping', () => {
 });
 
 describe('the blank', () => {
+  it('stands lower on a thin Z stock, 4 mm under the part, so the outline still goes through in the first clamping', () => {
+    // 5 mm on the thickness: 1 over the part, 4 under it (3 gripped, the outline 0.5 under the part, 0.5 over the jaws).
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 17] });
+    expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 1MM$/);
+    expect(r.setups[0].grip).toBe(3);
+    const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
+    expect(lowest).toBeCloseTo(-12.5, 3);
+    expect(r.setups[1].ops.filter((o) => o.kind === 'pocket' || o.kind === 'finish')).toEqual([]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('stands 2 mm over the part on the first clamping’s side, the rest under it (the shop faces 2-3 mm): the outside goes through there', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 22] });
     expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 2MM$/);
