@@ -1840,7 +1840,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
       return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
     };
-    const toDrill: { h: Hole; tool: CamTool; z: number; pin?: boolean }[] = [];
+    // done: down to where the hole is finished by the drill. A plain blind hole to the drill's tip (you, Beta 2: the
+    // engineers leave the point at a flat bottom, Pb361ad9d, Pfae5765f); else to where its full Ø ends.
+    const toDrill: { h: Hole; tool: CamTool; z: number; pin?: boolean; done: number }[] = [];
     // The parallels stand under the held Y faces, 0.3 mm in, as wide as the app's reader puts them
     // (setups.ts placeCales), where the underside lies flat on them; else the reader may move them in.
     const caleW = parallelWidth(hold[1]);
@@ -1872,9 +1874,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // from there, and solid 0.75 r off its middle at that height, under a point's cone: not a cross hole or a
       // cavity): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
       const under = h.through ? [] : slice(P, h.bottom - 0.3 * h.r);
+      // A counterbore's floor: a smaller hole goes on from its bottom (a seat, kept flat).
+      const seat = holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05);
       const pointed =
         !h.through &&
-        !holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05) &&
+        !seat &&
         inside(under, h.c) === 0 &&
         [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [h.c[0] + 0.75 * h.r * dx, h.c[1] + 0.75 * h.r * dy]) !== 0);
       const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
@@ -1898,7 +1902,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
           rest = z + 0.3 * d.diameter - h.bottom;
           rest = rest < 0.05 ? 0 : rest;
         }
-        toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005 });
+        toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005, done: !h.through && !seat ? z : z + 0.3 * d.diameter });
         keepHoles.push(h);
         drilled.set(k, rest);
       } else {
@@ -2022,9 +2026,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // Thinner than the simulation's grid next to the part is the grid, not material.
       let todo = difference(left.at(z, zAbove), left.skin ? offset(keep, left.skin) : keep);
       // You (Beta 2): what a drill of this clamping took is done (the grid, left, knows only the clampings before): a
-      // ring that would only sweep a drilled hole is not run. Only down to where the drill's point starts: under that,
-      // a flat bottom is milled.
-      const bored: Region = drilledHere.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2 + 0.15));
+      // ring that would only sweep a drilled hole is not run, down to where the hole is done (toDrill's done): a
+      // counterbore's floor and a through hole's narrow end under that are still milled.
+      const bored: Region = drilledHere.filter((d) => d.done <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2 + 0.15));
       const levelTop = zAbove;
       zAbove = z;
       const inside = z < jawLimit - 0.001;
@@ -2116,7 +2120,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const r = pick.tool.diameter / 2;
         const rings = (bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings).map((g) => {
           // A ring that only cleans a drill's point: its passes start where the drill's full Ø ends (air above).
-          const d = drilledHere.find((x) => x.z + 0.3 * x.tool.diameter > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
+          const d = drilledHere.find((x) => x.done > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
           return d ? { ...g, from: d.z + 0.3 * d.tool.diameter } : g;
         });
         if (rings.length) (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
