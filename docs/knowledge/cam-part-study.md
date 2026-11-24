@@ -219,4 +219,34 @@ finish. Open question: keep the hole with its counterbore and note the narrow ex
 1 mm into the parallel (0.8 now; it removes most of them for Ø3.5 and smaller), or go back to drilling such holes
 through in clamping 1.
 
-No upload of the program and 3D PDF from your manual test arrived in this session; the study's own part stood in.
+## Your manual test's program (P135aa119), against the engineers' (Pc91f5aad) and today's CAM AI
+
+Your upload is the study's part (same 3D PDF): CAM AI's program as the app made it at 281ae56 for your machine (blank
+74.03 x 46 x 47, POM), sent through the remapper. Each program simulated against the model as the library simulation
+does it (2 million voxels), and for every face of the model, the clamping whose cut finished the stock just outside
+it (a face finished by two clampings is where a step shows when the turn is a little off). Today's CAM AI: 3f98e3c
+(deployed), the page's defaults, HAAS-5's seed tools (not your machine's).
+
+| | Engineers | Your program (281ae56) | Today (3f98e3c) |
+|---|---|---|---|
+| Lines | 2,543 | 9,691 | 7,608 |
+| Minutes (the app's time model) | 15.2 | 20.4 | 17.3 |
+| Clampings (parallels) | 40, 8, 8 | 40, 36, nest on 38 | 41, 36, nest on 38 |
+| Match, left, gouged | 0.9999, 5 mm³, 0 | 1, 0, 0 | 1, 0, 0 |
+| Outer walls finished after the turn | none | 1.2 to 1.5 % of each (its bottom 0.5 mm, clamping 2) | none |
+| Faces finished by two clampings | 2, 28 mm² | 6, 732 mm² | 21, 798 mm² |
+| Faces finished in clamping 2 / 3 | 3,270 / 3,014 mm² | 4,220 / 1,353 mm² | 4,133 / 1,338 mm² |
+| Holes drilled from two sides | none | none | none |
+| Drilling in clamping 1 | Ø3.5, Ø4.6, Ø6 counterbore (G83) | spot drill, 7 drill sizes (the model's) | the same, after the outline |
+
+- The contour offset you saw: in your program the outline stopped 0.5 mm over the part's bottom and clamping 2 cut
+  the rest of every outer wall. Today it goes through in clamping 1 (6411d59), as the engineers'.
+- The steps where shapes meet: the end pocket's walls are cut in clamping 2 from the bottom face and finished in
+  clamping 3 from the end (358 mm² 83 % / 17 %, 262 mm² 35 % / 58 %, 70 mm² over three clampings), and a curved
+  shape near the middle is shared by clampings 1 and 3. The engineers leave the whole end pocket to clamping 3, which
+  then finishes as much as their clamping 2. Not fixed: next, a shape two clampings reach goes to one of them.
+- The third clamping in the nest on 38 mm parallels: the same in both CAM AI programs; the engineers hold it 37 mm
+  deep on 8 mm parallels. Today's code would grip 30 mm (its cuts allow it) but its vise check refuses that.
+- No hole of this part is drilled from two sides in either CAM AI program; the two-sided drilling you described was
+  not on this part. The engineers make the holes with two drills and a counterbore mill (the thread-insert holes
+  Ø4.6 for the model's Ø4.8), CAM AI with seven drills: fewer tools is part of the part analysis (P8.3).
