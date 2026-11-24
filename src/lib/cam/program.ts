@@ -856,6 +856,23 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
 }
 
 /**
+ * Of the chamfer triangles (their index in P, 9 numbers each), the ones a graver's paths ran along: their middle
+ * within `reach` of a path seen from the top. Where a path was cut short (the jaws, the part in the way) the
+ * chamfer is not taken for cut: a later clamping may still cut it.
+ */
+export function cutTris(P: ArrayLike<number>, tris: number[], paths: { pts: P2[] }[], reach: number): number[] {
+  const near = (p: P2, a: P2, b: P2) => {
+    const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy) <= reach;
+  };
+  return tris.filter((k) => {
+    const m: P2 = [(P[k * 9] + P[k * 9 + 3] + P[k * 9 + 6]) / 3, (P[k * 9 + 1] + P[k * 9 + 4] + P[k * 9 + 7]) / 3];
+    return paths.some(({ pts }) => pts.some((q, i) => (i ? near(m, pts[i - 1], q) : pts.length === 1 && near(m, q, q))));
+  });
+}
+
+/**
  * The 90° graver's paths for 45° chamfers (setup frame, heights lo..hi): its tip E under the
  * chamfer and E off the wall below it, so its cone lies on the chamfer. Only along the edges
  * that have one, and only where the cone and the shank touch nothing else of the part. Below
@@ -2212,7 +2229,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: fresh.length } });
       else if (paths.length) {
         ops.push(chamfering(graver, paths, mat, limits, plane));
-        chamfered = reachable.flatMap((c) => c.tris);
+        chamfered = cutTris(P, reachable.flatMap((c) => c.tris), paths, graver.diameter / 2 + 0.5);
       }
     }
     // 5. A top plate's lettering on this face: the graver along its grooves (engraving()).

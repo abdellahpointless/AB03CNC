@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readTris } from '../src/lib/model';
 import { forMachine } from '../src/lib/cam/export';
-import { camProgram, oneClamping, RESERVE, zigzag, type CamSetup } from '../src/lib/cam/program';
+import { camProgram, cutTris, oneClamping, RESERVE, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -239,6 +239,12 @@ describe('a chamfer', () => {
     expect(r.setups.map((s) => s.side)).toContain('Y-');
     expect(r.setups.map((s) => `${s.side} ${s.ops.filter((o) => o.name === 'FASE').length}`)).toEqual(r.setups.map((s) => `${s.side} ${s.side === 'Z+' ? 1 : 0}`));
   }, 300_000);
+
+  it('is taken for cut only where the graver ran: what a cut-short path left, a later clamping still cuts', () => {
+    // Two chamfer triangles along X, one at x 0..10, one at x 20..30; the graver ran from x 0 to 12 only.
+    const P = [0, 0, 0, 10, 0, 0, 5, 1, 1, 20, 0, 0, 30, 0, 0, 25, 1, 1];
+    expect(cutTris(P, [0, 1], [{ pts: [[0, 0.3], [12, 0.3]] }], 2.5)).toEqual([0]);
+  });
 });
 
 describe('a drilled hole', () => {
