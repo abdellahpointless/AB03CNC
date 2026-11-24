@@ -318,6 +318,30 @@ describe('blind holes', () => {
     expect(inHole.length).toBeGreaterThan(0);
     expect(Math.max(...inHole.map(([, b]) => b[2]))).toBeLessThanOrEqual(-6.5 + 1e-6);
   }, 300_000);
+  it('sends no mill into a hole whose drilling the operator removed', () => {
+    const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point: false });
+    const first = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    const drill = first.setups[0].ops.find((o) => o.kind === 'drill')!;
+    const r = camProgram({ ...base, tris, raw: [44, 34, 16], skip: [drill.key!] });
+    expect(r.setups[0].ops.some((o) => o.kind === 'drill')).toBe(false);
+    // Every move of a mill (rapid or feed) below the top, in the hole's circle: none.
+    const into = r.setups[0].ops
+      .filter((o) => o.kind === 'pocket')
+      .flatMap((o) => o.lines.map((l, i) => ({ l, prev: o.lines.slice(0, i) })))
+      .filter(({ l }) => /^G0?[01]\b/.test(l));
+    const at = (lines: string[]) => {
+      let p: number[] = [NaN, NaN, NaN];
+      const out: number[][] = [];
+      for (const l of lines) {
+        p = ['X', 'Y', 'Z'].map((a, k) => Number(l.match(new RegExp(`${a}(-?[\\d.]+)`))?.[1] ?? p[k]));
+        out.push(p);
+      }
+      return out;
+    };
+    const pts = r.setups[0].ops.filter((o) => o.kind === 'pocket').flatMap((o) => at(o.lines));
+    expect(into.length).toBeGreaterThan(0);
+    expect(pts.filter((p) => p[2] < -0.2 && Math.hypot(p[0], p[1]) < 2.5)).toEqual([]);
+  }, 300_000);
 });
 
 describe('the roughing mill', () => {

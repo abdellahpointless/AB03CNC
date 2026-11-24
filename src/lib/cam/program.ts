@@ -1932,6 +1932,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return s;
     };
     if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface));
+    // The holes this clamping's drills make: not one whose drilling the operator removed (its op goes after planning).
+    // Such a hole stays solid down through its bottom: no mill is sent under it (nothing drilled to reach it by).
+    const drilledHere = toDrill.filter((d) => !input.skip?.some((k) => k.startsWith(`${side.name}|BOHREN_${mm(d.tool.diameter)}MM|${d.tool.code}|`)));
+    const undrilled = new Set(toDrill.filter((d) => !drilledHere.includes(d)).map((d) => d.h));
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
@@ -1956,7 +1960,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const keepAt = (z: number): Region => {
       while (si2 < samples.length && samples[si2] > z + 0.001) above = union(above, slice(P, samples[si2++]));
       let k = union(above, slice(P, z + 0.001));
-      const disks = keepHoles.filter((h) => h.top > z + 0.001 && h.bottom < z).map((h) => circle(h.c, h.r));
+      const disks = keepHoles.filter((h) => h.top > z + 0.001 && (h.bottom < z || undrilled.has(h))).map((h) => circle(h.c, h.r));
       if (disks.length) k = union(k, disks);
       // The operator's side stock: the walls are left that much out.
       return input.sideStock ? offset(k, input.sideStock) : k;
@@ -2020,7 +2024,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // You (Beta 2): what a drill of this clamping took is done (the grid, left, knows only the clampings before): a
       // ring that would only sweep a drilled hole is not run. Only down to where the drill's point starts: under that,
       // a flat bottom is milled.
-      const bored: Region = toDrill.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2 + 0.15));
+      const bored: Region = drilledHere.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2 + 0.15));
       const levelTop = zAbove;
       zAbove = z;
       const inside = z < jawLimit - 0.001;
@@ -2112,7 +2116,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const r = pick.tool.diameter / 2;
         const rings = (bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings).map((g) => {
           // A ring that only cleans a drill's point: its passes start where the drill's full Ø ends (air above).
-          const d = toDrill.find((x) => x.z + 0.3 * x.tool.diameter > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
+          const d = drilledHere.find((x) => x.z + 0.3 * x.tool.diameter > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
           return d ? { ...g, from: d.z + 0.3 * d.tool.diameter } : g;
         });
         if (rings.length) (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
