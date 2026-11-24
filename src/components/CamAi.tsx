@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
+import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
 import '../i18n/camLocales';
-import { fmtNumber as fmt } from '../i18n/format';
+import { fmtNumber as fmt, locale } from '../i18n/format';
 import { api } from '../lib/api';
 import { downloadBlob } from '../lib/download';
 import { currentRegion } from '../lib/instance';
@@ -19,6 +19,8 @@ import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
 import type { Purpose } from '../lib/cam/program';
 import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
+import type { MeasureMode } from '../lib/measure';
+import type { Measurement } from '../lib/measure3d';
 import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick } from './CamPartView';
@@ -291,6 +293,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [sel, setSel] = useState<Sel>({ kind: 'part' });
   // A tool right-clicked: its card opens on changing it.
   const [swapAsk, setSwapAsk] = useState<string | null>(null);
+  // Measuring the model in the view, as in a CAD program (before or after a program is made).
+  const [measuring, setMeasuring] = useState(false);
+  const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
+  const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
   // Cutting values typed and not yet in the program: it must be made again before it goes out.
   const [draft, setDraft] = useState<Record<string, CutEdit>>({});
@@ -506,6 +512,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 onPick={pickFace}
                 finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
                 white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
+                measure={measuring ? { mode: measureMode, onMeasure: setMeasured } : null}
                 paths={paths.filter((p) => !p.key || !skipDraft.includes(p.key))}
                 ghosts={result ? [...ghosts, ...live.paths].filter((p) => p.key && skipDraft.includes(p.key)) : []}
                 ghostOn={ghostOn}
@@ -523,6 +530,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 className="h-full rounded-none bg-transparent"
               />
             </Suspense>
+            <MeasurePanel on={measuring} onToggle={() => { setMeasuring((x) => !x); setMeasured(null); }} mode={measureMode} onMode={setMeasureMode} measured={measured} />
             </div>
           ) : (
             <div className="absolute inset-0 grid place-items-center p-6">
@@ -1013,6 +1021,50 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
         <span><span className="inline-block w-3 h-0.5 align-middle bg-[#22d3ee] mr-1" aria-hidden />{t('camAi.live.finish')}</span>
         <span><span className="inline-block w-3 h-0.5 align-middle bg-[#ef4444] mr-1" aria-hidden />{t('camAi.live.drill')}</span>
       </p>
+    </div>
+  );
+}
+
+/** Measuring the model in CAM AI's view: on or off, what a click picks, what it measured (the simulator's words). */
+function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; onToggle: () => void; mode: MeasureMode; onMode: (m: MeasureMode) => void; measured: Measurement }) {
+  const { t } = useTranslation(['remapper']);
+  const mm = (x: number) => x.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={on}
+        title={t('toolpath.measureHelp')}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-semibold ${on ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[var(--bg-panel)]/90 text-[var(--text-secondary)]'}`}
+      >
+        <Ruler size={14} aria-hidden /> {t('toolpath.measure')}
+      </button>
+      {on && (
+        <div className="w-64 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-panel)]/95 p-3 space-y-2 text-xs" aria-live="polite">
+          <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.measure')}>
+            {(['faces', 'points', 'diameter', 'axes'] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onMode(m)} className={`px-2 h-6 rounded-full text-[11px] font-bold ${mode === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
+                {t(`toolpath.measureMode.${m}`)}
+              </button>
+            ))}
+          </div>
+          {measured?.kind === 'hole' ? (
+            <div>
+              <div className="font-mono text-base font-bold text-[var(--text-primary)]">Ø {mm(measured.mm)} mm</div>
+              <div className="text-[var(--text-tertiary)]">{t('toolpath.measureHoleDepth', { depth: mm(measured.depth) })}</div>
+            </div>
+          ) : measured?.kind === 'distance' ? (
+            <div>
+              <div className="font-mono text-base font-bold text-[var(--text-primary)]">{mm(measured.mm)} mm</div>
+              {measured.d && <div className="font-mono text-[11px] text-[var(--text-tertiary)]">ΔX {mm(Math.abs(measured.d[0]))} · ΔY {mm(Math.abs(measured.d[1]))} · ΔZ {mm(Math.abs(measured.d[2]))}</div>}
+            </div>
+          ) : measured?.kind === 'none' || measured?.kind === 'notParallel' ? (
+            <div className="text-[var(--orange-text)]">{t(measured.kind === 'none' ? 'toolpath.measureNone' : 'toolpath.measureNotParallel')}</div>
+          ) : null}
+          <p className="text-[var(--text-secondary)]">{measured?.kind === 'picked' || measured?.kind === 'notParallel' ? t('toolpath.measureSecond') : t(`toolpath.measureHint.${mode}`)}</p>
+        </div>
+      )}
     </div>
   );
 }

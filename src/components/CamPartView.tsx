@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { holeOfMesh, type MeasureMode } from '../lib/measure';
+import { attachMeasure, type Measurement } from '../lib/measure3d';
 import * as THREE from 'three';
 import { Orbit } from '../lib/orbit';
 import { addLights } from '../lib/lights';
@@ -241,6 +243,9 @@ type Api = {
   walls: THREE.Group;
   /** The model's walls as setup 1 stands (wallPatches), for picking them. */
   patches: ReturnType<typeof wallPatches>;
+  camera: THREE.PerspectiveCamera;
+  /** Called after each frame drawn (measuring's labels follow the part). */
+  afterRender: (() => void) | null;
 };
 
 /**
@@ -260,6 +265,7 @@ export default function CamPartView({
   finish,
   white,
   paths = [],
+  measure = null,
   ghosts = [],
   ghostOn = null,
   onPathMenu,
@@ -283,6 +289,8 @@ export default function CamPartView({
   /** A top plate's white face: picking it (a click on a flat face gives its side), and the one picked (shown white). */
   white?: { on: boolean; side?: string; onPick: (side: string) => void };
   paths?: LivePath[];
+  /** Measuring on the model, as in a CAD program (lib/measure3d.ts): what a click picks, and what it measured. */
+  measure?: { mode: MeasureMode; onMeasure: (m: Measurement) => void } | null;
   /** Removed operations' paths (faded), the one picked highlighted (`ghostOn`: its key). */
   ghosts?: LivePath[];
   ghostOn?: string | null;
@@ -294,8 +302,11 @@ export default function CamPartView({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
-  const pickRef = useRef({ picking, onPick, finish, white, onPathMenu });
-  pickRef.current = { picking, onPick, finish, white, onPathMenu };
+  const pickRef = useRef({ picking, onPick, finish, white, onPathMenu, measuring: !!measure });
+  pickRef.current = { picking, onPick, finish, white, onPathMenu, measuring: !!measure };
+  const measureRef = useRef(measure);
+  measureRef.current = measure;
+  const measureSession = useRef<ReturnType<typeof attachMeasure> | null>(null);
   const whiteSide = white?.side;
 
   // The scene, once per model.
@@ -351,7 +362,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]) };
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null };
     api.current = a;
 
     const resize = () => {
@@ -405,7 +416,7 @@ export default function CamPartView({
       invalidate();
     };
     const move = (e: PointerEvent) => {
-      if ((pickRef.current.picking === null && !walling() && !pickRef.current.white?.on) || e.buttons) return showHover(null);
+      if ((pickRef.current.picking === null && !walling() && !pickRef.current.white?.on) || e.buttons || pickRef.current.measuring) return showHover(null);
       if (!queued) requestAnimationFrame(() => {
         if (queued) showHover(faceAt(queued));
         queued = null;
@@ -429,8 +440,8 @@ export default function CamPartView({
     const release = (e: PointerEvent) => {
       const d = down;
       down = null;
-      const { picking: p, onPick: cb, finish: fin, white: wh } = pickRef.current;
-      if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
+      const { picking: p, onPick: cb, finish: fin, white: wh, measuring } = pickRef.current;
+      if (!d || measuring || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
       const key = faceAt(e);
       if (!key) return;
       if (walling()) fin!.onToggle(trisOf(key));
@@ -451,6 +462,7 @@ export default function CamPartView({
       if (dirty) {
         renderer.render(scene, camera);
         dirty = false;
+        api.current?.afterRender?.();
       }
       raf = requestAnimationFrame(loop);
     };
@@ -573,6 +585,31 @@ export default function CamPartView({
     }
     a.invalidate();
   }, [paths]);
+
+  // Measuring on the model: its flat faces, its holes (fitted to their facets), points.
+  const measuring = !!measure;
+  useEffect(() => {
+    const a = api.current;
+    const el = host.current;
+    if (!a || !el || !measuring) return;
+    const session = (measureSession.current = attachMeasure({
+      el,
+      root: a.world,
+      camera: a.camera,
+      invalidate: a.invalidate,
+      setAfterRender: (f) => (a.afterRender = f),
+      parts: () => [a.part],
+      holeAt: (_p, hit) => holeOfMesh(a.pos, hit.faceIndex ?? 0),
+      mode: () => measureRef.current?.mode ?? 'faces',
+      onMeasure: (m) => measureRef.current?.onMeasure(m),
+    }));
+    return () => {
+      session.stop();
+      measureSession.current = null;
+    };
+  }, [measuring, tris]);
+  // Another mode: the picks start again.
+  useEffect(() => measureSession.current?.reset(), [measure?.mode]);
 
   // Removed operations: where they were, faded; the one picked bright.
   useEffect(() => {
