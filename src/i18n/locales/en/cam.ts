@@ -1,10 +1,10 @@
 // CAM AI's words: registered by src/i18n/camLocales.ts, in its private files only (never in the shared ones).
 const cam = {
-  tab: 'CAM AI',
+  tab: 'CAM AI Beta 2',
   limits: 'CAM AI limits',
   limitsHint: 'Optional. CAM AI never goes above these. Empty: the shop’s learned values and the usual speeds of this brand (shown in grey).',
   camAi: {
-    beta: 'Beta',
+    beta: 'Beta 2',
     ws: {
       toolbar: 'CAM AI tools',
       new: 'New program',

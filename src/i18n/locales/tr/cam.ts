@@ -3,11 +3,11 @@ import type en from '../en/cam';
 
 // CAM AI metinleri: yalnızca kendi özel dosyalarında (src/i18n/camLocales.ts).
 const cam: Translation<typeof en> = {
-  tab: 'CAM AI',
+  tab: 'CAM AI Beta 2',
   limits: 'CAM AI sınırları',
   limitsHint: 'İsteğe bağlı. CAM AI bu değerleri asla aşmaz. Boş bırakılırsa atölyenin öğrenilmiş değerleri ve bu markanın olağan hızları kullanılır (gri gösterilir).',
   camAi: {
-    beta: 'Beta',
+    beta: 'Beta 2',
     ws: {
       toolbar: 'CAM AI araçları',
       new: 'Yeni program',
