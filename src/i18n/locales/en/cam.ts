@@ -211,7 +211,7 @@ const cam = {
     standIn: 'Use instead',
     noStandIn: 'No stand-in in the templates: add this tool to the machine.',
     swapHint: 'CAM AI makes the program again with the tool you pick.',
-    toolName: '{{name}} Ø{{d}}, {{l}} mm long',
+    toolName: '{{name}} · Ø {{d}} mm · length {{l}} mm',
     tools: {
       SF: 'End mill',
       SFH: 'End mill',

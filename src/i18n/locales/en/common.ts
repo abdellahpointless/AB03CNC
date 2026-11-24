@@ -100,6 +100,8 @@ const common = {
   },
   units: {
     mm: 'mm',
+    diameter: 'Diameter {{mm}} mm',
+    length: 'Length {{mm}} mm',
     minutesShort: '{{count}} min',
     hoursShort: '{{count}} h',
   },

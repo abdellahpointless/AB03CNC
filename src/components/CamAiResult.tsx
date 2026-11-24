@@ -9,6 +9,7 @@ import type { CamTool } from '../lib/cam/tools';
 import type { CamSummary } from '../lib/cam/cam.worker';
 import type { PhysicsIssue } from '../lib/cam/physics';
 import { GOUGE_MM3 } from '../lib/cam/limits';
+import ToolSize from './ToolSize';
 
 export type Setup = CamSummary['setups'][number];
 export type Op = Setup['ops'][number];
@@ -27,13 +28,24 @@ export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${Strin
 
 export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
 
-/** A tool's name for the operator ("End mill Ø8, 40 mm long"). */
+/** A tool's name for the operator as text, where badges cannot go (a list's options): "End mill · Ø 8 mm · length 40 mm". */
 export function useToolName(): ToolNamer {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   return (o) => t('camAi.toolName', { name: t(`camAi.tools.${o.type}`, { defaultValue: o.type }), d: fmt(o.diameter, 2), l: fmt(o.length, 0) });
 }
 
 /** Why the program cannot go out yet, or that it can (one line, for the status). */
+/** A tool's name, then its Ø and length as badges (ToolSize). */
+export function ToolLabel({ o }: { o: { type: string; diameter: number; length: number } }) {
+  const { t } = useTranslation('cam');
+  return (
+    <span className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
+      <ToolSize d={o.diameter} l={o.length} />
+    </span>
+  );
+}
+
 export function useVerdict(result: CamSummary, changed: number): { ok: boolean; text: string } {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   const ok = passed(result) && !changed;
@@ -116,7 +128,7 @@ export function ProgramPanel({ result, machineName, machineId, changed, removed,
           <ul className="space-y-1">
             {toLoad.map((o) => (
               <li key={o.code} className="text-xs">
-                <span className="font-medium text-[var(--text-primary)]">T{o.tool} · {toolName(o)}</span>
+                <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]"><span className="font-mono shrink-0">T{o.tool}</span><ToolLabel o={o} /></span>
                 <span className="block font-mono text-[11px] text-[var(--text-tertiary)]">{o.code}</span>
               </li>
             ))}
@@ -227,7 +239,6 @@ const COOLANTS: Coolant[] = ['flood', 'air', 'off'];
  */
 export function ToolCard({
   ops,
-  name,
   draft,
   changed,
   busy,
@@ -241,7 +252,6 @@ export function ToolCard({
   onSwap,
 }: {
   ops: Op[];
-  name: string;
   draft: CutEdit;
   changed: boolean;
   busy: boolean;
@@ -280,7 +290,7 @@ export function ToolCard({
   return (
     <li className={`rounded-[var(--radius-md)] border p-3 space-y-2.5 text-xs ${op.unsafe ? 'border-[#ef4444]/50' : changed ? 'border-[var(--accent-primary)]/50' : 'border-[var(--border-subtle)]'}`}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-semibold text-[var(--text-primary)]">T{op.tool} – {name}</span>
+        <span className="w-full flex items-center gap-2 font-semibold text-[var(--text-primary)]"><span className="font-mono shrink-0">T{op.tool}</span><ToolLabel o={op} /></span>
         <span className={`text-[10px] py-0.5 px-1.5 ${op.inMachine ? 'badge-neutral' : 'badge-warning'}`}>{t(op.inMachine ? 'camAi.inMachine' : 'camAi.toLoad')}</span>
         {changed && <span className="badge-neutral text-[10px] py-0.5 px-1.5 text-[var(--blue-text)]">{t('camAi.changedBadge')}</span>}
       </div>

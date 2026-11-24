@@ -20,7 +20,7 @@ import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/ca
 import type { Purpose } from '../lib/cam/program';
 import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { Mat3 } from '../lib/orient';
-import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
+import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick } from './CamPartView';
 import type { CutEdit } from '../lib/cam/tools';
 import { useAuth } from '../contexts/AuthContext';
@@ -427,7 +427,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                             <button type="button" className={node(sel.kind === 'tool' && sel.i === i && sel.code === o.code)} aria-current={(sel.kind === 'tool' && sel.i === i && sel.code === o.code) || undefined} onClick={() => setSel({ kind: 'tool', i, code: o.code })}>
                               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PURPOSE_HEX[o.purpose] }} aria-hidden />
                               <span className="font-mono text-[11px] shrink-0">T{o.tool}</span>
-                              <span className="truncate flex-1">{toolName(o)}</span>
+                              <ToolLabel o={o} />
                               {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={12} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
                             </button>
                           </li>
@@ -663,7 +663,6 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 <ul aria-label={t('camAi.ops')}>
                   <ToolCard
                     ops={ops}
-                    name={toolName(ops[0])}
                     draft={draft[sel.code] ?? {}}
                     changed={changed.includes(sel.code)}
                     busy={busy}

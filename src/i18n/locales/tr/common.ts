@@ -101,6 +101,8 @@ const common: Translation<typeof en> = {
   },
   units: {
     mm: 'mm',
+    diameter: 'Çap {{mm}} mm',
+    length: 'Boy {{mm}} mm',
     minutesShort: '{{count}} dk',
     hoursShort: '{{count}} sa',
   },
