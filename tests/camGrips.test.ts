@@ -70,6 +70,18 @@ describe('a later clamping', () => {
     expect(s.physics.ok).toBe(true);
   }, 300_000);
 
+  it('grips deep on the faces it holds when only an end changes (a step at the stop’s far end is not held)', () => {
+    // A 40 x 30 x 20 block with a 6 mm step down at its X+ end: turned over, the step is at the bottom of the far end,
+    // the held Y faces the same all the way up. You: hold the part as deep as its cuts allow.
+    const stepped = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, (_, i) => (i >= 34 ? 14 : 20))));
+    const r = camProgram({ ...base, tris: stepped, raw: [44, 34, 27] });
+    const s = r.setups.find((x) => x.side === 'Z-')!;
+    expect(s.grip).toBeGreaterThanOrEqual(10);
+    expect(s.physics.ok).toBe(true);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('stays on the faces it holds at 3 mm: a boss is gripped no deeper than the boss, its size written', () => {
     // A 30 x 30 x 6 flange with a 16 x 16 boss 10 high: turned over, the jaws hold the boss, 1 mm short of the flange.
     const flanged = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= 7 && i < 23 && j >= 7 && j < 23 ? 16 : 6))));

@@ -1521,7 +1521,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       let same = 3;
       for (const g of CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g > 3).sort((p, q) => p - q)) {
         const e = extent(left.at(sb.lo[2], sb.lo[2] + g + 1));
-        if (!e3 || !e || [0, 1].some((k) => Math.abs(e.lo[k] - e3.lo[k]) > 0.2 || Math.abs(e.hi[k] - e3.hi[k]) > 0.2)) break;
+        // The faces the jaws hold (Y) only: an end along the jaws that changes (a step, stock left there) is not held.
+        if (!e3 || !e || Math.abs(e.lo[1] - e3.lo[1]) > 0.2 || Math.abs(e.hi[1] - e3.hi[1]) > 0.2) break;
         same = g;
       }
       return Math.min(jaw - sb.lo[2], same);
