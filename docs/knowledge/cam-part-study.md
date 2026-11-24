@@ -275,9 +275,13 @@ it (a face finished by two clampings is where a step shows when the turn is a li
   37.2 minutes long (a Ø1 for 4,906 lines). The study's part: faces finished by two clampings 935 to 577 mm², 20.5
   minutes. The end pocket's volume is still cut in clamping 2 (only its walls go to clamping 3), so clamping 2 still
   stands on 36 mm parallels (its cuts go 30.5 mm down beside the part).
-- **Why tall parallels** (your question): clamping 1 grips the stock under the part (41 mm, 4 deep) so the outline
-  goes through; clamping 2 stands on 36 mm because its own cuts beside the part go 30.5 mm down (the end pocket);
-  clamping 3 on 15 mm because stock beside the part still to cut stands 36 mm up. The jaws stay 1 mm under the
-  lowest cut beside the part. **No parallels at all**: none of the library's programs clamps without parallels (the
+- **Why tall parallels** (your question): a later clamping's jaws stayed 1 mm under the lowest stock beside the part
+  still to cut, anywhere beside it. On the study's part that was a 1.2 x 21 mm strip at clamping 2's free end, 2 mm
+  up (36 mm parallels after the vise asked for more), and four slivers of about 1 mm² in the end pocket, 36 mm up in
+  clamping 3 (15 mm parallels), 18 mm from the jaws. Now only stock in the jaws' or the stop's way counts (within the
+  smallest mill's radius and 1 mm of their faces); stock farther in is cut below the jaw tops by a mill small enough,
+  the tools kept off the jaws there (c465625). The study's part: 41, 8, 8 mm parallels (the engineers 40, 8, 8),
+  clamping 2 gripped 37 deep no longer cuts the end pocket, clamping 3 makes it whole; faces finished by two clampings
+  81 mm² (the engineers 28), 6,281 lines, 19.2 minutes (the app's time model 16.7). **No parallels at all**: none of the library's programs clamps without parallels (the
   shortest: 4 mm, in 2; 8 mm is common), and the simulation has no vise floor to check a tool against. Open question:
   how the shop writes it, and may a part stand on the vise floor.
