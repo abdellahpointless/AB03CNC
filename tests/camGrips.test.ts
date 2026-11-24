@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { camProgram } from '../src/lib/cam/program';
 import { analyseProgram, DEFAULT_JAW_HEIGHT } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
-import { heightPart } from './heightPart';
+import { columnPart, heightPart } from './heightPart';
 
 // How CAM AI holds the part in the vise, against the engineers' programs (Phase 6: their parallels, not the tallest ones).
 
@@ -84,6 +84,21 @@ describe('a later clamping', () => {
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('grips deep where the stock still to cut lies far from the jaws and the stop (a slot from the free end, mid-width)', () => {
+    // A 40 x 50 x 20 block with a slot 10 wide, 15 deep from its bottom, running out of its X+ end, mid-width: turned
+    // over, the slot's stock is 20 mm from the jaws and 30 from the stop, no tool there meets either. You: hold the part
+    // as deep as its cuts allow (the study's clamping 2 gripped 9 mm for a strip like it at its free end).
+    const lo = Array.from({ length: 50 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 30 && j >= 20 && j < 30 ? 15 : 0)));
+    const hi = Array.from({ length: 50 }, () => Array.from({ length: 40 }, () => 20));
+    const r = camProgram({ ...base, tris: columnPart(lo, hi), raw: [44, 54, 27] });
+    const s = r.setups.find((x) => x.side === 'Z-')!;
+    expect(s.grip).toBeGreaterThanOrEqual(10);
+    expect(s.physics.ok).toBe(true);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
   it('stays on the faces it holds at 3 mm: a boss is gripped no deeper than the boss, its size written', () => {

@@ -1612,6 +1612,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its chamfers
     // near the held faces, 1.3 mm under Z0 (the deburring graver's 0.3), and on the faces it holds at 3 mm
     // (1 mm short of where they change).
+    // Stock the jaws or the stop would be in the way of: within the smallest mill's radius (and 1 mm) of the held faces
+    // (the stock's Y faces) or the stop's (X-). Stock farther in, beside the part but out of the jaws' way (the study's
+    // part: slivers in an end pocket 18 mm from the jaws, a strip at its free end), is cut below the jaw tops by a mill
+    // small enough, the jaws kept off, and limits no grip.
+    const reachR = Math.max(1.5, (mills[mills.length - 1]?.diameter ?? 2) / 2 + 1);
+    const nearVise: Region = union([
+      ...rect(sb.lo[0] - 60, sb.lo[1] - 60, sb.hi[0] + 60, sb.lo[1] + reachR),
+      ...rect(sb.lo[0] - 60, sb.hi[1] - reachR, sb.hi[0] + 60, sb.hi[1] + 60),
+      ...rect(sb.lo[0] - 60, sb.lo[1] - 60, sb.lo[0] + reachR, sb.hi[1] + 60),
+    ]);
     const deepest = () => {
       let jaw = -1.3;
       // What stands over a level seen from the top: the part's slices above it, every 1 mm, its openings left
@@ -1622,7 +1632,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const over = (z: number) => shade.filter((s) => s.z > z + 0.5).at(-1)?.r ?? [];
       // From the part's bottom: the stock under it is never cut here, the jaws may grip it (a review finding).
       for (let z = Math.max(sb.lo[2], -H) + 0.05; z < jaw + 1; z += 0.25)
-        if (area(opened(difference(left.at(z - 0.02, z + 0.02), offset(union(filled(slice(P, z)), over(z)), Math.max(0.05, left.skin))))) > 1) {
+        if (area(intersection(opened(difference(left.at(z - 0.02, z + 0.02), offset(union(filled(slice(P, z)), over(z)), Math.max(0.05, left.skin)))), nearVise)) > 1) {
           jaw = z - 1;
           break;
         }
@@ -1948,7 +1958,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const levelTop = zAbove;
       zAbove = z;
       const inside = z < jawLimit - 0.001;
-      if (inside) todo = intersection(todo, filled(keep));
+      // Below the jaw tops: inside the part, and in a later clamping what lies out of the jaws' and the stop's reach.
+      if (inside) todo = setups.length ? union(intersection(todo, filled(keep)), difference(todo, nearVise)) : intersection(todo, filled(keep));
       todo = opened(todo);
       // What the tool keeps off: the part, and below the jaw tops the jaws and the stop where the part above reaches over them.
       const over = () => inside && jaws.length > 0 && area(intersection(keep, pastJaws)) > 0.01;
@@ -1962,7 +1973,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
         wallBand = difference(jaws, beside(0, 1));
         setupNotes.push(`${SPACER_Y} MM ZWISCHENLAGE IN Y-`);
       }
-      const off = over() ? union(keep, jaws) : keep;
+      // Below the jaw tops of a later clamping the tools keep off the jaws and the stop wherever they cut (also out of
+      // the part's outline, the stock out of their way).
+      const off = over() || (inside && setups.length > 0 && jaws.length > 0) ? union(keep, jaws) : keep;
       // Where no tool may go is not left to cut (no smaller end mill would reach it either).
       if (off !== keep) {
         const wall = intersection(todo, wallBand);
