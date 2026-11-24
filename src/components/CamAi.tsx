@@ -93,6 +93,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [skip, setSkip] = useState<string[]>([]);
   const [skipDraft, setSkipDraft] = useState<string[]>([]);
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
+  // The removed operations' paths, from the program before (shown faded), and the one picked in the list.
+  const [ghosts, setGhosts] = useState<Live['paths']>([]);
+  const [ghostOn, setGhostOn] = useState<string | null>(null);
   const pendingSkips = [...new Set([...skip, ...skipDraft])].filter((k) => skip.includes(k) !== skipDraft.includes(k)).length;
   const [machineId, setMachineId] = useState(() => toolMachines[0]?.id ?? '');
   const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER'>('FH');
@@ -235,6 +238,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       if (m.lesson && passed(m.result)) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
     };
     setRun({ state: 'busy', done: 0, of: 1 });
+    // What a removed operation cut: kept from the program it was in, to show where it was.
+    setGhosts((g) => [...g.filter((p) => p.key && skips.includes(p.key) && !live.paths.some((q) => q.key === p.key)), ...live.paths.filter((p) => p.key && skips.includes(p.key))]);
     setLive(NO_LIVE);
     w.postMessage(request);
   };
@@ -501,7 +506,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 onPick={pickFace}
                 finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
                 white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
-                paths={paths}
+                paths={paths.filter((p) => !p.key || !skipDraft.includes(p.key))}
+                ghosts={result ? [...ghosts, ...live.paths].filter((p) => p.key && skipDraft.includes(p.key)) : []}
+                ghostOn={ghostOn}
                 onPathMenu={
                   result
                     ? (p) => {
@@ -728,6 +735,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 changed={changed.length + pendingSkips}
                 removed={skipDraft.map((k) => ({ key: k, label: skipLabels[k] ?? k }))}
                 onRestore={(k) => setSkipDraft((d) => d.filter((x) => x !== k))}
+                shown={ghostOn}
+                onShow={setGhostOn}
               />
             )}
 

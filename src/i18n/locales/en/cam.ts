@@ -123,6 +123,7 @@ const cam = {
     removedTitle: 'Removed operations',
     removedNote: 'The program is made again without them. What they would have cut stays on the part, so the check may no longer pass: restore them, or accept it only if you finish that by hand.',
     restoreOp: 'Restore',
+    showRemoved: 'Show where it was on the part',
     removeNeeded_one: 'You removed {{count}} operation. Make the program again without it: every check runs again.',
     removeNeeded_other: 'You removed {{count}} operations. Make the program again without them: every check runs again.',
     discard: 'Discard',

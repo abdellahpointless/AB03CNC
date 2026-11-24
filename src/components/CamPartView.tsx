@@ -235,6 +235,8 @@ type Api = {
   marks: THREE.Group;
   stock: THREE.Group;
   paths: THREE.Group;
+  /** Removed operations' paths. */
+  ghosts: THREE.Group;
   /** The walls picked to finish (cyan). */
   walls: THREE.Group;
   /** The model's walls as setup 1 stands (wallPatches), for picking them. */
@@ -258,6 +260,8 @@ export default function CamPartView({
   finish,
   white,
   paths = [],
+  ghosts = [],
+  ghostOn = null,
   onPathMenu,
   label,
   className = '',
@@ -279,6 +283,9 @@ export default function CamPartView({
   /** A top plate's white face: picking it (a click on a flat face gives its side), and the one picked (shown white). */
   white?: { on: boolean; side?: string; onPick: (side: string) => void };
   paths?: LivePath[];
+  /** Removed operations' paths (faded), the one picked highlighted (`ghostOn`: its key). */
+  ghosts?: LivePath[];
+  ghostOn?: string | null;
   /** A right click (not a drag) on a path: its operation (you, Beta 2: change its tool from there). */
   onPathMenu?: (p: LivePath) => void;
   /** The canvas's accessible name. */
@@ -327,8 +334,9 @@ export default function CamPartView({
     world.add(part);
     const marks = new THREE.Group();
     const paths = new THREE.Group();
+    const ghostPaths = new THREE.Group();
     const walls = new THREE.Group();
-    world.add(marks, paths, walls);
+    world.add(marks, paths, ghostPaths, walls);
     const stock = new THREE.Group();
     scene.add(world, stock);
     const size = box.getSize(new THREE.Vector3()).length();
@@ -343,7 +351,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]) };
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]) };
     api.current = a;
 
     const resize = () => {
@@ -565,6 +573,25 @@ export default function CamPartView({
     }
     a.invalidate();
   }, [paths]);
+
+  // Removed operations: where they were, faded; the one picked bright.
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    dispose(a.ghosts);
+    a.ghosts.clear();
+    for (const p of ghosts) {
+      if (!p.pts.length) continue;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(p.pts, 3));
+      const on = p.key === ghostOn;
+      const line = new THREE.LineSegments(g, new THREE.LineDashedMaterial({ color: on ? 0xff4d6d : 0x8a94a6, dashSize: a.size * 0.01, gapSize: a.size * 0.008, transparent: true, opacity: on ? 1 : 0.35, depthTest: !on }));
+      line.computeLineDistances();
+      line.renderOrder = on ? 2 : 0;
+      a.ghosts.add(line);
+    }
+    a.invalidate();
+  }, [ghosts, ghostOn]);
 
   return <div ref={host} className={`relative overflow-hidden rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.04)] ${className}`} />;
 }

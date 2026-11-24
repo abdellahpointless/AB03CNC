@@ -126,6 +126,7 @@ const cam: Translation<typeof en> = {
     removedTitle: 'Kaldırılan işlemler',
     removedNote: 'Program onlar olmadan yeniden oluşturulur. Yapacakları iş parçada kalır, bu yüzden kontrol artık geçmeyebilir: geri alın, veya o kısmı elle bitirecekseniz kabul edin.',
     restoreOp: 'Geri al',
+    showRemoved: 'Parçada nerede olduğunu göster',
     removeNeeded_one: '{{count}} işlemi kaldırdınız. Programı onsuz yeniden oluşturun: tüm kontroller yeniden yapılır.',
     removeNeeded_other: '{{count}} işlemi kaldırdınız. Programı onlarsız yeniden oluşturun: tüm kontroller yeniden yapılır.',
     discard: 'Vazgeç',

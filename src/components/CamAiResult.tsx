@@ -77,7 +77,26 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
  * The program as a whole (the browser's Program item): whether it can go out, its numbers, the
  * tools to load, what the machine lacks, the POM nests (each with its own program), notes.
  */
-export function ProgramPanel({ result, machineName, machineId, changed, removed, onRestore }: { result: CamSummary; machineName: string; machineId: string; changed: number; removed: { key: string; label: string }[]; onRestore: (key: string) => void }) {
+export function ProgramPanel({
+  result,
+  machineName,
+  machineId,
+  changed,
+  removed,
+  onRestore,
+  shown,
+  onShow,
+}: {
+  result: CamSummary;
+  machineName: string;
+  machineId: string;
+  changed: number;
+  removed: { key: string; label: string }[];
+  onRestore: (key: string) => void;
+  /** The removed operation whose path is highlighted in the view, and a way to pick one (you, Beta 2). */
+  shown?: string | null;
+  onShow?: (key: string | null) => void;
+}) {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   const toolName = useToolName();
   const { ok, text } = useVerdict(result, changed);
@@ -108,8 +127,10 @@ export function ProgramPanel({ result, machineName, machineId, changed, removed,
           <h4 className="section-label">{t('camAi.removedTitle')}</h4>
           <ul className="space-y-1">
             {removed.map((r) => (
-              <li key={r.key} className="flex items-center gap-1 text-xs">
-                <span className="flex-1 min-w-0 break-words text-[var(--text-secondary)]">{r.label}</span>
+              <li key={r.key} className={`flex items-center gap-1 text-xs rounded-[6px] border ${shown === r.key ? 'border-[#ff4d6d]/60 bg-[#ff4d6d]/8' : 'border-transparent'}`}>
+                <button type="button" onClick={() => onShow?.(shown === r.key ? null : r.key)} aria-pressed={shown === r.key} title={t('camAi.showRemoved')} className="no-glass flex-1 min-w-0 text-left px-2 py-1.5 min-h-9 break-words line-through text-[var(--text-secondary)]">
+                  {r.label}
+                </button>
                 <button type="button" onClick={() => onRestore(r.key)} className="btn-secondary text-xs min-h-9 px-2.5 flex items-center gap-1">
                   <RotateCcw size={12} aria-hidden /> {t('camAi.restoreOp')}
                 </button>
