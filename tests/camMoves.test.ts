@@ -210,6 +210,23 @@ describe('one face, one clamping', () => {
   }, 300_000);
 });
 
+describe('two pockets', () => {
+  // You (Beta 2, 24): one place finished to its bottom before the same mill goes to the next, not a level of each in turn.
+  it('are each cut to the bottom before the mill goes to the other', () => {
+    // 60 x 30 x 12, two pockets 14 x 14, 10 deep, at x 8..22 and 38..52.
+    const twin = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 60 }, (_, i) => (j >= 8 && j < 22 && ((i >= 8 && i < 22) || (i >= 38 && i < 52)) ? 2 : 12))));
+    const r = camProgram({ ...base, tris: twin, raw: [64, 34, 19] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    // Each inside milling's feeds in the pockets (the machine's X: the part's less 30), as A and B in turn.
+    const turns = r.setups[0].ops
+      .filter((o) => o.kind === 'pocket' && o.purpose !== 'outline')
+      .map((o) => feeds(o.lines).map(([, b]) => (b[2] < -0.3 && Math.abs(b[1]) < 7 ? (b[0] > -22 && b[0] < -8 ? 'A' : b[0] > 8 && b[0] < 22 ? 'B' : '') : '')).filter(Boolean).join('').replace(/(.)\1+/g, '$1'));
+    expect(turns.some((x) => x.length === 2)).toBe(true);
+    for (const x of turns) expect(x.length).toBeLessThanOrEqual(2);
+  }, 300_000);
+});
+
 describe('a chamfer', () => {
   // You (Beta 2, 13): no chamfer without need. A 45° face is a chamfer from two sides: cut once, never again after a turn.
   it('is cut in one clamping only', async () => {

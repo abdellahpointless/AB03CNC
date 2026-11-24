@@ -676,6 +676,45 @@ function sideEntry(g: Ring, done: Ring[], r: number, ae: number, keep: Region): 
 }
 
 /**
+ * You (Beta 2): one place finished to its bottom before the same mill goes to the next, not a level of each in
+ * turn. The rings grouped by where they lie seen from the top (what the tool sweeps; a ring that touches two
+ * places joins them, cut level by level then), each group top down. `fresh`: a group's first level.
+ */
+export function byPlace(work: Work[], r: number): (Work & { fresh?: boolean })[] {
+  type Group = { foot: Region; box: number[]; items: { w: Work; ring: Ring; i: number }[] };
+  const groups: Group[] = [];
+  const meet = (a: number[], b: number[]) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+  const join = (a: number[], b: number[]) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+  let i = 0;
+  for (const w of work)
+    for (const ring of w.rings) {
+      const box = ring.pts.reduce((b, p) => [Math.min(b[0], p[0] - r), Math.min(b[1], p[1] - r), Math.max(b[2], p[0] + r), Math.max(b[3], p[1] + r)], [Infinity, Infinity, -Infinity, -Infinity]);
+      const foot = swept([ring], r);
+      const hit = groups.filter((g) => meet(g.box, box) && area(intersection(g.foot, foot)) > 1e-3);
+      let g = hit[0];
+      if (!g) groups.push((g = { foot: [], box, items: [] }));
+      for (const o of hit.slice(1)) {
+        g.items.push(...o.items);
+        g.foot = union(g.foot, o.foot);
+        g.box = join(g.box, o.box);
+        groups.splice(groups.indexOf(o), 1);
+      }
+      g.items.push({ w, ring, i: i++ });
+      g.foot = union(g.foot, foot);
+      g.box = join(g.box, box);
+    }
+  return groups.flatMap((g) => {
+    const out: (Work & { fresh?: boolean; from: Work })[] = [];
+    for (const it of g.items.sort((p, q) => q.w.z - p.w.z || p.i - q.i)) {
+      const last = out[out.length - 1];
+      if (last?.from === it.w) last.rings.push(it.ring);
+      else out.push({ ...it.w, rings: [it.ring], from: it.w, fresh: !out.length });
+    }
+    return out;
+  });
+}
+
+/**
  * An end mill's rings, level by level, top down. Each ring is run in passes no deeper than the
  * tool's own depth per pass (its ring is clear of the part at every height above its level).
  * It never plunges into material: the first ring of a level ramps down along itself (a closed
@@ -691,7 +730,7 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
   // step of the model's curves (CAM AI wrote 27 % of its roughing moves under 0.01 mm, the shop 2 %).
   // The roughing's rings a finishing enters from, as the roughing wrote them.
   const fewer = (tol: number) => (g: Ring): Ring => ({ ...g, pts: simplify(g.pts, tol, g.closed) });
-  const work = planned.map((w) => ({ ...w, rings: w.rings.map(fewer(finish ? 0.002 : 0.005)), done: w.done?.map(fewer(0.005)) }));
+  const work = byPlace(planned.map((w) => ({ ...w, rings: w.rings.map(fewer(finish ? 0.002 : 0.005)), done: w.done?.map(fewer(0.005)) })), tool.diameter / 2);
   const cut = cutData(tool, finish ? 'finish' : 'pocket', mat, limits);
   // Round the outside the tool takes at most a step-over of material: the shop's contour depths
   // (much deeper than in a pocket, where the first ring is a full slot). Finishing: one cut.
@@ -725,7 +764,9 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
   const lines = [`G00 G90 X${n3(first[0])} Y${n3(first[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
   let rpm = cut.s;
   let prevZ = stockTop;
-  for (const { z, above, rings, keep, done: before } of work) {
+  for (const { z, above, rings, keep, done: before, fresh } of work) {
+    // A new place: nothing of it cut yet, whatever depth the last one went to.
+    if (fresh) prevZ = stockTop;
     const top0 = Math.min(above, prevZ);
     const done: Ring[] = [...(before ?? [])];
     for (const ring of rings) {
