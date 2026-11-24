@@ -388,10 +388,6 @@ describe('where a clamping puts the part, with side stock or in the nest', () =>
     // The walls stand 0.3 mm out of the model: the jaws hold 40.6 x 30.6, not the model's 40 x 30.
     expect(Number(turned[1])).toBeCloseTo(40.6, 1);
     expect(Number(turned[2])).toBeCloseTo(30.6, 1);
-    // The deburring runs round those walls (0.2 mm outside them), not into the stock left on them.
-    const deburr = r.setups[0].ops.find((o) => o.name === 'ENTGRATEN')!;
-    const xs = deburr.lines.filter((l) => /^G01 X/.test(l)).map((l) => Math.abs(Number(l.match(/X(-?[\d.]+)/)![1])));
-    expect(Math.max(...xs)).toBeCloseTo(20.5, 1);
   }, 300_000);
 
   it('makes the nest’s pocket round what sits in it, and puts the part by it (a review found it placed by the whole stock)', () => {

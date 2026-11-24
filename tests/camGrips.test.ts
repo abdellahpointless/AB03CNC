@@ -55,7 +55,7 @@ describe('a later clamping', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 22] });
     expect(r.setups).toHaveLength(2);
     expect(r.setups[1].grip).toBeGreaterThanOrEqual(7);
-    // The jaws 1 mm under the 0.5 mm of outside the first clamping left, and under the deburring graver (0.3 deep).
+    // The jaws 1 mm under the 0.5 mm of outside the first clamping left, and 1.3 mm under the top face (room for a graver).
     expect(jawTops(r)[1]).toBeLessThanOrEqual(-1.3);
     expect(r.setups.every((s) => s.physics.ok)).toBe(true);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);

@@ -898,35 +898,8 @@ function chamferPaths(P: Float32Array, bands: { lo: number; hi: number }[], R: n
   return out;
 }
 
-/** The shop's deburring (ENTGRATEN): the graver's tip this deep under the face, its axis this far outside the edge (mm). */
-const DEBURR = { depth: 0.3, off: 0.2 };
-
-/**
- * The deburring paths round the top face (z 0 of P): along every sharp edge, a 0.1 mm break (the
- * 90° graver of tip radius 0 at DEBURR). Where the cone would take more than that at any height (an
- * edge the model chamfers or rounds, a wall leaning out) the path is left out.
- */
-function deburrPaths(P: Float32Array, R: number, sideStock = 0): { z: number; pts: P2[]; top: number }[] {
-  const t = -DEBURR.depth;
-  // The walls as cut: the operator's side stock stands on them.
-  const at = (z: number) => (sideStock ? offset(slice(P, z), sideStock) : slice(P, z));
-  const edge = at(-0.01);
-  if (area(edge) < 0.05) return [];
-  // At each height the cone (radius z - t) may reach DEBURR.off short of its radius into the material, no more.
-  let hit: Region = [];
-  for (let z = t + 0.05; z < 0.001; z += 0.05) {
-    const r = Math.min(R, z - t, DEBURR.off) - 0.02;
-    if (r > 0) hit = union(hit, offset(at(Math.min(z, -0.01)), r));
-  }
-  const loops = offset(edge, DEBURR.off).map((l) => [...l].reverse());
-  const where = difference(offset(edge, DEBURR.off + 0.3), hit);
-  return trim(loops, where)
-    .filter((pts) => pts.length > 1)
-    .map((pts) => ({ z: t, pts, top: 0 }));
-}
-
-function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number, name = 'FASE'): CamOp {
-  const cut = cutData(tool, name === 'FASE' ? 'chamfer' : 'deburr', mat, limits);
+function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[], mat: string, limits: Limits, clear: number): CamOp {
+  const cut = cutData(tool, 'chamfer', mat, limits);
   const lines = [`G00 G90 X${n3(paths[0].pts[0][0])} Y${n3(paths[0].pts[0][1])} S${cut.s} M03`];
   for (const { z, pts, top } of paths) {
     // Down over the chamfer's top (clear of the corner it is about to take off), then in.
@@ -934,7 +907,7 @@ function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[
     pts.slice(1).forEach((p, i) => lines.push(`G01 X${n3(p[0])} Y${n3(p[1])}${i ? '' : ` F${cut.f}.`}`));
   }
   lines.push(`G00 Z${n3(clear)}`);
-  return { kind: 'chamfer', purpose: 'chamfer', name, tool, cut, lines };
+  return { kind: 'chamfer', purpose: 'chamfer', name: 'FASE', tool, cut, lines };
 }
 
 /** The outline of a region (min and max X, Y). */
@@ -1653,8 +1626,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const pb = { lo: [f.min[0] - ss(0), f.min[1] - ss(1), -H - ss(2)] as Vec, hi: [f.max[0] + ss(0), f.max[1] + ss(1), ss(2)] as Vec };
     const sb = { lo: left.box.lo.map((v, k) => onFace(v, true, [pb.lo[k], rb.lo[k]], left.skin, 0)) as Vec, hi: left.box.hi.map((v, k) => onFace(v, false, [pb.hi[k], rb.hi[k]], left.skin, 0)) as Vec };
     const stockH = sb.hi[2] - sb.lo[2];
-    // The jaw tops stay 0.5 mm under the top face (Z0): the face mill, wider than the vise, faces down to it and
-    // the deburring graver runs round it 0.3 mm deep. A part too thin for that with a 3 mm grip is not held
+    // The jaw tops stay 0.5 mm under the top face (Z0): the face mill, wider than the vise, faces down to it (and the
+    // 90° graver runs round a chamfered top edge). A part too thin for that with a 3 mm grip is not held
     // safely (faceAtJaws, below). The POM nest's top, with its walls and set screws, stays under it too.
     const most = -0.5 - sb.lo[2];
     // Grip only what is below the part (and as little of it as holds): the outside is cut down to its bottom.
@@ -1670,7 +1643,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A later clamping: as deep as its own cuts beside the held faces allow, as the shop holds it (jaw tops under
     // every such cut in 159 of 160 later clampings, the deepest such grip in 101): 1 mm under the lowest stock
     // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its chamfers
-    // near the held faces, 1.3 mm under Z0 (the deburring graver's 0.3), and on the faces it holds at 3 mm
+    // near the held faces, 1.3 mm under Z0 (room for the 90° graver at the top edge), and on the faces it holds at 3 mm
     // (1 mm short of where they change).
     // Stock the jaws or the stop would be in the way of: within the smallest mill's radius (and 1 mm) of the held faces
     // (the stock's Y faces) or the stop's (X-). Stock farther in, beside the part but out of the jaws' way (the study's
@@ -2255,15 +2228,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         zones.push({ kind: 'engraving', loops: union(grooves.flatMap((g) => g.region)), lo: -Math.max(...grooves.map((g) => g.depth)), hi: 0 });
       } else if (grooves.length) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: grooves.length } });
     }
-    // 6. The sharp edges round the top face deburred, last in the clamping, as the shop does (ENTGRATEN):
-    // with the smallest 90° graver (the shop's Ø4: 124 operations), the machine's first.
-    {
-      const gravers = usable(tools, ['ST']).filter((t) => t.template?.shape === 'G45' || !t.template);
-      const graver = [...gravers].sort((a, b) => Number(b.inMachine) - Number(a.inMachine) || a.diameter - b.diameter)[0];
-      const paths = graver ? deburrPaths(P, graver.diameter / 2, input.sideStock ?? 0) : [];
-      // Only in a clamping that cuts something: a side with nothing else to do gets no clamping for it.
-      if (graver && paths.length && ops.length) ops.push(chamfering(graver, paths, mat, limits, plane, 'ENTGRATEN'));
-    }
+    // 6. No deburring pass (the shop's ENTGRATEN round every sharp top edge): you (Beta 2), no chamfer where the model
+    // has none.
     // Where precision matters: the contour a top plate or contour insert takes its part in (the
     // pockets' walls, not round holes), a seal cage's thin walls.
     if (precise && (input.partType === 'topPlate' || input.partType === 'contourInsert')) {
