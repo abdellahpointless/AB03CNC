@@ -109,15 +109,16 @@ describe('through holes and the parallels (shop rule: up to 1 mm into one)', () 
     return lines.slice(from, to).flatMap((l) => (/G8[13] /.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])).sort((a, b) => a - b);
   };
 
-  it('drills out the one between the parallels; the one over a parallel goes 0.8 mm into it, then from the other side', () => {
+  it('drills out the one between the parallels; the one over a parallel goes 0.8 mm into it, never again from the other side', () => {
     const [deep, onCale] = depths(1);
     // Out at full size: the point 0.3 d + 0.5 under the part.
     expect(deep).toBeLessThanOrEqual(-8 - (0.3 * 3.3 + 0.5) + 0.01);
     expect(onCale).toBeCloseTo(-8.8, 2);
-    // The narrow end it leaves: drilled from the other side, so no hole is left short.
-    expect(depths(2)).toHaveLength(1);
-    expect(r.short).toBe(0);
-    expect(r.notes.map((n) => n.key)).not.toContain('holeShort');
+    // You: a hole through the part is made in one clamping (from the other side it would not meet it on one axis).
+    // The narrow end it leaves is noted for the operator to drill out by hand, the hole guiding the drill.
+    expect(r.code.split('\n').filter((l) => /TOOLPATH BOHREN_3\.3MM/.test(l))).toHaveLength(1);
+    expect(r.short).toBe(1);
+    expect(r.notes.map((n) => n.key)).toContain('holeShort');
     expect(r.check).toMatchObject({ cales: 0, collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   });

@@ -233,3 +233,47 @@ export function roundedRect([x0, y0, x1, y1]: [number, number, number, number], 
     }
   return out;
 }
+
+/**
+ * A W x L x H plate (corner at the origin) with a Ø d hole through it and a Ø D counterbore `depth` deep from its
+ * bottom face (z = 0): its closed mesh (48-sided holes).
+ */
+export function plateWithCounterbore(W: number, L: number, H: number, hole: { c: [number, number]; d: number; D: number; depth: number }): Float32Array {
+  const N = 48;
+  const { c, d, D, depth } = hole;
+  const ringOf = (dia: number) => Array.from({ length: N }, (_, k) => [c[0] + (dia / 2) * Math.cos((2 * Math.PI * k) / N), c[1] + (dia / 2) * Math.sin((2 * Math.PI * k) / N)] as [number, number]);
+  const [small, big] = [ringOf(d), ringOf(D)];
+  const t: number[] = [];
+  const tri = (a: number[], b: number[], e: number[], n: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [e[0] - a[0], e[1] - a[1], e[2] - a[2]];
+    const x = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    t.push(...(x[0] * n[0] + x[1] * n[1] + x[2] * n[2] >= 0 ? [...a, ...b, ...e] : [...a, ...e, ...b]));
+  };
+  const outer: [number, number][] = [[0, 0], [W, 0], [W, L], [0, L]];
+  const face = (ring: [number, number][], z: number, nz: number) => {
+    const all = [...outer, ...ring];
+    for (const [i, j, k] of ShapeUtils.triangulateShape(outer.map(([x, y]) => new Vector2(x, y)), [ring.map(([x, y]) => new Vector2(x, y))])) tri([...all[i], z], [...all[j], z], [...all[k], z], [0, 0, nz]);
+  };
+  face(small, H, 1);
+  face(big, 0, -1);
+  const wall = (a: [number, number], b: [number, number], z0: number, z1: number, n: number[]) => {
+    tri([...a, z0], [...b, z0], [...b, z1], n);
+    tri([...a, z0], [...b, z1], [...a, z1], n);
+  };
+  wall([0, 0], [W, 0], 0, H, [0, -1, 0]);
+  wall([W, 0], [W, L], 0, H, [1, 0, 0]);
+  wall([W, L], [0, L], 0, H, [0, 1, 0]);
+  wall([0, L], [0, 0], 0, H, [-1, 0, 0]);
+  for (let k = 0; k < N; k++) {
+    const [p, q, P, Q] = [small[k], small[(k + 1) % N], big[k], big[(k + 1) % N]];
+    const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    const inward = [c[0] - m[0], c[1] - m[1], 0];
+    wall(p, q, depth, H, inward);
+    wall(P, Q, 0, depth, inward);
+    // The counterbore's floor, facing down.
+    tri([...p, depth], [...q, depth], [...Q, depth], [0, 0, -1]);
+    tri([...p, depth], [...Q, depth], [...P, depth], [0, 0, -1]);
+  }
+  return new Float32Array(t);
+}

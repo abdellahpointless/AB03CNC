@@ -4,7 +4,7 @@ import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
-import { columnPart, heightPart, plateWithBlindHole, plateWithHoles, pocketPart, roundedRect } from './heightPart';
+import { columnPart, heightPart, plateWithBlindHole, plateWithCounterbore, plateWithHoles, pocketPart, roundedRect } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
 
@@ -150,6 +150,23 @@ describe('the order of the operations', () => {
     const mills = r.setups[0].ops.filter((o) => o.kind === 'pocket').map((o) => o.tool.diameter);
     expect(new Set(mills).size).toBe(mills.length);
     expect(r.setups[0].ops.some((o) => o.purpose === 'outline')).toBe(false);
+  }, 300_000);
+});
+
+describe('a hole and its counterbore', () => {
+  // You: a hole with a bigger one round it (a counterbore) is made in the same clamping as it, never the two from
+  // either side after a turn (they would not meet on one axis).
+  it('drills the hole from the counterbore’s side, with it', () => {
+    // A 40 x 30 x 12 plate: a Ø5 hole through, a Ø10 counterbore 5 deep from its bottom face.
+    const tris = plateWithCounterbore(40, 30, 12, { c: [12, 15], d: 5, D: 10, depth: 5 });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 19] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    // Where each clamping's drills go down (X, Y of each cycle line), by drill Ø.
+    const cycles = (s: CamSetup) => s.ops.filter((o) => o.kind === 'drill').flatMap((o) => o.lines.filter((l) => /G8[123]/.test(l)).map((l) => `${o.tool.diameter}@${Math.abs(Number(l.match(/X(-?[\d.]+)/)![1]))},${Math.abs(Number(l.match(/Y(-?[\d.]+)/)![1]))}`));
+    const [top, bottom] = [r.setups.find((s) => s.side === 'Z+')!, r.setups.find((s) => s.side === 'Z-')!];
+    expect(cycles(top)).toEqual([]);
+    expect(cycles(bottom).sort()).toEqual(['10@8,0', '5@8,0']);
   }, 300_000);
 });
 

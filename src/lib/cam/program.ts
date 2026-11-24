@@ -479,12 +479,12 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
  * setups) from R2 above the faced top (513 drill cycles): a cycle starts 2 mm above that material,
  * never in it (its way down to R is a rapid).
  */
-function drilling(list: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number): CamOp[] {
+function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number): CamOp[] {
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one). The shop spots
   // only what it drills under 4 mm (docs/knowledge: strategy.spotSmallDrills, 1,572 of 1,636 holes).
-  const fresh = list.filter((x) => !x.again && x.tool.diameter < 4 && (!spot || spot.length >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
+  const fresh = list.filter((x) => x.tool.diameter < 4 && (!spot || spot.length >= stockTop - (surface(x.h) - Math.min(x.h.r, spot.diameter / 2)) + 2));
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
@@ -1650,7 +1650,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
       return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
     };
-    const toDrill: { h: Hole; tool: CamTool; z: number; again?: boolean; pin?: boolean }[] = [];
+    const toDrill: { h: Hole; tool: CamTool; z: number; pin?: boolean }[] = [];
     // The parallels stand under the held Y faces, 0.3 mm in, as wide as the app's reader puts them
     // (setups.ts placeCales), where the underside lies flat on them; else the reader may move them in.
     const caleW = parallelWidth(hold[1]);
@@ -1659,8 +1659,25 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A hole clear of both by half a mm: drilled out over the gap between them.
     const betweenCales = (h: Hole) => flat && h.c[1] - h.r - 0.5 > held.lo[1] + 0.3 + caleW && h.c[1] + h.r + 0.5 < held.hi[1] - 0.3 - caleW;
     const keepHoles: Hole[] = [];
+    // You: a hole with a bigger one round it (a counterbore) is made in the same clamping as that one. One opening
+    // in the opposite face, on its axis, down to where this hole ends: both are made from there, never one from
+    // either side after a turn (they would not meet on one axis).
+    const opp = feats[SIDES.findIndex((x) => x.d.every((v, k) => v === -side.d[k]))];
+    const inModel = (M: Mat3, c: P2) => apply(transpose(M), [c[0], c[1], 0]);
+    const axis = apply(transpose(R), [0, 0, 1]).findIndex((v) => v !== 0);
+    const counterbored = (h: Hole) => {
+      const p = inModel(R, h.c);
+      return opp.holes.some((g) => {
+        const q = inModel(opp.R, g.c);
+        return g.r > h.r + 0.05 && !g.through && g.top - opp.max[2] > -0.1 && Math.abs(h.bottom + H - (g.top - g.bottom)) < 0.1 && [0, 1, 2].every((k) => k === axis || Math.abs(p[k] - q[k]) < 0.05);
+      });
+    };
     for (const h of holes) {
       const k = keyOf(h);
+      if (drilled.get(k) === undefined && counterbored(h)) {
+        keepHoles.push(h);
+        continue;
+      }
       // A blind hole CAD draws with a drill point (its middle open under where the wall ends, no smaller hole on
       // from there, and solid 0.75 r off its middle at that height, under a point's cone: not a cross hole or a
       // cavity): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
@@ -1672,22 +1689,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
         [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [h.c[0] + 0.75 * h.r * dx, h.c[1] + 0.75 * h.r * dy]) !== 0);
       const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
       const lip = drilled.get(k);
+      // Drilled already. You: a hole through the part is made in one clamping. The far end one left narrow over a
+      // parallel is not drilled from here (it would not meet the hole on one axis): the operator is told (holeShort).
       if (lip !== undefined) {
         keepHoles.push(h);
-        // The far end the setup before left narrow (its drill stopped in the stock, over the
-        // cales): finished from this side, into the hole already there.
-        const d = lip > 0 && h.through ? drillFor(h, h.top - lip - h.r - 1) : undefined;
-        if (d) {
-          toDrill.push({ h, tool: d, z: h.top - lip - 0.3 * d.diameter - 0.5, again: true });
-          drilled.set(k, 0);
-        }
         continue;
       }
       const d = drillFor(h, h.top - depth);
       if (d) {
         // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
         // one its point goes 0.8 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
-        // What that leaves narrow at the far end is drilled from the other side, else noted.
+        // What that leaves narrow at the far end is noted (never drilled from the other side).
         let z = h.through ? h.bottom - (0.3 * d.diameter + 0.5) : pointed ? h.bottom - 0.6 * h.r : h.bottom;
         let rest = 0;
         if (h.through && z < sb.lo[2] + 0.1) {
