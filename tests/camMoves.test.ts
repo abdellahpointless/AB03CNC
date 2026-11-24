@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { readTris } from '../src/lib/model';
 import { forMachine } from '../src/lib/cam/export';
 import { camProgram, oneClamping, RESERVE, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
@@ -205,6 +207,20 @@ describe('one face, one clamping', () => {
   it('finds no face finished in two clampings on a plate one clamping makes', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19] });
     expect(oneClamping(plate, r.code, 'HAAS', undefined, r.pose!, r.setups.map((x) => x.side))).toMatchObject({ reserve: [], splitMm2: 0 });
+  }, 300_000);
+});
+
+describe('a chamfer', () => {
+  // You (Beta 2, 13): no chamfer without need. A 45° face is a chamfer from two sides: cut once, never again after a turn.
+  it('is cut in one clamping only', async () => {
+    // tools/test-part/make_chamfer_slot.py: 50 x 30 x 20, 1 x 45° round the top, a slot 6 deep in the Y- face.
+    const tris = await readTris(new Uint8Array(readFileSync('tests/models/chamfer-side-slot.stl')));
+    if ('error' in tris) throw new Error(tris.error);
+    const r = camProgram({ ...base, tris, raw: [54, 34, 27] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(r.setups.map((s) => s.side)).toContain('Y-');
+    expect(r.setups.map((s) => `${s.side} ${s.ops.filter((o) => o.name === 'FASE').length}`)).toEqual(r.setups.map((s) => `${s.side} ${s.side === 'Z+' ? 1 : 0}`));
   }, 300_000);
 });
 

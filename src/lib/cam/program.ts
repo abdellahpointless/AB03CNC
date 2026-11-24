@@ -151,6 +151,8 @@ export interface CamSetup {
   held: [number, number, number, number];
   contact: Contact | null;
   ops: CamOp[];
+  /** The model's chamfer triangles this clamping's FASE cut: no later clamping cuts them again. */
+  chamfered?: number[];
 }
 
 export interface Zone {
@@ -2151,13 +2153,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (work.length) ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
-    if (f.chamfers.length) {
+    // You (Beta 2): a chamfer is cut once. A 45° face is a chamfer from two sides; one a clamping before cut is done.
+    const cutBefore = new Set(setups.flatMap((x) => x.chamfered ?? []));
+    const fresh = f.chamfers.filter((c) => c.tris.some((k) => !cutBefore.has(k)));
+    let chamfered: number[] | undefined;
+    if (fresh.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
       // Only the chamfers the graver reaches with its holder above the stock's top.
-      const reachable = f.chamfers.map((c) => ({ lo: c.lo - top, hi: c.hi - top })).filter((c) => !graver || graver.length >= stockTop - (c.lo - 0.3) + 2);
-      const paths = graver ? chamferPaths(P, reachable, graver.diameter / 2, jawLimit) : [];
-      if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: f.chamfers.length } });
-      else if (paths.length) ops.push(chamfering(graver, paths, mat, limits, plane));
+      const reachable = fresh.filter((c) => !graver || graver.length >= stockTop - (c.lo - top - 0.3) + 2);
+      const paths = graver ? chamferPaths(P, reachable.map((c) => ({ lo: c.lo - top, hi: c.hi - top })), graver.diameter / 2, jawLimit) : [];
+      if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: fresh.length } });
+      else if (paths.length) {
+        ops.push(chamfering(graver, paths, mat, limits, plane));
+        chamfered = reachable.flatMap((c) => c.tris);
+      }
     }
     // 5. A top plate's lettering on this face: the graver along its grooves (engraving()).
     const zones: Zone[] = [];
@@ -2291,7 +2300,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);
