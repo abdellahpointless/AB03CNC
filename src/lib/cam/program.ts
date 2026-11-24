@@ -1041,11 +1041,11 @@ export const RESERVE = 1;
  * and 2 mm²), and for each one the last of them reaches whole (nothing of the part between the face and that
  * clamping's spindle, 95 % of its samples), the faces the earlier ones (not the first) are to keep off: 50 mm² or more.
  */
-export function oneClamping(tris: ArrayLike<number>, code: string, brand: string | undefined, speeds: MachineSpeeds | undefined, pose: NonNullable<CamResult['pose']>, sides: string[]): { reserve: { side: string; tris: number[] }[]; splitMm2: number } {
+export function oneClamping(tris: ArrayLike<number>, code: string, brand: string | undefined, speeds: MachineSpeeds | undefined, pose: NonNullable<CamResult['pose']>, sides: string[]): { reserve: { side: string; tris: number[] }[]; splitMm2: number; uncutMm2: number } {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const an = analyseProgram(tp, { jawHeight: JAW });
   const sim = buildInput(tp, an);
-  if (!sim) return { reserve: [], splitMm2: 0 };
+  if (!sim) return { reserve: [], splitMm2: 0, uncutMm2: 0 };
   const g = carve({ ...sim, maxVoxels: 600_000 });
   const occ = voxelize(tris, pose.R, pose.t, g);
   const [nx, ny, nz] = g.n;
@@ -1064,7 +1064,8 @@ export function oneClamping(tris: ArrayLike<number>, code: string, brand: string
     }
     return true;
   };
-  const faces = new Map<string, { tris: number[]; area: number; samples: { q: Vec; n: Vec; by: number }[] }>();
+  // Per face also its samples where stock is still there just outside it (a skin a reserved face can be left with).
+  const faces = new Map<string, { tris: number[]; area: number; samples: { q: Vec; n: Vec; by: number }[]; uncut: number; all: number }>();
   for (let i = 0; i + 8 < tris.length; i += 9) {
     const a = [tris[i], tris[i + 1], tris[i + 2]];
     const u = [tris[i + 3] - a[0], tris[i + 4] - a[1], tris[i + 5] - a[2]];
@@ -1074,7 +1075,7 @@ export function oneClamping(tris: ArrayLike<number>, code: string, brand: string
     if (len < 1e-9) continue;
     const n = x.map((v) => v / len) as Vec;
     const key = `${n.map((v) => Math.round(v * 50)).join(',')}:${Math.round((n[0] * a[0] + n[1] * a[1] + n[2] * a[2]) * 20)}`;
-    const f = faces.get(key) ?? faces.set(key, { tris: [], area: 0, samples: [] }).get(key)!;
+    const f = faces.get(key) ?? faces.set(key, { tris: [], area: 0, samples: [], uncut: 0, all: 0 }).get(key)!;
     f.tris.push(i / 9);
     f.area += len / 2;
     const np = apply(pose.R, n) as Vec;
@@ -1084,14 +1085,21 @@ export function oneClamping(tris: ArrayLike<number>, code: string, brand: string
         const [p1, p2] = [(s + 0.33) / steps, (t + 0.33) / steps];
         const q = toPart([0, 1, 2].map((k) => a[k] + u[k] * p1 + w[k] * p2) as Vec).map((v, k) => v + np[k] * 0.7 * g.size) as Vec;
         const v = at(q);
-        if (v < 0 || occ[v] || g.removed[v] === KEPT) continue;
+        if (v < 0 || occ[v]) continue;
+        f.all++;
+        if (g.removed[v] === KEPT) {
+          f.uncut++;
+          continue;
+        }
         const m = g.outer?.get(v) ?? g.removed[v];
         if (sim.moves[m]) f.samples.push({ q, n: np, by: sim.moves[m].setup });
       }
   }
   const reserve = new Map<string, number[]>();
   let splitMm2 = 0;
+  let uncutMm2 = 0;
   for (const f of faces.values()) {
+    if (f.all) uncutMm2 += (f.area * f.uncut) / f.all;
     const count = new Map<number, number>();
     for (const x of f.samples) count.set(x.by, (count.get(x.by) ?? 0) + 1);
     const by = [...count].sort((p, q) => q[1] - p[1]);
@@ -1109,7 +1117,7 @@ export function oneClamping(tris: ArrayLike<number>, code: string, brand: string
     // part 26.6 minutes long against 20.1 (the later clampings chasing them with small mills); in the later ones 20.5.
     for (const [s] of by) if (s > 0 && s < last && sides[s] !== undefined) reserve.set(sides[s], [...(reserve.get(sides[s]) ?? []), ...f.tris]);
   }
-  return { reserve: [...reserve].map(([side, t]) => ({ side, tris: t })), splitMm2: Math.round(splitMm2) };
+  return { reserve: [...reserve].map(([side, t]) => ({ side, tris: t })), splitMm2: Math.round(splitMm2), uncutMm2: Math.round(uncutMm2) };
 }
 
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose'], corners?: Corner[]): CamCheck {
@@ -1372,8 +1380,9 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     if (was.reserve.length) {
       const inp = { ...bestInput, reserve: was.reserve };
       const now = checked(inp, planFor(inp, bestAxis));
-      const split = now.pose ? oneClamping(input.tris, now.code, input.brand, input.speeds, now.pose, now.setups.map((x) => x.side)).splitMm2 : Infinity;
-      if (good(now) && split < was.splitMm2 && now.check.minutes <= best!.check.minutes * 1.1) [best, bestInput] = [now, inp];
+      const after = now.pose ? oneClamping(input.tris, now.code, input.brand, input.speeds, now.pose, now.setups.map((x) => x.side)) : null;
+      // Never for stock left on a face (a reserved skin no clamping cut): the check's grid is too coarse to see 1 mm.
+      if (good(now) && after && after.splitMm2 < was.splitMm2 && after.uncutMm2 <= was.uncutMm2 + 1 && now.check.minutes <= best!.check.minutes * 1.1) [best, bestInput] = [now, inp];
     }
   }
   // The last way (shop rule, rare): the setups no way of holding in the vise passes, in a POM nest.

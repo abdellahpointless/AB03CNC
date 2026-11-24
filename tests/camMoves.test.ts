@@ -204,7 +204,7 @@ describe('one face, one clamping', () => {
 
   it('finds no face finished in two clampings on a plate one clamping makes', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19] });
-    expect(oneClamping(plate, r.code, 'HAAS', undefined, r.pose!, r.setups.map((x) => x.side))).toEqual({ reserve: [], splitMm2: 0 });
+    expect(oneClamping(plate, r.code, 'HAAS', undefined, r.pose!, r.setups.map((x) => x.side))).toMatchObject({ reserve: [], splitMm2: 0 });
   }, 300_000);
 });
 

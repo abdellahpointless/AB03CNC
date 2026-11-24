@@ -84,6 +84,17 @@ describe('a tall part the vise cannot hold against the big mills', () => {
   // The engineers hold the study's part standing 70 tall in the vise, 37 mm deep, cutting it with a Ø6 at most (21 N
   // of push); CAM AI cut it with its Ø20 (430 N) and, the vise check refusing that, put it in the nest on 38 mm
   // parallels. A smaller mill (its push falls about with its Ø squared) before the nest.
+  it('takes the largest smaller mill the vise holds at half feed or more (push about Ø squared)', async () => {
+    const { lighterMill } = await import('../src/lib/cam/program');
+    const set = [20, 16, 12, 10, 8, 6, 5, 4, 3];
+    // Held at 12 % of the Ø20's feed: up to 20·√(0.12/0.5) = 9.8, the Ø8.
+    expect(lighterMill(set, 20, 0.12)).toBe(8);
+    // At half or more: no lighter mill.
+    expect(lighterMill(set, 20, 0.6)).toBeUndefined();
+    // Nothing smaller to take.
+    expect(lighterMill([20], 20, 0.1)).toBeUndefined();
+  });
+
   it('is held in the vise with smaller mills, not in the nest (POM block 20 x 40, 70 tall, a pocket in its top)', async () => {
     const { camProgram } = await import('../src/lib/cam/program');
     const { heightPart } = await import('./heightPart');
