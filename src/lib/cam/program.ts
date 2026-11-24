@@ -115,7 +115,7 @@ export function opSegments(lines: string[]): number[] {
 }
 
 /** What an operation is for, in plain words (camAi.purpose.* on the page). */
-export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave';
+export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'outline' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave';
 
 export interface CamOp {
   /** Stable name of the operation in the program (its setup's side, its name, its tool, which one of those): what the operator removes by. */
@@ -1911,14 +1911,35 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const gone = swept([ring], r - 0.01);
         for (const g of ground) if (g.z > z + 1e-6 && g.above <= from + 1e-6) g.took.push({ dia: tool.diameter, gone });
       };
-      ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough', upTo, raised));
+      const purpose = ops.some((o) => o.kind === 'pocket') ? 'rest' : 'rough';
+      // You: the outline first, then the spot drill and the drills, then inside the part (the engineers' order).
+      // The first mill's rings outside the part's outline seen from the top, top down, as long as nothing over one
+      // is left for later (a ring under ground cut later would take it all at once). Nothing drilled: one operation.
+      const drillAt = ops.findIndex((o) => o.kind === 'centre' || o.kind === 'drill');
+      const early: Work[] = [];
+      const late: Work[] = [];
+      if (purpose === 'rough' && drillAt >= 0) {
+        while (si2 < samples.length) above = union(above, slice(P, samples[si2++]));
+        const outline = filled(above);
+        let after: Region = [];
+        for (const w of work) {
+          const go = w.rings.filter((g) => g.pts.every((p) => inside(outline, p) === 0) && area(intersection(swept([g], r), after)) < 0.01);
+          const stay = w.rings.filter((g) => !go.includes(g));
+          if (go.length) early.push({ ...w, rings: go });
+          if (stay.length) late.push({ ...w, rings: stay });
+          if (stay.length) after = union(after, swept(stay, r));
+        }
+      }
+      if (early.length) ops.splice(drillAt, 0, milling(tool, early, mat, limits, millTop, plane, left.at, 'outline', upTo, raised));
+      if (!early.length || late.length) ops.push(milling(tool, early.length ? late : work, mat, limits, millTop, plane, left.at, purpose, upTo, raised));
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
     // walls, gently: semi-finish (0.05 left all round), finish, a spring pass (what the tool's bending
     // left). A high-feed mill's walls are finished by the plain mill of its Ø (the shop: SFH 16
     // roughs, SF 16 finishes), the machine's first.
-    for (const op of ops.filter((o) => o.kind === 'pocket')) {
+    // Once per Ø (the outline and the inside are two operations of one mill).
+    for (const op of ops.filter((o, i) => o.kind === 'pocket' && ops.findIndex((q) => q.kind === 'pocket' && q.tool.diameter === o.tool.diameter) === i)) {
       const roughed = (byDia.get(op.tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).filter((w) => w.finish);
       if (!roughed.length) continue;
       const deepest = Math.min(...roughed.map((w) => w.z));

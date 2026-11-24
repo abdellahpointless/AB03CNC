@@ -252,6 +252,7 @@ const cam = {
       centre: 'Centre-drilling the holes',
       drill: 'Drilling the holes',
       pinHoles: 'Pin holes (a little under size, for a press fit)',
+      outline: 'Cutting the outline (the part’s outside edges)',
       rough: 'Removing excess material',
       rest: 'Removing what the bigger tool could not reach',
       finish: 'Finishing the walls',

@@ -126,6 +126,33 @@ describe('the plane between cuts', () => {
   }, 300_000);
 });
 
+describe('the order of the operations', () => {
+  // You: the engineers cut the outline first, then spot-drill, then drill, and only then mill inside the part.
+  it('faces, cuts the outline, spot-drills, drills, then mills inside', () => {
+    // A 60 x 40 x 10 plate: a Ø3.3 hole (drilled) and a Ø16 one (no drill: milled inside).
+    const holed = plateWithHoles(60, 40, 10, [{ c: [15, 20], d: 3.3 }, { c: [40, 20], d: 16 }]);
+    const r = camProgram({ ...base, tris: holed, raw: [64, 44, 17] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    const ops = r.setups[0].ops;
+    const at = (k: string) => ops.findIndex((o) => o.kind === k);
+    expect(ops[0].kind).toBe('face');
+    expect(ops[1]).toMatchObject({ kind: 'pocket', purpose: 'outline' });
+    expect(at('centre')).toBe(2);
+    expect(at('drill')).toBe(3);
+    // Every other milling after the drills.
+    expect(ops.slice(4).filter((o) => o.kind === 'pocket').length).toBeGreaterThan(0);
+    expect(ops.slice(0, 4).filter((o) => o.kind === 'pocket')).toHaveLength(1);
+  }, 300_000);
+
+  it('keeps one operation per mill where nothing is drilled between (no tool change for nothing)', () => {
+    const r = camProgram({ ...base, tris: pocketPart(40, 30, 12, [[10, 9], [30, 9], [30, 21], [10, 21]], 6), raw: [44, 34, 19] });
+    const mills = r.setups[0].ops.filter((o) => o.kind === 'pocket').map((o) => o.tool.diameter);
+    expect(new Set(mills).size).toBe(mills.length);
+    expect(r.setups[0].ops.some((o) => o.purpose === 'outline')).toBe(false);
+  }, 300_000);
+});
+
 describe('blind holes', () => {
   // The study (docs/knowledge/cam-part-study.md, E3): CAM AI put the drill's point where the hole's wall ends, so
   // the full Ø stopped 0.3 x Ø short; the engineers drill to the point CAD draws (Z-28.642 for a wall ending at 27.2).

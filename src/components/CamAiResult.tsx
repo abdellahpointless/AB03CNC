@@ -217,7 +217,7 @@ export function SetupPanel({ setup }: { setup: Setup }) {
   );
 }
 
-const MILL_PURPOSES = new Set(['face', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave']);
+const MILL_PURPOSES = new Set(['face', 'outline', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave']);
 const COOLANTS: Coolant[] = ['flood', 'air', 'off'];
 
 /**

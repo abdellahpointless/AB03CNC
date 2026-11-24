@@ -27,6 +27,7 @@ export interface LivePath {
 /** Roughing yellow, finishing cyan, drilling red. */
 const PATH_COLOR: Record<Purpose, number> = {
   face: 0xfacc15,
+  outline: 0xfacc15,
   rough: 0xfacc15,
   rest: 0xfacc15,
   finish: 0x22d3ee,

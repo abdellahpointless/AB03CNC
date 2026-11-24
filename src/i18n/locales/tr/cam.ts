@@ -255,6 +255,7 @@ const cam: Translation<typeof en> = {
       centre: 'Deliklere punta açılması',
       drill: 'Deliklerin delinmesi',
       pinHoles: 'Pim delikleri (sıkı geçme için biraz küçük)',
+      outline: 'Dış konturun işlenmesi (parçanın dış kenarları)',
       rough: 'Fazla malzemenin alınması',
       rest: 'Büyük takımın ulaşamadığı yerlerin temizlenmesi',
       finish: 'Duvarların finiş işlenmesi',

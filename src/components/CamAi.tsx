@@ -904,7 +904,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string; op?: string };
 
 /** The paths' colours, for the browser's dots (CamPartView draws them the same). */
-const PURPOSE_HEX: Record<string, string> = { face: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
+const PURPOSE_HEX: Record<string, string> = { face: '#facc15', outline: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
 
 /** The verdict, once there is a program. */
 function useVerdictOrNull(result: CamSummary | null, changed: number) {
