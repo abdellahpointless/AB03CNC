@@ -1945,6 +1945,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return input.sideStock ? offset(k, input.sideStock) : k;
     };
     const perTool = new Map<CamTool, Work[]>();
+    // The mills that took enough of some level to be worth their tool change.
+    const worth = new Set<CamTool>();
     // The walls the operator picked to finish: the roughing leaves ALLOW on them for the finishing (that
     // strip counts as done for the smaller tools that follow). Every other wall is roughed to size (0.02 mm
     // in): leaving ALLOW everywhere kept the largest mill out of pockets of its own width, and finishing
@@ -1997,10 +1999,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const keep = keepAt(z);
       // All the material between this level and the one above: the side of the tool takes it.
       // Thinner than the simulation's grid next to the part is the grid, not material.
-      // You (Beta 2): what a drill of this clamping took is done; no mill goes back into the hole (the grid, left,
-      // knows only the clampings before). Only down to where its point starts: under that, a flat bottom is milled.
-      const bored: Region = toDrill.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2));
-      let todo = difference(left.at(z, zAbove), union(left.skin ? offset(keep, left.skin) : keep, bored));
+      let todo = difference(left.at(z, zAbove), left.skin ? offset(keep, left.skin) : keep);
+      // You (Beta 2): what a drill of this clamping took is done (the grid, left, knows only the clampings before): a
+      // ring that would only sweep a drilled hole is not run. Only down to where the drill's point starts: under that,
+      // a flat bottom is milled.
+      const bored: Region = toDrill.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2 + 0.15));
       const levelTop = zAbove;
       zAbove = z;
       const inside = z < jawLimit - 0.001;
@@ -2087,8 +2090,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
         // Smaller tools only from here on (a bigger one cannot do better on what is left).
         cands = cands.filter((m) => m.diameter < pick!.tool.diameter);
         // A tool not used yet in this setup must take enough to be worth its tool change.
-        if (!perTool.has(pick.tool) && pick.share * all < 0.5) continue;
-        (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings: pick.rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
+        if (!worth.has(pick.tool) && pick.share * all < 0.5) continue;
+        worth.add(pick.tool);
+        const r = pick.tool.diameter / 2;
+        const rings = bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings;
+        if (rings.length) (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));
         if (pick.tool.diameter / 2 <= CORNER_R + 1e-6) {
