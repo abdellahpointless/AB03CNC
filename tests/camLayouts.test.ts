@@ -421,6 +421,23 @@ describe('turning the part over', () => {
   }, 600_000);
 });
 
+describe('the outline', () => {
+  // You: the outline is cut whole in the first clamping, 0.5 mm under the part (a 10 high part from 12: 10.5 down);
+  // after the turn only the face is cut, never the outline again (it would not meet the first one exactly).
+  // A 40 x 30 x 12 plate with a pocket, the blank 7 mm higher (the page's default): 2 over the part, 5 under it.
+  it('is cut whole in the first clamping, 0.5 mm under the part; the second only faces', () => {
+    const r = camProgram({ tris: plate, material: 'POM', tools: [], brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false } });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.setups.length).toBe(2);
+    const zs = (o: { lines: string[] }) => o.lines.flatMap((l) => (/^G01/.test(l) && / Z(-?[\d.]+)/.test(l) ? [Number(l.match(/ Z(-?[\d.]+)/)![1])] : []));
+    const first = r.setups[0].ops.filter((o) => o.kind === 'pocket');
+    expect(Math.min(...first.flatMap(zs))).toBeLessThanOrEqual(-12.5 + 1e-6);
+    // Gripped 1 mm under the outline's bottom at most (the tools keep 0.5 mm over the jaws).
+    expect(r.setups[0].grip).toBeLessThanOrEqual(4 + 1e-6);
+    expect(r.setups[1].ops.filter((o) => o.kind === 'pocket' || o.kind === 'finish')).toEqual([]);
+  }, 300_000);
+});
+
 describe('which plan wins', () => {
   // Minutes on the machine + 2 per clamping (you: 2 minutes per clamping is right); within a minute, fewer clampings.
   it('takes the clamping more only when it saves more than the operator\'s 2 minutes and a minute more', () => {

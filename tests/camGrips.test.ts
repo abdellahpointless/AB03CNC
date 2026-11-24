@@ -12,25 +12,26 @@ const base = { material: 'ALU' as const, tools: [], brand: 'HAAS', noNest: true,
 
 describe('the first clamping', () => {
   it.each([
-    [22, 'stock enough under the part for the outside to go through'],
-    [16, 'only 2 mm under the part: the jaws hold the foot of its wall, the next clamping cuts the outside left there'],
-  ])('stands on 40 mm parallels, gripped 5 mm, as the shop holds it (79 of 95 first clampings): raw %i high, %s', (rawH) => {
+    // You: the outline whole in the first clamping, 0.5 mm under the part, gripped as deep as that allows.
+    [22, 38, 'stock enough under the part for the outside to go through: gripped 7 of its 8 mm, 1 mm under the outline'],
+    [16, 40, 'only 2 mm under the part: the jaws hold the foot of its wall, the next clamping cuts the outside left there'],
+  ])('stands on its parallels as deep as the outside allows: raw %i high, on %i mm, %s', (rawH, cale) => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, rawH] });
-    expect(r.setups[0].cale).toBe(40);
-    expect(r.setups[0].grip).toBe(5);
-    expect(r.setups[0].notes).toContain('40 MM UNTERLAGE');
+    expect(r.setups[0].cale).toBe(cale);
+    expect(r.setups[0].grip).toBe(45 - cale);
+    expect(r.setups[0].notes).toContain(`${cale} MM UNTERLAGE`);
     expect(r.setups).toHaveLength(2);
     expect(r.setups.every((s) => s.physics.ok)).toBe(true);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
-  it('cuts the outside 0.2 mm under the part, or stops it clear above, never level with its bottom (a review finding)', () => {
+  it('cuts the outside 0.5 mm under the part, or stops it clear above, never level with its bottom (a review finding)', () => {
     // No blank given: 7.5 mm on the thickness, 2 on top, 5.5 under the part. A 5 mm grip would stop the outside
     // exactly at the part's bottom, which the face mill cuts after the turn: no overlap.
     const r = camProgram({ ...base, tris: plate });
     const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
-    expect(lowest).toBeLessThanOrEqual(-12.2 + 1e-6);
+    expect(lowest).toBeLessThanOrEqual(-12.5 + 1e-6);
     expect(r.setups[0].grip).toBeLessThanOrEqual(4);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
@@ -92,9 +93,9 @@ describe('the blank', () => {
     expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 2MM$/);
     // The other 8 mm under the part: faced off after the turn.
     expect(r.setups[1].notes[0]).toMatch(/\/Z\+ IN 8MM$/);
-    // Gripped 5 mm of the 8 under the part, the outside cut 0.2 mm under its bottom, 2.8 mm over the jaws.
+    // Gripped 7 mm of the 8 under the part, the outside cut 0.5 mm under its bottom, 0.5 mm over the jaws.
     const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
-    expect(lowest).toBeCloseTo(-12.2, 3);
+    expect(lowest).toBeCloseTo(-12.5, 3);
     expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);

@@ -1523,12 +1523,24 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       return Math.min(jaw - sb.lo[2], same);
     };
-    const want = !setups.length ? (waste > 0.5 ? Math.min(5, -sb.lo[2] - 5) : waste - 0.5) : nested || fixed !== undefined ? 3 : deepest();
+    // You: the outline is cut whole in the first clamping, 0.5 mm under the part, so after the turn only the face
+    // is cut (two outlines never meet exactly). The jaws 1 mm under that (the tools keep 0.5 mm over them), as deep
+    // as the stock under the part allows: 4 mm or more of it. Less: as before, the next clamping cuts the rest.
+    const THROUGH = 4;
+    const want = !setups.length
+      ? waste >= THROUGH
+        ? waste - 1
+        : waste > 0.5
+          ? Math.min(5, -sb.lo[2] - 5)
+          : waste - 0.5
+      : nested || fixed !== undefined
+        ? 3
+        : deepest();
     let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, fixed ?? want, fixed ?? 3);
-    // The first clamping's outside goes 0.2 mm or more under the part, or stops 0.5 mm or more above its bottom
-    // for the next clamping to cut from its side: never in between, where the wall would meet the face cut after
-    // the turn with no overlap (a review finding). The nearest grip that does, the smaller one first.
-    const clearOf = (g: number) => sb.lo[2] + g + 0.5 <= -H - 0.2 + 1e-6 || sb.lo[2] + g + 0.5 >= -H + 0.5 - 1e-6;
+    // The first clamping's outside goes 0.5 mm under the part, or stops 0.5 mm or more above its bottom for the
+    // next clamping to cut from its side: never in between, where the wall would meet the face cut after the turn
+    // with no overlap (a review finding). The nearest grip that does, the smaller one first.
+    const clearOf = (g: number) => sb.lo[2] + g + 0.5 <= -H - 0.5 + 1e-6 || sb.lo[2] + g + 0.5 >= -H + 0.5 - 1e-6;
     if (!nested && fixed === undefined && !setups.length && waste > 0.5 && !clearOf(pick.grip)) {
       const g0 = pick.grip;
       pick = CALE_HEIGHTS.map((c) => ({ cale: c, grip: JAW - c }))
@@ -1719,7 +1731,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
     // 3. Milling level by level: the largest end mill, then smaller ones only where it could not reach.
     const floors = f.floors.map((x) => x.z - top).filter((z) => z < -0.005 && z > -H - 0.01);
-    const bottom = -H - 0.2;
+    const bottom = -H - 0.5;
     // Also a level at the jaw limit: the outside is cut down to there, never lower.
     const jawLimit = jawTop + 0.5;
     const stops = [...new Set([...floors, bottom, ...(jawLimit < 0 && jawLimit > bottom ? [jawLimit] : [])])].sort((p, q) => q - p);
