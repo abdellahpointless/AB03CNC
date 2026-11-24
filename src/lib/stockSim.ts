@@ -798,6 +798,32 @@ export function thicknessAt(g: Grid, th: Float32Array, positions: Float32Array):
   return out;
 }
 
+/**
+ * For each point of the surface shown at instant `at` (positions, part frame): 1 when the material under it is cut
+ * before `until` (instants, see SUB), from the samples round it still there at `at`. The x-ray's tint: what the tool
+ * at work still takes.
+ */
+export function soonAt(g: Grid, positions: Float32Array, at: number, until: number): Uint8Array {
+  const [nx, ny, nz] = g.n;
+  const out = new Uint8Array(positions.length / 3);
+  for (let p = 0; p < out.length; p++) {
+    const f = [0, 1, 2].map((a) => Math.floor((positions[p * 3 + a] - g.origin[a]) / g.step[a] - 0.5));
+    let first = Infinity;
+    for (let dz = 0; dz < 2; dz++)
+      for (let dy = 0; dy < 2; dy++)
+        for (let dx = 0; dx < 2; dx++) {
+          const x = f[0] + dx, y = f[1] + dy, z = f[2] + dz;
+          if (x < 0 || y < 0 || z < 0 || x >= nx || y >= ny || z >= nz) continue;
+          const v = (z * ny + y) * nx + x;
+          if (g.removed[v] === KEPT) continue;
+          const t = g.removed[v] * SUB + (g.share[v] >> 6);
+          if (t >= at && t < first) first = t;
+        }
+    out[p] = first <= until ? 1 : 0;
+  }
+  return out;
+}
+
 /** A round hole a pure plunge left in the part (part frame, mm): rim centre, bottom centre (where its full Ø ends). */
 export interface Hole {
   top: Vec;
@@ -1107,6 +1133,8 @@ export interface ChunkMesh {
   cut: Uint8Array;
   /** Wall thickness of the finished part at each point (mm, see wallThickness). */
   thick?: Float32Array;
+  /** 1 where the material under the point is cut before a later instant (see soonAt): what the tool at work still takes. */
+  soon?: Uint8Array;
 }
 
 export interface Mesher {

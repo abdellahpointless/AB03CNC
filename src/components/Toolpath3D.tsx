@@ -86,8 +86,11 @@ interface Props {
   look?: PartLook;
   /** Outlines on everything drawn (the part, the vise, the tool). */
   outline?: boolean;
-  /** A section: the part cut open across a machine axis, `at` the share cut away from the side facing the camera (0..1). */
-  section?: { axis: 0 | 1 | 2; at: number } | null;
+  /**
+   * A section: the part cut open across a machine axis, `at` the share cut away from the side facing the camera (0..1).
+   * follow (the x-ray, you: Beta 2): the plane goes through the tool, and what the tool at work still takes is tinted.
+   */
+  section?: { axis: 0 | 1 | 2; at: number; follow?: boolean } | null;
   /** A view to fly the camera to (a new key flies again). */
   view?: { kind: 'top' | 'front' | 'iso'; key: number } | null;
   /** A point (machine coordinates) to fly the camera to: where a collision is. */
@@ -455,6 +458,8 @@ const LOOKS: Record<PartLook, { raw: number; cut: number; metalness: number; rou
 };
 /** The cut face of a section: hatched, in one colour for every material. */
 const SECTION = new THREE.Color(0xe07a5f);
+/** The x-ray's tint: material the tool at work still takes. */
+const SOON = new THREE.Color(0xff9a2e);
 
 /**
  * The part's material: its look, FH's wood layers under a 0.8 mm white plate on the raw top, a
@@ -697,6 +702,8 @@ interface Api {
   clip: THREE.Plane;
   /** Cuts the part open (or closes it) as `section` says. */
   applySection: () => void;
+  /** The x-ray: the instant the tool at work is done (its run of moves), its cuts to come tinted; null: off. */
+  until: number | null;
   /** The middle and the size of what the camera frames. */
   frame: () => { c: THREE.Vector3; size: number };
 }
@@ -844,6 +851,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       section: null,
       clip: new THREE.Plane(),
       applySection: () => undefined,
+      until: null,
       frame: () => ({ c: new THREE.Vector3(), size: 100 }),
     };
     return () => {
@@ -898,7 +906,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (s === shown) settled();
       if (!busy && a.solidReady && s !== shown) {
         busy = true;
-        worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current });
+        worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current, until: a.until });
       }
       lag();
     };
@@ -907,12 +915,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const paint = (geo: THREE.BufferGeometry) => {
       // The weak-spot colours replace the wood layers.
       material.userData.u.uFH.value = (look === 'fh' || look === 'fhThin') && !heatRef.current ? 1 : 0;
-      const { cut, thick } = geo.userData as { cut: Uint8Array; thick?: Float32Array };
+      const { cut, thick, soon } = geo.userData as { cut: Uint8Array; thick?: Float32Array; soon?: Uint8Array };
       const col = new Float32Array(cut.length * 3);
       const c = new THREE.Color();
       for (let i = 0; i < cut.length; i++) {
         const plain = cut[i] ? CUTC : RAWC;
         if (heatRef.current && thick) heatColor(thick[i], plain, c);
+        else if (soon?.[i] && a.until !== null) c.copy(plain).lerp(SOON, 0.55);
         else c.copy(plain);
         col[i * 3] = c.r;
         col[i * 3 + 1] = c.g;
@@ -947,7 +956,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           bb.applyMatrix4(a.solid.matrix);
           // Machine X, Y, Z are scene x, -z, y.
           const k = (['x', 'z', 'y'] as const)[sec.axis];
-          a.clip.set(new THREE.Vector3(k === 'x' ? -1 : 0, k === 'y' ? -1 : 0, k === 'z' ? -1 : 0), bb.max[k] - sec.at * (bb.max[k] - bb.min[k]));
+          a.clip.set(new THREE.Vector3(k === 'x' ? -1 : 0, k === 'y' ? -1 : 0, k === 'z' ? -1 : 0), sec.follow ? a.clip.constant : bb.max[k] - sec.at * (bb.max[k] - bb.min[k]));
         }
       }
       const planes = sec ? [a.clip] : [];
@@ -992,7 +1001,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const geo = new THREE.BufferGeometry();
           geo.setAttribute('position', new THREE.BufferAttribute(c.positions, 3));
           geo.setAttribute('normal', new THREE.BufferAttribute(c.normals, 3));
-          geo.userData = { cut: c.cut, thick: c.thick };
+          geo.userData = { cut: c.cut, thick: c.thick, soon: c.soon };
           paint(geo);
           if (mesh) {
             mesh.geometry.dispose();
@@ -1360,7 +1369,16 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         }
         // The solid as it is with the tool right here.
         a.meshAt = instant(first + k + at.cut);
+        // The x-ray: the section through the tool (machine X, Y, Z are scene x, -z, y).
+        if (a.section?.follow) {
+          const ax = (['x', 'z', 'y'] as const)[a.section.axis];
+          a.clip.constant = tool.position[ax];
+        }
       }
+      // The x-ray's tint: up to the end of the tool's run (all chunks again when that changes).
+      const until = a.section?.follow && cur ? instant(first + runTo[k] + 1) : null;
+      const tint = until !== a.until;
+      a.until = until;
       const reached = cur ? first + k : first - 1;
       // Bright once the tool got there (dim before), and the jaws red from the first hit into them on.
       hits.children.forEach((h) =>
@@ -1388,7 +1406,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         rapidGeo.setDrawRange(0, Infinity);
         a.meshAt = instant(path.moves.length);
       }
-      a.requestMesh(a.meshAt);
+      a.requestMesh(a.meshAt, tint);
       a.invalidate();
     };
     a.shownPos = clockRef.current.current;
@@ -2016,8 +2034,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (!a) return;
     a.section = section;
     a.applySection();
+    // The x-ray on or off: the plane and the tint follow the tool from the instant shown.
+    a.progress(clockRef.current.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section?.axis, section?.at]);
+  }, [section?.axis, section?.at, section?.follow]);
   // The NX view on or off: drawn again at the instant shown.
   useEffect(() => {
     api.current?.progress(clockRef.current.current);

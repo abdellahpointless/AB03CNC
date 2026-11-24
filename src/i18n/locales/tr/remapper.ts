@@ -311,6 +311,8 @@ const remapper: Translation<typeof en> = {
     workingNow: 'Şu an çalışıyor',
     nxView: 'NX görünümü',
     nxViewHelp: 'Bitmiş parçanın üzerinde tüm takım yolları: takım ilerlerken hiçbir şey kesilmez',
+    xray: 'Röntgen: takımı izle',
+    xrayHelp: 'Kesit takımın içinden geçer; çalışan takımın daha alacağı malzeme turuncu gösterilir.',
     model: {
       corrected: 'Dönüşler 3B modele göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}).',
       correctedClosest: 'Dönüşler bulunan en yakın sonuca göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}). Kontrol edin.',

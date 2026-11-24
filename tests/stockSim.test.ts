@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carve, drilledHoles, dropLoose, dropRadius, eigenSym, holderHits, holderOf, instant, isBall, KEPT, materialExtreme, mesher, simMoves, simTools, sweeps, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
+import { carve, drilledHoles, dropLoose, dropRadius, eigenSym, holderHits, holderOf, instant, isBall, KEPT, materialExtreme, mesher, simMoves, simTools, sweeps, soonAt, thicknessAt, touch, wallThickness, type SimInput } from '../src/lib/stockSim';
 import { parseToolpath } from '../src/lib/toolpath';
 import { pointAlong, runShares, toolAlong } from '../src/lib/playback';
 import type { Move, Vec } from '../src/lib/toolpath';
@@ -402,5 +402,36 @@ describe('one T number loaded again with another tool', () => {
     // Its G41 radius is the 10 mm tool's: along "G1 Y55." the path runs 5 mm left of the programmed X0.
     const along = tp.moves.find((m) => code.split('\n')[m.line] === 'G1 Y55.')!;
     for (const p of along.points) expect(p[0]).toBeCloseTo(-5, 5);
+  });
+});
+
+describe('the x-ray tint (soonAt)', () => {
+  // A block cut in two plunges at x -3 and x 3: shown before either, the top round the second plunge is tinted when
+  // only the second is to come before `until`, and not when `until` ends before it.
+  it('flags the surface over material the moves up to `until` take', () => {
+    const input: SimInput = {
+      moves: [
+        { setup: 0, tool: 5, points: [[-3, 0, 2], [-3, 0, -3]] },
+        { setup: 0, tool: 5, points: [[3, 0, 2], [3, 0, -3]] },
+      ],
+      setups: [{ orient: [1, 0, 0, 0, 1, 0, 0, 0, 1], offset: [0, 0, 0] }],
+      part: { min: [-6, -6, -6], max: [6, 6, 0] },
+      tools: [{ tool: 5, radius: 1.5, slope: null }],
+      maxVoxels: 20_000,
+    };
+    const g = carve(input);
+    const m = mesher(g, input);
+    // The top's points round the second plunge, shown after the first (instant 1).
+    const at = instant(1);
+    const all: number[] = [];
+    for (let id = 0; id < m.chunks; id++) all.push(...m.build(id, at).positions);
+    const top = new Float32Array(all);
+    const near = (x: number) => Array.from({ length: top.length / 3 }, (_, p) => p).filter((p) => top[p * 3 + 2] > -0.01 && Math.hypot(top[p * 3] - x, top[p * 3 + 1]) < 1);
+    const second = near(3);
+    expect(second.length).toBeGreaterThan(0);
+    const both = soonAt(g, top, at, instant(2));
+    const none = soonAt(g, top, at, instant(1));
+    expect(second.every((p) => both[p] === 1)).toBe(true);
+    expect(second.every((p) => none[p] === 0)).toBe(true);
   });
 });

@@ -320,6 +320,8 @@ const remapper = {
     workingNow: 'Working now',
     nxView: 'NX view',
     nxViewHelp: 'Every toolpath over the finished part: nothing is cut away as the tool goes',
+    xray: 'X-ray: follow the tool',
+    xrayHelp: 'The cut goes through the tool; what the tool at work still takes is tinted orange.',
     model: {
       corrected: "The turns were corrected from the 3D model: {{pct}} % alike (the program's own: {{from}} %).",
       correctedClosest: "Turns corrected to the closest found: {{pct}} % alike (the program's own: {{from}} %). Check them.",

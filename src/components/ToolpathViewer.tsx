@@ -243,7 +243,7 @@ export default function ToolpathViewer({
   const look = useMemo(() => partLook(code), [code]);
   const [outline, setOutline] = useState(look === 'pom');
   const [seeThrough, setSeeThrough] = useState(false);
-  const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number } | null>(null);
+  const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number; follow?: boolean } | null>(null);
   const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
   const [focus, setFocus] = useState<{ point: Vec; key: number } | null>(null);
   // A jump the 3D view hides the part for (to the end, or to a setup change, which then turns).
@@ -1021,7 +1021,13 @@ export default function ToolpathViewer({
                         ))}
                       </div>
                     </div>
-                    <input type="range" min={0} max={100} value={Math.round(section.at * 100)} onChange={(e) => setSection({ ...section, at: Number(e.target.value) / 100 })} aria-label={t('toolpath.sectionAt')} className="w-full h-5 accent-[#e07a5f]" />
+                    {!section.follow && <input type="range" min={0} max={100} value={Math.round(section.at * 100)} onChange={(e) => setSection({ ...section, at: Number(e.target.value) / 100 })} aria-label={t('toolpath.sectionAt')} className="w-full h-5 accent-[#e07a5f]" />}
+                    {/* The x-ray: the cut through the tool, what it still takes tinted. */}
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] cursor-pointer">
+                      <input type="checkbox" checked={!!section.follow} onChange={(e) => setSection({ ...section, follow: e.target.checked })} className="accent-[#ff9a2e]" />
+                      <span className="flex-1">{t('toolpath.xray')}</span>
+                    </label>
+                    {section.follow && <p className="text-[10px] leading-snug text-[var(--text-tertiary)]">{t('toolpath.xrayHelp')}</p>}
                   </div>
                 )}
                 {mode3d && current && hitByMove.get(step - 1) && (
