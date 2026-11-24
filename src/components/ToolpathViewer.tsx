@@ -12,6 +12,7 @@ import { MODEL_MAX_BYTES } from '../lib/modelLimits';
 import type { TurnFix } from '../lib/fixTurns';
 import { apply, type Mat3 } from '../lib/orient';
 import ModelCheck from './ModelCheck';
+import ToolSize from './ToolSize';
 import { recordTurns, useTurnMemory } from '../lib/turnMemory';
 import { TARGET } from '../lib/fixTurns';
 import type { MeasureMode } from '../lib/measure';
@@ -519,6 +520,16 @@ export default function ToolpathViewer({
 
   const current = step > 0 ? path.moves[step - 1] : null;
   const here = current ? toolAt(path.moves, clock.current)?.p ?? null : null;
+  // The side panel follows the tool at work: its card is scrolled to the panel's middle when the tool changes.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const workingTool = current?.tool;
+  useEffect(() => {
+    const box = panelRef.current;
+    const el = box?.querySelector<HTMLElement>('[data-working="true"]');
+    if (!box || !el || !panelOpen) return;
+    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - (box.clientHeight - el.offsetHeight) / 2;
+    box.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [workingTool, panelOpen]);
   const curLine = current ? lines[current.line] : '';
   const holeR = Math.max(homeTop.w, homeTop.h) * 0.008;
   const firstHoleTool = useMemo(() => {
@@ -1077,7 +1088,7 @@ export default function ToolpathViewer({
             </div>
 
             {/* Side panel: tools with their colour and time, the current line */}
-            <div inert={!panelOpen} aria-hidden={!panelOpen} className={`min-h-0 min-w-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4 transition-opacity duration-200 ${panelOpen ? '' : 'lg:opacity-0 lg:p-0 lg:border-l-0'}`}>
+            <div ref={panelRef} inert={!panelOpen} aria-hidden={!panelOpen} className={`min-h-0 min-w-0 overflow-y-auto border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] p-4 space-y-4 transition-opacity duration-200 ${panelOpen ? '' : 'lg:opacity-0 lg:p-0 lg:border-l-0'}`}>
               {model && mode3d && (
                 <ModelCheck
                   record={!noRecord}
@@ -1188,22 +1199,26 @@ export default function ToolpathViewer({
                     <button
                       key={tl.tool}
                       type="button"
+                      data-working={active}
+                      aria-current={active || undefined}
                       onClick={() => {
                         setPlaying(false);
                         const k = path.moves.findIndex((m) => m.tool === tl.tool);
                         seek(k >= 0 ? k + 1 : step);
                       }}
-                      className={`w-full block text-left rounded-[var(--radius-sm)] px-2.5 py-2 border transition-colors ${active ? 'border-[var(--border-strong)] bg-[rgba(var(--ov),0.06)]' : 'border-transparent hover:bg-[rgba(var(--ov),0.04)]'}`}
+                      className={`w-full block text-left rounded-[var(--radius-sm)] px-2.5 py-2 border transition-colors ${active ? 'border-2 bg-[rgba(var(--ov),0.07)]' : 'border-transparent hover:bg-[rgba(var(--ov),0.04)]'}`}
+                      style={active ? { borderColor: colorOf(tl.tool), boxShadow: `0 0 0 3px ${colorOf(tl.tool)}33` } : undefined}
                     >
                       <span className="flex items-center gap-2.5">
-                        <span className="w-3 h-3 rounded-full shrink-0" style={{ background: colorOf(tl.tool) }} />
-                        <span className="font-mono text-xs font-bold text-[var(--text-primary)] flex-1">T{tl.tool}</span>
+                        <span className={`rounded-full shrink-0 ${active ? 'w-3.5 h-3.5 animate-pulse motion-reduce:animate-none' : 'w-3 h-3'}`} style={{ background: colorOf(tl.tool) }} />
+                        <span className={`font-mono font-bold text-[var(--text-primary)] flex-1 ${active ? 'text-sm' : 'text-xs'}`}>T{tl.tool}</span>
+                        {active && <span className="text-[10px] font-bold uppercase tracking-wide shrink-0" style={{ color: colorOf(tl.tool) }}>{t('toolpath.workingNow')}</span>}
                         <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">{fmtClock(tl.seconds)}</span>
                       </span>
-                      <span className="block pl-[22px] mt-0.5 text-xs text-[var(--text-secondary)] break-words">{tl.label}</span>
-                      <span className="block pl-[22px] font-mono text-[11px] text-[var(--text-tertiary)]">
-                        {t('toolpath.toolSize', { d: tl.diameter === null ? '—' : fmt2(tl.diameter), l: tl.length === null ? '—' : fmt2(tl.length) })}
+                      <span className="block pl-[22px] mt-1.5">
+                        <ToolSize d={tl.diameter} l={tl.length} big={active} />
                       </span>
+                      <span className="block pl-[22px] mt-1 text-xs text-[var(--text-secondary)] break-words">{tl.label}</span>
                     </button>
                   );
                 })}

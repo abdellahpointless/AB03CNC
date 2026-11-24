@@ -308,7 +308,7 @@ const remapper: Translation<typeof en> = {
     fit: 'Ekrana sığdır',
     noMoves: 'Bu programda gösterilecek hareket yok.',
     estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
-    toolSize: 'Ø {{d}} mm · boy {{l}} mm',
+    workingNow: 'Şu an çalışıyor',
     model: {
       corrected: 'Dönüşler 3B modele göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}).',
       correctedClosest: 'Dönüşler bulunan en yakın sonuca göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}). Kontrol edin.',

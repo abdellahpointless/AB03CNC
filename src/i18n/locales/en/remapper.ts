@@ -317,7 +317,7 @@ const remapper = {
     fit: 'Fit to screen',
     noMoves: 'No moves to show in this program.',
     estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
-    toolSize: 'Ø {{d}} mm · length {{l}} mm',
+    workingNow: 'Working now',
     model: {
       corrected: "The turns were corrected from the 3D model: {{pct}} % alike (the program's own: {{from}} %).",
       correctedClosest: "Turns corrected to the closest found: {{pct}} % alike (the program's own: {{from}} %). Check them.",
