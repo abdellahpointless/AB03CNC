@@ -1714,13 +1714,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const d = drillFor(h, h.top - depth);
       if (d) {
         // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
-        // one its point goes 0.8 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
+        // one its point goes 0.95 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
         // What that leaves narrow at the far end is noted (never drilled from the other side).
         let z = h.through ? h.bottom - (0.3 * d.diameter + 0.5) : pointed ? h.bottom - 0.6 * h.r : h.bottom;
         let rest = 0;
         if (h.through && z < sb.lo[2] + 0.1) {
-          if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.8));
-          rest = Math.max(0, z + 0.3 * d.diameter - h.bottom);
+          // You: the shop's full 1 mm into a parallel (0.95: the check's margin); a narrow end under 0.05 mm is nothing.
+          if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.95));
+          rest = z + 0.3 * d.diameter - h.bottom;
+          rest = rest < 0.05 ? 0 : rest;
         }
         toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005 });
         keepHoles.push(h);
