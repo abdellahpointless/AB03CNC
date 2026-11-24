@@ -61,6 +61,8 @@ export interface CamInput {
   cuts?: Record<string, CutEdit>;
   /** Operations the operator removed (CamOp.key): left out of the program, which is simulated and checked without them. */
   skip?: string[];
+  /** Faces (model triangle indices) a clamping keeps RESERVE mm off: a later clamping finishes them whole (oneClamping). */
+  reserve?: { side: string; tris: number[] }[];
   /** The blank centred on the part (camProgram's fallback when no plan with it 2 mm over the part passes). */
   centred?: boolean;
   /**
@@ -1029,6 +1031,87 @@ export function fineCuts(tris: ArrayLike<number>, code: string, brand?: string, 
   return differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }).pieces.filter((p) => p.kind === 'cut');
 }
 
+/** How far a clamping keeps off a face a later one finishes whole (more than the simulation's grid, so it sees the skin). */
+export const RESERVE = 1;
+
+/**
+ * You: a face finished in two clampings shows a step where they meet (a turn is never exact). Of the program's faces
+ * (coplanar model triangles), those two clampings or more finish (the clamping whose cut reaches furthest over the
+ * stock just outside each sample, every ~0.5 mm, as the toolpath viewer cuts it; the second at least 10 % of the face
+ * and 2 mm²), and for each one the last of them reaches whole (nothing of the part between the face and that
+ * clamping's spindle, 95 % of its samples), the faces the earlier ones (not the first) are to keep off: 50 mm² or more.
+ */
+export function oneClamping(tris: ArrayLike<number>, code: string, brand: string | undefined, speeds: MachineSpeeds | undefined, pose: NonNullable<CamResult['pose']>, sides: string[]): { reserve: { side: string; tris: number[] }[]; splitMm2: number } {
+  const tp = parseToolpath(code, speeds ?? speedsFor(brand));
+  const an = analyseProgram(tp, { jawHeight: JAW });
+  const sim = buildInput(tp, an);
+  if (!sim) return { reserve: [], splitMm2: 0 };
+  const g = carve({ ...sim, maxVoxels: 600_000 });
+  const occ = voxelize(tris, pose.R, pose.t, g);
+  const [nx, ny, nz] = g.n;
+  const at = (q: Vec) => {
+    const i = [0, 1, 2].map((k) => Math.round((q[k] - g.origin[k]) / g.step[k]));
+    return i[0] < 0 || i[1] < 0 || i[2] < 0 || i[0] >= nx || i[1] >= ny || i[2] >= nz ? -1 : (i[2] * ny + i[1]) * nx + i[0];
+  };
+  const toPart = (p: Vec): Vec => apply(pose.R, p).map((v, k) => v + pose.t[k]) as Vec;
+  // Each clamping's spindle axis in the part's frame (machine = orient · part + offset).
+  const up = an.setups.map((x) => [x.orient[6], x.orient[7], x.orient[8]] as Vec);
+  const open = (q: Vec, u: Vec) => {
+    for (let s = g.size; s < 400; s += g.size / 2) {
+      const v = at([q[0] + u[0] * s, q[1] + u[1] * s, q[2] + u[2] * s]);
+      if (v < 0) return true;
+      if (occ[v]) return false;
+    }
+    return true;
+  };
+  const faces = new Map<string, { tris: number[]; area: number; samples: { q: Vec; n: Vec; by: number }[] }>();
+  for (let i = 0; i + 8 < tris.length; i += 9) {
+    const a = [tris[i], tris[i + 1], tris[i + 2]];
+    const u = [tris[i + 3] - a[0], tris[i + 4] - a[1], tris[i + 5] - a[2]];
+    const w = [tris[i + 6] - a[0], tris[i + 7] - a[1], tris[i + 8] - a[2]];
+    const x = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+    const len = Math.hypot(x[0], x[1], x[2]);
+    if (len < 1e-9) continue;
+    const n = x.map((v) => v / len) as Vec;
+    const key = `${n.map((v) => Math.round(v * 50)).join(',')}:${Math.round((n[0] * a[0] + n[1] * a[1] + n[2] * a[2]) * 20)}`;
+    const f = faces.get(key) ?? faces.set(key, { tris: [], area: 0, samples: [] }).get(key)!;
+    f.tris.push(i / 9);
+    f.area += len / 2;
+    const np = apply(pose.R, n) as Vec;
+    const steps = Math.min(60, Math.max(2, Math.ceil(Math.sqrt(len / 2) / 0.5)));
+    for (let s = 0; s < steps; s++)
+      for (let t = 0; t < steps - s; t++) {
+        const [p1, p2] = [(s + 0.33) / steps, (t + 0.33) / steps];
+        const q = toPart([0, 1, 2].map((k) => a[k] + u[k] * p1 + w[k] * p2) as Vec).map((v, k) => v + np[k] * 0.7 * g.size) as Vec;
+        const v = at(q);
+        if (v < 0 || occ[v] || g.removed[v] === KEPT) continue;
+        const m = g.outer?.get(v) ?? g.removed[v];
+        if (sim.moves[m]) f.samples.push({ q, n: np, by: sim.moves[m].setup });
+      }
+  }
+  const reserve = new Map<string, number[]>();
+  let splitMm2 = 0;
+  for (const f of faces.values()) {
+    const count = new Map<number, number>();
+    for (const x of f.samples) count.set(x.by, (count.get(x.by) ?? 0) + 1);
+    const by = [...count].sort((p, q) => q[1] - p[1]);
+    if (f.samples.length < 8 || by.length < 2 || by[1][1] < 0.1 * f.samples.length || (f.area * by[1][1]) / f.samples.length < 2) continue;
+    splitMm2 += f.area;
+    // Only the large faces (a pocket's walls and floor): keeping off a small or curved one leaves slivers only tiny mills
+    // reach (the study's part: a Ø1 for 4,906 lines).
+    if (f.area < 50) continue;
+    const last = Math.max(...by.map(([s]) => s));
+    const u = up[last];
+    if (!u || sides[last] === undefined) continue;
+    const reach = f.samples.filter((x) => x.n[0] * u[0] + x.n[1] * u[1] + x.n[2] * u[2] >= -0.05 && open(x.q, u)).length;
+    if (reach < 0.95 * f.samples.length) continue;
+    // Never in the first clamping (the outline and most of the part): its faces left to a later one made the study's
+    // part 26.6 minutes long against 20.1 (the later clampings chasing them with small mills); in the later ones 20.5.
+    for (const [s] of by) if (s > 0 && s < last && sides[s] !== undefined) reserve.set(sides[s], [...(reserve.get(sides[s]) ?? []), ...f.tris]);
+  }
+  return { reserve: [...reserve].map(([side, t]) => ({ side, tris: t })), splitMm2: Math.round(splitMm2) };
+}
+
 export function checkProgram(tris: ArrayLike<number>, code: string, brand?: string, speeds?: MachineSpeeds, pose?: CamResult['pose'], corners?: Corner[]): CamCheck {
   const tp = parseToolpath(code, speeds ?? speedsFor(brand));
   const an = analyseProgram(tp, { jawHeight: JAW });
@@ -1281,6 +1364,18 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // None passes with the blank 2 mm over the part (e.g. the outside cut through first leaves the next clamping
   // only a narrow face to hold, where the shop rests the part on a ledge): planned again with it centred.
   if (!good(best!)) plans({ ...input, centred: true });
+  // You: a face finished in two clampings shows a step where they meet. Planned again with each such face the last
+  // clamping reaches whole left to it (the others keep RESERVE off it); kept when it passes, splits less and takes at
+  // most a tenth longer.
+  if (good(best!) && best!.pose && !input.reserve) {
+    const was = oneClamping(input.tris, best!.code, input.brand, input.speeds, best!.pose, best!.setups.map((x) => x.side));
+    if (was.reserve.length) {
+      const inp = { ...bestInput, reserve: was.reserve };
+      const now = checked(inp, planFor(inp, bestAxis));
+      const split = now.pose ? oneClamping(input.tris, now.code, input.brand, input.speeds, now.pose, now.setups.map((x) => x.side)).splitMm2 : Infinity;
+      if (good(now) && split < was.splitMm2 && now.check.minutes <= best!.check.minutes * 1.1) [best, bestInput] = [now, inp];
+    }
+  }
   // The last way (shop rule, rare): the setups no way of holding in the vise passes, in a POM nest.
   // Planned again with them nested; each nest gets its own program (POM, held in the vise).
   const kept = best!;
@@ -1807,6 +1902,29 @@ function planFor(input: CamInput, vertical: number): CamResult {
       picked.flatMap((t) =>
         Math.max(t[2], t[5], t[8]) < lo - 0.01 || Math.min(t[2], t[5], t[8]) > hi + 0.01 ? [] : [{ pts: [[t[0], t[1]], [t[3], t[4]], [t[6], t[7]]] as P2[], closed: false, outside: false }],
       );
+    // Faces a later clamping finishes whole (oneClamping): kept RESERVE off, walls along their edges, floors over them.
+    const reservedTris = (input.reserve ?? [])
+      .filter((x) => x.side === side.name)
+      .flatMap((x) => x.tris)
+      .filter((k) => k >= 0 && k * 9 + 8 < P.length)
+      .map((k) => P.subarray(k * 9, k * 9 + 9));
+    const reservedAt = (lo: number): Region => {
+      const lines: Ring[] = [];
+      const floors: Region = [];
+      for (const t of reservedTris) {
+        const [u, v] = [[t[3] - t[0], t[4] - t[1], t[5] - t[2]], [t[6] - t[0], t[7] - t[1], t[8] - t[2]]];
+        const nz = u[0] * v[1] - u[1] * v[0];
+        const len = Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], nz);
+        const zmax = Math.max(t[2], t[5], t[8]);
+        const pts = [[t[0], t[1]], [t[3], t[4]], [t[6], t[7]]] as P2[];
+        if (len < 1e-9) continue;
+        if (Math.abs(nz / len) <= 0.3) {
+          // Above the level too, as the part is kept (keepAt): a ring is run down from a higher top when ground is left there.
+          if (zmax >= lo - RESERVE) lines.push({ pts, closed: false, outside: false });
+        } else if (nz > 0 && lo < zmax + RESERVE) floors.push(pts);
+      }
+      return union([...(lines.length ? swept(lines, RESERVE) : []), ...(floors.length ? offset(union(floors), RESERVE) : [])]);
+    };
     let narrow = 0;
     let narrowDepth = 0;
     let zAbove = Math.max(millTop, 0);
@@ -1847,8 +1965,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const thin = input.partType === 'sealCage' ? thinParts(keep, THIN) : undefined;
       const zone = union([...(walls.length ? swept(walls, ALLOW + 0.5) : []), ...(thin && area(thin) > 0.5 ? offset(thin, ALLOW + 0.5) : [])]);
       const strip = zone.length ? intersection(offset(keep, ALLOW), zone) : [];
-      const offR = strip.length ? union(off, strip) : off;
+      const resv = reservedTris.length ? reservedAt(z) : [];
+      const offR = strip.length || resv.length ? union(union(off, strip), resv) : off;
       if (strip.length) todo = opened(difference(todo, strip));
+      if (resv.length) todo = opened(difference(todo, resv));
       const level = { z, above: levelTop, todo, took: [] as { dia: number; gone: Region }[] };
       ground.push(level);
       // The largest end mill first. Then, on what it left (corners, narrow pockets), the largest

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forMachine } from '../src/lib/cam/export';
-import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
+import { camProgram, oneClamping, RESERVE, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -173,6 +173,38 @@ describe('the order of the operations', () => {
     const mills = r.setups[0].ops.filter((o) => o.kind === 'pocket').map((o) => o.tool.diameter);
     expect(new Set(mills).size).toBe(mills.length);
     expect(r.setups[0].ops.some((o) => o.purpose === 'outline')).toBe(false);
+  }, 300_000);
+});
+
+describe('one face, one clamping', () => {
+  // A 40 x 30 x 12 plate with a 20 x 12 pocket 6 deep: its wall at x = 30 (facing -X) given to a later clamping.
+  const plate = pocketPart(40, 30, 12, [[10, 9], [30, 9], [30, 21], [10, 21]], 6);
+  const wall: number[] = [];
+  for (let i = 0; i < plate.length; i += 9) {
+    const [ax, ay, , bx, by, , cx, cy] = [plate[i], plate[i + 1], plate[i + 2], plate[i + 3], plate[i + 4], plate[i + 5], plate[i + 6], plate[i + 7]];
+    const nz = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    if ([ax, bx, cx].every((x) => Math.abs(x - 30) < 1e-6) && Math.abs(nz) < 1e-9) wall.push(i / 9);
+  }
+
+  it('keeps RESERVE off a face a later clamping finishes whole', () => {
+    expect(wall.length).toBeGreaterThan(0);
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19], reserve: [{ side: 'Z+', tris: wall }] });
+    // The wall at x = 10 in the program (the part centred): every end mill's centre stays its radius and RESERVE off it.
+    for (const o of r.setups[0].ops.filter((x) => x.kind === 'pocket')) {
+      let [x, y, mode] = [0, 0, 0];
+      for (const l of o.lines) {
+        const g = l.match(/\bG0?([0123])\b/);
+        if (g) mode = Number(g[1]);
+        x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
+        y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
+        if (mode > 0 && Math.abs(y) < 6 - o.tool.diameter / 2 && x > 0) expect(x).toBeLessThanOrEqual(10 - o.tool.diameter / 2 - RESERVE + 0.05);
+      }
+    }
+  }, 300_000);
+
+  it('finds no face finished in two clampings on a plate one clamping makes', () => {
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19] });
+    expect(oneClamping(plate, r.code, 'HAAS', undefined, r.pose!, r.setups.map((x) => x.side))).toEqual({ reserve: [], splitMm2: 0 });
   }, 300_000);
 });
 
