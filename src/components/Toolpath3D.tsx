@@ -103,6 +103,8 @@ interface Props {
   /** What is drawn: the simulated part, the model, or both (the model see-through). */
   modelView?: ModelView;
   onModel?: (s: ModelState) => void;
+  /** The NX view (you, Beta 2): every path of the setup over the finished part; nothing is cut away as the tool goes. */
+  pathsOnly?: boolean;
 }
 
 export type ModelView = 'part' | 'model' | 'both';
@@ -702,7 +704,7 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const onModelRef = useRef(onModel);
@@ -717,6 +719,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   const onMeasureRef = useRef(onMeasure);
   onMeasureRef.current = onMeasure;
   const heatRef = useRef(heat);
+  const pathsOnlyRef = useRef(pathsOnly);
+  pathsOnlyRef.current = pathsOnly;
   heatRef.current = heat;
   const playingRef = useRef(playing);
   playingRef.current = playing;
@@ -1377,6 +1381,13 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         }
         for (const f of a.spacerEdges.face) f.emissive.set(spacerHit ? 0x0e5a3a : 0x000000);
       }
+      if (pathsOnlyRef.current) {
+        // The NX view: the setup's every path, over the part as it is in the end.
+        ghostGeo.setDrawRange(0, Infinity);
+        feedGeo.setDrawRange(0, Infinity);
+        rapidGeo.setDrawRange(0, Infinity);
+        a.meshAt = instant(path.moves.length);
+      }
       a.requestMesh(a.meshAt);
       a.invalidate();
     };
@@ -2007,6 +2018,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     a.applySection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section?.axis, section?.at]);
+  // The NX view on or off: drawn again at the instant shown.
+  useEffect(() => {
+    api.current?.progress(clockRef.current.current);
+  }, [pathsOnly]);
 
   // Top, front or the usual 3/4 view, flown to (of the part alone when it is shown alone).
   useEffect(() => {

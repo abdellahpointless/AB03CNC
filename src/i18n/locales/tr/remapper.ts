@@ -309,6 +309,8 @@ const remapper: Translation<typeof en> = {
     noMoves: 'Bu programda gösterilecek hareket yok.',
     estimateNote: 'Süre tahminidir: kesmeler programdaki F ile, hızlı hareketler tezgahın hızlı ilerlemesiyle, artı takım değişimleri. Gerçek süre biraz daha uzundur.',
     workingNow: 'Şu an çalışıyor',
+    nxView: 'NX görünümü',
+    nxViewHelp: 'Bitmiş parçanın üzerinde tüm takım yolları: takım ilerlerken hiçbir şey kesilmez',
     model: {
       corrected: 'Dönüşler 3B modele göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}).',
       correctedClosest: 'Dönüşler bulunan en yakın sonuca göre düzeltildi: %{{pct}} benzer (programın kendi dönüşleri: %{{from}}). Kontrol edin.',

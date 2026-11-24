@@ -77,6 +77,7 @@ export default function ToolpathViewer({
   onUseFix,
   onTurnsFound,
   noRecord = false,
+  start,
 }: {
   code: string;
   title: string;
@@ -93,6 +94,8 @@ export default function ToolpathViewer({
   onTurnsFound?: (code: string, orients: Mat3[] | null) => void;
   /** No learning record from here (the program's maker saved one: CAM AI). */
   noRecord?: boolean;
+  /** Opened straight on the weak spots (the finished part coloured) or the NX view. */
+  start?: 'weak' | 'nx';
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -181,6 +184,15 @@ export default function ToolpathViewer({
   const [panelOpen, setPanelOpen] = useState(true);
   // Weak spots: the finished part coloured by wall thickness.
   const [heat, setHeat] = useState(false);
+  // The NX view: every path over the finished part, nothing cut away as the tool goes.
+  const [pathsOnly, setPathsOnly] = useState(start === 'nx');
+  // Opened on the weak spots: the finished part, coloured by wall thickness.
+  useEffect(() => {
+    if (start !== 'weak' || !total) return;
+    seek(total);
+    setHeat(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Measuring on the part (its faces and holes) and what the last clicks measured.
   const [measure, setMeasure] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
@@ -639,7 +651,7 @@ export default function ToolpathViewer({
               <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
-                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
+                    <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} pathsOnly={pathsOnly} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
                   </Suspense>
                 )}
                 {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
@@ -860,6 +872,17 @@ export default function ToolpathViewer({
                     >
                       <Flame size={12} />
                       <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
+                    </button>
+                  )}
+{mode3d && (
+                    <button
+                      onClick={() => setPathsOnly((x) => !x)}
+                      aria-pressed={pathsOnly}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-[11px] font-semibold ${pathsOnly ? 'border-[#a78bfa] bg-[#a78bfa] text-[#1a0f33]' : 'border-[var(--border-subtle)] bg-[#0E1421]/80 text-[var(--text-secondary)]'}`}
+                      title={t('toolpath.nxViewHelp')}
+                    >
+                      <Route size={12} />
+                      <span className="sr-only sm:not-sr-only">{t('toolpath.nxView')}</span>
                     </button>
                   )}
 {mode3d && (

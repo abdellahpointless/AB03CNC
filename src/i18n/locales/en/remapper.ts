@@ -318,6 +318,8 @@ const remapper = {
     noMoves: 'No moves to show in this program.',
     estimateNote: 'Time is an estimate: feeds at the programmed F, rapids at the machine’s rapid speed, plus tool changes. Real time is a little longer.',
     workingNow: 'Working now',
+    nxView: 'NX view',
+    nxViewHelp: 'Every toolpath over the finished part: nothing is cut away as the tool goes',
     model: {
       corrected: "The turns were corrected from the 3D model: {{pct}} % alike (the program's own: {{from}} %).",
       correctedClosest: "Turns corrected to the closest found: {{pct}} % alike (the program's own: {{from}} %). Check them.",
