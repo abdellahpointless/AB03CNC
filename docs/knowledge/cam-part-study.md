@@ -195,8 +195,12 @@ What you saw on the machine, and what changed:
 | Hold the part deeper when the cuts allow | A later clamping's grip was cut short wherever the part's ends (along the jaws) changed height; only the faces the jaws hold count now. | 6f111a6 |
 
 On the study's part (page default: POM, HAAS-5 tools, blank +4/+4/+7): clamping 1 on 41 mm parallels, the outline to
-Z-41.46 (0.5 under the part), then the spot drill and the 7 drills, then the inside; clamping 2 faces and cuts
-only what the bottom face holds. Clamping 3 (on its end): the grip it may take is now 30 mm on 15 mm parallels (its
+Z-41.46 (0.5 under the part), then the spot drill and the 7 drills, then the inside. Not fixed: the end pocket is
+still cut from two clampings, clamping 2 (Z-) 31 mm deep from the bottom face with the Ø20 and Ø8, then clamping 3
+(Y-) 34 mm deep from the end with the Ø8 (about 3,800 mm³ swept by both): one shape made in two setups, which you
+named as the cause of offsets (no hole is drilled twice on this part; your manual test's two-sided drilling was not
+reproduced here). The engineers cut that pocket in clamping 3 only. Next: give a shape that two clampings reach to
+one of them. Clamping 3 (on its end): the grip it may take is now 30 mm on 15 mm parallels (its
 deepest cut is 34 of 70; was 3 mm on 42), but the vise check still rejects it: in POM, with one held face touching
 the jaw over 17 of its 42 mm (pockets open on it) and the whole 70 mm height taken as the lever, it asks 25 kN where
 POM takes 3 kN. So CAM AI still holds that clamping in the nest. The engineers hold it 37 mm deep on 8 mm parallels.
@@ -207,8 +211,12 @@ On the 24 (the 10 and the 14, engineers' blanks, at 6f111a6 against the deployed
 (Pfae5765f still fails, as before). The 10: 35 to 34 clampings, 198.1 to 201.3 minutes, 91,856 to 95,166 lines. The
 14: 59 to 57 clampings, 112.5 to 111.4 minutes, 58,521 to 57,757 lines. First clampings now on 42 mm parallels (3 mm
 of the 4 under the part) where the blank allows the outline through, later ones deeper where only an end changed
-(33/12 to 15/30, 40/5 to 33/12). Holes left narrow at the far end: 14 to 31 (in 7 of the 24): those the other side
-finished before. Open question: drill them out from the other side again (a step where the two meet), or leave
-them noted, or let the drill go deeper into the parallel than the shop's 1 mm.
+(33/12 to 15/30, 40/5 to 33/12). Holes left narrow at the far end: 14 to 31. Most come from the counterbore rule (a debug
+run on the 24): a through hole whose counterbore opens in the face the first clamping does not see was drilled
+through in clamping 1, into the stock under the part; now it is drilled from the counterbore's side, with it, and
+ends over a parallel: 0.1 to 0.8 mm narrow at the exit (Ø3 to Ø5.5). The rest are far ends the other side used to
+finish. Open question: keep the hole with its counterbore and note the narrow exit, let the drill go the shop's full
+1 mm into the parallel (0.8 now; it removes most of them for Ø3.5 and smaller), or go back to drilling such holes
+through in clamping 1.
 
 No upload of the program and 3D PDF from your manual test arrived in this session; the study's own part stood in.
