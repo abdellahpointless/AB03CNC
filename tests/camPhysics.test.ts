@@ -57,6 +57,18 @@ describe('the vise and the part', () => {
     expect(hard.issues).toContainEqual({ key: 'cannotHold', need: 11250, most: 2800 });
   });
 
+  it('a tall thin part bends above the jaws: slowed, or refused when it would still bend (the shop: under 0.05 mm)', () => {
+    // POM 8 x 8, 60 tall, gripped 5: 55 mm stand above the jaws. A 30 N push at the top bends it
+    // 30·55³/(3·2800·8·8³/12) = 1.74 mm: refused (0.05 / 1.74 of the feed is under 0.3).
+    const pin: SetupLoad = { material: 'POM', length: 8, width: 8, height: 60, grip: 5, thin: 60, contact: { jaws: 8, rest: [8, 8], stop: true }, loads: [{ side: 30, down: 0, reach: 8 }] };
+    const c = checkSetup(pin);
+    expect(c.ok).toBe(false);
+    expect(c.issues).toContainEqual({ key: 'tall', mm: 55 });
+    // The study's part on its end: 42 x 40, 70 tall, gripped 30, a 70 N push: 0.0024 mm, no slowing for bending.
+    const end: SetupLoad = { material: 'POM', length: 42, width: 40, height: 70, grip: 30, thin: 70, contact: { jaws: 42, rest: [42, 42], stop: true }, loads: [{ side: 70, down: 0, reach: 42 }] };
+    expect(checkSetup(end).issues.map((i) => i.key)).not.toContain('tall');
+  });
+
   it('3-2-1: on both parallels, against the jaws over a length, against the stop', () => {
     const c = checkSetup({ ...base, contact: { jaws: 10, rest: [0, 50], stop: false } });
     // 10 mm of jaw also tips easily (arm 0.3·10/2 = 1.5): 8000 N needed, 3125 N crushes: slowed.

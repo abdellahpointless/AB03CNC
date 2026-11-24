@@ -80,6 +80,25 @@ describe('CAM AI falls back on the nest only when no way of holding passes', () 
   }, 900_000);
 });
 
+describe('a tall part the vise cannot hold against the big mills', () => {
+  // The engineers hold the study's part standing 70 tall in the vise, 37 mm deep, cutting it with a Ø6 at most (21 N
+  // of push); CAM AI cut it with its Ø20 (430 N) and, the vise check refusing that, put it in the nest on 38 mm
+  // parallels. A smaller mill (its push falls about with its Ø squared) before the nest.
+  it('is held in the vise with smaller mills, not in the nest (POM block 20 x 40, 70 tall, a pocket in its top)', async () => {
+    const { camProgram } = await import('../src/lib/cam/program');
+    const { heightPart } = await import('./heightPart');
+    const tall = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 20 }, (_, i) => (i >= 5 && i < 15 && j >= 8 && j < 32 ? 50 : 70))));
+    const r = camProgram({ tris: tall, material: 'POM', tools: [], brand: 'HAAS', raw: [24, 44, 77], orient: { side: 'Z+', spin: false } });
+    expect(r.setups.filter((s) => s.nest)).toEqual([]);
+    for (const s of r.setups) {
+      expect(s.physics.ok).toBe(true);
+      expect(Math.max(...s.ops.filter((o) => o.kind === 'pocket').map((o) => o.tool.diameter))).toBeLessThan(20);
+    }
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 900_000);
+});
+
 describe('the nest stays under the face the face mill cuts', () => {
   it('nests no clamping whose nest would stand within 0.5 mm of the face, and does not prove a plate too thin for the vise (a review found a 3.4 mm plate nested, the face mill over its set screws)', async () => {
     const { camProgram } = await import('../src/lib/cam/program');

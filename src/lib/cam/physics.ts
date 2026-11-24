@@ -115,6 +115,8 @@ export type PhysicsIssue =
   | { key: 'slowed'; share: number }
   | { key: 'cannotHold'; need: number; most: number }
   | { key: 'overhang'; mm: number }
+  /** Stands this high above the jaws and would bend away under the cut. */
+  | { key: 'tall'; mm: number }
   | { key: 'span'; mm: number }
   | { key: 'jawContact'; mm: number }
   | { key: 'restContact' }
@@ -182,6 +184,16 @@ export function checkSetup(l: SetupLoad): SetupCheck {
       if (d > DEFLECTION.finish) {
         k = Math.min(k, DEFLECTION.finish / d);
         if (k * feed < MIN_FEED) issues.push({ key: 'overhang', mm: Math.round(past) });
+      }
+    }
+    // The part above the jaws, a cantilever under the push at its top, its thinner way: a tall thin part bends away
+    // (the engineers' 239 vise clampings stay under 0.05 mm, measured with their own feeds and depths).
+    const above = l.height - g;
+    if (above > 0 && o.side > 0) {
+      const d = cantilever(o.side * feed, above, Math.max(l.length, l.width), Math.min(l.length, l.width), m.E);
+      if (d > DEFLECTION.rough) {
+        if ((DEFLECTION.rough / d) * feed < MIN_FEED) issues.push({ key: 'tall', mm: Math.round(above) });
+        k = Math.min(k, DEFLECTION.rough / d);
       }
     }
     const span = l.width - 2 * Math.min(6, l.width / 6);

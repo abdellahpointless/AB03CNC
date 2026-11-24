@@ -242,6 +242,7 @@ const cam: Translation<typeof en> = {
       slowed: 'mengene tutabilsin diye ilerlemenin %{{v}} kadarıyla kesilir',
       cannotHold: '{{need}} N sıkma gerekir, parça {{most}} N kaldırır',
       overhang: 'paralellerin {{mm}} mm dışına taşar ve eğilir',
+      tall: 'mengene çenelerinin {{mm}} mm üstünde durur, kesme kuvvetiyle eğilir',
       span: 'paraleller arasında eğilir ({{mm}} mm aralık)',
       jawContact: 'çenelere yalnızca {{mm}} mm boyunca değer',
       restContact: 'iki paralelin üzerine oturmaz',

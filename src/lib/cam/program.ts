@@ -273,6 +273,16 @@ function caleFor(height: number, want: number, least = 3): { cale: number; grip:
   return best ?? { cale: 42, grip: 3 };
 }
 
+/**
+ * The end mill to plan a clamping again with when the vise holds its biggest one's cuts only at `share` of their feed:
+ * under half, the largest smaller mill whose push (about its Ø squared) it holds at half feed or more. The engineers
+ * hold a tall part so (the study's, standing 70 mm tall, 37 mm deep, a Ø6 at most where CAM AI ran its Ø20).
+ */
+export function lighterMill(diameters: number[], used: number, share: number): number | undefined {
+  if (share >= 0.5) return undefined;
+  return diameters.filter((d) => d < used - 1e-6 && d <= used * Math.sqrt(share / 0.5) + 1e-6).sort((p, q) => q - p)[0];
+}
+
 /** The cale under the nest in the vise: the jaws grip its floor and the foot of its walls (about 8 mm). */
 function nestCale(depth: number): number {
   const most = depth + NEST.floor - 2;
@@ -1437,10 +1447,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const finishOnly = (t: CamTool) => !!t.template && t.template.ops.every((o) => o.kind === 'finish');
   // Then the machine's own, its roughing mill before its finishing one (HAAS-1: T2 roughs, T21 finishes).
   const role = (t: CamTool) => (t.category === 'fraise ebauche' ? 0 : t.category === 'fraise finition' ? 2 : 1);
-  const mills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
+  const allMills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
   // Sides planned again turned a quarter (no grip held them as they lay): once each.
   const quartered = new Set<number>();
-  const addSetup = (si: number, fixed?: number): boolean => {
+  // cap: the largest end mill this clamping may use (planned again lighter when the vise cannot hold the bigger ones).
+  const addSetup = (si: number, fixed?: number, cap?: number): boolean => {
+    const mills = cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6);
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
     if (prevR && setups.length >= 2) {
@@ -2085,7 +2097,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         drilled.clear();
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;
-        return addSetup(si, other);
+        return addSetup(si, other, cap);
       }
       // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
       // preferred, but not over a clamping that holds), once; never against the operator's layout.
@@ -2095,7 +2107,28 @@ function planFor(input: CamInput, vertical: number): CamResult {
         drilled.clear();
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;
-        return addSetup(si);
+        return addSetup(si, undefined, cap);
+      }
+      // Still not at full feed: of the grips the cuts allow (as deep as the stock still to cut beside the part), the one
+      // that holds best (the deepest when alike), its contact kept. Where even that one holds the cuts only under half
+      // their feed, lighter ones (lighterMill), planned again once at that grip.
+      const best = [grip, ...grips]
+        .filter((g) => g <= Math.max(grip, want) + 1e-6)
+        .map((g) => ({ g, p: physicsAt(g) }))
+        .filter(({ p }) => !p.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact'))
+        .sort((a, b) => b.p.feed - a.p.feed || b.g - a.g)[0];
+      if (best) {
+        const width = contactOf(left, sb.lo[2], best.g, twoVises).width || hold[1];
+        const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], width, limits).side);
+        const worst = ops[loads.indexOf(Math.max(...loads))];
+        const d = worst && (worst.kind === 'pocket' || worst.kind === 'finish') ? worst.tool.diameter : 0;
+        const lighter = d ? lighterMill(allMills.map((m) => m.diameter), d, best.p.feed) : undefined;
+        if (lighter !== undefined || best.g !== grip) {
+          drilled.clear();
+          was.drilled.forEach((v, k) => drilled.set(k, v));
+          notes.length = was.notes;
+          return addSetup(si, best.g, lighter ?? cap);
+        }
       }
     }
     // The contact of the grip used (the retry tried others; a review finding: it kept the last one's).

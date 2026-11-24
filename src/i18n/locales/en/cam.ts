@@ -239,6 +239,7 @@ const cam = {
       slowed: 'cut at {{v}} % of the feed so the vise holds it',
       cannotHold: 'needs {{need}} N of clamping, the part takes {{most}} N',
       overhang: 'sticks out {{mm}} mm past the parallels and would bend',
+      tall: 'stands {{mm}} mm above the jaws and would bend away under the cut',
       span: 'would bend between the parallels ({{mm}} mm apart)',
       jawContact: 'touches the jaws over only {{mm}} mm',
       restContact: 'does not sit on both parallels',
