@@ -20,9 +20,9 @@ export default function ToolSize({ d, l, big = false }: { d: number | null; l: n
         </span>
       )}
       {l !== null && (
-        <span className={chip} title={t('units.length', { mm: fmtNumber(l, 0) })} aria-label={t('units.length', { mm: fmtNumber(l, 0) })}>
+        <span className={chip} title={t('units.length', { mm: fmtNumber(l, 2) })} aria-label={t('units.length', { mm: fmtNumber(l, 2) })}>
           <IconArrowAutofitHeight size={icon} stroke={1.75} aria-hidden className="text-[#facc15]" />
-          <b aria-hidden>{fmtNumber(l, 0)}</b>
+          <b aria-hidden>{fmtNumber(l, 2)}</b>
           <span aria-hidden className="text-[var(--text-tertiary)]">mm</span>
         </span>
       )}
