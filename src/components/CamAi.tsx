@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
+import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -100,7 +100,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [sideStock, setSideStock] = useState(readSideStock);
   const [swap, setSwap] = useState<{ exclude: string[]; prefer: string[] }>({ exclude: [], prefer: [] });
   const [run, setRun] = useState<Run>({ state: 'idle' });
-  const [viewing, setViewing] = useState(false);
+  // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
+  const [viewing, setViewing] = useState<false | 'play' | 'weak' | 'nx'>(false);
   const worker = useRef<Worker | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
@@ -360,8 +361,14 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             <Play size={15} /> {t(result ? 'camAi.again' : 'camAi.generate')}
           </button>
         )}
-        <button type="button" className={tb} onClick={() => setViewing(true)} disabled={!result || busy}>
+        <button type="button" className={tb} onClick={() => setViewing('play')} disabled={!result || busy}>
           <Route size={15} /> {t('camAi.ws.simulate')}
+        </button>
+        <button type="button" className={tb} onClick={() => setViewing('nx')} disabled={!result || busy} title={t('remapper:toolpath.nxViewHelp')}>
+          <Route size={15} className="text-[#a78bfa]" /> {t('remapper:toolpath.nxView')}
+        </button>
+        <button type="button" className={tb} onClick={() => setViewing('weak')} disabled={!result || busy} title={t('remapper:toolpath.heatHelp')}>
+          <Flame size={15} className="text-[#ff9a2e]" /> {t('remapper:toolpath.heat')}
         </button>
         <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
         <button type="button" className={tb} onClick={download} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
@@ -776,7 +783,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
       {viewing && result && model && (
         <Suspense fallback={null}>
-          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setViewing(false)} initialModel={model} noRecord />
+          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setViewing(false)} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} />
         </Suspense>
       )}
     </div>
