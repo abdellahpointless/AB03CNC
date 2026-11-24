@@ -51,10 +51,18 @@ clamping misplaced, nothing cut into the part. Noted: three surfaces left (the s
 narrow at its far end. Listed as missing: drills Ø6.8, Ø6.6, Ø11, Ø13, Ø6 (those holes are milled) and a Ø1 mill.
 Planned in 877 s on the test machine (another plan running beside it).
 
+## Baseline (c465625, the page's defaults, POM, HAAS-5's tools)
+
+The same four clampings (41/4, 20/25, 42/3, 15/30) with HAAS-5's Ø20 for the outline; the side hole drilled
+(BOHREN_6MM) and the bottom counterbore's hole with the Ø5.4 (HAAS-5 has those drills). 7,180 lines, 35.6 minutes,
+match 1, no collision, no clamping misplaced. Noted: the same three surfaces and narrow hole. Missing: drills Ø6.8,
+Ø6.6, Ø11, Ø13 and a Ø1 mill. Planned in 1,553 s (alone on the test machine).
+
 ## What it already shows
 
 - **Clamping 3 (Y-) is gripped 3 mm on 42 mm parallels**, the part standing 60 mm tall, for a slot 6 deep at its
   top: the grip should be far deeper (your rule: as deep as the cuts allow). To look into.
-- **Planning takes minutes** (877 s here): the one-face-one-clamping re-plan and the vise retries plan clampings
-  again. To look into before the page's users wait that long.
+- **Planning takes many minutes** (877 s in ALU beside another plan, 1,553 s in POM alone): the
+  one-face-one-clamping re-plan and the vise retries plan clampings again. To look into before the page's users
+  wait that long.
 - The slope and the rounds are left (no ball end mill or corner-rounding mill yet).
