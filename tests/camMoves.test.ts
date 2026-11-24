@@ -304,6 +304,20 @@ describe('blind holes', () => {
   it('stops a flat-bottomed hole where its wall ends', () => {
     expect(drillZ(false)).toBeCloseTo(-8, 2);
   }, 300_000);
+  // You (Beta 2, 9 and 17): the mill that flattens the drill's point goes down the drilled hole in one move, not in
+  // passes through what the drill already took (its full Ø down to Z-6.5, the point under it).
+  it('runs no pass in the drilled hole above the drill point it flattens', () => {
+    const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point: false });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    const inHole = r.setups[0].ops
+      .filter((o) => o.kind === 'pocket')
+      .flatMap((o) => feeds(o.lines))
+      .filter(([a, b]) => a[2] === b[2] && b[2] < -0.2 && Math.hypot(b[0], b[1]) < 2.5);
+    expect(inHole.length).toBeGreaterThan(0);
+    expect(Math.max(...inHole.map(([, b]) => b[2]))).toBeLessThanOrEqual(-6.5 + 1e-6);
+  }, 300_000);
 });
 
 describe('the roughing mill', () => {

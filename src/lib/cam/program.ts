@@ -774,7 +774,7 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
       // The spindle speed of this ring's cut (a gentle one runs faster).
       if (c.s !== rpm) lines.push(`S${(rpm = c.s)}`);
       // Ground a smaller mill takes above this level later is still there under this ring: from its top.
-      const top = Math.max(top0, upTo?.(ring, z) ?? -Infinity);
+      const top = Math.min(Math.max(top0, upTo?.(ring, z) ?? -Infinity), ring.from ?? Infinity);
       // Run from above its own level: the ring as cut and where from.
       if (top > above + 1e-6) raised?.(ring, z, top);
       const n = Math.max(1, Math.ceil((top - z) / c.ap - 1e-6));
@@ -2110,7 +2110,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (!worth.has(pick.tool) && pick.share * all < 0.5) continue;
         worth.add(pick.tool);
         const r = pick.tool.diameter / 2;
-        const rings = bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings;
+        const rings = (bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings).map((g) => {
+          // A ring that only cleans a drill's point: its passes start where the drill's full Ø ends (air above).
+          const d = toDrill.find((x) => x.z + 0.3 * x.tool.diameter > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
+          return d ? { ...g, from: d.z + 0.3 * d.tool.diameter } : g;
+        });
         if (rings.length) (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));

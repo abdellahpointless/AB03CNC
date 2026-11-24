@@ -17,6 +17,8 @@ export interface Ring {
   outside: boolean;
   /** Along a thin wall (a seal cage's): its thickness (mm); cut gently. */
   thin?: number;
+  /** In a drilled hole, under where the drill's full Ø ends: nothing to cut above this height (mm). */
+  from?: number;
 }
 
 const toPaths = (r: P2[][]): Paths => r.map((loop) => loop.map(([x, y]) => ({ X: Math.round(x * SCALE), Y: Math.round(y * SCALE) })));
