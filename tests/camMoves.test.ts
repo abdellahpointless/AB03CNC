@@ -208,6 +208,31 @@ describe('one face, one clamping', () => {
   }, 300_000);
 });
 
+describe('a drilled hole', () => {
+  // You (Beta 2, 9 and 17): a hole drilled at its size is done; no mill goes in after the drill.
+  it('is never milled again after the drill', () => {
+    // A 60 x 40 x 10 plate: Ø3.3, Ø5 and Ø6.4 through, all drills CAM AI has.
+    const holes: { c: [number, number]; d: number }[] = [{ c: [15, 20], d: 3.3 }, { c: [30, 20], d: 5 }, { c: [45, 20], d: 6.4 }];
+    const r = camProgram({ ...base, tris: plateWithHoles(60, 40, 10, holes), raw: [64, 44, 17] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    const s = r.setups[0];
+    expect(s.ops.filter((o) => o.kind === 'drill').map((o) => o.tool.diameter).sort((p, q) => p - q)).toEqual([3.3, 5, 6.4]);
+    // Every mill's feed below the top, each point every 0.2 mm: its centre never inside a drilled hole.
+    const inHoles: string[] = [];
+    for (const o of s.ops.filter((x) => x.kind !== 'drill' && x.kind !== 'centre' && x.kind !== 'chamfer'))
+      for (const [a, b] of feeds(o.lines)) {
+        const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / 0.2));
+        for (let i = 0; i <= n; i++) {
+          const q = [0, 1, 2].map((k) => a[k] + ((b[k] - a[k]) * i) / n);
+          const h = holes.find((x) => q[2] < -0.2 && Math.hypot(q[0] - (x.c[0] - 30), q[1] - (x.c[1] - 20)) < x.d / 2);
+          if (h) inHoles.push(`${o.name} in Ø${h.d}`);
+        }
+      }
+    expect([...new Set(inHoles)]).toEqual([]);
+  }, 300_000);
+});
+
 describe('a hole and its counterbore', () => {
   // You: a hole with a bigger one round it (a counterbore) is made in the same clamping as it, never the two from
   // either side after a turn (they would not meet on one axis).

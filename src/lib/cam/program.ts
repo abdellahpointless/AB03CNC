@@ -1954,7 +1954,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const keep = keepAt(z);
       // All the material between this level and the one above: the side of the tool takes it.
       // Thinner than the simulation's grid next to the part is the grid, not material.
-      let todo = difference(left.at(z, zAbove), left.skin ? offset(keep, left.skin) : keep);
+      // You (Beta 2): what a drill of this clamping took is done; no mill goes back into the hole (the grid, left,
+      // knows only the clampings before). Only down to where its point starts: under that, a flat bottom is milled.
+      const bored: Region = toDrill.filter((d) => d.z + 0.3 * d.tool.diameter <= z + 1e-6).map((d) => circle(d.h.c, d.tool.diameter / 2));
+      let todo = difference(left.at(z, zAbove), union(left.skin ? offset(keep, left.skin) : keep, bored));
       const levelTop = zAbove;
       zAbove = z;
       const inside = z < jawLimit - 0.001;
