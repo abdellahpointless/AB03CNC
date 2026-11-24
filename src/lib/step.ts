@@ -12,7 +12,7 @@ export async function stepTriangles(buf: Uint8Array, wasmUrl?: string): Promise<
   occt ??= (occtimportjs as unknown as (o?: object) => Promise<Occt>)(wasmUrl ? { locateFile: () => wasmUrl } : undefined);
   const lib = await occt;
   // 0.03 mm chords (17° at most round a small hole): as fine as the shop's 3D PDFs (0.01 to 0.05 mm, measured on
-  // two). At 0.01 a STEP part came in with 2.5 to 3.5 times the triangles and CAM AI planned it that much slower.
+  // two). At 0.01 the STEP test parts came in with 2.5 to 3.5 times the triangles, read 3 to 5 times slower.
   const r = lib.ReadStepFile(buf, { linearUnit: 'millimeter', linearDeflectionType: 'absolute_value', linearDeflection: 0.03, angularDeflection: 0.3 });
   if (!r?.success) return new Float32Array();
   let n = 0;
