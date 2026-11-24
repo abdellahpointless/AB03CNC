@@ -250,3 +250,34 @@ it (a face finished by two clampings is where a step shows when the turn is a li
 - No hole of this part is drilled from two sides in either CAM AI program; the two-sided drilling you described was
   not on this part. The engineers make the holes with two drills and a counterbore mill (the thread-insert holes
   Ø4.6 for the model's Ø4.8), CAM AI with seven drills: fewer tools is part of the part analysis (P8.3).
+
+## The vise check, deep grips and one face one clamping (Phase 8.5)
+
+- **The vise check measured on the engineers' own clampings** (a script over the library: every vise clamping of 96
+  programs, its grip, the part as held, every operation's push from the engineers' own feed, rpm and depth per pass,
+  as CAM AI counts its own pockets): of 239, the check holds 228 at full feed, slows 10, refuses 1 (a face-mill pass
+  on a thin plate, where the script's depth guess is too deep). The check is not too strict for the shop's cuts. The
+  study's clamping 3 the engineers' way needs 564 N of clamping where the part takes 7,735: they cut it with a Ø6 at
+  most (21 N of push); CAM AI ran its Ø20 there (430 N), which a POM part standing 70 mm tall cannot be held for.
+- **Lighter cuts before the nest** (0dc820f): when no grip the clamping's cuts allow holds the biggest mill at half its
+  feed, the clamping is planned again once at the grip that holds best, with the largest smaller mill whose push
+  (about its Ø squared) it holds (`lighterMill`). The study's clamping 3: in the vise on 15 mm parallels, 30 mm deep,
+  a Ø8 at most (was the nest on 38 mm parallels).
+- **The part's own bending above the jaws** is now in the vise check (a cantilever under the push at its top, its
+  thinner way): the engineers' 239 clampings stay under 0.05 mm (13 over 0.01), so 0.05 mm is the limit. Without it,
+  the lighter mills would have held a POM pin 8 x 8 standing 55 mm above the jaws, which would bend 1.7 mm.
+- **Through holes over a parallel** (e5a4e91): the drill's point goes the shop's 1 mm into it (0.95: the check's
+  margin); an exit narrow by under 0.05 mm is not noted.
+- **One face, one clamping** (8ca550c): after the plan, the faces two clampings finish (the planner's own simulation)
+  are given to the later clamping when it reaches the whole face; the earlier ones keep 1 mm off them, and the plan is
+  made again and kept when it passes, splits less and is at most a tenth longer. Only faces of 50 mm² or more, never
+  in the first clamping: reserving the small curved faces and the first clamping's made the study's part 26.6 and
+  37.2 minutes long (a Ø1 for 4,906 lines). The study's part: faces finished by two clampings 935 to 577 mm², 20.5
+  minutes. The end pocket's volume is still cut in clamping 2 (only its walls go to clamping 3), so clamping 2 still
+  stands on 36 mm parallels (its cuts go 30.5 mm down beside the part).
+- **Why tall parallels** (your question): clamping 1 grips the stock under the part (41 mm, 4 deep) so the outline
+  goes through; clamping 2 stands on 36 mm because its own cuts beside the part go 30.5 mm down (the end pocket);
+  clamping 3 on 15 mm because stock beside the part still to cut stands 36 mm up. The jaws stay 1 mm under the
+  lowest cut beside the part. **No parallels at all**: none of the library's programs clamps without parallels (the
+  shortest: 4 mm, in 2; 8 mm is common), and the simulation has no vise floor to check a tool against. Open question:
+  how the shop writes it, and may a part stand on the vise floor.
