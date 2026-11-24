@@ -57,19 +57,19 @@ describe('the operator picks the sides and sees it being made', () => {
 });
 
 describe('removing an operation', () => {
-  it('it is gone from the program, the others keep their keys, and the program is checked without it', () => {
+  it('it is gone from the program, the others of its clamping keep their keys, and the program is checked without it', () => {
     const input = { tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19] as [number, number, number], orient: { side: 'Z+', spin: false }, noNest: true };
     const all = camProgram(input);
     const keys = all.setups.flatMap((s) => s.ops.map((o) => o.key!));
     expect(keys.every(Boolean)).toBe(true);
     expect(new Set(keys).size).toBe(keys.length);
-    // Remove the last operation of the first setup.
+    // Remove the last operation of the first setup. What it would have cut is left: a later clamping may take it.
     const gone = all.setups[0].ops.at(-1)!;
     const less = camProgram({ ...input, skip: [gone.key!] });
     const left = less.setups.flatMap((s) => s.ops.map((o) => o.key!));
     expect(left).not.toContain(gone.key);
-    expect(left).toEqual(keys.filter((k) => k !== gone.key));
-    expect(less.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length).toBe(all.code.split('\n').filter((l) => /^N\d+ \(TOOLPATH /.test(l)).length - 1);
+    expect(less.setups[0].ops.map((o) => o.key)).toEqual(all.setups[0].ops.map((o) => o.key).filter((k) => k !== gone.key));
+    expect(less.check.collisions).toBe(0);
   }, 900_000);
 
   it('takes the finishing pass out with the roughing it finishes (alone it would plunge into what that roughing leaves; a review found it)', () => {
