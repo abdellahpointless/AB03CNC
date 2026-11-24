@@ -214,6 +214,7 @@ const cam: Translation<typeof en> = {
     standIn: 'Yerine bunu kullan',
     noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı makineye ekleyin.',
     swapHint: 'CAM AI seçtiğiniz takımla programı yeniden yapar.',
+    rightClickSwap: 'Takımı değiştirmek için sağ tıklayın',
     toolName: '{{name}} · Ø {{d}} mm · boy {{l}} mm',
     tools: {
       SF: 'Parmak freze',

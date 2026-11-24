@@ -283,6 +283,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
   // The browser's selected item, what the properties panel edits.
   const [sel, setSel] = useState<Sel>({ kind: 'part' });
+  // A tool right-clicked: its card opens on changing it.
+  const [swapAsk, setSwapAsk] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   // Cutting values typed and not yet in the program: it must be made again before it goes out.
   const [draft, setDraft] = useState<Record<string, CutEdit>>({});
@@ -424,7 +426,22 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                       <ul className="ml-4 pl-2 border-l border-[var(--border-subtle)] space-y-0.5 my-0.5">
                         {byTool.map((o) => (
                           <li key={o.code}>
-                            <button type="button" className={node(sel.kind === 'tool' && sel.i === i && sel.code === o.code)} aria-current={(sel.kind === 'tool' && sel.i === i && sel.code === o.code) || undefined} onClick={() => setSel({ kind: 'tool', i, code: o.code })}>
+                            <button
+                              type="button"
+                              className={node(sel.kind === 'tool' && sel.i === i && sel.code === o.code)}
+                              aria-current={(sel.kind === 'tool' && sel.i === i && sel.code === o.code) || undefined}
+                              onClick={() => {
+                                setSwapAsk(null);
+                                setSel({ kind: 'tool', i, code: o.code });
+                              }}
+                              // Right click: straight to changing the tool (you, Beta 2).
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setSwapAsk(o.code);
+                                setSel({ kind: 'tool', i, code: o.code });
+                              }}
+                              title={t('camAi.rightClickSwap')}
+                            >
                               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PURPOSE_HEX[o.purpose] }} aria-hidden />
                               <span className="font-mono text-[11px] shrink-0">T{o.tool}</span>
                               <ToolLabel o={o} />
@@ -478,6 +495,16 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
                 white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
                 paths={paths}
+                onPathMenu={
+                  result
+                    ? (p) => {
+                        const at = live.paths.find((x) => x === p);
+                        if (!at?.tool) return;
+                        setSwapAsk(at.tool);
+                        setSel({ kind: 'tool', i: at.setup, code: at.tool });
+                      }
+                    : undefined
+                }
                 label={picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
                 className="h-full rounded-none bg-transparent"
               />
@@ -662,6 +689,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               return (
                 <ul aria-label={t('camAi.ops')}>
                   <ToolCard
+                    key={`${sel.code}|${swapAsk === sel.code}`}
+                    ask={swapAsk === sel.code}
                     ops={ops}
                     draft={draft[sel.code] ?? {}}
                     changed={changed.includes(sel.code)}

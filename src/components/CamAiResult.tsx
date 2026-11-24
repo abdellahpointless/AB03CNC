@@ -238,6 +238,7 @@ const COOLANTS: Coolant[] = ['flood', 'air', 'off'];
  * stand-in when the operator does not have it.
  */
 export function ToolCard({
+  ask = false,
   ops,
   draft,
   changed,
@@ -251,6 +252,8 @@ export function ToolCard({
   toolName,
   onSwap,
 }: {
+  /** Open on changing the tool (a right click on it). */
+  ask?: boolean;
   ops: Op[];
   draft: CutEdit;
   changed: boolean;
@@ -267,7 +270,7 @@ export function ToolCard({
   onSwap: (code: string, standIn: string) => void;
 }) {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(ask);
   const [pick, setPick] = useState(options[0]?.code ?? '');
   const op = ops[0];
   const mill = ops.some((o) => MILL_PURPOSES.has(o.purpose));

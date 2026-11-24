@@ -258,6 +258,7 @@ export default function CamPartView({
   finish,
   white,
   paths = [],
+  onPathMenu,
   label,
   className = '',
 }: {
@@ -278,14 +279,16 @@ export default function CamPartView({
   /** A top plate's white face: picking it (a click on a flat face gives its side), and the one picked (shown white). */
   white?: { on: boolean; side?: string; onPick: (side: string) => void };
   paths?: LivePath[];
+  /** A right click (not a drag) on a path: its operation (you, Beta 2: change its tool from there). */
+  onPathMenu?: (p: LivePath) => void;
   /** The canvas's accessible name. */
   label: string;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
-  const pickRef = useRef({ picking, onPick, finish, white });
-  pickRef.current = { picking, onPick, finish, white };
+  const pickRef = useRef({ picking, onPick, finish, white, onPathMenu });
+  pickRef.current = { picking, onPick, finish, white, onPathMenu };
   const whiteSide = white?.side;
 
   // The scene, once per model.
@@ -403,6 +406,18 @@ export default function CamPartView({
     };
     let down: { x: number; y: number } | null = null;
     const press = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY });
+    // A right click on a path (a right drag pans the view: not that).
+    const menu = (e: MouseEvent) => {
+      const cb = pickRef.current.onPathMenu;
+      const d = down;
+      if (!cb || (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4)) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      ray.params.Line = { threshold: a.size * 0.006 };
+      const p = ray.intersectObjects(a.paths.children, false)[0]?.object.userData.path as LivePath | undefined;
+      if (p) cb(p);
+    };
     const release = (e: PointerEvent) => {
       const d = down;
       down = null;
@@ -420,6 +435,7 @@ export default function CamPartView({
     c.addEventListener('pointerdown', press);
     c.addEventListener('pointerup', release);
     c.addEventListener('pointerleave', leave);
+    c.addEventListener('contextmenu', menu);
 
     let raf = 0;
     const loop = (now: number) => {
@@ -438,6 +454,7 @@ export default function CamPartView({
       c.removeEventListener('pointerdown', press);
       c.removeEventListener('pointerup', release);
       c.removeEventListener('pointerleave', leave);
+      c.removeEventListener('contextmenu', menu);
       controls.dispose();
       dispose(scene);
       lights.dispose();
@@ -542,7 +559,9 @@ export default function CamPartView({
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(p.pts, 3));
       // Model centred on its box, as planned (program.ts centres it the same way).
-      a.paths.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: PATH_COLOR[p.purpose], transparent: true, opacity: 0.9 })));
+      const line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: PATH_COLOR[p.purpose], transparent: true, opacity: 0.9 }));
+      line.userData.path = p;
+      a.paths.add(line);
     }
     a.invalidate();
   }, [paths]);
