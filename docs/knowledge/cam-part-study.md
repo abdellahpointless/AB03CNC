@@ -181,3 +181,34 @@ lever, not the corners.
 - The study's part with the page's default layout: clamping 2's grip is limited to about 1 mm by a strip of stock
   21 x 1.2 mm on the far end face (not the stop's), within 2 mm of the top face, that clamping 1 left; clamping 3's by
   stock 36 mm up. The engineers' clamping 2 never cuts the outline. Next: why clamping 1 leaves it.
+
+## Your review of the study's program (Phase 8.4)
+
+What you saw on the machine, and what changed:
+
+| You | Change | Commit |
+|---|---|---|
+| The outline is cut whole in the first clamping, 0.5 mm under the part (a 10 high part: 10.5 down); after the turn only facing | The outline goes 0.5 mm under the part (was 0.2); the jaws 1 mm under that, as deep as the stock under the part allows. Where the Z stock is thin, the blank stands 4 mm under the part (0.5 to 2 over it) so that this still holds: 3 mm gripped. Under 4.5 mm of Z stock it cannot (3 mm grip, the outline 0.5 over the jaws): the next clamping cuts the rest, as before. | 6411d59, 328caa9 |
+| Outline, then spot drill, then drill, then the inside | The first mill's rings outside the part's outline seen from the top go before the spot drill, top down, as long as nothing over one is left for later; the rest after the drills. Nothing drilled: one operation, no tool change for nothing. | 5e1c47e |
+| A hole with a bigger one round it is made in one clamping | A hole whose counterbore opens in the opposite face is drilled from there, with it. | 352f994 |
+| A hole through the part is made in one clamping | The far end a drill leaves narrow over a parallel is no longer drilled again from the other side; it is noted for the operator (holeShort: drill it through by hand, the hole guiding the drill). | 352f994 |
+| Hold the part deeper when the cuts allow | A later clamping's grip was cut short wherever the part's ends (along the jaws) changed height; only the faces the jaws hold count now. | 6f111a6 |
+
+On the study's part (page default: POM, HAAS-5 tools, blank +4/+4/+7): clamping 1 on 41 mm parallels, the outline to
+Z-41.46 (0.5 under the part), then the spot drill and the 7 drills, then the inside; clamping 2 faces and cuts
+only what the bottom face holds. Clamping 3 (on its end): the grip it may take is now 30 mm on 15 mm parallels (its
+deepest cut is 34 of 70; was 3 mm on 42), but the vise check still rejects it: in POM, with one held face touching
+the jaw over 17 of its 42 mm (pockets open on it) and the whole 70 mm height taken as the lever, it asks 25 kN where
+POM takes 3 kN. So CAM AI still holds that clamping in the nest. The engineers hold it 37 mm deep on 8 mm parallels.
+Open question: the vise check's lever (the whole height, also for a deep grip) and its hold along the jaws
+(friction only) are cautious; before loosening them, measure them on the engineers' own clampings.
+
+On the 24 (the 10 and the 14, engineers' blanks, at 6f111a6 against the deployed 281ae56): all pass as before
+(Pfae5765f still fails, as before). The 10: 35 to 34 clampings, 198.1 to 201.3 minutes, 91,856 to 95,166 lines. The
+14: 59 to 57 clampings, 112.5 to 111.4 minutes, 58,521 to 57,757 lines. First clampings now on 42 mm parallels (3 mm
+of the 4 under the part) where the blank allows the outline through, later ones deeper where only an end changed
+(33/12 to 15/30, 40/5 to 33/12). Holes left narrow at the far end: 14 to 31 (in 7 of the 24): those the other side
+finished before. Open question: drill them out from the other side again (a step where the two meet), or leave
+them noted, or let the drill go deeper into the parallel than the shop's 1 mm.
+
+No upload of the program and 3D PDF from your manual test arrived in this session; the study's own part stood in.
