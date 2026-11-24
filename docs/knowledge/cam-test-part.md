@@ -37,19 +37,23 @@ on a real part, make this one and see whether the same thing happens here, on a 
 | 18 | Hole Ø6, 15 deep, in the Y+ face | x 40, z 12 | A clamping on that edge (Y+ up) |
 | 19 | Slot 16 x 8, 6 deep, in the Y- face | x 56..72, z 8..16 | A clamping on the other edge (Y- up): a pocket open to that face only |
 
-## Baseline (c465625, the page's defaults, ALU, CAM AI's own tool library)
+## Baseline (8f3b058, the page's defaults, ALU, CAM AI's own tool library)
 
 | Clamping | Parallels / grip | Operations |
 |---|---|---|
-| 1, Z+ | 41 mm / 4 | PLAN, FRAESEN_16MM (outline), ZENTRIERBOHREN, BOHREN 3.3, 4.2, 5, 10, 6.4, FRAESEN 16, 8, 6, 5, 4, 3, FASE, ENTGRATEN |
+| 1, Z+ | 41 mm / 4 | PLAN, FRAESEN_16MM (outline), ZENTRIERBOHREN, BOHREN 3.3, 4.2, 5, 10, 6.4, FRAESEN 16, 8, 6, 5, 4, FASE, ENTGRATEN |
 | 2, Z- | 20 mm / 25 | PLAN, BOHREN 10, 5.5 (the counterbore and its hole), FRAESEN 16, 8, ENTGRATEN |
-| 3, Y- | 42 mm / 3 | FRAESEN 16, 8 (the side slot), FASE, ENTGRATEN |
-| 4, Y+ | 15 mm / 30 | FRAESEN 16, 6 (the side hole), FASE, ENTGRATEN |
+| 3, Y- | 42 mm / 3 | FRAESEN 16, 8 (the side slot), ENTGRATEN |
+| 4, Y+ | 15 mm / 30 | FRAESEN 16, 6 (the side hole), ENTGRATEN |
 
-20,533 lines, 36.6 minutes (the app's time model), the simulated part like the model (match 1), no collision, no
+18,105 lines, 31.4 minutes (the app's time model), the simulated part like the model (match 1), no collision, no
 clamping misplaced, nothing cut into the part. Noted: three surfaces left (the slope, the two rounds) and one hole
 narrow at its far end. Listed as missing: drills Ø6.8, Ø6.6, Ø11, Ø13, Ø6 (those holes are milled) and a Ø1 mill.
-Planned in 877 s on the test machine (another plan running beside it).
+Planned in 683 s on the test machine (alone).
+
+At c465625 it was 20,533 lines and 36.6 minutes: the mills went back down the drilled holes (a Ø5 30 mm down the
+Ø6.4, a Ø3 down the Ø3.3 and Ø4.2) and clampings 3 and 4 cut the top chamfer again (FASE). Left in a hole now: an
+Ø8 flattening the drill's point at the bottom of the two flat-bottomed Ø10 holes (the open question in Beta 2).
 
 ## Baseline (c465625, the page's defaults, POM, HAAS-5's tools)
 
@@ -62,7 +66,7 @@ match 1, no collision, no clamping misplaced. Noted: the same three surfaces and
 
 - **Clamping 3 (Y-) is gripped 3 mm on 42 mm parallels**, the part standing 60 mm tall, for a slot 6 deep at its
   top: the grip should be far deeper (your rule: as deep as the cuts allow). To look into.
-- **Planning takes many minutes** (877 s in ALU beside another plan, 1,553 s in POM alone): the
+- **Planning takes many minutes** (683 s in ALU alone at 8f3b058, 1,553 s in POM alone at c465625): the
   one-face-one-clamping re-plan and the vise retries plan clampings again. To look into before the page's users
   wait that long.
 - The slope and the rounds are left (no ball end mill or corner-rounding mill yet).
