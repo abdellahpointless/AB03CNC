@@ -285,3 +285,9 @@ it (a face finished by two clampings is where a step shows when the turn is a li
   81 mm² (the engineers 28), 6,281 lines, 19.2 minutes (the app's time model 16.7). **No parallels at all**: none of the library's programs clamps without parallels (the
   shortest: 4 mm, in 2; 8 mm is common), and the simulation has no vise floor to check a tool against. Open question:
   how the shop writes it, and may a part stand on the vise floor.
+
+On the 24 at c465625 against the deployed 281ae56: 23 of 24 pass as before; clampings 94 to 88, nests 7 to 4,
+minutes 310.6 to 317.7, lines 150,377 to 153,165, holes left narrow at the far end 14 to 24 (the counterbore rule;
+the shop's full 1 mm into a parallel took them down from 31). Pfae5765f still fails, now on a clamping placed more
+than 0.5 mm off (the check locks it) where it failed on a 10 mm³ gouge: since the lighter mills its clamping 3 grips
+3 mm with a Ø6 where it gripped 6. P52e28c09: 4 clampings to 2, but 5.9 to 12.1 minutes. Both to look into.
