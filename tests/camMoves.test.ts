@@ -4,7 +4,7 @@ import { camProgram, zigzag, type CamSetup } from '../src/lib/cam/program';
 import { area, simplify, type P2 } from '../src/lib/cam/geom';
 import { LIBRARY } from '../src/lib/cam/tools';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
-import { columnPart, heightPart, plateWithBlindHole, plateWithCounterbore, plateWithHoles, pocketPart, roundedRect } from './heightPart';
+import { columnPart, heightPart, plateWithBlindHole, plateWithBoss, plateWithCounterbore, plateWithHoles, pocketPart, roundedRect } from './heightPart';
 
 // How CAM AI moves the tool between and into its cuts, against the engineers' programs (Phase 6).
 
@@ -143,6 +143,29 @@ describe('the order of the operations', () => {
     // Every other milling after the drills.
     expect(ops.slice(4).filter((o) => o.kind === 'pocket').length).toBeGreaterThan(0);
     expect(ops.slice(0, 4).filter((o) => o.kind === 'pocket')).toHaveLength(1);
+  }, 300_000);
+
+  it('leaves for after the drills any outline pass over a hole (the spot drill would meet only air)', () => {
+    // A 60 x 40 x 6 plate with a 30 x 20 boss 8 high, two Ø3.3 holes 5 mm from the plate's corners: the outline
+    // passes round the plate above its top (beside the boss) sweep 8 mm in, over the holes.
+    const tris = plateWithBoss(60, 40, 6, { lo: [15, 10], hi: [45, 30], h: 8 }, [{ c: [5, 5], d: 3.3 }, { c: [55, 35], d: 3.3 }]);
+    const r = camProgram({ ...base, tris, raw: [64, 44, 21] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    const ops = r.setups[0].ops;
+    const outline = ops.find((o) => o.purpose === 'outline');
+    expect(outline).toBeDefined();
+    // Every point the outline cuts above the plate's top (Z-8) stays a tool radius and a hole radius off the holes.
+    let [x, y, z, mode] = [0, 0, 0, 0];
+    const near: number[] = [];
+    for (const l of outline!.lines) {
+      const g = l.match(/\bG0?([0123])\b/);
+      if (g) mode = Number(g[1]);
+      x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
+      y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
+      z = Number(l.match(/ Z(-?[\d.]+)/)?.[1] ?? z);
+      if (mode > 0 && z > -8 + 0.01) near.push(Math.min(...[[-25, -15], [25, 15]].map(([hx, hy]) => Math.hypot(x - hx, y - hy))));
+    }
+    expect(Math.min(...near)).toBeGreaterThan(outline!.tool.diameter / 2 + 3.3 / 2);
   }, 300_000);
 
   it('keeps one operation per mill where nothing is drilled between (no tool change for nothing)', () => {

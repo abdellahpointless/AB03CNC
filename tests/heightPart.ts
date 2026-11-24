@@ -277,3 +277,52 @@ export function plateWithCounterbore(W: number, L: number, H: number, hole: { c:
   }
   return new Float32Array(t);
 }
+
+/**
+ * A W x L x H plate (corner at the origin) with a rectangular boss `h` high on its top, from lo to hi, and round
+ * holes through the plate (outside the boss): its closed mesh (48-sided holes).
+ */
+export function plateWithBoss(W: number, L: number, H: number, boss: { lo: [number, number]; hi: [number, number]; h: number }, holes: { c: [number, number]; d: number }[]): Float32Array {
+  const N = 48;
+  const rings = holes.map(({ c, d }) => Array.from({ length: N }, (_, k) => [c[0] + (d / 2) * Math.cos((2 * Math.PI * k) / N), c[1] + (d / 2) * Math.sin((2 * Math.PI * k) / N)] as [number, number]));
+  const t: number[] = [];
+  const tri = (a: number[], b: number[], e: number[], n: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [e[0] - a[0], e[1] - a[1], e[2] - a[2]];
+    const x = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    t.push(...(x[0] * n[0] + x[1] * n[1] + x[2] * n[2] >= 0 ? [...a, ...b, ...e] : [...a, ...e, ...b]));
+  };
+  const outer: [number, number][] = [[0, 0], [W, 0], [W, L], [0, L]];
+  const bossRing: [number, number][] = [boss.lo, [boss.hi[0], boss.lo[1]], boss.hi, [boss.lo[0], boss.hi[1]]];
+  const face = (inner: [number, number][][], z: number, nz: number) => {
+    const all = [...outer, ...inner.flat()];
+    for (const [i, j, k] of ShapeUtils.triangulateShape(outer.map(([x, y]) => new Vector2(x, y)), inner.map((r) => r.map(([x, y]) => new Vector2(x, y))))) tri([...all[i], z], [...all[j], z], [...all[k], z], [0, 0, nz]);
+  };
+  face([bossRing, ...rings], H, 1);
+  face(rings, 0, -1);
+  const top = H + boss.h;
+  tri([...bossRing[0], top], [...bossRing[1], top], [...bossRing[2], top], [0, 0, 1]);
+  tri([...bossRing[0], top], [...bossRing[2], top], [...bossRing[3], top], [0, 0, 1]);
+  const wall = (a: [number, number], b: [number, number], z0: number, z1: number, n: number[]) => {
+    tri([...a, z0], [...b, z0], [...b, z1], n);
+    tri([...a, z0], [...b, z1], [...a, z1], n);
+  };
+  wall([0, 0], [W, 0], 0, H, [0, -1, 0]);
+  wall([W, 0], [W, L], 0, H, [1, 0, 0]);
+  wall([W, L], [0, L], 0, H, [0, 1, 0]);
+  wall([0, L], [0, 0], 0, H, [-1, 0, 0]);
+  const [a, b, c, d] = bossRing;
+  wall(a, b, H, top, [0, -1, 0]);
+  wall(b, c, H, top, [1, 0, 0]);
+  wall(c, d, H, top, [0, 1, 0]);
+  wall(d, a, H, top, [-1, 0, 0]);
+  for (const r of rings)
+    r.forEach((p, k) => {
+      const q = r[(k + 1) % N];
+      const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      const cx = r.reduce((s, v) => s + v[0], 0) / N;
+      const cy = r.reduce((s, v) => s + v[1], 0) / N;
+      wall(p, q, 0, H, [cx - m[0], cy - m[1], 0]);
+    });
+  return new Float32Array(t);
+}

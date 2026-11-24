@@ -1937,9 +1937,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (purpose === 'rough' && drillAt >= 0) {
         while (si2 < samples.length) above = union(above, slice(P, samples[si2++]));
         const outline = filled(above);
+        // Nor over a hole to drill here: the spot drill would then meet only air where it expects the stock's top.
+        const spots: Region = union(toDrill.map((d) => circle(d.h.c, d.h.r + 0.5)));
         let after: Region = [];
         for (const w of work) {
-          const go = w.rings.filter((g) => g.pts.every((p) => inside(outline, p) === 0) && area(intersection(swept([g], r), after)) < 0.01);
+          const go = w.rings.filter((g) => {
+            const sw = swept([g], r);
+            return g.pts.every((p) => inside(outline, p) === 0) && area(intersection(sw, after)) < 0.01 && area(intersection(sw, spots)) < 0.01;
+          });
           const stay = w.rings.filter((g) => !go.includes(g));
           if (go.length) early.push({ ...w, rings: go });
           if (stay.length) late.push({ ...w, rings: stay });

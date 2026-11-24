@@ -70,14 +70,18 @@ describe('a later clamping', () => {
     expect(s.physics.ok).toBe(true);
   }, 300_000);
 
-  it('grips deep on the faces it holds when only an end changes (a step at the stop’s far end is not held)', () => {
-    // A 40 x 30 x 20 block with a 6 mm step down at its X+ end: turned over, the step is at the bottom of the far end,
-    // the held Y faces the same all the way up. You: hold the part as deep as its cuts allow.
-    const stepped = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, (_, i) => (i >= 34 ? 14 : 20))));
+  it.each([
+    ['X+', (i: number) => i >= 34],
+    ['X-', (i: number) => i < 6],
+  ])('grips deep on the faces it holds when only an end changes (a step at the %s end), placed where the program says', (_end, step) => {
+    // A 40 x 30 x 20 block with a 6 mm step down at one X end: turned over, the step is at the bottom of an end (the
+    // stop's or the far one), the held Y faces the same all the way up. You: hold the part as deep as its cuts allow.
+    const stepped = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, (_, i) => (step(i) ? 14 : 20))));
     const r = camProgram({ ...base, tris: stepped, raw: [44, 34, 27] });
     const s = r.setups.find((x) => x.side === 'Z-')!;
     expect(s.grip).toBeGreaterThanOrEqual(10);
     expect(s.physics.ok).toBe(true);
+    expect(r.check.misplaced).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
