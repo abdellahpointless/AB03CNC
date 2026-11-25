@@ -4,7 +4,7 @@ import { box, buildParallels, buildVise, JAW_TRAVEL, steel, STEEL, STEEL_DARK, v
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, caleSlide, calesKey, parallelWidth, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { CALE_MS, caleSlide, calesKey, parallelWidth, spacerAt, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, cornerRadius, cornerTip, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { holeAt, holeAxis, holeOfMesh, type MeasureMode } from '../lib/measure';
 import { attachMeasure, disposeTree, ring, type Measurement } from '../lib/measure3d';
@@ -239,6 +239,9 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
   g.userData.tag = tag;
   return g;
 }
+
+/** The measure's vise planes: hit by a click from either side, never drawn. */
+const PLANE = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
 
 const fmtMm = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
@@ -557,6 +560,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   const behindRef = useRef(behind);
   behindRef.current = behind;
   const modeRef = useRef(mode);
+  const setupNow = useRef(setup);
+  setupNow.current = setup;
   modeRef.current = mode;
   const resetMeasure = useRef<(() => void) | null>(null);
   const jumpRef = useRef(jump);
@@ -1404,6 +1409,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     rims.visible = modelViewRef.current !== 'model';
     a.solid.add(rims);
     const rimMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.45 });
+    let planes: THREE.Mesh[] = [];
     // What is drawn: the simulated part, the model (it is the real part: measuring it is measuring the drawing), or both.
     const chunks = () => a.solid.children.filter((c) => (c.userData.chunk || c.userData.model === 'mesh') && c.visible) as THREE.Mesh[];
     const toolName = (tool: number | null) => {
@@ -1421,21 +1427,47 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const { u } = holeAxis(h);
           rims.add(ring([h.top[0] - u[0] * 0.02, h.top[1] - u[1] * 0.02, h.top[2] - u[2] * 0.02], u, h.r, rimMat));
         }
+        // The vise's bed between the jaws, its jaw faces and tops and the stop's face, as planes to measure to (item 17):
+        // quads in the clamping's frame, brought into the part's (the measure's root), raycast but not drawn.
+        const s = setupNow.current;
+        if (s && s.floorZ !== null && s.jawTopZ !== null && s.clampBox && a.world.visible) {
+          a.world.updateMatrixWorld(true);
+          a.solid.updateMatrixWorld(true);
+          const spans = viseSpans(s);
+          const [xa, xb] = [spans[0][0], spans[spans.length - 1][1]];
+          const [f, j] = [s.floorZ, s.jawTopZ];
+          const front = s.clampBox.min[1] - spacerAt(s, 'Y-');
+          const back = s.clampBox.max[1] + spacerAt(s, 'Y+');
+          const quad = (q: [number, number, number][]) => {
+            const p = q.map((x) => a.solid.worldToLocal(a.world.localToWorld(v3(x))));
+            const m = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([p[0], p[1], p[2], p[0], p[2], p[3]]), PLANE);
+            rims.add(m);
+            return m;
+          };
+          planes = [
+            quad([[xa, front, f], [xb, front, f], [xb, back, f], [xa, back, f]]),
+            quad([[xa, front, f], [xa, front, j], [xb, front, j], [xb, front, f]]),
+            quad([[xa, back, f], [xb, back, f], [xb, back, j], [xa, back, j]]),
+            quad([[xa, front, f], [xa, back, f], [xa, back, j], [xa, front, j]]),
+            quad([[xa, front - 18, j], [xb, front - 18, j], [xb, front, j], [xa, front, j]]),
+            quad([[xa, back, j], [xb, back, j], [xb, back + 18, j], [xa, back + 18, j]]),
+          ];
+        }
         session = attachMeasure({
           el,
           root: a.solid,
           camera: a.camera,
           invalidate: a.invalidate,
           setAfterRender: (f) => (a.afterRender = f),
-          parts: chunks,
-          // In the clamp: the vise and parallels hide what is behind them; on them only a point is measured.
+          parts: () => [...chunks(), ...planes],
+          // In the clamp: the parallels hide what is behind them, on them only a point is measured; the vise is its planes.
           blockers: () => {
             const held: THREE.Object3D[] = [];
-            if (a.world.visible && !a.seeThrough) a.fixture?.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
+            if (a.world.visible && !a.seeThrough) (planes.length ? a.cales : a.fixture)?.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
             return held;
           },
           // On the model: the hole is fitted to its facets; on the simulation: the holes the tools plunged.
-          holeAt: (p, hit) => (hit.object.userData.model === 'mesh' ? holeOfMesh((hit.object as THREE.Mesh).geometry.getAttribute('position').array as Float32Array, hit.faceIndex ?? 0) : holeAt(found, p)),
+          holeAt: (p, hit) => (planes.includes(hit.object as THREE.Mesh) ? null : hit.object.userData.model === 'mesh' ? holeOfMesh((hit.object as THREE.Mesh).geometry.getAttribute('position').array as Float32Array, hit.faceIndex ?? 0) : holeAt(found, p)),
           mode: () => modeRef.current,
           onMeasure: (m) => onMeasureRef.current?.(m),
           toolName,
