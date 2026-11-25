@@ -78,6 +78,7 @@ export default function ToolpathViewer({
   onTurnsFound,
   noRecord = false,
   start,
+  atSetup,
 }: {
   code: string;
   title: string;
@@ -96,6 +97,8 @@ export default function ToolpathViewer({
   noRecord?: boolean;
   /** Opened straight on the weak spots (the finished part coloured) or the NX view. */
   start?: 'weak' | 'nx';
+  /** Opens at the start of this setup (0: the first), as the part stands when it is clamped. */
+  atSetup?: number;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -193,6 +196,15 @@ export default function ToolpathViewer({
     setHeat(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Opened on a setup: the part as the setups before left it.
+  const atDone = useRef(false);
+  useEffect(() => {
+    const s = atSetup ? setups[atSetup] : undefined;
+    if (atDone.current || !s?.moves) return;
+    atDone.current = true;
+    jumpFlip(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setups]);
   // Measuring on the part (its faces and holes) and what the last clicks measured.
   const [measure, setMeasure] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');

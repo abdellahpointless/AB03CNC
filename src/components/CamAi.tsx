@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -23,9 +23,9 @@ import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
-import type { FacePick } from './CamPartView';
+import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
-import { blankSides } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -104,6 +104,15 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [stockMode, setStockMode] = useState<'total' | 'side'>('total');
   const [totals, setTotals] = useState(['', '', '']);
   const [sides, setSides] = useState(['2', '2', '2', '2', '5', '2']);
+  // The designer's parallels for clamping 1 (you, Beta 2): a height, 0 for none, null for CAM AI's own; the jaw's
+  // opening and the part's slide toward the operator are the view's only (mm); refused moves flash the jaws.
+  const [clamp1, setClamp1] = useState<number | null>(null);
+  // Later clampings' parallels, by clamping (1: the second), chosen on the program made: used when it is made again.
+  const [later, setLater] = useState<Record<number, number>>({});
+  const [jaw, setJaw] = useState({ open: 0, slide: 0 });
+  const [flash, setFlash] = useState(0);
+  const [nextHint, setNextHint] = useState<number | undefined>();
+  const hintTimer = useRef(0);
   const [live, setLive] = useState<Live>(NO_LIVE);
   const [cuts, setCuts] = useState<Record<string, CutEdit>>({});
   // Operations the operator removed: in the program already (skip), and marked since (skipDraft, for the next time it is made).
@@ -122,6 +131,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [run, setRun] = useState<Run>({ state: 'idle' });
   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
   const [viewing, setViewing] = useState<false | 'play' | 'weak' | 'nx'>(false);
+  // The clamping the simulation opens at (a later clamping's panel: what it holds).
+  const [viewAt, setViewAt] = useState<number | undefined>();
   const worker = useRef<Worker | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
@@ -156,14 +167,27 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const shown = chosen && excess && raw ? (!autoStock && stockMode === 'side' ? [0, 1, 2, 3, 4, 5].map(sideValue) : blankSides(excess, whiteAt)) : null;
   const shownSides = chosen && shown ? toModelSides(chosen.R, [0, 2, 4].map((i) => shown[i]), [1, 3, 5].map((i) => shown[i])) : null;
   const sideBlank = prep && shownSides ? { lo: prep.size.map((s, k) => -s / 2 - shownSides.lo[k]), hi: prep.size.map((s, k) => s / 2 + shownSides.hi[k]) } : null;
-  // Sent to the planner when typed side by side (else it places Auto and totals itself, centred when that fails).
-  const margins = shownSides && !autoStock && stockMode === 'side' ? shownSides : undefined;
+  // Clamping 1's parallels (clamp.ts, as the planner takes them): those the jaws hold the blank on, lowest first, and CAM AI's own.
+  const lo1 = chosen && shown ? -(chosen.size[2] + shown[4]) : 0;
+  const stockH1 = chosen && shown ? chosen.size[2] + shown[4] + shown[5] : 0;
+  const cales1 = chosen && shown ? allowedCales(stockH1, lo1).sort((p, q) => p - q) : [];
+  const own1 = chosen && shown && cales1.length ? firstPick(stockH1, lo1, chosen.size[2]).cale : null;
+  // The program made says what CAM AI used (its blank may have gone centred); before one, the page's own pick.
+  const cale1 = clamp1 ?? (run.state === 'done' ? run.result.setups[0]?.cale : undefined) ?? own1;
+  // Sent to the planner when typed side by side, or with the designer's parallels (the blank they were chosen for, never
+  // the centred fallback); else it places Auto and totals itself, centred when that fails.
+  const margins = shownSides && ((!autoStock && stockMode === 'side') || clamp1 !== null) ? shownSides : undefined;
   const side2 = second?.side ?? (chosen ? opposite(chosen.side) : '');
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
   const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling;
 
   useEffect(() => () => worker.current?.terminate(), []);
+  // Another layout or blank: parallels it can no longer hold the part on go back to CAM AI's own.
+  const cales1Key = cales1.join(',');
+  useEffect(() => {
+    if (clamp1 !== null && clamp1 !== 0 && !cales1Key.split(',').includes(String(clamp1))) setClamp1(null);
+  }, [cales1Key, clamp1]);
 
   const newWorker = () => {
     worker.current?.terminate();
@@ -241,6 +265,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       author: user?.username,
       raw,
       margins,
+      clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : later[k] ?? null)) : undefined,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },
       sideStock: sideStock || undefined,
@@ -323,6 +348,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [swapAsk, setSwapAsk] = useState<string | null>(null);
   // Measuring the model in the view, as in a CAD program (before or after a program is made).
   const [measuring, setMeasuring] = useState(false);
+  // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
+  const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && !measuring && cales1.length > 0;
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
@@ -348,6 +375,28 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const choose = (set: () => void) => {
     set();
     if (result) setRun({ state: 'idle' });
+  };
+  // The clamping editor (3D view, keys and buttons): taller or shorter parallels (none below the lowest), the part
+  // back or toward the operator between the jaws, the moving jaw open or closed (pushing the part back to the fixed one).
+  const refuse = () => setFlash((f) => f + 1);
+  const clampAct = (act: ClampAct) => {
+    if (act === 'up' || act === 'down') {
+      const v = stepCale(cales1, cale1, act === 'up' ? 1 : -1);
+      if (v === null) return refuse();
+      // Later clampings hold what this one leaves: their choices go.
+      choose(() => {
+        setClamp1(v);
+        setLater({});
+      });
+      // The next taller parallels, faintly, for a moment.
+      window.clearTimeout(hintTimer.current);
+      setNextHint(stepCale(cales1, v, 1) ?? undefined);
+      hintTimer.current = window.setTimeout(() => setNextHint(undefined), 1100);
+      return;
+    }
+    const next = jawMove(jaw, act);
+    if (next) setJaw(next);
+    else refuse();
   };
   // A click on a wall: picked, or taken off again.
   const toggleWall = (wall: number[]) => choose(() => setFinishWalls((now) => (now.some((w) => w[0] === wall[0]) ? now.filter((w) => w[0] !== wall[0]) : [...now, wall])));
@@ -554,7 +603,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                       }
                     : undefined
                 }
-                label={picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
+                clamp={clampMode && cale1 !== null ? { cale: cale1, at: cale1 || cales1[0], open: jaw.open, slide: jaw.slide, next: nextHint, flash } : null}
+                onClamp={clampAct}
+                label={clampMode ? t('camAi.clamp1.view') : picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
                 className="h-full rounded-none bg-transparent"
               />
             </Suspense>
@@ -731,6 +782,22 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     )}
                   </>
                 )}
+                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} onOwn={() => choose(() => { setClamp1(null); setLater({}); })} />}
+                {sel.i > 0 && result?.setups[sel.i] && !busy && (
+                  <LaterClampPanel
+                    n={sel.i + 1}
+                    made={result.setups[sel.i]}
+                    asked={later[sel.i]}
+                    onSee={() => { setViewAt(sel.i); setViewing('play'); }}
+                    onAsk={(v) => setLater((l) => {
+                      // The clampings after this one hold what it leaves: their choices go.
+                      const next: Record<number, number> = {};
+                      for (const [k, x] of Object.entries(l)) if (Number(k) < sel.i) next[Number(k)] = x;
+                      if (v !== null) next[sel.i] = v;
+                      return next;
+                    })}
+                  />
+                )}
                 {result?.setups[sel.i] && <SetupPanel setup={result.setups[sel.i]} />}
               </>
             )}
@@ -831,7 +898,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
       {viewing && result && model && (
         <Suspense fallback={null}>
-          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setViewing(false)} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} />
+          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => { setViewing(false); setViewAt(undefined); }} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} atSetup={viewAt} />
         </Suspense>
       )}
     </div>
@@ -982,6 +1049,71 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       </Dialog.Root>
     );
   }
+}
+
+/** Clamping 1's parallels and vise (you, Beta 2): what holds it, CAM AI's own, a button for every move the 3D view takes. */
+function ClampPanel({ cale, own, mine, grip, seam, jaw, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; seam: boolean; jaw: { open: number; slide: number }; onAct: (a: ClampAct) => void; onOwn: () => void }) {
+  const { t } = useTranslation('cam');
+  const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
+  return (
+    <section aria-labelledby="clamp1-title" className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
+      <h3 id="clamp1-title" className="section-label">{t('camAi.clamp1.title')}</h3>
+      <p className="text-[var(--text-primary)]" aria-live="polite">
+        {cale === 0 ? t('camAi.clamp1.none') : t('camAi.clamp1.on', { cale: fmt(cale, 0), grip: fmt(grip, 0) })}
+      </p>
+      {own !== null && (
+        <p className="flex flex-wrap items-center gap-2 text-[var(--text-secondary)]">
+          {t('camAi.clamp1.own', { cale: fmt(own, 0) })}
+          {mine && <button type="button" onClick={onOwn} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-1.5">
+        <button type="button" className={btn} onClick={() => onAct('up')}><ChevronUp size={14} aria-hidden />{t('camAi.clamp1.up')}</button>
+        <button type="button" className={btn} onClick={() => onAct('down')}><ChevronDown size={14} aria-hidden />{t('camAi.clamp1.down')}</button>
+        <button type="button" className={btn} onClick={() => onAct('back')}><ArrowUp size={14} aria-hidden />{t('camAi.clamp1.back')}</button>
+        <button type="button" className={btn} onClick={() => onAct('forward')}><ArrowDown size={14} aria-hidden />{t('camAi.clamp1.forward')}</button>
+        <button type="button" className={btn} onClick={() => onAct('open')}><JawsOpen size={14} aria-hidden />{t('camAi.clamp1.open')}</button>
+        <button type="button" className={btn} onClick={() => onAct('close')}><JawsClose size={14} aria-hidden />{t('camAi.clamp1.close')}</button>
+      </div>
+      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide, 0) })}</p>
+      <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.hint')}</p>
+      {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
+      {seam && <p className="text-[var(--text-secondary)]">{t('camAi.note.clampSeam', { setup: 1, cale: fmt(cale, 0) })}</p>}
+    </section>
+  );
+}
+
+/** A later clamping's parallels, on the program made (what it holds is what the clampings before left): for the next time it is made. */
+function LaterClampPanel({ n, made, asked, onAsk, onSee }: { n: number; made: CamSummary['setups'][number]; asked: number | undefined; onAsk: (v: number | null) => void; onSee: () => void }) {
+  const { t } = useTranslation('cam');
+  const steps = [0, ...[...made.cales].sort((p, q) => p - q)];
+  const now = asked ?? made.cale;
+  const i = steps.indexOf(now);
+  const step = (d: 1 | -1) => {
+    const j = (i < 0 ? steps.length - 1 : i) + d;
+    if (j >= 0 && j < steps.length && made.cales.length) onAsk(steps[j] === made.cale && made.own === undefined ? null : steps[j]);
+  };
+  const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5 disabled:opacity-40';
+  return (
+    <section aria-labelledby={`clamp${n}-title`} className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
+      <h3 id={`clamp${n}-title`} className="section-label">{t('camAi.clamp1.title')}</h3>
+      <p className="text-[var(--text-primary)]">{t('camAi.clamp1.on', { cale: fmt(made.cale, 0), grip: fmt(made.grip, 0) })}</p>
+      {made.own !== undefined && <p className="text-[var(--text-secondary)]">{t('camAi.clamp1.own', { cale: fmt(made.own, 0) })}</p>}
+      <div className="grid grid-cols-2 gap-1.5">
+        <button type="button" className={btn} disabled={i >= steps.length - 1} onClick={() => step(1)}><ChevronUp size={14} aria-hidden />{t('camAi.clamp1.up')}</button>
+        <button type="button" className={btn} disabled={i <= 0} onClick={() => step(-1)}><ChevronDown size={14} aria-hidden />{t('camAi.clamp1.down')}</button>
+      </div>
+      {asked !== undefined && (
+        <p className="text-[var(--text-primary)]" aria-live="polite">
+          {asked === 0 ? t('camAi.clamp1.laterNone') : t('camAi.clamp1.later', { cale: fmt(asked, 0) })}{' '}
+          <button type="button" onClick={() => onAsk(null)} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>
+        </p>
+      )}
+      {asked === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
+      <button type="button" onClick={onSee} className="btn-secondary text-xs min-h-11 px-3 flex items-center gap-1.5"><Play size={13} aria-hidden />{t('camAi.clamp1.see', { n })}</button>
+      <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.laterHint')}</p>
+    </section>
+  );
 }
 
 type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string; op?: string };

@@ -8,6 +8,10 @@ import { SIDES } from '../lib/cam/features';
 import type { Mat3 } from '../lib/orient';
 import type { Purpose } from '../lib/cam/program';
 import { fmtNumber } from '../i18n/format';
+import { buildParallels, buildVise } from '../lib/vise3d';
+import { parallelWidth, STOP_PLATE, VISE } from '../lib/setups';
+import { PARALLEL_LENGTH } from '../lib/cam/physics';
+import { JAW } from '../lib/cam/clamp';
 
 /** A setup's top face on the model: the side it faces, and the flat face clicked (else the outermost of that side). */
 export interface FacePick {
@@ -246,7 +250,19 @@ type Api = {
   camera: THREE.PerspectiveCamera;
   /** Called after each frame drawn (measuring's labels follow the part). */
   afterRender: (() => void) | null;
+  /** Clamping 1's vise and parallels (clamp mode), and a camera move that frames them. */
+  vise: THREE.Group;
+  frame: (radius: number) => void;
 };
+
+/**
+ * Clamping 1 as the designer sets it up (you, Beta 2): its parallels (0: none, the part on the jaws' step, drawn at
+ * `at` with the jaws lit, its real height not known), the moving jaw `open` mm off, the part slid `slide` mm toward
+ * the operator (view only), `next` the next taller parallels shown faintly while choosing, `flash` counting refused moves.
+ */
+export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number };
+export type ClampAct = 'up' | 'down' | 'back' | 'forward' | 'open' | 'close';
+const CONTACT = 0x22c55e;
 
 /**
  * The part in 3D for CAM AI: as it lies in setup 1 (X along the jaws, Z up), the raw block around
@@ -269,6 +285,8 @@ export default function CamPartView({
   ghosts = [],
   ghostOn = null,
   onPathMenu,
+  clamp = null,
+  onClamp,
   label,
   className = '',
 }: {
@@ -296,6 +314,9 @@ export default function CamPartView({
   ghostOn?: string | null;
   /** A right click (not a drag) on a path: its operation (you, Beta 2: change its tool from there). */
   onPathMenu?: (p: LivePath) => void;
+  /** Clamp mode: the vise round the blank (`blank` needed); the wheel steps the parallels (Ctrl/⌘ + wheel zooms), the arrows slide and open. */
+  clamp?: ClampView | null;
+  onClamp?: (act: ClampAct) => void;
   /** The canvas's accessible name. */
   label: string;
   className?: string;
@@ -308,6 +329,7 @@ export default function CamPartView({
   measureRef.current = measure;
   const measureSession = useRef<ReturnType<typeof attachMeasure> | null>(null);
   const whiteSide = white?.side;
+  const blankKey = blank ? [...blank.lo, ...blank.hi].join(',') : '';
 
   // The scene, once per model.
   useEffect(() => {
@@ -349,7 +371,8 @@ export default function CamPartView({
     const walls = new THREE.Group();
     world.add(marks, paths, ghostPaths, walls);
     const stock = new THREE.Group();
-    scene.add(world, stock);
+    const vise = new THREE.Group();
+    scene.add(world, stock, vise);
     const size = box.getSize(new THREE.Vector3()).length();
     const { faces, keyOf } = flatFaces(pos);
     controls.pickables = () => [part];
@@ -362,7 +385,8 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null };
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null, vise,
+      frame: (r) => controls.flyTo(camera.position.clone().normalize().multiplyScalar(r * 2.6), new THREE.Vector3(), camera.up.clone(), 450) };
     api.current = a;
 
     const resize = () => {
@@ -536,7 +560,9 @@ export default function CamPartView({
       put(`Z ${fmtNumber(v[2], 1)} mm`, new THREE.Vector3(-x - h * 1.8, 0, z));
     }
     a.invalidate();
-  }, [raw, R, blank]);
+    // By value: the page makes these arrays anew on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw?.join(','), R, blankKey]);
 
   // The setups' top faces: green, with their triad; and the faces under the pointer while picking.
   useEffect(() => {
@@ -629,5 +655,160 @@ export default function CamPartView({
     a.invalidate();
   }, [ghosts, ghostOn]);
 
-  return <div ref={host} className={`relative overflow-hidden rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.04)] ${className}`} />;
+  // Clamp mode: the vise on the blank as clamping 1 holds it, its parallels, and where they touch (green).
+  const lastFlash = useRef(0);
+  // Where the jaw and the slide are drawn now (mm), for easing to the next.
+  const jawShown = useRef({ open: 0, slide: 0 });
+  const clampOn = !!clamp && !!blank;
+  const clampKey = clamp ? JSON.stringify(clamp) : '';
+  useEffect(() => {
+    const a = api.current;
+    if (!a) return;
+    dispose(a.vise);
+    a.vise.clear();
+    a.vise.position.set(0, 0, 0);
+    if (!clamp || !blank) {
+      a.invalidate();
+      return;
+    }
+    // The blank in the vise's frame (X along the jaws, Y between them, Z up), from the part's box centre.
+    const c = [0, 1, 2].map((k) => (blank.lo[k] + blank.hi[k]) / 2);
+    const h = [0, 1, 2].map((k) => (blank.hi[k] - blank.lo[k]) / 2);
+    const vc = [0, 1, 2].map((j) => R[j * 3] * c[0] + R[j * 3 + 1] * c[1] + R[j * 3 + 2] * c[2]);
+    const vh = [0, 1, 2].map((j) => Math.abs(R[j * 3]) * h[0] + Math.abs(R[j * 3 + 1]) * h[1] + Math.abs(R[j * 3 + 2]) * h[2]);
+    const lo = vc.map((v, j) => v - vh[j]) as [number, number, number];
+    const hi = vc.map((v, j) => v + vh[j]) as [number, number, number];
+    const floorZ = lo[2] - clamp.at;
+    const jawTop = floorZ + JAW;
+    // Pushed against the stop; a second vise when the part is longer than one (as the shop holds long parts).
+    const spans: [number, number][] = [[lo[0] - STOP_PLATE, lo[0] - STOP_PLATE + VISE.width]];
+    if (hi[0] > spans[0][1] + 5) spans.push([spans[0][1] + VISE.gap, spans[0][1] + VISE.gap + VISE.width]);
+    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, []);
+    // The moving jaw (front, Y-) opens toward the operator; the part slides, so the vise body moves the other way.
+    const body = new THREE.Group();
+    body.add(v.group);
+    a.vise.add(body);
+    const pose = (open: number, slide: number) => {
+      v.moving.position.z = open;
+      body.position.z = slide;
+      jawShown.current = { open, slide };
+    };
+    const w = parallelWidth(hi[1] - lo[1]);
+    const runs = spans.map(([x0], i) => x0 + (i === 0 ? STOP_PLATE : 0));
+    const bars = (top: number): { y: [number, number]; top: number }[] => [{ y: [lo[1], lo[1] + w], top }, { y: [hi[1] - w, hi[1]], top }];
+    // The parallels and contacts stay with the part, not the vise body.
+    const put = (o: THREE.Object3D) => a.vise.add(o);
+    if (clamp.cale > 0) put(buildParallels(runs, PARALLEL_LENGTH, bars(lo[2]), floorZ, `${fmtNumber(clamp.cale, 0)} MM`));
+    // The next taller parallels, faint, while the height is being chosen.
+    if (clamp.next) {
+      const ghost = buildParallels(runs, PARALLEL_LENGTH, bars(floorZ + clamp.next), floorZ, `${fmtNumber(clamp.next, 0)} MM`);
+      ghost.traverse((o) => {
+        const m = (o as THREE.Mesh).material;
+        for (const x of m ? (Array.isArray(m) ? m : [m]) : []) Object.assign(x, { transparent: true, opacity: 0.22, depthWrite: false });
+      });
+      put(ghost);
+    }
+    // Where the part is held: its faces in the jaws (closed, not slid) and on the parallels, green.
+    const contact = new THREE.MeshBasicMaterial({ color: CONTACT, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+    const plate = (min: number[], max: number[]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(max[0] - min[0], max[2] - min[2], max[1] - min[1]), contact);
+      m.position.set((min[0] + max[0]) / 2, (min[2] + max[2]) / 2, -(min[1] + max[1]) / 2);
+      m.renderOrder = 4;
+      put(m);
+    };
+    const x1 = Math.min(hi[0], spans[spans.length - 1][1]);
+    if (clamp.open === 0 && clamp.slide === 0) {
+      const top = Math.min(jawTop, hi[2]);
+      plate([lo[0], lo[1] - 0.4, lo[2]], [x1, lo[1] - 0.1, top]);
+      plate([lo[0], hi[1] + 0.1, lo[2]], [x1, hi[1] + 0.4, top]);
+    }
+    if (clamp.cale > 0) for (const b of bars(lo[2])) plate([lo[0], b.y[0], lo[2] - 0.4], [Math.min(hi[0], runs[0] + PARALLEL_LENGTH), b.y[1], lo[2] - 0.1]);
+    // On the jaws' step (no parallels): the jaws lit; a refused move: yellow for a moment.
+    const lit = (color: number, k: number) => v.jawMats.forEach((m) => { m.emissive.setHex(color); m.emissiveIntensity = k; });
+    if (clamp.cale === 0) lit(0x2dd4bf, 0.45);
+    // The jaw and the slide ease to where they go (not with reduced motion).
+    const from = jawShown.current;
+    let anim = 0;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || (from.open === clamp.open && from.slide === clamp.slide)) pose(clamp.open, clamp.slide);
+    else {
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const k = Math.min(1, (now - t0) / 140);
+        const e = 1 - (1 - k) ** 3;
+        pose(from.open + (clamp.open - from.open) * e, from.slide + (clamp.slide - from.slide) * e);
+        a.invalidate();
+        if (k < 1) anim = requestAnimationFrame(step);
+      };
+      pose(from.open, from.slide);
+      anim = requestAnimationFrame(step);
+    }
+    let timer = 0;
+    if (clamp.flash !== lastFlash.current) {
+      lastFlash.current = clamp.flash;
+      lit(0xfacc15, 0.9);
+      timer = window.setTimeout(() => {
+        lit(clamp.cale === 0 ? 0x2dd4bf : 0x000000, clamp.cale === 0 ? 0.45 : 0);
+        a.invalidate();
+      }, 600);
+    }
+    a.invalidate();
+    return () => {
+      window.clearTimeout(timer);
+      cancelAnimationFrame(anim);
+    };
+    // By value: the page makes these objects anew on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clampKey, blankKey, R]);
+
+  // Entering clamp mode: the camera backs off to show the vise.
+  useEffect(() => {
+    const a = api.current;
+    if (a && clampOn) a.frame(Math.max(a.size, 160));
+  }, [clampOn]);
+
+  // The wheel steps the parallels (one step a notch, a trackpad's swipe summed); Ctrl/⌘ + wheel zooms as before.
+  const clampRef = useRef(onClamp);
+  clampRef.current = onClamp;
+  useEffect(() => {
+    const el = host.current;
+    if (!el || !clampOn) return;
+    let sum = 0;
+    let idle = 0;
+    const wheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      sum += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      window.clearTimeout(idle);
+      idle = window.setTimeout(() => (sum = 0), 250);
+      if (Math.abs(sum) >= 80) {
+        clampRef.current?.(sum < 0 ? 'up' : 'down');
+        sum = 0;
+      }
+    };
+    el.addEventListener('wheel', wheel, { capture: true, passive: false });
+    return () => {
+      el.removeEventListener('wheel', wheel, { capture: true });
+      window.clearTimeout(idle);
+    };
+  }, [clampOn]);
+  const KEYS: Record<string, ClampAct> = { ArrowUp: 'back', ArrowDown: 'forward', ArrowLeft: 'open', ArrowRight: 'close', PageUp: 'up', PageDown: 'down' };
+
+  return (
+    <div
+      ref={host}
+      tabIndex={clampOn ? 0 : undefined}
+      onKeyDown={
+        clampOn
+          ? (e) => {
+              const act = KEYS[e.key];
+              if (!act) return;
+              e.preventDefault();
+              onClamp?.(act);
+            }
+          : undefined
+      }
+      className={`relative overflow-hidden rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.04)] focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)] ${className}`}
+    />
+  );
 }
