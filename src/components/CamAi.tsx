@@ -1043,6 +1043,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     used={result.setups.slice(0, sel.i).map((x) => x.side)}
                     asked={later[sel.i]}
                     spacers={laterX[sel.i] ?? {}}
+                    emptySide={!!laterX[sel.i]?.side && result.notes.some((x) => x.key === 'sideEmpty' && x.side === laterX[sel.i]?.side)}
                     onAsk={(v, x) => {
                       const i = sel.i;
                       const [wasLater, wasX] = [later, laterX];
@@ -1769,7 +1770,7 @@ const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
  * table, or the jaw tops by one of its faces (you), and its spacers (item 3); for the next time it is made, previewed
  * in the 3D view until then.
  */
-function LaterClampPanel({ n, made, used, asked, spacers, onAsk }: { n: number; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; spacers: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }; onAsk: (v: Hold | null, x: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }) => void }) {
+function LaterClampPanel({ n, made, used, asked, spacers, emptySide, onAsk }: { n: number; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; spacers: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }; onAsk: (v: Hold | null, x: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }) => void }) {
   const { t } = useTranslation('cam');
   const [open, setOpen] = useState(asked !== undefined || Object.keys(spacers).length > 0);
   const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
@@ -1795,13 +1796,14 @@ function LaterClampPanel({ n, made, used, asked, spacers, onAsk }: { n: number; 
           {n >= 3 && (
             <ParallelsPick label={t('camAi.hold.side')} value={spacers.side ?? made.side} heights={['Z+', 'Z-', 'X+', 'X-', 'Y+', 'Y-'].filter((x) => x === made.side || !used.includes(x)).map((x) => ({ key: x, label: x === made.side && !spacers.side ? `${x} · ${t('camAi.hold.camChoice')}` : x }))} onChange={(k) => setX({ ...spacers, side: k === made.side ? undefined : k })} />
           )}
+          {emptySide && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.note.sideEmpty', { side: spacers.side })}</p>}
           <ParallelsPick label={t('camAi.hold.parallels')} value={holdKey(now)} heights={all.map((h) => ({ key: holdKey(h), label: said(h) }))} onChange={pickHold} />
           <Seg legend={t('camAi.hold.stopX')} value={spacers.stop ?? 0} options={([0, 15, 50] as const).map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.clamp1.stopNone') }))} onChange={(v) => setX({ ...spacers, stop: v || undefined })} />
           <Seg legend={t('camAi.hold.spacerY')} value={spacers.y ?? 'auto'} options={Y_SPACERS.map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.auto') : v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, y: v === 'auto' ? undefined : v })} />
           <p className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.yHint')}</p>
           <Seg legend={t('camAi.hold.spacerYp')} value={spacers.yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, yp: v || undefined })} />
           {spacers.yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
-          {(asked !== undefined || Object.keys(spacers).length > 0) && (
+          {(asked !== undefined || Object.keys(spacers).some((k) => k !== 'side' || !emptySide)) && (
             <p className="flex flex-wrap items-center gap-2 text-[var(--text-primary)]" aria-live="polite">
               {t('camAi.hold.preview')}
               <button type="button" onClick={() => onAsk(null, {})} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>
