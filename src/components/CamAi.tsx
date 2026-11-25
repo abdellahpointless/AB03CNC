@@ -21,7 +21,7 @@ import type { Purpose } from '../lib/cam/program';
 import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
-import type { Mat3 } from '../lib/orient';
+import { IDENTITY, type Mat3 } from '../lib/orient';
 import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
@@ -464,7 +464,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     return () => window.removeEventListener('keydown', onKey);
   });
   // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
-  const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && !measuring && cales1.length > 0;
+  // Measuring keeps the vise: its bed, jaw faces and tops, and the stop are planes to measure to (item 17).
+  const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && cales1.length > 0;
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
@@ -1585,7 +1586,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       <Dialog.Root open={dialog} onOpenChange={setDialog}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
-          <Dialog.Content className="glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-5 space-y-4">
+          <Dialog.Content className={`glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${prep ? 'w-[52rem]' : 'w-[30rem]'} max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-5 space-y-4`}>
             <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{t('camAi.ws.newTitle')}</Dialog.Title>
             <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.intro')}</Dialog.Description>
             <button
@@ -1601,10 +1602,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               <span className="text-[var(--text-secondary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
             </button>
             {prep && (
-              <>
-                {prep.title && <p className="text-xs"><span className="text-[var(--text-secondary)]">{t('camAi.part.title')}: </span><span className="font-medium text-[var(--text-primary)]">{prep.title}</span></p>}
-                {partFields()}
-              </>
+              // The part in 3D beside its choices (item 16): turned with the mouse, as it was read.
+              <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
+                <div className="h-64 md:h-[22rem] rounded-[var(--radius-md)] overflow-hidden border border-[var(--border-subtle)] bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
+                  <Suspense fallback={null}>
+                    <CamPartView tris={prep.tris} R={IDENTITY} raw={null} picks={[]} picking={null} label={t('camAi.view3d')} className="w-full h-full" />
+                  </Suspense>
+                </div>
+                <div className="space-y-3 min-w-0">
+                  {prep.title && <p className="text-xs"><span className="text-[var(--text-secondary)]">{t('camAi.part.title')}: </span><span className="font-medium text-[var(--text-primary)]">{prep.title}</span></p>}
+                  {partFields()}
+                </div>
+              </div>
             )}
             <div className="flex justify-end gap-2">
               <Dialog.Close asChild>

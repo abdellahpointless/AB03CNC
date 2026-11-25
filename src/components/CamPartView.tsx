@@ -252,6 +252,8 @@ type Api = {
   afterRender: (() => void) | null;
   /** Clamping 1's vise and parallels (clamp mode), and a camera move that frames them. */
   vise: THREE.Group;
+  /** The vise's bed, jaw faces and stop face as planes to measure to (clamp mode; in the part's frame, not drawn). */
+  planes: THREE.Mesh[];
   frame: (radius: number) => void;
 };
 
@@ -261,6 +263,9 @@ type Api = {
  * the operator (view only), `next` the next taller parallels shown faintly while choosing, `flash` counting refused moves,
  * `bad`: parallels that cannot hold it (yellow), `stop`: the spacer between the stop and the part (mm).
  */
+/** The measure's vise planes: hit by a click from either side, never drawn. */
+const PLANE = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
+
 export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number; y?: number };
 export type ClampAct = 'up' | 'down' | 'back' | 'forward' | 'open' | 'close';
 const CONTACT = 0x22c55e;
@@ -386,7 +391,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null, vise,
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null, vise, planes: [],
       frame: (r) => controls.flyTo(camera.position.clone().normalize().multiplyScalar(r * 2.6), new THREE.Vector3(), camera.up.clone(), 450) };
     api.current = a;
 
@@ -624,8 +629,8 @@ export default function CamPartView({
       camera: a.camera,
       invalidate: a.invalidate,
       setAfterRender: (f) => (a.afterRender = f),
-      parts: () => [a.part],
-      holeAt: (_p, hit) => holeOfMesh(a.pos, hit.faceIndex ?? 0),
+      parts: () => [a.part, ...a.planes],
+      holeAt: (_p, hit) => (hit.object === a.part ? holeOfMesh(a.pos, hit.faceIndex ?? 0) : null),
       mode: () => measureRef.current?.mode ?? 'faces',
       onMeasure: (m) => measureRef.current?.onMeasure(m),
     }));
@@ -674,6 +679,11 @@ export default function CamPartView({
     a.vise.clear();
     a.vise.position.set(0, 0, 0);
     if (!clamp || !blank) {
+      for (const m of a.planes) {
+        a.world.remove(m);
+        m.geometry.dispose();
+      }
+      a.planes = [];
       a.invalidate();
       return;
     }
@@ -759,6 +769,32 @@ export default function CamPartView({
       pose(from.open, from.slide);
       anim = requestAnimationFrame(step);
     }
+    // What a measure takes as planes (item 17): the bed between the jaws, both jaw faces and tops, the stop's face. Quads in
+    // the vise's frame, brought into the part's (the measure's root), raycast but not drawn.
+    for (const m of a.planes) {
+      a.world.remove(m);
+      m.geometry.dispose();
+    }
+    a.world.updateMatrixWorld(true);
+    const xa = spans[0][0];
+    const xb = spans[spans.length - 1][1];
+    const front = lo[1] - (clamp.y ?? 0);
+    const quad = (p: [number, number, number][]) => {
+      const local = p.map(([x, y, z]) => a.world.worldToLocal(new THREE.Vector3(x, z, -y)));
+      const g = new THREE.BufferGeometry().setFromPoints([local[0], local[1], local[2], local[0], local[2], local[3]]);
+      const m = new THREE.Mesh(g, PLANE);
+      a.world.add(m);
+      return m;
+    };
+    a.planes = [
+      quad([[xa, front, floorZ], [xb, front, floorZ], [xb, hi[1], floorZ], [xa, hi[1], floorZ]]),
+      quad([[xa, front, floorZ], [xa, front, jawTop], [xb, front, jawTop], [xb, front, floorZ]]),
+      quad([[xa, hi[1], floorZ], [xb, hi[1], floorZ], [xb, hi[1], jawTop], [xa, hi[1], jawTop]]),
+      quad([[xa, front, floorZ], [xa, hi[1], floorZ], [xa, hi[1], jawTop], [xa, front, jawTop]]),
+      // The jaw tops (the plates, 18 mm thick): how far the part stands above them.
+      quad([[xa, front - 18, jawTop], [xb, front - 18, jawTop], [xb, front, jawTop], [xa, front, jawTop]]),
+      quad([[xa, hi[1], jawTop], [xb, hi[1], jawTop], [xb, hi[1] + 18, jawTop], [xa, hi[1] + 18, jawTop]]),
+    ];
     let timer = 0;
     if (clamp.flash !== lastFlash.current) {
       lastFlash.current = clamp.flash;
