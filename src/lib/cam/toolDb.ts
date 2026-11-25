@@ -17,6 +17,8 @@ export const SUFFIX: Record<Family, string> = { ALU: 'ALHS', POM: 'KS', FH: 'FH'
  * countersinks are shown, never added: the planner does not plan with them.
  */
 export const ADDABLE: Record<string, string> = { SF: '000', SFH: '000', MK: '000', SB: '000', ZB: '000', ST: 'G45' };
+/** The operations an added tool of each type does (the rows of its cutting data). */
+export const KINDS_OF: Record<string, TemplateKind[]> = { SF: ['contour', 'pocket', 'finish'], SFH: ['contour', 'pocket'], MK: ['face'], SB: ['drill'], ZB: ['centre'], ST: ['chamfer'] };
 export const KINDS: TemplateKind[] = ['face', 'contour', 'pocket', 'finish', 'drill', 'centre', 'spot', 'ream', 'counterbore', 'chamfer', 'deburr', 'engrave', 'countersink', 'radius', 'tslot', 'ball'];
 
 /** Spindle (rpm), feed (mm/min), step-over and depth per pass (mm); unset: the template's. */

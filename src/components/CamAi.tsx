@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay } from '@tabler/icons-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { coolingOf, engineMachineId, isLockedMachine, materialNeed } from '../regions';
 import { forMachine } from '../lib/cam/export';
-import { alternatives, CAM_MATERIALS, type CamMaterial } from '../lib/cam/tools';
+import { alternatives, CAM_MATERIALS, FAMILY, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
@@ -27,6 +27,7 @@ import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import CamOpened from './CamOpened';
+import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
 import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
@@ -285,6 +286,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       prefer: with_.prefer,
       second: second && second.side !== opposite(chosen.side) ? second.side : undefined,
       cuts: edits,
+      toolDb: toolDb.db,
       skip: skips,
       finish: finishTris.length ? finishTris : undefined,
       white: partType === 'topPlate' ? white : undefined,
@@ -439,6 +441,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
+  // The shop's tool database (item 20): loaded once, fresh again each time its dialog opens.
+  const [toolDb, setToolDb] = useState<StoredToolDb>({ db: {}, by: {} });
+  const [dbOpen, setDbOpen] = useState(false);
+  useEffect(() => {
+    loadToolDb().then(setToolDb, () => {});
+  }, []);
   // Cutting values typed and not yet in the program: it must be made again before it goes out.
   const [draft, setDraft] = useState<Record<string, CutEdit>>({});
   const changed = Object.keys({ ...draft, ...cuts }).filter((k) => JSON.stringify(draft[k] ?? {}) !== JSON.stringify(cuts[k] ?? {}));
@@ -748,7 +756,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     onRemove={toggleOp}
                     focus={sel.op ?? null}
                     onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
-                    options={alternatives(templatesFor, tools, sel.code, swap.exclude)}
+                    options={alternatives(templatesFor, tools, sel.code, swap.exclude, toolDb.db)}
                     toolName={toolName}
                     onSwap={(code, standIn) => {
                       const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
@@ -1073,6 +1081,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                   <input className="aurora-input w-full h-8 py-0 text-[13px]" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
                 </label>
                 <p className="text-xs text-[var(--text-secondary)]">{t('camAi.sideStockHint')}</p>
+                <Popover.Close asChild>
+                  <button type="button" className={`${menuItem} -mx-2.5 w-[calc(100%+1.25rem)]`} onClick={() => setDbOpen(true)}>
+                    <Database size={16} stroke={1.6} aria-hidden /> {t('camAi.db.menu')}
+                  </button>
+                </Popover.Close>
               </div>
             </Popover.Content>
           </Popover.Portal>
@@ -1264,6 +1277,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       </div>
 
       {newProgramDialog()}
+      <CamToolDb open={dbOpen} onOpenChange={setDbOpen} stored={toolDb} onSaved={setToolDb} family={templatesFor ? FAMILY[templatesFor] : undefined} />
     </div>
   );
 
