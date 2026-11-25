@@ -19,7 +19,7 @@ import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
-import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW } from './clamp';
+import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW, JAW_DEPTH } from './clamp';
 import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
@@ -80,6 +80,12 @@ export interface CamInput {
    * ZWISCHENLAGE IN X-"; docs/knowledge V2), the part that much further from the stop; anything else is refused (stopRefused).
    */
   stops?: (number | null)[];
+  /**
+   * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
+   * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
+   * else refused (jawRefused). Wins over `clamps` there.
+   */
+  jawRests?: (number | null)[];
   /**
    * The walls the operator picked to finish (shop rule: finishing only where it is asked for), as triangles of
    * `tris` (index k: the 9 numbers from 9k): the roughing leaves ALLOW on those and one pass finishes them; the
@@ -172,6 +178,10 @@ export interface CamSetup {
   cales: number[];
   /** CAM AI's own parallels, when the designer's are used instead. */
   own?: number;
+  /** Resting on the jaw tops by a face this deep under Z0 (mm), no parallels (`cale` then is how far over the table its bottom hangs). */
+  onJaw?: number;
+  /** The faces it could rest on the jaw tops by here (depth under Z0, mm): wider than the body the jaws grip below them. */
+  ledges: number[];
   /** What the vise check was made with (its cuts aside): to check it again when an operation is edited (editProgram). */
   vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number; floor: number };
 }
@@ -926,12 +936,42 @@ function extent(r: Region): { lo: P2; hi: P2 } | null {
 }
 
 /**
+ * The faces a later clamping could rest on the jaw tops by (you: "the part's base rests on top of the 45 mm jaws and the
+ * part is gripped below it"), as depths under Z0: a face of the part looking down, 3 to 43 mm over the stock's bottom
+ * (its body never reaches the table) and 0.5 mm or more under Z0 (the jaw tops' rule), with what stands just over it
+ * wider than the body under it by 1 mm or more on both held sides, and that body's held faces the same from its bottom up.
+ */
+function ledgesOf(P: Float32Array, left: Left, sb: { lo: Vec; hi: Vec }): number[] {
+  const zs = new Set<number>();
+  for (let i = 0; i < P.length; i += 9) {
+    const [ax, ay, az, bx, by, bz, cx, cy, cz] = P.subarray(i, i + 9);
+    if (Math.abs(az - bz) > 1e-4 || Math.abs(az - cz) > 1e-4 || (bx - ax) * (cy - ay) - (by - ay) * (cx - ax) >= -1e-9) continue;
+    if (az > -0.5 + 1e-6 || az < sb.lo[2] + 3 - 1e-6 || az > sb.lo[2] + JAW - 2 + 1e-6) continue;
+    zs.add(Math.round(az * 100) / 100);
+  }
+  const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
+  if (!e3) return [];
+  return [...zs]
+    .filter((z) => {
+      // Clear of the face by two of the simulation's cells: a slice nearer takes the other side's cells too.
+      const gap = Math.max(0.6, 2 * left.skin);
+      const below = extent(left.at(z - gap - 0.5, z - gap));
+      const above = extent(left.at(z + gap, z + gap + 0.5));
+      return !!below && !!above && Math.abs(below.lo[1] - e3.lo[1]) <= 0.2 && Math.abs(below.hi[1] - e3.hi[1]) <= 0.2 && above.lo[1] <= below.lo[1] - 1 && above.hi[1] >= below.hi[1] + 1;
+    })
+    .map((z) => Math.round(-z * 100) / 100)
+    .sort((a, b) => a - b);
+}
+
+/**
  * Where the vise really touches what is left of the part (3-2-1): both jaws over the grip, the
  * parallels under it, the stop at its left. The jaws close on the widest material between the
  * part's bottom and their top; vise 1 holds it from the stop for 142 mm, vise 2 from 192 to 342.
  */
-function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, spacerX = 0): { contact: Contact; width: number } {
-  const band = left.at(bottom, bottom + grip);
+function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, spacerX = 0, onJaw = false): { contact: Contact; width: number } {
+  // On the jaw tops the band ends clear of the face resting on them (the simulation's cells there are the wider part's).
+  const gap = Math.max(0.6, 2 * left.skin);
+  const band = left.at(bottom, bottom + grip - (onJaw ? gap : 0));
   const e = extent(band);
   if (!e) return { contact: { jaws: 0, rest: [0, 0], stop: false }, width: 0 };
   // As thick as the simulation's grid steps: a flat face on the grid is a staircase that fine.
@@ -944,7 +984,14 @@ function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, 
   const width = e.hi[1] - e.lo[1];
   const w = Math.min(6, width / 6);
   const floor = left.at(bottom, bottom + strip);
-  const rest: [number, number] = [along(floor, e.lo[1], e.lo[1] + w, PARALLEL_LENGTH), along(floor, e.hi[1] - w, e.hi[1], PARALLEL_LENGTH)];
+  // On the jaw tops: what lies on each (20 mm deep) beside the body they grip, just over their tops.
+  const over = onJaw ? left.at(bottom + grip + gap, bottom + grip + gap + strip) : [];
+  const eo = onJaw ? extent(over) : null;
+  const rest: [number, number] = onJaw
+    ? eo && eo.lo[1] < e.lo[1] - 0.5 && eo.hi[1] > e.hi[1] + 0.5
+      ? [along(over, Math.max(eo.lo[1], e.lo[1] - JAW_DEPTH), e.lo[1], VISE.width - 8), along(over, e.hi[1], Math.min(eo.hi[1], e.hi[1] + JAW_DEPTH), VISE.width - 8)]
+      : [0, 0]
+    : [along(floor, e.lo[1], e.lo[1] + w, PARALLEL_LENGTH), along(floor, e.hi[1] - w, e.hi[1], PARALLEL_LENGTH)];
   // The part's own face against the stop (or the spacer there).
   const stop = area(intersection(band, rect(e.lo[0], e.lo[1], e.lo[0] + strip, e.hi[1]))) > 0.01;
   return { contact: { jaws, rest, stop }, width };
@@ -1673,7 +1720,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // CAM AI's own parallels where the designer's are used instead, by clamping.
   const ownCales = new Map<number, number>();
   // cap: the largest end mill this clamping may use (planned again lighter when the vise cannot hold the bigger ones).
-  const addSetup = (si: number, fixed?: number, cap?: number): boolean => {
+  // rest: resting on the jaw tops by the face this deep under Z0 (planned again so, at grip `fixed`).
+  const addSetup = (si: number, fixed?: number, cap?: number, rest?: number): boolean => {
     const mills = cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6);
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
@@ -1781,7 +1829,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
     let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : !setups.length && fixed === undefined ? firstPick(stockH, sb.lo[2], H) : caleFor(stockH, fixed ?? want, fixed ?? 3);
     // The designer's parallels (input.clamps): only those the jaws hold the part on (3 mm or more, never all of it, under its top).
     const cales = allowedCales(stockH, sb.lo[2]);
-    const asked = input.clamps?.[setups.length] ?? undefined;
+    // The faces it could rest on the jaw tops by: never in the first clamping (the raw block has none) or the nest.
+    const ledges = setups.length && !nested ? ledgesOf(P, left, sb) : [];
+    const jawAsked = input.jawRests?.[setups.length] ?? undefined;
+    const onJaw = rest ?? (jawAsked !== undefined ? ledges.find((d) => Math.abs(d - jawAsked) < 0.05) : undefined);
+    if (rest === undefined && jawAsked !== undefined && onJaw === undefined) notes.push({ key: 'jawRefused', setup: setups.length + 1, cale: jawAsked });
+    const asked = onJaw === undefined ? (input.clamps?.[setups.length] ?? undefined) : undefined;
     // In the POM nest the nest holds it: the parallels asked for do not apply (said, not refused).
     if (nested && asked !== undefined && fixed === undefined) notes.push({ key: 'clampNest', setup: setups.length + 1, cale: asked });
     // Planned again for lighter mills (below), at the designer's grip: still theirs.
@@ -1793,6 +1846,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // The outside of clamping 1 ends within 0.5 mm of the part's bottom: a small step where the next clamping's cut meets it.
       if (!setups.length && waste > 0.5 && !clearOf(sb.lo[2], H, pick.grip)) notes.push({ key: 'clampSeam', setup: 1, cale: asked });
     }
+    // On the jaw tops by that face: its body gripped from its bottom up to it, the table 45 mm under it.
+    if (onJaw !== undefined) {
+      if (jawAsked !== undefined && fixed === undefined) ownCales.set(setups.length, pick.cale);
+      pick = { cale: JAW - (-onJaw - sb.lo[2]), grip: -onJaw - sb.lo[2] };
+    }
     const { cale, grip } = pick;
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
@@ -1801,7 +1859,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // come from them, as the shop writes the size after a turn (docs/knowledge/cam-gaps.md, P1). Not from
     // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
     // In the POM nest: what sits in its pocket (the pocket is made round it, and the part is put by it).
-    const band = extent(left.at(sb.lo[2], jawTop));
+    const band = extent(left.at(sb.lo[2], jawTop - (onJaw !== undefined ? Math.max(0.6, 2 * left.skin) : 0)));
     // The part's own outline over that height, for the faces of the band.
     const nz = Math.max(2, Math.ceil(jawTop - sb.lo[2]) + 1);
     const zs = Array.from({ length: nz }, (_, i) => sb.lo[2] + 0.05 + ((jawTop - sb.lo[2] - 0.1) * i) / (nz - 1));
@@ -1830,7 +1888,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
     const setupNotes = nested
       ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
-      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, cale ? `${cale} MM UNTERLAGE` : 'OHNE UNTERLAGE / TEIL AUF DEM TISCH', ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
+      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, onJaw !== undefined ? `SANS CALE / EPAISSEUR DE ${mm(onJaw)} MM SUR L'ETAU` : cale ? `${cale} MM UNTERLAGE` : 'OHNE UNTERLAGE / TEIL AUF DEM TISCH', ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
     // Too long for one vise (with the spacer at the stop): both, as the checker reads it back (setups.ts).
     const twoVises = hold[0] + spacerX > VISE.width + OVERHANG;
     if (!nested && twoVises) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
@@ -1960,7 +2018,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         let rest = 0;
         if (h.through && z < sb.lo[2] + 0.1) {
           // You: the shop's full 1 mm into a parallel (0.95: the check's margin); a narrow end under 0.05 mm is nothing.
-          if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.95));
+          // Resting on the jaw tops nothing is under its body: like between the parallels.
+          if (nested || (onJaw === undefined && !betweenCales(h)) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.95));
           // On the table (no parallels): never into it, 0.5 mm over it.
           if (!cale && !nested) z = Math.max(z, floor + 0.5);
           rest = z + 0.3 * d.diameter - h.bottom;
@@ -2363,8 +2422,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const thin = Math.min(stockH, H);
     const squeeze = input.partType === 'topPlate' || input.partType === 'contourInsert' || input.partType === 'sealCage' ? SQUEEZE.precise : SQUEEZE.normal;
     let contact: Contact | null = null;
-    const physicsAt = (g: number) => {
-      const c = contactOf(left, sb.lo[2], g, twoVises, spacerX);
+    const physicsAt = (g: number, jaw = onJaw !== undefined) => {
+      const c = contactOf(left, sb.lo[2], g, twoVises, spacerX, jaw);
       contact = c.contact;
       // How far from the stop each cut works (the parallels' end): past a spacer, that much further.
       const loads = ops.map((op) => loadOf(op, mat, sb.lo[0] - spacerX, c.width || hold[1], limits));
@@ -2376,7 +2435,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       : physicsAt(grip);
     if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
       // The designer's parallels stay: only lighter mills at their grip.
-      const grips = theirs ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
+      const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
       const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
@@ -2389,6 +2448,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;
         return addSetup(si, other, cap);
+      }
+      // No parallels hold it: resting on the jaw tops by one of its faces, its body gripped below (the shop holds a part
+      // that cannot stand on its narrow face so), the one that holds best, the lowest when alike.
+      if (onJaw === undefined && !theirs && jawAsked === undefined) {
+        const onTop = ledges
+          .map((d) => ({ d, p: physicsAt(-d - sb.lo[2], true) }))
+          .filter(({ p }) => p.feed >= 1 && !p.issues.some((i) => i.key === 'cannotHold' || i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact'))
+          .sort((a, b) => b.p.feed - a.p.feed || b.d - a.d)[0];
+        if (onTop) {
+          drilled.clear();
+          was.drilled.forEach((v, k) => drilled.set(k, v));
+          notes.length = was.notes;
+          return addSetup(si, -onTop.d - sb.lo[2], cap, onTop.d);
+        }
       }
       // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
       // preferred, but not over a clamping that holds), once; never against the operator's layout.
@@ -2409,7 +2482,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         .filter(({ p }) => !p.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact'))
         .sort((a, b) => b.p.feed - a.p.feed || b.g - a.g)[0];
       if (best) {
-        const width = contactOf(left, sb.lo[2], best.g, twoVises, spacerX).width || hold[1];
+        const width = contactOf(left, sb.lo[2], best.g, twoVises, spacerX, onJaw !== undefined).width || hold[1];
         const loads = ops.map((op) => loadOf(op, mat, sb.lo[0] - spacerX, width, limits).side);
         const worst = ops[loads.indexOf(Math.max(...loads))];
         const d = worst && (worst.kind === 'pocket' || worst.kind === 'finish') ? worst.tool.diameter : 0;
@@ -2418,7 +2491,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
           drilled.clear();
           was.drilled.forEach((v, k) => drilled.set(k, v));
           notes.length = was.notes;
-          return addSetup(si, best.g, lighter ?? cap);
+          return addSetup(si, best.g, lighter ?? cap, onJaw);
         }
       }
     }
@@ -2439,8 +2512,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
     const viseIn = nest
       ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
-      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor };
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
+      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor };
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);

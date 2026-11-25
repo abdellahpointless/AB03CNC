@@ -6,6 +6,8 @@ import { CALE_HEIGHTS } from '../cales';
 
 /** The vise's jaws over its bed (mm): the grip is JAW - parallels. */
 export const JAW = 45;
+/** How deep the jaws' tops are across (mm; you: "depth doesn't matter, imagine it at 20"): what a part resting on them lies on. */
+export const JAW_DEPTH = 20;
 
 /** Stock over the part's top in clamping 1 (Auto and totals), for `extra` mm of Z stock in all. */
 export const blankTop = (extra: number) => (extra >= 4.5 ? Math.max(0.5, Math.min(2, extra - 4)) : Math.max(0, Math.min(2, extra / 2)));

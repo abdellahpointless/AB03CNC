@@ -588,6 +588,41 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
+  it('rests a part by its flange on the jaw tops, its body gripped below, as the shop writes it ("SUR L\'ETAU", you)', () => {
+    // A T: a 40 x 30 flange 8 mm thick over a 14 mm wide body 20 mm deep. Clamping 1 cuts beside the body (its face up);
+    // clamping 2 holds the body between the jaws, the flange resting on their tops (45 mm over the table, no parallels).
+    const body = (j: number) => j >= 8 && j < 22;
+    const tee = columnPart(
+      Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, () => (body(j) ? 0 : 20))),
+      Array.from({ length: 30 }, () => Array.from({ length: 40 }, () => 28)),
+    );
+    const at = { tris: tee, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z-', spin: false }, margins: { lo: [2, 2, 2] as [number, number, number], hi: [2, 2, 2] as [number, number, number] } };
+    const own = camProgram(at);
+    // The flange's underside, 8 mm under clamping 2's top, is offered there.
+    expect(own.setups[1].ledges).toContain(8);
+    const r = camProgram({ ...at, jawRests: [null, 8] });
+    const s = r.setups[1];
+    expect(s.onJaw).toBe(8);
+    expect(s.grip).toBeCloseTo(20, 1);
+    expect(s.notes).toContain("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU");
+    expect(s.notes.some((n) => /UNTERLAGE/.test(n))).toBe(false);
+    // The flange lies on both jaws (8 mm of it on each), along the whole part.
+    expect(Math.min(...s.contact!.rest)).toBeGreaterThan(30);
+    // The table 45 mm under the jaw tops, the body's bottom 25 mm over it.
+    expect(s.vise!.floor).toBeCloseTo(-8 - 45, 1);
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    expect(an.setups[1].cales ?? []).toEqual([]);
+    expect(r.notes.filter((n) => n.key.startsWith('clamp') || n.key.startsWith('jaw') || n.key === 'floorHit')).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.sized).toBe(true);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    // A depth with no flange there is refused, and said.
+    const odd = camProgram({ ...at, jawRests: [null, 12] });
+    expect(odd.setups[1].onJaw).toBeUndefined();
+    expect(odd.notes).toContainEqual({ key: 'jawRefused', setup: 2, cale: 12 });
+  }, 900_000);
+
   it('holds a tall part on the table, no parallels, the note says so and no tool comes within 0.5 mm of the table (you)', () => {
     // 40 x 24 x 50 with a 6 x 6 hole through it, no stock under it: the hole is cut down to the table but never into it.
     const tall = heightPart(Array.from({ length: 24 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 17 && i < 23 && j >= 9 && j < 15 ? 0 : 50))));
