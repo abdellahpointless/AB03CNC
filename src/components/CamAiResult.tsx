@@ -288,6 +288,9 @@ export function ToolCard({
   options,
   toolName,
   onSwap,
+  shop = [],
+  onUse,
+  hits = 0,
   opEdits = {},
   checking = false,
   onOpEdit,
@@ -310,6 +313,12 @@ export function ToolCard({
   options: CamTool[];
   toolName: (o: { type: string; diameter: number; length: number }) => string;
   onSwap: (code: string, standIn: string) => void;
+  /** Every tool of the shop (machine, then tool database), for a swap of any kind (item 6). */
+  shop?: CamTool[];
+  /** This tool's operations given another tool on the same paths (null: back to CAM AI's). */
+  onUse?: (tool: { d: number; l: number; code?: string } | null) => void;
+  /** Hits into the jaws, the stop or the holder in the program as checked now. */
+  hits?: number;
   /** Changes by hand to the operations (by key), the one being applied, and how to apply one (null: undo it). */
   opEdits?: Record<string, OpEdit>;
   checking?: boolean;
@@ -318,7 +327,23 @@ export function ToolCard({
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   const [asking, setAsking] = useState(ask);
   const [pick, setPick] = useState(options[0]?.code ?? '');
+  const [typed, setTyped] = useState<{ d: string; l: string }>({ d: '', l: '' });
   const op = ops[0];
+  // The tool picked to swap in, and what differs from the one it replaces (warned, never refused).
+  const TYPED = '__typed';
+  const chosenTool = pick === TYPED ? null : (options.find((o) => o.code === pick) ?? shop.find((o) => o.code === pick) ?? null);
+  const size = pick === TYPED ? { d: Number(typed.d), l: Number(typed.l) } : chosenTool ? { d: chosenTool.diameter, l: chosenTool.length } : null;
+  const sizeOk = !!size && size.d > 0 && size.d <= 200 && size.l > 0 && size.l <= 400;
+  const kindName = (type: string) => t(`camAi.tools.${type}`, { defaultValue: type });
+  const warns = !size || !sizeOk
+    ? []
+    : [
+        ...(chosenTool && chosenTool.type !== op.type ? [t('camAi.swapPick.kind', { now: kindName(chosenTool.type), was: kindName(op.type) })] : []),
+        ...(size.d > op.diameter + 0.001 ? [t('camAi.swapPick.wider')] : []),
+        ...(size.l < op.length - 0.01 ? [t('camAi.swapPick.shorter')] : []),
+      ];
+  const swappedByHand = ops.some((o) => opEdits[o.key]?.tool);
+  const others = (inMachine: boolean) => shop.filter((x) => x.inMachine === inMachine && x.code !== op.code && !options.some((o) => o.code === x.code));
   const mill = ops.some((o) => MILL_PURPOSES.has(o.purpose));
   const deepest = Math.min(...ops.map((o) => o.zMin));
   const field = (key: 'rpm' | 'feed' | 'ae' | 'ap', k: 's' | 'f' | 'ae' | 'ap', step: number) => (
@@ -404,35 +429,82 @@ export function ToolCard({
         </p>
       )}
       <div className="px-4 pt-4 pb-1 space-y-2">
+      {swappedByHand && hits > 0 && onUse && (
+        <div className="rounded-[8px] border border-[#ef4444]/40 bg-[#ef4444]/10 p-2.5 space-y-2" role="alert">
+          <p className="flex items-start gap-1.5 text-xs text-[var(--text-primary)]">
+            <AlertTriangle size={14} className="shrink-0 mt-px text-[var(--orange-text)]" aria-hidden /> {t('camAi.swapPick.hits')}
+          </p>
+          <button type="button" onClick={() => onUse(null)} disabled={busy || checking} className="btn-primary text-xs min-h-9 px-3 w-full justify-center">
+            {t('camAi.swapPick.camChoice')}
+          </button>
+        </div>
+      )}
       {!asking ? (
         <button type="button" onClick={() => setAsking(true)} disabled={busy} className="btn-secondary w-full justify-center text-[13px] h-9 px-3 flex items-center gap-2">
           <Repeat size={15} /> {t('camAi.swapTool')}
         </button>
-      ) : options.length ? (
+      ) : (
         <div className="space-y-2">
           <label className="block space-y-1">
             <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.standIn')}</span>
             {/* Never wider than the panel: a long tool name is cut in the box, whole in the open list. */}
             <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] truncate cursor-pointer" value={pick} onChange={(e) => setPick(e.target.value)}>
-              {options.map((o) => (
-                <option key={o.code} value={o.code} className="bg-[var(--bg-panel)]">
-                  {toolName(o)}
-                  {o.inMachine ? ` · T${o.number}` : ''}
-                </option>
-              ))}
+              {options.length > 0 && (
+                <optgroup label={t('camAi.swapPick.picks')}>
+                  {options.map((o) => (
+                    <option key={o.code} value={o.code} className="bg-[var(--bg-panel)]">
+                      {toolName(o)}
+                      {o.inMachine ? ` · T${o.number}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {([true, false] as const).map((m) =>
+                others(m).length ? (
+                  <optgroup key={String(m)} label={t(m ? 'camAi.swapPick.machine' : 'camAi.swapPick.db')}>
+                    {others(m).map((o) => (
+                      <option key={o.code} value={o.code} className="bg-[var(--bg-panel)]">
+                        {toolName(o)}
+                        {o.inMachine ? ` · T${o.number}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null,
+              )}
+              {onUse && <option value={TYPED} className="bg-[var(--bg-panel)]">{t('camAi.swapPick.typed')}</option>}
             </select>
           </label>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => onSwap(op.code, pick)} disabled={busy} className="btn-primary text-xs min-h-9 px-3 flex-1 justify-center">
-              {t('camAi.again')}
-            </button>
+          {pick === TYPED && (
+            <div className="grid grid-cols-2 gap-2">
+              {(['d', 'l'] as const).map((k) => (
+                <label key={k} className="flex flex-col gap-1 min-w-0 text-xs text-[var(--text-secondary)]">
+                  {t(`camAi.swapPick.${k}`)}
+                  <input className="aurora-input w-full min-w-0 h-8 py-0 text-[13px] px-2 tabular-nums" type="number" min={0} step={0.1} inputMode="decimal" value={typed[k]} onChange={(e) => setTyped((v) => ({ ...v, [k]: e.target.value }))} />
+                </label>
+              ))}
+            </div>
+          )}
+          {warns.map((w) => (
+            <p key={w} className="flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="status">
+              <AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden /> {w}
+            </p>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            {onUse && (
+              <button type="button" onClick={() => { if (size && sizeOk) { onUse({ d: size.d, l: size.l, ...(chosenTool ? { code: chosenTool.code } : {}) }); setAsking(false); } }} disabled={busy || checking || !sizeOk} className="btn-primary text-xs min-h-9 px-3 flex-1 justify-center">
+                {t('camAi.swapPick.use')}
+              </button>
+            )}
+            {options.some((o) => o.code === pick) && (
+              <button type="button" onClick={() => onSwap(op.code, pick)} disabled={busy} className="btn-secondary text-xs min-h-9 px-3 flex-1 justify-center">
+                {t('camAi.again')}
+              </button>
+            )}
             <button type="button" onClick={() => setAsking(false)} className="btn-secondary text-xs min-h-9 px-3">
               {t('camAi.cancel')}
             </button>
           </div>
         </div>
-      ) : (
-        <p className="text-xs text-[var(--orange-text)]">{t('camAi.noStandIn')}</p>
       )}
       </div>
     </div>

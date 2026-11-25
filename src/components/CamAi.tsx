@@ -13,7 +13,7 @@ import { speedsFor } from '../lib/toolpath';
 import { DEFAULT_LIMITS } from '../lib/cam/limits';
 import { coolingOf, engineMachineId, isLockedMachine, materialNeed } from '../regions';
 import { forMachine } from '../lib/cam/export';
-import { alternatives, CAM_MATERIALS, FAMILY, type CamMaterial } from '../lib/cam/tools';
+import { alternatives, CAM_MATERIALS, catalog, FAMILY, type CamMaterial } from '../lib/cam/tools';
 import { PART_TYPES, type PartType } from '../lib/cam/partType';
 import { renderViews } from '../lib/cam/thumbs';
 import type { CamMessage, CamRequest, CamSummary, Prepared } from '../lib/cam/cam.worker';
@@ -132,6 +132,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [skip, setSkip] = useState<string[]>([]);
   const [skipDraft, setSkipDraft] = useState<string[]>([]);
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
+  // The last change by hand until it is kept: undone, or the program made again around it (item 7).
+  const [change, setChange] = useState<{ label: string; undo: () => void; again?: () => void } | null>(null);
   // A tool's row asked to be deleted (its clamping, its code): confirmed in a dialog, then made again without it.
   const [dropAsk, setDropAsk] = useState<{ i: number; code: string; tool: number } | null>(null);
   // The removed operations' paths, from the program before (shown faded), and the one picked in the list.
@@ -526,6 +528,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const dropTool = (i: number, code: string) => {
     const ops = result?.setups[i]?.ops.filter((o) => o.code === code) ?? [];
     if (!ops.length) return;
+    const [wasSkip, wasDraft] = [skip, skipDraft];
+    setChange({
+      label: t('camAi.bar.deleted', { tool: ops[0].tool, n: i + 1 }),
+      undo: () => {
+        setSkipDraft(wasDraft);
+        setSkip(wasSkip);
+        generate(swap, draft, wasSkip);
+      },
+    });
     const next = [...new Set([...skipDraft, ...ops.map((o) => o.key)])];
     setSkipLabels((l) => ({ ...l, ...Object.fromEntries(ops.map((o) => [o.key, `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})`])) }));
     setSkipDraft(next);
@@ -533,6 +544,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setCuts(draft);
     setSel({ kind: 'setup', i });
     generate(swap, draft, next);
+  };
+  // Changes by hand, checked again on the plan the worker kept (the operation `key` stays picked).
+  const applyEdits = (next: Record<string, OpEdit>, key: string) => {
+    setOpEdits(next);
+    setEditsDropped(false);
+    setAccepted(false);
+    setChecking(true);
+    following.current = key;
+    worker.current?.postMessage({ type: 'edit', edits: next });
   };
   // The browser's setups: the two picked ones before a program, the program's after.
   const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];
@@ -776,15 +796,44 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     opEdits={opEdits}
                     checking={checking}
                     onOpEdit={(key, e) => {
+                      const was = opEdits;
                       const next = { ...opEdits };
                       if (e) next[key] = e;
                       else delete next[key];
-                      setOpEdits(next);
-                      setEditsDropped(false);
-                      setAccepted(false);
-                      setChecking(true);
-                      following.current = key;
-                      worker.current?.postMessage({ type: 'edit', edits: next });
+                      applyEdits(next, key);
+                      setChange({ label: t('camAi.bar.edited'), undo: () => applyEdits(was, key), again: recalc });
+                    }}
+                    shop={catalog(templatesFor, tools, { exclude: swap.exclude, toolDb: toolDb.db })}
+                    hits={result.collisions}
+                    onUse={(tool) => {
+                      const was = opEdits;
+                      const next = { ...opEdits };
+                      for (const o of ops) {
+                        const e: OpEdit = { ...next[o.key] };
+                        delete e.tool;
+                        if (tool) e.tool = tool;
+                        if (Object.keys(e).length) next[o.key] = e;
+                        else delete next[o.key];
+                      }
+                      applyEdits(next, ops[0].key);
+                      const code = sel.code;
+                      setChange(
+                        tool
+                          ? {
+                              label: t('camAi.bar.swapped', { tool: ops[0].tool }),
+                              undo: () => applyEdits(was, ops[0].key),
+                              // Made again around it: CAM AI plans with that tool preferred and the old one left out.
+                              again: tool.code
+                                ? () => {
+                                    const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, tool.code!] };
+                                    setSwap(nextSwap);
+                                    setChange(null);
+                                    generate(nextSwap);
+                                  }
+                                : recalc,
+                            }
+                          : null,
+                      );
                     }}
                     ops={ops}
                     draft={draft[sel.code] ?? {}}
@@ -798,9 +847,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     options={alternatives(templatesFor, tools, sel.code, swap.exclude, toolDb.db)}
                     toolName={toolName}
                     onSwap={(code, standIn) => {
+                      const wasSwap = swap;
                       const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
                       setSwap(nextSwap);
                       generate(nextSwap);
+                      setChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => { setSwap(wasSwap); generate(wasSwap); } });
                     }}
                   />
                   <p className="px-4 pb-4 text-xs text-[var(--text-secondary)]">{t('camAi.everywhere')}</p>
@@ -1170,6 +1221,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </div>
           )}
           <div className="relative flex-1 min-h-0">
+            {change && result && (
+              <div role="status" className="absolute z-20 left-1/2 -translate-x-1/2 top-16 max-w-[calc(100%-2rem)] flex flex-wrap items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-[10px] border border-[var(--blue-500)]/40 bg-[#0E1526]/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+                <span className="text-[13px] text-[var(--text-primary)]" title={t('camAi.bar.hint')}>{change.label}</span>
+                <button type="button" className="btn-secondary h-8 px-3 text-xs" disabled={busy || checking} onClick={() => { const c = change; setChange(null); c.undo(); }}>{t('camAi.bar.undo')}</button>
+                {change.again && <button type="button" className="btn-secondary h-8 px-3 text-xs" disabled={busy || checking} onClick={() => { const c = change; setChange(null); c.again!(); }}>{t('camAi.bar.again')}</button>}
+                <button type="button" className="btn-primary h-8 px-3 text-xs" onClick={() => setChange(null)}>{t('camAi.bar.keep')}</button>
+              </div>
+            )}
             {prep && chosen ? (
               result && !clampMode ? (
                 <Suspense fallback={null}>
