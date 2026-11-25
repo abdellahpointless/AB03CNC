@@ -472,6 +472,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [dialog, setDialog] = useState(false);
   // The shop's tool database (item 20): loaded once, fresh again each time its dialog opens.
   const [toolDb, setToolDb] = useState<StoredToolDb>({ db: {}, by: {} });
+  // The tool database as it is now, for changes by hand made after the program (a tool added since).
+  const toolDbRef = useRef(toolDb);
+  toolDbRef.current = toolDb;
   const [dbOpen, setDbOpen] = useState(false);
   useEffect(() => {
     loadToolDb().then(setToolDb, () => {});
@@ -571,7 +574,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setAccepted(false);
     setChecking(true);
     following.current = key;
-    worker.current?.postMessage({ type: 'edit', edits: next });
+    worker.current?.postMessage({ type: 'edit', edits: next, toolDb: toolDbRef.current.db });
   };
   // The browser's setups: the two picked ones before a program, the program's after.
   const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];

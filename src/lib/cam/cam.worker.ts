@@ -25,7 +25,8 @@ import { partTypeOf, type PartType } from './partType';
 export type CamRequest = Omit<CamInput, 'tris' | 'live'> & { model: { name: string; bytes: Uint8Array } };
 export type PrepareRequest = { type: 'prepare'; model: { name: string; bytes: Uint8Array } };
 /** The last program made, its operations changed by hand (by operation key): answered with 'edited'. */
-export type EditRequest = { type: 'edit'; edits: Record<string, OpEdit> };
+/** toolDb: the shop's tool database as it is now (a tool added since the make can be swapped in). */
+export type EditRequest = { type: 'edit'; edits: Record<string, OpEdit>; toolDb?: CamRequest['toolDb'] };
 
 export interface Prepared {
   /** From the PDF's title block (null for an STL or no title). */
@@ -132,7 +133,7 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest | EditReques
     if (!last) return post({ type: 'error', error: 'failed' });
     try {
       // Always from the program as made: the edits are the whole set the page has now.
-      const r = editProgram(last.input, last.r, e.data.edits);
+      const r = editProgram(e.data.toolDb ? { ...last.input, toolDb: e.data.toolDb } : last.input, last.r, e.data.edits);
       return post({ type: 'edited', result: summaryOf(r, last.input) });
     } catch (err) {
       console.error(err);
