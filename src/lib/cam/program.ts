@@ -75,6 +75,11 @@ export interface CamInput {
    */
   clamps?: (number | null)[];
   /**
+   * The designer's spacer between the stop and the part (Beta 2), by clamping: 15 or 50 mm, the shop's two ("15 MM
+   * ZWISCHENLAGE IN X-"; docs/knowledge V2), the part that much further from the stop; anything else is refused (stopRefused).
+   */
+  stops?: (number | null)[];
+  /**
    * The walls the operator picked to finish (shop rule: finishing only where it is asked for), as triangles of
    * `tris` (index k: the 9 numbers from 9k): the roughing leaves ALLOW on those and one pass finishes them; the
    * rest is roughed to size. None: no finishing pass. A seal cage's thin walls (under 3 mm) are finished too, gently.
@@ -1746,21 +1751,26 @@ function planFor(input: CamInput, vertical: number): CamResult {
         }
       : { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
     const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
+    // The designer's spacer at the stop: the part that much off it (only in the vise; the shop's 15 or 50 mm).
+    const stopAsked = input.stops?.[setups.length] ?? undefined;
+    const spacerX = !nested && (stopAsked === 15 || stopAsked === 50) ? stopAsked : 0;
+    // Pushed on every try: a try planned again resets the notes to before it.
+    if (stopAsked !== undefined && !spacerX) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: stopAsked });
     const cx = (held.lo[0] + held.hi[0]) / 2;
     const cy = (held.lo[1] + held.hi[1]) / 2;
     // In the nest the part is the nest's wall off the stop and the fixed jaw, and on its floor.
     const shift: Vec = nested
       ? [STOP_X + NEST.wall + 2 * NEST.clearance + hold[0] / 2 - cx, STOP_Y - NEST.wall - hold[1] / 2 - cy, TABLE_Z - (floor - NEST.floor)]
-      : [STOP_X + hold[0] / 2 - cx, STOP_Y - hold[1] / 2 - cy, TABLE_Z - floor];
+      : [STOP_X + spacerX + hold[0] / 2 - cx, STOP_Y - hold[1] / 2 - cy, TABLE_Z - floor];
     const turn = prevR ? turnPhrase(mul(R, transpose(prevR))) : '';
     const sizes = `${mm(hold[0])} IN X UND ${mm(hold[1])} IN Y`;
     // "Z+ IN 2MM": the raw top that far above Z0 (what the facing takes off), as the shop writes it.
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
     const setupNotes = nested
       ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
-      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`];
-    // Too long for one vise: both, as the checker reads it back (setups.ts).
-    const twoVises = hold[0] > VISE.width + OVERHANG;
+      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`, ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
+    // Too long for one vise (with the spacer at the stop): both, as the checker reads it back (setups.ts).
+    const twoVises = hold[0] + spacerX > VISE.width + OVERHANG;
     if (!nested && twoVises) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
     const ops: CamOp[] = [];
     const clear = Math.max(sb.hi[2], 0) + 2;
@@ -1771,7 +1781,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // second vise's beyond its gap, as the check takes them (viseSpans); kept off 1 mm past their ends, to spare.
     // shortcut: only the end mills keep off them; a drill or graver there is left to the check, which
     // locks the program (none in the reference library); keep those off too if one ever is.
-    const spans = viseSpans({ jawX: [held.lo[0] - STOP_PLATE, held.lo[0] - STOP_PLATE + VISE.width], twoVises });
+    // The spacer at the stop stands where the stop would (its face kept off like the stop's), the vise that much further left.
+    const spans = viseSpans({ jawX: [held.lo[0] - spacerX - STOP_PLATE, held.lo[0] - spacerX - STOP_PLATE + VISE.width], twoVises });
     // A spacer in the moving jaw (Y-, "15 MM ZWISCHENLAGE IN Y-") moves that jaw out by its thickness: the spacer
     // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
     let spacerY = 0;

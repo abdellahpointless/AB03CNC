@@ -337,6 +337,7 @@ const cam = {
       clampAsk: 'Clamping {{setup}}: no parallels (the part on the jaws’ step) waits for the shop’s answer on what the part rests on: CAM AI used its own parallels',
       clampSeam: 'Clamping {{setup}}: on {{cale}} mm parallels the outside cut ends within 0.5 mm of the part’s bottom, so a small step may show where the next clamping’s cut meets it',
       clampNest: 'Clamping {{setup}} sits in the POM nest: the {{cale}} mm parallels chosen do not apply there',
+      stopRefused: 'Clamping {{setup}}: no {{cale}} mm spacer at the stop (the shop has 15 and 50 mm; none in the POM nest): the part against the stop',
     },
     view: 'Open in the toolpath viewer',
     download: 'Download',

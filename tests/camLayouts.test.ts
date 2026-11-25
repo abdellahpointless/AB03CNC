@@ -547,6 +547,22 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(sizeFits(box, [40, 34, 12])).toEqual([]);
   }, 300_000);
 
+  it('pushes the part off the stop by the spacer asked for (15 or 50 mm, as the shop writes it), the vise checked where it stands', () => {
+    const own = camProgram(base);
+    const r = camProgram({ ...base, stops: [15] });
+    expect(r.code).toContain('15 MM ZWISCHENLAGE IN X-');
+    expect(r.setups[0].shift[0]).toBeCloseTo(own.setups[0].shift[0] + 15, 6);
+    expect(r.notes.filter((n) => n.key.startsWith('clamp') || n.key.startsWith('stop'))).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.sized).toBe(true);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    // Only the shop's two: anything else is refused, and said.
+    const odd = camProgram({ ...base, stops: [20] });
+    expect(odd.code).not.toContain('ZWISCHENLAGE IN X-');
+    expect(odd.notes).toContainEqual({ key: 'stopRefused', setup: 1, cale: 20 });
+  }, 300_000);
+
   it('never uses parallels that cannot hold the part, nor none until the shop says what it rests on: it says so', () => {
     // Clamping 2 holds about 17 mm: 25 mm parallels would leave the jaws gripping 20 mm, all of it.
     const r = camProgram({ ...base, clamps: [0, 25] });
