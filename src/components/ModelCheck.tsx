@@ -9,6 +9,7 @@ import { chime } from '../lib/alarm';
 import { api } from '../lib/api';
 import { partLessonOf } from '../lib/lessons';
 import { downloadText } from '../lib/download';
+import { simulatorProgramFor } from '../lib/gcodeProcessor';
 import { useT } from '../i18n';
 import { fmtNumber } from '../i18n/format';
 
@@ -39,6 +40,7 @@ export default function ModelCheck({
   onBusy,
   record = true,
   canExport = true,
+  engineId,
 }: {
   model: { name: string; bytes: Uint8Array };
   state: ModelState | null;
@@ -58,6 +60,8 @@ export default function ModelCheck({
    * CAM AI's own Download and Send, as the machine gets it and once every check passed.
    */
   canExport?: boolean;
+  /** The machine the program is for (regions.ts engineMachineId): Copy and Download give it what it may run. */
+  engineId?: string;
   /** Put the corrected comments into the program in the editor; false when they could not be placed. */
   onUseFix?: (changes: TurnFix['changes']) => boolean;
   /** True while the part is compared with the model and its turns corrected: the 3D view stays covered. */
@@ -212,14 +216,14 @@ export default function ModelCheck({
               {canExport && <div className="flex flex-wrap gap-1.5">
                 <button
                   onClick={() => {
-                    void navigator.clipboard?.writeText(corrected.code).then(() => setCopied(true));
+                    void navigator.clipboard?.writeText(simulatorProgramFor(corrected.code, engineId)).then(() => setCopied(true));
                   }}
                   className="btn-secondary text-xs py-1 px-2.5"
                 >
                   <Copy size={12} />
                   {copied ? t('toolpath.model.copied') : t('toolpath.model.copy')}
                 </button>
-                <button onClick={() => downloadText(fileName, corrected.code)} className="btn-secondary text-xs py-1 px-2.5">
+                <button onClick={() => downloadText(fileName, simulatorProgramFor(corrected.code, engineId))} className="btn-secondary text-xs py-1 px-2.5">
                   <Download size={12} />
                   {t('toolpath.model.download')}
                 </button>

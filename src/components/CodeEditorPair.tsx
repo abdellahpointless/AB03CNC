@@ -106,6 +106,8 @@ interface CodeEditorPairProps {
   machineBrand?: string;
   /** FANUC-2 runs HAAS code: the HAAS → FANUC button leaves the program as it is. */
   haasOnly?: boolean;
+  /** The machine the program is for (regions.ts engineMachineId). */
+  engineId?: string;
   /** The output with corrected comments (and the source they come from): it stays the current output. */
   onOutputCorrected?: (output: string, source: string) => void;
 }
@@ -282,6 +284,7 @@ export default function CodeEditorPair({
   onSafetyOverride,
   machineBrand,
   haasOnly = false,
+  engineId,
   onOutputCorrected,
 }: CodeEditorPairProps) {
   const [showToolpath, setShowToolpath] = useState(false);
@@ -940,6 +943,7 @@ export default function CodeEditorPair({
             code={outputCode && !isOutputStale ? outputCode : sourceCode}
             title={fileName || 'program'}
             brand={machineBrand}
+            engineId={engineId}
             onClose={() => {
               setShowToolpath(false);
               // The jaw height may have changed in the viewer.

@@ -79,6 +79,7 @@ export default function ToolpathViewer({
   noRecord = false,
   start,
   atSetup,
+  engineId,
 }: {
   code: string;
   title: string;
@@ -99,6 +100,8 @@ export default function ToolpathViewer({
   start?: 'weak' | 'nx';
   /** Opens at the start of this setup (0: the first), as the part stands when it is clamped. */
   atSetup?: number;
+  /** The remapper's machine (regions.ts engineMachineId): the corrected program it hands out follows its limits. */
+  engineId?: string;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -1138,6 +1141,7 @@ export default function ToolpathViewer({
                   state={modelState}
                   code={code}
                   brand={brand}
+                  engineId={engineId}
                   fileName={title}
                   path={path}
                   using={!!fixed}
