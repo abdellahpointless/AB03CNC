@@ -24,6 +24,7 @@ import type { Measurement } from '../lib/measure3d';
 import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick } from './CamPartView';
+import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import type { CutEdit } from '../lib/cam/tools';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -51,6 +52,19 @@ const readSideStock = () => {
 
 /** Excess given along the vise's X, Y, Z, back on the model's own axes (as layouts.ts: toModelAxes). */
 const toModelAxes = (R: Mat3, v: number[]) => [0, 1, 2].map((k) => v[[0, 1, 2].find((j) => R[j * 3 + k] !== 0)!]);
+/** Stock on each side of clamping 1 (lo: X-, Y-, Z-; hi: X+, Y+, Z+) as the model's sides (as layouts.ts: toModelSides). */
+const toModelSides = (R: Mat3, lo: number[], hi: number[]) => {
+  const j = [0, 1, 2].map((k) => [0, 1, 2].find((i) => R[i * 3 + k] !== 0)!);
+  const up = j.map((i, k) => R[i * 3 + k] > 0);
+  return { lo: j.map((i, k) => (up[k] ? lo : hi)[i]) as Vec3, hi: j.map((i, k) => (up[k] ? hi : lo)[i]) as Vec3 };
+};
+type Vec3 = [number, number, number];
+/** A side of the model ('X-', 'Z+', ...) as a side of clamping 1, 0..5 in the order X-, X+, Y-, Y+, Z-, Z+. */
+const viseSide = (R: Mat3, side: string) => {
+  const k = 'XYZ'.indexOf(side[0]);
+  const j = [0, 1, 2].find((i) => R[i * 3 + k] !== 0)!;
+  return 2 * j + (R[j * 3 + k] * (side[1] === '-' ? -1 : 1) > 0 ? 1 : 0);
+};
 
 /**
  * CAM AI, step by step: the part's 3D model; its name and type (from the PDF, the operator
@@ -84,11 +98,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [second, setSecond] = useState<{ side: string; face?: string } | null>(null);
   const [locked2, setLocked2] = useState(false);
   const [pickNote, setPickNote] = useState<'' | 'noFit' | 'same'>('');
-  // The raw block: automatic (+4, +4, +7), or typed as totals or as an allowance per side.
+  // The raw block: automatic (+4, +4, +7), or typed as totals (centred) or side by side (X-, X+, Y-, Y+, Z-, Z+ of clamping 1).
   const [autoStock, setAutoStock] = useState(true);
   const [stockMode, setStockMode] = useState<'total' | 'side'>('total');
   const [totals, setTotals] = useState(['', '', '']);
-  const [perSide, setPerSide] = useState(['2', '2', '3.5']);
+  const [sides, setSides] = useState(['2', '2', '2', '2', '5', '2']);
   const [live, setLive] = useState<Live>(NO_LIVE);
   const [cuts, setCuts] = useState<Record<string, CutEdit>>({});
   // Operations the operator removed: in the program already (skip), and marked since (skipDraft, for the next time it is made).
@@ -121,6 +135,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const wrongCooling = !!need && !!cooling && need !== cooling;
   const busy = run.state === 'busy' || run.state === 'preparing';
   const chosen = prep?.layouts[layout];
+  // A top plate's white face as a side of clamping 1 (0..5 as X-, X+, Y-, Y+, Z-, Z+): no stock on it, ever.
+  const whiteAt = chosen && partType === 'topPlate' && white ? viseSide(chosen.R, white) : -1;
+  const sideValue = (i: number) => (i === whiteAt ? 0 : Number(sides[i]));
   // What is added to the part in the vise's X, Y, Z (centred: half on each side).
   const excess: number[] | null = !chosen
     ? null
@@ -128,9 +145,12 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       ? AUTO_EXCESS
       : stockMode === 'total'
         ? totals.map((v, k) => Number(v) - chosen.size[k])
-        : perSide.map((v) => 2 * Number(v));
+        : [0, 1, 2].map((k) => sideValue(k * 2) + sideValue(k * 2 + 1));
   const excessOk = !!excess && excess.every((v) => Number.isFinite(v) && v >= 0 && v <= 200);
   const raw = prep && chosen && excess && excessOk ? (toModelAxes(chosen.R, excess).map((e, k) => prep.size[k] + e) as [number, number, number]) : null;
+  // The stock side by side, as the model's sides (the planner's margins), and the blank it makes (model frame, centred on the part).
+  const margins = prep && chosen && raw && !autoStock && stockMode === 'side' ? toModelSides(chosen.R, [0, 2, 4].map(sideValue), [1, 3, 5].map(sideValue)) : undefined;
+  const sideBlank = prep && margins ? { lo: prep.size.map((s, k) => -s / 2 - margins.lo[k]), hi: prep.size.map((s, k) => s / 2 + margins.hi[k]) } : null;
   const side2 = second?.side ?? (chosen ? opposite(chosen.side) : '');
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
@@ -213,6 +233,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       name: name.slice(0, 40),
       author: user?.username,
       raw,
+      margins,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },
       sideStock: sideStock || undefined,
@@ -506,7 +527,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 tris={prep.tris}
                 R={chosen.R}
                 raw={raw}
-                blank={result?.blank}
+                blank={result?.blank ?? sideBlank}
                 picks={result || busy ? [] : picks}
                 picking={result ? null : picking}
                 onPick={pickFace}
@@ -625,16 +646,19 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                         </button>
                       ))}
                     </div>
-                    {(['X', 'Y', 'Z'] as const).map((axis, k) => {
-                      const list = stockMode === 'total' ? totals : perSide;
-                      const set = stockMode === 'total' ? setTotals : setPerSide;
-                      return (
+                    {stockMode === 'total' ? (
+                      (['X', 'Y', 'Z'] as const).map((axis, k) => (
                         <label key={axis} className="grid grid-cols-[1fr_7rem] items-center gap-2">
-                          <span className="text-[var(--text-secondary)]">{t(stockMode === 'total' ? 'camAi.stock.totalAxis' : 'camAi.stock.sideAxis', { axis })}</span>
-                          <input className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums" type="number" min={0} step={0.5} inputMode="decimal" value={list[k]} onChange={(e) => choose(() => set(list.map((v, i) => (i === k ? e.target.value : v))))} />
+                          <span className="text-[var(--text-secondary)]">{t('camAi.stock.totalAxis', { axis })}</span>
+                          <input className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums" type="number" min={0} step={0.5} inputMode="decimal" value={totals[k]} onChange={(e) => choose(() => setTotals(totals.map((v, i) => (i === k ? e.target.value : v))))} />
                         </label>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <>
+                        <CamStockBox size={chosen.size} values={sides.map((v, i) => (i === whiteAt ? '0' : v))} locked={whiteAt} onChange={(i, v) => choose(() => setSides(sides.map((x, k) => (k === i ? v : x))))} />
+                        {whiteAt >= 0 && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.whiteNone', { side: STOCK_SIDES[whiteAt] })}</p>}
+                      </>
+                    )}
                     {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t('camAi.stock.tooSmall')}</p>}
                   </fieldset>
                 )}
@@ -648,7 +672,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     ))}
                   </dl>
                 )}
-                {excess && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                {excess && !margins && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
                 {whiteFields()}
                 {finishFields()}
               </>
