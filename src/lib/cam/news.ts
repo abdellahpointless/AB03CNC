@@ -6,6 +6,31 @@ import type { Release } from '../whatsNew';
  */
 export const CAM_RELEASES: Release[] = [
   {
+    id: '2026-11-25-cam-edits',
+    date: '2026-11-25',
+    feature: 'lab',
+    en: {
+      title: 'CAM AI: change a made program by hand, see each tool at work',
+      items: [
+        'Clicking a tool in a made program shows CAM AI’s own simulation at that tool, beside its card.',
+        'An operation can be moved (X, Y, Z) or taken deeper by hand: the whole program is checked again. Anything that would hit the vise, a parallel, a holder or the vise floor keeps it locked; a small difference from the model can be accepted with the "I accept this part as it is" tick.',
+        'A tool can be changed by hand (Ø and length): its path stays, its speeds follow the new Ø and its feed is never faster. Such a tool is in no machine, so Download stays locked: send the program to the remapper to choose a machine tool for it.',
+        'Clamping 1 can have a 15 mm or 50 mm spacer at the stop, pushing the part to the right.',
+        'A later clamping shows as it really stands: the stock the clampings before it left, the finished part over it, beside its parallels.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: yapılmış programı elle değiştirin, her takımı çalışırken görün',
+      items: [
+        'Yapılmış bir programda bir takıma tıklamak, CAM AI’ın kendi simülasyonunu o takımda, kartının yanında gösterir.',
+        'Bir işlem elle kaydırılabilir (X, Y, Z) veya daha derine alınabilir: programın tamamı yeniden kontrol edilir. Mengeneye, bir paralele, bir tutucuya veya mengene tabanına çarpacak her şey kilidi korur; modelden küçük bir fark "Bu parçayı olduğu gibi kabul ediyorum" işaretiyle kabul edilebilir.',
+        'Bir takım elle değiştirilebilir (Ø ve boy): yolu kalır, devirleri yeni Ø’ye göre ayarlanır ve ilerlemesi asla daha hızlı olmaz. Böyle bir takım hiçbir makinede yoktur, bu yüzden İndir kilitli kalır: ona bir makine takımı seçmek için programı remapper’a gönderin.',
+        '1. bağlamada dayamaya 15 mm veya 50 mm ara parça konabilir; parçayı sağa iter.',
+        'Sonraki bir bağlama gerçekte durduğu gibi görünür: önceki bağlamaların bıraktığı ham, üzerinde bitmiş parça, paralellerinin yanında.',
+      ],
+    },
+  },
+  {
     id: '2026-11-25-cam-beta2',
     date: '2026-11-25',
     feature: 'lab',
