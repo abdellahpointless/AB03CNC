@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { layouts, toModelAxes } from '../src/lib/cam/layouts';
-import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
+import { layouts, toModelAxes, toModelSides } from '../src/lib/cam/layouts';
+import { blankTop, camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE, VISE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
@@ -451,5 +451,33 @@ describe('which plan wins', () => {
   it('between as many clampings, the faster plan, however close', () => {
     expect(cheaper({ minutes: 8.6, clampings: 4 }, { minutes: 8.8, clampings: 4 })).toBe(true);
     expect(cheaper({ minutes: 8.8, clampings: 4 }, { minutes: 8.6, clampings: 4 })).toBe(false);
+  });
+});
+
+describe('the blank, side by side (you, Beta 2)', () => {
+  it('turns the stock on each side of clamping 1 into the model\'s sides, turned over and a quarter turned', () => {
+    // Clamping 1 with the model's Z- up (turned over about X): its Z+ is the model's Z-, its Y+ the model's Y-.
+    const over = [1, 0, 0, 0, -1, 0, 0, 0, -1] as const;
+    expect(toModelSides([...over], [1, 2, 3], [4, 5, 6])).toEqual({ lo: [1, 5, 6], hi: [4, 2, 3] });
+    // A quarter turn about Z: clamping 1's X is the model's Y, its Y the model's X-.
+    const quarter = [0, 1, 0, -1, 0, 0, 0, 0, 1] as const;
+    expect(toModelSides([...quarter], [1, 2, 3], [4, 5, 6])).toEqual({ lo: [5, 1, 3], hi: [2, 4, 6] });
+  });
+
+  it('places the blank as the designer gives it, off centre, through both clampings', () => {
+    // 40 x 30 x 12: X- 1, X+ 9, Y 2 each side, 2 over the top, 5 under.
+    const margins = { lo: [1, 2, 5] as [number, number, number], hi: [9, 2, 2] as [number, number, number] };
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, orient: { side: 'Z+', spin: false }, margins });
+    expect(r.raw).toEqual([50, 34, 19]);
+    expect(r.blank).toEqual({ lo: [-21, -17, -11], hi: [29, 17, 8] });
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
+  it('gives the page its own rule for the stock over the top (Auto)', () => {
+    expect(blankTop(7)).toBe(2);
+    expect(blankTop(5)).toBe(1);
+    expect(blankTop(3)).toBe(1.5);
   });
 });

@@ -65,6 +65,8 @@ export interface CamInput {
   reserve?: { side: string; tris: number[] }[];
   /** The blank centred on the part (camProgram's fallback when no plan with it 2 mm over the part passes). */
   centred?: boolean;
+  /** The designer's blank (Beta 2): this much stock on each side of the part (model frame, centred on its box), as given. */
+  margins?: { lo: Vec; hi: Vec };
   /**
    * The walls the operator picked to finish (shop rule: finishing only where it is asked for), as triangles of
    * `tris` (index k: the 9 numbers from 9k): the roughing leaves ALLOW on those and one pass finishes them; the
@@ -259,6 +261,12 @@ function grown(occ: Uint8Array, [nx, ny, nz]: number[]): Uint8Array {
       }
   return out;
 }
+
+/**
+ * The stock over the part on the first clamping's side, of `extra` mm of Z stock: 2 mm when 4 mm or more stay under it
+ * (3 gripped, the outline 0.5 under the part and 0.5 over the jaws), else half of it, 2 at most (the shop: 2-3 mm).
+ */
+export const blankTop = (extra: number) => (extra >= 4.5 ? Math.max(0.5, Math.min(2, extra - 4)) : Math.max(0, Math.min(2, extra / 2)));
 
 /**
  * The cale under the part for the grip wanted (the outside is cut down to 0.5 mm above the jaws):
@@ -1404,7 +1412,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   plans(input);
   // None passes with the blank 2 mm over the part (e.g. the outside cut through first leaves the next clamping
   // only a narrow face to hold, where the shop rests the part on a ledge): planned again with it centred.
-  if (!good(best!)) plans({ ...input, centred: true });
+  if (!good(best!) && !input.margins) plans({ ...input, centred: true });
   // You: a face finished in two clampings shows a step where they meet. Planned again with each such face the last
   // clamping reaches whole left to it (the others keep RESERVE off it); kept when it passes, splits less and takes at
   // most a tenth longer.
@@ -1505,9 +1513,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // Raw: the thinnest side gets the thickness allowance, the others the side allowance.
   const order = [0, 1, 2].sort((a, b) => size[a] - size[b]);
   const allow = knowledge.allowance ?? [10, 4, 4];
-  const raw: Vec = input.raw ?? (size.map((s, k) => s + allow[order.indexOf(k)]) as Vec);
-  const rawLo = raw.map((v) => -v / 2) as Vec;
-  const rawHi = raw.map((v) => v / 2) as Vec;
+  // The designer's blank: never any stock on a top plate's white face (it is never faced).
+  const white = SIDES.find((x) => x.name === input.white);
+  const margins = input.margins && {
+    lo: input.margins.lo.map((v, k) => (white && white.d[k] < 0 ? 0 : v)) as Vec,
+    hi: input.margins.hi.map((v, k) => (white && white.d[k] > 0 ? 0 : v)) as Vec,
+  };
+  const raw: Vec = margins ? (size.map((s, k) => s + margins.lo[k] + margins.hi[k]) as Vec) : (input.raw ?? (size.map((s, k) => s + allow[order.indexOf(k)]) as Vec));
+  const rawLo = (margins ? size.map((s, k) => -s / 2 - margins.lo[k]) : raw.map((v) => -v / 2)) as Vec;
+  const rawHi = (margins ? size.map((s, k) => s / 2 + margins.hi[k]) : raw.map((v) => v / 2)) as Vec;
 
   // Sides: the two faces of the chosen height, then whichever reaches most of what is left.
   // The operator's layout: its side first (then the opposite one), both turned as chosen.
@@ -1535,13 +1549,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // left the jaws only the foot of the part's wall).
   // You: the outline is cut whole in the first clamping, so 4 mm under the part where the Z stock allows it (3 gripped,
   // the outline 0.5 under the part and 0.5 over the jaws) and 0.5 to 2 over it; else half of it, 2 at most.
-  const extra = raw[thin] - size[thin];
-  const top0 = extra >= 4.5 ? Math.max(0.5, Math.min(2, extra - 4)) : Math.max(0, Math.min(2, extra / 2));
-  if (!input.centred && SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
-  else if (!input.centred) [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
+  const top0 = blankTop(raw[thin] - size[thin]);
+  if (!margins && !input.centred && SIDES[pair[0]].d[thin] > 0) [rawLo[thin], rawHi[thin]] = [size[thin] / 2 + top0 - raw[thin], size[thin] / 2 + top0];
+  else if (!margins && !input.centred) [rawLo[thin], rawHi[thin]] = [-size[thin] / 2 - top0, -size[thin] / 2 - top0 + raw[thin]];
   // A top plate's white face (shop rule): the blank flush with it, so nothing faces it; the stock on the other side.
-  const white = SIDES.find((x) => x.name === input.white);
-  if (white) {
+  if (white && !margins) {
     const k = white.d.findIndex((v) => v !== 0);
     [rawLo[k], rawHi[k]] = white.d[k] > 0 ? [size[k] / 2 - raw[k], size[k] / 2] : [-size[k] / 2, -size[k] / 2 + raw[k]];
   }
