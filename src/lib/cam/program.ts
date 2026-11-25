@@ -1611,7 +1611,10 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     }
     // The program as it goes out, once more on the finer grid: its cuts into the part count as gouges too.
     check = { ...check, pieces: [...check.pieces, ...fineCuts(input.tris, code, input.brand, input.speeds, r.pose)] };
-    return { ...r, code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
+    // A side the designer asked for that got no clamping (nothing left to cut there): said, never silently.
+    const made = new Set(r.setups.map((x) => x.side));
+    const empty = [...new Set(input.sides ?? [])].filter((x) => SIDES.some((y) => y.name === x) && !made.has(x)).map((side): CamNote => ({ key: 'sideEmpty', side }));
+    return { ...r, notes: [...r.notes, ...empty], code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
   };
   if (input.noNest || !fails(kept).length) return shop(kept);
   // Planned again with the failing sides nested, and again with any side that then fails.

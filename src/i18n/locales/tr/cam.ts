@@ -589,6 +589,7 @@ const cam: Translation<typeof en> = {
       clampSeam: '{{setup}}. bağlama: {{cale}} mm paralelde dış kesim parçanın altına 0,5 mm’den yakın biter, sonraki bağlamanın kesimiyle buluştuğu yerde küçük bir basamak kalabilir',
       clampNest: '{{setup}}. bağlama POM yuvasında: seçilen {{cale}} mm paraleller orada geçerli değil',
       stopRefused: '{{setup}}. bağlama: dayamada {{cale}} mm ara parça yok (atölyede 15 ve 50 mm var; POM yuvasında yok): parça dayamaya dayalı',
+      sideEmpty: '{{side}} yukarıdayken kesilecek bir şey kalmadı: onun için bağlama yapılmadı, tarafı CAM AI seçti',
       temporaryTool: '{{setup}}. bağlama: makinede ve takım veritabanında Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',
       floorHit: '{{setup}}. bağlama: bir kesim, parçanın veya paralellerinin durduğu tablaya 0,5 mm’den fazla yaklaşıyor (simülasyonda tabla yok): kilitli',
       jawRefused: '{{setup}}. bağlama: parçanın üstünden {{cale}} mm aşağıda çene üstlerine oturacak bir yüzü yok (çenelerin altta tuttuğundan geniş): CAM AI kendi yoluyla tuttu',

@@ -586,6 +586,7 @@ const cam = {
       clampSeam: 'Clamping {{setup}}: on {{cale}} mm parallels the outside cut ends within 0.5 mm of the part’s bottom, so a small step may show where the next clamping’s cut meets it',
       clampNest: 'Clamping {{setup}} sits in the POM nest: the {{cale}} mm parallels chosen do not apply there',
       stopRefused: 'Clamping {{setup}}: no {{cale}} mm spacer at the stop (the shop has 15 and 50 mm; none in the POM nest): the part against the stop',
+      sideEmpty: 'Nothing left to cut with {{side}} up: no clamping made for it, CAM AI chose the side instead',
       temporaryTool: 'Clamping {{setup}}: no Ø{{d}} drill in the machine or the tool database: drilled Ø{{used}} for now (temporary, the hole is that much smaller). Load the right drill and make it again',
       floorHit: 'Clamping {{setup}}: a cut comes within 0.5 mm of the table the part or its parallels stand on, which the simulation does not have: locked',
       jawRefused: 'Clamping {{setup}}: the part has no face {{cale}} mm under its top to rest on the jaw tops by (wider than what the jaws grip below it): CAM AI held it its own way',

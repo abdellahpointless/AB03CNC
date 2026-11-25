@@ -22,7 +22,12 @@ describe('the sides of later clampings, as the designer picks them', () => {
   }, 900_000);
 
   it('makes no clamping for a side with nothing to cut, and leaves out one already used or unknown; CAM AI covers the rest', () => {
-    expect(sides(camProgram({ ...input, sides: ['X-'] }))).toEqual(['Y+', 'Y-', 'X+']);
-    expect(sides(camProgram({ ...input, sides: ['Y+', 'Q9'] }))).toEqual(['Y+', 'Y-', 'X+']);
+    const empty = camProgram({ ...input, sides: ['X-'] });
+    expect(sides(empty)).toEqual(['Y+', 'Y-', 'X+']);
+    // Said, never silently: the designer picked it.
+    expect(empty.notes).toContainEqual({ key: 'sideEmpty', side: 'X-' });
+    const r = camProgram({ ...input, sides: ['Y+', 'Q9'] });
+    expect(sides(r)).toEqual(['Y+', 'Y-', 'X+']);
+    expect(r.notes.some((n) => n.key === 'sideEmpty')).toBe(false);
   }, 900_000);
 });
