@@ -1,6 +1,7 @@
 import { HttpError, json, readJson } from '../http';
 import type { Ctx } from '../context';
 import { camAllowed, readFeatures } from '../features';
+import { auditCtx } from '../security';
 import { regionById } from '../../src/regions';
 import { cleanDbTool } from '../../src/lib/cam/toolDb';
 
@@ -60,6 +61,7 @@ export async function handleSaveLabTool(ctx: Ctx): Promise<Response> {
   )
     .bind(body.family, body.code, JSON.stringify(tool), ctx.user!.username, Date.now())
     .run();
+  await auditCtx(ctx, 'lab_tool_saved', `${body.family} ${body.code}`);
   return json({ ok: true });
 }
 
@@ -70,5 +72,6 @@ export async function handleResetLabTool(ctx: Ctx): Promise<Response> {
   const code = ctx.url.searchParams.get('code');
   if (!cleanDbTool(family, code, { removed: true })) throw new HttpError(400, 'Invalid tool');
   await ctx.env.DB.prepare('DELETE FROM lab_tools WHERE family = ? AND code = ?').bind(family, code).run();
+  await auditCtx(ctx, 'lab_tool_reset', `${family} ${code}`);
   return json({ ok: true });
 }

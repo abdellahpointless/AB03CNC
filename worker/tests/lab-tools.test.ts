@@ -43,6 +43,10 @@ describe("CAM AI's tool database", () => {
     expect(list.data?.tools.find((t) => t.code === added.code)).toMatchObject({ family: 'ALU', by: 'chef', tool: { added: { type: 'SF', d: 7, length: 38 }, cuts: { contour: { f: 1200 } } } });
     expect((await call(handleResetLabTool, admin, { method: 'DELETE', query: '?family=ALU&code=SF_08.00_040_000_ALHS' })).status).toBe(200);
     expect((await call(handleListLabTools, admin)).data?.tools.map((t) => t.code)).toEqual([added.code]);
+    // Every change is in the security log, with the tool.
+    const log = await DB.prepare("SELECT action, username, detail FROM audit_log WHERE action LIKE 'lab_tool_%' ORDER BY id").all<{ action: string; username: string; detail: string }>();
+    expect(log.results.map((r) => r.action)).toEqual(['lab_tool_saved', 'lab_tool_saved', 'lab_tool_saved', 'lab_tool_reset']);
+    expect(log.results[3]).toMatchObject({ username: 'chef', detail: 'ALU SF_08.00_040_000_ALHS' });
   });
 
   it('refuses values the planner may not take, and anything that could break a G-code comment', async () => {
