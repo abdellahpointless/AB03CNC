@@ -481,3 +481,35 @@ describe('the blank, side by side (you, Beta 2)', () => {
     expect(blankTop(3)).toBe(1.5);
   });
 });
+
+describe('the designer\'s parallels (you, Beta 2)', () => {
+  // The plate in a 50 x 34 x 19 blank, 2 mm over its top and 5 under: clamping 1 holds 19 mm of stock.
+  const margins = { lo: [5, 2, 5] as [number, number, number], hi: [5, 2, 2] as [number, number, number] };
+  const base = { tris: plate, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins };
+
+  it('holds clamping 1 on the parallels asked for, exactly, and says which ones CAM AI would have used', () => {
+    const r = camProgram({ ...base, clamps: [36] });
+    const s = r.setups[0];
+    expect(s.cale).toBe(36);
+    expect(s.grip).toBe(9);
+    // 3 mm grip at least, the jaw tops 0.5 mm under the part's top (17 mm of the stock under it): 42 to 30 mm.
+    expect(s.cales).toEqual([42, 41, 40, 38, 36, 35, 33, 30]);
+    expect(s.own).toBeDefined();
+    expect(s.own).not.toBe(36);
+    expect(r.code).toContain('36 MM UNTERLAGE');
+    expect(r.notes.filter((n) => n.key.startsWith('clamp'))).toEqual([]);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
+  it('never uses parallels that cannot hold the part, nor none until the shop says what it rests on: it says so', () => {
+    // Clamping 2 holds about 17 mm: 25 mm parallels would leave the jaws gripping 20 mm, all of it.
+    const r = camProgram({ ...base, clamps: [0, 25] });
+    expect(r.notes).toContainEqual({ key: 'clampAsk', setup: 1, cale: 0 });
+    expect(r.notes).toContainEqual({ key: 'clampRefused', setup: 2, cale: 25 });
+    expect(r.setups.map((s) => s.cale)).not.toContain(0);
+    expect(r.setups.map((s) => s.cale)).not.toContain(25);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+});

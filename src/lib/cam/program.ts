@@ -68,6 +68,12 @@ export interface CamInput {
   /** The designer's blank (Beta 2): this much stock on each side of the part (model frame, centred on its box), as given. */
   margins?: { lo: Vec; hi: Vec };
   /**
+   * The designer's parallels (Beta 2), by clamping (first, second, ...): a height of CALE_HEIGHTS, used as given, or a note
+   * says why not (clampRefused) and CAM AI's own is used; 0 for none (the part on the jaws' step), held until the shop
+   * says what it rests on (clampAsk); unset: CAM AI's own.
+   */
+  clamps?: (number | null)[];
+  /**
    * The walls the operator picked to finish (shop rule: finishing only where it is asked for), as triangles of
    * `tris` (index k: the 9 numbers from 9k): the roughing leaves ALLOW on those and one pass finishes them; the
    * rest is roughed to size. None: no finishing pass. A seal cage's thin walls (under 3 mm) are finished too, gently.
@@ -155,6 +161,10 @@ export interface CamSetup {
   ops: CamOp[];
   /** The model's chamfer triangles this clamping's FASE cut: no later clamping cuts them again. */
   chamfered?: number[];
+  /** The parallels the designer may choose here (the jaws grip 3 mm or more, under the part's top, never all of it). */
+  cales: number[];
+  /** CAM AI's own parallels, when the designer's are used instead. */
+  own?: number;
 }
 
 export interface Zone {
@@ -1599,6 +1609,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const allMills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
   // Sides planned again turned a quarter (no grip held them as they lay): once each.
   const quartered = new Set<number>();
+  // CAM AI's own parallels where the designer's are used instead, by clamping.
+  const ownCales = new Map<number, number>();
   // cap: the largest end mill this clamping may use (planned again lighter when the vise cannot hold the bigger ones).
   const addSetup = (si: number, fixed?: number, cap?: number): boolean => {
     const mills = cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6);
@@ -1712,15 +1724,27 @@ function planFor(input: CamInput, vertical: number): CamResult {
         ? 3
         : deepest();
     let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : caleFor(stockH, fixed ?? want, fixed ?? 3);
+    // The designer's parallels (input.clamps): only those the jaws hold the part on (3 mm or more, never all of it, under its top).
+    const cales: number[] = CALE_HEIGHTS.filter((c) => JAW - c >= 3 && JAW - c <= stockH - 1 && JAW - c <= most);
+    const asked = nested ? undefined : input.clamps?.[setups.length] ?? undefined;
+    // Planned again for lighter mills (below), at the designer's grip: still theirs.
+    const theirs = asked !== undefined && asked !== 0 && cales.includes(asked) && (fixed === undefined || fixed === JAW - asked);
+    if (asked !== undefined && !theirs) notes.push({ key: asked === 0 ? 'clampAsk' : 'clampRefused', setup: setups.length + 1, cale: asked });
     // The first clamping's outside goes 0.5 mm under the part, or stops 0.5 mm or more above its bottom for the
     // next clamping to cut from its side: never in between, where the wall would meet the face cut after the turn
     // with no overlap (a review finding). The nearest grip that does, the smaller one first.
     const clearOf = (g: number) => sb.lo[2] + g + 0.5 <= -H - 0.5 + 1e-6 || sb.lo[2] + g + 0.5 >= -H + 0.5 - 1e-6;
-    if (!nested && fixed === undefined && !setups.length && waste > 0.5 && !clearOf(pick.grip)) {
+    if (!nested && fixed === undefined && !theirs && !setups.length && waste > 0.5 && !clearOf(pick.grip)) {
       const g0 = pick.grip;
       pick = CALE_HEIGHTS.map((c) => ({ cale: c, grip: JAW - c }))
         .filter((p) => p.grip >= 3 && p.grip <= stockH - 1 && p.grip <= most && clearOf(p.grip))
         .sort((p, q) => Math.abs(p.grip - g0) - Math.abs(q.grip - g0) || p.grip - q.grip)[0] ?? pick;
+    }
+    if (theirs && fixed === undefined && pick.cale !== asked) ownCales.set(setups.length, pick.cale);
+    if (theirs) {
+      pick = { cale: asked, grip: JAW - asked };
+      // The outside of clamping 1 ends within 0.5 mm of the part's bottom: a small step where the next clamping's cut meets it.
+      if (!setups.length && waste > 0.5 && !clearOf(pick.grip)) notes.push({ key: 'clampSeam', setup: 1, cale: asked });
     }
     const { cale, grip } = pick;
     const jawTop = sb.lo[2] + grip;
@@ -2295,7 +2319,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       ? checkNest({ material: mat, loads: ops.map((op) => loadOf(op, mat, sb.lo[0], hold[1], limits)), screws: nest.screws.length })
       : physicsAt(grip);
     if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
-      const grips = CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
+      // The designer's parallels stay: only lighter mills at their grip.
+      const grips = theirs ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
       const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
@@ -2311,7 +2336,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
       // preferred, but not over a clamping that holds), once; never against the operator's layout.
-      if (!quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
+      if (!theirs && !quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
         quartered.add(si);
         feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));
         drilled.clear();
@@ -2354,7 +2379,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}) });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);
