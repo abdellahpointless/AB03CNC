@@ -223,8 +223,10 @@ const r10 = (v: number) => Math.max(10, Math.round(v / 10) * 10);
 /** Cutting data for a tool doing `kind` on a material, within the machine's limits. */
 export function cutData(tool: CamTool, kind: TemplateKind, material: string, limits: Limits = DEFAULT_LIMITS): Cut {
   const c = stiff(tool, kind, material, rawCut(tool, kind, material, limits));
-  // The operator's values for this program first, else the shop's for this kind (tool database).
-  const e = tool.edit ?? (NEAR[kind] ?? [kind]).map((k) => tool.dbCuts?.[k]).find(Boolean);
+  // The shop's values for this kind (tool database), each one the operator typed for this program over them.
+  const db = (NEAR[kind] ?? [kind]).map((k) => tool.dbCuts?.[k]).find(Boolean);
+  const typedHere = Object.fromEntries(Object.entries(tool.edit ?? {}).filter(([, v]) => v !== undefined)) as CutEdit;
+  const e: CutEdit | undefined = db || tool.edit ? { ...db, ...typedHere } : undefined;
   if (!e) return c;
   // The operator's values, within the machine; unsafe when the tool could not take them.
   const f = e.f && e.f > 0 ? Math.min(e.f, limits.maxFeed) : c.f;
