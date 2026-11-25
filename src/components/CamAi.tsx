@@ -217,6 +217,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     if (file.size > MODEL_MAX_BYTES) return setRun({ state: 'error', error: 'tooBig' });
     const m = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
     setModel(m);
+    setChange(null);
     setPrep(null);
     setViews([]);
     setFace1(undefined);
@@ -515,6 +516,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // A click on a wall: picked, or taken off again.
   const toggleWall = (wall: number[]) => choose(() => setFinishWalls((now) => (now.some((w) => w[0] === wall[0]) ? now.filter((w) => w[0] !== wall[0]) : [...now, wall])));
   const recalc = () => {
+    setChange(null);
     setCuts(draft);
     setSkip(skipDraft);
     generate(swap, draft, skipDraft);
@@ -801,7 +803,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       if (e) next[key] = e;
                       else delete next[key];
                       applyEdits(next, key);
-                      setChange({ label: t('camAi.bar.edited'), undo: () => applyEdits(was, key), again: recalc });
+                      // No Make again here: a new make drops changes by hand (only Undo or Keep).
+                      setChange({ label: t('camAi.bar.edited'), undo: () => applyEdits(was, key) });
                     }}
                     shop={catalog(templatesFor, tools, { exclude: swap.exclude, toolDb: toolDb.db })}
                     hits={result.collisions}
@@ -830,7 +833,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                                     setChange(null);
                                     generate(nextSwap);
                                   }
-                                : recalc,
+                                : undefined,
                             }
                           : null,
                       );
@@ -1116,7 +1119,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             <Square size={15} aria-hidden /> {t('camAi.stop')}
           </button>
         ) : (
-          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => generate()} disabled={!ready || busy}>
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => { setChange(null); generate(); }} disabled={!ready || busy}>
             <Play size={16} stroke={1.8} aria-hidden /> {t('camAi.generate')}
           </button>
         )}
@@ -1141,7 +1144,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               {result && (
                 <>
                   <Popover.Close asChild>
-                    <button type="button" className={menuItem} onClick={() => generate()} disabled={!ready || busy}>
+                    <button type="button" className={menuItem} onClick={() => { setChange(null); generate(); }} disabled={!ready || busy}>
                       <RefreshCw size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.againKey')}
                     </button>
                   </Popover.Close>
