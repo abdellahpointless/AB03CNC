@@ -3,7 +3,7 @@ import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { ensureSchema } from '../schema';
 import { HttpError } from '../http';
 import type { AuthedUser, Ctx } from '../context';
-import { handleListLabTools, handleResetLabTool, handleSaveLabTool } from '../routes/lab';
+import { handleListLabTools, handleResetLabTool, handleSaveLabTool, MAX_LAB_TOOLS } from '../routes/lab';
 
 // The shop's tool database for CAM AI: read and changed by those who may use CAM AI, nobody else.
 let mf: Miniflare;
@@ -56,6 +56,14 @@ describe("CAM AI's tool database", () => {
     ];
     for (const body of bad) expect((await call(handleSaveLabTool, admin, { body })).status).toBe(400);
     expect((await call(handleResetLabTool, admin, { method: 'DELETE', query: '?family=ALU&code=%27%3B' })).status).toBe(400);
+  });
+
+  it('holds at most MAX_LAB_TOOLS rows; a saved one can still be changed', async () => {
+    const fill = Array.from({ length: MAX_LAB_TOOLS }, (_, i) => DB.prepare("INSERT OR IGNORE INTO lab_tools (family, code, data, updated_by, updated_at) VALUES ('FH', ?, '{\"removed\":true}', 'x', 0)").bind(`SB_${String(i).padStart(3, '0')}.00_050_000_FH`));
+    await DB.batch(fill);
+    expect((await call(handleSaveLabTool, admin, { body: { family: 'FH', code: 'SB_05.50_050_000_FH', tool: { removed: true } } })).status).toBe(409);
+    expect((await call(handleSaveLabTool, admin, { body: { family: 'FH', code: 'SB_000.00_050_000_FH', tool: { cuts: { drill: { f: 300 } } } } })).status).toBe(200);
+    await DB.prepare("DELETE FROM lab_tools WHERE family = 'FH'").run();
   });
 
   it('is not there for anyone who may not use CAM AI', async () => {

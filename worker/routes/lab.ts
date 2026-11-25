@@ -10,6 +10,9 @@ import { cleanDbTool } from '../../src/lib/cam/toolDb';
  * Only for those who may use the lab; for anyone else it does not exist (404, as an unknown path).
  */
 
+/** Rows a country's database keeps (every template changed, and tools added, with room to spare). */
+export const MAX_LAB_TOOLS = 1000;
+
 async function requireLab(ctx: Ctx): Promise<void> {
   const region = regionById(ctx.env.REGION);
   const f = region ? await readFeatures(ctx.env.DB, region.id) : null;
@@ -46,6 +49,11 @@ export async function handleSaveLabTool(ctx: Ctx): Promise<Response> {
   const body = await readJson<{ family?: unknown; code?: unknown; tool?: unknown }>(ctx.request, 8192);
   const tool = cleanDbTool(body.family, body.code, body.tool);
   if (!tool) throw new HttpError(400, 'Invalid tool');
+  const known = await ctx.env.DB.prepare('SELECT 1 FROM lab_tools WHERE family = ? AND code = ?').bind(body.family, body.code).first();
+  if (!known) {
+    const n = await ctx.env.DB.prepare('SELECT COUNT(*) AS n FROM lab_tools').first<{ n: number }>();
+    if ((n?.n ?? 0) >= MAX_LAB_TOOLS) throw new HttpError(409, 'The tool database is full.');
+  }
   await ctx.env.DB.prepare(
     `INSERT INTO lab_tools (family, code, data, updated_by, updated_at) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (family, code) DO UPDATE SET data = excluded.data, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
