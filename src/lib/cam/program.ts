@@ -2058,7 +2058,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
         keepHoles.push(h);
         continue;
       }
-      const d = drillFor(h, h.top - depth);
+      const exact = drillFor(h, h.top - depth);
+      // Neither a drill of its Ø nor an end mill to mill it (item 15): the nearest smaller drill of the shop, down to
+      // 80 % of its Ø, flagged temporary (the right drill stays listed as missing); the hole is that much smaller.
+      const millsIt = mills.length > 0 && mills[mills.length - 1].diameter <= h.r * 2 - 0.2;
+      const stand = exact || millsIt ? undefined : drills.filter((x) => x.length >= reachTo(h.top - depth) && x.diameter < h.r * 2 && x.diameter >= h.r * 2 * 0.8).sort((p, q) => q.diameter - p.diameter)[0];
+      const d = exact ?? stand;
+      if (stand) {
+        needOnce({ category: 'foret', diameter: Math.round(h.r * 200) / 100, minLength: Math.ceil(reachTo(h.top - depth)), why: { key: 'hole', d: Math.round(h.r * 200) / 100, depth: Math.round((h.top - h.bottom) * 10) / 10 } });
+        const note = { key: 'temporaryTool' as const, setup: setups.length + 1, d: Math.round(h.r * 200) / 100, used: stand.diameter };
+        if (!notes.some((n) => n.key === note.key && n.setup === note.setup && n.d === note.d)) notes.push(note);
+      }
       if (d) {
         // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
         // one its point goes 0.95 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.

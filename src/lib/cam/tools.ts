@@ -375,7 +375,7 @@ export interface Need {
 
 /** What CAM AI did not program (camAi.note.* on the page). */
 export interface CamNote {
-  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall' | 'holeShort' | 'clampRefused' | 'clampAsk' | 'clampSeam' | 'clampNest' | 'stopRefused' | 'floorHit' | 'jawRefused';
+  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall' | 'holeShort' | 'clampRefused' | 'clampAsk' | 'clampSeam' | 'clampNest' | 'stopRefused' | 'floorHit' | 'jawRefused' | 'temporaryTool';
   side?: string;
   /** The clamping (1, 2, ...) and the designer's parallels (mm) a clamp note is about. */
   setup?: number;
@@ -383,4 +383,7 @@ export interface CamNote {
   mm3?: number;
   mm2?: number;
   count?: number;
+  /** temporaryTool: the Ø the hole needs, and the stand-in's (mm). */
+  d?: number;
+  used?: number;
 }
