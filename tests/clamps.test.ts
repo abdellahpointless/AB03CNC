@@ -16,7 +16,8 @@ const writing = {
 };
 
 describe('clamps for every part', () => {
-  for (const [x, y, z, vises] of [[4, 4, 4, 1], [100, 60, 30, 1], [180, 80, 30, 1], [260, 100, 40, 2], [420, 120, 40, 2]] as const) {
+  // One vise up to its 125 mm jaws plus the shop's 50 mm overhang (175 mm); longer: two.
+  for (const [x, y, z, vises] of [[4, 4, 4, 1], [100, 60, 30, 1], [170, 80, 30, 1], [180, 80, 30, 2], [260, 100, 40, 2], [420, 120, 40, 2]] as const) {
     for (const [how, make] of Object.entries(writing)) {
       it(`${x}x${y}x${z}, ${how}: held in ${vises} vise(s)`, () => {
         const { setups } = analyseProgram(parseToolpath(make(x, y, z), speedsFor('HAAS')), { jawHeight: 45 });
