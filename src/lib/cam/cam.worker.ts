@@ -2,6 +2,7 @@ import { readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
+import { JAW } from './clamp';
 import { camProgram, editProgram, gougeOf, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
 import type { OpEdit } from './opEdit';
 import type { CamNote, Coolant, Need } from './tools';
@@ -75,6 +76,10 @@ export interface CamSummary {
     cale: number;
     cales: number[];
     own?: number;
+    /** Resting on the jaw tops by the face this deep under Z0 (no parallels). */
+    onJaw?: number;
+    /** The faces it could rest on the jaw tops by here, and how high each holds it (as the parallels' height would). */
+    jaws: { depth: number; cale: number }[];
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
     ops: {
       /** The operation's name in the program (CamInput.skip removes by it). */
@@ -227,6 +232,9 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
       cale: s.cale,
       cales: s.cales,
       ...(s.own !== undefined ? { own: s.own } : {}),
+      ...(s.onJaw !== undefined ? { onJaw: s.onJaw } : {}),
+      // The stock's bottom over the table is floor + cale; on a face d deep the jaws grip -d - bottom of it.
+      jaws: s.vise && !s.nest ? s.ledges.map((d) => ({ depth: d, cale: JAW - (-d - (s.vise!.floor + s.cale)) })) : [],
       zones: s.zones,
       box: s.box,
       contact: s.contact,

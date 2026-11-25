@@ -118,7 +118,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
   const [stop1, setStop1] = useState<0 | 15 | 50>(0);
   // Later clampings' parallels, by clamping (1: the second), chosen on the program made: used when it is made again.
-  const [later, setLater] = useState<Record<number, number>>({});
+  const [later, setLater] = useState<Record<number, Hold>>({});
   const [jaw, setJaw] = useState({ open: 0, slide: 0 });
   const [flash, setFlash] = useState(0);
   const [nextHint, setNextHint] = useState<number | undefined>();
@@ -274,7 +274,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       raw,
       margins,
       stops: stop1 ? [stop1] : undefined,
-      clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : later[k] ?? null)) : undefined,
+      clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : (later[k] && 'cale' in later[k] ? later[k].cale : null))) : undefined,
+      jawRests: Object.values(later).some((h) => 'jaw' in h) ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (later[k] && 'jaw' in later[k] ? later[k].jaw : null)) : undefined,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },
       sideStock: sideStock || undefined,
@@ -876,7 +877,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     asked={later[sel.i]}
                     onAsk={(v) => setLater((l) => {
                       // The clampings after this one hold what it leaves: their choices go.
-                      const next: Record<number, number> = {};
+                      const next: Record<number, Hold> = {};
                       for (const [k, x] of Object.entries(l)) if (Number(k) < sel.i) next[Number(k)] = x;
                       if (v !== null) next[sel.i] = v;
                       return next;
@@ -1395,7 +1396,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
       <p className="text-[var(--text-primary)]" aria-live="polite">
         {cale === 0 ? t('camAi.clamp1.none') : t('camAi.clamp1.on', { cale: fmt(cale, 0), grip: fmt(grip, 0) })}
       </p>
-      {pending !== undefined && <p className="text-[var(--text-primary)]">{pending === 0 ? t('camAi.clamp1.laterNone') : t('camAi.clamp1.later', { cale: fmt(pending, 0) })}</p>}
+      {pending !== undefined && <p className="text-[var(--text-primary)]">{pending === 0 ? t('camAi.clamp1.laterTable') : t('camAi.clamp1.later', { cale: fmt(pending, 0) })}</p>}
       {own !== null && (
         <p className="flex flex-wrap items-center gap-2 text-[var(--text-secondary)]">
           {t('camAi.clamp1.own', { cale: fmt(own, 0) })}
@@ -1412,7 +1413,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
       </div>
       <p className="text-xs text-[var(--text-secondary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
       <p className="text-xs text-[var(--text-secondary)]">{t('camAi.clamp1.hint')}</p>
-      {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
+      {cale === 0 && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.clamp1.noneWarn')}</p>}
       {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0) })}</p>}
       <fieldset className="space-y-1">
         <legend className="text-[var(--text-secondary)]">{t('camAi.clamp1.stop')}</legend>
@@ -1431,21 +1432,32 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
   );
 }
 
-/** A later clamping's parallels, on the program made (what it holds is what the clampings before left): for the next time it is made. */
-function LaterClampPanel({ n, made, asked, onAsk }: { n: number; made: CamSummary['setups'][number]; asked: number | undefined; onAsk: (v: number | null) => void }) {
+/** A later clamping's hold: parallels of that height (0: the table), or resting on the jaw tops by a face that deep. */
+type Hold = { cale: number } | { jaw: number };
+const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
+
+/**
+ * A later clamping's hold, on the program made (what it holds is what the clampings before left): its parallels, the
+ * table, or the jaw tops by one of its faces (you), from the lowest to the highest the part sits; for the next time it is made.
+ */
+function LaterClampPanel({ n, made, asked, onAsk }: { n: number; made: CamSummary['setups'][number]; asked: Hold | undefined; onAsk: (v: Hold | null) => void }) {
   const { t } = useTranslation('cam');
-  const steps = [0, ...[...made.cales].sort((p, q) => p - q)];
-  const now = asked ?? made.cale;
-  const i = steps.indexOf(now);
+  const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => p.level - q.level).map((x) => x.hold);
+  const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : { cale: made.cale };
+  const now = asked ?? mine;
+  const i = steps.findIndex((h) => holdKey(h) === holdKey(now));
   const step = (d: 1 | -1) => {
     const j = (i < 0 ? steps.length - 1 : i) + d;
-    if (j >= 0 && j < steps.length && made.cales.length) onAsk(steps[j] === made.cale && made.own === undefined ? null : steps[j]);
+    if (j >= 0 && j < steps.length) onAsk(holdKey(steps[j]) === holdKey(mine) && made.own === undefined ? null : steps[j]);
   };
+  const said = (h: Hold) => ('jaw' in h ? t('camAi.clamp1.laterJaw', { depth: fmt(h.jaw, 1) }) : h.cale === 0 ? t('camAi.clamp1.laterTable') : t('camAi.clamp1.later', { cale: fmt(h.cale, 0) }));
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5 disabled:opacity-40';
   return (
     <section aria-labelledby={`clamp${n}-title`} className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
       <h3 id={`clamp${n}-title`} className="section-label">{t('camAi.clamp1.title')}</h3>
-      <p className="text-[var(--text-primary)]">{t('camAi.clamp1.on', { cale: fmt(made.cale, 0), grip: fmt(made.grip, 0) })}</p>
+      <p className="text-[var(--text-primary)]">
+        {made.onJaw !== undefined ? t('camAi.clamp1.onJaw', { depth: fmt(made.onJaw, 1), grip: fmt(made.grip, 0) }) : made.cale === 0 ? t('camAi.clamp1.onTable') : t('camAi.clamp1.on', { cale: fmt(made.cale, 0), grip: fmt(made.grip, 0) })}
+      </p>
       {made.own !== undefined && <p className="text-[var(--text-secondary)]">{t('camAi.clamp1.own', { cale: fmt(made.own, 0) })}</p>}
       <div className="grid grid-cols-2 gap-1.5">
         <button type="button" className={btn} disabled={i >= steps.length - 1} onClick={() => step(1)}><ChevronUp size={14} aria-hidden />{t('camAi.clamp1.up')}</button>
@@ -1453,11 +1465,11 @@ function LaterClampPanel({ n, made, asked, onAsk }: { n: number; made: CamSummar
       </div>
       {asked !== undefined && (
         <p className="text-[var(--text-primary)]" aria-live="polite">
-          {asked === 0 ? t('camAi.clamp1.laterNone') : t('camAi.clamp1.later', { cale: fmt(asked, 0) })}{' '}
+          {said(asked)}{' '}
           <button type="button" onClick={() => onAsk(null)} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>
         </p>
       )}
-      {asked === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
+      {'cale' in now && now.cale === 0 && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.clamp1.noneWarn')}</p>}
       <p className="text-xs text-[var(--text-secondary)]">{t('camAi.clamp1.laterHint')}</p>
     </section>
   );

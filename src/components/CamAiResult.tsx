@@ -18,9 +18,10 @@ export type Op = Setup['ops'][number];
 export { GOUGE_MM3 };
 
 /** Every check passed: like the model, nothing hit, nothing cut out of the part, held safely. */
-// The designer's parallels not used as asked (clampRefused, clampAsk): not the program they asked for.
+// The designer's parallels or jaw rest not used as asked (clampRefused, clampAsk, jawRefused): not the program they asked
+// for. A cut within 0.5 mm of the vise floor (floorHit): the simulation has none.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'floorHit');
+export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
 export const passed = (r: CamSummary, accepted = false) => safe(r) && (alike(r) || accepted);
@@ -58,7 +59,7 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
   // The designer's parallels not used as asked: why it stays locked.
-  const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
+  const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
   const text = ok
     ? accepted && !alike(result)
       ? t('camAi.opEdit.acceptedText')
@@ -82,7 +83,7 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
               : unheld
                 ? t(unheld.physics.issues.some((i) => i.key === 'faceAtJaws') ? 'camAi.faceAtJaws' : 'camAi.cannotHold', { side: unheld.side })
                 : clampNote
-                  ? t(`camAi.note.${clampNote.key as 'clampAsk' | 'clampRefused'}`, { setup: clampNote.setup, cale: clampNote.cale })
+                  ? t(`camAi.note.${clampNote.key as 'clampAsk' | 'clampRefused' | 'jawRefused' | 'floorHit'}`, { setup: clampNote.setup, cale: clampNote.cale })
                   : t('camAi.notProven');
   return { ok, text };
 }
