@@ -6,6 +6,29 @@ import type { Release } from '../whatsNew';
  */
 export const CAM_RELEASES: Release[] = [
   {
+    id: '2026-11-25-cam-holding-tools',
+    date: '2026-11-25',
+    feature: 'lab',
+    en: {
+      title: 'CAM AI: holding without parallels, shapes, programs opened, a tool database',
+      items: [
+        'A later clamping can stand on the table (no parallels: the program tells the operator the part is on the table) or rest by a flange on the jaw tops. Its panel offers the parallels, the table and the jaw tops, lowest to highest; a rest that cannot hold, or a cut that would reach the table, keeps the program locked and says why.',
+        'The Part inspector lists the part’s shapes: holes through or blind, counterbores, likely threads (by their tap drill’s Ø), floors, chamfers, rounded edges and 3D surfaces, the shop’s French word in grey beside each.',
+        '⋯ › Open a program…: an engineer’s program with its tools by clamping and its own simulation. Each tool’s run can be moved or taken deeper by hand and is checked again (against the part’s model when it was chosen first).',
+        '⋯ › Tool database…: every tool CAM AI may use, by material and type. Change a tool’s cutting data per operation, remove it, put it back or add a tool, for the whole shop; saved values are checked like values typed for one program.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: paralelsiz bağlama, şekiller, açılan programlar, takım veritabanı',
+      items: [
+        'Sonraki bir bağlama tablaya oturabilir (paralel yok: program operatöre parçanın tablada olduğunu söyler) veya bir flanşla çene üstlerine dayanabilir. Paneli paralelleri, tablayı ve çene üstlerini en alçaktan en yükseğe sunar; tutamayan bir dayama veya tablaya ulaşacak bir kesme programı kilitli tutar ve nedenini söyler.',
+        'Parça denetçisi parçanın şekillerini listeler: boydan boya veya kör delikler, düz havşalar, olası dişler (kılavuz matkabının Ø’süne göre), tabanlar, pahlar, yuvarlatılmış kenarlar ve 3B yüzeyler; her birinin yanında atölyenin Fransızca adı gri.',
+        '⋯ › Program aç…: bir mühendisin programı, takımları bağlamaya göre ve kendi simülasyonu ile. Her takımın yolu elle kaydırılabilir veya daha derine alınabilir ve yeniden kontrol edilir (önce seçildiyse parçanın modeline göre).',
+        '⋯ › Takım veritabanı…: CAM AI’ın kullanabileceği tüm takımlar, malzeme ve türe göre. Bir takımın işlem başına kesme verilerini değiştirin, çıkarın, geri koyun veya takım ekleyin, tüm atölye için; kaydedilen değerler tek bir program için yazılanlar gibi denetlenir.',
+      ],
+    },
+  },
+  {
     id: '2026-11-25-cam-workspace',
     date: '2026-11-25',
     feature: 'lab',
