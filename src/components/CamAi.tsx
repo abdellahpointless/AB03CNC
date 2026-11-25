@@ -25,6 +25,7 @@ import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
+import { blankSides } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -150,9 +151,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const sidesOk = autoStock || stockMode !== 'side' || [0, 1, 2, 3, 4, 5].every((i) => Number.isFinite(sideValue(i)) && sideValue(i) >= 0 && sideValue(i) <= 200);
   const excessOk = !!excess && sidesOk && excess.every((v) => Number.isFinite(v) && v >= 0 && v <= 200);
   const raw = prep && chosen && excess && excessOk ? (toModelAxes(chosen.R, excess).map((e, k) => prep.size[k] + e) as [number, number, number]) : null;
-  // The stock side by side, as the model's sides (the planner's margins), and the blank it makes (model frame, centred on the part).
-  const margins = prep && chosen && raw && !autoStock && stockMode === 'side' ? toModelSides(chosen.R, [0, 2, 4].map(sideValue), [1, 3, 5].map(sideValue)) : undefined;
-  const sideBlank = prep && margins ? { lo: prep.size.map((s, k) => -s / 2 - margins.lo[k]), hi: prep.size.map((s, k) => s / 2 + margins.hi[k]) } : null;
+  // The blank side by side in clamping 1 (X-, X+, Y-, Y+, Z-, Z+): as typed, or where the planner puts Auto and totals
+  // (clamp.ts); as the model's sides, and the blank it makes (model frame, centred on the part) that the 3D view draws.
+  const shown = chosen && excess && raw ? (!autoStock && stockMode === 'side' ? [0, 1, 2, 3, 4, 5].map(sideValue) : blankSides(excess, whiteAt)) : null;
+  const shownSides = chosen && shown ? toModelSides(chosen.R, [0, 2, 4].map((i) => shown[i]), [1, 3, 5].map((i) => shown[i])) : null;
+  const sideBlank = prep && shownSides ? { lo: prep.size.map((s, k) => -s / 2 - shownSides.lo[k]), hi: prep.size.map((s, k) => s / 2 + shownSides.hi[k]) } : null;
+  // Sent to the planner when typed side by side (else it places Auto and totals itself, centred when that fails).
+  const margins = shownSides && !autoStock && stockMode === 'side' ? shownSides : undefined;
   const side2 = second?.side ?? (chosen ? opposite(chosen.side) : '');
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];

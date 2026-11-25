@@ -278,7 +278,7 @@ export default function CamPartView({
   R: Mat3;
   /** The raw block along the model's axes (mm), centred on the part, or none. */
   raw: number[] | null;
-  /** Where CAM AI planned the blank (model frame, centred on its box), once it has. */
+  /** Where the blank is (model frame, centred on the part's box): the page's, then CAM AI's once planned. */
   blank?: { lo: number[]; hi: number[] } | null;
   picks: FacePick[];
   /** Which setup a click picks the top face of (null: not picking). */
@@ -513,17 +513,10 @@ export default function CamPartView({
       // The block's size in the vise (X along the jaws, Y between them, Z up).
       const v = [0, 1, 2].map((j) => Math.abs(R[j * 3] * raw[0] + R[j * 3 + 1] * raw[1] + R[j * 3 + 2] * raw[2]));
       if (blank) {
-        // Where CAM AI planned it (also centred, its fallback): its centre turned as the model is (X, Z, -Y).
+        // Where the page puts it (clamp.ts: blankSides) or CAM AI planned it: its centre turned as the model is (X, Z, -Y).
         const c = [0, 1, 2].map((k) => (blank.lo[k] + blank.hi[k]) / 2);
         const at = (j: number) => R[j * 3] * c[0] + R[j * 3 + 1] * c[1] + R[j * 3 + 2] * c[2];
         a.stock.position.set(at(0), at(2), -at(1));
-      } else {
-        // Where CAM AI puts it (program.ts planFor): 2 mm over the part's top (half the stock when less), the rest under it;
-        // flush with a white face up or down (all the stock on the other side).
-        const hz = Math.abs(R[6] * a.ext.x + R[7] * a.ext.y + R[8] * a.ext.z);
-        const d = SIDES.find((x) => x.name === whiteSide)?.d;
-        const up = d ? R[6] * d[0] + R[7] * d[1] + R[8] * d[2] : 0;
-        a.stock.position.y = up > 0.5 ? hz / 2 - v[2] / 2 : up < -0.5 ? v[2] / 2 - hz / 2 : hz / 2 + Math.max(0, Math.min(2, (v[2] - hz) / 2)) - v[2] / 2;
       }
       const geo = new THREE.BoxGeometry(v[0], v[2], v[1]);
       const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: AMBER, transparent: true, opacity: 0.1, depthWrite: false }));
@@ -543,7 +536,7 @@ export default function CamPartView({
       put(`Z ${fmtNumber(v[2], 1)} mm`, new THREE.Vector3(-x - h * 1.8, 0, z));
     }
     a.invalidate();
-  }, [raw, R, blank, whiteSide]);
+  }, [raw, R, blank]);
 
   // The setups' top faces: green, with their triad; and the faces under the pointer while picking.
   useEffect(() => {

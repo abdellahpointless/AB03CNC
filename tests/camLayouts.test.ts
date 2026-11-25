@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes, toModelSides } from '../src/lib/cam/layouts';
-import { blankTop, camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
+import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
+import { allowedCales, blankSides, blankTop, firstPick } from '../src/lib/cam/clamp';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE, VISE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
@@ -480,6 +481,14 @@ describe('the blank, side by side (you, Beta 2)', () => {
     expect(() => camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, orient: { side: 'Z+', spin: false }, margins })).toThrow(/stock/);
   });
 
+  it('puts the Auto blank where the page draws it (clamp.ts: blankSides), and flush with a white face', () => {
+    expect(blankSides([4, 4, 7])).toEqual([2, 2, 2, 2, 5, 2]);
+    // The white face on top (Z+ of clamping 1): nothing over it, all 7 mm under.
+    expect(blankSides([4, 4, 7], 5)).toEqual([2, 2, 2, 2, 7, 0]);
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, orient: { side: 'Z+', spin: false }, raw: [44, 34, 19] });
+    expect(r.blank).toEqual({ lo: [-22, -17, -11], hi: [22, 17, 8] });
+  }, 300_000);
+
   it('gives the page its own rule for the stock over the top (Auto)', () => {
     expect(blankTop(7)).toBe(2);
     expect(blankTop(5)).toBe(1);
@@ -499,7 +508,9 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(s.grip).toBe(9);
     // 3 mm grip at least, the jaw tops 0.5 mm under the part's top (17 mm of the stock under it): 42 to 30 mm.
     expect(s.cales).toEqual([42, 41, 40, 38, 36, 35, 33, 30]);
-    expect(s.own).toBeDefined();
+    // The page's numbers (clamp.ts) are the planner's: 19 mm of stock, its bottom 17 mm under the top, the part 12 tall.
+    expect(allowedCales(19, -17)).toEqual(s.cales);
+    expect(s.own).toBe(firstPick(19, -17, 12).cale);
     expect(s.own).not.toBe(36);
     expect(r.code).toContain('36 MM UNTERLAGE');
     expect(r.notes.filter((n) => n.key.startsWith('clamp'))).toEqual([]);

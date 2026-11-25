@@ -66,6 +66,10 @@ export interface CamSummary {
     /** Jaw grip (mm) and what the vise does to the part (clamp force, pressure, issues). */
     grip: number;
     physics: SetupCheck;
+    /** Its parallels (mm), the ones the designer may choose here, and CAM AI's own when the designer's are used. */
+    cale: number;
+    cales: number[];
+    own?: number;
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
     ops: {
       /** The operation's name in the program (CamInput.skip removes by it). */
@@ -140,6 +144,9 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
           notes: s.notes,
           grip: s.grip,
           physics: s.physics,
+          cale: s.cale,
+          cales: s.cales,
+          ...(s.own !== undefined ? { own: s.own } : {}),
           zones: s.zones,
           box: s.box,
           contact: s.contact,
