@@ -26,6 +26,7 @@ import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, useTo
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
+import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
 import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
@@ -756,6 +757,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                   <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
                 )}
                 {partFields()}
+                {shapesList()}
                 {whiteFields()}
                 {finishFields()}
               </>
@@ -1238,6 +1240,32 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       {newProgramDialog()}
     </div>
   );
+
+  /** What the part is made of (shapes.ts): each named, the shop's French word beside it in grey (you). */
+  function shapesList() {
+    if (!prep?.shapes) return null;
+    const label = (x: Shape) => t(`camAi.shape.${x.kind}`, { d: fmt(x.d ?? 0, 2), depth: fmt(x.depth ?? 0, 1), r: fmt(x.r ?? 0, 1), thread: x.thread ?? '', side: x.side, area: fmt(x.area ?? 0, 0) });
+    return (
+      <section className="space-y-1.5" aria-labelledby="cam-shapes">
+        <h4 id="cam-shapes" className="section-label">{t('camAi.shape.title')}</h4>
+        {prep.shapes.length ? (
+          <ul className="space-y-1">
+            {prep.shapes.map((x, i) => (
+              <li key={i} className="flex items-baseline gap-2">
+                <span className="flex-1 min-w-0 text-[var(--text-primary)]">
+                  {label(x)} <span className="text-[var(--text-secondary)]">({SHAPE_FR[x.kind]})</span>
+                </span>
+                {x.count > 1 && <span className="text-xs text-[var(--text-secondary)] tabular-nums">{t('camAi.shape.count', { n: x.count })}</span>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[var(--text-secondary)]">{t('camAi.shape.none')}</p>
+        )}
+        {prep.shapes.some((x) => x.kind === 'tapped') && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.shape.tappedHint')}</p>}
+      </section>
+    );
+  }
 
   /** Part type, machine and material: in the New program dialog and the Part's properties. */
   function whiteFields() {

@@ -8,6 +8,7 @@ import type { OpEdit } from './opEdit';
 import type { CamNote, Coolant, Need } from './tools';
 import type { Contact, SetupCheck } from './physics';
 import { layouts, type Layout } from './layouts';
+import { recognize, type Shape } from './shapes';
 import { bounds } from './geom';
 import { pdfInfo } from '../pdfTitle';
 import { partTypeOf, type PartType } from './partType';
@@ -37,6 +38,8 @@ export interface Prepared {
   layouts: Layout[];
   /** The model's triangles, for the views of each layout. */
   tris: Float32Array;
+  /** What the part is made of, named (shapes.ts). */
+  shapes: Shape[];
 }
 
 /** What the page shows of the result (the program and its proof, without the paths). */
@@ -194,7 +197,7 @@ async function prepare(model: { name: string; bytes: Uint8Array }) {
     const list = layouts(tris);
     const out = new Float32Array(tris);
     (postMessage as (m: CamMessage, transfer: Transferable[]) => void)(
-      { type: 'prepared', title: info?.title ?? null, sap: info?.sap ?? null, partType: partTypeOf(info?.title), size: [0, 1, 2].map((k) => b.max[k] - b.min[k]), layouts: list, tris: out },
+      { type: 'prepared', title: info?.title ?? null, sap: info?.sap ?? null, partType: partTypeOf(info?.title), size: [0, 1, 2].map((k) => b.max[k] - b.min[k]), layouts: list, tris: out, shapes: recognize(out) },
       [out.buffer],
     );
   } catch (err) {
