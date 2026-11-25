@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { layouts, toModelAxes, toModelSides } from '../src/lib/cam/layouts';
 import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
 import { allowedCales, blankSides, blankTop, firstPick } from '../src/lib/cam/clamp';
+import { sizeFits } from '../src/lib/modelCompare';
 import { analyseProgram, DEFAULT_JAW_HEIGHT, STOP_PLATE, VISE } from '../src/lib/setups';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 import type { Tool } from '../src/types';
@@ -513,10 +514,22 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(s.own).toBe(firstPick(19, -17, 12).cale);
     expect(s.own).not.toBe(36);
     expect(r.code).toContain('36 MM UNTERLAGE');
+    expect(r.check.sized).toBe(true);
     expect(r.notes.filter((n) => n.key.startsWith('clamp'))).toEqual([]);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
+  it('finds a part that comes out bigger than the model, as the toolpath viewer does (the jaws on 10 of its 12 mm)', () => {
+    const r = camProgram({ ...base, clamps: [30] });
+    expect(r.setups[0].cale).toBe(30);
+    expect(r.check.sized).toBe(false);
+    // The viewer's own test: each axis within 1.5 mm (or 5 %) of the model's, turned any way.
+    const box = { lo: [0, 0, 0] as [number, number, number], hi: [40, 30, 12] as [number, number, number] };
+    expect(sizeFits(box, [40, 30, 12]).length).toBeGreaterThan(0);
+    expect(sizeFits(box, [12, 40, 30]).length).toBeGreaterThan(0);
+    expect(sizeFits(box, [40, 34, 12])).toEqual([]);
   }, 300_000);
 
   it('never uses parallels that cannot hold the part, nor none until the shop says what it rests on: it says so', () => {

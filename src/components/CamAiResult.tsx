@@ -18,7 +18,7 @@ export { GOUGE_MM3 };
 
 /** Every check passed: like the model, nothing hit, nothing cut out of the part, held safely. */
 // The designer's parallels not used as asked (clampRefused, clampAsk): not the program they asked for.
-export const passed = (r: CamSummary) => r.match >= 0.99 && r.collisions === 0 && !r.misplaced && r.gouge < GOUGE_MM3 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
+export const passed = (r: CamSummary) => r.match >= 0.99 && r.sized && r.collisions === 0 && !r.misplaced && r.gouge < GOUGE_MM3 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
 
 const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a855f7', engraving: '#f59e0b' };
 /** Pressure on the jaws, by its share of what the material takes: calm, watch, high. */
@@ -68,6 +68,8 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
             ? t('camAi.collisions', { count: result.collisions })
             : result.misplaced
               ? t('camAi.misplaced', { count: result.misplaced })
+              : !result.sized
+              ? t('camAi.notSized')
               : result.gouge >= GOUGE_MM3
               ? t('camAi.gouge', { mm3: result.gouge })
               : unheld

@@ -1,7 +1,7 @@
 import type { Tool } from '../../types';
 import type { Vec } from '../toolpath';
 import { ALL, IDENTITY, apply, mul, transpose, type Mat3 } from '../orient';
-import { differences, layModel, voxelize, type Piece } from '../modelCompare';
+import { differences, layModel, modelBox, partExtent, sizeFits, voxelize, type Piece } from '../modelCompare';
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
@@ -1026,6 +1026,11 @@ export interface CamCheck {
    * show. Blocks the program, like a collision.
    */
   misplaced: number;
+  /**
+   * The simulated part has the model's size (each axis within 1.5 mm or 5 %, the toolpath viewer's own test): false when
+   * stock stands out of it (stubs left where two clampings' cuts meet). Blocks the program, as the viewer then says it is not this part.
+   */
+  sized: boolean;
 }
 
 /** How far the held faces may lie from where the program puts them (mm): the simulation's grid. */
@@ -1160,8 +1165,11 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
   // CAM AI's own program: the model where it was planned (a best fit could lay a nearly symmetric
   // part the wrong way round and hide or invent differences); anyone else's: the best fit.
   let diff: ReturnType<typeof differences> | null = null;
+  let sized = false;
   if (sim && pose) {
-    const g = carve({ ...sim, maxVoxels: 300_000, surfaceMoves: false });
+    const base = { ...sim, maxVoxels: 300_000, surfaceMoves: false };
+    const g = carve(base);
+    sized = sizeFits(modelBox(tris), partExtent(base, g).map(([lo, hi]) => hi - lo) as Vec).length > 0;
     // A corner's region grown by a sample, where the two grids never quite agree.
     const e = Math.max(...g.step);
     const grown = corners?.map((c) => ({ ...c, region: offset(c.region, e) }));
@@ -1176,6 +1184,7 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
   } else if (sim) {
     const laid = layModel(tris, sim, an.setups);
     diff = 'mismatch' in laid ? null : differences(laid);
+    sized = !('mismatch' in laid);
   }
   const hits = an.setups.flatMap((x) => x.collisions);
   const stops = an.setups.reduce((n, x) => n + stopHits(tp, x).length, 0);
@@ -1208,6 +1217,7 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
   return {
     match: diff?.match ?? 0,
     pieces: diff?.pieces ?? [],
+    sized,
     minutes: tp.totalSeconds / 60,
     toolChanges: tp.toolChanges,
     // Unlike the remapper (a warning there), CAM AI's own program goes no more than CALE_TOUCH into a

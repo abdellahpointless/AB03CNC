@@ -307,6 +307,7 @@ const cam: Translation<typeof en> = {
     intoStop_other: 'Simülasyonda {{count}} takım hareketi çene üstlerinin altında X dayamasına giriyor (takım yolu görüntüleyicisi bunları işaretlemez ve dayamayı simüle edilen parçaya göre, programın koyduğu yerden 0,5 mm’ye kadar farklı çizer). İndirme engellendi.',
     misplaced_one: '{{count}} bağlamada mengene parçayı programın koyduğu yerden kaymış tutardı. İndirme engellendi.',
     misplaced_other: '{{count}} bağlamada mengene parçayı programın koyduğu yerden kaymış tutardı. İndirme engellendi.',
+    notSized: 'Parça modelden büyük çıkıyor: bağlamaların kesimlerinin buluştuğu yerde ham kalıyor (simülasyonun model kontrolü gösterir). Başka paralel ya da CAM AI’nin kendi seçimini kullanın.',
     percent: '%{{v}}',
     minutes: '{{v}} dk',
     match: 'Modele benzerlik',

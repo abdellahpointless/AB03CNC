@@ -304,6 +304,7 @@ const cam = {
     intoStop_other: '{{count}} tool runs into the X stop below the jaw tops in the simulation (the toolpath viewer does not mark them, and draws the stop by the simulated part, up to 0.5 mm from where the program puts it). Download is blocked.',
     misplaced_one: 'In {{count}} clamping the vise would hold the part off where the program puts it. Download is blocked.',
     misplaced_other: 'In {{count}} clampings the vise would hold the part off where the program puts it. Download is blocked.',
+    notSized: 'The part comes out bigger than the model: stock stands out of it where the clampings’ cuts meet (the simulation’s model check shows it). Choose other parallels, or CAM AI’s own.',
     percent: '{{v}} %',
     minutes: '{{v}} min',
     match: 'Like the model',

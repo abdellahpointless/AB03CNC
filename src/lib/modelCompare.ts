@@ -82,15 +82,34 @@ export interface ModelFit {
  * finished material; of the ways where it does not, the one where model and simulation overlap most.
  * `mismatch` when no way has the simulated part's size (another part, or another unit).
  */
-export function layModel(tris: ArrayLike<number>, input: SimInput, setups: Placed[], voxels = 300_000): ModelFit | { mismatch: { model: Vec; part: Vec } } {
-  const base: SimInput = { ...input, maxVoxels: voxels, surfaceMoves: false };
-  const g = carve(base);
-  const ext = ([0, 1, 2] as const).map((a) => [materialExtreme(base, g, base.moves.length, a, -1) ?? 0, materialExtreme(base, g, base.moves.length, a, 1) ?? 0]);
-  const size = ext.map(([lo, hi]) => hi - lo) as Vec;
-  const mid = ext.map(([lo, hi]) => (lo + hi) / 2) as Vec;
+/** The simulated part's extent along X, Y, Z (part frame): its lowest and highest material. */
+export function partExtent(input: SimInput, g: Grid): [number, number][] {
+  return ([0, 1, 2] as const).map((a) => [materialExtreme(input, g, input.moves.length, a, -1) ?? 0, materialExtreme(input, g, input.moves.length, a, 1) ?? 0]);
+}
+
+/** The model's box (its own frame). */
+export function modelBox(tris: ArrayLike<number>): { lo: Vec; hi: Vec } {
   const lo: Vec = [Infinity, Infinity, Infinity];
   const hi: Vec = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < tris.length; i += 3) for (let k = 0; k < 3; k++) [lo[k], hi[k]] = [Math.min(lo[k], tris[i + k]), Math.max(hi[k], tris[i + k])];
+  return { lo, hi };
+}
+
+/** The turns of the model that give it the simulated part's size (each axis within 1.5 mm or 5 %): none, another part (or stock left on it). */
+export function sizeFits(box: { lo: Vec; hi: Vec }, size: Vec): Mat3[] {
+  return ALL.filter((R) => {
+    const b = turnedBox(R, box.lo, box.hi);
+    return [0, 1, 2].every((k) => Math.abs(b.max[k] - b.min[k] - size[k]) < Math.max(1.5, size[k] * 0.05));
+  });
+}
+
+export function layModel(tris: ArrayLike<number>, input: SimInput, setups: Placed[], voxels = 300_000): ModelFit | { mismatch: { model: Vec; part: Vec } } {
+  const base: SimInput = { ...input, maxVoxels: voxels, surfaceMoves: false };
+  const g = carve(base);
+  const ext = partExtent(base, g);
+  const size = ext.map(([lo, hi]) => hi - lo) as Vec;
+  const mid = ext.map(([lo, hi]) => (lo + hi) / 2) as Vec;
+  const { lo, hi } = modelBox(tris);
   const own: Vec = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2) as Vec;
   const vol = g.step[0] * g.step[1] * g.step[2];
 
@@ -108,10 +127,7 @@ export function layModel(tris: ArrayLike<number>, input: SimInput, setups: Place
     return { mm3: bad * vol, waste: good * vol };
   };
 
-  const fits = ALL.filter((R) => {
-    const b = turnedBox(R, lo, hi);
-    return [0, 1, 2].every((k) => Math.abs(b.max[k] - b.min[k] - size[k]) < Math.max(1.5, size[k] * 0.05));
-  });
+  const fits = sizeFits({ lo, hi }, size);
   if (!fits.length) return { mismatch: { model: hi.map((v, k) => v - lo[k]) as Vec, part: size } };
   const first = setups.find((s) => s.stock);
   let best: (ModelFit & { firstWay: Way }) | null = null;

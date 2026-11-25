@@ -175,6 +175,8 @@ for (const folder of readdirSync(LIB).sort()) {
           stops: r.check.stops,
           cales: r.check.cales,
           misplaced: r.check.misplaced,
+          // The simulated part has the model's size (the toolpath viewer's test): else stock stands out of it.
+          sized: r.check.sized,
           gougeMm3: Math.round(Math.max(0, ...r.check.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3))),
           missing: r.missing.length,
           // The vise check (physics.ts): every clamping holds the part safely; else the app locks the program.
