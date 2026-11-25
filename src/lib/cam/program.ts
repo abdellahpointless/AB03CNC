@@ -2078,7 +2078,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const stand = exact || millsIt ? undefined : drills.filter((x) => x.length >= reachTo(h.top - depth) && x.diameter < h.r * 2 && x.diameter >= h.r * 2 * 0.8).sort((p, q) => q.diameter - p.diameter)[0];
       const d = exact ?? stand;
       if (stand) {
-        needOnce({ category: 'foret', diameter: Math.round(h.r * 200) / 100, minLength: Math.ceil(reachTo(h.top - depth)), why: { key: 'hole', d: Math.round(h.r * 200) / 100, depth: Math.round((h.top - h.bottom) * 10) / 10 } });
+        needOnce({ category: 'foret', diameter: Math.round(h.r * 200) / 100, minLength: Math.ceil(reachTo(h.top - depth)), why: { key: 'holeSmaller', d: Math.round(h.r * 200) / 100, depth: Math.round((h.top - h.bottom) * 10) / 10, used: stand.diameter } });
         const note = { key: 'temporaryTool' as const, setup: setups.length + 1, d: Math.round(h.r * 200) / 100, used: stand.diameter };
         if (!notes.some((n) => n.key === note.key && n.setup === note.setup && n.d === note.d)) notes.push(note);
       }

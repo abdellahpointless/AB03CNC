@@ -18,7 +18,8 @@ describe('a hole with neither its drill nor an end mill that fits', () => {
     expect(temp).toHaveLength(1);
     expect(temp[0]).toMatchObject({ setup: 1, d: 3, used: 2.5 });
     expect(r.code).toMatch(/SB_02\.50/);
-    expect(r.missing.some((m) => m.category === 'foret' && m.diameter === 3)).toBe(true);
+    // Listed as drilled smaller for now, not as left out (a review found the left-out words).
+    expect(r.missing.find((m) => m.category === 'foret' && m.diameter === 3)?.why).toMatchObject({ key: 'holeSmaller', used: 2.5 });
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 

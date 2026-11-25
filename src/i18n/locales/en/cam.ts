@@ -565,6 +565,7 @@ const cam = {
     why: {
       face: 'to face the top',
       hole: 'hole Ø{{d}}, {{depth}} mm deep (left out of the program until this drill is added)',
+      holeSmaller: 'hole Ø{{d}}, {{depth}} mm deep (drilled Ø{{used}} meanwhile: smaller)',
       holeMilled: 'hole Ø{{d}}, {{depth}} mm deep (milled meanwhile, slower)',
       narrow: 'narrow pockets and inside corners the end mills cannot reach ({{mm3}} mm³ left)',
       chamfer_one: '{{count}} chamfer at 45° (left out until a 90° graver is added)',
@@ -588,7 +589,7 @@ const cam = {
       spacerRefused: 'Clamping {{setup}}: no {{cale}} mm spacer at {{side}} (the shop has 15, 20 and 50 mm; none in the POM nest): made without it',
       stopRefused: 'Clamping {{setup}}: no {{cale}} mm spacer at the stop (the shop has 15 and 50 mm; none in the POM nest): the part against the stop',
       sideEmpty: 'Nothing left to cut with {{side}} up: no clamping made for it, CAM AI chose the side instead',
-      temporaryTool: 'Clamping {{setup}}: no Ø{{d}} drill in the machine or the tool database: drilled Ø{{used}} for now (temporary, the hole is that much smaller). Load the right drill and make it again',
+      temporaryTool: 'Clamping {{setup}}: no Ø{{d}} drill long enough in the machine or the tool database: drilled Ø{{used}} for now (temporary, the hole is that much smaller). Load the right drill and make it again',
       floorHit: 'Clamping {{setup}}: a cut comes within 0.5 mm of the table the part or its parallels stand on, which the simulation does not have: locked',
       jawRefused: 'Clamping {{setup}}: the part has no face {{cale}} mm under its top to rest on the jaw tops by (wider than what the jaws grip below it): CAM AI held it its own way',
     },

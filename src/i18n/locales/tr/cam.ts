@@ -568,6 +568,7 @@ const cam: Translation<typeof en> = {
     why: {
       face: 'üst yüzeyi alınlamak için',
       hole: 'Ø{{d}} delik, {{depth}} mm derin (bu matkap eklenene kadar programa alınmadı)',
+      holeSmaller: 'Ø{{d}} delik, {{depth}} mm derin (şimdilik Ø{{used}} ile delindi: daha küçük)',
       holeMilled: 'Ø{{d}} delik, {{depth}} mm derin (şimdilik frezeyle işleniyor, daha yavaş)',
       narrow: 'parmak frezelerin ulaşamadığı dar cepler ve iç köşeler ({{mm3}} mm³ kalıyor)',
       chamfer_one: '45° {{count}} pah (90° kalem eklenene kadar programa alınmadı)',
@@ -591,7 +592,7 @@ const cam: Translation<typeof en> = {
       spacerRefused: '{{setup}}. bağlama: {{side}} tarafında {{cale}} mm ara parça yok (atölyede 15, 20 ve 50 mm var; POM yuvasında yok): onsuz yapıldı',
       stopRefused: '{{setup}}. bağlama: dayamada {{cale}} mm ara parça yok (atölyede 15 ve 50 mm var; POM yuvasında yok): parça dayamaya dayalı',
       sideEmpty: '{{side}} yukarıdayken kesilecek bir şey kalmadı: onun için bağlama yapılmadı, tarafı CAM AI seçti',
-      temporaryTool: '{{setup}}. bağlama: makinede ve takım veritabanında Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',
+      temporaryTool: '{{setup}}. bağlama: makinede ve takım veritabanında yeterince uzun Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',
       floorHit: '{{setup}}. bağlama: bir kesim, parçanın veya paralellerinin durduğu tablaya 0,5 mm’den fazla yaklaşıyor (simülasyonda tabla yok): kilitli',
       jawRefused: '{{setup}}. bağlama: parçanın üstünden {{cale}} mm aşağıda çene üstlerine oturacak bir yüzü yok (çenelerin altta tuttuğundan geniş): CAM AI kendi yoluyla tuttu',
     },
