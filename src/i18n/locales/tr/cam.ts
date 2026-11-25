@@ -588,6 +588,7 @@ const cam: Translation<typeof en> = {
       clampAsk: '{{setup}}. bağlama: paralelsiz (parça çene basamağında) atölyenin parçanın neye oturduğu cevabını bekliyor: CAM AI kendi paralelini kullandı',
       clampSeam: '{{setup}}. bağlama: {{cale}} mm paralelde dış kesim parçanın altına 0,5 mm’den yakın biter, sonraki bağlamanın kesimiyle buluştuğu yerde küçük bir basamak kalabilir',
       clampNest: '{{setup}}. bağlama POM yuvasında: seçilen {{cale}} mm paraleller orada geçerli değil',
+      spacerRefused: '{{setup}}. bağlama: {{side}} tarafında {{cale}} mm ara parça yok (atölyede 15, 20 ve 50 mm var; POM yuvasında yok): onsuz yapıldı',
       stopRefused: '{{setup}}. bağlama: dayamada {{cale}} mm ara parça yok (atölyede 15 ve 50 mm var; POM yuvasında yok): parça dayamaya dayalı',
       sideEmpty: '{{side}} yukarıdayken kesilecek bir şey kalmadı: onun için bağlama yapılmadı, tarafı CAM AI seçti',
       temporaryTool: '{{setup}}. bağlama: makinede ve takım veritabanında Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',

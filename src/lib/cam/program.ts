@@ -89,7 +89,7 @@ export interface CamInput {
   /**
    * The designer's spacer in the moving jaw (Y-), by clamping: 15 mm, the shop's ("15 MM ZWISCHENLAGE IN Y-", 7 of the
    * library's 8; 20 and 50 too, the owner: "sure if needed"), from the first level on; 0: none (not even CAM AI's own);
-   * anything else, or in the nest, is refused (stopRefused). It moves nothing: the part rests on the fixed jaw and the stop.
+   * anything else, or in the nest, is refused (spacerRefused). It moves nothing: the part rests on the fixed jaw and the stop.
    */
   spacersY?: (number | null)[];
   /**
@@ -1929,7 +1929,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // The designer's spacer at the fixed jaw: the part that much toward the operator (only in the vise).
     const ypAsked = input.spacersYp?.[choiceAt] ?? undefined;
     const spacerYp = !nested && ypAsked !== undefined && (SPACERS_Y as readonly number[]).includes(ypAsked) ? ypAsked : 0;
-    if (ypAsked !== undefined && ypAsked !== 0 && !spacerYp) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: ypAsked });
+    if (ypAsked !== undefined && ypAsked !== 0 && !spacerYp) notes.push({ key: 'spacerRefused', setup: setups.length + 1, cale: ypAsked, side: 'Y+' });
     const spacerX = !nested && (stopAsked === 15 || stopAsked === 50) ? stopAsked : 0;
     // Pushed on every try: a try planned again resets the notes to before it.
     if (stopAsked !== undefined && !spacerX) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: stopAsked });
@@ -1965,7 +1965,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // The designer's from the start, or none at all; else CAM AI's own where a wall would stay at that jaw (below).
     const yAsked = input.spacersY?.[choiceAt] ?? undefined;
     const yOk = yAsked !== undefined && (SPACERS_Y as readonly number[]).includes(yAsked);
-    if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: yAsked });
+    if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'spacerRefused', setup: setups.length + 1, cale: yAsked, side: 'Y-' });
     let spacerY = !nested && yOk ? yAsked! : 0;
     if (spacerY) setupNotes.push(`${spacerY} MM ZWISCHENLAGE IN Y-`);
     const beside = (d: number, end: number): Region =>

@@ -15,7 +15,7 @@ describe('a spacer asked in the moving jaw (Y-)', () => {
     expect(g52(r.code)).toEqual(g52(made.code));
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
-    expect(r.notes.some((n) => n.key === 'stopRefused')).toBe(false);
+    expect(r.notes.some((n) => n.key === 'stopRefused' || n.key === 'spacerRefused')).toBe(false);
   }, 300_000);
 
   it('the stop spacer of a later clamping moves only that clamping, by exactly its thickness along X', () => {
@@ -56,14 +56,15 @@ describe('a spacer asked in the moving jaw (Y-)', () => {
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
     // Only the shop's sizes.
-    expect(camProgram({ ...input, spacersYp: [12] }).notes.some((n) => n.key === 'stopRefused' && n.cale === 12)).toBe(true);
+    // Said as the fixed jaw's spacer, not the stop's (a review found the stop's words used).
+    expect(camProgram({ ...input, spacersYp: [12] }).notes).toContainEqual({ key: 'spacerRefused', setup: 1, cale: 12, side: 'Y+' });
   }, 600_000);
 
   // "None" forbidding the spacer CAM AI would add itself: tests/camLayouts.test.ts (the boss plate).
   it('none asked: none written; another size: refused (noted)', () => {
     expect(camProgram({ ...input, spacersY: [0] }).setups.flatMap((s) => s.notes).some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
     const r = camProgram({ ...input, spacersY: [12] });
-    expect(r.notes.some((n) => n.key === 'stopRefused' && n.setup === 1 && n.cale === 12)).toBe(true);
+    expect(r.notes).toContainEqual({ key: 'spacerRefused', setup: 1, cale: 12, side: 'Y-' });
     expect(r.setups[0].notes.some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
   }, 300_000);
 });
