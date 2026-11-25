@@ -52,6 +52,8 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
   const ok = passed(result) && !changed;
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
+  // The designer's parallels not used as asked: why it stays locked.
+  const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
   const text = ok
     ? t('camAi.proven')
     : changed
@@ -70,7 +72,9 @@ export function useVerdict(result: CamSummary, changed: number): { ok: boolean; 
               ? t('camAi.gouge', { mm3: result.gouge })
               : unheld
                 ? t(unheld.physics.issues.some((i) => i.key === 'faceAtJaws') ? 'camAi.faceAtJaws' : 'camAi.cannotHold', { side: unheld.side })
-                : t('camAi.notProven');
+                : clampNote
+                  ? t(`camAi.note.${clampNote.key as 'clampAsk' | 'clampRefused'}`, { setup: clampNote.setup, cale: clampNote.cale })
+                  : t('camAi.notProven');
   return { ok, text };
 }
 
