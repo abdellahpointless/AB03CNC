@@ -80,6 +80,7 @@ export default function ToolpathViewer({
   start,
   embedded = false,
   focusTool = null,
+  engineId,
 }: {
   code: string;
   title: string;
@@ -102,6 +103,8 @@ export default function ToolpathViewer({
   embedded?: boolean;
   /** A tool to show at work (its first move in that setup, paused), or a setup as it starts (no tool); `key` asks again. */
   focusTool?: { setup: number; tool?: number; key: number } | null;
+  /** The remapper's machine (regions.ts engineMachineId): the corrected program it hands out follows its limits. */
+  engineId?: string;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -1145,6 +1148,7 @@ export default function ToolpathViewer({
                   state={modelState}
                   code={code}
                   brand={brand}
+                  engineId={engineId}
                   fileName={title}
                   path={path}
                   using={!!fixed}

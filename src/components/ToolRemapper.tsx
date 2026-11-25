@@ -822,6 +822,7 @@ N190 M30`;
         safety={safety}
         machineBrand={machine?.brand}
         haasOnly={engineId === 'FANUC-2'}
+        engineId={engineId}
         onSafetyOverride={(errors) => {
           // Tells the master admins (Telegram alert) that a program left with red safety problems.
           api('/alerts/safety-override', { method: 'POST', body: { machine: machine?.name ?? selectedMachine, program: fileName || 'program', errors } }).catch(() => undefined);

@@ -93,6 +93,11 @@ export function savedProgramFor(code: string, engineId: string): string {
   return (engineId === 'FANUC-2' ? fanuc2Limits(lines, false) : lines).join('\n');
 }
 
+/** The simulator's corrected program as it is copied or downloaded: it may be the remapper's source, never processed, so FANUC-2's limits apply. */
+export function simulatorProgramFor(code: string, engineId?: string): string {
+  return engineId === 'FANUC-2' ? fanuc2Limits(code.split('\n'), isAluOrBrass(code)).join('\n') : code;
+}
+
 /**
  * FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
  * subprogram calls keep their Q (an argument there, not a pass).

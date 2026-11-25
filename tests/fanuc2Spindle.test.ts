@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeGCode, codeOnly, generateRemappedCode, savedProgramFor } from '../src/lib/gcodeProcessor';
+import { analyzeGCode, codeOnly, generateRemappedCode, savedProgramFor, simulatorProgramFor } from '../src/lib/gcodeProcessor';
 import { forMachine } from '../src/lib/cam/export';
 import { defaultToolbox } from '../src/lib/defaultTools';
 import { engineMachineId } from '../src/regions';
@@ -37,6 +37,7 @@ describe('FANUC-2: the spindle never over S5000, on every way a program leaves t
     ['Process in the remapper', remap],
     ["CAM AI's Download", (machine) => forMachine(PROGRAM, machine, 'O1000.NC')],
     ['History and Recent codes (a program exported before the rule)', (machine) => savedProgramFor(PROGRAM, machine)],
+    ["The simulator's Copy and Download of corrected turns (the remapper's source, not yet processed)", (machine) => simulatorProgramFor(PROGRAM, machine)],
   ];
 
   it.each(outputs)('%s: S over 5000 becomes S5000, S4500 stays', (_path, out) => {
