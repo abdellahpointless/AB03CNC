@@ -11,7 +11,8 @@ import { turnMs, type SetupInfo } from './setups';
 export const SPEEDS = [5, 10, 50, 250];
 
 /** What the loop asks the page on every frame: wait for the part (details), and whether the 3D view turns the part. */
-export type PlayGate = { wait: () => boolean; mode3d: () => boolean };
+/** end: the move playback stops before (one tool's run, played alone); none: the program's end. */
+export type PlayGate = { wait: () => boolean; mode3d: () => boolean; end?: () => number | null };
 
 export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRefObject<PlayGate>, initialSpeed = 2) {
   const total = path.moves.length;
@@ -65,7 +66,8 @@ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRe
       sim += ((now - last) / 1000) * SPEEDS[speed];
       last = now;
       const before = k;
-      while (k < total && timeline[k] <= sim) k++;
+      const end = Math.min(total, gate.current.end?.() ?? total);
+      while (k < end && timeline[k] <= sim) k++;
       // Reaching a new setup: stop before its first move, let the part turn, then go on.
       const start = setupStarts.find((x) => x >= before && x < k && x !== held);
       if (start !== undefined) {
@@ -81,16 +83,16 @@ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRe
         return;
       }
       // The tool glides: the share of the move in progress, on every frame.
-      const pos = k >= total ? total : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
+      const pos = k >= end ? end : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
       clock.current = pos;
       // The panels (current line, time) at ~15 updates a second: they do not need more.
-      if (now - shownAt > 66 || k >= total) {
+      if (now - shownAt > 66 || k >= end) {
         shownAt = now;
         setStep(Math.min(total, Math.max(1, Math.ceil(pos))));
         setFrame((f) => f + 1);
         if (held >= 0 && k > held) setTurning(null);
       }
-      if (k >= total) setPlaying(false);
+      if (k >= end) setPlaying(false);
       else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

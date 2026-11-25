@@ -35,6 +35,7 @@ const Toolpath3D = lazy(() => import('./Toolpath3D'));
 export const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
 const clockText = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+/** play with a tool: that tool's run in that clamping played alone (it stops at the run's end). */
 export type SimFocus = { setup: number; tool?: number; key: number; play?: boolean };
 
 export default function CamSim({
@@ -50,6 +51,7 @@ export default function CamSim({
   measure,
   onMeasureToggle,
   onModel,
+  onPickTool,
 }: {
   code: string;
   brand?: string;
@@ -71,14 +73,18 @@ export default function CamSim({
   onMeasureToggle: () => void;
   /** How the simulated part compares with the model, when one is laid over it. */
   onModel?: (s: ModelState) => void;
+  /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
+  onPickTool?: (setup: number, tool: number) => void;
 }) {
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
   const setups = program.setups;
   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
+  // One tool's run played alone: the move playback stops before.
+  const soloEnd = useRef<number | null>(null);
   const { total, clock, step, setStep, seek, turning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
-  gate.current = { wait: () => false, mode3d: () => true };
+  gate.current = { wait: () => false, mode3d: () => true, end: () => soloEnd.current };
   const [heat, setHeat] = useState(false);
   const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number; follow?: boolean } | null>(null);
   const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
@@ -105,8 +111,9 @@ export default function CamSim({
   // A tool or clamping asked for by the page: there, paused (Play goes on from there).
   useEffect(() => {
     if (!focus) return;
+    soloEnd.current = null;
     // From the start, playing (the page's Simulate).
-    if (focus.play) {
+    if (focus.play && focus.tool === undefined) {
       setHeat(false);
       seek(0);
       setPlaying(true);
@@ -114,6 +121,16 @@ export default function CamSim({
     }
     const k = path.moves.findIndex((m) => m.setup === focus.setup && (focus.tool === undefined || m.tool === focus.tool));
     if (k < 0) return;
+    // That tool alone: from its first move to the end of its run, then paused there.
+    if (focus.play) {
+      let e = k;
+      while (e + 1 < total && path.moves[e + 1].setup === focus.setup && path.moves[e + 1].tool === focus.tool) e++;
+      soloEnd.current = e + 1;
+      setHeat(false);
+      seek(k);
+      setPlaying(true);
+      return;
+    }
     setPlaying(false);
     setHeat(false);
     seek(k + 1);
@@ -135,10 +152,12 @@ export default function CamSim({
   // The track is the moves' own time (tool changes are not segments of it).
   const totalSeconds = Math.max(1e-6, runs.reduce((a, r) => a + r.seconds, 0));
   const playOn = () => {
+    soloEnd.current = null;
     setHeat(false);
     setPlaying((p) => !p);
   };
   const goRun = (dir: 1 | -1) => {
+    soloEnd.current = null;
     setPlaying(false);
     const at = Math.max(0, step - 1);
     const k = runs.findIndex((r) => at >= r.from && at <= r.to);
@@ -151,6 +170,7 @@ export default function CamSim({
     const s = ((e.clientX - box.left) / box.width) * totalSeconds;
     let k = timeline.findIndex((x) => x >= s);
     if (k < 0) k = total - 1;
+    soloEnd.current = null;
     setPlaying(false);
     setHeat(false);
     seek(k + 1);
@@ -193,7 +213,7 @@ export default function CamSim({
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>
 
         {/* One floating toolbar. */}

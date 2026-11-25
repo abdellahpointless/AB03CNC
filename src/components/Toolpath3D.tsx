@@ -107,6 +107,10 @@ interface Props {
   onModel?: (s: ModelState) => void;
   /** The NX view (you, Beta 2): every path of the setup over the finished part; nothing is cut away as the tool goes. */
   pathsOnly?: boolean;
+  /** No tool picked: every path of the setup drawn faintly while paused, to pick one from. */
+  showAll?: boolean;
+  /** A tool's path hovered (lit in its colour) and clicked: that tool. */
+  onPickTool?: (tool: number) => void;
 }
 
 export type ModelView = 'part' | 'model' | 'both';
@@ -498,6 +502,8 @@ interface Api {
   progress: (step: number) => void;
   /** Objects hidden while the part turns. */
   setupObjects: THREE.Object3D[];
+  /** The tool whose path the ray passes nearest (within `near` mm), lit; null: none (and the light off). */
+  pickPath: ((ray: THREE.Raycaster | null, near: number) => number | null) | null;
   stockFill: THREE.Object3D | null;
   anim: ((now: number) => boolean) | null;
   /** The vise's moving jaw: open = 0 (closed) .. 1 (open). */
@@ -541,7 +547,7 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const onModelRef = useRef(onModel);
@@ -561,6 +567,10 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   heatRef.current = heat;
   const playingRef = useRef(playing);
   playingRef.current = playing;
+  const showAllRef = useRef(showAll);
+  showAllRef.current = showAll;
+  const onPickToolRef = useRef(onPickTool);
+  onPickToolRef.current = onPickTool;
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const clockRef = useRef(clock);
@@ -662,6 +672,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       fit: () => undefined,
       progress: () => undefined,
       setupObjects: [],
+      pickPath: null,
       stockFill: null,
       anim: null,
       jaw: null,
@@ -695,6 +706,58 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       renderer.dispose();
       renderer.domElement.remove();
       api.current = null;
+    };
+  }, []);
+
+  // A path under the pointer lights up in its tool's colour; a click (not a drag) picks that tool.
+  const measureOn = useRef(measure);
+  measureOn.current = measure;
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let down: [number, number] | null = null;
+    let over = false;
+    const at = (e: PointerEvent) => {
+      const a = api.current;
+      if (!a?.pickPath || !onPickToolRef.current || measureOn.current) return null;
+      const box = el.getBoundingClientRect();
+      ndc.set(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1);
+      ray.setFromCamera(ndc, a.camera);
+      // About 8 px on screen, whatever the zoom.
+      return a.pickPath(ray, (a.camera.position.distanceTo(a.controls.target) * 8) / Math.max(1, box.height));
+    };
+    const off = () => {
+      if (over) api.current?.pickPath?.(null, 0);
+      over = false;
+      el.style.cursor = '';
+    };
+    const move = (e: PointerEvent) => {
+      if (e.buttons) return;
+      const t = at(e);
+      over = t !== null;
+      el.style.cursor = over ? 'pointer' : '';
+    };
+    const press = (e: PointerEvent) => {
+      down = [e.clientX, e.clientY];
+    };
+    const release = (e: PointerEvent) => {
+      const click = down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4;
+      down = null;
+      if (!click) return;
+      const t = at(e);
+      if (t !== null) onPickToolRef.current?.(t);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointerleave', off);
+    return () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerdown', press);
+      el.removeEventListener('pointerup', release);
+      el.removeEventListener('pointerleave', off);
     };
   }, []);
 
@@ -994,6 +1057,28 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     feedGeo.setAttribute('color', new THREE.Float32BufferAttribute(feedCol, 3));
     const feeds = new THREE.LineSegments(feedGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }));
     world.add(feeds);
+    // The run of the tool under the pointer, in its colour over everything else.
+    const litGeo = new THREE.BufferGeometry();
+    litGeo.setAttribute('position', feedAttr);
+    const litMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, depthTest: false });
+    const lit = new THREE.LineSegments(litGeo, litMat);
+    lit.renderOrder = 8;
+    lit.visible = false;
+    world.add(lit);
+    a.pickPath = (ray, near) => {
+      if (ray) ray.params.Line = { threshold: near };
+      const hit = ray && moves.length && ghost.visible ? ray.intersectObject(ghost, false)[0] : undefined;
+      let k = -1;
+      if (hit?.index !== undefined) for (let n = 0; n < moves.length; n++) if (moves[n].kind !== 'rapid' && feedStart[n] <= hit.index) k = n;
+      const tool = k >= 0 ? moves[k].tool : null;
+      lit.visible = tool !== null;
+      if (tool !== null) {
+        litGeo.setDrawRange(feedStart[runFrom[k]], feedEnd(runTo[k]) - feedStart[runFrom[k]]);
+        litMat.color.set(colorOf(tool));
+      }
+      a.invalidate();
+      return tool;
+    };
     const rapidGeo = new THREE.BufferGeometry();
     rapidGeo.setAttribute('position', new THREE.Float32BufferAttribute(rapidPos, 3));
     const rapids = new THREE.LineSegments(rapidGeo, new THREE.LineDashedMaterial({ color: 0x7f8ba0, dashSize: 2, gapSize: 2, transparent: true, opacity: 0.5 }));
@@ -1150,6 +1235,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       // The ghost: the whole path of the tool at work (the first tool before the setup starts).
       const r = Math.max(0, k);
       if (moves.length) ghostGeo.setDrawRange(feedStart[runFrom[r]], feedEnd(runTo[r]) - feedStart[runFrom[r]]);
+      if (showAllRef.current && !playingRef.current) ghostGeo.setDrawRange(0, Infinity);
       if (!cur) {
         feedGeo.setDrawRange(0, 0);
         rapidGeo.setDrawRange(0, 0);

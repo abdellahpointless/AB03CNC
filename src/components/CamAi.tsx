@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database } from '@tabler/icons-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database, IconTrash as Trash } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -132,6 +132,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [skip, setSkip] = useState<string[]>([]);
   const [skipDraft, setSkipDraft] = useState<string[]>([]);
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
+  // A tool's row asked to be deleted (its clamping, its code): confirmed in a dialog, then made again without it.
+  const [dropAsk, setDropAsk] = useState<{ i: number; code: string; tool: number } | null>(null);
   // The removed operations' paths, from the program before (shown faded), and the one picked in the list.
   const [ghosts, setGhosts] = useState<Live['paths']>([]);
   const [ghostOn, setGhostOn] = useState<string | null>(null);
@@ -520,6 +522,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setSkipDraft((d) => (remove ? [...new Set([...d, o.key])] : d.filter((k) => k !== o.key)));
     if (remove) setSkipLabels((l) => ({ ...l, [o.key]: `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})` }));
   };
+  // A tool deleted from a clamping: all its operations there removed, and the program made again at once.
+  const dropTool = (i: number, code: string) => {
+    const ops = result?.setups[i]?.ops.filter((o) => o.code === code) ?? [];
+    if (!ops.length) return;
+    const next = [...new Set([...skipDraft, ...ops.map((o) => o.key)])];
+    setSkipLabels((l) => ({ ...l, ...Object.fromEntries(ops.map((o) => [o.key, `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})`])) }));
+    setSkipDraft(next);
+    setSkip(next);
+    setCuts(draft);
+    setSel({ kind: 'setup', i });
+    generate(swap, draft, next);
+  };
   // The browser's setups: the two picked ones before a program, the program's after.
   const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];
   const paths =
@@ -575,6 +589,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const collapseBtn = 'no-glass w-8 h-8 grid place-items-center rounded-[8px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]';
   const barBtn = 'no-glass h-8 shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-3 rounded-[8px] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40 disabled:hover:bg-transparent';
   const menuItem = 'no-glass w-full flex items-center gap-2.5 h-9 px-2.5 rounded-[6px] text-[13px] text-left text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40';
+  const rowAct = 'no-glass h-8 min-w-8 px-2 inline-flex items-center justify-center gap-1.5 rounded-[6px] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-50';
   const row = (active: boolean) => `no-glass w-full h-11 flex items-center gap-2.5 px-2 rounded-[8px] text-left transition-colors ${active ? 'bg-[var(--accent-primary)]/15' : 'hover:bg-[rgba(var(--ov),0.06)]'}`;
   const toolsOpen = narrow ? leftDrawer : leftOpen;
   const inspectorOpen = wide ? rightOpen : rightDrawer;
@@ -631,6 +646,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
                     <span className="text-xs text-[var(--text-secondary)] tabular-nums">{fmtTime(secs)}</span>
                   </button>
+                  {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}
+                  {on && (
+                    <div role="group" aria-label={label} className="flex gap-1 px-1 pt-1 pb-1.5">
+                      <button type="button" className={rowAct} onClick={() => setSimFocus({ setup: opNow, tool: o.tool, key: Date.now(), play: true })} disabled={busy}>
+                        <PlayerPlay size={14} stroke={1.8} aria-hidden />
+                        {t('camAi.ws.rowPlay')}
+                      </button>
+                      <button type="button" className={rowAct} onClick={() => (wide ? setRightOpen(true) : setRightDrawer(true))} aria-label={t('camAi.ws.rowSettings')} title={t('camAi.ws.rowSettings')}>
+                        <Settings2 size={14} stroke={1.8} aria-hidden />
+                      </button>
+                      <button type="button" className={`${rowAct} hover:!text-red-400`} onClick={() => setDropAsk({ i: opNow, code: o.code, tool: o.tool })} disabled={busy} aria-label={t('camAi.ws.rowDelete')} title={t('camAi.ws.rowDelete')}>
+                        <Trash size={14} stroke={1.8} aria-hidden />
+                      </button>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -1148,6 +1178,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     brand={machine?.brand}
                     model={model}
                     focus={simFocus}
+                    onPickTool={(i, tool) => {
+                      const op = result.setups[i]?.ops.find((o) => o.tool === tool);
+                      if (op) setSel({ kind: 'tool', i, code: op.code });
+                    }}
                     selected={sel.kind === 'tool' ? { setup: sel.i, tool: result.setups[sel.i]?.ops.find((o) => o.code === sel.code)?.tool ?? -1 } : null}
                     runLabel={runLabel}
                     stepLabel={(i) => { const st = stepName(i); return `OP${(i + 1) * 10} · ${st.turn}${st.rest ? ` · ${st.rest}` : ''}`; }}
@@ -1286,6 +1320,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       </div>
 
       {newProgramDialog()}
+      {dropDialog()}
       <CamToolDb open={dbOpen} onOpenChange={setDbOpen} stored={toolDb} onSaved={setToolDb} family={templatesFor ? FAMILY[templatesFor] : undefined} />
     </div>
   );
@@ -1410,6 +1445,37 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         )}
         <p className="text-xs text-[var(--text-secondary)]">{t('camAi.part.typeHint')}</p>
       </div>
+    );
+  }
+
+  /** Deleting a tool from a clamping: asked first (its path and tool change go, the program is made again). */
+  function dropDialog() {
+    return (
+      <Dialog.Root open={!!dropAsk} onOpenChange={(o) => !o && setDropAsk(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
+          <Dialog.Content className="glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26rem] max-w-[calc(100vw-2rem)] p-5 space-y-4">
+            <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{dropAsk && t('camAi.ws.deleteTitle', { tool: dropAsk.tool, n: dropAsk.i + 1 })}</Dialog.Title>
+            <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.ws.deleteBody')}</Dialog.Description>
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <button type="button" className="btn-secondary text-xs min-h-11 px-4">{t('camAi.cancel')}</button>
+              </Dialog.Close>
+              <button
+                type="button"
+                className="btn-primary text-xs min-h-11 px-4 inline-flex items-center gap-1.5"
+                onClick={() => {
+                  if (dropAsk) dropTool(dropAsk.i, dropAsk.code);
+                  setDropAsk(null);
+                }}
+              >
+                <Trash size={14} stroke={1.8} aria-hidden />
+                {t('camAi.ws.deleteConfirm')}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     );
   }
 
