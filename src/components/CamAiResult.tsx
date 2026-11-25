@@ -409,10 +409,11 @@ export function ToolCard({
           <Repeat size={15} /> {t('camAi.swapTool')}
         </button>
       ) : options.length ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2">
-            <span className="text-[var(--text-secondary)]">{t('camAi.standIn')}</span>
-            <select className="aurora-input text-xs cursor-pointer" value={pick} onChange={(e) => setPick(e.target.value)}>
+        <div className="space-y-2">
+          <label className="block space-y-1">
+            <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.standIn')}</span>
+            {/* Never wider than the panel: a long tool name is cut in the box, whole in the open list. */}
+            <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] truncate cursor-pointer" value={pick} onChange={(e) => setPick(e.target.value)}>
               {options.map((o) => (
                 <option key={o.code} value={o.code} className="bg-[var(--bg-panel)]">
                   {toolName(o)}
@@ -421,12 +422,14 @@ export function ToolCard({
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => onSwap(op.code, pick)} disabled={busy} className="btn-primary text-xs min-h-9 px-3">
-            {t('camAi.again')}
-          </button>
-          <button type="button" onClick={() => setAsking(false)} className="btn-secondary text-xs min-h-9 px-3">
-            {t('camAi.cancel')}
-          </button>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => onSwap(op.code, pick)} disabled={busy} className="btn-primary text-xs min-h-9 px-3 flex-1 justify-center">
+              {t('camAi.again')}
+            </button>
+            <button type="button" onClick={() => setAsking(false)} className="btn-secondary text-xs min-h-9 px-3">
+              {t('camAi.cancel')}
+            </button>
+          </div>
         </div>
       ) : (
         <p className="text-xs text-[var(--orange-text)]">{t('camAi.noStandIn')}</p>

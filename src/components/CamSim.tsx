@@ -78,8 +78,7 @@ export default function CamSim({
   const setups = program.setups;
   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
   const { total, clock, step, setStep, seek, turning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
-  const [mode3d, setMode3d] = useState(true);
-  gate.current = { wait: () => false, mode3d: () => mode3d };
+  gate.current = { wait: () => false, mode3d: () => true };
   const [heat, setHeat] = useState(false);
   const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number; follow?: boolean } | null>(null);
   const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
@@ -193,34 +192,25 @@ export default function CamSim({
   return (
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
-        {mode3d ? (
-          <Suspense fallback={null}>
+        <Suspense fallback={null}>
             <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} />
-          </Suspense>
-        ) : (
-          <TopView path={path} range={range} step={step} colorOf={colorOf} />
-        )}
+        </Suspense>
 
         {/* One floating toolbar. */}
         <div role="toolbar" aria-label={t('camAi.sim.toolbar')} className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 p-1 rounded-[10px] border border-[rgba(255,255,255,0.12)] bg-[#0E1526]/90 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
-          <div className="flex p-0.5 rounded-[8px] bg-[#0A0F1C]" role="radiogroup" aria-label={t('camAi.sim.mode')}>
-            <button type="button" role="radio" aria-checked={mode3d} className={seg(mode3d)} onClick={() => setMode3d(true)}>3D</button>
-            <button type="button" role="radio" aria-checked={!mode3d} className={seg(!mode3d)} onClick={() => { setMode3d(false); setHeat(false); }}>2D</button>
-          </div>
-          <span className="w-px h-5 bg-[rgba(255,255,255,0.12)] mx-1" aria-hidden />
-          <button type="button" className={tool} aria-pressed={measure.on} aria-label={t('camAi.sim.measure')} title={`${t('camAi.sim.measure')}  M`} onClick={onMeasureToggle} disabled={!mode3d}>
+          <button type="button" className={tool} aria-pressed={measure.on} aria-label={t('camAi.sim.measure')} title={`${t('camAi.sim.measure')}  M`} onClick={onMeasureToggle}>
             <Measure size={18} stroke={1.6} />
           </button>
-          <button type="button" className={tool} aria-pressed={!!section} aria-label={t('camAi.sim.section')} title={t('camAi.sim.section')} onClick={() => setSection((x) => (x ? null : { axis: 1, at: 0.5 }))} disabled={!mode3d}>
+          <button type="button" className={tool} aria-pressed={!!section} aria-label={t('camAi.sim.section')} title={t('camAi.sim.section')} onClick={() => setSection((x) => (x ? null : { axis: 1, at: 0.5 }))}>
             <Slice size={18} stroke={1.6} />
           </button>
-          <button type="button" className={tool} aria-pressed={heat} aria-label={t('camAi.sim.weak')} title={t('camAi.sim.weakHelp')} onClick={weak} disabled={!mode3d}>
+          <button type="button" className={tool} aria-pressed={heat} aria-label={t('camAi.sim.weak')} title={t('camAi.sim.weakHelp')} onClick={weak}>
             <Wall size={18} stroke={1.6} />
           </button>
           <span className="w-px h-5 bg-[rgba(255,255,255,0.12)] mx-1" aria-hidden />
           <Popover.Root>
             <Popover.Trigger asChild>
-              <button type="button" className="no-glass h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[8px] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40" disabled={!mode3d}>
+              <button type="button" className="no-glass h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[8px] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40">
                 <CameraRotate size={16} stroke={1.6} className="text-[var(--text-secondary)]" aria-hidden />
                 {cameraName}
                 <ChevronDown size={14} className="text-[var(--text-secondary)]" aria-hidden />
@@ -244,7 +234,7 @@ export default function CamSim({
           {model && (
             <Popover.Root>
               <Popover.Trigger asChild>
-                <button type="button" className="no-glass h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[8px] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40" disabled={!mode3d}>
+                <button type="button" className="no-glass h-8 px-2.5 inline-flex items-center gap-1.5 rounded-[8px] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40">
                   <Eye size={16} stroke={1.6} className="text-[var(--text-secondary)]" aria-hidden />
                   {t(`camAi.sim.show.${modelView}`)}
                   <ChevronDown size={14} className="text-[var(--text-secondary)]" aria-hidden />
@@ -263,7 +253,7 @@ export default function CamSim({
           )}
         </div>
 
-        {mode3d && section && (
+        {section && (
           <div className="absolute left-3 top-16 z-10 w-56 rounded-[8px] border border-[rgba(255,255,255,0.12)] bg-[#0E1526]/92 px-3 py-2 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-[var(--text-primary)] flex-1">{t('camAi.sim.section')}</span>
@@ -344,41 +334,5 @@ export default function CamSim({
         </label>
       </div>
     </div>
-  );
-}
-
-/** The 2D view: the clamping's paths from the top, what is done bright, the tool where it is. */
-function TopView({ path, range, step, colorOf }: { path: ReturnType<typeof parseToolpath>; range: [number, number]; step: number; colorOf: (tool: number | null) => string }) {
-  const { lo, hi, byTool, at } = useMemo(() => {
-    const lo = [Infinity, Infinity];
-    const hi = [-Infinity, -Infinity];
-    const byTool = new Map<string, { tool: number | null; done: boolean; d: string[] }>();
-    for (let i = range[0]; i <= range[1] && i < path.moves.length; i++) {
-      const m = path.moves[i];
-      if (m.kind === 'rapid') continue;
-      const key = `${m.tool}|${i < step ? 1 : 0}`;
-      if (!byTool.has(key)) byTool.set(key, { tool: m.tool, done: i < step, d: [] });
-      byTool.get(key)!.d.push(m.points.map((p: Vec, k: number) => `${k ? 'L' : 'M'}${p[0].toFixed(2)} ${(-p[1]).toFixed(2)}`).join(''));
-      for (const p of m.points) {
-        lo[0] = Math.min(lo[0], p[0]);
-        lo[1] = Math.min(lo[1], -p[1]);
-        hi[0] = Math.max(hi[0], p[0]);
-        hi[1] = Math.max(hi[1], -p[1]);
-      }
-    }
-    const m = path.moves[Math.min(Math.max(step - 1, 0), path.moves.length - 1)];
-    const p = m?.points[m.points.length - 1];
-    return { lo, hi, byTool: [...byTool.values()], at: p ? [p[0], -p[1]] : null };
-  }, [path, range, step]);
-  if (!Number.isFinite(lo[0])) return null;
-  const pad = Math.max(hi[0] - lo[0], hi[1] - lo[1]) * 0.08 + 2;
-  const vb = `${lo[0] - pad} ${lo[1] - pad} ${hi[0] - lo[0] + 2 * pad} ${hi[1] - lo[1] + 2 * pad}`;
-  return (
-    <svg viewBox={vb} className="absolute inset-0 w-full h-full p-16" preserveAspectRatio="xMidYMid meet" role="img" aria-label="2D">
-      {byTool.map((g, i) => (
-        <path key={i} d={g.d.join('')} fill="none" stroke={colorOf(g.tool)} strokeOpacity={g.done ? 0.95 : 0.22} strokeWidth={0.35} vectorEffect="non-scaling-stroke" style={{ strokeWidth: 1.4 }} />
-      ))}
-      {at && <circle cx={at[0]} cy={at[1]} r={2.5} fill="#ffffff" stroke="#0B1222" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
-    </svg>
   );
 }
