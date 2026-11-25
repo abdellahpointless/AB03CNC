@@ -1,4 +1,4 @@
-import { carve, drilledHoles, mesher, soonAt, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
+import { carve, drilledHoles, fillEnclosed, mesher, soonAt, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
 import { readTris } from './model';
 import { differences, layModel, placeModel, type Placed } from './modelCompare';
 import type { ModelError } from './modelLimits';
@@ -10,7 +10,8 @@ import { lessonOf } from './lessons';
 /*
  * Cuts the part away from the UI thread. Messages:
  *   { type: 'init', input }  -> { type: 'progress', share } ..., { type: 'ready', size }
- *   { type: 'mesh', step, heat, until? } -> { type: 'mesh', step, full, chunks: [{ id, positions, normals, cut, thick?, soon? }] }
+ *   { type: 'mesh', step, heat, until?, hull? } -> { type: 'mesh', step, full, chunks: [{ id, positions, normals, cut, thick?, soon? }] }
+ *   (hull: the part's outer walls only at that instant, every hollow closed: item 2)
  * thick: wall thickness of the finished part at each point (weak spots), measured the first time
  * heat is asked for (it takes a second on big parts), then sent with every chunk.
  * step is an instant of the program (move × SUB + share of the move, see stockSim), so the cut
@@ -51,11 +52,14 @@ let input: SimInput | null = null;
 let th: Float32Array | null = null;
 let last = -1;
 let lastUntil: number | null = null;
+// The outer shape: made again for each instant asked, all of it sent each time.
+let hull: { at: number; m: Mesher } | null = null;
+let lastHull = false;
 
 self.onmessage = (e: MessageEvent) => {
   const msg = e.data as
     | { type: 'init'; input: SimInput }
-    | { type: 'mesh'; step: number; heat?: boolean; until?: number | null }
+    | { type: 'mesh'; step: number; heat?: boolean; until?: number | null; hull?: boolean }
     | { type: 'holes'; before: number }
     | { type: 'model'; bytes: Uint8Array; input: SimInput; setups: Placed[] }
     | { type: 'search'; bytes: Uint8Array; code: string; brand?: string };
@@ -95,12 +99,16 @@ self.onmessage = (e: MessageEvent) => {
     }
     // The x-ray's tint (until: what the tool at work still takes): every chunk again when it changes.
     const until: number | null = typeof msg.until === 'number' ? msg.until : null;
-    const full = last < 0 || measure || until !== lastUntil;
+    const outer = !!msg.hull;
+    const full = last < 0 || measure || until !== lastUntil || outer || outer !== lastHull;
     lastUntil = until;
+    lastHull = outer;
+    if (outer && hull?.at !== msg.step) hull = { at: msg.step, m: mesher(fillEnclosed(g!, msg.step), input!) };
+    const use = outer ? hull!.m : m;
     const ids = full ? Array.from({ length: m.chunks }, (_, i) => i) : m.dirty(last, msg.step);
     const chunks = ids.map((id) => {
-      const c = m!.build(id, msg.step);
-      return { ...c, ...(th ? { thick: thicknessAt(g!, th, c.positions) } : {}), ...(until !== null ? { soon: soonAt(g!, c.positions, msg.step, until) } : {}) };
+      const c = use.build(id, msg.step);
+      return { ...c, ...(th && !outer ? { thick: thicknessAt(g!, th, c.positions) } : {}), ...(until !== null && !outer ? { soon: soonAt(g!, c.positions, msg.step, until) } : {}) };
     });
     last = msg.step;
     self.postMessage(

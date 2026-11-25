@@ -1188,6 +1188,54 @@ interface Cross {
   minor?: boolean;
 }
 
+/**
+ * The part at an instant (see SUB) with its outer walls only (item 2): every cut sample that a slice square to X, Y
+ * or Z closes in (a hole, a pocket, a tunnel) counted as material again. A copy: the grid is left as it is.
+ */
+export function fillEnclosed(g: Grid, at: number): Grid {
+  const [nx, ny, nz] = g.n;
+  const dims = [nx, ny, nz];
+  const stride = [1, nx, nx * ny];
+  const cut = (v: number) => g.removed[v] !== KEPT && g.removed[v] * SUB + (g.share[v] >> 6) <= at;
+  const removed = g.removed.slice();
+  for (const a of [0, 1, 2] as const) {
+    const [u, w] = a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
+    const [nu, nw] = [dims[u], dims[w]];
+    const open = new Uint8Array(nu * nw);
+    const queue = new Int32Array(nu * nw);
+    for (let c = 0; c < dims[a]; c++) {
+      open.fill(0);
+      const base = c * stride[a];
+      let head = 0;
+      let tail = 0;
+      // From the slice's edges inward over cut samples: what it reaches is outside.
+      const reach = (iu: number, iw: number) => {
+        const q = iw * nu + iu;
+        if (open[q] || !cut(base + iu * stride[u] + iw * stride[w])) return;
+        open[q] = 1;
+        queue[tail++] = q;
+      };
+      for (let iu = 0; iu < nu; iu++) (reach(iu, 0), reach(iu, nw - 1));
+      for (let iw = 0; iw < nw; iw++) (reach(0, iw), reach(nu - 1, iw));
+      while (head < tail) {
+        const q = queue[head++];
+        const iu = q % nu;
+        const iw = (q - iu) / nu;
+        if (iu > 0) reach(iu - 1, iw);
+        if (iu < nu - 1) reach(iu + 1, iw);
+        if (iw > 0) reach(iu, iw - 1);
+        if (iw < nw - 1) reach(iu, iw + 1);
+      }
+      for (let iw = 0; iw < nw; iw++)
+        for (let iu = 0; iu < nu; iu++) {
+          const v = base + iu * stride[u] + iw * stride[w];
+          if (!open[iw * nu + iu] && cut(v)) removed[v] = KEPT;
+        }
+    }
+  }
+  return { ...g, removed };
+}
+
 export function mesher(g: Grid, input: SimInput): Mesher {
   const [nx, ny, nz] = g.n;
   const { origin, step: h } = g;

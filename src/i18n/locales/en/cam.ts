@@ -92,6 +92,8 @@ const cam = {
       sectionAt: 'Where the section cuts',
       weak: 'Weak spots',
       weakHelp: 'Weak spots: the finished part coloured where its walls are thin',
+      hull: 'Outer shape',
+      hullHelp: 'The part as it is at this point, its outer walls only: holes, pockets and tunnels closed (what the vise and the parallels meet)',
       camera: { top: 'Top', front: 'Front', iso: '3/4' },
       fit: 'Fit',
       show: { part: 'Part', model: 'Model', both: 'Both' },

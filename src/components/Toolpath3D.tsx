@@ -109,6 +109,8 @@ interface Props {
   pathsOnly?: boolean;
   /** No tool picked: every path of the setup drawn faintly while paused, to pick one from. */
   showAll?: boolean;
+  /** The part's outer walls only (holes, pockets, tunnels closed), as it is at the instant shown (item 2). */
+  hull?: boolean;
   /** A tool's path hovered (lit in its colour) and clicked: that tool. */
   onPickTool?: (tool: number) => void;
 }
@@ -547,7 +549,7 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool, hull = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const onModelRef = useRef(onModel);
@@ -569,6 +571,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   playingRef.current = playing;
   const showAllRef = useRef(showAll);
   showAllRef.current = showAll;
+  const hullRef = useRef(hull);
+  hullRef.current = hull;
   const onPickToolRef = useRef(onPickTool);
   onPickToolRef.current = onPickTool;
   const fitFor = useRef<{ path: unknown; at: string }>({ path: null, at: '' });
@@ -800,7 +804,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (s === shown) settled();
       if (!busy && a.solidReady && s !== shown) {
         busy = true;
-        worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current, until: a.until });
+        worker.postMessage({ type: 'mesh', step: s, heat: heatRef.current, until: a.until, hull: hullRef.current });
       }
       lag();
     };
@@ -1380,6 +1384,12 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   useEffect(() => {
     if (fitKey) api.current?.fit();
   }, [fitKey]);
+
+  // The outer shape on or off: the part asked for again, whole.
+  useEffect(() => {
+    const a = api.current;
+    if (a && a.solidReady) a.requestMesh(a.meshAt, true);
+  }, [hull]);
 
   // Measuring (lib/measure3d.ts). Pressing Measure hides the part while it is analysed: the part shown must be the
   // part at this instant, then its plunged holes are found and their rims drawn; clicks then measure.

@@ -19,6 +19,7 @@ import {
   IconSlice as Slice,
   IconStack2 as Parallels,
   IconWall as Wall,
+  IconBox as Hull,
 } from '@tabler/icons-react';
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Vec } from '../lib/toolpath';
@@ -89,6 +90,8 @@ export default function CamSim({
   const { total, clock, step, setStep, seek, turning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
   gate.current = { wait: () => false, mode3d: () => true, end: () => soloEnd.current };
   const [heat, setHeat] = useState(false);
+  // The part's outer walls only (item 2): its shape after the operation shown, every hollow closed.
+  const [hull, setHull] = useState(false);
   const [section, setSection] = useState<{ axis: 0 | 1 | 2; at: number; follow?: boolean } | null>(null);
   const [view3d, setView3d] = useState<{ kind: 'top' | 'front' | 'iso'; key: number } | null>(null);
   const [fitKey, setFitKey] = useState(0);
@@ -235,7 +238,7 @@ export default function CamSim({
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>
 
         {/* One floating toolbar. */}
@@ -248,6 +251,9 @@ export default function CamSim({
           </button>
           <button type="button" className={tool} aria-pressed={heat} aria-label={t('camAi.sim.weak')} title={t('camAi.sim.weakHelp')} onClick={weak}>
             <Wall size={18} stroke={1.6} />
+          </button>
+          <button type="button" className={tool} aria-pressed={hull} aria-label={t('camAi.sim.hull')} title={t('camAi.sim.hullHelp')} onClick={() => setHull((h) => !h)}>
+            <Hull size={18} stroke={1.6} />
           </button>
           <span className="w-px h-5 bg-[rgba(255,255,255,0.12)] mx-1" aria-hidden />
           <Popover.Root>

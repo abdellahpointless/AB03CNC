@@ -95,6 +95,8 @@ const cam: Translation<typeof en> = {
       sectionAt: 'Kesitin yeri',
       weak: 'Zayıf noktalar',
       weakHelp: 'Zayıf noktalar: bitmiş parça, duvarlarının ince olduğu yerde renkli',
+      hull: 'Dış biçim',
+      hullHelp: 'Parçanın bu andaki hâli, yalnız dış duvarları: delikler, cepler ve tüneller kapalı (mengenenin ve paralellerin değdiği yer)',
       camera: { top: 'Üst', front: 'Ön', iso: '3/4' },
       fit: 'Sığdır',
       show: { part: 'Parça', model: 'Model', both: 'İkisi' },
