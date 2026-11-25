@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { machineName } from '../lib/machines';
 import { HistoryRecord } from '../types';
 import { IconSearch as Search, IconDownload as Download, IconFileText as FileText, IconUserCircle as UserCircle, IconRefresh as RefreshCw } from '@tabler/icons-react';
-import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
+import { savedProgramFor } from '../lib/gcodeProcessor';
+import { engineMachineId } from '../regions';
+import { currentRegion } from '../lib/instance';
 import { fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadText } from '../lib/download';
 import { useSync } from '../contexts/SyncContext';
@@ -49,8 +51,8 @@ export default function RecentCodes() {
     setDownloadingId(record.id);
     try {
       const savedCode = await fetchRecordCode(record.id);
-      const { lines: safeLines } = applyG53BeforeG52(savedCode.split('\n'));
-      downloadText(record.exportedFileName, safeLines.join('\n'), 'application/octet-stream');
+      const engineId = engineMachineId(currentRegion().id, { id: record.machine ?? '', brand: machines.find((m) => m.id === record.machine)?.brand ?? 'OTHER' });
+      downloadText(record.exportedFileName, savedProgramFor(savedCode, engineId), 'application/octet-stream');
     } catch (e: any) {
       alert(e?.message || t('shared.codeUnavailable'));
     } finally {

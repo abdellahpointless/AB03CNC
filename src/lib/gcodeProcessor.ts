@@ -83,6 +83,17 @@ export function fanuc2Limits(lines: string[], aluOrBrass: boolean): string[] {
 }
 
 /**
+ * A program from the history as it is handed out again (History, Recent codes): the table comes out
+ * before each flip and the end, and on FANUC-2 the spindle never over S5000 (a program exported before
+ * that rule, or from a page not yet reloaded, was saved with its higher speeds); everything else stays
+ * as it was exported. `engineId`: the record's machine, as regions.ts engineMachineId gives it.
+ */
+export function savedProgramFor(code: string, engineId: string): string {
+  const { lines } = applyG53BeforeG52(code.split('\n'));
+  return (engineId === 'FANUC-2' ? fanuc2Limits(lines, false) : lines).join('\n');
+}
+
+/**
  * FH (pressed wood) programs: a pass (Q, the peck of G83/G73) is never more than 5 mm. Macro and
  * subprogram calls keep their Q (an argument there, not a pass).
  */
