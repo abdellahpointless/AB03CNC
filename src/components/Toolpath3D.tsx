@@ -1246,7 +1246,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
 
     a.frame = () => {
       const bb = new THREE.Box3();
-      if (s) bb.expandByObject(stockGroup).expandByObject(fixture);
+      // The part and what is round it (the jaws beside it), not the whole vise: the shop's vise is 438 mm long.
+      if (s) {
+        bb.expandByObject(stockGroup);
+        bb.expandByScalar(Math.max(30, bb.getSize(new THREE.Vector3()).length() * 0.8));
+      }
       if (feedPos.length) {
         feedGeo.computeBoundingBox();
         const pb = feedGeo.boundingBox!.clone();
