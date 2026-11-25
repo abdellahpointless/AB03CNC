@@ -6,6 +6,29 @@ import type { Release } from '../whatsNew';
  */
 export const CAM_RELEASES: Release[] = [
   {
+    id: '2026-11-25-cam-workspace',
+    date: '2026-11-25',
+    feature: 'lab',
+    en: {
+      title: 'CAM AI: a workspace of its own',
+      items: [
+        'CAM AI opens full screen, without the app’s header and tabs; the arrow at the top left goes back to CNC Process Pro.',
+        'One bar at the top: the file, its stock, its checks (click them for every one), its time, Download and Send to the remapper; the rest is under ⋯.',
+        'Tools by clamping (OP10, OP20…), one row each; the picked tool’s values and operations on the right. [ and ] fold the two panels away.',
+        'Its own simulation: one toolbar over the view, the parallels and the jaw check in its corners, and a timeline with one coloured segment per tool (F fits the view, Space plays).',
+      ],
+    },
+    tr: {
+      title: 'CAM AI: kendine ait bir çalışma alanı',
+      items: [
+        'CAM AI uygulamanın başlığı ve sekmeleri olmadan tam ekran açılır; sol üstteki ok CNC Process Pro’ya döner.',
+        'Üstte tek çubuk: dosya, hamı, kontrolleri (hepsi için tıklayın), süresi, İndir ve remapper’a Gönder; gerisi ⋯ altında.',
+        'Bağlamaya göre takımlar (OP10, OP20…), her biri bir satır; seçilen takımın değerleri ve işlemleri sağda. [ ve ] iki paneli katlar.',
+        'Kendi simülasyonu: görünümün üstünde tek araç çubuğu, köşelerinde paraleller ve çene kontrolü, her takım için renkli bir parçası olan zaman çizelgesi (F görünümü sığdırır, Boşluk oynatır).',
+      ],
+    },
+  },
+  {
     id: '2026-11-25-cam-edits',
     date: '2026-11-25',
     feature: 'lab',
