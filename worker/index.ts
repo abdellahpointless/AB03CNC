@@ -55,6 +55,7 @@ import {
 } from './routes/history';
 import { handleCreateUser, handleDeleteUser, handleListUsers, handleUpdateUser } from './routes/users';
 import { handleExportLessons, handleGetTurnMemory, handleSaveLesson, handleSaveTurnMemory } from './routes/lessons';
+import { handleListLabTools, handleResetLabTool, handleSaveLabTool } from './routes/lab';
 import { handleAnalytics, handleSetHiddenUsers, handleSetSavedSeconds, handleSync } from './routes/analytics';
 import {
   handleAdminExport,
@@ -129,6 +130,9 @@ route('POST', '/auth/mfa/enable', 'user', handleMfaEnable);
 route('POST', '/auth/mfa/disable', 'user', handleMfaDisable);
 route('POST', '/toolpath/lessons', 'user', handleSaveLesson);
 route('GET', '/toolpath/lessons', 'admin', handleExportLessons);
+route('GET', '/lab/tools', 'user', handleListLabTools);
+route('PUT', '/lab/tools', 'user', handleSaveLabTool);
+route('DELETE', '/lab/tools', 'user', handleResetLabTool);
 route('GET', '/toolpath/memory', 'user', handleGetTurnMemory);
 route('POST', '/toolpath/memory', 'user', handleSaveTurnMemory);
 route('GET', '/admin/audit', 'admin', handleAuditLog);

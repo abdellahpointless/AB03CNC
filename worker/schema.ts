@@ -400,6 +400,20 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
     // Everyone there already has seen it (it came at every sign-in): never again for them.
     statements: ['ALTER TABLE users ADD COLUMN weak_password_notice_at INTEGER', 'UPDATE users SET weak_password_notice_at = 1'],
   },
+  {
+    // The lab's tool database (worker/routes/lab.ts): the shop's changes to the template tools, and tools added.
+    version: 17,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS lab_tools (
+        family TEXT NOT NULL,
+        code TEXT NOT NULL,
+        data TEXT NOT NULL,
+        updated_by TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (family, code)
+      )`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
