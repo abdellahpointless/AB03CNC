@@ -17,6 +17,25 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026-11-25-real-vise',
+    date: '2026-11-25',
+    feature: 'toolpath',
+    en: {
+      title: 'The shop’s real vise in the 3D view',
+      items: [
+        'The 3D view draws the shop’s Haas vise from its maker’s model: jaws 150 mm long and 45 mm high, the moving jaw and the screw toward the operator.',
+        'The part is pushed against a stop at the jaws’ left end (X = 0). Tools are now checked against the jaws all the way to 150 mm from that stop, and against the 8 mm stop before it.',
+      ],
+    },
+    tr: {
+      title: 'Atölyenin gerçek mengenesi 3B görünümde',
+      items: [
+        '3B görünüm atölyenin Haas mengenesini üreticisinin modelinden çizer: çeneler 150 mm uzunluğunda ve 45 mm yüksekliğinde, hareketli çene ve mil operatöre doğru.',
+        'Parça, çenelerin sol ucundaki bir dayamaya (X = 0) itilir. Takımlar artık o dayamadan 150 mm’ye kadar çenelere ve önündeki 8 mm’lik dayamaya karşı denetlenir.',
+      ],
+    },
+  },
+  {
     id: '2026-11-24-icons',
     date: '2026-11-24',
     en: {
