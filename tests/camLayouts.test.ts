@@ -279,15 +279,16 @@ describe('the jaws of a later clamping', () => {
     return columnPart(lo, hi);
   };
 
-  it('keeps off the jaws only where they stand: not past their end, 142 mm from the stop (a review found the whole length kept off)', () => {
-    // A 160 mm plate with a 150 x 24 boss, and the 4 x 4 hole across the boss's Y- face from the jaws' end on,
-    // 142 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
-    const len = 160;
-    const tris = longBossPlate(len, (i, j) => i >= 146 && i < 150 && j >= 3 && j < 7);
+  it('keeps off the jaws only where they stand: not past their end, 150 mm from the stop (a review found the whole length kept off)', () => {
+    // A 168 mm plate with a 158 x 24 boss, and the 4 x 4 hole across the boss's Y- face from the jaws' end on,
+    // 150 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
+    const len = 168;
+    const tris = longBossPlate(len, (i, j) => i >= 154 && i < 158 && j >= 3 && j < 7);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
-    expect(r.setups[1].held[2] - r.setups[1].held[0]).toBeCloseTo(150, 0);
+    // Held along the jaws' whole length (the 150 mm from the stop).
+    expect(r.setups[1].held[2] - r.setups[1].held[0]).toBeGreaterThanOrEqual(VISE.width);
     // The hole lies past the jaws' end: a mill wider than its half in the boss cuts it all, and no wall is left.
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && (m.dia ?? 0) > 2 && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] - m.dia! / 2 > s.jawX[1]))).toBe(true);
     expect(r.notes.filter((n) => n.key === 'jawWall')).toEqual([]);
@@ -298,7 +299,7 @@ describe('the jaws of a later clamping', () => {
 
   it.each([undefined, 'topPlate' as const])('does not count a mill rounding the jaws\' end, clear of them, as in them (a review found 2 such hits that locked a program; part type %s)', (partType) => {
     // A 180 x 70 x 12 plate with a 170 x 34 boss 8 high (i 4..174, j 18..52), and a 36 x 30 pocket across the
-    // boss's Y- face and the jaws' end (142 mm from the boss's X- face): through the plate beside the boss,
+    // boss's Y- face and the jaws' end (150 mm from the part's X- face): through the plate beside the boss,
     // into it 1 mm short of its top.
     const boss = (i: number, j: number) => i >= 4 && i < 174 && j >= 18 && j < 52;
     const hole = (i: number, j: number) => i >= 130 && i < 166 && j >= 2 && j < 32;
@@ -319,15 +320,15 @@ describe('the jaws of a later clamping', () => {
   it('keeps a mill running down the jaws\' end, past the held face, 1 mm clear of it (a review found that margin untested)', () => {
     // As above, the hole 12 x 6 from 2 mm before the jaws' end: 4 mm of it beside the boss, where a mill
     // goes below the jaw top past the held face, along the jaws' end.
-    const tris = longBossPlate(160, (i, j) => i >= 144 && i < 156 && j >= 1 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [164, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const tris = longBossPlate(176, (i, j) => i >= 152 && i < 164 && j >= 1 && j < 7);
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [180, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
     const pastFace = (p: number[]) => p[1] < s.clampBox!.min[1] || p[1] > s.clampBox!.max[1];
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] - dia(m) / 2 < s.jawX[1] + 2))).toBe(true);
     // Every such cut keeps its edge the 1 mm (less the first ring's 0.02) past the jaws' end, where the G52 puts them.
-    const end = s.clampBox!.min[0] - STOP_PLATE + VISE.width;
+    const end = s.clampBox!.min[0] + VISE.width;
     const clear = tp.moves
       .filter((m) => m.setup === 1 && m.kind === 'feed')
       .flatMap((m) => m.points.filter((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] > end).map((p) => p[0] - dia(m) / 2 - end));

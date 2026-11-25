@@ -11,6 +11,7 @@
  * When the vise cannot hold the part for the cut, the cut is slowed (force follows the feed); when
  * even a third of the feed is too much, the setup fails.
  */
+import { VISE } from '../setups';
 
 /** E (modulus), strength (yield / flexural), compressive (at 1 % strain for plastics), MPa; density g/cm³; kc N/mm². */
 export interface MaterialData {
@@ -208,7 +209,7 @@ export function checkSetup(l: SetupLoad): SetupCheck {
     return Math.max(MIN_FEED, Math.min(1, feed) * k);
   });
   // 3-2-1: on both parallels, against the fixed jaw over a length, against the stop.
-  const along = Math.min(l.length, 142);
+  const along = Math.min(l.length, VISE.width);
   if (l.contact.jaws < Math.min(20, along * 0.3)) issues.push({ key: 'jawContact', mm: Math.round(l.contact.jaws) });
   if (Math.min(...l.contact.rest) < Math.min(10, along * 0.3)) issues.push({ key: 'restContact' });
   if (!l.contact.stop) issues.push({ key: 'stopContact' });

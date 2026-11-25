@@ -388,6 +388,12 @@ export const NEST_GAP = 0.1;
  * the stop and the machine zero; the second one stands 50 mm to its right, open on both sides.
  */
 export const VISE = { width: 150, height: DEFAULT_JAW_HEIGHT, opening: 400, gap: 50 } as const;
+/**
+ * The first vise's jaws as the checks take them (X), from the stop's face (where the part, or the spacer before it,
+ * is pushed): the jaws stand from that face to 150 mm past it, and the stop, fixed to the fixed jaw's end, the
+ * STOP_PLATE before it (the owner's picture of the vise); both checked as jaw.
+ */
+export const jawsFrom = (stopFace: number): [number, number] => [stopFace - STOP_PLATE, stopFace + VISE.width];
 /** How far a part may stick out of one vise to the right; a longer one goes in both. */
 export const OVERHANG = 50;
 /** The X extents of the jaws: the first vise, and the second one when the part is in both. */
@@ -644,7 +650,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
         s.grip = gripOf(s, input, g);
         const miss = sizeMiss(s, input, g);
         if (miss) s.rejects.push({ ...miss, line: tp.setups[s.index].notes.find((n) => /IN\s*[XY]\b/i.test(n.text))?.line ?? s.line });
-        if (s.grip) s.jawX = [s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE, s.grip.stop - spacerAt(s, 'X-') - STOP_PLATE + VISE.width];
+        if (s.grip) s.jawX = jawsFrom(s.grip.stop - spacerAt(s, 'X-'));
       }
       return out;
     }
@@ -1223,7 +1229,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
     const jaw = info.clampBox;
     info.jawTopZ = info.floorZ + opts.jawHeight;
     info.twoVises ||= hold[0] + spacerAt(ins, 'X-') > VISE.width + OVERHANG;
-    info.jawX = [jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE, jaw.min[0] - spacerAt(ins, 'X-') - STOP_PLATE + VISE.width];
+    info.jawX = jawsFrom(jaw.min[0] - spacerAt(ins, 'X-'));
     const spans = viseSpans(info);
     // The steel jaw plates: a spacer (soft, may be touched) stands between them and the part.
     const jawY: [number, number] = [jaw.min[1] - spacerAt(ins, 'Y-'), jaw.max[1] + spacerAt(ins, 'Y+')];
