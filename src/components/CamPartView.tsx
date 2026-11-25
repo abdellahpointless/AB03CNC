@@ -9,7 +9,7 @@ import type { Mat3 } from '../lib/orient';
 import type { Purpose } from '../lib/cam/program';
 import { fmtNumber } from '../i18n/format';
 import { buildParallels, buildVise } from '../lib/vise3d';
-import { parallelWidth, STOP_PLATE, VISE } from '../lib/setups';
+import { jawsFrom, parallelWidth, STOP_PLATE, VISE, viseSpans } from '../lib/setups';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { JAW } from '../lib/cam/clamp';
 
@@ -689,9 +689,11 @@ export default function CamPartView({
     // Pushed against the stop; a second vise when the part is longer than one (as the shop holds long parts).
     // The spacer at the stop (15 or 50 mm) between it and the part: the vise that much further left.
     const sp = clamp.stop ?? 0;
-    const spans: [number, number][] = [[lo[0] - sp - STOP_PLATE, lo[0] - sp - STOP_PLATE + VISE.width]];
-    if (hi[0] > spans[0][1] + 5) spans.push([spans[0][1] + VISE.gap, spans[0][1] + VISE.gap + VISE.width]);
+    const jawX = jawsFrom(lo[0] - sp);
+    const spans = viseSpans({ jawX, twoVises: hi[0] > jawX[0] + VISE.width + 5 });
     const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, sp ? [{ side: 'X-', mm: sp }] : []);
+    // The vise's model comes in once loaded: drawn again then.
+    void v.ready.then(() => a.invalidate());
     // The moving jaw (front, Y-) opens toward the operator; the part slides, so the vise body moves the other way.
     const body = new THREE.Group();
     body.add(v.group);

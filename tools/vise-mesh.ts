@@ -2,8 +2,9 @@
  * The shop's vise for the 3D views (src/lib/viseModel.ts), from its maker's STEP model (Haas HMV-6F-08, not in the
  * repository): each body read once, in the vise's own frame (mm): X0 the jaw plates' left end, Y0 the fixed jaw
  * plate's face, Z0 the bed the parallels stand on; machine X/Y/Z as in the app (moving jaw at Y-, the fixed one at Y+).
- * Only one thing changes: the jaw plates' tops are raised to exactly 45 mm over the bed (the shop's jaw height; the
- * model has 44.5). Thread inside the jaws and the body (never seen) is left out to keep the mesh small.
+ * Two things change, as the shop's vise is: the jaw plates' tops are raised to exactly 45 mm over the bed (the model
+ * has 44.5), and both jaws are made 150 mm long, shortened from their right end (the model's are 152). Thread inside
+ * the jaws and the body (never seen) is left out to keep the mesh small.
  *
  *   npm run vise-mesh -- "<path to the .step>"
  */
@@ -15,6 +16,7 @@ type Mesh = { name: string; attributes: { position: { array: number[] }; normal?
 type Occt = { ReadStepFile: (buf: Uint8Array, p: Record<string, unknown>) => { success: boolean; meshes: Mesh[] } };
 
 const JAW_HEIGHT = 45;
+const JAW_LENGTH = 150;
 /** Model units per stored unit: positions as 16-bit integers of 1/50 mm. */
 const Q = 50;
 /** The bodies by their number in the model ("... - part 07"): what each is, which mesh it goes to. */
@@ -34,6 +36,16 @@ const BODIES: Record<string, { mesh: MeshName; keep?: (y: number) => boolean }> 
   '11': { mesh: 'movingBody', keep: (y) => y > 123 },
   '14': { mesh: 'movingBody' }, // the plates on the moving jaw's sides
   '14 (1)': { mesh: 'movingBody' },
+};
+/** The jaws and what is on their right end: shortened there to JAW_LENGTH. */
+const JAWS = new Set(['02', '03', '07', '08', '14 (1)']);
+/**
+ * The jaws' tapped holes for the plate screws (along Y, near this X/Z in the model, over these Y): their thread, some
+ * 8,000 triangles a hole, swapped for a plain tube at the thread's outside radius (the hole's mouth stays where it is).
+ */
+const HOLES: Record<string, { x: number; z: number; y: [number, number] }[]> = {
+  '03': [{ x: -372.7, z: -19.2, y: [383.5, 435.5] }, { x: -274.3, z: -19.2, y: [383.5, 435.5] }],
+  '02': [{ x: -372.2, z: -18.2, y: [0, 123] }, { x: -273.8, z: -18.2, y: [0, 123] }],
 };
 const MESHES = ['fixedBody', 'fixedJaw', 'fixedPlate', 'movingBody', 'movingJaw', 'movingPlate'] as const;
 type MeshName = (typeof MESHES)[number];
@@ -69,20 +81,60 @@ for (const [no, spec] of Object.entries(BODIES)) {
   const plate = no === '07' || no === '08';
   // Each plate from its own top (the two differ by 0.005 mm in the model).
   const lift = plate ? JAW_HEIGHT - (box(m)[5] - Z0) : 0;
+  // The jaws' right end band (past their screw holes, under 132 mm) moved in as a whole.
+  const trim = JAWS.has(no) ? JAW_LENGTH - (fixedPlate[3] - X0) : 0;
   const o = out[spec.mesh];
   const base = o.pos.length / 3;
   for (let k = 0; k < p.length; k += 3) {
     let z = p[k + 2] - Z0;
     // The jaw height: the plate's top band raised as a whole (its screw holes, under 34 mm, stay where they are).
     if (plate && z > 38) z += lift;
-    o.pos.push(p[k] - X0, p[k + 1] - Y0, z);
+    const x = p[k] - X0;
+    o.pos.push(x > 140 ? x + trim : x, p[k + 1] - Y0, z);
     o.nrm.push(n ? n[k] : 0, n ? n[k + 1] : 0, n ? n[k + 2] : 1);
   }
   const ix = m.index.array;
+  // Each tapped hole: its axis (the middle of the thread) and outside radius, from the model itself.
+  const holes = (HOLES[no] ?? []).map((h) => {
+    const near: number[] = [];
+    for (let k = 0; k < p.length; k += 3) if (p[k + 1] >= h.y[0] - 0.01 && p[k + 1] <= h.y[1] + 0.01 && Math.hypot(p[k] - h.x, p[k + 2] - h.z) < 7) near.push(k);
+    const xs = near.map((k) => p[k]);
+    const zs = near.map((k) => p[k + 2]);
+    const ax = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const az = (Math.min(...zs) + Math.max(...zs)) / 2;
+    const r = Math.max(...near.map((k) => Math.hypot(p[k] - ax, p[k + 2] - az)));
+    if (!(r > 3 && r < 7)) throw new Error(`Hole of body ${no} not found where expected.`);
+    return { ax, az, r, y: h.y };
+  });
+  const inHole = (k: number) => holes.some((h) => p[k + 1] >= h.y[0] - 0.01 && p[k + 1] <= h.y[1] + 0.01 && Math.hypot(p[k] - h.ax, p[k + 2] - h.az) <= h.r + 0.01);
+  let dropped = 0;
   for (let t = 0; t < ix.length; t += 3) {
     if (spec.keep && ![0, 1, 2].some((j) => spec.keep!(p[3 * ix[t + j] + 1]))) continue;
+    if (holes.length && [0, 1, 2].every((j) => inHole(3 * ix[t + j]))) {
+      dropped++;
+      continue;
+    }
     o.idx.push(base + ix[t], base + ix[t + 1], base + ix[t + 2]);
   }
+  // The tubes: 24 sides, seen from inside (normals toward the axis).
+  for (const h of holes) {
+    const at = o.pos.length / 3;
+    const S = 24;
+    for (let i = 0; i < S; i++) {
+      const a = (2 * Math.PI * i) / S;
+      const [c, sn] = [Math.cos(a), Math.sin(a)];
+      for (const y of h.y) {
+        o.pos.push(h.ax + h.r * c - X0, y - Y0, h.az + h.r * sn - Z0);
+        o.nrm.push(-c, 0, -sn);
+      }
+    }
+    for (let i = 0; i < S; i++) {
+      const [a0, a1, b0, b1] = [at + 2 * i, at + 2 * i + 1, at + 2 * ((i + 1) % S), at + 2 * ((i + 1) % S) + 1];
+      // Wound so its front faces the axis.
+      o.idx.push(a0, b0, a1, a1, b0, b1);
+    }
+  }
+  if (holes.length) console.error(`body ${no}: ${dropped} thread triangles swapped for ${holes.length} tubes (r ${holes.map((h) => h.r.toFixed(2)).join(', ')} mm)`);
 }
 
 // Each mesh: its vertices as 16-bit integers (1/50 mm), normals as 8-bit, indices 16 or 32-bit; one base64 string.
@@ -115,7 +167,8 @@ const data = Buffer.concat(chunks).toString('base64');
 const plateTop = Math.max(...out.fixedPlate.pos.filter((_, k) => k % 3 === 2), ...out.movingPlate.pos.filter((_, k) => k % 3 === 2));
 const sizes = (b: number[]) => [b[0] - X0, b[1] - Y0, b[2] - Z0, b[3] - X0, b[4] - Y0, b[5] - Z0].map((x) => Math.round(x * 100) / 100);
 const frame = {
-  jawLength: Math.round((fixedPlate[3] - fixedPlate[0]) * 100) / 100,
+  modelJawLength: Math.round((fixedPlate[3] - fixedPlate[0]) * 100) / 100,
+  jawLength: Math.round(Math.max(...out.fixedPlate.pos.filter((_, k) => k % 3 === 0)) * 1000) / 1000,
   /** The moving plate's face as modelled (fully open): how far it is from the fixed one. */
   opening: Math.round((Y0 - movingPlate[4]) * 100) / 100,
   modelJawHeight: Math.round(modelHeight * 100) / 100,

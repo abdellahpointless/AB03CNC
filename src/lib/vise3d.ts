@@ -32,8 +32,6 @@ export const STEEL = { color: 0xc9d1dc, metalness: 0.3, roughness: 0.42 };
 export const STEEL_DARK = { color: 0x98a3b3, metalness: 0.35, roughness: 0.45 };
 /** Ground steel (the bed, the jaw plates, the screw end): brighter and smoother. */
 export const GROUND = { color: 0xdde3ea, metalness: 0.45, roughness: 0.3 };
-/** The vise's painted cast body and jaws (anthracite blue, like the shop's precision vises). */
-export const PAINT = { color: 0x43536a, metalness: 0.1, roughness: 0.62 };
 /** A spacer plate (ZWISCHENLAGE): soft aluminium, lighter and duller than the steel. */
 export const ALU = { color: 0xe4e8ee, metalness: 0.12, roughness: 0.62 };
 
@@ -47,21 +45,75 @@ export function steel(min: Vec, max: Vec, finish: { color: number; metalness: nu
   return g;
 }
 
-/** A cylinder along machine Y (the screw), centred at c. */
-export function alongY(c: Vec, r: number, len: number, sides: number, finish: { color: number; metalness: number; roughness: number }) {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, sides), new THREE.MeshStandardMaterial({ ...finish }));
-  m.rotation.x = Math.PI / 2;
-  m.position.copy(v3(c));
-  m.castShadow = true;
-  return m;
+/** How deep the shop's vise reaches under its bed (its body's underside; viseModel.ts, checked by a test). */
+export const VISE_DEPTH = 73;
+
+type VisePart = 'fixedBody' | 'fixedJaw' | 'fixedPlate' | 'movingBody' | 'movingJaw' | 'movingPlate';
+interface ViseMeshes {
+  geos: Record<VisePart, THREE.BufferGeometry>;
+  /** The moving plate's face as modelled (fully open), from the fixed one (mm); the plates' height over the bed. */
+  opening: number;
+  jawHeight: number;
+}
+let decoded: ViseMeshes | null = null;
+let loading: Promise<ViseMeshes> | null = null;
+
+/** The shop's vise (viseModel.ts, a file of its own, loaded once): its meshes in the vise's frame, three.js axes. */
+export function loadVise(): Promise<ViseMeshes> {
+  loading ??= import('./viseModel').then(({ VISE_DATA, VISE_PARTS, VISE_FRAME }) => {
+    const bin = Uint8Array.from(atob(VISE_DATA), (c) => c.charCodeAt(0));
+    let at = 0;
+    const take = (bytes: number) => {
+      const b = bin.buffer.slice(at, at + bytes);
+      at += Math.ceil(bytes / 4) * 4;
+      return b;
+    };
+    const q = VISE_FRAME.quantum;
+    const geos = {} as Record<VisePart, THREE.BufferGeometry>;
+    for (const part of VISE_PARTS) {
+      const n = part.vertices;
+      const P = new Int16Array(take(n * 6));
+      const N = new Int8Array(take(n * 3));
+      const I = n > 65535 ? new Uint32Array(take(part.triangles * 12)) : new Uint16Array(take(part.triangles * 6));
+      // Machine X/Y/Z -> three.js X/Z/-Y, as v3.
+      const pos = new Float32Array(n * 3);
+      const nrm = new Float32Array(n * 3);
+      for (let k = 0; k < n; k++) {
+        pos[3 * k] = P[3 * k] * q;
+        pos[3 * k + 1] = P[3 * k + 2] * q;
+        pos[3 * k + 2] = -P[3 * k + 1] * q;
+        nrm[3 * k] = N[3 * k] / 127;
+        nrm[3 * k + 1] = N[3 * k + 2] / 127;
+        nrm[3 * k + 2] = -N[3 * k + 1] / 127;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+      geo.setIndex(new THREE.BufferAttribute(I, 1));
+      geos[part.name] = geo;
+    }
+    decoded = { geos, opening: VISE_FRAME.opening, jawHeight: VISE_FRAME.jawHeight };
+    return decoded;
+  });
+  return loading;
 }
 
+/** The model's own finishes: a dark grey cast body, ground jaws, the jaw plates' lighter steel. */
+const CAST = { color: 0x5b6068, metalness: 0.3, roughness: 0.55 };
+const FINISH: Record<VisePart, { color: number; metalness: number; roughness: number }> = {
+  fixedBody: CAST,
+  movingBody: CAST,
+  fixedJaw: GROUND,
+  movingJaw: GROUND,
+  fixedPlate: STEEL,
+  movingPlate: STEEL,
+};
+
 /**
- * A precision machine vise like the shop's: a painted cast body on two mounting lugs, a ground
- * bed the parallels stand on, the fixed jaw at the back (Y+), the moving jaw at the front (Y-),
- * both with ground jaw plates, and the screw's housing with its hex end at the front; the stop on
- * the left that the part is pushed against. The jaw plates and the stop touch the part's real
- * faces (grip), so nothing cuts into it. About a dozen low-poly meshes per vise.
+ * The shop's vise (a Haas HMV-6F, from its maker's model; its jaws 150 mm long, their plates 45 mm over the bed): the
+ * fixed jaw at the back (Y+), the moving jaw at the front (Y-) with the screw's hex end, each jaw plate on the part's
+ * real faces (grip), the jaws from the stop's face (jawsFrom); the stop before them, that the part is pushed against. Its meshes come in once loaded
+ * (loadVise): `ready` resolves when they are in.
  */
 export function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, spans: [number, number][], grip: SetupInfo['grip'], spacers: SetupInfo['spacers']) {
   const g = new THREE.Group();
@@ -69,37 +121,33 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
   const back = grip?.back ?? hold.max[1];
   // The jaw plates stand a spacer's thickness off the part on the side it is written.
   const cb = { min: [hold.min[0], front - spacerAt({ spacers }, 'Y-')], max: [hold.max[0], back + spacerAt({ spacers }, 'Y+')] };
-  const base = floorZ - 50;
-  const bed = floorZ - 10;
-  // The body reaches past the jaw fully open (JAW_TRAVEL) to the screw housing.
-  const yFront = cb.min[1] - 30 - JAW_TRAVEL - 8;
-  const yBack = cb.max[1] + 34;
   // Moving jaws (open and close together in the animations).
   const moving = new THREE.Group();
-  const jaws: THREE.Object3D[] = [];
-  // Each vise: the first has the stop; the second, to its right, is open on both sides.
-  spans.forEach(([x0, x1], i) => {
-    const cx = (x0 + x1) / 2;
-    const plateFrom = i === 0 ? x0 + STOP_PLATE : x0;
-    // Cast body, its two mounting lugs, and the ground bed on top.
-    g.add(steel([x0 - 6, yFront, base], [x1 + 6, yBack, bed], PAINT, 4));
-    const mid = (yFront + yBack) / 2;
-    g.add(steel([x0 - 24, mid - 22, base], [x0 - 2, mid + 22, base + 12], PAINT, 3));
-    g.add(steel([x1 + 2, mid - 22, base], [x1 + 24, mid + 22, base + 12], PAINT, 3));
-    g.add(steel([x0 - 2, cb.min[1] - 30, bed], [x1 + 2, cb.max[1] + 5, floorZ], GROUND, 1));
-    // Fixed jaw: a painted block with its ground plate.
-    const fixedJaw = steel([x0, cb.max[1] + 5, bed], [x1, yBack, jawTop], PAINT, 3);
-    const plateBack = steel([plateFrom, cb.max[1], floorZ], [x1, cb.max[1] + 5, jawTop], GROUND, 0.6);
-    g.add(fixedJaw, plateBack);
-    const movingJaw = steel([x0, cb.min[1] - 30, bed], [x1, cb.min[1] - 5, jawTop], PAINT, 3);
-    const plateFront = steel([plateFrom, cb.min[1] - 5, floorZ], [x1, cb.min[1], jawTop], GROUND, 0.6);
-    moving.add(movingJaw, plateFront);
-    jaws.push(fixedJaw, plateBack, movingJaw, plateFront);
-    // Screw housing at the front, the screw's end and its hex (the screw turns, it does not travel).
-    g.add(steel([cx - 30, yFront - 14, base + 6], [cx + 30, yFront + 2, bed + 6], PAINT, 3));
-    g.add(alongY([cx, yFront - 22, bed - 14], 8, 16, 20, GROUND));
-    g.add(alongY([cx, yFront - 36, bed - 14], 12, 14, 6, STEEL_DARK));
-  });
+  // The jaws and their plates: red when a tool or holder goes into them (one set of materials per vise drawn).
+  const mats = Object.fromEntries(
+    (Object.keys(FINISH) as VisePart[]).map((k) => {
+      const m = new THREE.MeshStandardMaterial({ ...FINISH[k] });
+      m.userData.base = m.color.getHex();
+      return [k, m];
+    }),
+  ) as Record<VisePart, THREE.MeshStandardMaterial>;
+  const jawMats = [mats.fixedJaw, mats.fixedPlate, mats.movingJaw, mats.movingPlate];
+  // Each vise at its span, its jaws' left end at the stop's face on the first (the stop before it), at the span's
+  // start on the second: the fixed jaw's face on the part's back, the moving one on its front.
+  const place = (v: ViseMeshes) => {
+    for (const [i, [x0]] of spans.entries()) {
+      for (const k of Object.keys(FINISH) as VisePart[]) {
+        const mesh = new THREE.Mesh(v.geos[k], mats[k]);
+        mesh.castShadow = mesh.receiveShadow = true;
+        const movingPart = k.startsWith('moving');
+        mesh.position.copy(v3([x0 + (i === 0 ? STOP_PLATE : 0), cb.max[1] - (movingPart ? cb.max[1] - cb.min[1] - v.opening : 0), floorZ]));
+        // The plates' tops at the jaw height used for the checks (45 mm, as modelled, unless set otherwise).
+        if (k.endsWith('Plate')) mesh.scale.y = (jawTop - floorZ) / v.jawHeight;
+        (movingPart ? moving : g).add(mesh);
+      }
+    }
+  };
+  const ready = decoded ? (place(decoded), Promise.resolve()) : loadVise().then(place);
   const [x0] = spans[0];
   const x1 = spans[spans.length - 1][1];
   // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
@@ -114,16 +162,10 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
   // Their edges turn green once a tool has cut into one (fine: that is what they are there for).
   const spacerEdges = plates.length ? { lines: plates.map((p) => (p.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial), face: plates.map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial) } : null;
   g.add(moving);
-  // The stop: a steel plate in the far-left corner, fixed to the back jaw, across the gap the part
+  // The stop: a steel plate in the far-left corner, against the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
-  g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1] + 30, jawTop], STEEL_DARK, 0.6));
-  // The jaws and their plates: red when a tool or holder goes into them.
-  const jawMats = jaws.map((p) => {
-    const m = (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    m.userData.base = m.color.getHex();
-    return m;
-  });
-  return { group: g, moving, jawMats, spacerEdges };
+  g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1], jawTop], STEEL_DARK, 0.6));
+  return { group: g, moving, jawMats, spacerEdges, ready };
 }
 
 /** Steel with the cale's height engraved on it (for its long sides). */

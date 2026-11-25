@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { box, buildParallels, buildVise, JAW_TRAVEL, steel, STEEL, STEEL_DARK, v3 } from '../lib/vise3d';
+import { box, buildParallels, buildVise, JAW_TRAVEL, steel, STEEL, STEEL_DARK, v3, VISE_DEPTH } from '../lib/vise3d';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
@@ -194,12 +194,12 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
       line.position.copy(v3([(x0 + x1) / 2, (cb.min[1] + cb.max[1]) / 2, setup.jawTopZ]));
       group.add(line);
     }
-    return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats, spacerEdges: vise.spacerEdges };
+    return { group, moving: vise.moving as THREE.Object3D | null, jawMats: vise.jawMats, spacerEdges: vise.spacerEdges, ready: vise.ready };
   }
   // A fixture: a steel block under the part, with the stop on the left.
   group.add(steel([s.min[0] - 8, s.min[1] - 8, floorZ - 30], [s.max[0] + 8, s.max[1] + 8, floorZ], STEEL));
   group.add(steel([s.min[0] - 18, s.min[1] - 8, floorZ - 30], [s.min[0] - 8, s.max[1] + 8, floorZ + Math.min(20, (setup.restZ ?? s.min[2]) - floorZ + 12)], STEEL_DARK));
-  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[], spacerEdges: null as { lines: THREE.LineBasicMaterial[]; face: THREE.MeshStandardMaterial[] } | null };
+  return { group, moving: null, jawMats: [] as THREE.MeshStandardMaterial[], spacerEdges: null as { lines: THREE.LineBasicMaterial[]; face: THREE.MeshStandardMaterial[] } | null, ready: Promise.resolve() };
 }
 
 /**
@@ -1023,6 +1023,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       a.cales = buildCales(setup);
       if (a.cales) fixture.add(a.cales);
       const clamp = buildClamp(setup, s, floorZ);
+      // The vise's model comes in once loaded: drawn again then.
+      void clamp.ready.then(() => a.invalidate());
       fixture.add(clamp.group);
       jaws.push(...clamp.jawMats);
       a.spacerEdges = clamp.spacerEdges;
@@ -1055,7 +1057,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const span = Math.max(path.max[0] - path.min[0], path.max[1] - path.min[1], 60) * 2.2;
     const grid = new THREE.GridHelper(span, 22, 0x2c3953, 0x1a2234);
     const center = s ? [(s.min[0] + s.max[0]) / 2, (s.min[1] + s.max[1]) / 2] : [(path.min[0] + path.max[0]) / 2, (path.min[1] + path.max[1]) / 2];
-    grid.position.copy(v3([center[0], center[1], floorZ - (setup?.jawTopZ !== null && s ? 50 : s ? 30 : 0)]));
+    grid.position.copy(v3([center[0], center[1], floorZ - (setup?.jawTopZ !== null && s ? VISE_DEPTH : s ? 30 : 0)]));
     world.add(grid);
 
     // Collisions: a red dot where it happens, seen through everything; for a holder in the part also
