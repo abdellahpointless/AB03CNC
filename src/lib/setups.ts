@@ -312,6 +312,8 @@ export function readInstructions(notes: string[]) {
   const base = t.match(new RegExp(`NA\\s*BASE\\s*DE\\s*${NUM}`));
   // "EPAISSEUR DE 3 MM SUR L'ETAU" (also "EPESSEUR ... MMSUR L'ETEAU"): on the jaw tops, 3 mm above them.
   const onJaw = t.match(new RegExp(`${NUM}\\s*MM\\s*SUR\\s*L\\W?\\s*ET[EÉ]?AU`));
+  // "TEIL AUF DEM TISCH" (CAM AI), "PIECE SUR LA TABLE": no parallels, the part on the table the parallels stand on.
+  const onTable = /AUF\s*DE[MN]\s*TISCH|SUR\s*LA\s*TABLE/.test(t);
   const toward = t.match(/Z\+\s*IN\s*([XY]\s*[+-])/);
   const pers = t.match(/PERS\.?\s*(?:IN\s*)?([XYZ]\s*[+-])/);
   const topAt = t.match(new RegExp(`Z\\+\\s*IN\\s*${NUM}\\s*MM`));
@@ -320,7 +322,7 @@ export function readInstructions(notes: string[]) {
     rotation,
     turns,
     pers: pers ? (pers[1].replace(/\s/g, '') as Face) : null,
-    support: sup ? num(sup[1]) : null,
+    support: sup ? num(sup[1]) : onTable ? 0 : null,
     restDepth: thick ? num(thick[1]) : under ? num(under[1]) : base ? num(base[1]) : null,
     onJaw: onJaw ? num(onJaw[1]) : null,
     twoVises: /\b2\s*SCHRAUBST/.test(t),
@@ -1006,7 +1008,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       conflict: solved.conflict && !learnedTurn,
       learned: !!learnedTurn && !override.has(k),
       rejects:
-        ins.support !== null && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
+        ins.support !== null && ins.support !== 0 && !(CALE_HEIGHTS as readonly number[]).includes(ins.support)
           ? [{ kind: 'cale', mm: ins.support, line: s.notes.find((n) => /UNTERLAGE|CALCO|(?<![A-ZÀ-Ý-])CALES?\b/i.test(n.text))?.line ?? s.line }]
           : [],
       orient,

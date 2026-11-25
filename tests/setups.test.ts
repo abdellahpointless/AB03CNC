@@ -540,6 +540,13 @@ describe("the shop's other ways of writing a setup", () => {
     expect(readInstructions(['CALE 15 MM EN Y-', '38 MM UNTERLAGE'])).toMatchObject({ support: 38, spacers: [{ mm: 15, side: 'Y-' }] });
   });
 
+  it('a part on the table (CAM AI, you: "every parallel rests on the table"): no parallels, the table its floor', () => {
+    expect(readInstructions(['OHNE UNTERLAGE / TEIL AUF DEM TISCH'])).toMatchObject({ support: 0, onJaw: null });
+    expect(readInstructions(['SANS CALE / PIECE SUR LA TABLE'])).toMatchObject({ support: 0 });
+    // Not a table by another name: a spacer, or the jaws.
+    expect(readInstructions(["SANS CALE 3 MM SUR L'ETAU"])).toMatchObject({ support: null, onJaw: 3 });
+  });
+
   it('a cale height the box does not have points at the note that asks for it', () => {
     const tp = parseToolpath(program(10).replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (CALCO 39 MM NA BASE DE 5 MM)'), S);
     const s = analyseProgram(tp, { jawHeight: 42 }).setups[1];
