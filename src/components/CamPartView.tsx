@@ -655,6 +655,11 @@ export default function CamPartView({
     a.invalidate();
   }, [ghosts, ghostOn]);
 
+  // The canvas's name follows the page (picking, making, the clamping editor).
+  useEffect(() => {
+    host.current?.querySelector('canvas')?.setAttribute('aria-label', label);
+  }, [label]);
+
   // Clamp mode: the vise on the blank as clamping 1 holds it, its parallels, and where they touch (green).
   const lastFlash = useRef(0);
   // Where the jaw and the slide are drawn now (mm), for easing to the next.
@@ -709,11 +714,12 @@ export default function CamPartView({
       put(ghost);
     }
     // Where the part is held: its faces in the jaws (closed, not slid) and on the parallels, green.
-    const contact = new THREE.MeshBasicMaterial({ color: CONTACT, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+    // Seen through the jaws and the parallels: the faces they touch are behind them.
+    const contact = new THREE.MeshBasicMaterial({ color: CONTACT, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
     const plate = (min: number[], max: number[]) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(max[0] - min[0], max[2] - min[2], max[1] - min[1]), contact);
       m.position.set((min[0] + max[0]) / 2, (min[2] + max[2]) / 2, -(min[1] + max[1]) / 2);
-      m.renderOrder = 4;
+      m.renderOrder = 6;
       put(m);
     };
     const x1 = Math.min(hi[0], spans[spans.length - 1][1]);
@@ -763,7 +769,7 @@ export default function CamPartView({
   // Entering clamp mode: the camera backs off to show the vise.
   useEffect(() => {
     const a = api.current;
-    if (a && clampOn) a.frame(Math.max(a.size, 160));
+    if (a && clampOn) a.frame(Math.max(a.size * 1.2, 70));
   }, [clampOn]);
 
   // The wheel steps the parallels (one step a notch, a trackpad's swipe summed); Ctrl/⌘ + wheel zooms as before.

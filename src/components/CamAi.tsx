@@ -1075,7 +1075,7 @@ function ClampPanel({ cale, own, mine, grip, seam, jaw, onAct, onOwn }: { cale: 
         <button type="button" className={btn} onClick={() => onAct('open')}><JawsOpen size={14} aria-hidden />{t('camAi.clamp1.open')}</button>
         <button type="button" className={btn} onClick={() => onAct('close')}><JawsClose size={14} aria-hidden />{t('camAi.clamp1.close')}</button>
       </div>
-      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide, 0) })}</p>
+      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
       <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.hint')}</p>
       {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
       {seam && <p className="text-[var(--text-secondary)]">{t('camAi.note.clampSeam', { setup: 1, cale: fmt(cale, 0) })}</p>}
