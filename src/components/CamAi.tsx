@@ -142,6 +142,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
   // The last change by hand until it is kept: undone, or the program made again around it (item 7).
   const [change, setChange] = useState<{ label: string; undo?: () => void; again?: () => void } | null>(null);
+  // Clamping 1 changed on a made program: the bar as for the later ones (undo puts every hold choice back).
+  const changed1 = () => {
+    if (!result) return;
+    const was = { clamp1, stop1, later, laterX };
+    setChange({
+      label: t('camAi.hold.changed', { n: 1 }),
+      undo: () => {
+        setClamp1(was.clamp1);
+        setStop1(was.stop1);
+        setLater(was.later);
+        setLaterX(was.laterX);
+      },
+      again: () => generateRef.current(),
+    });
+  };
   // A tool's row asked to be deleted (its clamping, its code): confirmed in a dialog, then made again without it.
   const [dropAsk, setDropAsk] = useState<{ i: number; code: string; tool: number } | null>(null);
   // The removed operations' paths, from the program before (shown faded), and the one picked in the list.
@@ -1020,7 +1035,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     )}
                   </>
                 )}
-                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { setStop1(v); resetLater(); }} onOwn={() => { setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } }))} yp={laterX[0]?.yp} onYp={(v) => { setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result} />}
+                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { changed1(); setStop1(v); resetLater(); }} onOwn={() => { changed1(); setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { changed1(); setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => { changed1(); setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } })); }} yp={laterX[0]?.yp} onYp={(v) => { changed1(); setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
                     n={sel.i + 1}
