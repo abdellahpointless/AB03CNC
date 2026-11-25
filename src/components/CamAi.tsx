@@ -1030,7 +1030,7 @@ function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; o
   const { t } = useTranslation(['remapper']);
   const mm = (x: number) => x.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (
-    <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-2">
+    <div className="absolute right-3 bottom-3 z-10 flex flex-col-reverse items-end gap-2">
       <button
         type="button"
         onClick={onToggle}

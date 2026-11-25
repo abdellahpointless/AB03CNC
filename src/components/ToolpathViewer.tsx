@@ -1009,7 +1009,7 @@ export default function ToolpathViewer({
                   </div>
                 )}
                 {mode3d && section && (
-                  <div className="absolute left-3 top-2 z-10 w-60 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5">
+                  <div className="absolute left-3 top-14 z-10 w-60 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <Scissors size={12} className="text-[#e07a5f]" aria-hidden="true" />
                       <span className="text-[11px] font-semibold text-[var(--text-primary)]">{t('toolpath.section')}</span>

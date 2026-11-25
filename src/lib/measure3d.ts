@@ -183,8 +183,11 @@ export function attachMeasure(h: MeasureHost): { reset: () => void; stop: () => 
     const tris = faceTris(f.axis, f.at, f.sign, 0.03);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(tris, 3));
-    const mat = fresh(new THREE.MeshBasicMaterial({ color: ACCENT, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0.4);
-    marked.add(new THREE.Mesh(geo, mat));
+    const mat = fresh(new THREE.MeshBasicMaterial({ color: ACCENT, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), 0.55);
+    const face = new THREE.Mesh(geo, mat);
+    // Over any other overlay on the same face (a setup's top in CAM AI's view).
+    face.renderOrder = 5;
+    marked.add(face);
   };
   // The dimension: extension lines from the features out to a line parallel to what is measured.
   const dimension = (m: { from: Vec; to: Vec; dir: Vec }, text: string, ext: ReturnType<typeof extent>, leader = false) => {
