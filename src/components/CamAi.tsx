@@ -218,6 +218,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setLocked2(false);
     setPickNote('');
     setTotals(['', '', '']);
+    setClamp1(null);
+    setLater({});
+    setJaw({ open: 0, slide: 0 });
     setLive(NO_LIVE);
     setCuts({});
     setDraft({});
@@ -339,6 +342,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     if (i !== layout) setFinishWalls([]);
     setSecond(null);
     setLocked2(false);
+    // Parallels chosen for another way of lying are not for this one.
+    if (i !== layout) {
+      setClamp1(null);
+      setLater({});
+    }
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
   };
 
@@ -374,7 +382,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // Another machine, material or stock: the program made (its tools, speeds, coolant, blank) is not for it.
   const choose = (set: () => void) => {
     set();
-    if (result) setRun({ state: 'idle' });
+    if (result) {
+      setRun({ state: 'idle' });
+      // Later clampings' parallels were chosen on that program: their panels go with it.
+      setLater({});
+    }
   };
   // The clamping editor (3D view, keys and buttons): taller or shorter parallels (none below the lowest), the part
   // back or toward the operator between the jaws, the moving jaw open or closed (pushing the part back to the fixed one).
@@ -383,11 +395,10 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     if (act === 'up' || act === 'down') {
       const v = stepCale(cales1, cale1, act === 'up' ? 1 : -1);
       if (v === null) return refuse();
-      // Later clampings hold what this one leaves: their choices go.
-      choose(() => {
-        setClamp1(v);
-        setLater({});
-      });
+      // Later clampings hold what this one leaves: their choices go. A program made stays until it is made again
+      // (one wheel notch must not throw it away).
+      setClamp1(v);
+      setLater({});
       // The next taller parallels, faintly, for a moment.
       window.clearTimeout(hintTimer.current);
       setNextHint(stepCale(cales1, v, 1) ?? undefined);
@@ -782,7 +793,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     )}
                   </>
                 )}
-                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} onOwn={() => choose(() => { setClamp1(null); setLater({}); })} />}
+                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} onOwn={() => { setClamp1(null); setLater({}); }} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
                     n={sel.i + 1}
@@ -1052,7 +1063,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 }
 
 /** Clamping 1's parallels and vise (you, Beta 2): what holds it, CAM AI's own, a button for every move the 3D view takes. */
-function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; onAct: (a: ClampAct) => void; onOwn: () => void }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; onAct: (a: ClampAct) => void; onOwn: () => void }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   return (
@@ -1061,6 +1072,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, onAct, onOwn }
       <p className="text-[var(--text-primary)]" aria-live="polite">
         {cale === 0 ? t('camAi.clamp1.none') : t('camAi.clamp1.on', { cale: fmt(cale, 0), grip: fmt(grip, 0) })}
       </p>
+      {pending !== undefined && <p className="text-[var(--text-primary)]">{pending === 0 ? t('camAi.clamp1.laterNone') : t('camAi.clamp1.later', { cale: fmt(pending, 0) })}</p>}
       {own !== null && (
         <p className="flex flex-wrap items-center gap-2 text-[var(--text-secondary)]">
           {t('camAi.clamp1.own', { cale: fmt(own, 0) })}
