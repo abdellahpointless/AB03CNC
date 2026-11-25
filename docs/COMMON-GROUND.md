@@ -134,8 +134,32 @@ Medium confidence. Use but flag if contradicted.
 
 Low confidence. Ask before assuming.
 
+### Q001: Height of the vise's jaw blocks (item 1)
+
+- **Type:** uncertain
+- **Question:** In the Haas model the jaw plates reach 45 mm over the bed, but the big jaw blocks behind them stop at
+  37-38 mm (letter H of the dimension picture). A 38 mm parallel therefore stands level with those blocks, which may be
+  what the owner saw. Are the shop's real jaw blocks flush with the plates (45 mm)? If so, they should be drawn so.
+- **Evidence:** the live scene measured on a 38 mm program: parallels 38.0 mm, plates 45.0 mm, blocks 37-38 mm, part
+  resting on the parallels; every parallel height (43 to 8 mm) reads back exactly.
+- **Context:** 3D vise model only; the collision check already treats the jaws as solid up to 45 mm.
+
+### Q002: A spacer at the fixed jaw (Y+)
+
+- **Type:** uncertain
+- **Question:** The reference library has none (Y-: 8, X-: 19, Y+: 0), and one would move the part and its G52 Y.
+  Does the shop ever use one? Not offered until answered.
+- **Context:** item 3
+
+### Q003: Sizes of the moving-jaw spacer
+
+- **Type:** uncertain
+- **Question:** The library has 15 mm seven times and 20 mm once. Only 15 mm is offered; are 20 or 50 mm used?
+- **Context:** item 3
+
 ---
 
 ## History
 
 - 2026-11-25: created, 14 assumptions from the owner's 17-item CAM AI request.
+- 2026-11-25: three open questions from the work on items 1 and 3 (Q001-Q003).
