@@ -1365,7 +1365,8 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
   // A tool changed by hand gets a T number nothing else in the program uses (from 99 down) and a code no inventory has
   // (the shop's pattern, so the remapper reads its type, Ø and length, ending "_HAND"): only the remapper gives it a
   // machine tool, never Download by mistake.
-  const used = new Set(r.setups.flatMap((s) => s.ops.map((o) => o.tool.number)));
+  // Nor any number the machine has: the operator would load the tool sitting there.
+  const used = new Set([...r.setups.flatMap((s) => s.ops.map((o) => o.tool.number)), ...input.tools.map((t) => t.number)]);
   const free = () => {
     let n = 99;
     while (used.has(n)) n--;

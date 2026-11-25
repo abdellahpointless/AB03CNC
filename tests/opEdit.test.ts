@@ -85,6 +85,10 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     expect(op.tool.diameter).toBe(other.diameter);
     expect(op.lines.filter((l) => !/[SF]\d/.test(l))).toEqual(was.lines.filter((l) => !/[SF]\d/.test(l)));
     expect(r.setups.flatMap((s) => s.ops).filter((o) => o.tool.code !== other.code).map((o) => o.tool.number)).not.toContain(op.tool.number);
+    // A tool from the database, not in the machine, never takes a number the machine has (the operator would load that).
+    const machine = [99, 98, 97].map((n) => ({ id: `m${n}`, number: n, category: 'fraise' as const, description: 'SF_04.00_030_000_X', diameter: 4, length: 30 }));
+    const r2 = editProgram({ ...input, tools: machine }, made, { [POCKET]: { tool: { d: other.diameter, l: other.length, code: other.code } } });
+    expect([99, 98, 97]).not.toContain(r2.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!.tool.number);
     // A code the shop has no tool for is refused, never planned.
     expect(() => editProgram(input, made, { [POCKET]: { tool: { d: 8, l: 40, code: 'NOPE_08.00_040_000_X' } } })).toThrow();
   }, 300_000);
