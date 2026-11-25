@@ -70,6 +70,33 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     expect(r.check.match).toBeLessThan(0.99);
   }, 300_000);
 
+  it('locks an outline pushed sideways into the jaw below its top (3 mm toward the moving jaw, 1 mm down)', () => {
+    const r = editProgram(input, made, { [OUTLINE]: { dy: -3, dz: -1 } });
+    expect(r.check.collisions).toBeGreaterThan(0);
+  }, 300_000);
+
+  it('locks anything taken down to the vise floor, which the simulation does not have (a floor note)', () => {
+    // The plate on 40 mm parallels: the floor 40 mm under the stock's bottom (17 mm under the top): Z-57.
+    const r = editProgram(input, made, { [POCKET]: { dz: -52 } });
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'floorHit', setup: 1 }));
+  }, 300_000);
+
+  it('never runs a smaller tool faster than made, and calls a step-down deeper than its Ø unsafe', () => {
+    const r = editProgram(input, made, { [OUTLINE]: { tool: { d: 3, l: 30 } } });
+    const was = made.setups[0].ops.find((o) => o.name === 'FRAESEN_16MM')!;
+    const op = r.setups[0].ops.find((o) => o.name === 'FRAESEN_16MM')!;
+    expect(op.cut.f).toBeLessThanOrEqual(was.cut.f);
+    expect(op.lines.join(' ').match(/F(\d+)/g)!.map((f) => Number(f.slice(1))).every((f) => f <= Math.max(...was.lines.join(' ').match(/F(\d+)/g)!.map((x) => Number(x.slice(1)))))).toBe(true);
+    expect(op.cut.unsafe).toBe(true);
+  }, 300_000);
+
+  it('loads the vise check with the deeper last pass', () => {
+    const r = editProgram(input, made, { [POCKET]: { deeper: 2 } });
+    const op = r.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    const was = made.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    expect(op.cut.ap).toBeCloseTo(was.cut.ap + 2, 6);
+  }, 300_000);
+
   it('lets a pocket go 2 mm deeper (no collision) and shows what it cuts out of the part', () => {
     // shortcut: 0.5 mm deeper on the 8 mm mill's corners is under what the check's grid sees here (< 2 mm³ a piece).
     const r = editProgram(input, made, { [POCKET]: { deeper: 2 } });

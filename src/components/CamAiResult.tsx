@@ -20,7 +20,7 @@ export { GOUGE_MM3 };
 /** Every check passed: like the model, nothing hit, nothing cut out of the part, held safely. */
 // The designer's parallels not used as asked (clampRefused, clampAsk): not the program they asked for.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safe = (r: CamSummary) => r.collisions === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
+export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'floorHit');
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
 export const passed = (r: CamSummary, accepted = false) => safe(r) && (alike(r) || accepted);

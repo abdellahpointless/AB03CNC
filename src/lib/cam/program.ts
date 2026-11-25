@@ -173,7 +173,7 @@ export interface CamSetup {
   /** CAM AI's own parallels, when the designer's are used instead. */
   own?: number;
   /** What the vise check was made with (its cuts aside): to check it again when an operation is edited (editProgram). */
-  vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number };
+  vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number; floor: number };
 }
 
 export interface Zone {
@@ -1322,19 +1322,33 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     return n;
   };
   const maxRpm = input.limits?.maxRpm ?? DEFAULT_LIMITS.maxRpm;
-  const setups = r.setups.map((s) => {
+  // Only sizes a hand would type: anything else is refused, never planned.
+  for (const e of Object.values(edits)) {
+    const ok = [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) && (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400));
+    if (!ok) throw new Error('An edit by hand out of range.');
+  }
+  // The simulation has no vise floor (docs/knowledge): an edited cut that reaches it is noted and locks the program.
+  const floorHits: CamNote[] = [];
+  const setups = r.setups.map((s, si) => {
     let touched = false;
     const ops = s.ops.map((op, k) => {
       const e = edits[op.key ?? `${s.side}|${op.name}|${op.tool.code}|${k}`];
       if (!e) return op;
       touched = true;
-      const moved = { ...op, lines: editOpLines(op.lines, e) };
+      const lines = editOpLines(op.lines, e);
+      const low = Math.min(...lines.flatMap((l) => (/^\s*(T\d|M0|\()|G53|G28|G52|G43/.test(l) ? [] : [...l.split('(')[0].matchAll(/Z(-?\d*\.?\d*)/g)].map((m) => Number(m[1])))));
+      if (s.vise && low < s.vise.floor + 0.5 && !floorHits.some((n) => n.setup === si + 1)) floorHits.push({ key: 'floorHit', setup: si + 1 });
+      // Its last pass that much deeper: what the vise check loads it with.
+      const moved = { ...op, lines, cut: { ...op.cut, ap: op.cut.ap + Math.max(0, e.deeper ?? 0) } };
       if (!e.tool || (e.tool.d === op.tool.diameter && e.tool.l === op.tool.length)) return moved;
-      // The same surface speed and feed a turn as the tool it replaces, never over the machine's top rpm.
+      // The same surface speed as the tool it replaces, never over the machine's top rpm; the feed never over the made one.
       const k2 = Math.min(op.tool.diameter / e.tool.d, maxRpm / Math.max(1, op.cut.s));
+      const kf = Math.min(1, k2);
       const s2 = Math.max(100, Math.round((op.cut.s * k2) / 50) * 50);
       const tool: CamTool = { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `HAND_${op.tool.type}_${e.tool.d}_${e.tool.l}`, inMachine: false, template: null };
-      return { ...moved, tool, lines: scaleSpeeds(moved.lines, k2), cut: { ...op.cut, s: s2, f: Math.round(op.cut.f * k2), fz: Math.round(op.cut.fz * k2) } };
+      // The made step-down and step-over on a smaller tool: more than its Ø is too much for it (the program locks).
+      const unsafe = !!op.cut.unsafe || (op.kind !== 'drill' && op.kind !== 'centre' && (moved.cut.ap > e.tool.d || op.cut.ae > e.tool.d));
+      return { ...moved, tool, lines: scaleSpeeds(lines, k2, kf), cut: { ...moved.cut, s: s2, f: Math.round(op.cut.f * kf), fz: Math.round(op.cut.fz * kf), unsafe } };
     });
     if (!touched || !s.vise) return touched ? { ...s, ops } : s;
     const v = s.vise;
@@ -1342,7 +1356,7 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
     return { ...s, ops, physics };
   });
-  return checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) });
+  return checked(input, { ...r, setups, notes: [...r.notes, ...floorHits], code: post(input, setups, r.size, r.raw) });
 }
 
 function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
@@ -2416,8 +2430,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
     const viseIn = nest
-      ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length }
-      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits };
+      ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: floor - NEST.floor }
+      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor };
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).

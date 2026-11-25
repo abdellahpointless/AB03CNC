@@ -366,6 +366,7 @@ const cam = {
       clampSeam: 'Clamping {{setup}}: on {{cale}} mm parallels the outside cut ends within 0.5 mm of the part’s bottom, so a small step may show where the next clamping’s cut meets it',
       clampNest: 'Clamping {{setup}} sits in the POM nest: the {{cale}} mm parallels chosen do not apply there',
       stopRefused: 'Clamping {{setup}}: no {{cale}} mm spacer at the stop (the shop has 15 and 50 mm; none in the POM nest): the part against the stop',
+      floorHit: 'Clamping {{setup}}: a cut changed by hand reaches the vise floor, which the simulation does not have: locked',
     },
     view: 'Open in the toolpath viewer',
     download: 'Download',
