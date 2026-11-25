@@ -85,11 +85,15 @@ export interface CamInput {
   stops?: (number | null)[];
   /**
    * The designer's spacer in the moving jaw (Y-), by clamping: 15 mm, the shop's ("15 MM ZWISCHENLAGE IN Y-", 7 of the
-   * library's 8), from the first level on; 0: none (not even CAM AI's own); anything else, or in the nest, is refused
-   * (stopRefused). It moves nothing: the part rests on the fixed jaw and the stop. Never in the fixed jaw (Y+): the
-   * library has none, and it would move the part.
+   * library's 8; 20 and 50 too, the owner: "sure if needed"), from the first level on; 0: none (not even CAM AI's own);
+   * anything else, or in the nest, is refused (stopRefused). It moves nothing: the part rests on the fixed jaw and the stop.
    */
   spacersY?: (number | null)[];
+  /**
+   * The designer's spacer at the fixed jaw (Y+), by clamping: 15, 20 or 50 mm ("very special cases", the owner; the
+   * library has none). The part rests on it, that much toward the operator: the clamping's G52 Y moves by it.
+   */
+  spacersYp?: (number | null)[];
   /**
    * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
    * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
@@ -662,6 +666,8 @@ interface Work {
 
 /** The spacer the shop puts in the moving jaw (mm; docs/knowledge: 15 mm at Y- in 4 programs, 20 in 1). */
 const SPACER_Y = 15;
+/** The spacers the designer may put in a jaw (mm): the shop's 15 (and 20 and 50 when needed, the owner). */
+const SPACERS_Y = [15, 20, 50] as const;
 /** Radial stock the roughing leaves on the walls for the finishing (mm). */
 const ALLOW = 0.15;
 /** A seal cage's walls thinner than this are cut gently (mm). */
@@ -1900,6 +1906,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
     // The designer's spacer at the stop: the part that much off it (only in the vise; the shop's 15 or 50 mm).
     const stopAsked = input.stops?.[setups.length] ?? undefined;
+    // The designer's spacer at the fixed jaw: the part that much toward the operator (only in the vise).
+    const ypAsked = input.spacersYp?.[setups.length] ?? undefined;
+    const spacerYp = !nested && ypAsked !== undefined && (SPACERS_Y as readonly number[]).includes(ypAsked) ? ypAsked : 0;
+    if (ypAsked !== undefined && ypAsked !== 0 && !spacerYp) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: ypAsked });
     const spacerX = !nested && (stopAsked === 15 || stopAsked === 50) ? stopAsked : 0;
     // Pushed on every try: a try planned again resets the notes to before it.
     if (stopAsked !== undefined && !spacerX) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: stopAsked });
@@ -1908,14 +1918,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // In the nest the part is the nest's wall off the stop and the fixed jaw, and on its floor.
     const shift: Vec = nested
       ? [STOP_X + NEST.wall + 2 * NEST.clearance + hold[0] / 2 - cx, STOP_Y - NEST.wall - hold[1] / 2 - cy, TABLE_Z - (floor - NEST.floor)]
-      : [STOP_X + spacerX + hold[0] / 2 - cx, STOP_Y - hold[1] / 2 - cy, TABLE_Z - floor];
+      : [STOP_X + spacerX + hold[0] / 2 - cx, STOP_Y - spacerYp - hold[1] / 2 - cy, TABLE_Z - floor];
     const turn = prevR ? turnPhrase(mul(R, transpose(prevR))) : '';
     const sizes = `${mm(hold[0])} IN X UND ${mm(hold[1])} IN Y`;
     // "Z+ IN 2MM": the raw top that far above Z0 (what the facing takes off), as the shop writes it.
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
     const setupNotes = nested
       ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
-      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, onJaw !== undefined ? `SANS CALE / EPAISSEUR DE ${mm(onJaw)} MM SUR L'ETAU` : cale ? `${cale} MM UNTERLAGE` : 'OHNE UNTERLAGE / TEIL AUF DEM TISCH', ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
+      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, onJaw !== undefined ? `SANS CALE / EPAISSEUR DE ${mm(onJaw)} MM SUR L'ETAU` : cale ? `${cale} MM UNTERLAGE` : 'OHNE UNTERLAGE / TEIL AUF DEM TISCH', ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : []), ...(spacerYp ? [`${spacerYp} MM ZWISCHENLAGE IN Y+`] : [])];
     // Too long for one vise (with the spacer at the stop): both, as the checker reads it back (setups.ts).
     const twoVises = hold[0] + spacerX > VISE.width + OVERHANG;
     if (!nested && twoVises) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
@@ -1934,12 +1944,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
     // The designer's from the start, or none at all; else CAM AI's own where a wall would stay at that jaw (below).
     const yAsked = input.spacersY?.[setups.length] ?? undefined;
-    if (yAsked !== undefined && yAsked !== 0 && (nested || yAsked !== SPACER_Y)) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: yAsked });
-    let spacerY = !nested && yAsked === SPACER_Y ? SPACER_Y : 0;
-    if (spacerY) setupNotes.push(`${SPACER_Y} MM ZWISCHENLAGE IN Y-`);
+    const yOk = yAsked !== undefined && (SPACERS_Y as readonly number[]).includes(yAsked);
+    if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: yAsked });
+    let spacerY = !nested && yOk ? yAsked! : 0;
+    if (spacerY) setupNotes.push(`${spacerY} MM ZWISCHENLAGE IN Y-`);
     const beside = (d: number, end: number): Region =>
       union([
-        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] - d, b + end, held.hi[1] + 50)]),
+        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] + spacerYp - d, b + end, held.hi[1] + spacerYp + 50)]),
         ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
       ]);
     let jaws = nested ? [] : beside(0.1, 1);

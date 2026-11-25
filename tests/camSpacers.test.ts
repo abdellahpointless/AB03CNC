@@ -31,12 +31,40 @@ describe('a spacer asked in the moving jaw (Y-)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
+  it('takes the moving-jaw spacer in 20 and 50 mm too (the owner: "sure if needed")', () => {
+    for (const mm of [20, 50]) {
+      const r = camProgram({ ...input, spacersY: [mm] });
+      expect(r.setups[0].notes).toContain(`${mm} MM ZWISCHENLAGE IN Y-`);
+      expect(g52(r.code)).toEqual(g52(made.code));
+      expect(r.check.collisions).toBe(0);
+    }
+  }, 600_000);
+
+  // The owner: "sometimes in very special cases, keep it an extra option". The part rests on it instead of the fixed
+  // jaw: that clamping's G52 Y moves by exactly its thickness toward the operator, nothing else. The check places the
+  // jaws round the part, so only this test sees a wrong G52 Y.
+  it('a spacer at the fixed jaw (Y+) moves only that clamping, by exactly its thickness along -Y', () => {
+    const r = camProgram({ ...input, spacersYp: [null, 15] });
+    const y = (code: string) => g52(code).map((l) => Number(l.match(/Y(-?[\d.]+)/)![1]));
+    const [was, now] = [y(made.code), y(r.code)];
+    expect(now[0]).toBeCloseTo(was[0], 6);
+    expect(now[1] - was[1]).toBeCloseTo(-15, 6);
+    const xz = (code: string) => g52(code).map((l) => l.replace(/Y-?[\d.]+/, ''));
+    expect(xz(r.code)).toEqual(xz(made.code));
+    expect(r.setups[1].notes).toContain('15 MM ZWISCHENLAGE IN Y+');
+    expect(r.setups[0].notes.some((n) => /IN Y\+/.test(n))).toBe(false);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    // Only the shop's sizes.
+    expect(camProgram({ ...input, spacersYp: [12] }).notes.some((n) => n.key === 'stopRefused' && n.cale === 12)).toBe(true);
+  }, 600_000);
+
   // shortcut: this plate gets no spacer from CAM AI either, so "none" forbidding CAM AI's own (program.ts, yAsked !== 0)
   // is not exercised here; add a part where CAM AI adds one when the library or a fixture gives one.
   it('none asked: none written; another size: refused (noted)', () => {
     expect(camProgram({ ...input, spacersY: [0] }).setups.flatMap((s) => s.notes).some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
-    const r = camProgram({ ...input, spacersY: [20] });
-    expect(r.notes.some((n) => n.key === 'stopRefused' && n.setup === 1 && n.cale === 20)).toBe(true);
+    const r = camProgram({ ...input, spacersY: [12] });
+    expect(r.notes.some((n) => n.key === 'stopRefused' && n.setup === 1 && n.cale === 12)).toBe(true);
     expect(r.setups[0].notes.some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
   }, 300_000);
 });
