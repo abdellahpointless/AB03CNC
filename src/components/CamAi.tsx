@@ -26,6 +26,7 @@ import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, useTo
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
+import CamOpened from './CamOpened';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
 import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
@@ -380,6 +381,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
   // The browser's selected item, what the properties panel edits.
   const [sel, setSel] = useState<Sel>({ kind: 'part' });
+  // A program opened from a file (an engineer's): shown and changed by hand in its own view (CamOpened).
+  const [opened, setOpened] = useState<{ name: string; code: string } | null>(null);
+  const [openError, setOpenError] = useState(false);
+  const programRef = useRef<HTMLInputElement>(null);
+  const openProgram = async (file: File | undefined) => {
+    if (!file) return;
+    setOpenError(false);
+    const text = await file.text();
+    // A program: G-code lines with moves, not a 3D model or a document.
+    if (file.size > 8_000_000 || !/\bG0?[0123]\b/.test(text) || /\u0000/.test(text)) return setOpenError(true);
+    setOpened({ name: file.name, code: text.replace(/\r\n?/g, '\n') });
+  };
   // The panels (you: collapsed with [ and ], remembered); under 1400 px the inspector, under 1100 px the tools, are drawers.
   const [leftOpen, setLeftOpen] = useStoredFlag('cnc-camai-tools', true);
   const [rightOpen, setRightOpen] = useStoredFlag('cnc-camai-inspector', true);
@@ -677,6 +690,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <button type="button" className="btn-primary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => setDialog(true)} disabled={busy}>
             <FilePlus2 size={16} /> {t('camAi.ws.new')}
           </button>
+          <button type="button" className="btn-secondary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => programRef.current?.click()} disabled={busy}>
+            <FileCode2 size={16} /> {t('camAi.open.menu')}
+          </button>
+          {openError && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.open.read')}</p>}
         </div>
       )}
     </>
@@ -913,8 +930,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     </>
   );
 
+  if (opened)
+    return <CamOpened name={opened.name} code={opened.code} model={model} machine={machine} onSend={onSend} onExit={onExit} onClose={() => setOpened(null)} />;
+
   return (
     <div className="cam-ws h-full w-full flex flex-col bg-[var(--bg-page)] text-[13px] text-[var(--text-primary)]">
+      <input ref={programRef} type="file" accept=".nc,.txt,.tap,.mpf,.ngc,.cnc,.h,.min,.x20,.c96,.000,text/plain" className="hidden" onChange={(e) => { void openProgram(e.target.files?.[0]); e.target.value = ''; }} />
       <input ref={fileRef} type="file" accept=".pdf,.stl,.step,.stp" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
 
       {/* One bar: back to the app, the file, its stock and checks, its time, Download and Send. */}
@@ -1012,6 +1033,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               <Popover.Close asChild>
                 <button type="button" className={menuItem} onClick={() => setDialog(true)} disabled={busy}>
                   <FilePlus2 size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.new')}
+                </button>
+              </Popover.Close>
+              <Popover.Close asChild>
+                <button type="button" className={menuItem} onClick={() => programRef.current?.click()} disabled={busy}>
+                  <FileCode2 size={16} stroke={1.6} aria-hidden /> {t('camAi.open.menu')}
                 </button>
               </Popover.Close>
               {result && (

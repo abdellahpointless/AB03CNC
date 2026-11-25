@@ -49,6 +49,7 @@ export default function CamSim({
   nx,
   measure,
   onMeasureToggle,
+  onModel,
 }: {
   code: string;
   brand?: string;
@@ -68,6 +69,8 @@ export default function CamSim({
   nx: boolean;
   measure: { on: boolean; mode: MeasureMode; onMeasure: (m: Measurement) => void };
   onMeasureToggle: () => void;
+  /** How the simulated part compares with the model, when one is laid over it. */
+  onModel?: (s: ModelState) => void;
 }) {
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -192,7 +195,7 @@ export default function CamSim({
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         {mode3d ? (
           <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={setModelState} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} />
           </Suspense>
         ) : (
           <TopView path={path} range={range} step={step} colorOf={colorOf} />
