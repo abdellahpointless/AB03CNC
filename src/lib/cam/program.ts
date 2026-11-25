@@ -14,6 +14,7 @@ import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from
 import { GOUGE_MM3 } from './limits';
 import { arcs, shopStyle, shorten } from './style';
 import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
+import type { ToolDb } from './toolDb';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
@@ -61,6 +62,8 @@ export interface CamInput {
   second?: string;
   /** The operator's cutting values per tool code (the tool inspector). */
   cuts?: Record<string, CutEdit>;
+  /** The shop's tool database (the Tool database dialog): template tools removed or with their own data, tools added. */
+  toolDb?: ToolDb;
   /** Operations the operator removed (CamOp.key): left out of the program, which is simulated and checked without them. */
   skip?: string[];
   /** Faces (model triangle indices) a clamping keeps RESERVE mm off: a later clamping finishes them whole (oneClamping). */

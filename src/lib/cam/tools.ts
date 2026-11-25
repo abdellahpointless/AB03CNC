@@ -4,6 +4,7 @@ import learned from './shopKnowledge.json';
 import library from './library.json';
 import type { Family, TemplateKind, TemplateTool } from './templates';
 import { DEFAULT_LIMITS, type Limits } from './limits';
+import { cleanDbTool, SUFFIX, type DbTool, type ToolDb } from './toolDb';
 import { DEFLECTION, drillBuckling, drillThrust, materialData, millForce, PEAK, SAFETY, toolDeflection } from './physics';
 export { DEFAULT_LIMITS, type Limits };
 
@@ -24,8 +25,6 @@ export type CamMaterial = (typeof CAM_MATERIALS)[number];
 export const FAMILY: Record<CamMaterial, Family> = { ALU: 'ALU', MS: 'ALU', PCGF: 'ALU', POM: 'POM', PEEK: 'POM', FH: 'FH', EPO: 'FH', RESOPAL: 'FH' };
 /** Inventory materials (Tool.materials) that count as a family's. */
 const INVENTORY: Record<Family, Material[]> = { ALU: ['ALU', 'PC GF'], POM: ['POM'], FH: ['FH', 'RESOPAL', 'EPOXYDE'] };
-/** Tool code suffix per family, as in the programs (SF_08.00_044_000_KS). */
-const SUFFIX: Record<Family, string> = { ALU: 'ALHS', POM: 'KS', FH: 'FH' };
 
 /** Template tool types -> inventory categories. */
 const CATEGORY: Record<string, ToolCategory> = {
@@ -79,6 +78,8 @@ export interface CamTool extends Tool {
   inMachine: boolean;
   /** The operator's own cutting values for this tool (CAM AI's tool inspector). */
   edit?: CutEdit;
+  /** The shop's own cutting values for it per kind of operation (tool database), checked as typed values are. */
+  dbCuts?: DbTool['cuts'];
 }
 
 /** Coolant per tool: flood (M08), air (M83), none. */
@@ -100,7 +101,7 @@ const sameType = (t: Tool, type: string) => (TYPE_OF[t.category] === 'SF' ? MILL
  * the machine has it), then the machine's special tools. `exclude`: codes the operator does not
  * have; `prefer`: codes the operator picked in their place (treated as in the machine).
  */
-export function catalog(material: string, machine: Tool[], opts: { exclude?: string[]; prefer?: string[]; cuts?: Record<string, CutEdit> } = {}): CamTool[] {
+export function catalog(material: string, machine: Tool[], opts: { exclude?: string[]; prefer?: string[]; cuts?: Record<string, CutEdit>; toolDb?: ToolDb } = {}): CamTool[] {
   const fam = FAMILY[material as CamMaterial];
   if (!fam) throw new Error(`Unknown CAM material ${material}`);
   const out: CamTool[] = [];
@@ -108,9 +109,21 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
   // Every number in the machine is taken by the tool sitting there: a template tool that is not
   // in the machine never gets one of them (the shop's template numbers repeat the machines').
   const numbers = new Set<number>(machine.map((m) => m.number));
-  for (const t of LIBRARY[fam]) {
+  // The shop's tool database: rows checked again here (a bad one is left out, as if never saved).
+  const db = Object.entries(opts.toolDb?.[fam] ?? {}).flatMap(([code, raw]) => {
+    const row = cleanDbTool(fam, code, raw);
+    return row ? [[code, row] as const] : [];
+  });
+  const own = new Map(db);
+  const library: (TemplateTool & { added?: true })[] = [
+    ...LIBRARY[fam],
+    ...db.filter(([code, r]) => r.added && !LIBRARY[fam].some((t) => t.code === code)).map(([code, r]) => ({ code, type: r.added!.type, d: r.added!.d, length: r.added!.length, shape: '', number: 0, ops: [], added: true as const })),
+  ];
+  for (const t of library) {
     const category = CATEGORY[t.type];
-    if (!category || opts.exclude?.includes(t.code)) continue;
+    const row = own.get(t.code);
+    if (!category || opts.exclude?.includes(t.code) || row?.removed) continue;
+    const added = !!t.added;
     // A face mill or graver whose length the inventory leaves out (0) is the template's: both cut at
     // the top, and the template's length is the one simulated and written (never "0MM LANG").
     const fits = machine.filter((x) => !used.has(x) && sameType(x, t.type) && Math.abs(x.diameter - t.d) < 0.01 && (Math.abs((x.length || 0) - t.length) <= 2 || (!x.length && (t.type === 'MK' || t.type === 'ST'))));
@@ -119,9 +132,9 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
     const [want, other] = t.type === 'SFH' ? ['fraise ebauche', 'fraise finition'] : t.type === 'SF' ? ['fraise finition', 'fraise ebauche'] : [null, null];
     const m = fits.find((x) => x.category === want) ?? fits.find((x) => x.category !== other);
     if (m) used.add(m);
-    // One T number per tool in a program.
-    let number = m?.number ?? t.number;
-    while (!m && numbers.has(number)) number += 1_000_000;
+    // One T number per tool in a program (an added tool to load: the first one free).
+    let number = m?.number ?? (added ? 1 : t.number);
+    while (!m && numbers.has(number)) number += added ? 1 : 1_000_000;
     numbers.add(number);
     out.push({
       ...(m ?? {}),
@@ -133,9 +146,10 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
       length: t.length,
       code: t.code,
       type: t.type,
-      template: t,
+      template: added ? null : t,
       inMachine: !!m || !!opts.prefer?.includes(t.code),
       ...(opts.cuts?.[t.code] ? { edit: opts.cuts[t.code] } : {}),
+      ...(row?.cuts ? { dbCuts: row.cuts } : {}),
     });
   }
   // Special tools imported into the machine (taps are not used).
@@ -155,8 +169,8 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
  * length at least as long), then the nearest smaller Ø (slower, never bigger: it might not fit
  * where the first one went); tools in the machine first.
  */
-export function alternatives(material: string, machine: Tool[], code: string, exclude: string[] = []): CamTool[] {
-  const all = catalog(material, machine, { exclude });
+export function alternatives(material: string, machine: Tool[], code: string, exclude: string[] = [], toolDb?: ToolDb): CamTool[] {
+  const all = catalog(material, machine, { exclude, toolDb });
   const t = all.find((x) => x.code === code);
   if (!t) return [];
   return all
@@ -209,7 +223,8 @@ const r10 = (v: number) => Math.max(10, Math.round(v / 10) * 10);
 /** Cutting data for a tool doing `kind` on a material, within the machine's limits. */
 export function cutData(tool: CamTool, kind: TemplateKind, material: string, limits: Limits = DEFAULT_LIMITS): Cut {
   const c = stiff(tool, kind, material, rawCut(tool, kind, material, limits));
-  const e = tool.edit;
+  // The operator's values for this program first, else the shop's for this kind (tool database).
+  const e = tool.edit ?? (NEAR[kind] ?? [kind]).map((k) => tool.dbCuts?.[k]).find(Boolean);
   if (!e) return c;
   // The operator's values, within the machine; unsafe when the tool could not take them.
   const f = e.f && e.f > 0 ? Math.min(e.f, limits.maxFeed) : c.f;
