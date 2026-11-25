@@ -34,7 +34,7 @@ const cam: Translation<typeof en> = {
         stock: 'Sıradaki: ham ölçülerini kontrol edin.',
         machine: 'Sıradaki: envanterinde takım olan bir makine seçin (Parça).',
         material: 'Sıradaki: malzeme şablonlarını seçin (Parça).',
-        clamp: 'Sonraki: 1. bağlamanın paralelleri parçayı tutamaz: başka seçin (Kurulum 1).',
+        clamp: 'Sıradaki: bağlama 1’in paralelleri parçayı tutamaz: başka seçin (Bağlama 1).',
       },
     },
     setupSteps: 'Bağlamalar, sırayla',
