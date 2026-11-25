@@ -5,8 +5,9 @@ import { IconArrowBarToDown as ArrowDownToLine, IconPlayerPause as Pause, IconPl
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
+import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
 import { partLook } from '../lib/partLook';
-import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, turnMs, viseSpans, type Collision, type SetupInfo } from '../lib/setups';
+import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, viseSpans, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
 import { MODEL_MAX_BYTES } from '../lib/modelLimits';
 import type { TurnFix } from '../lib/fixTurns';
@@ -24,7 +25,6 @@ const Toolpath3D = lazy(() => import('./Toolpath3D'));
 const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
 
 const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
-const SPEEDS = [5, 10, 50, 250];
 const DETAILS_KEY = 'cnc-toolpath-details-v1';
 /** The viewer is always dark (like CAM software), also when the app is in light mode. */
 const DARK_VARS = {
@@ -109,17 +109,6 @@ export default function ToolpathViewer({
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const lines = useMemo(() => code.split('\n'), [code]);
-  const total = path.moves.length;
-  // Open at the start of the program: the raw part, before the first move.
-  // clock: the instant shown (moves done + share of the current move), read by the 3D view on every
-  // frame; step: the move shown in the panels (the one in progress), updated a few times a second.
-  const clock = useRef(0);
-  const [step, setStep] = useState(0);
-  const [, setFrame] = useState(0);
-  const seek = (n: number) => {
-    clock.current = n;
-    setStep(n);
-  };
   const [jawHeight, setJawHeight] = useState(readJawHeight);
   // The turns found by comparing with the model, simulated instead of the program's own (null: the program's).
   const [fixed, setFixed] = useState<Mat3[] | null>(null);
@@ -139,6 +128,9 @@ export default function ToolpathViewer({
     () => (holderHits?.length ? jawSetups.map((s) => ({ ...s, collisions: [...s.collisions, ...holderHits.filter((h) => path.moves[h.move]?.setup === s.index)] })) : jawSetups),
     [jawSetups, holderHits, path],
   );
+  // Playing through (lib/usePlayback): the clock waits for the part in details mode; the 3D view turns it between setups.
+  const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
+  const { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
   // Setup markers above the slider: one that starts too close to the one before goes a row up.
   const markerRows = useMemo(() => {
     let last = -Infinity;
@@ -163,8 +155,6 @@ export default function ToolpathViewer({
   const [inspectFlip, setInspectFlip] = useState(false);
   const [inspectCale, setInspectCale] = useState(false);
   const [solid, setSolid] = useState<SolidState>({ state: 'off', share: 0 });
-  /** While the part turns between setups, the new setup is shown before its first move. */
-  const [turning, setTurning] = useState<number | null>(null);
   const multi = setups.length > 1;
   const [mode3d, setMode3d] = useState(true);
   const mode3dRef = useRef(mode3d);
@@ -180,6 +170,7 @@ export default function ToolpathViewer({
   const detailsRef = useRef(details);
   detailsRef.current = details;
   const behind = useRef(false);
+  gate.current = { wait: () => detailsRef.current && mode3dRef.current && behind.current, mode3d: () => mode3dRef.current };
   const chooseDetails = (on: boolean) => {
     setDetails(on);
     try {
@@ -286,88 +277,11 @@ export default function ToolpathViewer({
       /* private mode */
     }
   }, [jawHeight]);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(2);
   const colorOf = useMemo(() => {
     const map = new Map<number | null, string>();
     path.tools.forEach((tl, i) => map.set(tl.tool, COLORS[i % COLORS.length]));
     return (tool: number | null) => map.get(tool) ?? '#9AA6BA';
   }, [path]);
-
-  // Time at the end of each move, for playing at a multiple of the real speed.
-  const timeline = useMemo(() => {
-    let s = 0;
-    return path.moves.map((m) => (s += m.seconds));
-  }, [path]);
-  const at = clock.current;
-  const atMove = Math.min(Math.floor(at), total - 1);
-  const elapsed = total ? (atMove > 0 ? timeline[atMove - 1] : 0) + Math.min(1, at - atMove) * path.moves[atMove].seconds : 0;
-
-  // First move of each setup after the first: playback stops there while the part turns.
-  const setupStarts = useMemo(() => setups.slice(1).map((x) => x.moves?.[0] ?? -1).filter((x) => x > 0), [setups]);
-  useEffect(() => {
-    if (!playing) return;
-    let raf = 0;
-    let last = performance.now();
-    const from = clock.current >= total ? 0 : clock.current;
-    let k = Math.floor(from);
-    let sim = (k > 0 ? timeline[k - 1] : 0) + (from - k) * (path.moves[k]?.seconds ?? 0);
-    let shownAt = 0;
-    let holdUntil = 0;
-    /** First move of the setup the part just turned for (shown as that setup until it starts). */
-    let held = -1;
-    if (clock.current >= total) seek(0);
-    const tick = (now: number) => {
-      if (now < holdUntil) {
-        last = now;
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      if (holdUntil) holdUntil = 0;
-      // Details: the clock waits for the part, so the cut is always shown right where the tool is.
-      if (detailsRef.current && mode3dRef.current && behind.current) {
-        last = now;
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      sim += ((now - last) / 1000) * SPEEDS[speed];
-      last = now;
-      const before = k;
-      while (k < total && timeline[k] <= sim) k++;
-      // Reaching a new setup: stop before its first move, let the part turn, then go on.
-      const start = setupStarts.find((x) => x >= before && x < k && x !== held);
-      if (start !== undefined) {
-        held = start;
-        k = start;
-        sim = timeline[start - 1];
-        // The 3D view turns the part (and changes the cales); the 2D view just marks the new setup.
-        const next = path.moves[start].setup;
-        holdUntil = now + (mode3dRef.current ? turnMs(setups[next - 1] ?? null, setups[next] ?? null) + 150 : 600);
-        setTurning(path.moves[start].setup);
-        seek(k);
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      // The tool glides: the share of the move in progress, on every frame.
-      const pos = k >= total ? total : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
-      clock.current = pos;
-      // The panels (current line, time) at ~15 updates a second: they do not need more.
-      if (now - shownAt > 66 || k >= total) {
-        shownAt = now;
-        setStep(Math.min(total, Math.max(1, Math.ceil(pos))));
-        setFrame((f) => f + 1);
-        if (held >= 0 && k > held) setTurning(null);
-      }
-      if (k >= total) setPlaying(false);
-      else raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      setTurning(null);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, speed]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
