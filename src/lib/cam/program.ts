@@ -20,7 +20,7 @@ import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
 import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW } from './clamp';
-import { editOpLines, type OpEdit } from './opEdit';
+import { editOpLines, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -1312,13 +1312,29 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * the program posted and checked again whole (later cuts and holders depend on what an edited one removed).
  */
 export function editProgram(input: CamInput, r: CamResult, edits: Record<string, OpEdit>): CamResult & { check: CamCheck } {
+  // A tool changed by hand gets a T number nothing else in the program uses (from 99 down) and a code no inventory has
+  // ("HAND_..."): only the remapper can give it a machine tool, never Download by mistake.
+  const used = new Set(r.setups.flatMap((s) => s.ops.map((o) => o.tool.number)));
+  const free = () => {
+    let n = 99;
+    while (used.has(n)) n--;
+    used.add(n);
+    return n;
+  };
+  const maxRpm = input.limits?.maxRpm ?? DEFAULT_LIMITS.maxRpm;
   const setups = r.setups.map((s) => {
     let touched = false;
     const ops = s.ops.map((op, k) => {
       const e = edits[op.key ?? `${s.side}|${op.name}|${op.tool.code}|${k}`];
       if (!e) return op;
       touched = true;
-      return { ...op, lines: editOpLines(op.lines, e) };
+      const moved = { ...op, lines: editOpLines(op.lines, e) };
+      if (!e.tool || (e.tool.d === op.tool.diameter && e.tool.l === op.tool.length)) return moved;
+      // The same surface speed and feed a turn as the tool it replaces, never over the machine's top rpm.
+      const k2 = Math.min(op.tool.diameter / e.tool.d, maxRpm / Math.max(1, op.cut.s));
+      const s2 = Math.max(100, Math.round((op.cut.s * k2) / 50) * 50);
+      const tool: CamTool = { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `HAND_${op.tool.type}_${e.tool.d}_${e.tool.l}`, inMachine: false, template: null };
+      return { ...moved, tool, lines: scaleSpeeds(moved.lines, k2), cut: { ...op.cut, s: s2, f: Math.round(op.cut.f * k2), fz: Math.round(op.cut.fz * k2) } };
     });
     if (!touched || !s.vise) return touched ? { ...s, ops } : s;
     const v = s.vise;

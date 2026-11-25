@@ -10,6 +10,19 @@ export interface OpEdit {
   dz?: number;
   /** Down this much more where the operation goes deepest (mm; negative: less deep). */
   deeper?: number;
+  /** Another tool for this operation (Ø and length, mm): its path as it was, its speeds scaled (scaleSpeeds). */
+  tool?: { d: number; l: number };
+}
+
+/** Spindle (S) and feeds (F) times k (k < 1: slower, for a bigger Ø at the same surface speed and the same feed a turn). */
+export function scaleSpeeds(lines: string[], k: number): string[] {
+  if (k === 1) return lines;
+  return lines.map((l) => {
+    if (SKIP.test(l)) return l;
+    const [code, ...rest] = l.split('(');
+    const out = code.replace(/S(\d+)/g, (_, v: string) => `S${Math.max(100, Math.round((Number(v) * k) / 50) * 50)}`).replace(/F(\d*\.?\d*)/g, (_, v: string) => `F${Math.max(1, Math.round(Number(v) * k))}.`);
+    return rest.length ? [out, ...rest].join('(') : out;
+  });
 }
 
 const n3 = (v: number) => {

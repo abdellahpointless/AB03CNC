@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editOpLines } from '../src/lib/cam/opEdit';
+import { editOpLines, scaleSpeeds } from '../src/lib/cam/opEdit';
 
 describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', () => {
   const pocket = ['G00 G90 X10. Y5. S3000 M03', 'G00 Z2.', 'G01 Z-4. F300.', 'G01 X20. Y5. F600.', 'G01 Z-6. F300.', 'G01 X10. Y5.', 'G00 Z2.'];
@@ -22,6 +22,12 @@ describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', ()
 import { camProgram, editProgram } from '../src/lib/cam/program';
 import { heightPart } from './heightPart';
 
+describe('a tool changed by hand on one operation (you, Beta 2: item 11)', () => {
+  it('scales the spindle and the feeds by the same factor (constant surface speed, the same feed a turn)', () => {
+    expect(scaleSpeeds(['G00 G90 X10. Y5. S3000 M03', 'G01 Z-4. F300.', 'G01 X20. F600.', 'G00 Z2.'], 0.8)).toEqual(['G00 G90 X10. Y5. S2400 M03', 'G01 Z-4. F240.', 'G01 X20. F480.', 'G00 Z2.']);
+  });
+});
+
 describe('a made program edited by hand, checked again whole (you, Beta 2: items 10 and 11)', () => {
   const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
   const input = { tris: plate, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [5, 2, 5] as [number, number, number], hi: [5, 2, 2] as [number, number, number] } };
@@ -43,6 +49,25 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
   it('locks an outline taken 5 mm deeper, into the jaws and the parallels', () => {
     const r = editProgram(input, made, { [OUTLINE]: { deeper: 5 } });
     expect(r.check.collisions + r.check.cales).toBeGreaterThan(0);
+  }, 300_000);
+
+  it('gives a changed tool its Ø and length in the program, a code and a number no machine has, and slower speeds for a bigger one', () => {
+    const r = editProgram(input, made, { [POCKET]: { tool: { d: 10, l: 40 } } });
+    const op = r.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    const was = made.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    expect(op.tool.diameter).toBe(10);
+    expect(op.tool.code.startsWith('HAND_')).toBe(true);
+    expect(op.tool.inMachine).toBe(false);
+    expect(r.setups.flatMap((s) => s.ops).filter((o) => o !== op).map((o) => o.tool.number)).not.toContain(op.tool.number);
+    expect(r.code).toContain('(DIAMETER 10.00 MM/LENGTH 40.00 MM)');
+    expect(op.cut.s).toBe(Math.round((was.cut.s * 0.8) / 50) * 50);
+  }, 300_000);
+
+  it('catches a bigger tool on a path made for a smaller one (the outline’s Ø16 swapped for a Ø20)', () => {
+    const r = editProgram(input, made, { [OUTLINE]: { tool: { d: 20, l: 55 } } });
+    // Its path was made for the Ø16: the Ø20 cuts 2 mm into every wall it follows, or into what holds the part.
+    expect(r.check.collisions > 0 || r.check.pieces.some((p) => p.kind === 'cut')).toBe(true);
+    expect(r.check.match).toBeLessThan(0.99);
   }, 300_000);
 
   it('lets a pocket go 2 mm deeper (no collision) and shows what it cuts out of the part', () => {

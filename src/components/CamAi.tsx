@@ -324,7 +324,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
-    if (!result || !machine || !passed(result, handEdited && accepted)) return;
+    if (!result || !machine || handTool || !passed(result, handEdited && accepted)) return;
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
@@ -395,6 +395,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const toolName = useToolName();
   // A part changed by hand may be accepted as it is (the tick), never what could hit the machine (safe()).
   const handEdited = Object.keys(opEdits).length > 0;
+  // A tool changed by hand has no machine number: only the remapper gives it one (Send), never Download.
+  const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.startsWith('HAND_')));
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
@@ -500,7 +502,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
           <Flame size={15} className="text-[#ff9a2e]" /> {t('remapper:toolpath.heat')}
         </button>
         <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
-        <button type="button" className={tb} onClick={download} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
+        <button type="button" className={tb} onClick={download} disabled={!ok || busy || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
           <Download size={15} /> {t('camAi.download')}
         </button>
         <button type="button" className={tb} onClick={() => result && ok && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>

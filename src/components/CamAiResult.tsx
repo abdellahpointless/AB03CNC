@@ -363,7 +363,7 @@ export function ToolCard({
               >
                 {gone ? <RotateCcw size={14} aria-hidden /> : <Trash2 size={14} aria-hidden />}
               </button>
-              {on && onOpEdit && !gone && <OpEditor key={o.key} was={opEdits[o.key]} busy={busy || checking} onApply={(e) => onOpEdit(o.key, e)} />}
+              {on && onOpEdit && !gone && <OpEditor key={o.key} was={opEdits[o.key]} d={o.diameter} l={o.length} busy={busy || checking} onApply={(e) => onOpEdit(o.key, e)} />}
             </li>
           );
         })}
@@ -466,11 +466,15 @@ export function ViseView({ setup }: { setup: Setup }) {
  * An operation moved or taken deeper by hand (you, Beta 2: item 10): the whole program is checked again with it; what
  * could hit the machine or the vise still locks it.
  */
-function OpEditor({ was, busy, onApply }: { was?: OpEdit; busy: boolean; onApply: (e: OpEdit | null) => void }) {
+function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: number; busy: boolean; onApply: (e: OpEdit | null) => void }) {
   const { t } = useTranslation('cam');
-  const [v, setV] = useState({ deeper: String(was?.deeper ?? 0), dx: String(was?.dx ?? 0), dy: String(was?.dy ?? 0), dz: String(was?.dz ?? 0) });
+  const [v, setV] = useState({ deeper: String(was?.deeper ?? 0), dx: String(was?.dx ?? 0), dy: String(was?.dy ?? 0), dz: String(was?.dz ?? 0), d: String(was?.tool?.d ?? d), l: String(was?.tool?.l ?? l) });
   const nums = { deeper: Number(v.deeper) || 0, dx: Number(v.dx) || 0, dy: Number(v.dy) || 0, dz: Number(v.dz) || 0 };
-  const none = Object.values(nums).every((x) => x === 0);
+  const tool = { d: Number(v.d), l: Number(v.l) };
+  const toolOk = tool.d > 0 && tool.d <= 200 && tool.l > 0 && tool.l <= 400;
+  // `d`, `l`: the operation's tool now (already the one changed by hand, if so: kept unless undone).
+  const newTool = toolOk && (!!was?.tool || tool.d !== d || tool.l !== l);
+  const none = Object.values(nums).every((x) => x === 0) && !newTool;
   const field = (k: keyof typeof v) => (
     <label key={k} className="space-y-0.5 min-w-0">
       <span className="text-[10px] text-[var(--text-tertiary)]">{t(`camAi.opEdit.${k}`)}</span>
@@ -480,8 +484,10 @@ function OpEditor({ was, busy, onApply }: { was?: OpEdit; busy: boolean; onApply
   return (
     <div className="w-full px-2 pb-2 space-y-1.5">
       <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
+      <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
+      {!toolOk && <p className="text-[10px] text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(none ? null : nums)}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
+        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
         {was && <button type="button" className="btn-secondary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(null)}>{t('camAi.opEdit.undo')}</button>}
       </div>
       <p className="text-[10px] text-[var(--text-tertiary)]">{t('camAi.opEdit.hint')}</p>
