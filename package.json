@@ -19,7 +19,8 @@
     "learn-shop": "esbuild tools/learn-shop.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/learn-shop.mjs --log-level=warning && node node_modules/.cache/learn-shop.mjs",
     "learn-turns": "esbuild tools/learn-turns.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/learn-turns.mjs --log-level=warning && node node_modules/.cache/learn-turns.mjs",
     "knowledge": "esbuild tools/knowledge.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/knowledge.mjs --log-level=warning && node node_modules/.cache/knowledge.mjs",
-    "cam-library": "esbuild tools/camLibrary.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/cam-library.mjs --log-level=warning && node node_modules/.cache/cam-library.mjs"
+    "cam-library": "esbuild tools/camLibrary.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/cam-library.mjs --log-level=warning && node node_modules/.cache/cam-library.mjs",
+    "vise-mesh": "esbuild tools/vise-mesh.ts --bundle --platform=node --format=esm --external:occt-import-js --outfile=node_modules/.cache/vise-mesh.mjs --log-level=warning && node node_modules/.cache/vise-mesh.mjs"
   },
   "dependencies": {
     "@tabler/icons-react": "3.50.0",
