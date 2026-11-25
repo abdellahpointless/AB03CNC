@@ -56,3 +56,19 @@ export function editOpLines(lines: string[], e: OpEdit): string[] {
     return rest.length ? [out, ...rest].join('(') : out;
   });
 }
+
+/** Every Z word under `zMin` raised to it (the vise floor: no cut comes nearer the table the part stands on); the same array when none is. */
+export function keepAbove(lines: string[], zMin: number): string[] {
+  let changed = false;
+  const out = lines.map((l) => {
+    if (SKIP.test(l)) return l;
+    const [code, ...rest] = l.split('(');
+    const z = code.replace(/Z(-?\d*\.?\d*)/g, (w, v: string) => {
+      if (Number(v) >= zMin - 1e-9) return w;
+      changed = true;
+      return `Z${n3(zMin)}`;
+    });
+    return rest.length ? [z, ...rest].join('(') : z;
+  });
+  return changed ? out : lines;
+}

@@ -578,13 +578,37 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
-  it('never uses parallels that cannot hold the part, nor none until the shop says what it rests on: it says so', () => {
-    // Clamping 2 holds about 17 mm: 25 mm parallels would leave the jaws gripping 20 mm, all of it.
+  it('never uses parallels that cannot hold the part, nor the table where the jaws would grip all of it: it says so', () => {
+    // Clamping 2 holds about 17 mm: 25 mm parallels would leave the jaws gripping 20 mm, all of it; on the table, 45.
     const r = camProgram({ ...base, clamps: [0, 25] });
-    expect(r.notes).toContainEqual({ key: 'clampAsk', setup: 1, cale: 0 });
+    expect(r.notes).toContainEqual({ key: 'clampRefused', setup: 1, cale: 0 });
     expect(r.notes).toContainEqual({ key: 'clampRefused', setup: 2, cale: 25 });
     expect(r.setups.map((s) => s.cale)).not.toContain(0);
     expect(r.setups.map((s) => s.cale)).not.toContain(25);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
+
+  it('holds a tall part on the table, no parallels, the note says so and no tool comes within 0.5 mm of the table (you)', () => {
+    // 40 x 24 x 50 with a 6 x 6 hole through it, no stock under it: the hole is cut down to the table but never into it.
+    const tall = heightPart(Array.from({ length: 24 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 17 && i < 23 && j >= 9 && j < 15 ? 0 : 50))));
+    const at = { tris: tall, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [2, 2, 0] as [number, number, number], hi: [2, 2, 2] as [number, number, number] } };
+    const r = camProgram({ ...at, clamps: [0] });
+    const s = r.setups[0];
+    expect(s.cales).toContain(0);
+    expect(s.cale).toBe(0);
+    expect(s.grip).toBe(45);
+    expect(r.code).toContain('OHNE UNTERLAGE / TEIL AUF DEM TISCH');
+    expect(r.code).not.toContain('0 MM UNTERLAGE');
+    expect(s.vise!.floor).toBeCloseTo(-50, 6);
+    const zs = s.ops.flatMap((o) => o.lines.filter((l) => !/^\s*(T\d|M0|\()|G53|G28|G52|G43/.test(l)).flatMap((l) => [...l.split('(')[0].matchAll(/Z(-?\d*\.?\d*)/g)].map((m) => Number(m[1]))));
+    expect(Math.min(...zs)).toBeGreaterThanOrEqual(-49.5 - 1e-6);
+    expect(r.notes.filter((n) => n.key.startsWith('clamp') || n.key === 'floorHit')).toEqual([]);
+    const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
+    expect(an.setups[0].rejects).toEqual([]);
+    expect(an.setups[0].cales ?? []).toEqual([]);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+    expect(r.check.sized).toBe(true);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+  }, 600_000);
 });

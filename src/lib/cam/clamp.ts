@@ -24,8 +24,11 @@ export function blankSides(excess: number[], white = -1): number[] {
   return v;
 }
 
-/** The parallels the jaws hold the part on: 3 mm grip at least, never all of the stock, jaw tops 0.5 mm under its top. */
-export const allowedCales = (stockH: number, lo: number): number[] => CALE_HEIGHTS.filter((c) => JAW - c >= 3 && JAW - c <= stockH - 1 && JAW - c <= -0.5 - lo);
+/**
+ * The parallels the jaws hold the part on (0: none, the part on the table they stand on): 3 mm grip at least, never all of
+ * the stock, jaw tops 0.5 mm under its top.
+ */
+export const allowedCales = (stockH: number, lo: number): number[] => [...CALE_HEIGHTS, 0].filter((c) => JAW - c >= 3 && JAW - c <= stockH - 1 && JAW - c <= -0.5 - lo);
 
 /**
  * The cale under the part for the grip wanted (the outside is cut down to 0.5 mm above the jaws):

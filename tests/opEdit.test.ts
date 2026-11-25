@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { editOpLines, scaleSpeeds } from '../src/lib/cam/opEdit';
+import { editOpLines, keepAbove, scaleSpeeds } from '../src/lib/cam/opEdit';
+
+describe('no cut within 0.5 mm of the vise floor (the part on the table, you)', () => {
+  it('raises only the Z words under the floor, on moves and drill cycles, never a tool change, a machine position or a comment', () => {
+    const lines = ['T5 M6', '(Z-90 IN A COMMENT)', 'G0 X1. Y2. Z5.', 'G1 Z-60. F300.', 'G2 X3. Y2. Z-55. I1. J0.', 'G81 X4. Y4. Z-58. R2. F120.', 'G53 Z-70.', 'G1 Z-40.'];
+    expect(keepAbove(lines, -49.5)).toEqual(['T5 M6', '(Z-90 IN A COMMENT)', 'G0 X1. Y2. Z5.', 'G1 Z-49.5 F300.', 'G2 X3. Y2. Z-49.5 I1. J0.', 'G81 X4. Y4. Z-49.5 R2. F120.', 'G53 Z-70.', 'G1 Z-40.']);
+    // Nothing under it: the very same lines.
+    const high = ['G1 Z-10.'];
+    expect(keepAbove(high, -49.5)).toBe(high);
+  });
+});
 
 describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', () => {
   const pocket = ['G00 G90 X10. Y5. S3000 M03', 'G00 Z2.', 'G01 Z-4. F300.', 'G01 X20. Y5. F600.', 'G01 Z-6. F300.', 'G01 X10. Y5.', 'G00 Z2.'];

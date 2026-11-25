@@ -20,7 +20,7 @@ import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
 import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW } from './clamp';
-import { editOpLines, scaleSpeeds, type OpEdit } from './opEdit';
+import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -71,8 +71,8 @@ export interface CamInput {
   margins?: { lo: Vec; hi: Vec };
   /**
    * The designer's parallels (Beta 2), by clamping (first, second, ...): a height of CALE_HEIGHTS, used as given, or a note
-   * says why not (clampRefused) and CAM AI's own is used; 0 for none (the part on the jaws' step), held until the shop
-   * says what it rests on (clampAsk); unset: CAM AI's own.
+   * says why not (clampRefused) and CAM AI's own is used; 0 for none, the part on the table the parallels stand on (you:
+   * "OHNE UNTERLAGE / TEIL AUF DEM TISCH"); unset: CAM AI's own.
    */
   clamps?: (number | null)[];
   /**
@@ -1328,17 +1328,14 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     const ok = [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) && (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400));
     if (!ok) throw new Error('An edit by hand out of range.');
   }
-  // The simulation has no vise floor (docs/knowledge): an edited cut that reaches it is noted and locks the program.
-  const floorHits: CamNote[] = [];
-  const setups = r.setups.map((s, si) => {
+  // An edited cut that reaches the vise floor is noted and locks the program (checked, below).
+  const setups = r.setups.map((s) => {
     let touched = false;
     const ops = s.ops.map((op, k) => {
       const e = edits[op.key ?? `${s.side}|${op.name}|${op.tool.code}|${k}`];
       if (!e) return op;
       touched = true;
       const lines = editOpLines(op.lines, e);
-      const low = Math.min(...lines.flatMap((l) => (/^\s*(T\d|M0|\()|G53|G28|G52|G43/.test(l) ? [] : [...l.split('(')[0].matchAll(/Z(-?\d*\.?\d*)/g)].map((m) => Number(m[1])))));
-      if (s.vise && low < s.vise.floor + 0.5 && !floorHits.some((n) => n.setup === si + 1)) floorHits.push({ key: 'floorHit', setup: si + 1 });
       // Its last pass that much deeper: what the vise check loads it with.
       const moved = { ...op, lines, cut: { ...op.cut, ap: op.cut.ap + Math.max(0, e.deeper ?? 0) } };
       if (!e.tool || (e.tool.d === op.tool.diameter && e.tool.l === op.tool.length)) return moved;
@@ -1357,10 +1354,16 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
     return { ...s, ops, physics };
   });
-  return checked(input, { ...r, setups, notes: [...r.notes, ...floorHits], code: post(input, setups, r.size, r.raw) });
+  return checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) });
 }
 
+/** The lowest Z an operation's lines go to (its own frame): its moves and drill cycles, not a machine position. */
+const lowest = (lines: string[]) => Math.min(...lines.flatMap((l) => (/^\s*(T\d|M0|\()|G53|G28|G52|G43/.test(l) ? [] : [...l.split('(')[0].matchAll(/Z(-?\d*\.?\d*)/g)].map((m) => Number(m[1])))));
+
 function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
+  // The simulation has no vise floor (docs/knowledge): a clamping with a cut within 0.5 mm of it is noted, and locks the program.
+  const floorHits: CamNote[] = r.setups.flatMap((s, i) => (s.vise && s.ops.some((op) => lowest(op.lines) < s.vise!.floor + 0.5 - 1e-6) ? [{ key: 'floorHit' as const, setup: i + 1 }] : []));
+  r = { ...r, notes: [...r.notes.filter((n) => n.key !== 'floorHit'), ...floorHits] };
   const again = (code: string) => checkProgram(input.tris, code, input.brand, input.speeds, r.pose, r.corners);
   let code = r.code;
   let check = again(code);
@@ -1782,8 +1785,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // In the POM nest the nest holds it: the parallels asked for do not apply (said, not refused).
     if (nested && asked !== undefined && fixed === undefined) notes.push({ key: 'clampNest', setup: setups.length + 1, cale: asked });
     // Planned again for lighter mills (below), at the designer's grip: still theirs.
-    const theirs = !nested && asked !== undefined && asked !== 0 && cales.includes(asked) && (fixed === undefined || fixed === JAW - asked);
-    if (!nested && asked !== undefined && !theirs) notes.push({ key: asked === 0 ? 'clampAsk' : 'clampRefused', setup: setups.length + 1, cale: asked });
+    const theirs = !nested && asked !== undefined && cales.includes(asked) && (fixed === undefined || fixed === JAW - asked);
+    if (!nested && asked !== undefined && !theirs) notes.push({ key: 'clampRefused', setup: setups.length + 1, cale: asked });
     if (theirs && fixed === undefined && pick.cale !== asked) ownCales.set(setups.length, pick.cale);
     if (theirs) {
       pick = { cale: asked, grip: JAW - asked };
@@ -1827,7 +1830,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const raised = sb.hi[2] > 0.01 ? `/Z+ IN ${mm(sb.hi[2])}MM` : '';
     const setupNotes = nested
       ? [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes}`}${raised}`, 'TEIL IN POM-NEST LEGEN / M4 GEWINDESTIFTE X- UND Y- ANZIEHEN', `NEST AUF ${cale} MM UNTERLAGE IM SCHRAUBSTOCK SPANNEN`]
-      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, `${cale} MM UNTERLAGE`, ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
+      : [`${prevR ? (turn ? `${turn}/${sizes}` : sizes) : `TEIL MIT ${sizes} EINSPANNEN`}${raised}`, cale ? `${cale} MM UNTERLAGE` : 'OHNE UNTERLAGE / TEIL AUF DEM TISCH', ...(spacerX ? [`${spacerX} MM ZWISCHENLAGE IN X-`] : [])];
     // Too long for one vise (with the spacer at the stop): both, as the checker reads it back (setups.ts).
     const twoVises = hold[0] + spacerX > VISE.width + OVERHANG;
     if (!nested && twoVises) setupNotes.push(`MIT 2 SCHRAUBSTOECKEN ${VISE.gap} MM ABSTAND`);
@@ -1958,6 +1961,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (h.through && z < sb.lo[2] + 0.1) {
           // You: the shop's full 1 mm into a parallel (0.95: the check's margin); a narrow end under 0.05 mm is nothing.
           if (nested || !betweenCales(h) || z < floor + 1) z = Math.max(z, sb.lo[2] + (nested ? 0.1 : -0.95));
+          // On the table (no parallels): never into it, 0.5 mm over it.
+          if (!cale && !nested) z = Math.max(z, floor + 0.5);
           rest = z + 0.3 * d.diameter - h.bottom;
           rest = rest < 0.05 ? 0 : rest;
         }
@@ -2423,7 +2428,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       physics.issues.push({ key: 'faceAtJaws' });
       physics.ok = false;
     }
-    const done = ops.map((op, i) => slowed(op, physics.opFeed[i]));
+    // No cut within 0.5 mm of the vise floor (the table the parallels, or the part, stand on): the simulation has none.
+    const viseFloor = nested ? floor - NEST.floor : floor;
+    const done = ops.map((op, i) => slowed(op, physics.opFeed[i])).map((op) => ({ ...op, lines: keepAbove(op.lines, viseFloor + 0.5) }));
     const wallMm3 = mine.reduce((v, w) => v + area(leftOn.length ? difference(w.region, leftOn) : w.region) * (w.above - w.z), 0);
     // shortcut: decided as this clamping is planned; a later one that cuts the wall (holding the part by another
     // face) leaves the note standing. Decide it after the last clamping if one ever does.
@@ -2431,8 +2438,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
     const viseIn = nest
-      ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: floor - NEST.floor }
-      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor };
+      ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
+      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor };
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
