@@ -14,7 +14,7 @@ const extent = (obj: THREE.Object3D) => {
 const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(0.03);
 
 describe("the shop's vise", () => {
-  it('has jaw plates exactly 45 mm over its bed (the model has 44.5), the rest as its maker drew it', async () => {
+  it('has jaw plates and jaw blocks exactly 45 mm over its bed (the model has 44.5 and 37-38), the rest as its maker drew it', async () => {
     const v = await loadVise();
     expect(VISE_FRAME.modelJawHeight).toBe(44.5);
     expect(VISE_FRAME.jawHeight).toBe(45);
@@ -23,10 +23,11 @@ describe("the shop's vise", () => {
       near(v.geos[k].boundingBox!.max.y, 45);
       near(v.geos[k].boundingBox!.min.y, 0);
     }
-    // The jaw blocks under the plates' tops, the body's underside VISE_DEPTH under the bed.
+    // The jaw blocks flush with the plates' tops (the shop's are: the model's stop at 37-38 mm), the body's underside
+    // VISE_DEPTH under the bed.
     for (const k of ['fixedJaw', 'movingJaw'] as const) {
       v.geos[k].computeBoundingBox();
-      expect(v.geos[k].boundingBox!.max.y).toBeLessThan(45);
+      near(v.geos[k].boundingBox!.max.y, 45);
     }
     v.geos.fixedBody.computeBoundingBox();
     near(v.geos.fixedBody.boundingBox!.min.y, -VISE_DEPTH);
