@@ -30,6 +30,10 @@ export interface DbCut {
 }
 export interface DbTool {
   removed?: boolean;
+  /** Switched off by the shop: kept here, never planned with (item 14). */
+  off?: true;
+  /** Roughing only (never a finishing pass) or finishing first for its Ø; unset: both (item 14). */
+  role?: 'rough' | 'finish';
   cuts?: Partial<Record<TemplateKind, DbCut>>;
   /** A tool the shop added: its type, Ø and length out of the holder (mm). */
   added?: { type: string; d: number; length: number };
@@ -52,8 +56,16 @@ export function cleanDbTool(fam: unknown, code: unknown, raw: unknown): DbTool |
   const r = raw as Record<string, unknown>;
   const out: DbTool = {};
   if (r.removed !== undefined) {
-    if (r.removed !== true || r.cuts !== undefined || r.added !== undefined) return null;
+    if (r.removed !== true || r.cuts !== undefined || r.added !== undefined || r.off !== undefined || r.role !== undefined) return null;
     return { removed: true };
+  }
+  if (r.off !== undefined) {
+    if (r.off !== true) return null;
+    out.off = true;
+  }
+  if (r.role !== undefined) {
+    if (r.role !== 'rough' && r.role !== 'finish') return null;
+    out.role = r.role;
   }
   if (r.added !== undefined) {
     const a = r.added as Record<string, unknown> | null;

@@ -1734,9 +1734,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const tools = catalog(mat, input.tools, input);
   // Of one Ø, the mills with the shop's roughing data first: the SFH 16 roughs at 2,800 mm/min, the
   // SF 16 has only its finishing data (850) and finishes the walls (docs/knowledge: T4).
-  const finishOnly = (t: CamTool) => !!t.template && t.template.ops.every((o) => o.kind === 'finish');
+  // The tool database's finishing tools likewise (item 14).
+  const finishOnly = (t: CamTool) => t.role === 'finish' || (!!t.template && t.template.ops.every((o) => o.kind === 'finish'));
   // Then the machine's own, its roughing mill before its finishing one (HAAS-1: T2 roughs, T21 finishes).
-  const role = (t: CamTool) => (t.category === 'fraise ebauche' ? 0 : t.category === 'fraise finition' ? 2 : 1);
+  const role = (t: CamTool) => (t.role === 'rough' || t.category === 'fraise ebauche' ? 0 : t.role === 'finish' || t.category === 'fraise finition' ? 2 : 1);
   const allMills = usable(tools, MILLS).sort((a, b) => b.diameter - a.diameter || Number(finishOnly(a)) - Number(finishOnly(b)) || Number(b.inMachine) - Number(a.inMachine) || role(a) - role(b));
   // Sides planned again turned a quarter (no grip held them as they lay): once each.
   const quartered = new Set<number>();
@@ -2351,11 +2352,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const roughed = (byDia.get(op.tool.diameter) ?? []).flatMap((o) => perTool.get(o)!).filter((w) => w.finish);
       if (!roughed.length) continue;
       const deepest = Math.min(...roughed.map((w) => w.z));
-      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && m.length >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
+      // Never a tool the tool database keeps for roughing (item 14); one it gives finishing to first.
+      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && m.role !== 'rough' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && m.length >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
       // Of the shop's templates, the one with its usual finishing data: the SF 16's SCHLICHT at 1,200 mm/min
       // and 10 mm deep (90 % of its SF 16 finishing operations), not the one at 850 and 5.
       const fin = (m: CamTool) => m.template?.ops.filter((o) => o.kind === 'finish').reduce((b, o) => Math.max(b, o.feed * (o.ap ?? 0)), 0) ?? 0;
-      const tool = plain.find((m) => m.inMachine && m.category === 'fraise finition') ?? plain.find((m) => m.inMachine && m.category !== 'fraise ebauche') ?? [...plain].sort((p, q) => fin(q) - fin(p)).find((m) => fin(m) > 0) ?? op.tool;
+      const tool = plain.find((m) => m.role === 'finish') ?? plain.find((m) => m.inMachine && m.category === 'fraise finition') ?? plain.find((m) => m.inMachine && m.category !== 'fraise ebauche') ?? [...plain].sort((p, q) => fin(q) - fin(p)).find((m) => fin(m) > 0) ?? op.tool;
       const r = tool.diameter / 2;
       const work: Work[] = [];
       let thinAny = false;

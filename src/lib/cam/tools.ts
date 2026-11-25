@@ -80,6 +80,8 @@ export interface CamTool extends Tool {
   edit?: CutEdit;
   /** The shop's own cutting values for it per kind of operation (tool database), checked as typed values are. */
   dbCuts?: DbTool['cuts'];
+  /** Its role in the tool database: roughing only, or finishing first; unset: both. */
+  role?: DbTool['role'];
 }
 
 /** Coolant per tool: flood (M08), air (M83), none. */
@@ -122,7 +124,7 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
   for (const t of library) {
     const category = CATEGORY[t.type];
     const row = own.get(t.code);
-    if (!category || opts.exclude?.includes(t.code) || row?.removed) continue;
+    if (!category || opts.exclude?.includes(t.code) || row?.removed || row?.off) continue;
     const added = !!t.added;
     // A face mill or graver whose length the inventory leaves out (0) is the template's: both cut at
     // the top, and the template's length is the one simulated and written (never "0MM LANG").
@@ -150,6 +152,7 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
       inMachine: !!m || !!opts.prefer?.includes(t.code),
       ...(opts.cuts?.[t.code] ? { edit: opts.cuts[t.code] } : {}),
       ...(row?.cuts ? { dbCuts: row.cuts } : {}),
+      ...(row?.role ? { role: row.role } : {}),
     });
   }
   // Special tools imported into the machine (taps are not used).

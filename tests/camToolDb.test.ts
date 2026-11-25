@@ -72,6 +72,17 @@ describe("CAM AI's tool database as the shop changed it", () => {
     for (const fam of ['ALU', 'POM', 'FH'] as const) for (const t of LIBRARY[fam]) expect(cleanDbTool(fam, t.code, { removed: true }), t.code).not.toBeNull();
   });
 
+  it('keeps a tool switched off out of the plan, and gives a role (roughing or finishing) to the tools it plans with (item 14)', () => {
+    const off: ToolDb = { ALU: { [mill.code]: { off: true } } };
+    expect(catalog('ALU', [], { toolDb: off }).some((t) => t.code === mill.code)).toBe(false);
+    expect(catalog('ALU', [], { toolDb: { ALU: { [mill.code]: { role: 'rough' } } } }).find((t) => t.code === mill.code)!.role).toBe('rough');
+    expect(cleanDbTool('ALU', mill.code, { role: 'finish', off: true })).toEqual({ role: 'finish', off: true });
+    // Only the two roles, only a plain true; never with a removed row.
+    expect(cleanDbTool('ALU', mill.code, { role: 'both' })).toBeNull();
+    expect(cleanDbTool('ALU', mill.code, { off: false })).toBeNull();
+    expect(cleanDbTool('ALU', mill.code, { removed: true, off: true })).toBeNull();
+  });
+
   it('ignores a stored row the planner may not take', () => {
     const db = { ALU: { [mill.code]: { removed: 'yes' }, 'SF_07.00_038_000_ALHS': { added: { type: 'KF', d: 7, length: 38 } } } } as unknown as ToolDb;
     expect(catalog('ALU', [], { toolDb: db })).toEqual(catalog('ALU', []));
