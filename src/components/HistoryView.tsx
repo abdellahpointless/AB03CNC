@@ -3,7 +3,9 @@ import { HistoryRecord } from '../types';
 import { IconClock as Clock, IconFileText as FileText, IconUser as User, IconRobot as Bot, IconDownload as Download, IconEye as Eye, IconSearch as Search, IconFilter as Filter, IconX as X, IconCopy as Copy, IconCheck as Check, IconCpu as Cpu, IconChevronDown as ChevronDown, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconArchive as Archive, IconRefresh as RefreshCw, IconAlertTriangle as AlertTriangle } from '@tabler/icons-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TimeWonClock } from './TimeWonClock';
-import { applyG53BeforeG52 } from '../lib/gcodeProcessor';
+import { savedProgramFor } from '../lib/gcodeProcessor';
+import { engineMachineId } from '../regions';
+import { currentRegion } from '../lib/instance';
 import { api } from '../lib/api';
 import { fetchAllHistory, fetchHistoryPage, fetchRecordCode } from '../lib/historyApi';
 import { downloadJson, downloadText, todayStamp } from '../lib/download';
@@ -164,6 +166,9 @@ export default function HistoryView() {
     setExpandedIds(new Set());
   };
 
+  // The machine rules the program gets again (FANUC-2's spindle cap) are the record's machine's.
+  const engineOf = (record: HistoryRecord) => engineMachineId(currentRegion().id, { id: record.machine ?? '', brand: machines.find((m) => m.id === record.machine)?.brand ?? 'OTHER' });
+
   const handleInspect = async (record: HistoryRecord) => {
     setInspectingRecord(record);
     setIsLoadingCode(true);
@@ -171,9 +176,7 @@ export default function HistoryView() {
     setCopied(false);
 
     try {
-      const code = await fetchRecordCode(record.id);
-      const { lines: safeLines } = applyG53BeforeG52(code.split('\n'));
-      setInspectCode(safeLines.join('\n'));
+      setInspectCode(savedProgramFor(await fetchRecordCode(record.id), engineOf(record)));
     } catch (err: any) {
       setInspectCode('; ' + (err?.message || t('view.errors.codeNotRetrieved')));
     } finally {
@@ -184,9 +187,7 @@ export default function HistoryView() {
   const handleDownloadCode = async (record: HistoryRecord) => {
     setDownloadingId(record.id);
     try {
-      const code = await fetchRecordCode(record.id);
-      const { lines: safeLines } = applyG53BeforeG52(code.split('\n'));
-      downloadText(record.exportedFileName, safeLines.join('\n'), 'application/octet-stream');
+      downloadText(record.exportedFileName, savedProgramFor(await fetchRecordCode(record.id), engineOf(record)), 'application/octet-stream');
     } catch (e: any) {
       alert(e?.message || t('shared.codeUnavailable'));
     } finally {
