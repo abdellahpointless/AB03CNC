@@ -221,6 +221,18 @@ describe('the jaws of a later clamping', () => {
     expect(r.setups.filter((s) => s.notes.some((n) => /ZWISCHENLAGE/.test(n)))).toHaveLength(1);
   }, 300_000);
 
+  it('the designer\'s "None" in that clamping forbids the spacer CAM AI would add: the wall is left and noted, nothing hits', () => {
+    const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 27 && j < 31);
+    const input = { tris, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, raw: [34, 38.1, 18] as [number, number, number], noNest: true, orient: { side: 'Z+', spin: false } };
+    const at = camProgram(input).setups.findIndex((s) => s.notes.some((n) => /ZWISCHENLAGE IN Y-/.test(n)));
+    expect(at).toBeGreaterThan(-1);
+    const r = camProgram({ ...input, spacersY: Array.from({ length: at + 1 }, (_, i) => (i === at ? 0 : null)) });
+    expect(r.code).not.toMatch(/ZWISCHENLAGE IN Y-/);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'jawWall' }));
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 600_000);
+
   // Each part stands out past one held side only: its plate as wide as the boss (past the face at the
   // stop), or as long as it (over the jaws). Either alone must keep the tools off.
   it.each([
