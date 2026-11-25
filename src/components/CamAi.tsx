@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconFlame as Flame, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPackage as Package, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload } from '@tabler/icons-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -22,15 +22,15 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import type { Mat3 } from '../lib/orient';
-import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
+import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
+import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
 
-const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
 const CamPartView = lazy(() => import('./CamPartView'));
 
 /** The automatic raw block: the part plus 4 mm in X and Y and 7 mm in Z (in the vise), centred. */
@@ -75,7 +75,7 @@ const viseSide = (R: Mat3, side: string) => {
  * other material asks for the family to program it with). Then the program, simulated and checked
  * (lib/cam/program.ts); Download and Send only once every check passes (CamAiResult).
  */
-export default function CamAi({ onSend }: { onSend: (code: string, fileName: string, machine: string) => void }) {
+export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileName: string, machine: string) => void; onExit: () => void }) {
   const { user } = useAuth();
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   const { toolbox, toolMachines: allMachines } = useSync();
@@ -140,7 +140,6 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [swap, setSwap] = useState<{ exclude: string[]; prefer: string[] }>({ exclude: [], prefer: [] });
   const [run, setRun] = useState<Run>({ state: 'idle' });
   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
-  const [viewing, setViewing] = useState<false | 'play' | 'weak' | 'nx'>(false);
   const worker = useRef<Worker | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
@@ -379,6 +378,18 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
   // The browser's selected item, what the properties panel edits.
   const [sel, setSel] = useState<Sel>({ kind: 'part' });
+  // The panels (you: collapsed with [ and ], remembered); under 1400 px the inspector, under 1100 px the tools, are drawers.
+  const [leftOpen, setLeftOpen] = useStoredFlag('cnc-camai-tools', true);
+  const [rightOpen, setRightOpen] = useStoredFlag('cnc-camai-inspector', true);
+  const [leftDrawer, setLeftDrawer] = useState(false);
+  const [rightDrawer, setRightDrawer] = useState(false);
+  const width = useWindowWidth();
+  const wide = width >= 1400;
+  const narrow = width < 1100;
+  // The clamping whose tools the list shows, when no tool or clamping is picked.
+  const [opTab, setOpTab] = useState(0);
+  // The NX view in the simulation (every path over the finished part).
+  const [nx, setNx] = useState(false);
   // A tool right-clicked: its card opens on changing it.
   const [swapAsk, setSwapAsk] = useState<string | null>(null);
   // Measuring the model in the view, as in a CAD program (before or after a program is made).
@@ -393,6 +404,21 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     const op = run.result.setups[sel.i]?.ops.find((o) => o.code === sel.code);
     return op ? { setup: sel.i, tool: op.tool, key: ++focusSeq.current } : null;
   }, [run, sel]);
+  const [simFocus, setSimFocus] = useState<SimFocus | null>(null);
+  useEffect(() => {
+    if (focusTool) setSimFocus(focusTool);
+  }, [focusTool]);
+  // [ and ] fold the tool list and the inspector away (never while typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.ctrlKey || e.metaKey || e.altKey || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return;
+      if (e.key === '[') (narrow ? setLeftDrawer((x) => !x) : setLeftOpen(!leftOpen));
+      if (e.key === ']') (wide ? setRightOpen(!rightOpen) : setRightDrawer((x) => !x));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
   const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && !measuring && cales1.length > 0;
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
@@ -471,271 +497,259 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
         ? live.paths.filter((p) => p.setup === sel.i)
         : live.paths;
 
-  const node = (active: boolean) =>
-    `no-glass w-full text-left flex items-center gap-2 px-2 min-h-8 rounded-[6px] text-xs transition-colors ${active ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.06)]'}`;
-  const tb = 'no-glass inline-flex items-center gap-1.5 px-2.5 min-h-9 rounded-[6px] text-xs text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40 disabled:hover:bg-transparent';
-  const head = 'section-label px-2 pt-3 pb-1';
 
-  return (
-    <div className="cam-ws glass-panel rounded-[var(--radius-lg)] w-full flex flex-col overflow-hidden h-[calc(100vh-12.5rem)] min-h-[640px]">
-      <input ref={fileRef} type="file" accept=".pdf,.stl,.step,.stp" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
+  // The clampings as the step chips and tabs show them: "2 · 180° X · 28".
+  const stepName = (i: number) => {
+    const s = result?.setups[i];
+    if (!s) return { n: i + 1, turn: setupNodes.find((x) => x.i === i)?.side ?? '', rest: '' };
+    const turn = s.notes.join(' ').match(/(\d+)\s*GRAD\s*UM\s*([XYZ])/);
+    const rest = s.notes.some((x) => /POM-NEST/.test(x)) ? t('camAi.sim.nest') : s.notes.some((x) => /SUR L'ETAU/.test(x)) ? t('camAi.sim.onJaw') : s.cale === 0 ? t('camAi.sim.onTable') : fmt(s.cale, 0);
+    return { n: i + 1, turn: i === 0 ? t('camAi.ws.vise') : turn ? `${turn[1]}° ${turn[2]}` : s.side, rest };
+  };
+  const parallelsText = (i: number) => {
+    const s = result?.setups[i];
+    if (!s) return '';
+    if (s.notes.some((x) => /POM-NEST/.test(x))) return t('camAi.sim.nest');
+    if (s.notes.some((x) => /SUR L'ETAU/.test(x))) return t('camAi.sim.onJaw');
+    return s.cale === 0 ? t('camAi.sim.onTable') : t('camAi.sim.parallels', { mm: fmt(s.cale, 0) });
+  };
+  // The tools in program order, one colour each (CamSim gives the same).
+  const toolColor = useMemo(() => {
+    const order: number[] = [];
+    for (const s of result?.setups ?? []) for (const o of s.ops) if (!order.includes(o.tool)) order.push(o.tool);
+    return (n: number) => SIM_COLORS[Math.max(0, order.indexOf(n)) % SIM_COLORS.length];
+  }, [result]);
+  const runLabel = (setup: number, toolNo: number | null) => {
+    const ops = result?.setups[setup]?.ops.filter((o) => o.tool === toolNo) ?? [];
+    if (!ops.length) return toolNo === null ? '' : `T${toolNo}`;
+    return `T${toolNo} · ${t(`camAi.tools.${ops[0].type}`, { defaultValue: ops[0].type })} — ${[...new Set(ops.map((o) => t(`camAi.purpose.${o.purpose}`)))].join(', ')}`;
+  };
+  const opNow = sel.kind === 'setup' || sel.kind === 'tool' ? sel.i : opTab;
+  // What the checks say, row by row (the status chip's popover).
+  const checks = result
+    ? [
+        { label: t('camAi.ws.check.match'), value: t('camAi.percent', { v: fmt(result.match * 100, 2) }), bad: result.match < 0.99 },
+        { label: t('camAi.ws.check.size'), value: t(result.sized ? 'camAi.ws.check.sizeOk' : 'camAi.ws.check.sizeBad'), bad: !result.sized },
+        { label: t('camAi.ws.check.collisions'), value: result.collisions - result.stops ? String(result.collisions - result.stops) : t('camAi.ws.check.none'), bad: result.collisions - result.stops > 0 },
+        { label: t('camAi.ws.check.cales'), value: result.cales ? String(result.cales) : t('camAi.ws.check.none'), bad: result.cales > 0 },
+        { label: t('camAi.ws.check.stops'), value: result.stops ? String(result.stops) : t('camAi.ws.check.none'), bad: result.stops > 0 },
+        { label: t('camAi.ws.check.misplaced'), value: result.misplaced ? String(result.misplaced) : t('camAi.ws.check.none'), bad: result.misplaced > 0 },
+        { label: t('camAi.ws.check.gouge'), value: result.gouge >= 1 ? `${fmt(result.gouge, 0)} mm³` : t('camAi.ws.check.none'), bad: result.gouge >= 1 && !accepted },
+        { label: t('camAi.ws.check.hold'), value: t(result.setups.every((s) => s.physics.ok) ? 'camAi.ws.check.yes' : 'camAi.ws.check.no'), bad: !result.setups.every((s) => s.physics.ok) },
+        { label: t('camAi.ws.check.cutting'), value: t(result.setups.some((s) => s.ops.some((o) => o.unsafe)) ? 'camAi.ws.check.no' : 'camAi.ws.check.yes'), bad: result.setups.some((s) => s.ops.some((o) => o.unsafe)) },
+      ]
+    : [];
+  const issues = Math.max(ok ? 0 : 1, checks.filter((c) => c.bad).length);
+  const collapseBtn = 'no-glass w-8 h-8 grid place-items-center rounded-[8px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]';
+  const barBtn = 'no-glass h-8 shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-3 rounded-[8px] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40 disabled:hover:bg-transparent';
+  const menuItem = 'no-glass w-full flex items-center gap-2.5 h-9 px-2.5 rounded-[6px] text-[13px] text-left text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40';
+  const row = (active: boolean) => `no-glass w-full h-11 flex items-center gap-2.5 px-2 rounded-[8px] text-left transition-colors ${active ? 'bg-[var(--accent-primary)]/15' : 'hover:bg-[rgba(var(--ov),0.06)]'}`;
+  const toolsOpen = narrow ? leftDrawer : leftOpen;
+  const inspectorOpen = wide ? rightOpen : rightDrawer;
+  const toggleTools = () => (narrow ? setLeftDrawer((x) => !x) : setLeftOpen(!leftOpen));
+  const toggleInspector = () => (wide ? setRightOpen(!rightOpen) : setRightDrawer((x) => !x));
 
-      {/* Toolbar */}
-      <header className="flex items-center gap-1 px-2 h-12 shrink-0 border-b border-[var(--border-subtle)]" role="toolbar" aria-label={t('camAi.ws.toolbar')}>
-        <span className="flex items-center gap-2 px-2 mr-1">
-          <Cpu size={16} className="text-[var(--accent-primary)]" aria-hidden />
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">CAM AI</h2>
-          <span className="badge-warning text-[10px] py-0.5 px-1.5">{t('camAi.beta')}</span>
-        </span>
-        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
-        <button type="button" className={tb} onClick={() => setDialog(true)} disabled={busy}>
-          <FilePlus2 size={15} /> {t('camAi.ws.new')}
-        </button>
-        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
-        {run.state === 'busy' ? (
-          <button type="button" className={tb} onClick={stop}>
-            <Square size={14} /> {t('camAi.stop')}
-          </button>
-        ) : (
-          <button type="button" className={`${tb} font-semibold text-[var(--blue-text)]`} onClick={() => generate()} disabled={!ready || busy}>
-            <Play size={15} /> {t(result ? 'camAi.again' : 'camAi.generate')}
-          </button>
-        )}
-        <button type="button" className={tb} onClick={() => setViewing('play')} disabled={!result || busy}>
-          <Route size={15} /> {t('camAi.ws.simulate')}
-        </button>
-        <button type="button" className={tb} onClick={() => setViewing('nx')} disabled={!result || busy} title={t('remapper:toolpath.nxViewHelp')}>
-          <Route size={15} className="text-[#a78bfa]" /> {t('remapper:toolpath.nxView')}
-        </button>
-        <button type="button" className={tb} onClick={() => setViewing('weak')} disabled={!result || busy} title={t('remapper:toolpath.heatHelp')}>
-          <Flame size={15} className="text-[#ff9a2e]" /> {t('remapper:toolpath.heat')}
-        </button>
-        <span className="w-px h-6 bg-[var(--border-subtle)]" aria-hidden />
-        <button type="button" className={tb} onClick={download} disabled={!ok || busy || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
-          <Download size={15} /> {t('camAi.download')}
-        </button>
-        <button type="button" className={tb} onClick={() => result && ok && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
-          <Send size={15} /> {t('camAi.send')}
-        </button>
-        <span className="flex-1" />
-        <Popover.Root>
-          <Popover.Trigger asChild>
-            <button type="button" className={tb}>
-              <Settings2 size={15} /> {t('camAi.settings')}
-            </button>
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Content align="end" sideOffset={6} className="cam-pop z-[1000] w-72 p-3 space-y-1.5">
-              <label className="space-y-1 block">
-                <span className="section-label block">{t('camAi.sideStock')}</span>
-                <input className="aurora-input w-full text-xs" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
-              </label>
-              <p className="text-xs text-[var(--text-tertiary)]">{t('camAi.sideStockHint')}</p>
-            </Popover.Content>
-          </Popover.Portal>
-        </Popover.Root>
-      </header>
-
-      <div className="flex-1 min-h-0 grid grid-cols-[15rem_minmax(0,1fr)_21rem]">
-        {/* Browser */}
-        <nav className="border-r border-[var(--border-subtle)] overflow-y-auto p-1.5" aria-label={t('camAi.ws.browser')}>
-          {prep ? (
-            <ul className="space-y-0.5">
-              <li>
-                <button type="button" className={node(sel.kind === 'part')} aria-current={sel.kind === 'part' || undefined} onClick={() => setSel({ kind: 'part' })}>
-                  <Box size={14} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden />
-                  <span className="truncate flex-1">{prep.title ?? name}</span>
-                  {!partType && <AlertTriangle size={13} className="text-[var(--orange-text)]" aria-label={t('camAi.ws.needs')} />}
+  const toolList = (
+    <>
+      {result ? (
+        <>
+          <div className="flex items-center gap-2 p-2">
+            <div role="tablist" aria-label={t('camAi.ws.clampings')} className="flex-1 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)]" style={{ gridTemplateColumns: `repeat(${result.setups.length}, minmax(0, 1fr))` }}>
+              {result.setups.map((_, i) => (
+                <button key={i} type="button" role="tab" aria-selected={opNow === i} onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} className={`no-glass h-8 rounded-[6px] text-[13px] ${opNow === i ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                  OP{(i + 1) * 10}
                 </button>
-              </li>
-              <li>
-                <button type="button" className={node(sel.kind === 'stock')} aria-current={sel.kind === 'stock' || undefined} onClick={() => setSel({ kind: 'stock' })}>
-                  <Package size={14} className="shrink-0 text-[#f5a524]" aria-hidden />
-                  <span className="truncate flex-1">{t('camAi.ws.stock')}</span>
-                  {chosen && excess && <span className="tabular-nums text-[10px] text-[var(--text-tertiary)]">{[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join('×')}</span>}
-                </button>
-              </li>
-              <li className={head}>{t('camAi.ws.setups')}</li>
-              {setupNodes.map(({ i, side }) => {
-                const done = i === 0 ? locked1 : i === 1 ? locked2 : true;
-                const s = result?.setups[i];
-                const byTool = s ? [...new Map(s.ops.map((o) => [o.code, o] as const)).values()] : [];
-                const issue = s && (!s.physics.ok || s.ops.some((o) => o.unsafe));
-                return (
-                  <li key={i}>
-                    <button type="button" className={node(sel.kind === 'setup' && sel.i === i)} aria-current={(sel.kind === 'setup' && sel.i === i) || undefined} onClick={() => setSel({ kind: 'setup', i })}>
-                      {issue ? <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-hidden /> : done ? <CheckCircle2 size={14} className="shrink-0 text-[var(--green-text,#1fb257)]" aria-hidden /> : <span className="w-3.5 h-3.5 shrink-0 grid place-items-center" aria-hidden><span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" /></span>}
-                      <span className="flex-1 truncate">{t('camAi.setupStep', { n: i + 1, op: (i + 1) * 10 })}</span>
-                      <span className="font-mono text-[11px]">{side}</span>
-                      <span className="sr-only">{t(issue ? 'camAi.setupIssue' : done ? 'camAi.stepState.done' : 'camAi.stepState.now')}</span>
-                    </button>
-                    {byTool.length > 0 && (
-                      <ul className="ml-4 pl-2 border-l border-[var(--border-subtle)] space-y-0.5 my-0.5">
-                        {byTool.map((o) => (
-                          <li key={o.code}>
-                            <button
-                              type="button"
-                              className={node(sel.kind === 'tool' && sel.i === i && sel.code === o.code)}
-                              aria-current={(sel.kind === 'tool' && sel.i === i && sel.code === o.code) || undefined}
-                              onClick={() => {
-                                setSwapAsk(null);
-                                setSel({ kind: 'tool', i, code: o.code });
-                              }}
-                              // Right click: straight to changing the tool (you, Beta 2).
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setSwapAsk(o.code);
-                                setSel({ kind: 'tool', i, code: o.code });
-                              }}
-                              title={t('camAi.rightClickSwap')}
-                            >
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PURPOSE_HEX[o.purpose] }} aria-hidden />
-                              <span className="font-mono text-[11px] shrink-0">T{o.tool}</span>
-                              <ToolLabel o={o} />
-                              {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={12} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-              {!result && locked1 && locked2 && <li className="px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{t('camAi.restByAi')}</li>}
-              {!result && !locked1 && (
-                <li className="flex items-center gap-2 px-2 min-h-8 text-xs text-[var(--text-tertiary)]">
-                  <Lock size={13} aria-hidden /> {t('camAi.setupStep', { n: 2, op: 20 })}
-                  <span className="sr-only">{t('camAi.stepState.locked')}</span>
-                </li>
-              )}
-              {result && (
-                <>
-                  <li className={head}>{t('camAi.ws.output')}</li>
-                  <li>
-                    <button type="button" className={node(sel.kind === 'program')} aria-current={sel.kind === 'program' || undefined} onClick={() => setSel({ kind: 'program' })}>
-                      <FileCode2 size={14} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden />
-                      <span className="flex-1 truncate">{fileName}</span>
-                      {ok ? <CheckCircle2 size={13} className="text-[var(--green-text,#1fb257)]" aria-hidden /> : <AlertTriangle size={13} className="text-[var(--orange-text)]" aria-hidden />}
-                    </button>
-                  </li>
-                </>
-              )}
-            </ul>
-          ) : (
-            <p className="text-xs text-[var(--text-tertiary)] p-2">{t('camAi.ws.empty')}</p>
-          )}
-        </nav>
-
-        {/* Viewport */}
-        <main className="relative min-w-0 bg-[rgba(var(--ov),0.025)]" aria-label={t('camAi.ws.viewport')}>
-          {prep && chosen ? (
-            <div className="absolute inset-0">
-            <Suspense fallback={null}>
-              <CamPartView
-                tris={prep.tris}
-                R={chosen.R}
-                raw={raw}
-                blank={result?.blank ?? sideBlank}
-                picks={result || busy ? [] : picks}
-                picking={result ? null : picking}
-                onPick={pickFace}
-                finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
-                white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
-                measure={measuring ? { mode: measureMode, onMeasure: setMeasured } : null}
-                paths={paths.filter((p) => !p.key || !skipDraft.includes(p.key))}
-                ghosts={result ? [...ghosts, ...live.paths].filter((p) => p.key && skipDraft.includes(p.key)) : []}
-                ghostOn={ghostOn}
-                onPathMenu={
-                  result
-                    ? (p) => {
-                        const at = live.paths.find((x) => x === p);
-                        if (!at?.tool) return;
-                        setSwapAsk(at.tool);
-                        setSel({ kind: 'tool', i: at.setup, code: at.tool });
-                      }
-                    : undefined
-                }
-                clamp={clampMode && cale1 !== null ? { cale: cale1, at: cale1, open: jaw.open, slide: jaw.slide, next: nextHint, flash, bad: !!refused1, stop: stop1 } : null}
-                onClamp={clampAct}
-                label={clampMode ? t('camAi.clamp1.view') : picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
-                className="h-full rounded-none bg-transparent"
-              />
-            </Suspense>
-            <MeasurePanel on={measuring} onToggle={() => { setMeasuring((x) => !x); setMeasured(null); }} mode={measureMode} onMode={setMeasureMode} measured={measured} />
-            {/* A tool picked in a made program: CAM AI's own simulation at that tool, over the part view (you, Beta 2: item 8). */}
-            {result && focusTool && !viewing && (
-              <div className="absolute inset-0 z-10">
-                <Suspense fallback={null}>
-                  <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setSel({ kind: 'setup', i: focusTool.setup })} initialModel={model} noRecord embedded focusTool={focusTool} />
-                </Suspense>
-              </div>
-            )}
+              ))}
             </div>
-          ) : (
-            <div className="absolute inset-0 grid place-items-center p-6">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); setDialog(true); }}
-                disabled={busy}
-                className="no-glass w-full max-w-md aspect-[16/9] border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-lg)] flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)] transition-colors"
-              >
-                <Upload size={22} className="text-[var(--blue-text)]" />
-                <span className="text-sm font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : t('camAi.drop')}</span>
-                <span className="text-[var(--text-tertiary)]">{t('camAi.dropHint')}</span>
+            {!narrow && (
+              <button type="button" className={collapseBtn} onClick={toggleTools} aria-label={t('camAi.ws.hideTools')} title={`${t('camAi.ws.hideTools')}  [`}>
+                <SidebarLeftCollapse size={18} stroke={1.6} />
               </button>
-            </div>
-          )}
-          {/* What the view is doing, top centre. */}
-          {prep && !result && !busy && pickWhite && (
-            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
-              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
-              {t('camAi.white.hint')}
+            )}
+          </div>
+          {result.setups[opNow] && (
+            <p className="px-4 pb-2 flex justify-between gap-2 text-xs text-[var(--text-secondary)] tabular-nums">
+              <span className="truncate">{stepName(opNow).turn} · {parallelsText(opNow)}</span>
+              <span>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
             </p>
           )}
-          {prep && !result && !busy && pickWalls && !pickWhite && (
-            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
-              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
-              {t('camAi.finish.hint')}
-            </p>
-          )}
-          {prep && !result && !pickWalls && !pickWhite && picking !== null && (
-            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
-              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
-              {t('camAi.pickHint', { n: picking + 1 })}
-            </p>
-          )}
-          {pickNote && <p role="alert" className="absolute top-14 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/95 border border-[#f5b942]/50 text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
-          {run.state === 'busy' && (
-            <div className="absolute left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)]">
-              <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
-            </div>
-          )}
-          {prep && (
-            <p className="absolute right-3 top-3 flex flex-col gap-1 rounded-[var(--radius-md)] px-2.5 py-2 text-[11px] bg-[var(--bg-panel)]/85 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-secondary)]" aria-hidden>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#2f80ff]/60 mr-1.5 align-middle" />{t('camAi.legend.hover')}</span>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22c55e] mr-1.5 align-middle" />{t('camAi.legend.top')}</span>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#f5a524] mr-1.5 align-middle" />{t('camAi.legend.stock')}</span>
-              {finishTris.length > 0 && <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22d3ee] mr-1.5 align-middle" />{t('camAi.legend.finish')}</span>}
-            </p>
-          )}
-        </main>
+          <ul aria-label={t('camAi.ws.tools')} className="px-2 space-y-0.5">
+            {[...new Map((result.setups[opNow]?.ops ?? []).map((o) => [o.code, o] as const)).values()].map((o) => {
+              const on = sel.kind === 'tool' && sel.i === opNow && sel.code === o.code;
+              const secs = result.setups[opNow].ops.filter((x) => x.code === o.code).reduce((a, x) => a + x.seconds, 0);
+              const label = `T${o.tool}`;
+              return (
+                <li key={o.code}>
+                  <button
+                    type="button"
+                    className={row(on)}
+                    aria-current={on || undefined}
+                    onClick={() => { setSwapAsk(null); setSel({ kind: 'tool', i: opNow, code: o.code }); if (!wide) setRightDrawer(true); }}
+                    // Right click: straight to changing the tool (you, Beta 2).
+                    onContextMenu={(e) => { e.preventDefault(); setSwapAsk(o.code); setSel({ kind: 'tool', i: opNow, code: o.code }); }}
+                    title={t('camAi.rightClickSwap')}
+                  >
+                    <span title={label} className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs overflow-hidden whitespace-nowrap" style={{ background: `${toolColor(o.tool)}26`, color: toolColor(o.tool) }}>
+                      {label.length > 5 ? `${label.slice(0, 4)}…` : label}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
+                      <span className="block text-xs text-[var(--text-secondary)] tabular-nums">Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}</span>
+                    </span>
+                    {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
+                    <span className="text-xs text-[var(--text-secondary)] tabular-nums">{fmtTime(secs)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex-1" />
+          <ul className="px-2 py-2 border-t border-[var(--border-subtle)] space-y-0.5">
+            <li>
+              <button type="button" className={row(sel.kind === 'part')} onClick={() => setSel({ kind: 'part' })}>
+                <Cube size={16} stroke={1.6} className="shrink-0 text-[var(--text-secondary)]" aria-hidden />
+                <span className="flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)]">{prep?.title ?? name}</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" className={row(sel.kind === 'program')} onClick={() => setSel({ kind: 'program' })}>
+                <FileCode2 size={16} stroke={1.6} className="shrink-0 text-[var(--text-secondary)]" aria-hidden />
+                <span className="flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)]">{fileName}</span>
+              </button>
+            </li>
+          </ul>
+        </>
+      ) : prep ? (
+        <>
+          <div className="flex items-center gap-2 p-2">
+            <span className="flex-1 px-2 text-[13px] font-semibold text-[var(--text-primary)]">{t('camAi.ws.prepare')}</span>
+            {!narrow && (
+              <button type="button" className={collapseBtn} onClick={toggleTools} aria-label={t('camAi.ws.hideTools')} title={`${t('camAi.ws.hideTools')}  [`}>
+                <SidebarLeftCollapse size={18} stroke={1.6} />
+              </button>
+            )}
+          </div>
+          <ul className="px-2 space-y-0.5">
+            <li>
+              <button type="button" className={row(sel.kind === 'part')} aria-current={sel.kind === 'part' || undefined} onClick={() => setSel({ kind: 'part' })}>
+                <Cube size={16} stroke={1.6} className="shrink-0 text-[var(--text-secondary)]" aria-hidden />
+                <span className="flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)]">{prep.title ?? name}</span>
+                {!partType && <AlertTriangle size={14} className="text-[var(--orange-text)]" aria-label={t('camAi.ws.needs')} />}
+              </button>
+            </li>
+            <li>
+              <button type="button" className={row(sel.kind === 'stock')} aria-current={sel.kind === 'stock' || undefined} onClick={() => setSel({ kind: 'stock' })}>
+                <Box size={16} stroke={1.6} className="shrink-0 text-[#f5a524]" aria-hidden />
+                <span className="flex-1 text-[13px] text-[var(--text-primary)]">{t('camAi.ws.stock')}</span>
+                {chosen && excess && <span className="tabular-nums text-xs text-[var(--text-secondary)]">{[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join('×')}</span>}
+              </button>
+            </li>
+            <li className="px-2 pt-3 pb-1 text-xs text-[var(--text-secondary)]">{t('camAi.ws.clampings')}</li>
+            {setupNodes.map(({ i, side }) => {
+              const done = i === 0 ? locked1 : i === 1 ? locked2 : true;
+              return (
+                <li key={i}>
+                  <button type="button" className={row(sel.kind === 'setup' && sel.i === i)} aria-current={(sel.kind === 'setup' && sel.i === i) || undefined} onClick={() => setSel({ kind: 'setup', i })}>
+                    {done ? <CheckCircle2 size={16} stroke={1.6} className="shrink-0 text-[var(--green-text,#1fb257)]" aria-hidden /> : <span className="w-4 h-4 shrink-0 grid place-items-center" aria-hidden><span className="w-2 h-2 rounded-full bg-[var(--accent-primary)]" /></span>}
+                    <span className="flex-1 text-[13px] text-[var(--text-primary)]">{t('camAi.setupStep', { n: i + 1, op: (i + 1) * 10 })}</span>
+                    <span className="font-mono text-xs text-[var(--text-secondary)]">{side}</span>
+                    <span className="sr-only">{t(done ? 'camAi.stepState.done' : 'camAi.stepState.now')}</span>
+                  </button>
+                </li>
+              );
+            })}
+            {locked1 && locked2 && <li className="px-2 py-1 text-xs text-[var(--text-secondary)]">{t('camAi.restByAi')}</li>}
+            {!locked1 && (
+              <li className="flex items-center gap-2.5 px-2 h-11 text-[13px] text-[var(--text-secondary)]">
+                <Lock size={16} stroke={1.6} aria-hidden /> {t('camAi.setupStep', { n: 2, op: 20 })}
+                <span className="sr-only">{t('camAi.stepState.locked')}</span>
+              </li>
+            )}
+          </ul>
+          <div className="flex-1" />
+          <p className="px-4 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]" role="status">{next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}</p>
+        </>
+      ) : (
+        <div className="p-4 space-y-3">
+          <p className="text-[13px] text-[var(--text-secondary)]">{t('camAi.ws.empty')}</p>
+          <button type="button" className="btn-primary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => setDialog(true)} disabled={busy}>
+            <FilePlus2 size={16} /> {t('camAi.ws.new')}
+          </button>
+        </div>
+      )}
+    </>
+  );
 
-        {/* Properties */}
-        <aside className="border-l border-[var(--border-subtle)] overflow-y-auto" aria-labelledby="cam-props">
-          <h3 id="cam-props" className="text-xs font-semibold text-[var(--text-primary)] px-3 h-10 flex items-center border-b border-[var(--border-subtle)] sticky top-0 bg-[var(--bg-panel)]/95 backdrop-blur z-10">
+  const inspectorBody = (
+    <>
+      {result && sel.kind === 'tool' ? null : (
+        <div className="h-12 shrink-0 flex items-center gap-2 pl-4 pr-2 border-b border-[var(--border-subtle)]">
+          <h2 id="cam-props" className="flex-1 min-w-0 truncate text-[15px] font-semibold text-[var(--text-primary)]">
             {sel.kind === 'part' ? t('camAi.ws.partProps') : sel.kind === 'stock' ? t('camAi.ws.stock') : sel.kind === 'program' ? fileName : sel.kind === 'setup' ? t('camAi.setupStep', { n: sel.i + 1, op: (sel.i + 1) * 10 }) : t('camAi.ws.toolProps')}
-          </h3>
-          <div className="p-3 space-y-3 text-xs">
-            {!prep && <p className="text-[var(--text-tertiary)]">{t('camAi.ws.empty')}</p>}
+          </h2>
+          <button type="button" className={collapseBtn} onClick={toggleInspector} aria-label={t(wide ? 'camAi.ws.hideInspector' : 'camAi.ws.close')} title={wide ? `${t('camAi.ws.hideInspector')}  ]` : t('camAi.ws.close')}>
+            {wide ? <SidebarRightCollapse size={18} stroke={1.6} /> : <X size={18} stroke={1.6} />}
+          </button>
+        </div>
+      )}
+      <div className="flex-1 min-h-0 overflow-y-auto relative">
+            {result && sel.kind === 'tool' && (() => {
+              const s = result.setups[sel.i];
+              const ops = s?.ops.filter((o) => o.code === sel.code) ?? [];
+              if (!ops.length || !machine || !templatesFor) return null;
+              return (
+                <>
+                  <ToolCard
+                    aside={
+                      <button type="button" className={collapseBtn} onClick={toggleInspector} aria-label={t(wide ? 'camAi.ws.hideInspector' : 'camAi.ws.close')} title={wide ? `${t('camAi.ws.hideInspector')}  ]` : t('camAi.ws.close')}>
+                        {wide ? <SidebarRightCollapse size={18} stroke={1.6} /> : <X size={18} stroke={1.6} />}
+                      </button>
+                    }
+                    key={`${sel.code}|${swapAsk === sel.code}`}
+                    ask={swapAsk === sel.code}
+                    opEdits={opEdits}
+                    checking={checking}
+                    onOpEdit={(key, e) => {
+                      const next = { ...opEdits };
+                      if (e) next[key] = e;
+                      else delete next[key];
+                      setOpEdits(next);
+                      setEditsDropped(false);
+                      setAccepted(false);
+                      setChecking(true);
+                      following.current = key;
+                      worker.current?.postMessage({ type: 'edit', edits: next });
+                    }}
+                    ops={ops}
+                    draft={draft[sel.code] ?? {}}
+                    changed={changed.includes(sel.code)}
+                    busy={busy}
+                    onEdit={(v) => setDraft((d) => ({ ...d, [sel.code]: { ...d[sel.code], ...v } }))}
+                    removing={skipDraft}
+                    onRemove={toggleOp}
+                    focus={sel.op ?? null}
+                    onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
+                    options={alternatives(templatesFor, tools, sel.code, swap.exclude)}
+                    toolName={toolName}
+                    onSwap={(code, standIn) => {
+                      const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
+                      setSwap(nextSwap);
+                      generate(nextSwap);
+                    }}
+                  />
+                  <p className="px-4 pb-4 text-xs text-[var(--text-secondary)]">{t('camAi.everywhere')}</p>
+                </>
+              );
+            })()}
+        <div className="p-4 space-y-3 text-[13px]">
+            {!prep && <p className="text-[var(--text-secondary)]">{t('camAi.ws.empty')}</p>}
 
             {prep && sel.kind === 'part' && (
               <>
                 {prep.title ? (
                   <dl className="space-y-1">
-                    <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.title')}: </dt><dd className="inline font-medium text-[var(--text-primary)]">{prep.title}</dd></div>
-                    {prep.sap && <div><dt className="inline text-[var(--text-tertiary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
+                    <div><dt className="inline text-[var(--text-secondary)]">{t('camAi.part.title')}: </dt><dd className="inline font-medium text-[var(--text-primary)]">{prep.title}</dd></div>
+                    {prep.sap && <div><dt className="inline text-[var(--text-secondary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
                   </dl>
                 ) : (
                   <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
@@ -786,7 +800,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     ) : (
                       <>
                         <CamStockBox size={chosen.size} values={sides.map((v, i) => (i === whiteAt ? '0' : v))} locked={whiteAt} onChange={(i, v) => choose(() => setSides(sides.map((x, k) => (k === i ? v : x))))} />
-                        {whiteAt >= 0 && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.whiteNone', { side: STOCK_SIDES[whiteAt] })}</p>}
+                        {whiteAt >= 0 && <p className="text-[var(--text-secondary)]">{t('camAi.stock.whiteNone', { side: STOCK_SIDES[whiteAt] })}</p>}
                       </>
                     )}
                     {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t(sidesOk ? 'camAi.stock.tooSmall' : 'camAi.stock.sideRange')}</p>}
@@ -796,13 +810,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   <dl className="grid grid-cols-3 gap-2">
                     {(['X', 'Y', 'Z'] as const).map((axis, k) => (
                       <div key={axis} className="rounded-[var(--radius-md)] border border-[#f5a524]/40 px-2 py-1.5">
-                        <dt className="text-[11px] text-[var(--text-tertiary)]">{axis}</dt>
+                        <dt className="text-xs text-[var(--text-secondary)]">{axis}</dt>
                         <dd className="font-semibold tabular-nums text-[var(--text-primary)]">{fmt(chosen.size[k] + excess[k], 1)}</dd>
                       </div>
                     ))}
                   </dl>
                 )}
-                {excess && !margins && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                {excess && !margins && <p className="text-[var(--text-secondary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
                 {whiteFields()}
                 {finishFields()}
               </>
@@ -846,7 +860,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                             <label key={i} title={`${t('camAi.layout.up', { side: l.side })}${l.spin ? `, ${t('camAi.layout.turned')}` : ''}`} className={`relative rounded-[6px] border p-1 cursor-pointer ${layout === i ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/8' : 'border-[var(--border-subtle)]'} ${l.fits ? '' : 'opacity-40 cursor-not-allowed'}`}>
                               <input type="radio" name="cam-layout" className="sr-only" checked={layout === i} disabled={!l.fits} onChange={() => chooseLayout(i)} aria-label={`${t('camAi.layout.up', { side: l.side })}${l.spin ? `, ${t('camAi.layout.turned')}` : ''}`} />
                               {views[i] ? <img src={views[i]} alt="" className="w-full aspect-square object-contain" /> : <div className="w-full aspect-square" aria-hidden />}
-                              <span className="block text-center font-mono text-[10px] text-[var(--text-secondary)]">{l.side}{l.spin ? ' ⟲' : ''}</span>
+                              <span className="block text-center font-mono text-xs text-[var(--text-secondary)]">{l.side}{l.spin ? ' ⟲' : ''}</span>
                             </label>
                           ))}
                         </fieldset>
@@ -873,50 +887,6 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               </>
             )}
 
-            {result && sel.kind === 'tool' && (() => {
-              const s = result.setups[sel.i];
-              const ops = s?.ops.filter((o) => o.code === sel.code) ?? [];
-              if (!ops.length || !machine || !templatesFor) return null;
-              return (
-                <ul aria-label={t('camAi.ops')}>
-                  <ToolCard
-                    key={`${sel.code}|${swapAsk === sel.code}`}
-                    ask={swapAsk === sel.code}
-                    opEdits={opEdits}
-                    checking={checking}
-                    onOpEdit={(key, e) => {
-                      const next = { ...opEdits };
-                      if (e) next[key] = e;
-                      else delete next[key];
-                      setOpEdits(next);
-                      setEditsDropped(false);
-                      setAccepted(false);
-                      setChecking(true);
-                      following.current = key;
-                      worker.current?.postMessage({ type: 'edit', edits: next });
-                    }}
-                    ops={ops}
-                    draft={draft[sel.code] ?? {}}
-                    changed={changed.includes(sel.code)}
-                    busy={busy}
-                    onEdit={(v) => setDraft((d) => ({ ...d, [sel.code]: { ...d[sel.code], ...v } }))}
-                    removing={skipDraft}
-                    onRemove={toggleOp}
-                    focus={sel.op ?? null}
-                    onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
-                    options={alternatives(templatesFor, tools, sel.code, swap.exclude)}
-                    toolName={toolName}
-                    onSwap={(code, standIn) => {
-                      const nextSwap = { exclude: [...swap.exclude, code], prefer: [...swap.prefer, standIn] };
-                      setSwap(nextSwap);
-                      generate(nextSwap);
-                    }}
-                  />
-                  <li className="pt-2 text-[11px] text-[var(--text-tertiary)] list-none">{t('camAi.everywhere')}</li>
-                </ul>
-              );
-            })()}
-
             {result && sel.kind === 'program' && machine && (
               <ProgramPanel
                 result={result}
@@ -935,10 +905,293 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                 {run.error === 'failed' ? t('camAi.failed') : t(`remapper:toolpath.model.errors.${run.error}`)}
               </p>
             )}
-          </div>
-        </aside>
+        </div>
       </div>
+    </>
+  );
 
+  return (
+    <div className="cam-ws h-full w-full flex flex-col bg-[var(--bg-page)] text-[13px] text-[var(--text-primary)]">
+      <input ref={fileRef} type="file" accept=".pdf,.stl,.step,.stp" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); setDialog(true); e.target.value = ''; }} />
+
+      {/* One bar: back to the app, the file, its stock and checks, its time, Download and Send. */}
+      <header className="h-12 shrink-0 flex items-center gap-2 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+        <button type="button" onClick={onExit} title={t('camAi.ws.backTitle')} aria-label={t('camAi.ws.backTitle')} className="no-glass h-8 flex items-center gap-2 pl-1.5 pr-2.5 rounded-[8px] hover:bg-[rgba(var(--ov),0.08)]">
+          <ArrowLeft size={16} stroke={1.8} className="text-[var(--text-secondary)]" aria-hidden />
+          <span className="w-6 h-6 rounded-[6px] bg-gradient-to-br from-[var(--blue-500)] to-violet-700 grid place-items-center text-white font-mono font-bold text-xs" aria-hidden>//</span>
+          <span className="text-[13px] font-semibold text-[var(--text-primary)] whitespace-nowrap hidden xl:inline">{t('camAi.ws.back')}</span>
+        </button>
+        <span className="text-[var(--text-secondary)]" aria-hidden>/</span>
+        <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+          <Cpu size={16} stroke={1.6} className="shrink-0 text-[var(--accent-primary)]" aria-hidden />
+          <span className="text-[13px] font-semibold">CAM AI</span>
+          <span className="text-xs text-[var(--orange-text)] hidden lg:inline">{t('camAi.beta')}</span>
+        </span>
+        {prep && (
+          <>
+            <span className="text-[var(--text-secondary)]" aria-hidden>/</span>
+            <button type="button" onClick={() => setSel({ kind: result ? 'program' : 'part' })} className="no-glass h-8 px-1.5 rounded-[6px] font-mono text-[13px] truncate min-w-0 max-w-[16rem] hover:bg-[rgba(var(--ov),0.08)]">{result ? fileName : name}</button>
+          </>
+        )}
+        {chosen && excess && (
+          <button type="button" onClick={() => setSel({ kind: 'stock' })} title={t('camAi.ws.stockTitle')} className="no-glass h-7 shrink-0 whitespace-nowrap hidden lg:inline-flex items-center gap-1.5 px-2 rounded-[6px] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] tabular-nums hover:text-[var(--text-primary)]">
+            <Box size={14} stroke={1.6} aria-hidden />
+            {[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 0)).join('×')}
+          </button>
+        )}
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : ok ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
+              {run.state === 'busy' ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : ok ? <CheckCircle2 size={14} stroke={2} aria-hidden /> : <AlertTriangle size={14} stroke={2} aria-hidden />}
+              {run.state === 'busy' ? t('camAi.ws.checking') : !result ? t('camAi.ws.notMade') : ok ? t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) }) : t('camAi.ws.issues', { count: issues })}
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content align="start" sideOffset={6} className="cam-pop z-[1000] w-[22rem] p-2">
+              <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
+                {verdict ? verdict.text : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
+              </p>
+              {checks.length > 0 && (
+                <ul aria-label={t('camAi.ws.checksTitle')}>
+                  {checks.map((c) => (
+                    <li key={c.label} className="flex items-center gap-2 h-8 px-2 border-t border-[var(--border-subtle)] text-[13px]">
+                      <span className={`w-2 h-2 rounded-full ${c.bad ? 'bg-[#f87171]' : 'bg-[#4ade80]'}`} aria-hidden />
+                      <span className="flex-1 text-[var(--text-primary)]">{c.label}</span>
+                      <span className="text-xs text-[var(--text-secondary)] tabular-nums">{c.value}</span>
+                    </li>
+                  ))}
+                  <li className="flex items-center gap-2 h-8 px-2 border-t border-[var(--border-subtle)] text-[13px]">
+                    <span className="w-2 h-2 rounded-full bg-[var(--text-tertiary)]" aria-hidden />
+                    <span className="flex-1 text-[var(--text-primary)]">{t('camAi.ws.check.program')}</span>
+                    <span className="text-xs text-[var(--text-secondary)] tabular-nums">{machine?.name} · {templatesFor ?? material}</span>
+                  </li>
+                </ul>
+              )}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+        <span className="flex-1" />
+        {result && (
+          <span className="hidden xl:inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-2 text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.ws.timeChip', { min: fmt(result.minutes, 0), n: result.toolChanges })}>
+            <Clock size={15} stroke={1.6} aria-hidden />
+            {t('camAi.ws.timeChip', { min: fmt(result.minutes, 0), n: result.toolChanges })}
+          </span>
+        )}
+        {!wide && (
+          <button type="button" className={barBtn} onClick={toggleInspector} aria-expanded={inspectorOpen}>
+            <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
+          </button>
+        )}
+        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
+          <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
+        </button>
+        {result ? (
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy} title={ok ? undefined : t('camAi.locked')}>
+            <Send size={16} stroke={1.8} aria-hidden /> {t('camAi.send')}
+          </button>
+        ) : run.state === 'busy' ? (
+          <button type="button" className={barBtn} onClick={stop}>
+            <Square size={15} aria-hidden /> {t('camAi.stop')}
+          </button>
+        ) : (
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => generate()} disabled={!ready || busy}>
+            <Play size={16} stroke={1.8} aria-hidden /> {t('camAi.generate')}
+          </button>
+        )}
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className="no-glass w-8 h-8 grid place-items-center rounded-[8px] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]" aria-label={t('camAi.ws.more')} title={t('camAi.ws.more')}>
+              <Dots size={18} stroke={1.8} aria-hidden />
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content align="end" sideOffset={6} className="cam-pop z-[1000] w-72 p-1">
+              <Popover.Close asChild>
+                <button type="button" className={menuItem} onClick={() => setDialog(true)} disabled={busy}>
+                  <FilePlus2 size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.new')}
+                </button>
+              </Popover.Close>
+              {result && (
+                <>
+                  <Popover.Close asChild>
+                    <button type="button" className={menuItem} onClick={() => generate()} disabled={!ready || busy}>
+                      <RefreshCw size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.againKey')}
+                    </button>
+                  </Popover.Close>
+                  {run.state === 'busy' && (
+                    <Popover.Close asChild>
+                      <button type="button" className={menuItem} onClick={stop}>
+                        <Square size={15} aria-hidden /> {t('camAi.stop')}
+                      </button>
+                    </Popover.Close>
+                  )}
+                  <Popover.Close asChild>
+                    <button type="button" className={menuItem} onClick={() => setSimFocus({ setup: 0, play: true, key: Date.now() })}>
+                      <PlayerPlay size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.simulateStart')}
+                    </button>
+                  </Popover.Close>
+                  <Popover.Close asChild>
+                    <button type="button" role="menuitemcheckbox" aria-checked={nx} className={menuItem} onClick={() => setNx(!nx)}>
+                      <Route size={16} stroke={1.6} aria-hidden /> <span className="flex-1">{t('camAi.ws.nxView')}</span> {nx && <Check size={15} aria-hidden />}
+                    </button>
+                  </Popover.Close>
+                </>
+              )}
+              <div className="mt-1 pt-2 px-2.5 pb-2 border-t border-[var(--border-subtle)] space-y-1.5">
+                <span className="flex items-center gap-2 text-[13px] font-medium"><Settings2 size={16} stroke={1.6} aria-hidden /> {t('camAi.settings')}</span>
+                <label className="block space-y-1">
+                  <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.sideStock')}</span>
+                  <input className="aurora-input w-full h-8 py-0 text-[13px]" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
+                </label>
+                <p className="text-xs text-[var(--text-secondary)]">{t('camAi.sideStockHint')}</p>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </header>
+
+      <div className="flex-1 min-h-0 flex relative">
+        {/* The tools of one clamping (or, before a program, what is being prepared). */}
+        {!narrow && (leftOpen ? (
+          <nav aria-label={t('camAi.ws.tools')} className="w-[260px] shrink-0 flex flex-col overflow-y-auto border-r border-[var(--border-subtle)] bg-[var(--bg-panel)]">{toolList}</nav>
+        ) : (
+          <div className="w-10 shrink-0 flex flex-col items-center pt-2 border-r border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+            <button type="button" className={collapseBtn} onClick={toggleTools} aria-label={t('camAi.ws.showTools')} title={`${t('camAi.ws.showTools')}  [`}>
+              <SidebarLeftExpand size={18} stroke={1.6} />
+            </button>
+          </div>
+        ))}
+
+        <main className="flex-1 min-w-0 flex flex-col" aria-label={t('camAi.ws.viewport')}>
+          {/* The clampings, one chip each. */}
+          {(result || setupNodes.length > 0) && (
+            <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-[var(--border-subtle)] overflow-x-auto hide-scrollbar">
+              {narrow && (
+                <button type="button" className={barBtn} onClick={toggleTools} aria-expanded={toolsOpen}>
+                  <SidebarLeftExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.tools')}
+                </button>
+              )}
+              {(result ? result.setups.map((_, i) => i) : setupNodes.map((x) => x.i)).map((i) => {
+                const on = (sel.kind === 'setup' || sel.kind === 'tool') && sel.i === i;
+                const st = stepName(i);
+                return (
+                  <button key={i} type="button" onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} aria-pressed={on} className={`no-glass shrink-0 h-8 inline-flex items-center gap-2 px-2.5 rounded-[8px] border text-[13px] ${on ? 'border-[var(--accent-primary)]/60 bg-[var(--accent-primary)]/12 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                    <span className={`w-[18px] h-[18px] rounded-full grid place-items-center text-xs font-semibold ${on ? 'bg-[var(--accent-primary)] text-white' : 'bg-[rgba(var(--ov),0.12)]'}`}>{st.n}</span>
+                    {st.turn}
+                    {st.rest && (
+                      <span className="inline-flex items-center gap-1 tabular-nums">
+                        <Parallels size={14} stroke={1.6} aria-hidden /> {st.rest}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="relative flex-1 min-h-0">
+            {prep && chosen ? (
+              result && !clampMode ? (
+                <Suspense fallback={null}>
+                  <CamSim
+                    code={result.code}
+                    brand={machine?.brand}
+                    model={model}
+                    focus={simFocus}
+                    selected={sel.kind === 'tool' ? { setup: sel.i, tool: result.setups[sel.i]?.ops.find((o) => o.code === sel.code)?.tool ?? -1 } : null}
+                    runLabel={runLabel}
+                    stepLabel={(i) => { const st = stepName(i); return `OP${(i + 1) * 10} · ${st.turn}${st.rest ? ` · ${st.rest}` : ''}`; }}
+                    parallels={parallelsText}
+                    nx={nx}
+                    measure={{ on: measuring, mode: measureMode, onMeasure: setMeasured }}
+                    onMeasureToggle={() => { setMeasuring((x) => !x); setMeasured(null); }}
+                  />
+                </Suspense>
+              ) : (
+                <div className="absolute inset-0">
+            <Suspense fallback={null}>
+              <CamPartView
+                tris={prep.tris}
+                R={chosen.R}
+                raw={raw}
+                blank={result?.blank ?? sideBlank}
+                picks={result || busy ? [] : picks}
+                picking={result ? null : picking}
+                onPick={pickFace}
+                finish={{ on: pickWalls && !pickWhite && !result && !busy, picked: finishTris, onToggle: toggleWall }}
+                white={{ on: pickWhite && !result && !busy, side: partType === 'topPlate' ? white : undefined, onPick: (side) => choose(() => { setWhite(side); setPickWhite(false); }) }}
+                measure={measuring ? { mode: measureMode, onMeasure: setMeasured } : null}
+                paths={paths.filter((p) => !p.key || !skipDraft.includes(p.key))}
+                ghosts={result ? [...ghosts, ...live.paths].filter((p) => p.key && skipDraft.includes(p.key)) : []}
+                ghostOn={ghostOn}
+                onPathMenu={
+                  result
+                    ? (p) => {
+                        const at = live.paths.find((x) => x === p);
+                        if (!at?.tool) return;
+                        setSwapAsk(at.tool);
+                        setSel({ kind: 'tool', i: at.setup, code: at.tool });
+                      }
+                    : undefined
+                }
+                clamp={clampMode && cale1 !== null ? { cale: cale1, at: cale1, open: jaw.open, slide: jaw.slide, next: nextHint, flash, bad: !!refused1, stop: stop1 } : null}
+                onClamp={clampAct}
+                label={clampMode ? t('camAi.clamp1.view') : picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
+                className="h-full rounded-none bg-transparent"
+              />
+            </Suspense>
+                </div>
+              )
+            ) : (
+            <div className="absolute inset-0 grid place-items-center p-6">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); setDialog(true); }}
+                disabled={busy}
+                className="no-glass w-full max-w-md aspect-[16/9] border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--blue-500)]/60 rounded-[var(--radius-lg)] flex flex-col items-center justify-center gap-2 text-xs text-[var(--text-secondary)] transition-colors"
+              >
+                <Upload size={22} className="text-[var(--blue-text)]" />
+                <span className="text-sm font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : t('camAi.drop')}</span>
+                <span className="text-[var(--text-secondary)]">{t('camAi.dropHint')}</span>
+              </button>
+            </div>
+            )}
+            {prep && chosen && <MeasurePanel on={measuring} onToggle={() => { setMeasuring((x) => !x); setMeasured(null); }} mode={measureMode} onMode={setMeasureMode} measured={measured} inSim={!!result && !clampMode} />}
+          {/* What the view is doing, top centre. */}
+          {prep && !result && !busy && pickWhite && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.white.hint')}
+            </p>
+          )}
+          {prep && !result && !busy && pickWalls && !pickWhite && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.finish.hint')}
+            </p>
+          )}
+          {prep && !result && !pickWalls && !pickWhite && picking !== null && (
+            <p className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[90%] flex items-center gap-2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/90 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-primary)] shadow">
+              <MousePointerClick size={14} className="text-[var(--blue-text)] shrink-0" aria-hidden />
+              {t('camAi.pickHint', { n: picking + 1 })}
+            </p>
+          )}
+          {pickNote && <p role="alert" className="absolute top-14 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/95 border border-[#f5b942]/50 text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
+          {run.state === 'busy' && (
+            <div className="absolute left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)]">
+              <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
+            </div>
+          )}
+          {prep && !result && (
+            <p className="absolute right-3 top-3 flex flex-col gap-1 rounded-[var(--radius-md)] px-2.5 py-2 text-xs bg-[var(--bg-panel)]/85 backdrop-blur border border-[var(--border-subtle)] text-[var(--text-secondary)]" aria-hidden>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#2f80ff]/60 mr-1.5 align-middle" />{t('camAi.legend.hover')}</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22c55e] mr-1.5 align-middle" />{t('camAi.legend.top')}</span>
+              <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#f5a524] mr-1.5 align-middle" />{t('camAi.legend.stock')}</span>
+              {finishTris.length > 0 && <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#22d3ee] mr-1.5 align-middle" />{t('camAi.legend.finish')}</span>}
+            </p>
+          )}
+          </div>
       {/* Values typed and not in the program yet. */}
       {(changed.length > 0 || pendingSkips > 0) && (
         <div className="flex items-center gap-3 px-3 py-2 border-t border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/8" role="status">
@@ -952,39 +1205,36 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
           </button>
         </div>
       )}
+        </main>
 
-      {/* Status bar */}
-      <footer className="flex items-center gap-4 px-3 h-8 shrink-0 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)]" role="status" aria-live="polite">
-        {run.state === 'busy' ? (
-          <span className="flex items-center gap-1.5 text-[var(--blue-text)]"><Loader2 size={12} className="animate-spin motion-reduce:animate-none" aria-hidden />{t('camAi.making')}</span>
-        ) : verdict ? (
-          <span className={`flex items-center gap-1.5 min-w-0 ${verdict.ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`}>
-            {verdict.ok ? <CheckCircle2 size={12} aria-hidden /> : <AlertTriangle size={12} aria-hidden />}
-            <span className="truncate">{verdict.text}</span>
-          </span>
-        ) : next ? (
-          <span className="truncate">{t(`camAi.ws.next.${next}`)}</span>
+        {/* The inspector: what is picked, its values, its operations. */}
+        {wide && (rightOpen ? (
+          <aside aria-labelledby="cam-props" className="w-[300px] shrink-0 flex flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-panel)]">{inspectorBody}</aside>
         ) : (
-          <span className="text-[var(--green-text,#1fb257)]">{t('camAi.ws.ready')}</span>
+          <div className="w-10 shrink-0 flex flex-col items-center pt-2 border-l border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+            <button type="button" className={collapseBtn} onClick={toggleInspector} aria-label={t('camAi.ws.showInspector')} title={`${t('camAi.ws.showInspector')}  ]`}>
+              <SidebarRightExpand size={18} stroke={1.6} />
+            </button>
+          </div>
+        ))}
+
+        {/* Narrower windows: the same panels as drawers over the viewport. */}
+        {!wide && rightDrawer && (
+          <aside aria-labelledby="cam-props" className="absolute top-0 right-0 bottom-0 z-30 w-[300px] max-w-[90vw] flex flex-col border-l border-[var(--border-subtle)] bg-[var(--bg-panel)] shadow-[-16px_0_40px_rgba(0,0,0,0.45)]">{inspectorBody}</aside>
         )}
-        <span className="flex-1" />
-        {result && (
-          <>
-            <span className="tabular-nums">{t('camAi.match')} {t('camAi.percent', { v: fmt(result.match * 100, 2) })}</span>
-            <span className="tabular-nums">{t('camAi.minutes', { v: fmt(result.minutes, 1) })}</span>
-            <span className="tabular-nums">{t('camAi.toolChanges')} {result.toolChanges}</span>
-          </>
+        {narrow && leftDrawer && (
+          <nav aria-label={t('camAi.ws.tools')} className="absolute top-0 left-0 bottom-0 z-30 w-[260px] max-w-[90vw] flex flex-col overflow-y-auto border-r border-[var(--border-subtle)] bg-[var(--bg-panel)] shadow-[16px_0_40px_rgba(0,0,0,0.45)]">
+            <div className="flex justify-end p-2 pb-0">
+              <button type="button" className={collapseBtn} onClick={() => setLeftDrawer(false)} aria-label={t('camAi.ws.close')}>
+                <X size={18} stroke={1.6} />
+              </button>
+            </div>
+            {toolList}
+          </nav>
         )}
-        {machine && <span>{machine.name} · {templatesFor ?? material}</span>}
-      </footer>
+      </div>
 
       {newProgramDialog()}
-
-      {viewing && result && model && (
-        <Suspense fallback={null}>
-          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setViewing(false)} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} />
-        </Suspense>
-      )}
     </div>
   );
 
@@ -1080,7 +1330,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             </select>
           </label>
         )}
-        <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.part.typeHint')}</p>
+        <p className="text-xs text-[var(--text-secondary)]">{t('camAi.part.typeHint')}</p>
       </div>
     );
   }
@@ -1104,11 +1354,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
             >
               <Upload size={18} className="text-[var(--blue-text)]" />
               <span className="font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : model ? model.name : t('camAi.drop')}</span>
-              <span className="text-[var(--text-tertiary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
+              <span className="text-[var(--text-secondary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
             </button>
             {prep && (
               <>
-                {prep.title && <p className="text-xs"><span className="text-[var(--text-tertiary)]">{t('camAi.part.title')}: </span><span className="font-medium text-[var(--text-primary)]">{prep.title}</span></p>}
+                {prep.title && <p className="text-xs"><span className="text-[var(--text-secondary)]">{t('camAi.part.title')}: </span><span className="font-medium text-[var(--text-primary)]">{prep.title}</span></p>}
                 {partFields()}
               </>
             )}
@@ -1160,8 +1410,8 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
         <button type="button" className={btn} onClick={() => onAct('open')}><JawsOpen size={14} aria-hidden />{t('camAi.clamp1.open')}</button>
         <button type="button" className={btn} onClick={() => onAct('close')}><JawsClose size={14} aria-hidden />{t('camAi.clamp1.close')}</button>
       </div>
-      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
-      <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.hint')}</p>
+      <p className="text-xs text-[var(--text-secondary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
+      <p className="text-xs text-[var(--text-secondary)]">{t('camAi.clamp1.hint')}</p>
       {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
       {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0) })}</p>}
       <fieldset className="space-y-1">
@@ -1208,15 +1458,13 @@ function LaterClampPanel({ n, made, asked, onAsk }: { n: number; made: CamSummar
         </p>
       )}
       {asked === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
-      <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.laterHint')}</p>
+      <p className="text-xs text-[var(--text-secondary)]">{t('camAi.clamp1.laterHint')}</p>
     </section>
   );
 }
 
 type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 'setup'; i: number } | { kind: 'tool'; i: number; code: string; op?: string };
 
-/** The paths' colours, for the browser's dots (CamPartView draws them the same). */
-const PURPOSE_HEX: Record<string, string> = { face: '#facc15', outline: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
 
 /** The verdict, once there is a program. */
 function useVerdictOrNull(result: CamSummary | null, changed: number, accepted = false) {
@@ -1263,7 +1511,7 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
       </div>
       <ol className="space-y-2">
         {rows.map((r) => (
-          <li key={r.key} className={`flex items-start gap-2 text-xs ${r.state === 'next' ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
+          <li key={r.key} className={`flex items-start gap-2 text-xs ${r.state === 'next' ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
             {r.state === 'done' ? (
               <CheckCircle2 size={14} className="shrink-0 mt-px text-[var(--green-text,#1fb257)]" aria-hidden />
             ) : r.state === 'now' ? (
@@ -1272,11 +1520,11 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
               <Circle size={14} className="shrink-0 mt-px" aria-hidden />
             )}
             <span className="flex-1">{r.text}</span>
-            <span className={`shrink-0 text-[10px] font-medium uppercase tracking-wide ${r.state === 'done' ? 'text-[var(--green-text,#1fb257)]' : r.state === 'now' ? 'text-[var(--blue-text)]' : ''}`}>{t(`camAi.live.state.${r.state}`)}</span>
+            <span className={`shrink-0 text-xs font-medium uppercase tracking-wide ${r.state === 'done' ? 'text-[var(--green-text,#1fb257)]' : r.state === 'now' ? 'text-[var(--blue-text)]' : ''}`}>{t(`camAi.live.state.${r.state}`)}</span>
           </li>
         ))}
       </ol>
-      <p className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+      <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-secondary)]">
         <span><span className="inline-block w-3 h-0.5 align-middle bg-[#facc15] mr-1" aria-hidden />{t('camAi.live.rough')}</span>
         <span><span className="inline-block w-3 h-0.5 align-middle bg-[#22d3ee] mr-1" aria-hidden />{t('camAi.live.finish')}</span>
         <span><span className="inline-block w-3 h-0.5 align-middle bg-[#ef4444] mr-1" aria-hidden />{t('camAi.live.drill')}</span>
@@ -1286,12 +1534,12 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
 }
 
 /** Measuring the model in CAM AI's view: on or off, what a click picks, what it measured (the simulator's words). */
-function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; onToggle: () => void; mode: MeasureMode; onMode: (m: MeasureMode) => void; measured: Measurement }) {
+function MeasurePanel({ on, onToggle, mode, onMode, measured, inSim = false }: { on: boolean; onToggle: () => void; mode: MeasureMode; onMode: (m: MeasureMode) => void; measured: Measurement; inSim?: boolean }) {
   const { t } = useTranslation(['remapper']);
   const mm = (x: number) => x.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (
-    <div className="absolute right-3 bottom-3 z-10 flex flex-col-reverse items-end gap-2">
-      <button
+    <div className={`absolute right-3 z-10 flex flex-col-reverse items-end gap-2 ${inSim ? 'bottom-[132px]' : 'bottom-3'}`}>
+      {!inSim && <button
         type="button"
         onClick={onToggle}
         aria-pressed={on}
@@ -1299,12 +1547,12 @@ function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; o
         className={`inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-semibold ${on ? 'border-[#22d3ee] bg-[#22d3ee] text-[#062a33]' : 'border-[var(--border-subtle)] bg-[var(--bg-panel)]/90 text-[var(--text-secondary)]'}`}
       >
         <Ruler size={14} aria-hidden /> {t('toolpath.measure')}
-      </button>
+      </button>}
       {on && (
         <div className="w-64 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-panel)]/95 p-3 space-y-2 text-xs" aria-live="polite">
           <div className="inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.measure')}>
             {(['faces', 'points', 'diameter', 'axes'] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onMode(m)} className={`px-2 h-6 rounded-full text-[11px] font-bold ${mode === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onMode(m)} className={`px-2 h-6 rounded-full text-xs font-bold ${mode === m ? 'bg-[#22d3ee] text-[#062a33]' : 'text-[var(--text-secondary)]'}`}>
                 {t(`toolpath.measureMode.${m}`)}
               </button>
             ))}
@@ -1312,12 +1560,12 @@ function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; o
           {measured?.kind === 'hole' ? (
             <div>
               <div className="font-mono text-base font-bold text-[var(--text-primary)]">Ø {mm(measured.mm)} mm</div>
-              <div className="text-[var(--text-tertiary)]">{t('toolpath.measureHoleDepth', { depth: mm(measured.depth) })}</div>
+              <div className="text-[var(--text-secondary)]">{t('toolpath.measureHoleDepth', { depth: mm(measured.depth) })}</div>
             </div>
           ) : measured?.kind === 'distance' ? (
             <div>
               <div className="font-mono text-base font-bold text-[var(--text-primary)]">{mm(measured.mm)} mm</div>
-              {measured.d && <div className="font-mono text-[11px] text-[var(--text-tertiary)]">ΔX {mm(Math.abs(measured.d[0]))} · ΔY {mm(Math.abs(measured.d[1]))} · ΔZ {mm(Math.abs(measured.d[2]))}</div>}
+              {measured.d && <div className="font-mono text-xs text-[var(--text-secondary)]">ΔX {mm(Math.abs(measured.d[0]))} · ΔY {mm(Math.abs(measured.d[1]))} · ΔZ {mm(Math.abs(measured.d[2]))}</div>}
             </div>
           ) : measured?.kind === 'none' || measured?.kind === 'notParallel' ? (
             <div className="text-[var(--orange-text)]">{t(measured.kind === 'none' ? 'toolpath.measureNone' : 'toolpath.measureNotParallel')}</div>
@@ -1327,4 +1575,36 @@ function MeasurePanel({ on, onToggle, mode, onMode, measured }: { on: boolean; o
       )}
     </div>
   );
+}
+
+/** A panel's open or closed, remembered in this browser (a private window: until the page closes). */
+function useStoredFlag(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState(() => {
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? initial : v === '1';
+    } catch {
+      return initial;
+    }
+  });
+  const set = (v: boolean) => {
+    setOn(v);
+    try {
+      localStorage.setItem(key, v ? '1' : '0');
+    } catch {
+      /* private window */
+    }
+  };
+  return [on, set];
+}
+
+/** The window's width, as it changes. */
+function useWindowWidth() {
+  const [w, setW] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const on = () => setW(window.innerWidth);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return w;
 }

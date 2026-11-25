@@ -35,7 +35,7 @@ export default function CamStockBox({ size, values, onChange, locked = -1 }: { s
   const pad = span * 0.06;
   const input = (i: number) => (
     <label key={STOCK_SIDES[i]} className="flex flex-col items-center gap-0.5">
-      <span className="font-mono text-[11px] font-bold text-[#f5a524]">{STOCK_SIDES[i]}</span>
+      <span className="font-mono text-xs font-bold text-[#f5a524]">{STOCK_SIDES[i]}</span>
       <input
         className="aurora-input w-14 text-xs px-1.5 text-center tabular-nums"
         type="number"
@@ -77,7 +77,7 @@ export default function CamStockBox({ size, values, onChange, locked = -1 }: { s
         {input(4)}
       </div>
       <span />
-      <p className="col-span-3 text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.stock.partIn', { x: fmt(size[0], 1), y: fmt(size[1], 1), z: fmt(size[2], 1) })}</p>
+      <p className="col-span-3 text-xs text-[var(--text-secondary)] tabular-nums">{t('camAi.stock.partIn', { x: fmt(size[0], 1), y: fmt(size[1], 1), z: fmt(size[2], 1) })}</p>
     </div>
   );
 }

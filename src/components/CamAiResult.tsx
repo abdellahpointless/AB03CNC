@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
@@ -131,7 +131,7 @@ export function ProgramPanel({
           [t('camAi.overcut'), result.gouge < GOUGE_MM3 ? t('camAi.noOvercut') : t('camAi.overcutValue', { mm3: result.gouge })],
         ].map(([label, value]) => (
           <div key={label} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] px-2.5 py-2">
-            <dt className="text-[11px] text-[var(--text-tertiary)]">{label}</dt>
+            <dt className="text-xs text-[var(--text-secondary)]">{label}</dt>
             <dd className="text-sm font-semibold text-[var(--text-primary)] tabular-nums">{value}</dd>
           </div>
         ))}
@@ -151,10 +151,10 @@ export function ProgramPanel({
               </li>
             ))}
           </ul>
-          <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.removedNote')}</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('camAi.removedNote')}</p>
         </div>
       )}
-      <p className="text-xs text-[var(--text-tertiary)]">
+      <p className="text-xs text-[var(--text-secondary)]">
         {t('camAi.sizes', { size: result.size.map((v) => fmt(v, 1)).join(' × '), raw: result.raw.map((v) => fmt(v, 1)).join(' × ') })}
       </p>
       {toLoad.length > 0 && (
@@ -164,11 +164,11 @@ export function ProgramPanel({
             {toLoad.map((o) => (
               <li key={o.code} className="text-xs">
                 <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]"><span className="font-mono shrink-0">T{o.tool}</span><ToolLabel o={o} /></span>
-                <span className="block font-mono text-[11px] text-[var(--text-tertiary)]">{o.code}</span>
+                <span className="block font-mono text-xs text-[var(--text-secondary)]">{o.code}</span>
               </li>
             ))}
           </ul>
-          <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.swapHint')}</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('camAi.swapHint')}</p>
         </div>
       )}
       {result.missing.length > 0 && (
@@ -229,7 +229,7 @@ export function SetupPanel({ setup }: { setup: Setup }) {
   return (
     <div className="space-y-3 text-xs">
       <p className="flex items-center gap-1.5 text-[var(--text-secondary)] tabular-nums"><Clock size={13} aria-hidden />{t('camAi.setupTime', { time: fmtTime(s.ops.reduce((a, o) => a + o.seconds, 0)) })}</p>
-      <div className="font-mono text-[11px] text-[var(--text-secondary)] space-y-0.5 break-words">
+      <div className="font-mono text-xs text-[var(--text-secondary)] space-y-0.5 break-words">
         {s.notes.map((n, k) => <div key={k}>M0 ({n})</div>)}
       </div>
       <ViseView setup={s} />
@@ -251,7 +251,7 @@ export function SetupPanel({ setup }: { setup: Setup }) {
       )}
       {s.zones.length > 0 && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[var(--text-secondary)]">
-          <span className="text-[var(--text-tertiary)]">{t('camAi.zonesTitle')}:</span>
+          <span className="text-[var(--text-secondary)]">{t('camAi.zonesTitle')}:</span>
           {s.zones.map((z, k) => (
             <span key={k} className="inline-flex items-center gap-1">
               <span aria-hidden className="w-2.5 h-2.5 rounded-sm" style={{ background: ZONE_COLOR[z.kind] }} />
@@ -273,6 +273,7 @@ const COOLANTS: Coolant[] = ['flood', 'air', 'off'];
  * stand-in when the operator does not have it.
  */
 export function ToolCard({
+  aside,
   ask = false,
   ops,
   draft,
@@ -290,6 +291,8 @@ export function ToolCard({
   checking = false,
   onOpEdit,
 }: {
+  /** Beside its name: the inspector's own button (fold it away). */
+  aside?: ReactNode;
   /** Open on changing the tool (a right click on it). */
   ask?: boolean;
   ops: Op[];
@@ -318,10 +321,10 @@ export function ToolCard({
   const mill = ops.some((o) => MILL_PURPOSES.has(o.purpose));
   const deepest = Math.min(...ops.map((o) => o.zMin));
   const field = (key: 'rpm' | 'feed' | 'ae' | 'ap', k: 's' | 'f' | 'ae' | 'ap', step: number) => (
-    <label className="space-y-1 min-w-0">
-      <span className="section-label block">{t(`camAi.cut.${key}`)}</span>
+    <label className="flex flex-col gap-1 min-w-0 text-xs text-[var(--text-secondary)]">
+      {t(`camAi.cut.${key}`)}
       <input
-        className="aurora-input w-full min-w-0 text-xs px-2 tabular-nums"
+        className="aurora-input w-full min-w-0 h-8 py-0 text-[13px] px-2 tabular-nums"
         type="number"
         min={0}
         step={step}
@@ -333,24 +336,50 @@ export function ToolCard({
     </label>
   );
   return (
-    <li className={`rounded-[var(--radius-md)] border p-3 space-y-2.5 text-xs ${op.unsafe ? 'border-[#ef4444]/50' : changed ? 'border-[var(--accent-primary)]/50' : 'border-[var(--border-subtle)]'}`}>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="w-full flex items-center gap-2 font-semibold text-[var(--text-primary)]"><span className="font-mono shrink-0">T{op.tool}</span><ToolLabel o={op} /></span>
-        <span className={`text-[10px] py-0.5 px-1.5 ${op.inMachine ? 'badge-neutral' : 'badge-warning'}`}>{t(op.inMachine ? 'camAi.inMachine' : 'camAi.toLoad')}</span>
-        {changed && <span className="badge-neutral text-[10px] py-0.5 px-1.5 text-[var(--blue-text)]">{t('camAi.changedBadge')}</span>}
+    <div className={`text-[13px] ${op.unsafe ? 'ring-1 ring-[#ef4444]/50 rounded-[8px]' : ''}`}>
+      {/* T28 · End mill, then Ø20 · L65 · in the machine. */}
+      <div className="pl-4 pr-2 pt-3 pb-3 border-b border-[var(--border-subtle)] flex items-start gap-2">
+        <div className="flex-1 min-w-0 pt-1">
+        <p className="text-[15px] font-semibold text-[var(--text-primary)]">
+          <span className="font-mono">T{op.tool}</span> · {t(`camAi.tools.${op.type}`, { defaultValue: op.type })}
+        </p>
+        <p className="mt-0.5 text-xs text-[var(--text-secondary)] tabular-nums">
+          Ø{fmt(op.diameter, 2)} · L{fmt(op.length, 0)} · {t(op.inMachine ? 'camAi.inMachine' : 'camAi.toLoad')}
+          {changed && <span className="text-[var(--blue-text)]"> · {t('camAi.changedBadge')}</span>}
+        </p>
+        </div>
+        {aside}
       </div>
-      <ul className="space-y-1" aria-label={t('camAi.ops')}>
+      <div className="p-4 grid grid-cols-2 gap-x-2 gap-y-3">
+        {field('rpm', 's', 100)}
+        {field('feed', 'f', 10)}
+        {mill && field('ae', 'ae', 0.1)}
+        {mill && field('ap', 'ap', 0.1)}
+        <label className="col-span-2 flex flex-col gap-1 min-w-0 text-xs text-[var(--text-secondary)]">
+          {t('camAi.cut.coolant')}
+          <select className="aurora-input w-full min-w-0 h-8 py-0 text-[13px] px-2 cursor-pointer" disabled={busy} value={draft.coolant ?? op.coolant} onChange={(e) => onEdit({ coolant: e.target.value as Coolant })}>
+            {COOLANTS.map((c) => (
+              <option key={c} value={c} className="bg-[var(--bg-panel)]">{t(`camAi.coolant.${c}`)}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="px-4 pb-2 flex justify-between text-xs text-[var(--text-secondary)] tabular-nums">
+        <span>{t('camAi.ops')}</span>
+        <span>{fmtTime(ops.reduce((a, o) => a + o.seconds, 0))}{deepest < 0 ? ` · ${t('camAi.deepest', { z: fmt(deepest, 2) })}` : ''}</span>
+      </p>
+      <ul className="px-2 space-y-0.5" aria-label={t('camAi.ops')}>
         {ops.map((o) => {
           const gone = removing.includes(o.key);
           const on = focus === o.key;
           return (
-            <li key={o.key} className={`flex flex-wrap items-center gap-1 rounded-[6px] border ${on ? 'border-[var(--accent-primary)]/60 bg-[var(--accent-primary)]/8' : 'border-transparent'}`}>
-              <button type="button" onClick={() => onFocus(on ? null : o.key)} aria-pressed={on} title={t('camAi.showOnlyThis')} className="no-glass flex-1 min-w-0 text-left px-2 py-1.5 min-h-9">
-                <span className={`block ${gone ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{t(`camAi.purpose.${o.purpose}`)}</span>
-                <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-tertiary)] tabular-nums">
-                  <span className="inline-flex items-center gap-1"><Clock size={11} aria-hidden />{fmtTime(o.seconds)}</span>
-                  {o.zMin < 0 && <span>{t('camAi.downTo', { z: fmt(o.zMin, 2) })}</span>}
-                  {!o.learned && <span>{t('camAi.default')}</span>}
+            <li key={o.key} className={`group flex flex-wrap items-center gap-1 rounded-[8px] ${on ? 'bg-[var(--accent-primary)]/12' : 'hover:bg-[rgba(var(--ov),0.06)]'}`}>
+              <button type="button" onClick={() => onFocus(on ? null : o.key)} aria-pressed={on} title={t('camAi.showOnlyThis')} className="no-glass flex-1 min-w-0 text-left px-2 py-1.5 min-h-11">
+                <span className={`block text-[13px] ${gone ? 'line-through text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>{t(`camAi.purpose.${o.purpose}`)}</span>
+                <span className="block text-xs text-[var(--text-secondary)] tabular-nums">
+                  {fmtTime(o.seconds)}
+                  {o.zMin < 0 && ` · ${t('camAi.downTo', { z: fmt(o.zMin, 2) })}`}
+                  {!o.learned && ` · ${t('camAi.default')}`}
                 </span>
               </button>
               <button
@@ -359,38 +388,24 @@ export function ToolCard({
                 disabled={busy}
                 aria-label={t(gone ? 'camAi.keepOp' : 'camAi.removeOp', { name: t(`camAi.purpose.${o.purpose}`) })}
                 title={t(gone ? 'camAi.keepOp' : 'camAi.removeOp', { name: t(`camAi.purpose.${o.purpose}`) })}
-                className="no-glass shrink-0 grid place-items-center w-9 h-9 rounded-[6px] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className={`no-glass shrink-0 grid place-items-center w-9 h-9 rounded-[6px] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)] disabled:opacity-40 ${gone ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}`}
               >
-                {gone ? <RotateCcw size={14} aria-hidden /> : <Trash2 size={14} aria-hidden />}
+                {gone ? <RotateCcw size={15} aria-hidden /> : <Trash2 size={15} aria-hidden />}
               </button>
               {on && onOpEdit && !gone && <OpEditor key={o.key} was={opEdits[o.key]} d={o.diameter} l={o.length} busy={busy || checking} onApply={(e) => onOpEdit(o.key, e)} />}
             </li>
           );
         })}
       </ul>
-      <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.toolTime', { time: fmtTime(ops.reduce((a, o) => a + o.seconds, 0)) })}{deepest < 0 ? ` · ${t('camAi.deepest', { z: fmt(deepest, 2) })}` : ''}</p>
-      <div className="grid grid-cols-2 gap-2">
-        {field('rpm', 's', 100)}
-        {field('feed', 'f', 10)}
-        {mill && field('ae', 'ae', 0.1)}
-        {mill && field('ap', 'ap', 0.1)}
-        <label className="space-y-1 min-w-0 col-span-2">
-          <span className="section-label block">{t('camAi.cut.coolant')}</span>
-          <select className="aurora-input w-full min-w-0 text-xs px-2 cursor-pointer" disabled={busy} value={draft.coolant ?? op.coolant} onChange={(e) => onEdit({ coolant: e.target.value as Coolant })}>
-            {COOLANTS.map((c) => (
-              <option key={c} value={c} className="bg-[var(--bg-panel)]">{t(`camAi.coolant.${c}`)}</option>
-            ))}
-          </select>
-        </label>
-      </div>
       {op.unsafe && (
-        <p className="flex items-start gap-1.5 text-[var(--orange-text)]" role="alert">
-          <AlertTriangle size={13} className="shrink-0 mt-px" /> {t('camAi.unsafe')}
+        <p className="mx-4 mt-2 flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="alert">
+          <AlertTriangle size={14} className="shrink-0 mt-px" /> {t('camAi.unsafe')}
         </p>
       )}
+      <div className="px-4 pt-4 pb-1 space-y-2">
       {!asking ? (
-        <button type="button" onClick={() => setAsking(true)} disabled={busy} className="btn-secondary text-xs min-h-9 px-2.5 flex items-center gap-1">
-          <Repeat size={12} /> {t('camAi.swapTool')}
+        <button type="button" onClick={() => setAsking(true)} disabled={busy} className="btn-secondary w-full justify-center text-[13px] h-9 px-3 flex items-center gap-2">
+          <Repeat size={15} /> {t('camAi.swapTool')}
         </button>
       ) : options.length ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -413,9 +428,10 @@ export function ToolCard({
           </button>
         </div>
       ) : (
-        <p className="text-[var(--orange-text)]">{t('camAi.noStandIn')}</p>
+        <p className="text-xs text-[var(--orange-text)]">{t('camAi.noStandIn')}</p>
       )}
-    </li>
+      </div>
+    </div>
   );
 }
 
@@ -477,7 +493,7 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
   const none = Object.values(nums).every((x) => x === 0) && !newTool;
   const field = (k: keyof typeof v) => (
     <label key={k} className="space-y-0.5 min-w-0">
-      <span className="text-[10px] text-[var(--text-tertiary)]">{t(`camAi.opEdit.${k}`)}</span>
+      <span className="text-xs text-[var(--text-secondary)]">{t(`camAi.opEdit.${k}`)}</span>
       <input className="aurora-input w-full min-w-0 text-xs px-1.5 tabular-nums" type="number" step={0.5} inputMode="decimal" disabled={busy} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
     </label>
   );
@@ -485,12 +501,12 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
     <div className="w-full px-2 pb-2 space-y-1.5">
       <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
       <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
-      {!toolOk && <p className="text-[10px] text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
+      {!toolOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
       <div className="flex flex-wrap gap-1.5">
         <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
         {was && <button type="button" className="btn-secondary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(null)}>{t('camAi.opEdit.undo')}</button>}
       </div>
-      <p className="text-[10px] text-[var(--text-tertiary)]">{t('camAi.opEdit.hint')}</p>
+      <p className="text-xs text-[var(--text-secondary)]">{t('camAi.opEdit.hint')}</p>
     </div>
   );
 }

@@ -215,7 +215,10 @@ function Workspace() {
   }, [features, activeTab, calesOn, camOn]);
   // History (admins) opens from a button inside the Tool Remapper, in place of the remapper.
   const [remapView, setRemapView] = useState<'main' | 'history' | 'back'>('main');
+  // The lab opens full screen, over the whole app: its own back button returns to the tab it was opened from.
+  const [returnTab, setReturnTab] = useState<Tab>('REMAP');
   const openTab = (tab: Tab) => {
+    if (tab === 'LAB' && activeTab !== 'LAB') setReturnTab(activeTab);
     setActiveTab(tab);
     setRemapView('main');
   };
@@ -300,6 +303,29 @@ function Workspace() {
     await refreshNow();
     setIsRefreshing(false);
   };
+
+  const sendToRemapper = (code: string, name: string, machine: string) => {
+    // Into the remapper for that machine, as if imported: remap, check, export as usual.
+    setRemapperMachine(machine);
+    setSourceCode(code);
+    setFileName(name);
+    setOutputCode('');
+    openTab('REMAP');
+  };
+
+  // The lab: a workspace of its own, the whole screen (no header, no tabs); only its back button leaves it.
+  if (activeTab === 'LAB' && camOn) {
+    return (
+      <div className="h-[100dvh] flex flex-col relative overflow-hidden">
+        <AnimatePresence>
+          {showPasswordModal && <ChangePasswordModal key="password" initialTab={showPasswordModal} onClose={() => setShowPasswordModal(false)} />}
+        </AnimatePresence>
+        <Suspense fallback={null}>
+          <Lab onSend={sendToRemapper} onExit={() => openTab(returnTab === 'LAB' ? 'REMAP' : returnTab)} />
+        </Suspense>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col relative pb-8">
@@ -812,20 +838,6 @@ function Workspace() {
                 setAnalyzedSignature={setAnalyzedSignature}
               />
               </motion.div>
-            )}
-            {activeTab === 'LAB' && camOn && (
-              <Suspense fallback={null}>
-                <Lab
-                  onSend={(code, name, machine) => {
-                    // Into the remapper for that machine, as if imported: remap, check, export as usual.
-                    setRemapperMachine(machine);
-                    setSourceCode(code);
-                    setFileName(name);
-                    setOutputCode('');
-                    openTab('REMAP');
-                  }}
-                />
-              </Suspense>
             )}
             {activeTab === 'RECENT_CODES' && user.role === 'MACHINIST' && (
               <RecentCodes />
