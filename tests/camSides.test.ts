@@ -21,6 +21,18 @@ describe('the sides of later clampings, as the designer picks them', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 900_000);
 
+  // A review found the choices keyed by clamping number: an asked side with nothing to cut took no number, and its
+  // spacer slid onto the next clamping (another side).
+  it("keeps a clamping's choices with the side they were made for", () => {
+    const yp = (r: ReturnType<typeof camProgram>) => r.setups.map((s) => s.notes.some((n) => /IN Y\+/.test(n)));
+    // Asked for X+ in clamping 3: its Y+ spacer is there.
+    expect(yp(camProgram({ ...input, sides: ['X+'], spacersYp: [null, null, 15] }))).toEqual([false, false, true]);
+    // Asked for X- (nothing to cut there): the X+ clamping CAM AI makes instead does not get X-'s spacer.
+    const r = camProgram({ ...input, sides: ['X-'], spacersYp: [null, null, 15] });
+    expect(sides(r)).toEqual(['Y+', 'Y-', 'X+']);
+    expect(yp(r)).toEqual([false, false, false]);
+  }, 900_000);
+
   it('makes no clamping for a side with nothing to cut, and leaves out one already used or unknown; CAM AI covers the rest', () => {
     const empty = camProgram({ ...input, sides: ['X-'] });
     expect(sides(empty)).toEqual(['Y+', 'Y-', 'X+']);

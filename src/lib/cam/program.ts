@@ -1874,10 +1874,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const cales = allowedCales(stockH, sb.lo[2]);
     // The faces it could rest on the jaw tops by: never in the first clamping (the raw block has none) or the nest.
     const ledges = setups.length && !nested ? ledgesOf(P, left, sb) : [];
-    const jawAsked = input.jawRests?.[setups.length] ?? undefined;
+    // The designer's choices for clamping 3 and on go with the side they were made for: an asked side with nothing to
+    // cut gets no clamping, and its choices never slide onto the next one (a review found that); CAM AI's own sides
+    // after the asked ones keep their numbers as asked.
+    const choiceAt = ((): number => {
+      const sidesAsked = input.sides ?? [];
+      if (setups.length < 2 || !sidesAsked.length) return setups.length;
+      const k = sidesAsked.indexOf(side.name);
+      if (k >= 0) return k + 2;
+      return 2 + sidesAsked.length + setups.slice(2).filter((x) => !sidesAsked.includes(x.side)).length;
+    })();
+    const jawAsked = input.jawRests?.[choiceAt] ?? undefined;
     const onJaw = rest ?? (jawAsked !== undefined ? ledges.find((d) => Math.abs(d - jawAsked) < 0.05) : undefined);
     if (rest === undefined && jawAsked !== undefined && onJaw === undefined) notes.push({ key: 'jawRefused', setup: setups.length + 1, cale: jawAsked });
-    const asked = onJaw === undefined ? (input.clamps?.[setups.length] ?? undefined) : undefined;
+    const asked = onJaw === undefined ? (input.clamps?.[choiceAt] ?? undefined) : undefined;
     // In the POM nest the nest holds it: the parallels asked for do not apply (said, not refused).
     if (nested && asked !== undefined && fixed === undefined) notes.push({ key: 'clampNest', setup: setups.length + 1, cale: asked });
     // Planned again for lighter mills (below), at the designer's grip: still theirs.
@@ -1915,9 +1925,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       : { lo: [sb.lo[0], sb.lo[1]] as P2, hi: [sb.hi[0], sb.hi[1]] as P2 };
     const hold: [number, number] = [held.hi[0] - held.lo[0], held.hi[1] - held.lo[1]];
     // The designer's spacer at the stop: the part that much off it (only in the vise; the shop's 15 or 50 mm).
-    const stopAsked = input.stops?.[setups.length] ?? undefined;
+    const stopAsked = input.stops?.[choiceAt] ?? undefined;
     // The designer's spacer at the fixed jaw: the part that much toward the operator (only in the vise).
-    const ypAsked = input.spacersYp?.[setups.length] ?? undefined;
+    const ypAsked = input.spacersYp?.[choiceAt] ?? undefined;
     const spacerYp = !nested && ypAsked !== undefined && (SPACERS_Y as readonly number[]).includes(ypAsked) ? ypAsked : 0;
     if (ypAsked !== undefined && ypAsked !== 0 && !spacerYp) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: ypAsked });
     const spacerX = !nested && (stopAsked === 15 || stopAsked === 50) ? stopAsked : 0;
@@ -1953,7 +1963,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A spacer in the moving jaw (Y-, "15 MM ZWISCHENLAGE IN Y-") moves that jaw out by its thickness: the spacer
     // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
     // The designer's from the start, or none at all; else CAM AI's own where a wall would stay at that jaw (below).
-    const yAsked = input.spacersY?.[setups.length] ?? undefined;
+    const yAsked = input.spacersY?.[choiceAt] ?? undefined;
     const yOk = yAsked !== undefined && (SPACERS_Y as readonly number[]).includes(yAsked);
     if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: yAsked });
     let spacerY = !nested && yOk ? yAsked! : 0;
