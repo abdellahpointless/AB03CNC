@@ -113,6 +113,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [checking, setChecking] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [editsDropped, setEditsDropped] = useState(false);
+  // The operation an edit was applied to, to keep it picked when the edited program comes back.
+  const following = useRef<string | null>(null);
   // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
   const [stop1, setStop1] = useState<0 | 15 | 50>(0);
   // Later clampings' parallels, by clamping (1: the second), chosen on the program made: used when it is made again.
@@ -294,6 +296,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       // Changes by hand, checked again on the plan the worker kept.
       if (m.type === 'edited') {
         setChecking(false);
+        // The operation just changed stays picked, under its new tool if its tool was changed (its key does not change).
+        const key = following.current;
+        following.current = null;
+        const i = key ? m.result.setups.findIndex((s) => s.ops.some((o) => o.key === key)) : -1;
+        if (i >= 0) setSel({ kind: 'tool', i, code: m.result.setups[i].ops.find((o) => o.key === key)!.code, op: key! });
         return setRun({ state: 'done', result: m.result });
       }
       if (m.type === 'error') {
@@ -883,6 +890,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                       setEditsDropped(false);
                       setAccepted(false);
                       setChecking(true);
+                      following.current = key;
                       worker.current?.postMessage({ type: 'edit', edits: next });
                     }}
                     ops={ops}
