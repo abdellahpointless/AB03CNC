@@ -19,7 +19,7 @@ on a real part, make this one and see whether the same thing happens here, on a 
 |---|---|---|---|
 | 1 | Top face | z 30 | Face it (PLAN), 2 mm of blank |
 | 2 | Outline 100 x 60, vertical corners R6 | | Cut it whole in clamping 1, 0.5 mm under the part (FRAESEN, before the drills) |
-| 3 | 1 x 45° chamfer round the top edge | | Chamfer it (FASE, the 90° graver) |
+| 3 | 1 x 45° chamfer round the top edge | | Chamfer it once, in clamping 1 (FASE, the 90° graver) |
 | 4 | Slope at the X- end, 23° | x 0..14, from z 24 up to the top | A 3D surface: noted as left ("surface"), the ball end mill's |
 | 5 | Step at the X+ end, open on three sides | x 86..100, 12 deep (z 18) | Mill it with the outline's mill, its floor a level |
 | 6 | R3 round on the step's top edge | x 86, z 30 | A rounded edge: noted today (the corner-rounding mill's) |
@@ -28,7 +28,7 @@ on a real part, make this one and see whether the same thing happens here, on a 
 | 9 | Slot 4 wide, 32 long, 6 deep | x 18..50, y 54..58 | A small mill; the 2 mm wall to the Y+ face (thin wall) |
 | 10 | Through holes Ø3.3, Ø4.2, Ø5, Ø6.8 | y 10, x 59, 66, 73, 80 | Spot drill (under Ø4), drill through (G83) |
 | 11 | Blind hole Ø5, 15 deep, 118° point | x 60, y 24 | Drill to the point (0.3 x Ø lower) |
-| 12 | Blind hole Ø10, 8 deep, flat bottom | x 72, y 24 | Drilled where a Ø10 is, else milled |
+| 12 | Blind hole Ø10, 8 deep, flat bottom | x 72, y 24 | Drilled to its bottom where a Ø10 is (the point left, as the engineers do), else milled |
 | 13 | Counterbore Ø11 x 6.5 on a Ø6.6 hole through, from the top | x 60, y 38 | Both in one clamping (the counterbore milled: no Ø11 drill) |
 | 14 | Countersink 90° to Ø12 on a Ø6.4 hole through | x 75, y 38 | Drill, then the countersink as a 45° chamfer (graver) |
 | 15 | Hole Ø13 through | x 67, y 51 | No Ø13 drill: milled, the drill listed as missing |
@@ -37,23 +37,24 @@ on a real part, make this one and see whether the same thing happens here, on a 
 | 18 | Hole Ø6, 15 deep, in the Y+ face | x 40, z 12 | A clamping on that edge (Y+ up) |
 | 19 | Slot 16 x 8, 6 deep, in the Y- face | x 56..72, z 8..16 | A clamping on the other edge (Y- up): a pocket open to that face only |
 
-## Baseline (8f3b058, the page's defaults, ALU, CAM AI's own tool library)
+## Baseline (3e2bc16, the page's defaults, ALU, CAM AI's own tool library)
 
 | Clamping | Parallels / grip | Operations |
 |---|---|---|
-| 1, Z+ | 41 mm / 4 | PLAN, FRAESEN_16MM (outline), ZENTRIERBOHREN, BOHREN 3.3, 4.2, 5, 10, 6.4, FRAESEN 16, 8, 6, 5, 4, FASE, ENTGRATEN |
-| 2, Z- | 20 mm / 25 | PLAN, BOHREN 10, 5.5 (the counterbore and its hole), FRAESEN 16, 8, ENTGRATEN |
-| 3, Y- | 42 mm / 3 | FRAESEN 16, 8 (the side slot), ENTGRATEN |
-| 4, Y+ | 15 mm / 30 | FRAESEN 16, 6 (the side hole), ENTGRATEN |
+| 1, Z+ | 41 mm / 4 | PLAN, FRAESEN_16MM (outline), ZENTRIERBOHREN, BOHREN 3.3, 4.2, 5, 10, 6.4, FRAESEN 16, 8, 6, 5, 4, FASE |
+| 2, Z- | 20 mm / 25 | PLAN, BOHREN 10, 5.5 (the counterbore and its hole), FRAESEN 16, 8 |
+| 3, Y- | 42 mm / 3 | FRAESEN 16, 8 (the side slot) |
+| 4, Y+ | 15 mm / 30 | FRAESEN 16, 6 (the side hole) |
 
-18,105 lines, 31.4 minutes (the app's time model), the simulated part like the model (match 1), no collision, no
-clamping misplaced, nothing cut into the part. Noted: three surfaces left (the slope, the two rounds) and one hole
-narrow at its far end. Listed as missing: drills Ø6.8, Ø6.6, Ø11, Ø13, Ø6 (those holes are milled) and a Ø1 mill.
-Planned in 683 s on the test machine (alone).
+17,794 lines, 29.1 minutes (the app's time model), no collision, no clamping misplaced, nothing cut into the part.
+Match 0.9995: the drill's point is left at the bottom of the flat-bottomed Ø10 hole (Beta 2: the engineers drill such
+a hole and leave the point), small pieces of material left. Noted: three surfaces left (the slope, the two rounds) and
+one hole narrow at its far end. Listed as missing: drills Ø6.8, Ø6.6, Ø11, Ø13, Ø6 (those holes are milled) and a Ø1
+mill. Planned in 736 s on the test machine.
 
-At c465625 it was 20,533 lines and 36.6 minutes: the mills went back down the drilled holes (a Ø5 30 mm down the
-Ø6.4, a Ø3 down the Ø3.3 and Ø4.2) and clampings 3 and 4 cut the top chamfer again (FASE). Left in a hole now: an
-Ø8 flattening the drill's point at the bottom of the two flat-bottomed Ø10 holes (the open question in Beta 2).
+Before Beta 2 (c465625) it was 20,533 lines and 36.6 minutes: the mills went back down the drilled holes (a Ø5 30 mm
+down the Ø6.4, a Ø3 down the Ø3.3 and Ø4.2), clampings 3 and 4 cut the top chamfer again (FASE), and every clamping
+ended with a deburring pass (ENTGRATEN, no longer made: no chamfer where the model has none).
 
 ## Baseline (c465625, the page's defaults, POM, HAAS-5's tools)
 
@@ -66,7 +67,7 @@ match 1, no collision, no clamping misplaced. Noted: the same three surfaces and
 
 - **Clamping 3 (Y-) is gripped 3 mm on 42 mm parallels**, the part standing 60 mm tall, for a slot 6 deep at its
   top: the grip should be far deeper (your rule: as deep as the cuts allow). To look into.
-- **Planning takes many minutes** (683 s in ALU alone at 8f3b058, 1,553 s in POM alone at c465625): the
+- **Planning takes many minutes** (736 s in ALU at 3e2bc16, 1,553 s in POM alone at c465625): the
   one-face-one-clamping re-plan and the vise retries plan clampings again. To look into before the page's users
   wait that long.
 - The slope and the rounds are left (no ball end mill or corner-rounding mill yet).
