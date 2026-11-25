@@ -356,6 +356,13 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [swapAsk, setSwapAsk] = useState<string | null>(null);
   // Measuring the model in the view, as in a CAD program (before or after a program is made).
   const [measuring, setMeasuring] = useState(false);
+  // A tool picked in a made program: the simulation at its first move in that clamping (a new pick asks again).
+  const focusSeq = useRef(0);
+  const focusTool = useMemo(() => {
+    if (run.state !== 'done' || sel.kind !== 'tool') return null;
+    const op = run.result.setups[sel.i]?.ops.find((o) => o.code === sel.code);
+    return op ? { setup: sel.i, tool: op.tool, key: ++focusSeq.current } : null;
+  }, [run, sel]);
   // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
   const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && !measuring && cales1.length > 0;
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
@@ -621,6 +628,14 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               />
             </Suspense>
             <MeasurePanel on={measuring} onToggle={() => { setMeasuring((x) => !x); setMeasured(null); }} mode={measureMode} onMode={setMeasureMode} measured={measured} />
+            {/* A tool picked in a made program: CAM AI's own simulation at that tool, over the part view (you, Beta 2: item 8). */}
+            {result && focusTool && !viewing && (
+              <div className="absolute inset-0 z-10">
+                <Suspense fallback={null}>
+                  <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setSel({ kind: 'setup', i: focusTool.setup })} initialModel={model} noRecord embedded focusTool={focusTool} />
+                </Suspense>
+              </div>
+            )}
             </div>
           ) : (
             <div className="absolute inset-0 grid place-items-center p-6">

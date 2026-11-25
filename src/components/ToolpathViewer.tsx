@@ -79,6 +79,8 @@ export default function ToolpathViewer({
   noRecord = false,
   start,
   atSetup,
+  embedded = false,
+  focusTool = null,
 }: {
   code: string;
   title: string;
@@ -99,6 +101,10 @@ export default function ToolpathViewer({
   start?: 'weak' | 'nx';
   /** Opens at the start of this setup (0: the first), as the part stands when it is clamped. */
   atSetup?: number;
+  /** Drawn in its parent's place (no backdrop, its own panel closed): a page that shows it beside its own panel. */
+  embedded?: boolean;
+  /** A tool to show at work (its first move in that setup, paused): its path, what it removes; `key` asks again. */
+  focusTool?: { setup: number; tool: number; key: number } | null;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -184,7 +190,8 @@ export default function ToolpathViewer({
   };
   const [fitKey, setFitKey] = useState(0);
   const [isolate, setIsolate] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(!embedded);
+  const shellRef = useRef<HTMLDivElement>(null);
   // Weak spots: the finished part coloured by wall thickness.
   const [heat, setHeat] = useState(false);
   // The NX view: every path over the finished part, nothing cut away as the tool goes.
@@ -205,6 +212,15 @@ export default function ToolpathViewer({
     jumpFlip(s);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setups]);
+  // A tool asked for by the page: the simulation at its first move in that setup, paused (Play goes on from there).
+  useEffect(() => {
+    if (!focusTool) return;
+    const k = path.moves.findIndex((m) => m.setup === focusTool.setup && m.tool === focusTool.tool);
+    if (k < 0) return;
+    setPlaying(false);
+    seek(k + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTool?.key, path]);
   // Measuring on the part (its faces and holes) and what the last clicks measured.
   const [measure, setMeasure] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
@@ -365,6 +381,8 @@ export default function ToolpathViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return; // the View menu closes on Escape first
+      // In a page: only keys pressed in the viewer (the page's own fields keep theirs).
+      if (embedded && !shellRef.current?.contains(e.target as Node)) return;
       if (e.key === 'Escape') onClose();
       if (e.key === ' ') {
         e.preventDefault();
@@ -375,7 +393,7 @@ export default function ToolpathViewer({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, total]);
+  }, [onClose, total, embedded]);
 
   const top = (p: Vec): [number, number] => [p[0], -p[1]];
   const side = (p: Vec): [number, number] => [p[0], -p[2]];
@@ -561,13 +579,14 @@ export default function ToolpathViewer({
     return drilling ? Math.max(0, path.tools.findIndex((tl) => tl.tool === drilling.tool)) : 0;
   }, [path]);
 
-  return createPortal(
-    <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-2.5 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
+  const shell = (
       <motion.div
-        className={`always-dark w-full h-full flex flex-col overflow-hidden rounded-[var(--radius-lg,20px)] border bg-[#0E1421] text-[var(--text-primary)] ${totalHits ? 'border-[#ff4d4d] shadow-[0_0_0_1px_rgba(255,77,77,0.5),0_0_60px_rgba(255,60,60,0.25),0_30px_90px_rgba(0,0,0,0.6)]' : 'border-[var(--border-subtle)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]'}`}
+        ref={shellRef}
+        tabIndex={embedded ? -1 : undefined}
+        className={`always-dark w-full h-full flex flex-col overflow-hidden ${embedded ? '' : 'rounded-[var(--radius-lg,20px)]'} border bg-[#0E1421] text-[var(--text-primary)] ${totalHits ? 'border-[#ff4d4d] shadow-[0_0_0_1px_rgba(255,77,77,0.5),0_0_60px_rgba(255,60,60,0.25),0_30px_90px_rgba(0,0,0,0.6)]' : 'border-[var(--border-subtle)] shadow-[0_30px_90px_rgba(0,0,0,0.6)]'}`}
         style={DARK_VARS}
-        {...iosSurface}
-        role="dialog"
+        {...(embedded ? {} : iosSurface)}
+        role={embedded ? 'region' : 'dialog'}
         aria-label={t('toolpath.title')}
       >
         {/* Header: title and the program's key figures as symbols */}
@@ -1361,7 +1380,13 @@ export default function ToolpathViewer({
           </div>
         )}
       </motion.div>
-    </motion.div>,
-    document.body,
   );
+  return embedded
+    ? shell
+    : createPortal(
+        <motion.div className="fixed inset-0 modal-backdrop flex items-center justify-center p-2.5 z-[99999]" onMouseDown={(e) => e.target === e.currentTarget && onClose()} {...iosBackdrop}>
+          {shell}
+        </motion.div>,
+        document.body,
+      );
 }
