@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Coolant, CutEdit } from '../lib/cam/tools';
+import type { OpEdit } from '../lib/cam/opEdit';
 import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { fmtNumber as fmt } from '../i18n/format';
@@ -18,7 +19,11 @@ export { GOUGE_MM3 };
 
 /** Every check passed: like the model, nothing hit, nothing cut out of the part, held safely. */
 // The designer's parallels not used as asked (clampRefused, clampAsk): not the program they asked for.
-export const passed = (r: CamSummary) => r.match >= 0.99 && r.sized && r.collisions === 0 && !r.misplaced && r.gouge < GOUGE_MM3 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
+/** Nothing in the machine's or the vise's way: never relaxed. */
+export const safe = (r: CamSummary) => r.collisions === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
+/** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
+export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
+export const passed = (r: CamSummary, accepted = false) => safe(r) && (alike(r) || accepted);
 
 const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a855f7', engraving: '#f59e0b' };
 /** Pressure on the jaws, by its share of what the material takes: calm, watch, high. */
@@ -47,15 +52,17 @@ export function ToolLabel({ o }: { o: { type: string; diameter: number; length: 
   );
 }
 
-export function useVerdict(result: CamSummary, changed: number): { ok: boolean; text: string } {
+export function useVerdict(result: CamSummary, changed: number, accepted = false): { ok: boolean; text: string } {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
-  const ok = passed(result) && !changed;
+  const ok = passed(result, accepted) && !changed;
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
   // The designer's parallels not used as asked: why it stays locked.
   const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk');
   const text = ok
-    ? t('camAi.proven')
+    ? accepted && !alike(result)
+      ? t('camAi.opEdit.acceptedText')
+      : t('camAi.proven')
     : changed
       ? t('camAi.recalcFirst')
       : unsafe
@@ -279,6 +286,9 @@ export function ToolCard({
   options,
   toolName,
   onSwap,
+  opEdits = {},
+  checking = false,
+  onOpEdit,
 }: {
   /** Open on changing the tool (a right click on it). */
   ask?: boolean;
@@ -296,6 +306,10 @@ export function ToolCard({
   options: CamTool[];
   toolName: (o: { type: string; diameter: number; length: number }) => string;
   onSwap: (code: string, standIn: string) => void;
+  /** Changes by hand to the operations (by key), the one being applied, and how to apply one (null: undo it). */
+  opEdits?: Record<string, OpEdit>;
+  checking?: boolean;
+  onOpEdit?: (key: string, e: OpEdit | null) => void;
 }) {
   const { t } = useTranslation(['cam', 'remapper', 'common']);
   const [asking, setAsking] = useState(ask);
@@ -330,7 +344,7 @@ export function ToolCard({
           const gone = removing.includes(o.key);
           const on = focus === o.key;
           return (
-            <li key={o.key} className={`flex items-center gap-1 rounded-[6px] border ${on ? 'border-[var(--accent-primary)]/60 bg-[var(--accent-primary)]/8' : 'border-transparent'}`}>
+            <li key={o.key} className={`flex flex-wrap items-center gap-1 rounded-[6px] border ${on ? 'border-[var(--accent-primary)]/60 bg-[var(--accent-primary)]/8' : 'border-transparent'}`}>
               <button type="button" onClick={() => onFocus(on ? null : o.key)} aria-pressed={on} title={t('camAi.showOnlyThis')} className="no-glass flex-1 min-w-0 text-left px-2 py-1.5 min-h-9">
                 <span className={`block ${gone ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{t(`camAi.purpose.${o.purpose}`)}</span>
                 <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-tertiary)] tabular-nums">
@@ -349,6 +363,7 @@ export function ToolCard({
               >
                 {gone ? <RotateCcw size={14} aria-hidden /> : <Trash2 size={14} aria-hidden />}
               </button>
+              {on && onOpEdit && !gone && <OpEditor key={o.key} was={opEdits[o.key]} busy={busy || checking} onApply={(e) => onOpEdit(o.key, e)} />}
             </li>
           );
         })}
@@ -444,5 +459,32 @@ export function ViseView({ setup }: { setup: Setup }) {
         )}
       </g>
     </svg>
+  );
+}
+
+/**
+ * An operation moved or taken deeper by hand (you, Beta 2: item 10): the whole program is checked again with it; what
+ * could hit the machine or the vise still locks it.
+ */
+function OpEditor({ was, busy, onApply }: { was?: OpEdit; busy: boolean; onApply: (e: OpEdit | null) => void }) {
+  const { t } = useTranslation('cam');
+  const [v, setV] = useState({ deeper: String(was?.deeper ?? 0), dx: String(was?.dx ?? 0), dy: String(was?.dy ?? 0), dz: String(was?.dz ?? 0) });
+  const nums = { deeper: Number(v.deeper) || 0, dx: Number(v.dx) || 0, dy: Number(v.dy) || 0, dz: Number(v.dz) || 0 };
+  const none = Object.values(nums).every((x) => x === 0);
+  const field = (k: keyof typeof v) => (
+    <label key={k} className="space-y-0.5 min-w-0">
+      <span className="text-[10px] text-[var(--text-tertiary)]">{t(`camAi.opEdit.${k}`)}</span>
+      <input className="aurora-input w-full min-w-0 text-xs px-1.5 tabular-nums" type="number" step={0.5} inputMode="decimal" disabled={busy} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
+    </label>
+  );
+  return (
+    <div className="w-full px-2 pb-2 space-y-1.5">
+      <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(none ? null : nums)}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
+        {was && <button type="button" className="btn-secondary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(null)}>{t('camAi.opEdit.undo')}</button>}
+      </div>
+      <p className="text-[10px] text-[var(--text-tertiary)]">{t('camAi.opEdit.hint')}</p>
+    </div>
   );
 }

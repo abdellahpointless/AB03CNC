@@ -2,7 +2,8 @@ import { readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
-import { camProgram, gougeOf, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
+import { camProgram, editProgram, gougeOf, opSegments, type CamInput, type LiveEvent, type Purpose, type Zone } from './program';
+import type { OpEdit } from './opEdit';
 import type { CamNote, Coolant, Need } from './tools';
 import type { Contact, SetupCheck } from './physics';
 import { layouts, type Layout } from './layouts';
@@ -21,6 +22,8 @@ import { partTypeOf, type PartType } from './partType';
 
 export type CamRequest = Omit<CamInput, 'tris' | 'live'> & { model: { name: string; bytes: Uint8Array } };
 export type PrepareRequest = { type: 'prepare'; model: { name: string; bytes: Uint8Array } };
+/** The last program made, its operations changed by hand (by operation key): answered with 'edited'. */
+export type EditRequest = { type: 'edit'; edits: Record<string, OpEdit> };
 
 export interface Prepared {
   /** From the PDF's title block (null for an STL or no title). */
@@ -107,12 +110,27 @@ export type CamMessage =
   | { type: 'progress'; done: number; of: number }
   | { type: 'live'; e: LiveEvent }
   | { type: 'done'; result: CamSummary; lesson: unknown }
+  | { type: 'edited'; result: CamSummary }
   | { type: 'error'; error: ModelError | 'failed' };
 
 const post = (m: CamMessage) => postMessage(m);
 
-self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
+/** The last program made here, for edits by hand (you, Beta 2: items 10 and 11). */
+let last: { input: CamInput; r: ReturnType<typeof camProgram> } | null = null;
+
+self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest | EditRequest>) => {
   if ('type' in e.data && e.data.type === 'prepare') return prepare(e.data.model);
+  if ('type' in e.data && e.data.type === 'edit') {
+    if (!last) return post({ type: 'error', error: 'failed' });
+    try {
+      // Always from the program as made: the edits are the whole set the page has now.
+      const r = editProgram(last.input, last.r, e.data.edits);
+      return post({ type: 'edited', result: summaryOf(r, last.input) });
+    } catch (err) {
+      console.error(err);
+      return post({ type: 'error', error: 'failed' });
+    }
+  }
   const { model, ...input } = e.data as CamRequest;
   try {
     const tris = await readTris(model.bytes);
@@ -120,62 +138,10 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest>) => {
     post({ type: 'progress', done: 0, of: 3 });
     const r = camProgram({ ...input, tris, live: (ev) => post({ type: 'live', e: ev }) }, (done, of) => post({ type: 'progress', done, of }));
     const tp = parseToolpath(r.code, input.speeds ?? speedsFor(input.brand));
-    const secondsOf = opSeconds(tp, r.setups, (input.speeds ?? speedsFor(input.brand)).toolChange);
     const lesson = await partLessonOf({ code: r.code, tp, model, match: r.check.match, pieces: r.check.pieces, brand: input.brand, source: 'cam' }).catch(() => null);
-    post({
-      type: 'done',
-      lesson,
-      result: {
-        code: r.code,
-        match: r.check.match,
-        minutes: r.check.minutes,
-        toolChanges: r.check.toolChanges,
-        collisions: r.check.collisions,
-        stops: r.check.stops,
-        cales: r.check.cales,
-        misplaced: r.check.misplaced,
-        sized: r.check.sized,
-        gouge: gougeOf(r.check),
-        size: r.size,
-        raw: r.raw,
-        blank: r.blank,
-        missing: r.missing,
-        notes: r.notes,
-        nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),
-        setups: r.setups.map((s, i) => ({
-          side: s.side,
-          notes: s.notes,
-          grip: s.grip,
-          physics: s.physics,
-          cale: s.cale,
-          cales: s.cales,
-          ...(s.own !== undefined ? { own: s.own } : {}),
-          zones: s.zones,
-          box: s.box,
-          contact: s.contact,
-          ops: s.ops.map((o, k) => ({
-            key: o.key ?? `${s.side}|${o.name}|${o.tool.code}|${k}`,
-            seconds: secondsOf.get(`${i}|${k}`) ?? 0,
-            name: o.name,
-            purpose: o.purpose,
-            tool: o.tool.number,
-            diameter: o.tool.diameter,
-            length: o.tool.length,
-            code: o.tool.code,
-            type: o.tool.type,
-            inMachine: o.tool.inMachine,
-            learned: o.cut.from !== 'default',
-            s: o.cut.s,
-            f: o.cut.f,
-            ae: o.cut.ae,
-            ap: o.cut.ap,
-            coolant: o.tool.edit?.coolant ?? 'flood',
-            zMin: deepest(o.lines),
-            unsafe: !!o.cut.unsafe,
-          })),
-        })),
-      },
-    });
+    // Kept for edits by hand (editProgram): the plan and what it was made from.
+    last = { input: { ...input, tris }, r };
+    post({ type: 'done', lesson, result: summaryOf(r, input) });
   } catch (err) {
     console.error(err);
     post({ type: 'error', error: 'failed' });
@@ -232,3 +198,58 @@ async function prepare(model: { name: string; bytes: Uint8Array }) {
   }
 }
 
+/** The page's view of a program (what the worker keeps is the whole plan, for edits). */
+function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'model'>): CamSummary {
+  const tp = parseToolpath(r.code, input.speeds ?? speedsFor(input.brand));
+  const secondsOf = opSeconds(tp, r.setups, (input.speeds ?? speedsFor(input.brand)).toolChange);
+  return {
+    code: r.code,
+    match: r.check.match,
+    minutes: r.check.minutes,
+    toolChanges: r.check.toolChanges,
+    collisions: r.check.collisions,
+    stops: r.check.stops,
+    cales: r.check.cales,
+    misplaced: r.check.misplaced,
+    sized: r.check.sized,
+    gouge: gougeOf(r.check),
+    size: r.size,
+    raw: r.raw,
+    blank: r.blank,
+    missing: r.missing,
+    notes: r.notes,
+    nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),
+    setups: r.setups.map((s, i) => ({
+      side: s.side,
+      notes: s.notes,
+      grip: s.grip,
+      physics: s.physics,
+      cale: s.cale,
+      cales: s.cales,
+      ...(s.own !== undefined ? { own: s.own } : {}),
+      zones: s.zones,
+      box: s.box,
+      contact: s.contact,
+      ops: s.ops.map((o, k) => ({
+        key: o.key ?? `${s.side}|${o.name}|${o.tool.code}|${k}`,
+        seconds: secondsOf.get(`${i}|${k}`) ?? 0,
+        name: o.name,
+        purpose: o.purpose,
+        tool: o.tool.number,
+        diameter: o.tool.diameter,
+        length: o.tool.length,
+        code: o.tool.code,
+        type: o.tool.type,
+        inMachine: o.tool.inMachine,
+        learned: o.cut.from !== 'default',
+        s: o.cut.s,
+        f: o.cut.f,
+        ae: o.cut.ae,
+        ap: o.cut.ap,
+        coolant: o.tool.edit?.coolant ?? 'flood',
+        zMin: deepest(o.lines),
+        unsafe: !!o.cut.unsafe,
+      })),
+    })),
+  };
+}

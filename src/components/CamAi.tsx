@@ -22,11 +22,12 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import type { Mat3 } from '../lib/orient';
-import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
+import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
+import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
 
 const ToolpathViewer = lazy(() => import('./ToolpathViewer'));
@@ -107,6 +108,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // The designer's parallels for clamping 1 (you, Beta 2): a height, 0 for none, null for CAM AI's own; the jaw's
   // opening and the part's slide toward the operator are the view's only (mm); refused moves flash the jaws.
   const [clamp1, setClamp1] = useState<number | null>(null);
+  // Operations changed by hand on the program made (by key), one being checked, the part accepted as it then is.
+  const [opEdits, setOpEdits] = useState<Record<string, OpEdit>>({});
+  const [checking, setChecking] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [editsDropped, setEditsDropped] = useState(false);
   // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
   const [stop1, setStop1] = useState<0 | 15 | 50>(0);
   // Later clampings' parallels, by clamping (1: the second), chosen on the program made: used when it is made again.
@@ -287,10 +293,24 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       if (m.type === 'progress') return setRun({ state: 'busy', done: m.done, of: m.of });
       if (m.type === 'prepared') return;
       if (m.type === 'live') return setLive((l) => liveStep(l, m.e));
-      w.terminate();
-      worker.current = null;
-      if (m.type === 'error') return setRun({ state: 'error', error: m.error });
+      // Changes by hand, checked again on the plan the worker kept.
+      if (m.type === 'edited') {
+        setChecking(false);
+        return setRun({ state: 'done', result: m.result });
+      }
+      if (m.type === 'error') {
+        w.terminate();
+        worker.current = null;
+        setChecking(false);
+        return setRun({ state: 'error', error: m.error });
+      }
+      // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
       setRun({ state: 'done', result: m.result });
+      setOpEdits((was) => {
+        if (Object.keys(was).length) setEditsDropped(true);
+        return {};
+      });
+      setAccepted(false);
       // A part record for the learning records (Admin > Data). Best effort; only programs that
       // passed every check (a failed run would teach the wrong thing).
       if (m.lesson && passed(m.result)) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
@@ -306,7 +326,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
-    if (!result || !machine || !passed(result)) return;
+    if (!result || !machine || !passed(result, handEdited && accepted)) return;
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
@@ -372,7 +392,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [draft, setDraft] = useState<Record<string, CutEdit>>({});
   const changed = Object.keys({ ...draft, ...cuts }).filter((k) => JSON.stringify(draft[k] ?? {}) !== JSON.stringify(cuts[k] ?? {}));
   const toolName = useToolName();
-  const verdict = useVerdictOrNull(result, changed.length + pendingSkips);
+  // A part changed by hand may be accepted as it is (the tick), never what could hit the machine (safe()).
+  const handEdited = Object.keys(opEdits).length > 0;
+  const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
   const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
@@ -712,6 +734,18 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
               </>
             )}
 
+            {result && handEdited && (
+              <section className="space-y-1.5 rounded-[var(--radius-md)] border border-[var(--accent-primary)]/40 p-2.5" aria-live="polite">
+                <p className="text-[var(--text-primary)]">{t('camAi.opEdit.changed', { count: Object.keys(opEdits).length, pct: fmt(result.match * 100, 1), mm3: fmt(result.gouge, 0) })}</p>
+                {safe(result) && !alike(result) && (
+                  <label className="flex items-center gap-2 min-h-9 text-[var(--text-primary)]">
+                    <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+                    {t('camAi.opEdit.accept')}
+                  </label>
+                )}
+              </section>
+            )}
+            {editsDropped && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.opEdit.dropped')}</p>}
             {prep && chosen && sel.kind === 'stock' && (
               <>
                 <button type="button" role="switch" aria-checked={autoStock} onClick={() => choose(() => setAutoStock(!autoStock))} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
@@ -837,6 +871,18 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                   <ToolCard
                     key={`${sel.code}|${swapAsk === sel.code}`}
                     ask={swapAsk === sel.code}
+                    opEdits={opEdits}
+                    checking={checking}
+                    onOpEdit={(key, e) => {
+                      const next = { ...opEdits };
+                      if (e) next[key] = e;
+                      else delete next[key];
+                      setOpEdits(next);
+                      setEditsDropped(false);
+                      setAccepted(false);
+                      setChecking(true);
+                      worker.current?.postMessage({ type: 'edit', edits: next });
+                    }}
                     ops={ops}
                     draft={draft[sel.code] ?? {}}
                     changed={changed.includes(sel.code)}
@@ -1162,9 +1208,9 @@ type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 
 const PURPOSE_HEX: Record<string, string> = { face: '#facc15', outline: '#facc15', rough: '#facc15', rest: '#facc15', finish: '#22d3ee', contour: '#22d3ee', thinWalls: '#22d3ee', chamfer: '#22d3ee', engrave: '#22d3ee', centre: '#ef4444', drill: '#ef4444', pinHoles: '#ef4444' };
 
 /** The verdict, once there is a program. */
-function useVerdictOrNull(result: CamSummary | null, changed: number) {
+function useVerdictOrNull(result: CamSummary | null, changed: number, accepted = false) {
   const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, stops: 0, cales: 0, misplaced: 0, sized: false, gouge: 0, size: [], raw: [], blank: { lo: [], hi: [] }, missing: [], notes: [], nests: [], setups: [] };
-  const v = useVerdict(result ?? empty, changed);
+  const v = useVerdict(result ?? empty, changed, accepted);
   return result ? v : null;
 }
 
