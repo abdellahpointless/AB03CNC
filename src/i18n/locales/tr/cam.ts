@@ -89,7 +89,7 @@ const cam: Translation<typeof en> = {
       jaw: 'Çene {{open}} mm açık · parça size doğru {{slide}} mm (yalnızca görünüm: program parçayı kapalı, sabit çeneye dayalı tutar)',
       hint: '3B görünümde: tekerlek paralelleri değiştirir (Ctrl + tekerlek yakınlaştırır). Görünüme tıklayın, sonra ↑ ↓ parçayı kaydırır, ← → çeneleri açıp kapatır, Page Up / Page Down paralelleri değiştirir.',
       noneWarn: 'Paralelsiz parçanın neye oturduğu henüz bilinmiyor (atölyenin cevabı bekleniyor): böyle yapılan program kilitli kalır, CAM AI bu arada kendi paralelleriyle planlar.',
-      intoPart: 'Çeneler parçanın kendi yanlarından {{mm}} mm tutar: altlarındaki dış kısım başka bağlamalardan kesilir (daha çok bağlama ve süre), bu kesimlerin buluştuğu yerde ince çapaklar kalabilir (simülasyonun model kontrolü gösterir).',
+      intoPart: 'Çeneler parçanın kendi yanlarından {{mm}} mm tutar: altlarındaki dış kısım başka bağlamalardan kesilir (daha çok bağlama ve süre), bu kesimlerin buluştuğu yerde ham kalabilir; ham bırakan program kilitli kalır.',
       later: 'Bir sonraki hazırlamada: {{cale}} mm paralel.',
       laterNone: 'Bir sonraki hazırlamada: paralelsiz.',
       laterHint: 'Bu bağlama öncekilerin bıraktığını tutar: paralellerini burada seçin, sonra yeniden hazırlayın. Önceki bir bağlamadaki değişiklik bu seçimi siler.',
