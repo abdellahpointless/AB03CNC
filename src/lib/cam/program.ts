@@ -84,6 +84,13 @@ export interface CamInput {
    */
   stops?: (number | null)[];
   /**
+   * The designer's spacer in the moving jaw (Y-), by clamping: 15 mm, the shop's ("15 MM ZWISCHENLAGE IN Y-", 7 of the
+   * library's 8), from the first level on; 0: none (not even CAM AI's own); anything else, or in the nest, is refused
+   * (stopRefused). It moves nothing: the part rests on the fixed jaw and the stop. Never in the fixed jaw (Y+): the
+   * library has none, and it would move the part.
+   */
+  spacersY?: (number | null)[];
+  /**
    * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
    * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
    * else refused (jawRefused). Wins over `clamps` there.
@@ -1921,7 +1928,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const spans = viseSpans({ jawX: jawsFrom(held.lo[0] - spacerX), twoVises });
     // A spacer in the moving jaw (Y-, "15 MM ZWISCHENLAGE IN Y-") moves that jaw out by its thickness: the spacer
     // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
-    let spacerY = 0;
+    // The designer's from the start, or none at all; else CAM AI's own where a wall would stay at that jaw (below).
+    const yAsked = input.spacersY?.[setups.length] ?? undefined;
+    if (yAsked !== undefined && yAsked !== 0 && (nested || yAsked !== SPACER_Y)) notes.push({ key: 'stopRefused', setup: setups.length + 1, cale: yAsked });
+    let spacerY = !nested && yAsked === SPACER_Y ? SPACER_Y : 0;
+    if (spacerY) setupNotes.push(`${SPACER_Y} MM ZWISCHENLAGE IN Y-`);
     const beside = (d: number, end: number): Region =>
       union([
         ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] - d, b + end, held.hi[1] + 50)]),
@@ -2179,7 +2190,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // A wall the moving jaw would leave across a pocket opening onto the face it holds: a spacer there instead
       // (the shop's, 15 mm), from this level on; it moves nothing, so it needs no other reason (a fixed jaw's or
       // the stop's would shift the part: not used).
-      if (!spacerY && !nested && over() && area(intersection(intersection(todo, wallBand), atMovingJaw)) > 0.01) {
+      if (!spacerY && yAsked !== 0 && !nested && over() && area(intersection(intersection(todo, wallBand), atMovingJaw)) > 0.01) {
         spacerY = SPACER_Y;
         jaws = beside(0.1, 1);
         pastJaws = beside(-0.05, 0);
