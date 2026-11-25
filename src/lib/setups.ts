@@ -644,7 +644,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     if (settled || pass === out.setups.length + 1) {
       for (const s of out.setups) {
         // On the jaw tops ("SUR L'ETAU") nothing stands under the part.
-        s.cales = s.onJaw !== null ? null : placeCales(s, input, g);
+        s.cales = s.onJaw !== null ? null : placeCales(s, input, g, markedHeader(tp.header));
         s.collisions.push(...caleHits(tp, s));
         s.grip = gripOf(s, input, g);
         const miss = sizeMiss(s, input, g);
@@ -737,10 +737,11 @@ export function stopHits(tp: Toolpath, s: SetupInfo): Collision[] {
  * rest height and nothing hangs lower over its width. The front one as far forward and the back
  * one as far back as that allows; one cale when there is only room for one.
  */
-function placeCales(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['cales'] {
+function placeCales(s: SetupInfo, input: SimInput, g: Grid, exact = false): SetupInfo['cales'] {
   if (!s.stock || !s.clampBox || !s.moves || s.restZ === null || s.floorZ === null || s.restZ - s.floorZ < 0.5) return null;
   const rest = s.restZ;
   const floor = s.floorZ;
+  const written = exact && s.support && !s.nest ? floor + s.support : null;
   const cb = s.clampBox;
   const R = s.orient;
   const t = s.offset;
@@ -801,7 +802,8 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid): SetupInfo['cales'] 
     });
     const z = v === null ? rest : R[6 + a] * v + t[2];
     const near = free ? z < rest + 3 : Math.abs(z - rest) <= tol + 0.5;
-    return { y: [y0, y0 + w] as [number, number], top: near ? Math.max(floor, z) : rest };
+    // CAM AI's own program: parallels exactly as tall as its note, on its G52 floor (never up to the part).
+    return { y: [y0, y0 + w] as [number, number], top: written ?? (near ? Math.max(floor, z) : rest) };
   });
 }
 

@@ -162,6 +162,26 @@ describe('setups', () => {
     setups.forEach((s, i) => expect(s.floorZ! + g52z[i]).toBeCloseTo(-57, 5));
   });
 
+  it("draws CAM AI's parallels exactly as tall as written, never up to the part over them", () => {
+    // The owner saw 38 mm parallels drawn as tall as the jaws. CAM AI's own program: the parallels stand on its
+    // G52 floor, as tall as the note says, whatever the reader makes of the part above them.
+    const marked = (g52z: string) =>
+      program(10)
+        .replace('O1999213 ', 'O1999213\n(3D-MODELL)\n')
+        .replace('G52 X-23. Y28. Z10.', 'G52 X-23. Y28. Z11.')
+        .replace('M0 (TEIL 180 GRAD UM Y DREHEN/49 IN X UND 40 IN Y)', 'M0 (TEIL 180 GRAD UM Y DREHEN/49 IN X UND 40 IN Y/Z+ IN 4MM)')
+        .replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (38 MM UNTERLAGE)')
+        .replace('G52 X-25.5 Y30. Z-4.', `G52 X-25.5 Y30. Z${g52z}`);
+    for (const z of ['7.', '11.', '20.']) {
+      for (const s of analyseProgram(parseToolpath(marked(z), S), { jawHeight: 45 }).setups) {
+        expect(s.support).toBe(38);
+        expect(s.cales?.length).toBeGreaterThan(0);
+        for (const c of s.cales!) expect(c.top - s.floorZ!).toBeCloseTo(38, 6);
+        expect(s.jawTopZ! - s.floorZ!).toBeCloseTo(45, 6);
+      }
+    }
+  });
+
   it("stands a later clamping of CAM AI's own program where its G52 and parallels put it, even 1 mm from the facing guess", () => {
     // The study (docs/knowledge/cam-part-study.md, E2): the facing guess stood a part 1.04 mm too high in a later
     // clamping, so the 3D view showed every floor there 1 mm too deep. An engineers' G52 keeps 1.5 mm of tolerance.
