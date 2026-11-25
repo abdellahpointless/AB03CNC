@@ -6,6 +6,33 @@ import type { Release } from '../whatsNew';
  */
 export const CAM_RELEASES: Release[] = [
   {
+    id: '2026-11-25-cam-beta2',
+    date: '2026-11-25',
+    feature: 'lab',
+    en: {
+      title: 'CAM AI Beta 2: the blank side by side, the clamping editor, a clearer simulation',
+      items: [
+        'The blank is typed side by side (X-, X+, Y-, Y+, Z-, Z+) round a drawing of the part, and shown in 3D before the program is made.',
+        'Clamping 1 in the vise: the wheel changes the parallels (Ctrl + wheel zooms), the arrows slide the part and open the jaws; the faces held show green. Later clampings take their parallels from their panel, and open the simulation where they start.',
+        'A program whose part comes out bigger than the model (stock left where clampings meet) stays locked and says why.',
+        'Tools show their Ø and length; a right click on a path or a tool changes the tool; removed operations stay faded in the view.',
+        'Measuring before a program is made; in the simulation: the tool at work highlighted, NX view, weak spots, X-ray section.',
+        'Drilled holes are no longer milled again, no chamfer where the model has none, each place finished before the next, STEP files read faster.',
+      ],
+    },
+    tr: {
+      title: 'CAM AI Beta 2: taraf taraf ham blok, bağlama düzenleyici, daha açık simülasyon',
+      items: [
+        'Ham blok taraf taraf girilir (X-, X+, Y-, Y+, Z-, Z+), parçanın çiziminin çevresinde; program yapılmadan 3B olarak gösterilir.',
+        'Mengenede 1. bağlama: tekerlek paralelleri değiştirir (Ctrl + tekerlek yakınlaştırır), oklar parçayı kaydırır ve çeneleri açar; tutulan yüzler yeşil görünür. Sonraki bağlamaların paralelleri kendi panellerinden seçilir, simülasyon o bağlamadan açılır.',
+        'Parçası modelden büyük çıkan program (bağlamaların buluştuğu yerde kalan ham) kilitli kalır ve nedenini söyler.',
+        'Takımlar Ø ve boylarını gösterir; bir yola veya takıma sağ tık takımı değiştirir; kaldırılan işlemler görünümde soluk kalır.',
+        'Program yapılmadan ölçme; simülasyonda: çalışan takım vurgulu, NX görünümü, zayıf noktalar, X-ışını kesiti.',
+        'Delinen delikler tekrar frezelenmez, modelde pah yoksa pah kırılmaz, her yer bitirilip sonrakine geçilir, STEP dosyaları daha hızlı okunur.',
+      ],
+    },
+  },
+  {
     id: '2026-11-23-cam-white',
     date: '2026-11-23',
     feature: 'lab',
