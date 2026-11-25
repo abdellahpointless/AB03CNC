@@ -927,13 +927,14 @@ function extent(r: Region): { lo: P2; hi: P2 } | null {
  * parallels under it, the stop at its left. The jaws close on the widest material between the
  * part's bottom and their top; vise 1 holds it from the stop for 142 mm, vise 2 from 192 to 342.
  */
-function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean): { contact: Contact; width: number } {
+function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, spacerX = 0): { contact: Contact; width: number } {
   const band = left.at(bottom, bottom + grip);
   const e = extent(band);
   if (!e) return { contact: { jaws: 0, rest: [0, 0], stop: false }, width: 0 };
   // As thick as the simulation's grid steps: a flat face on the grid is a staircase that fine.
   const strip = Math.max(0.3, left.skin);
-  const x0 = e.lo[0];
+  // The vise and its parallels start at the stop: past a spacer there (Beta 2), that much left of the part.
+  const x0 = e.lo[0] - spacerX;
   const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap - 8, x0 + VISE.width + VISE.gap - 8 + len] as [number, number]] : [])];
   const along = (r: Region, y0: number, y1: number, len: number) => spans(len).reduce((t, [a, b]) => t + area(intersection(r, rect(a, y0, b, y1))) / (y1 - y0), 0);
   const jaws = Math.min(along(band, e.lo[1], e.lo[1] + strip, VISE.width - 8), along(band, e.hi[1] - strip, e.hi[1], VISE.width - 8));
@@ -941,7 +942,8 @@ function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean):
   const w = Math.min(6, width / 6);
   const floor = left.at(bottom, bottom + strip);
   const rest: [number, number] = [along(floor, e.lo[1], e.lo[1] + w, PARALLEL_LENGTH), along(floor, e.hi[1] - w, e.hi[1], PARALLEL_LENGTH)];
-  const stop = area(intersection(band, rect(x0, e.lo[1], x0 + strip, e.hi[1]))) > 0.01;
+  // The part's own face against the stop (or the spacer there).
+  const stop = area(intersection(band, rect(e.lo[0], e.lo[1], e.lo[0] + strip, e.hi[1]))) > 0.01;
   return { contact: { jaws, rest, stop }, width };
 }
 
@@ -2300,9 +2302,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const squeeze = input.partType === 'topPlate' || input.partType === 'contourInsert' || input.partType === 'sealCage' ? SQUEEZE.precise : SQUEEZE.normal;
     let contact: Contact | null = null;
     const physicsAt = (g: number) => {
-      const c = contactOf(left, sb.lo[2], g, twoVises);
+      const c = contactOf(left, sb.lo[2], g, twoVises, spacerX);
       contact = c.contact;
-      const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], c.width || hold[1], limits));
+      // How far from the stop each cut works (the parallels' end): past a spacer, that much further.
+      const loads = ops.map((op) => loadOf(op, mat, sb.lo[0] - spacerX, c.width || hold[1], limits));
       return checkSetup({ material: mat, length: hold[0], width: c.width || hold[1], height: stockH, grip: g, thin, contact: c.contact, loads, squeeze });
     };
     const nest = nested ? nestFor(held.lo, held.hi, sb.lo[2], nestDepth) : undefined;
@@ -2344,8 +2347,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         .filter(({ p }) => !p.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact'))
         .sort((a, b) => b.p.feed - a.p.feed || b.g - a.g)[0];
       if (best) {
-        const width = contactOf(left, sb.lo[2], best.g, twoVises).width || hold[1];
-        const loads = ops.map((op) => loadOf(op, mat, sb.lo[0], width, limits).side);
+        const width = contactOf(left, sb.lo[2], best.g, twoVises, spacerX).width || hold[1];
+        const loads = ops.map((op) => loadOf(op, mat, sb.lo[0] - spacerX, width, limits).side);
         const worst = ops[loads.indexOf(Math.max(...loads))];
         const d = worst && (worst.kind === 'pocket' || worst.kind === 'finish') ? worst.tool.diameter : 0;
         const lighter = d ? lighterMill(allMills.map((m) => m.diameter), d, best.p.feed) : undefined;

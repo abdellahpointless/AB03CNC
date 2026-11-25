@@ -563,6 +563,21 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(odd.notes).toContainEqual({ key: 'stopRefused', setup: 1, cale: 20 });
   }, 300_000);
 
+  it('holds a long part 50 mm off the stop on what the parallels and the jaws really reach there', () => {
+    // 120 x 40 x 12, a pocket in the middle; the 125 mm parallels start at the stop: 75 mm of it rests on them.
+    const long = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 120 }, (_, i) => (i >= 40 && i < 80 && j >= 12 && j < 28 ? 6 : 12))));
+    const at = { tris: long, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [0, 2, 5] as [number, number, number], hi: [0, 2, 2] as [number, number, number] } };
+    const own = camProgram(at);
+    const r = camProgram({ ...at, stops: [50] });
+    expect(r.code).toContain('50 MM ZWISCHENLAGE IN X-');
+    expect(own.setups[0].contact!.rest[0]).toBeGreaterThan(115);
+    expect(r.setups[0].contact!.rest[0]).toBeGreaterThan(70);
+    expect(r.setups[0].contact!.rest[0]).toBeLessThan(80);
+    expect(r.setups[0].contact!.stop).toBe(true);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
   it('never uses parallels that cannot hold the part, nor none until the shop says what it rests on: it says so', () => {
     // Clamping 2 holds about 17 mm: 25 mm parallels would leave the jaws gripping 20 mm, all of it.
     const r = camProgram({ ...base, clamps: [0, 25] });
