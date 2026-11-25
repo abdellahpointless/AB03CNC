@@ -139,8 +139,6 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [run, setRun] = useState<Run>({ state: 'idle' });
   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
   const [viewing, setViewing] = useState<false | 'play' | 'weak' | 'nx'>(false);
-  // The clamping the simulation opens at (a later clamping's panel: what it holds).
-  const [viewAt, setViewAt] = useState<number | undefined>();
   const worker = useRef<Worker | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
@@ -378,8 +376,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const [measuring, setMeasuring] = useState(false);
   // A tool picked in a made program: the simulation at its first move in that clamping (a new pick asks again).
   const focusSeq = useRef(0);
+  // Or a later clamping picked: the part as the clampings before left it, the finished part over it (you, Beta 2).
   const focusTool = useMemo(() => {
-    if (run.state !== 'done' || sel.kind !== 'tool') return null;
+    if (run.state !== 'done') return null;
+    if (sel.kind === 'setup' && sel.i > 0 && run.result.setups[sel.i]) return { setup: sel.i, key: ++focusSeq.current };
+    if (sel.kind !== 'tool') return null;
     const op = run.result.setups[sel.i]?.ops.find((o) => o.code === sel.code);
     return op ? { setup: sel.i, tool: op.tool, key: ++focusSeq.current } : null;
   }, [run, sel]);
@@ -848,7 +849,6 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     n={sel.i + 1}
                     made={result.setups[sel.i]}
                     asked={later[sel.i]}
-                    onSee={() => { setViewAt(sel.i); setViewing('play'); }}
                     onAsk={(v) => setLater((l) => {
                       // The clampings after this one hold what it leaves: their choices go.
                       const next: Record<number, number> = {};
@@ -970,7 +970,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 
       {viewing && result && model && (
         <Suspense fallback={null}>
-          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => { setViewing(false); setViewAt(undefined); }} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} atSetup={viewAt} />
+          <ToolpathViewer code={result.code} title={fileName} brand={machine?.brand} onClose={() => setViewing(false)} initialModel={model} noRecord start={viewing === 'play' ? undefined : viewing} />
         </Suspense>
       )}
     </div>
@@ -1170,7 +1170,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
 }
 
 /** A later clamping's parallels, on the program made (what it holds is what the clampings before left): for the next time it is made. */
-function LaterClampPanel({ n, made, asked, onAsk, onSee }: { n: number; made: CamSummary['setups'][number]; asked: number | undefined; onAsk: (v: number | null) => void; onSee: () => void }) {
+function LaterClampPanel({ n, made, asked, onAsk }: { n: number; made: CamSummary['setups'][number]; asked: number | undefined; onAsk: (v: number | null) => void }) {
   const { t } = useTranslation('cam');
   const steps = [0, ...[...made.cales].sort((p, q) => p - q)];
   const now = asked ?? made.cale;
@@ -1196,7 +1196,6 @@ function LaterClampPanel({ n, made, asked, onAsk, onSee }: { n: number; made: Ca
         </p>
       )}
       {asked === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
-      <button type="button" onClick={onSee} className="btn-secondary text-xs min-h-11 px-3 flex items-center gap-1.5"><Play size={13} aria-hidden />{t('camAi.clamp1.see', { n })}</button>
       <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.laterHint')}</p>
     </section>
   );

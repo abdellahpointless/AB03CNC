@@ -78,7 +78,6 @@ export default function ToolpathViewer({
   onTurnsFound,
   noRecord = false,
   start,
-  atSetup,
   embedded = false,
   focusTool = null,
 }: {
@@ -99,12 +98,10 @@ export default function ToolpathViewer({
   noRecord?: boolean;
   /** Opened straight on the weak spots (the finished part coloured) or the NX view. */
   start?: 'weak' | 'nx';
-  /** Opens at the start of this setup (0: the first), as the part stands when it is clamped. */
-  atSetup?: number;
   /** Drawn in its parent's place (no backdrop, its own panel closed): a page that shows it beside its own panel. */
   embedded?: boolean;
-  /** A tool to show at work (its first move in that setup, paused): its path, what it removes; `key` asks again. */
-  focusTool?: { setup: number; tool: number; key: number } | null;
+  /** A tool to show at work (its first move in that setup, paused), or a setup as it starts (no tool); `key` asks again. */
+  focusTool?: { setup: number; tool?: number; key: number } | null;
 }) {
   const { t } = useT('remapper');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -203,19 +200,10 @@ export default function ToolpathViewer({
     setHeat(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Opened on a setup: the part as the setups before left it.
-  const atDone = useRef(false);
-  useEffect(() => {
-    const s = atSetup ? setups[atSetup] : undefined;
-    if (atDone.current || !s?.moves) return;
-    atDone.current = true;
-    jumpFlip(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setups]);
   // A tool asked for by the page: the simulation at its first move in that setup, paused (Play goes on from there).
   useEffect(() => {
     if (!focusTool) return;
-    const k = path.moves.findIndex((m) => m.setup === focusTool.setup && m.tool === focusTool.tool);
+    const k = path.moves.findIndex((m) => m.setup === focusTool.setup && (focusTool.tool === undefined || m.tool === focusTool.tool));
     if (k < 0) return;
     setPlaying(false);
     seek(k + 1);

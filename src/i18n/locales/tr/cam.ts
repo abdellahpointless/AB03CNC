@@ -118,7 +118,6 @@ const cam: Translation<typeof en> = {
       laterStop: 'Bir sonraki hazırlamada: dayamada {{mm}} mm ara parça.',
       laterStopNone: 'Bir sonraki hazırlamada: dayamada ara parça yok.',
       laterHint: 'Bu bağlama öncekilerin bıraktığını tutar: paralellerini burada seçin, sonra yeniden hazırlayın. Önceki bir bağlamadaki değişiklik bu seçimi siler.',
-      see: '{{n}}. bağlamanın tuttuğunu gör (simülasyon)',
     },
     stock: {
       auto: 'Otomatik ham (+4, +4, +7 mm)',

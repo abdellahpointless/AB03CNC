@@ -115,7 +115,6 @@ const cam = {
       laterStop: 'Next time it is made: a {{mm}} mm spacer at the stop.',
       laterStopNone: 'Next time it is made: no spacer at the stop.',
       laterHint: 'This clamping holds what the ones before it left: choose its parallels here, then Make it again. A change to an earlier clamping clears this choice.',
-      see: 'See what clamping {{n}} holds (simulation)',
     },
     stock: {
       auto: 'Auto stock (+4, +4, +7 mm)',
