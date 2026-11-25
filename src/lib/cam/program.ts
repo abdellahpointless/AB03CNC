@@ -1313,7 +1313,8 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  */
 export function editProgram(input: CamInput, r: CamResult, edits: Record<string, OpEdit>): CamResult & { check: CamCheck } {
   // A tool changed by hand gets a T number nothing else in the program uses (from 99 down) and a code no inventory has
-  // ("HAND_..."): only the remapper can give it a machine tool, never Download by mistake.
+  // (the shop's pattern, so the remapper reads its type, Ø and length, ending "_HAND"): only the remapper gives it a
+  // machine tool, never Download by mistake.
   const used = new Set(r.setups.flatMap((s) => s.ops.map((o) => o.tool.number)));
   const free = () => {
     let n = 99;
@@ -1345,7 +1346,7 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
       const k2 = Math.min(op.tool.diameter / e.tool.d, maxRpm / Math.max(1, op.cut.s));
       const kf = Math.min(1, k2);
       const s2 = Math.max(100, Math.round((op.cut.s * k2) / 50) * 50);
-      const tool: CamTool = { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `HAND_${op.tool.type}_${e.tool.d}_${e.tool.l}`, inMachine: false, template: null };
+      const tool: CamTool = { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `${op.tool.type}_${e.tool.d.toFixed(2).padStart(5, '0')}_${String(Math.round(e.tool.l)).padStart(3, '0')}_000_HAND`, inMachine: false, template: null };
       // The made step-down and step-over on a smaller tool: more than its Ø is too much for it (the program locks).
       const unsafe = !!op.cut.unsafe || (op.kind !== 'drill' && op.kind !== 'centre' && (moved.cut.ap > e.tool.d || op.cut.ae > e.tool.d));
       return { ...moved, tool, lines: scaleSpeeds(lines, k2, kf), cut: { ...moved.cut, s: s2, f: Math.round(op.cut.f * kf), fz: Math.round(op.cut.fz * kf), unsafe } };

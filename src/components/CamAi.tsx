@@ -224,6 +224,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     setPickNote('');
     setTotals(['', '', '']);
     setClamp1(null);
+    setStop1(0);
     setLater({});
     setJaw({ open: 0, slide: 0 });
     setLive(NO_LIVE);
@@ -370,6 +371,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
     // Parallels chosen for another way of lying are not for this one.
     if (i !== layout) {
       setClamp1(null);
+      setStop1(0);
       setLater({});
     }
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
@@ -403,7 +405,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // A part changed by hand may be accepted as it is (the tick), never what could hit the machine (safe()).
   const handEdited = Object.keys(opEdits).length > 0;
   // A tool changed by hand has no machine number: only the remapper gives it one (Send), never Download.
-  const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.startsWith('HAND_')));
+  const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.endsWith('_HAND')));
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).

@@ -56,7 +56,8 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     const op = r.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
     const was = made.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
     expect(op.tool.diameter).toBe(10);
-    expect(op.tool.code.startsWith('HAND_')).toBe(true);
+    // The shop's pattern (the remapper reads the type, Ø and length from it), no inventory's ending.
+    expect(op.tool.code).toBe('SF_10.00_040_000_HAND');
     expect(op.tool.inMachine).toBe(false);
     expect(r.setups.flatMap((s) => s.ops).filter((o) => o !== op).map((o) => o.tool.number)).not.toContain(op.tool.number);
     expect(r.code).toContain('(DIAMETER 10.00 MM/LENGTH 40.00 MM)');
