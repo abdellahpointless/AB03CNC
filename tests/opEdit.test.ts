@@ -30,6 +30,7 @@ describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', ()
 });
 
 import { camProgram, editProgram } from '../src/lib/cam/program';
+import { catalog } from '../src/lib/cam/tools';
 import { heightPart } from './heightPart';
 
 describe('a tool changed by hand on one operation (you, Beta 2: item 11)', () => {
@@ -72,6 +73,20 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     expect(r.setups.flatMap((s) => s.ops).filter((o) => o !== op).map((o) => o.tool.number)).not.toContain(op.tool.number);
     expect(r.code).toContain('(DIAMETER 10.00 MM/LENGTH 40.00 MM)');
     expect(op.cut.s).toBe(Math.round((was.cut.s * 0.8) / 50) * 50);
+  }, 300_000);
+
+  it('swaps in any tool of the shop by its code, even another kind: its own code, type and size on the same path (item 6)', () => {
+    const was = made.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    const other = catalog('ALU', []).find((x) => x.type !== was.tool.type && x.diameter <= 8 && x.length >= 30)!;
+    const r = editProgram(input, made, { [POCKET]: { tool: { d: other.diameter, l: other.length, code: other.code } } });
+    const op = r.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!;
+    expect(op.tool.code).toBe(other.code);
+    expect(op.tool.type).toBe(other.type);
+    expect(op.tool.diameter).toBe(other.diameter);
+    expect(op.lines.filter((l) => !/[SF]\d/.test(l))).toEqual(was.lines.filter((l) => !/[SF]\d/.test(l)));
+    expect(r.setups.flatMap((s) => s.ops).filter((o) => o.tool.code !== other.code).map((o) => o.tool.number)).not.toContain(op.tool.number);
+    // A code the shop has no tool for is refused, never planned.
+    expect(() => editProgram(input, made, { [POCKET]: { tool: { d: 8, l: 40, code: 'NOPE_08.00_040_000_X' } } })).toThrow();
   }, 300_000);
 
   it('catches a bigger tool on a path made for a smaller one (the outline’s Ø16 swapped for a Ø20)', () => {

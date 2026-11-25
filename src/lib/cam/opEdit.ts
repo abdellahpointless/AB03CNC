@@ -10,8 +10,9 @@ export interface OpEdit {
   dz?: number;
   /** Down this much more where the operation goes deepest (mm; negative: less deep). */
   deeper?: number;
-  /** Another tool for this operation (Ø and length, mm): its path as it was, its speeds scaled (scaleSpeeds). */
-  tool?: { d: number; l: number };
+  /** Another tool for this operation (Ø and length, mm): its path as it was, its speeds scaled (scaleSpeeds). With a
+   * code: that tool of the shop (machine or tool database), whatever its kind; without one, a size typed by hand. */
+  tool?: { d: number; l: number; code?: string };
 }
 
 /** Spindle (S) times k and feeds (F) times kf (k < 1: slower, for a bigger Ø at the same surface speed and the same feed a turn). */

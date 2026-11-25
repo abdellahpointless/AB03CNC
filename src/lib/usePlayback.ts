@@ -83,7 +83,8 @@ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRe
         return;
       }
       // The tool glides: the share of the move in progress, on every frame.
-      const pos = k >= end ? end : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
+      // Stopped short of the program's end: just before the next move, so the tool shown is still the one played.
+      const pos = k >= end ? (end < total ? end - 1e-3 : end) : k + Math.min(1, Math.max(0, (sim - (k > 0 ? timeline[k - 1] : 0)) / (path.moves[k].seconds || 1)));
       clock.current = pos;
       // The panels (current line, time) at ~15 updates a second: they do not need more.
       if (now - shownAt > 66 || k >= end) {

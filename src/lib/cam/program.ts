@@ -1373,6 +1373,13 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     return n;
   };
   const maxRpm = input.limits?.maxRpm ?? DEFAULT_LIMITS.maxRpm;
+  // A tool of the shop picked by its code: in the machine or the tool database, else refused.
+  const shelf = Object.values(edits).some((e) => e.tool?.code) ? catalog(input.material, input.tools, { toolDb: input.toolDb }) : [];
+  const shopTool = (code: string) => {
+    const x = shelf.find((c) => c.code === code);
+    if (!x) throw new Error('An edit by hand out of range.');
+    return x;
+  };
   // Only sizes a hand would type: anything else is refused, never planned.
   for (const e of Object.values(edits)) {
     const ok = [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) && (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400));
@@ -1388,14 +1395,19 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
       const lines = editOpLines(op.lines, e);
       // Its last pass that much deeper: what the vise check loads it with.
       const moved = { ...op, lines, cut: { ...op.cut, ap: op.cut.ap + Math.max(0, e.deeper ?? 0) } };
-      if (!e.tool || (e.tool.d === op.tool.diameter && e.tool.l === op.tool.length)) return moved;
+      const pick = e.tool?.code ? shopTool(e.tool.code) : null;
+      if (!e.tool || (pick ? pick.code === op.tool.code : e.tool.d === op.tool.diameter && e.tool.l === op.tool.length)) return moved;
+      const d = pick ? pick.diameter : e.tool.d;
       // The same surface speed as the tool it replaces, never over the machine's top rpm; the feed never over the made one.
-      const k2 = Math.min(op.tool.diameter / e.tool.d, maxRpm / Math.max(1, op.cut.s));
+      const k2 = Math.min(op.tool.diameter / d, maxRpm / Math.max(1, op.cut.s));
       const kf = Math.min(1, k2);
       const s2 = Math.max(100, Math.round((op.cut.s * k2) / 50) * 50);
-      const tool: CamTool = { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `${op.tool.type}_${e.tool.d.toFixed(2).padStart(5, '0')}_${String(Math.round(e.tool.l)).padStart(3, '0')}_000_HAND`, inMachine: false, template: null };
+      // The shop's tool keeps its own number in the machine; one from the database gets one nothing else in the program uses.
+      const tool: CamTool = pick
+        ? { ...pick, number: pick.inMachine ? pick.number : free() }
+        : { ...op.tool, id: `hand-${e.tool.d}-${e.tool.l}`, number: free(), diameter: e.tool.d, length: e.tool.l, code: `${op.tool.type}_${e.tool.d.toFixed(2).padStart(5, '0')}_${String(Math.round(e.tool.l)).padStart(3, '0')}_000_HAND`, inMachine: false, template: null };
       // The made step-down and step-over on a smaller tool: more than its Ø is too much for it (the program locks).
-      const unsafe = !!op.cut.unsafe || (op.kind !== 'drill' && op.kind !== 'centre' && (moved.cut.ap > e.tool.d || op.cut.ae > e.tool.d));
+      const unsafe = !!op.cut.unsafe || (op.kind !== 'drill' && op.kind !== 'centre' && (moved.cut.ap > d || op.cut.ae > d));
       return { ...moved, tool, lines: scaleSpeeds(lines, k2, kf), cut: { ...moved.cut, s: s2, f: Math.round(op.cut.f * kf), fz: Math.round(op.cut.fz * kf), unsafe } };
     });
     if (!touched || !s.vise) return touched ? { ...s, ops } : s;
