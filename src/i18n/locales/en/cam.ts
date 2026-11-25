@@ -31,6 +31,7 @@ const cam = {
         stock: 'Next: check the stock sizes.',
         machine: 'Next: choose a machine that has tools in its inventory (Part).',
         material: 'Next: choose the material’s templates (Part).',
+        clamp: 'Next: clamping 1’s parallels cannot hold the part: choose others (Setup 1).',
       },
     },
     setupSteps: 'Setups, one after the other',

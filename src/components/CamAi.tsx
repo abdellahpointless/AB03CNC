@@ -368,7 +368,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
-  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : null;
+  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
   // A setup picked again after a program was made: that program is no longer the one shown.
   const unlock = (k: 0 | 1) => {
     if (k === 0) {
