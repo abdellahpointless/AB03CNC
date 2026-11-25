@@ -1,0 +1,290 @@
+{
+  "version": "1.0",
+  "project_name": "CNC Process Pro",
+  "created": "2026-11-25T17:00:00Z",
+  "last_updated": "2026-11-25T17:00:00Z",
+  "next_id": 15,
+  "assumptions": [
+    {
+      "id": "A001",
+      "title": "Parallels at their own height",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Every parallel is drawn and checked at exactly its nominal height; the part rests where it physically would (on the parallels, on the jaw tops by a flange, or on the table) and its hitbox is checked.",
+      "source": "Owner, item 1 (38 mm parallel drawn above the 45 mm jaws)",
+      "validated": "2026-11-25",
+      "context": "CAM AI clampings and simulation",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A002",
+      "title": "Shape after each operation",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The part's outer envelope (holes filled) after every operation is shown per operation and is the hitbox the jaws, parallels and stop touch in the clamping checks.",
+      "source": "Owner, item 2; answer: show it and use as hitbox",
+      "validated": "2026-11-25",
+      "context": "CAM AI planning and checks",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A003",
+      "title": "Adjust per clamping",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Each clamping has an Adjust toggle with explicit settings: parallels height, Y-, Y+ and X- spacers, side up and turn, previewed live in 3D; the scroll-wheel editing goes.",
+      "source": "Owner, items 3, 8, 12; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI clamping editor",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A004",
+      "title": "One tool at a time",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Picking a tool (list, or its path in 3D, highlighted on hover) shows only its path; its row then shows Play (only that tool), Settings and Delete (confirmation; removes its toolpath and tool change).",
+      "source": "Owner, items 4, 5, 10, 11; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI tool list and simulation",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A005",
+      "title": "Free tool swap",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Any machine, database or typed tool can replace another; a shape difference only warns; export is blocked only by holder or jaw hits, with CAM AI's choice offered.",
+      "source": "Owner, item 6; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI tool edits",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A006",
+      "title": "Make again / Undo",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "After any change a small bar offers Make again and Undo.",
+      "source": "Owner, item 7; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI edits",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A007",
+      "title": "No 2D view in CAM AI",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "CAM AI's simulation has no 2D view; the remapper's viewer keeps its own.",
+      "source": "Owner, item 9; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI simulation",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A008",
+      "title": "Tool database fields",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Each tool has an editable type, a role (roughing, finishing or both) and an on/off switch; a program remembers the database tools it used and asks to be made again when one changed.",
+      "source": "Owner, item 14; confirmed",
+      "validated": "2026-11-25",
+      "context": "Tool database",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A009",
+      "title": "Tool choice order",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Machine tools first, then the database; with neither, the nearest tool, its operation flagged temporary; export stays allowed with a warning.",
+      "source": "Owner, item 15; answer: allow with a warning",
+      "validated": "2026-11-25",
+      "context": "CAM AI planner",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A010",
+      "title": "Import shows the part",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The import dialog shows the 3D part beside the choices.",
+      "source": "Owner, item 16; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI new program",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A011",
+      "title": "Measure to the vise",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Measuring snaps to the vise bed and the jaw faces as planes.",
+      "source": "Owner, item 17; confirmed",
+      "validated": "2026-11-25",
+      "context": "CAM AI measuring",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A012",
+      "title": "The shop vise",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Haas HMV-6F: jaws 125 mm long and 45 mm high, checked from the stop face (X = 0) along those 125 mm only; stop 8 mm thick before them.",
+      "source": "Owner, earlier in the session",
+      "validated": "2026-11-25",
+      "context": "All checks and 3D views",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A013",
+      "title": "CAM AI scope",
+      "type": "inferred",
+      "tier": "WORKING",
+      "assumption": "These 17 items change CAM AI only; the remapper's toolpath viewer stays as it is unless asked.",
+      "source": "Wording of the request (CAM AI screens)",
+      "validated": "2026-11-25",
+      "context": "All items",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "WORKING",
+          "reason": "Inferred from the request"
+        }
+      ]
+    },
+    {
+      "id": "A014",
+      "title": "Deploy rule",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Nothing is deployed unless the owner says deploy.",
+      "source": "CLAUDE.md standing rule",
+      "validated": "2026-11-25",
+      "context": "Every change",
+      "created": "2026-11-25T17:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-25T17:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
+        }
+      ]
+    }
+  ],
+  "archived": []
+}
