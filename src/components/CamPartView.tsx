@@ -8,7 +8,7 @@ import { SIDES } from '../lib/cam/features';
 import type { Mat3 } from '../lib/orient';
 import type { Purpose } from '../lib/cam/program';
 import { fmtNumber } from '../i18n/format';
-import { buildParallels, buildVise } from '../lib/vise3d';
+import { buildParallels, buildVise, JAW_TOPS, PLANE_EPS } from '../lib/vise3d';
 import { jawsFrom, parallelWidth, VISE, viseSpans } from '../lib/setups';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { JAW } from '../lib/cam/clamp';
@@ -254,6 +254,8 @@ type Api = {
   vise: THREE.Group;
   /** The vise's bed, jaw faces and stop face as planes to measure to (clamp mode; in the part's frame, not drawn). */
   planes: THREE.Mesh[];
+  /** What hides the part from a measuring click in the clamp: the vise and the parallels (not the contact marks). */
+  blockers: THREE.Object3D[];
   frame: (radius: number) => void;
 };
 
@@ -391,7 +393,7 @@ export default function CamPartView({
     controls.target.set(0, 0, 0);
     controls.update();
 
-    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null, vise, planes: [],
+    const a: Api = { invalidate, world, part, faces, keyOf, pos, size, ext: box.getSize(new THREE.Vector3()), hover: null, marks, stock, paths, ghosts: ghostPaths, walls, patches: wallPatches(pos, [R[6], R[7], R[8]]), camera, afterRender: null, vise, planes: [], blockers: [],
       frame: (r) => controls.flyTo(camera.position.clone().normalize().multiplyScalar(r * 2.6), new THREE.Vector3(), camera.up.clone(), 450) };
     api.current = a;
 
@@ -630,6 +632,11 @@ export default function CamPartView({
       invalidate: a.invalidate,
       setAfterRender: (f) => (a.afterRender = f),
       parts: () => [a.part, ...a.planes],
+      blockers: () => {
+        const held: THREE.Object3D[] = [];
+        for (const b of a.blockers) b.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
+        return held;
+      },
       holeAt: (_p, hit) => (hit.object === a.part ? holeOfMesh(a.pos, hit.faceIndex ?? 0) : null),
       mode: () => measureRef.current?.mode ?? 'faces',
       onMeasure: (m) => measureRef.current?.onMeasure(m),
@@ -679,11 +686,8 @@ export default function CamPartView({
     a.vise.clear();
     a.vise.position.set(0, 0, 0);
     if (!clamp || !blank) {
-      for (const m of a.planes) {
-        a.world.remove(m);
-        m.geometry.dispose();
-      }
       a.planes = [];
+      a.blockers = [];
       a.invalidate();
       return;
     }
@@ -718,8 +722,9 @@ export default function CamPartView({
     const bars = (top: number): { y: [number, number]; top: number }[] => [{ y: [lo[1], lo[1] + w], top }, { y: [hi[1] - w, hi[1]], top }];
     // The parallels and contacts stay with the part, not the vise body.
     const put = (o: THREE.Object3D) => a.vise.add(o);
+    let parallels: THREE.Group | null = null;
     if (clamp.cale > 0) {
-      const p = buildParallels(runs, PARALLEL_LENGTH, bars(lo[2]), floorZ, `${fmtNumber(clamp.cale, 0)} MM`);
+      const p = (parallels = buildParallels(runs, PARALLEL_LENGTH, bars(lo[2]), floorZ, `${fmtNumber(clamp.cale, 0)} MM`));
       // Parallels that cannot hold the part: yellow.
       if (clamp.bad) p.traverse((o) => { const m = (o as THREE.Mesh).material; for (const x of m ? (Array.isArray(m) ? m : [m]) : []) if ('color' in x) (x as THREE.MeshStandardMaterial).color.setHex(0xfacc15); });
       put(p);
@@ -770,31 +775,29 @@ export default function CamPartView({
       anim = requestAnimationFrame(step);
     }
     // What a measure takes as planes (item 17): the bed between the jaws, both jaw faces and tops, the stop's face. Quads in
-    // the vise's frame, brought into the part's (the measure's root), raycast but not drawn.
-    for (const m of a.planes) {
-      a.world.remove(m);
-      m.geometry.dispose();
-    }
-    a.world.updateMatrixWorld(true);
+    // the vise's frame, raycast but not drawn (the measure turns them into the part's frame when picked).
     const xa = spans[0][0];
     const xb = spans[spans.length - 1][1];
     const front = lo[1] - (clamp.y ?? 0);
+    const back = hi[1] + (clamp.yp ?? 0);
+    const e = PLANE_EPS;
     const quad = (p: [number, number, number][]) => {
-      const local = p.map(([x, y, z]) => a.world.worldToLocal(new THREE.Vector3(x, z, -y)));
-      const g = new THREE.BufferGeometry().setFromPoints([local[0], local[1], local[2], local[0], local[2], local[3]]);
-      const m = new THREE.Mesh(g, PLANE);
-      a.world.add(m);
+      const q = p.map(([x, y, z]) => new THREE.Vector3(x, z, -y));
+      const m = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([q[0], q[1], q[2], q[0], q[2], q[3]]), PLANE);
+      a.vise.add(m);
       return m;
     };
+    // Just off each face on its open side, so a click on the drawn face finds its plane before the vise.
     a.planes = [
-      quad([[xa, front, floorZ], [xb, front, floorZ], [xb, hi[1], floorZ], [xa, hi[1], floorZ]]),
-      quad([[xa, front, floorZ], [xa, front, jawTop], [xb, front, jawTop], [xb, front, floorZ]]),
-      quad([[xa, hi[1], floorZ], [xb, hi[1], floorZ], [xb, hi[1], jawTop], [xa, hi[1], jawTop]]),
-      quad([[xa, front, floorZ], [xa, hi[1], floorZ], [xa, hi[1], jawTop], [xa, front, jawTop]]),
-      // The jaw tops (the plates, 18 mm thick): how far the part stands above them.
-      quad([[xa, front - 18, jawTop], [xb, front - 18, jawTop], [xb, front, jawTop], [xa, front, jawTop]]),
-      quad([[xa, hi[1], jawTop], [xb, hi[1], jawTop], [xb, hi[1] + 18, jawTop], [xa, hi[1] + 18, jawTop]]),
+      quad([[xa, front, floorZ + e], [xb, front, floorZ + e], [xb, back, floorZ + e], [xa, back, floorZ + e]]),
+      quad([[xa, front + e, floorZ], [xa, front + e, jawTop], [xb, front + e, jawTop], [xb, front + e, floorZ]]),
+      quad([[xa, back - e, floorZ], [xb, back - e, floorZ], [xb, back - e, jawTop], [xa, back - e, jawTop]]),
+      quad([[xa + e, front, floorZ], [xa + e, back, floorZ], [xa + e, back, jawTop], [xa + e, front, jawTop]]),
+      // The jaw tops (plate and block, flush): how far the part stands above them.
+      quad([[xa, front - JAW_TOPS.moving, jawTop + e], [xb, front - JAW_TOPS.moving, jawTop + e], [xb, front, jawTop + e], [xa, front, jawTop + e]]),
+      quad([[xa, back, jawTop + e], [xb, back, jawTop + e], [xb, back + JAW_TOPS.fixed, jawTop + e], [xa, back + JAW_TOPS.fixed, jawTop + e]]),
     ];
+    a.blockers = [body, ...(parallels ? [parallels] : [])];
     let timer = 0;
     if (clamp.flash !== lastFlash.current) {
       lastFlash.current = clamp.flash;

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { box, buildParallels, buildVise, JAW_TRAVEL, steel, STEEL, STEEL_DARK, v3, VISE_DEPTH } from '../lib/vise3d';
+import { box, buildParallels, buildVise, JAW_TOPS, JAW_TRAVEL, PLANE_EPS, steel, STEEL, STEEL_DARK, v3, VISE_DEPTH } from '../lib/vise3d';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
@@ -1436,21 +1436,24 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const spans = viseSpans(s);
           const [xa, xb] = [spans[0][0], spans[spans.length - 1][1]];
           const [f, j] = [s.floorZ, s.jawTopZ];
-          const front = s.clampBox.min[1] - spacerAt(s, 'Y-');
-          const back = s.clampBox.max[1] + spacerAt(s, 'Y+');
+          // Where the jaws are drawn (buildVise): on the part's real faces, past any spacer.
+          const front = (s.grip?.front ?? s.clampBox.min[1]) - spacerAt(s, 'Y-');
+          const back = (s.grip?.back ?? s.clampBox.max[1]) + spacerAt(s, 'Y+');
           const quad = (q: [number, number, number][]) => {
             const p = q.map((x) => a.solid.worldToLocal(a.world.localToWorld(v3(x))));
             const m = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([p[0], p[1], p[2], p[0], p[2], p[3]]), PLANE);
             rims.add(m);
             return m;
           };
+          // Just off each face on its open side, so a click on the drawn face finds its plane before the vise.
+          const e = PLANE_EPS;
           planes = [
-            quad([[xa, front, f], [xb, front, f], [xb, back, f], [xa, back, f]]),
-            quad([[xa, front, f], [xa, front, j], [xb, front, j], [xb, front, f]]),
-            quad([[xa, back, f], [xb, back, f], [xb, back, j], [xa, back, j]]),
-            quad([[xa, front, f], [xa, back, f], [xa, back, j], [xa, front, j]]),
-            quad([[xa, front - 18, j], [xb, front - 18, j], [xb, front, j], [xa, front, j]]),
-            quad([[xa, back, j], [xb, back, j], [xb, back + 18, j], [xa, back + 18, j]]),
+            quad([[xa, front, f + e], [xb, front, f + e], [xb, back, f + e], [xa, back, f + e]]),
+            quad([[xa, front + e, f], [xa, front + e, j], [xb, front + e, j], [xb, front + e, f]]),
+            quad([[xa, back - e, f], [xb, back - e, f], [xb, back - e, j], [xa, back - e, j]]),
+            quad([[xa + e, front, f], [xa + e, back, f], [xa + e, back, j], [xa + e, front, j]]),
+            quad([[xa, front - JAW_TOPS.moving, j + e], [xb, front - JAW_TOPS.moving, j + e], [xb, front, j + e], [xa, front, j + e]]),
+            quad([[xa, back, j + e], [xb, back, j + e], [xb, back + JAW_TOPS.fixed, j + e], [xa, back + JAW_TOPS.fixed, j + e]]),
           ];
         }
         session = attachMeasure({
@@ -1460,10 +1463,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           invalidate: a.invalidate,
           setAfterRender: (f) => (a.afterRender = f),
           parts: () => [...chunks(), ...planes],
-          // In the clamp: the parallels hide what is behind them, on them only a point is measured; the vise is its planes.
+          // In the clamp: the vise and parallels hide what is behind them; on them only a point is measured, or the
+          // vise's planes (just in front of its faces).
           blockers: () => {
             const held: THREE.Object3D[] = [];
-            if (a.world.visible && !a.seeThrough) (planes.length ? a.cales : a.fixture)?.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
+            if (a.world.visible && !a.seeThrough) a.fixture?.traverse((o) => (o as THREE.Mesh).isMesh && o.visible && held.push(o));
             return held;
           },
           // On the model: the hole is fitted to its facets; on the simulation: the holes the tools plunged.

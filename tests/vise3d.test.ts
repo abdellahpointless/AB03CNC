@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildVise, loadVise, VISE_DEPTH } from '../src/lib/vise3d';
+import { buildVise, JAW_TOPS, loadVise, VISE_DEPTH } from '../src/lib/vise3d';
 import { VISE_FRAME } from '../src/lib/viseModel';
 import { jawsFrom } from '../src/lib/setups';
 
@@ -31,6 +31,10 @@ describe("the shop's vise", () => {
     }
     v.geos.fixedBody.computeBoundingBox();
     near(v.geos.fixedBody.boundingBox!.min.y, -VISE_DEPTH);
+    // How far the jaw tops reach from the jaw faces (the measure's planes): the fixed one back, the moving one forward.
+    near(-v.geos.fixedJaw.boundingBox!.min.z, JAW_TOPS.fixed);
+    v.geos.movingPlate.computeBoundingBox();
+    near(v.geos.movingJaw.boundingBox!.max.z - v.geos.movingPlate.boundingBox!.min.z, JAW_TOPS.moving);
     // Its jaws 125 mm long (the model's are 152).
     expect(VISE_FRAME.modelJawLength).toBe(152);
     expect(VISE_FRAME.jawLength).toBe(125);

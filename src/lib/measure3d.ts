@@ -154,8 +154,20 @@ export function attachMeasure(h: MeasureHost): { reset: () => void; stop: () => 
   // A flat face's triangles on the surface (all three corners on it, facing the same way).
   const faceTris = (axis: number, at: number, sign: number, tol: number) => {
     const out: number[] = [];
+    const toRoot = new THREE.Matrix4();
+    const v = new THREE.Vector3();
     for (const c of h.parts()) {
-      const P = c.geometry.getAttribute('position').array as Float32Array;
+      let P = c.geometry.getAttribute('position').array as Float32Array;
+      // Not hanging unturned from root (a vise's measuring plane): its triangles brought into the part's frame.
+      if (!c.matrixWorld.equals(root.matrixWorld)) {
+        toRoot.copy(root.matrixWorld).invert().multiply(c.matrixWorld);
+        const Q = new Float32Array(P.length);
+        for (let i = 0; i < P.length; i += 3) {
+          v.set(P[i], P[i + 1], P[i + 2]).applyMatrix4(toRoot);
+          [Q[i], Q[i + 1], Q[i + 2]] = [v.x, v.y, v.z];
+        }
+        P = Q;
+      }
       for (let i = 0; i < P.length; i += 9) {
         if (Math.abs(P[i + axis] - at) > tol || Math.abs(P[i + 3 + axis] - at) > tol || Math.abs(P[i + 6 + axis] - at) > tol) continue;
         const e1 = [P[i + 3] - P[i], P[i + 4] - P[i + 1], P[i + 5] - P[i + 2]];
@@ -237,8 +249,10 @@ export function attachMeasure(h: MeasureHost): { reset: () => void; stop: () => 
     if (!hit?.face) return;
     if (!parts.includes(hit.object as THREE.Mesh) && h.mode() !== 'points') return h.onMeasure({ kind: 'none' });
     const q = root.worldToLocal(hit.point.clone());
-    // The face's normal in the part's frame (the parts hang from root, unturned).
-    const nrm = hit.face.normal.clone();
+    // The face's normal in the part's frame: the parts hang from root unturned; anything else (a vise's planes) is
+    // turned into it as it stands now.
+    hit.object.updateWorldMatrix(true, false);
+    const nrm = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).transformDirection(root.matrixWorld.clone().invert());
     const f = pick([q.x, q.y, q.z], [nrm.x, nrm.y, nrm.z], hit);
     if (!f) return h.onMeasure({ kind: 'none' });
     const ext = extent();

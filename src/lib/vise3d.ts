@@ -48,6 +48,12 @@ export function steel(min: Vec, max: Vec, finish: { color: number; metalness: nu
 /** How deep the shop's vise reaches under its bed (its body's underside; viseModel.ts, checked by a test). */
 export const VISE_DEPTH = 73;
 
+/** How far the jaws' tops (plate and block, flush at the jaw height) reach back from their faces (viseModel.ts, checked by a test). */
+export const JAW_TOPS = { fixed: 70, moving: 141 } as const;
+
+/** Measuring planes sit this far off the vise's faces, on the open side: a click on a face finds the plane first. */
+export const PLANE_EPS = 0.002;
+
 type VisePart = 'fixedBody' | 'fixedJaw' | 'fixedPlate' | 'movingBody' | 'movingJaw' | 'movingPlate';
 interface ViseMeshes {
   geos: Record<VisePart, THREE.BufferGeometry>;
