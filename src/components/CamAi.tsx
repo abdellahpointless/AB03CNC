@@ -146,7 +146,9 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       : stockMode === 'total'
         ? totals.map((v, k) => Number(v) - chosen.size[k])
         : [0, 1, 2].map((k) => sideValue(k * 2) + sideValue(k * 2 + 1));
-  const excessOk = !!excess && excess.every((v) => Number.isFinite(v) && v >= 0 && v <= 200);
+  // Side by side: each side on its own (a side under 0 would put the blank's face inside the part).
+  const sidesOk = autoStock || stockMode !== 'side' || [0, 1, 2, 3, 4, 5].every((i) => Number.isFinite(sideValue(i)) && sideValue(i) >= 0 && sideValue(i) <= 200);
+  const excessOk = !!excess && sidesOk && excess.every((v) => Number.isFinite(v) && v >= 0 && v <= 200);
   const raw = prep && chosen && excess && excessOk ? (toModelAxes(chosen.R, excess).map((e, k) => prep.size[k] + e) as [number, number, number]) : null;
   // The stock side by side, as the model's sides (the planner's margins), and the blank it makes (model frame, centred on the part).
   const margins = prep && chosen && raw && !autoStock && stockMode === 'side' ? toModelSides(chosen.R, [0, 2, 4].map(sideValue), [1, 3, 5].map(sideValue)) : undefined;
@@ -659,7 +661,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                         {whiteAt >= 0 && <p className="text-[var(--text-tertiary)]">{t('camAi.stock.whiteNone', { side: STOCK_SIDES[whiteAt] })}</p>}
                       </>
                     )}
-                    {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t('camAi.stock.tooSmall')}</p>}
+                    {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t(sidesOk ? 'camAi.stock.tooSmall' : 'camAi.stock.sideRange')}</p>}
                   </fieldset>
                 )}
                 {raw && excess && (

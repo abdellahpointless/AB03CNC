@@ -84,6 +84,7 @@ const cam: Translation<typeof en> = {
       partIn: 'Parça {{x}} × {{y}} × {{z}} mm, 1. bağlamadaki gibi (Z+ yukarı, Y- size doğru)',
       whiteNone: '{{side}} tarafında ham yok: beyaz yüz, hiç alın frezelenmez.',
       tooSmall: 'Ham blok en az parça kadar büyük olmalı (ve eksen başına en fazla 200 mm fazla).',
+      sideRange: 'Her tarafa 0 ile 200 mm arası ham verilir: 0’ın altı ham bloğu parçanın içine sokar.',
       added: '+{{x}} X, +{{y}} Y, +{{z}} Z mm, ortalanmış',
     },
     live: {

@@ -475,6 +475,11 @@ describe('the blank, side by side (you, Beta 2)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
+  it('refuses a blank with a side inside the part (stock under 0 on any side)', () => {
+    const margins = { lo: [-3, 2, 5] as [number, number, number], hi: [5, 2, 2] as [number, number, number] };
+    expect(() => camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, orient: { side: 'Z+', spin: false }, margins })).toThrow(/stock/);
+  });
+
   it('gives the page its own rule for the stock over the top (Auto)', () => {
     expect(blankTop(7)).toBe(2);
     expect(blankTop(5)).toBe(1);

@@ -1525,6 +1525,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const allow = knowledge.allowance ?? [10, 4, 4];
   // The designer's blank: never any stock on a top plate's white face (it is never faced).
   const white = SIDES.find((x) => x.name === input.white);
+  // A side under 0 puts the blank's face inside the part: never planned (the page checks each side too).
+  if (input.margins && ![...input.margins.lo, ...input.margins.hi].every((v) => Number.isFinite(v) && v >= 0 && v <= 200)) throw new Error('The blank: stock on each side must be 0 to 200 mm.');
   const margins = input.margins && {
     lo: input.margins.lo.map((v, k) => (white && white.d[k] < 0 ? 0 : v)) as Vec,
     hi: input.margins.hi.map((v, k) => (white && white.d[k] > 0 ? 0 : v)) as Vec,

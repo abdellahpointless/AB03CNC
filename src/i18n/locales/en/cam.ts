@@ -81,6 +81,7 @@ const cam = {
       partIn: 'Part {{x}} × {{y}} × {{z}} mm, as clamping 1 holds it (Z+ up, Y- toward you)',
       whiteNone: 'No stock on {{side}}: it is the white face, never faced.',
       tooSmall: 'The raw block must be at least as big as the part (and at most 200 mm more per axis).',
+      sideRange: 'Each side takes 0 to 200 mm of stock: none under 0, it would put the blank inside the part.',
       added: '+{{x}} X, +{{y}} Y, +{{z}} Z mm, centred',
     },
     live: {
