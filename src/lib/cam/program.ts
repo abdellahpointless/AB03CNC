@@ -1704,10 +1704,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
     let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : !setups.length && fixed === undefined ? firstPick(stockH, sb.lo[2], H) : caleFor(stockH, fixed ?? want, fixed ?? 3);
     // The designer's parallels (input.clamps): only those the jaws hold the part on (3 mm or more, never all of it, under its top).
     const cales = allowedCales(stockH, sb.lo[2]);
-    const asked = nested ? undefined : input.clamps?.[setups.length] ?? undefined;
+    const asked = input.clamps?.[setups.length] ?? undefined;
+    // In the POM nest the nest holds it: the parallels asked for do not apply (said, not refused).
+    if (nested && asked !== undefined && fixed === undefined) notes.push({ key: 'clampNest', setup: setups.length + 1, cale: asked });
     // Planned again for lighter mills (below), at the designer's grip: still theirs.
-    const theirs = asked !== undefined && asked !== 0 && cales.includes(asked) && (fixed === undefined || fixed === JAW - asked);
-    if (asked !== undefined && !theirs) notes.push({ key: asked === 0 ? 'clampAsk' : 'clampRefused', setup: setups.length + 1, cale: asked });
+    const theirs = !nested && asked !== undefined && asked !== 0 && cales.includes(asked) && (fixed === undefined || fixed === JAW - asked);
+    if (!nested && asked !== undefined && !theirs) notes.push({ key: asked === 0 ? 'clampAsk' : 'clampRefused', setup: setups.length + 1, cale: asked });
     if (theirs && fixed === undefined && pick.cale !== asked) ownCales.set(setups.length, pick.cale);
     if (theirs) {
       pick = { cale: asked, grip: JAW - asked };
