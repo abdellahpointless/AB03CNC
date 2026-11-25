@@ -109,6 +109,14 @@ describe('a program made with the shop’s tool database', () => {
     expect(passes(r)).toBe(true);
   }, 900_000);
 
+  it('never roughs with a tool the database keeps for finishing (item 14); the program still passes', () => {
+    const roughs = (r: ReturnType<typeof camProgram>) => r.setups.flatMap((s) => s.ops).filter((o) => o.kind === 'pocket').map((o) => o.tool.code);
+    const first = roughs(base)[0];
+    const r = camProgram({ ...input, toolDb: { ALU: { [first]: { role: 'finish' } } } });
+    expect(roughs(r)).not.toContain(first);
+    expect(passes(r)).toBe(true);
+  }, 900_000);
+
   it('writes the shop’s feed, and an absurd one leaves the program locked', () => {
     const tool = base.setups.flatMap((s) => s.ops).find((o) => o.tool.type === 'SF' && o.tool.template)!.tool;
     const kinds = [...new Set(tool.template!.ops.map((o) => o.kind))];

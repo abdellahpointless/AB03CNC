@@ -1746,7 +1746,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // cap: the largest end mill this clamping may use (planned again lighter when the vise cannot hold the bigger ones).
   // rest: resting on the jaw tops by the face this deep under Z0 (planned again so, at grip `fixed`).
   const addSetup = (si: number, fixed?: number, cap?: number, rest?: number): boolean => {
-    const mills = cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6);
+    // Never a tool the tool database keeps for finishing (item 14): it finishes (below), it does not rough.
+    const mills = (cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6)).filter((m) => m.role !== 'finish');
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns.
     if (prevR && setups.length >= 2) {
@@ -2353,7 +2354,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (!roughed.length) continue;
       const deepest = Math.min(...roughed.map((w) => w.z));
       // Never a tool the tool database keeps for roughing (item 14); one it gives finishing to first.
-      const plain = op.tool.type === 'SFH' ? mills.filter((m) => m.type === 'SF' && m.role !== 'rough' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && m.length >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
+      const plain = op.tool.type === 'SFH' ? allMills.filter((m) => m.type === 'SF' && m.role !== 'rough' && Math.abs(m.diameter - op.tool.diameter) < 0.01 && m.length >= Math.max(0, sb.hi[2]) - deepest + 2) : [];
       // Of the shop's templates, the one with its usual finishing data: the SF 16's SCHLICHT at 1,200 mm/min
       // and 10 mm deep (90 % of its SF 16 finishing operations), not the one at 850 and 5.
       const fin = (m: CamTool) => m.template?.ops.filter((o) => o.kind === 'finish').reduce((b, o) => Math.max(b, o.feed * (o.ap ?? 0)), 0) ?? 0;
