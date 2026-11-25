@@ -134,7 +134,17 @@ Medium confidence. Use but flag if contradicted.
 
 Low confidence. Ask before assuming.
 
-None open.
+### Q004: A turned part held below its widest line (library program Pfae5765f)
+
+- **Type:** uncertain
+- **Question:** In its 4th clamping CAM AI puts the stop face at the model's face (X -5 mm in that clamping), but the
+  simulation finds the material between the vise floor and the jaw tops reaching only X -4.42 mm: a round face whose
+  widest line sits right at the jaw tops (5 mm grip on 40 mm parallels). 0.58 mm is over the 0.5 mm the check allows, so
+  the program is flagged "misplaced" and its download stays locked. The shop rests this part on a ledge. How does the
+  shop hold a turned part in its last clamping: deeper in the jaws, on a V-block, in a nest? No rule until answered.
+- **Evidence:** the planner's own grid gave -4.74 and -4.91 mm in two tries (snapped to -5 in one), the check's -4.42;
+  the same failure at the commit before this round's work (already in production, locked).
+- **Context:** tests/library/camJaws.test.ts (the one library failure, 38 of 39 pass).
 
 ---
 
@@ -145,3 +155,4 @@ None open.
 - 2026-11-25: answered by the owner and done: Q001 jaw blocks flush with the plates at 45 mm (drawn so); Q002 a Y+
   spacer only in very special cases, kept as an extra option (moves that clamping's G52 Y); Q003 20 and 50 mm moving-jaw
   spacers offered as well as 15.
+- 2026-11-25: Q004 from the library's one failing program.
