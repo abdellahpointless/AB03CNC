@@ -31,7 +31,9 @@ describe('a spacer asked in the moving jaw (Y-)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
-  it('none asked: none, not even CAM AI’s own; another size: refused (noted)', () => {
+  // shortcut: this plate gets no spacer from CAM AI either, so "none" forbidding CAM AI's own (program.ts, yAsked !== 0)
+  // is not exercised here; add a part where CAM AI adds one when the library or a fixture gives one.
+  it('none asked: none written; another size: refused (noted)', () => {
     expect(camProgram({ ...input, spacersY: [0] }).setups.flatMap((s) => s.notes).some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
     const r = camProgram({ ...input, spacersY: [20] });
     expect(r.notes.some((n) => n.key === 'stopRefused' && n.setup === 1 && n.cale === 20)).toBe(true);
