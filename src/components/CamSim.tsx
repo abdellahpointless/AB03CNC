@@ -78,7 +78,7 @@ export default function CamSim({
   /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
   onPickTool?: (setup: number, tool: number) => void;
   /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
-  preview?: { setup: number; cale?: number; stop?: number; y?: number } | null;
+  preview?: { setup: number; cale?: number; stop?: number; y?: number; yp?: number } | null;
 }) {
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -121,14 +121,14 @@ export default function CamSim({
       s.support = p.cale;
       s.cales = p.cale > 0 && made.cales ? made.cales.map((c) => ({ ...c, top: made.restZ! })) : null;
     }
-    if (p.stop !== undefined || p.y !== undefined) {
-      const kept = made.spacers.filter((x) => (p.stop === undefined || x.side !== 'X-') && (p.y === undefined || x.side !== 'Y-'));
-      s.spacers = [...kept, ...(p.stop ? [{ side: 'X-' as const, mm: p.stop }] : []), ...(p.y ? [{ side: 'Y-' as const, mm: p.y }] : [])];
+    if (p.stop !== undefined || p.y !== undefined || p.yp !== undefined) {
+      const kept = made.spacers.filter((x) => (p.stop === undefined || x.side !== 'X-') && (p.y === undefined || x.side !== 'Y-') && (p.yp === undefined || x.side !== 'Y+'));
+      s.spacers = [...kept, ...(p.stop ? [{ side: 'X-' as const, mm: p.stop }] : []), ...(p.y ? [{ side: 'Y-' as const, mm: p.y }] : []), ...(p.yp ? [{ side: 'Y+' as const, mm: p.yp }] : [])];
       if (p.stop !== undefined && made.grip) s.jawX = jawsFrom(made.grip.stop - p.stop);
     }
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [made, preview?.setup, preview?.cale, preview?.stop, preview?.y]);
+  }, [made, preview?.setup, preview?.cale, preview?.stop, preview?.y, preview?.yp]);
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const hard = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer');
   const hits = setups.reduce((n, x) => n + hard(x).length, 0);

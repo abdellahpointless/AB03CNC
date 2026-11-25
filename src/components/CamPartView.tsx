@@ -266,7 +266,7 @@ type Api = {
 /** The measure's vise planes: hit by a click from either side, never drawn. */
 const PLANE = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
 
-export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number; y?: number };
+export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number; y?: number; yp?: number };
 export type ClampAct = 'up' | 'down' | 'back' | 'forward' | 'open' | 'close';
 const CONTACT = 0x22c55e;
 
@@ -701,7 +701,7 @@ export default function CamPartView({
     const sp = clamp.stop ?? 0;
     const jawX = jawsFrom(lo[0] - sp);
     const spans = viseSpans({ jawX, twoVises: hi[0] > jawX[0] + VISE.width + 5 });
-    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, [...(sp ? [{ side: 'X-' as const, mm: sp }] : []), ...(clamp.y ? [{ side: 'Y-' as const, mm: clamp.y }] : [])]);
+    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, [...(sp ? [{ side: 'X-' as const, mm: sp }] : []), ...(clamp.y ? [{ side: 'Y-' as const, mm: clamp.y }] : []), ...(clamp.yp ? [{ side: 'Y+' as const, mm: clamp.yp }] : [])]);
     // The vise's model comes in once loaded: drawn again then.
     void v.ready.then(() => a.invalidate());
     // The moving jaw (front, Y-) opens toward the operator; the part slides, so the vise body moves the other way.
