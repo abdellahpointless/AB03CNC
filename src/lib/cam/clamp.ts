@@ -72,3 +72,30 @@ export function firstPick(stockH: number, lo: number, H: number): { cale: number
       .sort((p, q) => Math.abs(p.grip - pick.grip) - Math.abs(q.grip - pick.grip) || p.grip - q.grip)[0] ?? pick
   );
 }
+
+/** The parallels a step up (taller: the part higher) or down gives, from none (0) through `cales`; null: no further that way. */
+export function stepCale(cales: number[], now: number | null, dir: 1 | -1): number | null {
+  if (!cales.length) return null;
+  const steps = [0, ...[...cales].sort((p, q) => p - q)];
+  const i = now === null ? -1 : steps.indexOf(now);
+  const j = i < 0 ? steps.length - 1 : i + dir;
+  return j >= 0 && j < steps.length ? steps[j] : null;
+}
+
+/** How far the moving jaw opens (mm), the most. */
+export const JAW_OPEN = 35;
+
+/**
+ * The view's vise after a move (view only: the program holds the part closed, against the fixed jaw): the moving jaw
+ * `open` mm off, the part slid `slide` mm toward the operator (0 to -open). Closing pushes the part back; null: refused
+ * (the part into a jaw, the jaw past its travel or already shut).
+ */
+export function jawMove(s: { open: number; slide: number }, act: 'back' | 'forward' | 'open' | 'close'): { open: number; slide: number } | null {
+  const { open, slide } = s;
+  if (act === 'back') return slide + 1 <= 0 ? { open, slide: slide + 1 } : null;
+  if (act === 'forward') return slide - 1 >= -open ? { open, slide: slide - 1 } : null;
+  if (act === 'open') return open + 2 <= JAW_OPEN ? { open: open + 2, slide } : null;
+  if (open === 0) return null;
+  const o = Math.max(0, open - 2);
+  return { open: o, slide: o ? Math.max(slide, -o) : 0 };
+}
