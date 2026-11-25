@@ -13,6 +13,8 @@ export interface OpEdit {
   /** Another tool for this operation (Ø and length, mm): its path as it was, its speeds scaled (scaleSpeeds). With a
    * code: that tool of the shop (machine or tool database), whatever its kind; without one, a size typed by hand. */
   tool?: { d: number; l: number; code?: string };
+  /** Deleted by hand (item 4): its lines out of the program, and its tool change with the tool's last operation there. */
+  off?: true;
 }
 
 /** Spindle (S) times k and feeds (F) times kf (k < 1: slower, for a bigger Ø at the same surface speed and the same feed a turn). */

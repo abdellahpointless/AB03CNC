@@ -93,6 +93,16 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     expect(() => editProgram(input, made, { [POCKET]: { tool: { d: 8, l: 40, code: 'NOPE_08.00_040_000_X' } } })).toThrow();
   }, 300_000);
 
+  it('deletes an operation by hand: its lines and, with no other operation for it, its tool change; the rest as made (item 4)', () => {
+    const r = editProgram(input, made, { [POCKET]: { off: true } });
+    expect(r.setups[0].ops.some((o) => o.name === 'FRAESEN_8MM')).toBe(false);
+    expect(r.setups[0].ops.length).toBe(made.setups[0].ops.length - 1);
+    expect(r.code).not.toContain('SF_08.00_040_000_ALHS');
+    // What it would have cut is left: the check says so.
+    expect(r.check.match).toBeLessThan(made.check.match);
+    expect(() => editProgram(input, made, { [POCKET]: { off: false as unknown as true } })).toThrow();
+  }, 300_000);
+
   it('catches a bigger tool on a path made for a smaller one (the outline’s Ø16 swapped for a Ø20)', () => {
     const r = editProgram(input, made, { [OUTLINE]: { tool: { d: 20, l: 55 } } });
     // Its path was made for the Ø16: the Ø20 cuts 2 mm into every wall it follows, or into what holds the part.
