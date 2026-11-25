@@ -424,12 +424,18 @@ export default function CamPartView({
       queued = e;
     };
     let down: { x: number; y: number } | null = null;
-    const press = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY });
+    // Where the right button went down, kept until the menu event (on Windows it comes after the button is up).
+    let rightDown: { x: number; y: number } | null = null;
+    const press = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY };
+      if (e.button === 2) rightDown = down;
+    };
     // A right click on a path (a right drag pans the view: not that).
     const menu = (e: MouseEvent) => {
       const cb = pickRef.current.onPathMenu;
-      const d = down;
-      if (!cb || (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4)) return;
+      const d = rightDown;
+      rightDown = null;
+      if (!cb || !d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
       const r = renderer.domElement.getBoundingClientRect();
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
