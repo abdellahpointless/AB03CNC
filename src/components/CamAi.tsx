@@ -782,7 +782,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     )}
                   </>
                 )}
-                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} onOwn={() => choose(() => { setClamp1(null); setLater({}); })} />}
+                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} onOwn={() => choose(() => { setClamp1(null); setLater({}); })} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
                     n={sel.i + 1}
@@ -1052,7 +1052,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 }
 
 /** Clamping 1's parallels and vise (you, Beta 2): what holds it, CAM AI's own, a button for every move the 3D view takes. */
-function ClampPanel({ cale, own, mine, grip, seam, jaw, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; seam: boolean; jaw: { open: number; slide: number }; onAct: (a: ClampAct) => void; onOwn: () => void }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; onAct: (a: ClampAct) => void; onOwn: () => void }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   return (
@@ -1078,6 +1078,7 @@ function ClampPanel({ cale, own, mine, grip, seam, jaw, onAct, onOwn }: { cale: 
       <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
       <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.hint')}</p>
       {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
+      {intoPart > 0.05 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.intoPart', { mm: fmt(intoPart, 1) })}</p>}
       {seam && <p className="text-[var(--text-secondary)]">{t('camAi.note.clampSeam', { setup: 1, cale: fmt(cale, 0) })}</p>}
     </section>
   );

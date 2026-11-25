@@ -86,6 +86,7 @@ const cam = {
       jaw: 'Jaw open {{open}} mm · part {{slide}} mm toward you (view only: the program holds it closed, against the fixed jaw)',
       hint: 'Over the 3D view: the wheel changes the parallels (Ctrl + wheel zooms). Click the view, then ↑ ↓ slide the part, ← → open and close the jaws, Page Up / Page Down change the parallels.',
       noneWarn: 'What the part rests on without parallels is not known yet (the shop’s answer is awaited): a program made like this stays locked, and CAM AI plans with its own parallels meanwhile.',
+      intoPart: 'The jaws hold {{mm}} mm of the part’s own sides: the outside under them is cut from other clampings (more clampings and time), and thin slivers may stay where those cuts meet (the simulation’s model check shows them).',
       later: 'Next time it is made: on {{cale}} mm parallels.',
       laterNone: 'Next time it is made: no parallels.',
       laterHint: 'This clamping holds what the ones before it left: choose its parallels here, then Make it again. A change to an earlier clamping clears this choice.',
