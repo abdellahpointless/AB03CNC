@@ -1776,6 +1776,14 @@ function LaterClampPanel({ n, made, used, asked, spacers, emptySide, onAsk }: { 
   const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
   const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : { cale: made.cale };
   const now = asked ?? mine;
+  // A choice the program made does not have yet (made again, it shows as made; a side with nothing to cut is said apart).
+  const spacerOf = (at: string) => Number(made.notes.join(' ').match(new RegExp(`(\\d+) MM ZWISCHENLAGE IN ${at.replace('+', '\\+')}`))?.[1] ?? 0);
+  const pending =
+    (asked !== undefined && holdKey(asked) !== holdKey(mine)) ||
+    (spacers.side !== undefined && spacers.side !== made.side && !emptySide) ||
+    (spacers.stop ?? 0) !== spacerOf('X-') ||
+    (spacers.y !== undefined && spacers.y !== spacerOf('Y-')) ||
+    (spacers.yp ?? 0) !== spacerOf('Y+');
   const all = steps.some((h) => holdKey(h) === holdKey(now)) ? steps : [now, ...steps];
   const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
   const pickHold = (key: string) => {
@@ -1803,9 +1811,9 @@ function LaterClampPanel({ n, made, used, asked, spacers, emptySide, onAsk }: { 
           <p className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.yHint')}</p>
           <Seg legend={t('camAi.hold.spacerYp')} value={spacers.yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, yp: v || undefined })} />
           {spacers.yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
-          {(asked !== undefined || Object.keys(spacers).some((k) => k !== 'side' || !emptySide)) && (
+          {(asked !== undefined || Object.keys(spacers).length > 0) && (
             <p className="flex flex-wrap items-center gap-2 text-[var(--text-primary)]" aria-live="polite">
-              {t('camAi.hold.preview')}
+              {pending && t('camAi.hold.preview')}
               <button type="button" onClick={() => onAsk(null, {})} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>
             </p>
           )}
