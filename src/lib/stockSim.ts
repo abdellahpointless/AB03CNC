@@ -13,9 +13,10 @@ import { movePath, runShares } from './playback';
  * that cut it is found (and which way it faces), and a surface is fitted through those points
  * (dual contouring). Flat faces stay flat, corners stay sharp, round walls are round.
  *
- * Tools point down (−Z on the machine). End mills are flat-bottomed cylinders; pointed tools have
- * a cone tip: chamfer tools (STICHEL / FASE, 45° per side or the angle in their code), spot drills
- * (ZENTRIER / ANBOHR, 90° point) and drills (118° point). Rapid moves do not cut.
+ * Tools point down (−Z on the machine). End mills are flat-bottomed cylinders, corner-radius end mills
+ * (bull nose) the same with their bottom edge rounded; pointed tools have a cone tip: chamfer tools
+ * (STICHEL / FASE, 45° per side or the angle in their code), spot drills (ZENTRIER / ANBOHR, 90° point)
+ * and drills (118° point); ball cutters an eyedrop. Rapid moves do not cut.
  */
 
 export const KEPT = 0x7fffffff;
@@ -29,11 +30,18 @@ export const instant = (pos: number) => Math.max(0, Math.floor(pos * SUB));
 /** How long the part takes to turn between setups in the 3D view (ms). */
 export const FLIP_MS = 2200;
 
+/**
+ * A tool's tip: pointed (how fast the radius grows per mm above the tip, tan of half the point angle); 'drop': the
+ * eyedrop ball cutter; { corner }: a corner-radius end mill, its bottom edge rounded by that radius (mm); null: flat.
+ */
+export type Tip = number | 'drop' | { corner: number } | null;
+type Profiled = 'drop' | { corner: number };
+const profiled = (t: Tip): t is Profiled => t === 'drop' || (t !== null && typeof t === 'object');
+
 export interface SimTool {
   tool: number | null;
   radius: number;
-  /** Pointed tip: how fast the radius grows per mm above the tip (tan of half the point angle); 'drop': the eyedrop ball cutter; null = flat. */
-  slope: number | 'drop' | null;
+  slope: Tip;
 }
 
 export interface SimInput {
@@ -70,7 +78,7 @@ export interface Grid {
 const simTool = (tool: number | null, label: string, diameter: number | null): SimTool => ({
   tool,
   radius: Math.max(0.3, (diameter ?? guessDiameter(label)) / 2),
-  slope: tipSlope(label) ?? (isBall(label) ? 'drop' : null),
+  slope: tipSlope(label) ?? (isBall(label) ? 'drop' : cornerTip(label)),
 });
 
 /** Moves of a parsed program, ready to cut (drilling becomes a straight plunge). */
@@ -103,6 +111,29 @@ export function dropRadius(h: number, r: number): number {
   if (u <= DROP_TY) return r * Math.sqrt(Math.max(0, 1 - (1 - u) * (1 - u)));
   if (u <= DROP_TOP) return r * (DROP_TX + ((u - DROP_TY) / (DROP_TOP - DROP_TY)) * (DROP_NECK - DROP_TX));
   return r * DROP_NECK;
+}
+
+/**
+ * A corner-radius end mill (bull nose: flat-bottomed, its bottom edge rounded, tangent to the bottom and the side):
+ * its radius at height h above the tip; -1 below the tip. Its corner radius at most the tool's.
+ */
+export function cornerRadius(h: number, r: number, corner: number): number {
+  if (h < 0) return -1;
+  const c = Math.min(corner, r);
+  return h >= c ? r : r - c + Math.sqrt(Math.max(0, c * c - (c - h) * (c - h)));
+}
+/** A profiled tip's radius at height h above it (ball or corner radius); -1 below it. */
+export const profileRadius = (t: Profiled, h: number, r: number) => (t === 'drop' ? dropRadius(h, r) : cornerRadius(h, r, t.corner));
+
+/**
+ * A corner-radius end mill from its name: an end mill code with its radius ("SF_10.00_040_R02_ALHS": R 2 mm, the
+ * shop's codes give radii in mm, as the ball mills' "KF_10.00_030_R05") or written out ("TORUS", "ECKENRADIUS R0.5").
+ */
+export function cornerTip(label: string): { corner: number } | null {
+  const l = label.toUpperCase();
+  const m = l.match(/\bSFH?_\d+(?:\.\d+)?_\d{3}_R(\d+(?:\.\d+)?)(?![\d.])/) ?? (/TORUS|ECKENRADIUS|ECKRADIUS|CORNER\s*RAD|BULL\s*NOSE|RAYON\s*D.ANGLE/.test(l) ? l.match(/\bR\s*(\d+(?:[.,]\d+)?)/) : null);
+  const c = m ? Number(m[1].replace(',', '.')) : 0;
+  return c > 0 ? { corner: c } : null;
 }
 
 /** tan(half point angle) of a pointed tool, from its name; null for flat end mills and taps. */
@@ -146,7 +177,7 @@ export function buildInput(tp: Toolpath, an: ProgramSetups): SimInput | null {
  * point the deepest tool position that covers it counts, so plunges, ramps and helixes cut to
  * their full depth.
  */
-export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): boolean {
+export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: Tip): boolean {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const dz = b[2] - a[2];
@@ -167,13 +198,13 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
     if (u1 > u2) return false;
     return z >= a[2] + Math.min(u1 * dz, u2 * dz) - 1e-9;
   }
-  if (slope === 'drop') {
-    // A plunge: the widest the drop gets between where its tip starts and ends.
+  if (profiled(slope)) {
+    // A plunge: the widest the drop gets between where its tip starts and ends (a corner radius only grows upward).
     if (l2 < 1e-12) {
       const h2 = z - Math.min(a[2], b[2]);
       if (h2 < -1e-9) return false;
       const h1 = Math.max(0, z - Math.max(a[2], b[2]));
-      const w = h1 <= r && r <= h2 ? r : Math.max(dropRadius(h1, r), dropRadius(h2, r));
+      const w = slope !== 'drop' ? profileRadius(slope, h2, r) : h1 <= r && r <= h2 ? r : Math.max(dropRadius(h1, r), dropRadius(h2, r));
       return wx * wx + wy * wy <= w * w + 1e-9;
     }
     // Level: the drop's radius at this height, at the nearest point of the move. A ramp: along it.
@@ -183,7 +214,7 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
     for (const u of us) {
       const ex = wx - u * dx;
       const ey = wy - u * dy;
-      if (Math.sqrt(ex * ex + ey * ey) <= dropRadius(z - (a[2] + u * dz), r) + 1e-9) return true;
+      if (Math.sqrt(ex * ex + ey * ey) <= profileRadius(slope, z - (a[2] + u * dz), r) + 1e-9) return true;
     }
     return false;
   }
@@ -204,7 +235,7 @@ export function sweeps(x: number, y: number, z: number, a: Vec, b: Vec, r: numbe
  * move, or -1 when it never does. Same rule as `sweeps`: the point goes once the tool's disc is
  * over it with its bottom at or below it.
  */
-export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): number {
+export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: Tip): number {
   if (slope !== null) {
     if (!sweeps(x, y, z, a, b, r, slope)) return -1;
     // Pointed tip: the shares that reach the point form one stretch; find where it starts.
@@ -253,19 +284,19 @@ export function touch(x: number, y: number, z: number, a: Vec, b: Vec, r: number
  * the distance to the tool's edge there (sideways to its rim, or up from its bottom); 0 or less
  * when the tool does not reach it there.
  */
-export function depthIn(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: number | 'drop' | null): number {
+export function depthIn(x: number, y: number, z: number, a: Vec, b: Vec, r: number, slope: Tip): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
   const u = l2 > 1e-12 ? Math.min(1, Math.max(0, ((x - a[0]) * dx + (y - a[1]) * dy) / l2)) : b[2] < a[2] ? 1 : 0;
   const d = Math.hypot(x - a[0] - u * dx, y - a[1] - u * dy);
   const h = z - (a[2] + u * (b[2] - a[2]));
-  if (slope === 'drop') return h < 0 ? h : dropRadius(h, r) - d;
+  if (profiled(slope)) return h < 0 ? h : profileRadius(slope, h, r) - d;
   return slope === null ? Math.min(r - d, h) : Math.min(r, h * slope) - d;
 }
 
 /** Which way the surface left by a sweep faces at machine point p (out of the material). */
-function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | 'drop' | null, tol: number): Vec {
+function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: Tip, tol: number): Vec {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
@@ -281,13 +312,13 @@ function sweepNormal(p: Vec, a: Vec, b: Vec, r: number, slope: number | 'drop' |
     ix /= d;
     iy /= d;
   }
-  if (slope === 'drop') {
+  if (profiled(slope)) {
     if (d < 1e-6) return [0, 0, 1];
     // Square to the drop's outline at this height: its radius grows by g per mm up.
     const h = p[2] - (a[2] + u * (b[2] - a[2]));
     const lo = Math.max(0, h - r * 1e-3);
     const hi = Math.max(lo + r * 1e-3, h + r * 1e-3);
-    const g = (dropRadius(hi, r) - dropRadius(lo, r)) / (hi - lo);
+    const g = (profileRadius(slope, hi, r) - profileRadius(slope, lo, r)) / (hi - lo);
     const n = Math.hypot(1, g);
     return [ix / n, iy / n, g / n];
   }
