@@ -3,7 +3,8 @@
  * repository): each body read once, in the vise's own frame (mm): X0 the jaw plates' left end, Y0 the fixed jaw
  * plate's face, Z0 the bed the parallels stand on; machine X/Y/Z as in the app (moving jaw at Y-, the fixed one at Y+).
  * Two things change, as the shop's vise is: the jaw plates' tops are raised to exactly 45 mm over the bed (the model
- * has 44.5), and both jaws are made 150 mm long, shortened from their right end (the model's are 152). Thread inside
+ * has 44.5), and both jaws are made 125 mm long (the model's are 152): the length taken out of their two plain
+ * stretches, between the screw holes, so every hole, screw head and rounded edge keeps its shape. Thread inside
  * the jaws and the body (never seen) is left out to keep the mesh small.
  *
  *   npm run vise-mesh -- "<path to the .step>"
@@ -16,7 +17,7 @@ type Mesh = { name: string; attributes: { position: { array: number[] }; normal?
 type Occt = { ReadStepFile: (buf: Uint8Array, p: Record<string, unknown>) => { success: boolean; meshes: Mesh[] } };
 
 const JAW_HEIGHT = 45;
-const JAW_LENGTH = 150;
+const JAW_LENGTH = 125;
 /** Model units per stored unit: positions as 16-bit integers of 1/50 mm. */
 const Q = 50;
 /** The bodies by their number in the model ("... - part 07"): what each is, which mesh it goes to. */
@@ -37,8 +38,14 @@ const BODIES: Record<string, { mesh: MeshName; keep?: (y: number) => boolean }> 
   '14': { mesh: 'movingBody' }, // the plates on the moving jaw's sides
   '14 (1)': { mesh: 'movingBody' },
 };
-/** The jaws and what is on their right end: shortened there to JAW_LENGTH. */
-const JAWS = new Set(['02', '03', '07', '08', '14 (1)']);
+/** The jaws, what is on their right end and the jaw plates' screws: shortened along X to JAW_LENGTH. */
+const JAWS = new Set(['02', '03', '07', '08', '14 (1)', '10', '11', '12', '13']);
+/**
+ * Along the jaws (X from their left end, mm), the stretches with nothing on them but flat faces and their edges:
+ * between the left screws (to 37) and the moving jaw's middle hole (from 70), and between that hole (to 89) and the
+ * right screws (from 116). Each gives up half of what the jaws lose.
+ */
+const PLAIN: [number, number][] = [[37, 70], [89, 116]];
 /**
  * The jaws' tapped holes for the plate screws (along Y, near this X/Z in the model, over these Y): their thread, some
  * 8,000 triangles a hole, swapped for a plain tube at the thread's outside radius (the hole's mouth stays where it is).
@@ -72,6 +79,15 @@ const body = box(byNo.get('01')!);
 const [X0, Y0, Z0] = [fixedPlate[0], fixedPlate[1], body[5]];
 if (Math.abs(fixedPlate[2] - Z0) > 0.01 || Math.abs(movingPlate[2] - Z0) > 0.01) throw new Error('The jaw plates do not stand on the bed.');
 const modelHeight = fixedPlate[5] - Z0;
+// X along the jaws, from the model's to JAW_LENGTH: each plain stretch squeezed by half of the difference, what lies
+// past it moved in by that much.
+const cut = (fixedPlate[3] - X0 - JAW_LENGTH) / 2;
+if (PLAIN.some(([a, b]) => b - a <= cut)) throw new Error('The jaws cannot be shortened that much in their plain stretches.');
+const along = (x: number) => {
+  let out = x;
+  for (const [a, b] of PLAIN) out -= x <= a ? 0 : x >= b ? cut : ((x - a) / (b - a)) * cut;
+  return out;
+};
 
 const out: Record<MeshName, { pos: number[]; nrm: number[]; idx: number[] }> = Object.fromEntries(MESHES.map((n) => [n, { pos: [], nrm: [], idx: [] }])) as never;
 for (const [no, spec] of Object.entries(BODIES)) {
@@ -81,8 +97,7 @@ for (const [no, spec] of Object.entries(BODIES)) {
   const plate = no === '07' || no === '08';
   // Each plate from its own top (the two differ by 0.005 mm in the model).
   const lift = plate ? JAW_HEIGHT - (box(m)[5] - Z0) : 0;
-  // The jaws' right end band (past their screw holes, under 132 mm) moved in as a whole.
-  const trim = JAWS.has(no) ? JAW_LENGTH - (fixedPlate[3] - X0) : 0;
+  const shrink = JAWS.has(no) ? along : (x: number) => x;
   const o = out[spec.mesh];
   const base = o.pos.length / 3;
   for (let k = 0; k < p.length; k += 3) {
@@ -90,7 +105,7 @@ for (const [no, spec] of Object.entries(BODIES)) {
     // The jaw height: the plate's top band raised as a whole (its screw holes, under 34 mm, stay where they are).
     if (plate && z > 38) z += lift;
     const x = p[k] - X0;
-    o.pos.push(x > 140 ? x + trim : x, p[k + 1] - Y0, z);
+    o.pos.push(shrink(x), p[k + 1] - Y0, z);
     o.nrm.push(n ? n[k] : 0, n ? n[k + 1] : 0, n ? n[k + 2] : 1);
   }
   const ix = m.index.array;
@@ -124,7 +139,7 @@ for (const [no, spec] of Object.entries(BODIES)) {
       const a = (2 * Math.PI * i) / S;
       const [c, sn] = [Math.cos(a), Math.sin(a)];
       for (const y of h.y) {
-        o.pos.push(h.ax + h.r * c - X0, y - Y0, h.az + h.r * sn - Z0);
+        o.pos.push(shrink(h.ax + h.r * c - X0), y - Y0, h.az + h.r * sn - Z0);
         o.nrm.push(-c, 0, -sn);
       }
     }

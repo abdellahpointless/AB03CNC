@@ -4,8 +4,8 @@ import { box, buildParallels, buildVise, JAW_TRAVEL, steel, STEEL, STEEL_DARK, v
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, caleSlide, calesKey, parallelWidth, STOP_PLATE, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
-import { buildInput, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
+import { CALE_MS, caleSlide, calesKey, parallelWidth, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { buildInput, cornerRadius, cornerTip, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { holeAt, holeAxis, holeOfMesh, type MeasureMode } from '../lib/measure';
 import { attachMeasure, disposeTree, ring, type Measurement } from '../lib/measure3d';
 import { movePath, runShares, toolAlong } from '../lib/playback';
@@ -217,7 +217,7 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
   const cales = setup.cales;
   // The shop's parallels: always PARALLEL_LENGTH long, one pair per vise, from the stop (or the
   // vise's left end); on a fixture, from just left of the part.
-  const runs: number[] = setup.jawTopZ !== null ? viseSpans(setup).map(([x0], i) => x0 + (i === 0 ? STOP_PLATE : 0)) : [cb.min[0] - 2];
+  const runs: number[] = setup.jawTopZ !== null ? viseSpans(setup).map(([x0]) => x0) : [cb.min[0] - 2];
   const length = PARALLEL_LENGTH;
   const end = runs[runs.length - 1] + length;
   const text = `${fmtMm(setup.support ?? restZ - floorZ)} MM`;
@@ -359,11 +359,19 @@ if (uFH > 0.5) {
   return m;
 }
 
-type ToolShape = 'flat' | 'ball' | 'point' | 'face';
+type ToolShape = 'flat' | 'ball' | 'point' | 'face' | 'corner';
 const P2 = (x: number, y: number) => new THREE.Vector2(x, y);
 /** The cutter's outline from the tip up, as (radius, height) pairs, turned round its axis. */
-function cutterProfile(shape: ToolShape, r: number, len: number, tipH: number): THREE.Vector2[] {
+function cutterProfile(shape: ToolShape, r: number, len: number, tipH: number, corner = 0): THREE.Vector2[] {
   if (shape === 'point') return [P2(0, 0), P2(r, tipH), P2(r, len), P2(0, len)];
+  if (shape === 'corner') {
+    // The flat bottom, its edge rounded by the corner radius (as the simulation cuts with it), then the side.
+    const c = Math.min(corner, r, len);
+    return [P2(0, 0), ...Array.from({ length: 13 }, (_, i) => {
+      const h = c * (1 - Math.cos((Math.PI / 2) * (i / 12)));
+      return P2(cornerRadius(h, r, c), h);
+    }), P2(r, len), P2(0, len)];
+  }
   if (shape === 'ball') {
     // The eyedrop, exactly as the simulation cuts with it (denser near the tip, where the ball turns fastest).
     const top = Math.min(len, r * DROP_TOP);
@@ -388,6 +396,7 @@ function holderProfile(hr: number, hh: number, len: number): THREE.Vector2[] {
 function shapeOf(label: string, r: number): ToolShape {
   if (tipSlope(label)) return 'point';
   if (isBall(label)) return 'ball';
+  if (cornerTip(label)) return 'corner';
   if (r >= 12 || /MESSERKOPF|PLANFR/i.test(label)) return 'face';
   return 'flat';
 }
@@ -1177,7 +1186,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
           const len = cur.reach ?? (big ? Math.min(Math.max(info?.length ?? 30, 12), 40) : Math.min(Math.max(info?.length ?? r * 8, r * 3, 12), 80));
           const slope = tipSlope(info?.label ?? '');
           const tipH = slope ? Math.min(r / slope, len * 0.8) : 0;
-          turned(cutter, cutterEdges, cutterProfile(shapeOf(info?.label ?? '', r), r, len, tipH));
+          turned(cutter, cutterEdges, cutterProfile(shapeOf(info?.label ?? '', r), r, len, tipH, cornerTip(info?.label ?? '')?.corner));
           const { radius: hr, height: hh } = holderOf(r * 2);
           turned(holder, holderEdges, holderProfile(hr, hh, len));
         }

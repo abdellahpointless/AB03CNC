@@ -388,34 +388,35 @@ describe('cales and the jaw tops', () => {
       'T2 M6 (FRAESER D10)', '(DIAMETER 10.00 MM/LENGTH 30.00 MM)', 'G0 G90 G54 X10. Y-20. S6000 M3', 'G43 H2 Z20.', 'G1 Z-5. F300', 'G1 X190.', 'G0 Z20.',
       'G0 X195. Y10.', 'G1 Z-5.', 'G0 Z50.', 'M30', '%'].join('\n');
 
-  it('holds the part in the 150 mm vise, or in both vises when it is too long or the program says so', () => {
-    const one = analyseSetups(parseToolpath(bar(200), S), { jawHeight: 45 })[0];
+  it('holds the part in the 125 mm vise, or in both vises when it is too long or the program says so', () => {
+    // 170 mm: 45 mm out of the one vise (up to 50 allowed).
+    const one = analyseSetups(parseToolpath(bar(170), S), { jawHeight: 45 })[0];
     expect(one.twoVises).toBe(false);
-    // The 150 mm jaws and the 8 mm stop before them.
-    expect(one.jawX[1] - one.jawX[0]).toBe(158);
+    // The 125 mm jaws.
+    expect(one.jawX[1] - one.jawX[0]).toBe(125);
     // Nothing at X195: the part sticks out of the one vise there.
     expect(one.collisions).toEqual([]);
     const written = analyseSetups(parseToolpath(bar(200, '/MIT 2 SCHRAUBSTOECKEN 50 MM ABSTAND'), S), { jawHeight: 45 })[0];
     expect(written.twoVises).toBe(true);
-    expect(viseSpans(written)[1]).toEqual([written.jawX[0] + 200, written.jawX[0] + 350]);
+    expect(viseSpans(written)[1]).toEqual([written.jawX[0] + 175, written.jawX[0] + 300]);
     // The second vise's fixed jaw is there now.
     expect(written.collisions).toHaveLength(1);
     expect(written.stock!.max[0] - written.stock!.min[0]).toBe(200);
     expect(analyseSetups(parseToolpath(bar(240), S), { jawHeight: 45 })[0].twoVises).toBe(true);
   });
 
-  it("checks the shop's jaws from the stop's face to 150 mm past it, and the 8 mm stop before them (the owner's picture of the vise)", () => {
+  it("checks the shop's jaws from the stop's face to 125 mm past it, nothing more (the owner's picture of the vise)", () => {
     const base = analyseSetups(parseToolpath(bar(120), S), { jawHeight: 45 })[0];
     const stop = base.clampBox!.min[0];
-    expect(base.jawX).toEqual([stop - 8, stop + 150]);
+    expect(base.jawX).toEqual([stop, stop + 125]);
     expect(base.jawX).toEqual(jawsFrom(stop));
-    // A Ø10 tool 2 mm past the back jaw's face: in the jaw at the stop + 146, in the stop fixed to it at the stop - 4,
-    // clear of them 160 past the stop.
+    // A Ø10 tool 2 mm past the back jaw's face: in the jaw at the stop + 120, clear of it before the stop (- 6) and
+    // past its end (+ 131).
     const jawY: [number, number] = [base.clampBox!.min[1], base.clampBox!.max[1]];
     const past = (x: number) => overJaws(viseSpans(base), jawY, [x, jawY[1] + 2, 0], 5);
-    expect(past(stop + 146)).toBe(true);
-    expect(past(stop - 4)).toBe(true);
-    expect(past(stop + 160)).toBe(false);
+    expect(past(stop + 120)).toBe(true);
+    expect(past(stop - 6)).toBe(false);
+    expect(past(stop + 131)).toBe(false);
   });
 
 });

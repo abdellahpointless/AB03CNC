@@ -30,9 +30,9 @@ describe("the shop's vise", () => {
     }
     v.geos.fixedBody.computeBoundingBox();
     near(v.geos.fixedBody.boundingBox!.min.y, -VISE_DEPTH);
-    // Its jaws 150 mm long, shortened from their right end (the model's are 152).
+    // Its jaws 125 mm long (the model's are 152).
     expect(VISE_FRAME.modelJawLength).toBe(152);
-    expect(VISE_FRAME.jawLength).toBe(150);
+    expect(VISE_FRAME.jawLength).toBe(125);
   });
 
   it('closes its jaw plates on the part, the jaws from the stop’s face, the plates’ tops on the jaw-top line', async () => {
@@ -47,7 +47,7 @@ describe("the shop's vise", () => {
     near(moving.z[1], 55);
     near(fixed.z[0], 10);
     near(fixed.x[0], 0);
-    near(fixed.x[1], 150);
+    near(fixed.x[1], 125);
     // The stop before them, 8 mm thick, between the jaws.
     const stop = extent(v.group.children.find((c) => c instanceof THREE.Group && c !== v.moving && c.children.some((m) => m instanceof THREE.Mesh)) as THREE.Object3D);
     near(stop.x[0], -8);

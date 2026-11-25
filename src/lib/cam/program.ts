@@ -5,7 +5,7 @@ import { differences, layModel, modelBox, partExtent, sizeFits, voxelize, type P
 import { buildInput, carve, holderHits, KEPT, shopHolder, type Grid } from '../stockSim';
 import { movePath } from '../playback';
 import { parseToolpath, speedsFor, type MachineSpeeds } from '../toolpath';
-import { analyseProgram, jawsFrom, OVERHANG, parallelWidth, STOP_PLATE, stopHits, VISE, viseSpans } from '../setups';
+import { analyseProgram, jawsFrom, OVERHANG, parallelWidth, stopHits, VISE, viseSpans } from '../setups';
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, SPIN, upTurn, type Hole, type SideFeatures } from './features';
@@ -969,7 +969,7 @@ function ledgesOf(P: Float32Array, left: Left, sb: { lo: Vec; hi: Vec }): number
 /**
  * Where the vise really touches what is left of the part (3-2-1): both jaws over the grip, the
  * parallels under it, the stop at its left. The jaws close on the widest material between the
- * part's bottom and their top; vise 1 holds it from the stop for 150 mm (jawsFrom), vise 2 from 192 to 342.
+ * part's bottom and their top; vise 1 holds it from the stop for 125 mm (jawsFrom), vise 2 from 175 to 300.
  */
 function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, spacerX = 0, onJaw = false): { contact: Contact; width: number } {
   // On the jaw tops the band ends clear of the face resting on them (the simulation's cells there are the wider part's).
@@ -981,7 +981,7 @@ function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, 
   const strip = Math.max(0.3, left.skin);
   // The vise and its parallels start at the stop: past a spacer there (Beta 2), that much left of the part.
   const x0 = e.lo[0] - spacerX;
-  const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap - STOP_PLATE, x0 + VISE.width + VISE.gap - STOP_PLATE + len] as [number, number]] : [])];
+  const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap, x0 + VISE.width + VISE.gap + len] as [number, number]] : [])];
   const along = (r: Region, y0: number, y1: number, len: number) => spans(len).reduce((t, [a, b]) => t + area(intersection(r, rect(a, y0, b, y1))) / (y1 - y0), 0);
   const jaws = Math.min(along(band, e.lo[1], e.lo[1] + strip, VISE.width), along(band, e.hi[1] - strip, e.hi[1], VISE.width));
   const width = e.hi[1] - e.lo[1];

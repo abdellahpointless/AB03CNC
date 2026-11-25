@@ -9,7 +9,7 @@ import type { Mat3 } from '../lib/orient';
 import type { Purpose } from '../lib/cam/program';
 import { fmtNumber } from '../i18n/format';
 import { buildParallels, buildVise } from '../lib/vise3d';
-import { jawsFrom, parallelWidth, STOP_PLATE, VISE, viseSpans } from '../lib/setups';
+import { jawsFrom, parallelWidth, VISE, viseSpans } from '../lib/setups';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { JAW } from '../lib/cam/clamp';
 
@@ -704,7 +704,7 @@ export default function CamPartView({
       jawShown.current = { open, slide };
     };
     const w = parallelWidth(hi[1] - lo[1]);
-    const runs = spans.map(([x0], i) => x0 + (i === 0 ? STOP_PLATE : 0));
+    const runs = spans.map(([x0]) => x0);
     const bars = (top: number): { y: [number, number]; top: number }[] => [{ y: [lo[1], lo[1] + w], top }, { y: [hi[1] - w, hi[1]], top }];
     // The parallels and contacts stay with the part, not the vise body.
     const put = (o: THREE.Object3D) => a.vise.add(o);

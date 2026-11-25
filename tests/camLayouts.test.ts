@@ -279,15 +279,15 @@ describe('the jaws of a later clamping', () => {
     return columnPart(lo, hi);
   };
 
-  it('keeps off the jaws only where they stand: not past their end, 150 mm from the stop (a review found the whole length kept off)', () => {
+  it('keeps off the jaws only where they stand: not past their end, 125 mm from the stop (a review found the whole length kept off)', () => {
     // A 168 mm plate with a 158 x 24 boss, and the 4 x 4 hole across the boss's Y- face from the jaws' end on,
-    // 150 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
+    // 125 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
     const len = 168;
-    const tris = longBossPlate(len, (i, j) => i >= 154 && i < 158 && j >= 3 && j < 7);
+    const tris = longBossPlate(len, (i, j) => i >= 129 && i < 133 && j >= 3 && j < 7);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
-    // Held along the jaws' whole length (the 150 mm from the stop).
+    // Held along the jaws' whole length (the 125 mm from the stop).
     expect(r.setups[1].held[2] - r.setups[1].held[0]).toBeGreaterThanOrEqual(VISE.width);
     // The hole lies past the jaws' end: a mill wider than its half in the boss cuts it all, and no wall is left.
     expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && (m.dia ?? 0) > 2 && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && p[0] - m.dia! / 2 > s.jawX[1]))).toBe(true);
@@ -299,10 +299,10 @@ describe('the jaws of a later clamping', () => {
 
   it.each([undefined, 'topPlate' as const])('does not count a mill rounding the jaws\' end, clear of them, as in them (a review found 2 such hits that locked a program; part type %s)', (partType) => {
     // A 180 x 70 x 12 plate with a 170 x 34 boss 8 high (i 4..174, j 18..52), and a 36 x 30 pocket across the
-    // boss's Y- face and the jaws' end (150 mm from the part's X- face): through the plate beside the boss,
+    // boss's Y- face and the jaws' end (125 mm from the part's X- face): through the plate beside the boss,
     // into it 1 mm short of its top.
     const boss = (i: number, j: number) => i >= 4 && i < 174 && j >= 18 && j < 52;
-    const hole = (i: number, j: number) => i >= 130 && i < 166 && j >= 2 && j < 32;
+    const hole = (i: number, j: number) => i >= 105 && i < 141 && j >= 2 && j < 32;
     const lo = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && boss(i, j) ? 19 : 0)));
     const hi = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 20 : 12)));
     const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 24], noNest: true, partType, orient: { side: 'Z+', spin: false } });
@@ -320,7 +320,7 @@ describe('the jaws of a later clamping', () => {
   it('keeps a mill running down the jaws\' end, past the held face, 1 mm clear of it (a review found that margin untested)', () => {
     // As above, the hole 12 x 6 from 2 mm before the jaws' end: 4 mm of it beside the boss, where a mill
     // goes below the jaw top past the held face, along the jaws' end.
-    const tris = longBossPlate(176, (i, j) => i >= 152 && i < 164 && j >= 1 && j < 7);
+    const tris = longBossPlate(176, (i, j) => i >= 123 && i < 135 && j >= 1 && j < 7);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [180, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
@@ -339,7 +339,7 @@ describe('the jaws of a later clamping', () => {
 
   it('keeps off the second vise\'s jaws too, holding a part in both (a review found it untested)', () => {
     // A 230 mm plate with a 220 x 24 boss, held in both vises, and the 4 x 4 hole across the boss's Y- face
-    // 200 mm from its X- face: in the second vise (from 192 mm).
+    // 200 mm from its X- face: in the second vise (from 175 mm).
     // (the plate 1 mm narrower than the boss each side: the jaws hold the boss, the hole opens onto the face they hold)
     const tris = longBossPlate(230, (i, j) => i >= 204 && i < 208 && j >= 3 && j < 7, (j) => j >= 6 && j < 28);
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [234, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });

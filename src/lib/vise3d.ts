@@ -110,7 +110,7 @@ const FINISH: Record<VisePart, { color: number; metalness: number; roughness: nu
 };
 
 /**
- * The shop's vise (a Haas HMV-6F, from its maker's model; its jaws 150 mm long, their plates 45 mm over the bed): the
+ * The shop's vise (a Haas HMV-6F, from its maker's model; its jaws 125 mm long, their plates 45 mm over the bed): the
  * fixed jaw at the back (Y+), the moving jaw at the front (Y-) with the screw's hex end, each jaw plate on the part's
  * real faces (grip), the jaws from the stop's face (jawsFrom); the stop before them, that the part is pushed against. Its meshes come in once loaded
  * (loadVise): `ready` resolves when they are in.
@@ -132,15 +132,15 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
     }),
   ) as Record<VisePart, THREE.MeshStandardMaterial>;
   const jawMats = [mats.fixedJaw, mats.fixedPlate, mats.movingJaw, mats.movingPlate];
-  // Each vise at its span, its jaws' left end at the stop's face on the first (the stop before it), at the span's
-  // start on the second: the fixed jaw's face on the part's back, the moving one on its front.
+  // Each vise at its span, its jaws' left end there (on the first, the stop's face; the stop before it): the fixed
+  // jaw's face on the part's back, the moving one on its front.
   const place = (v: ViseMeshes) => {
-    for (const [i, [x0]] of spans.entries()) {
+    for (const [x0] of spans) {
       for (const k of Object.keys(FINISH) as VisePart[]) {
         const mesh = new THREE.Mesh(v.geos[k], mats[k]);
         mesh.castShadow = mesh.receiveShadow = true;
         const movingPart = k.startsWith('moving');
-        mesh.position.copy(v3([x0 + (i === 0 ? STOP_PLATE : 0), cb.max[1] - (movingPart ? cb.max[1] - cb.min[1] - v.opening : 0), floorZ]));
+        mesh.position.copy(v3([x0, cb.max[1] - (movingPart ? cb.max[1] - cb.min[1] - v.opening : 0), floorZ]));
         // The plates' tops at the jaw height used for the checks (45 mm, as modelled, unless set otherwise).
         if (k.endsWith('Plate')) mesh.scale.y = (jawTop - floorZ) / v.jawHeight;
         (movingPart ? moving : g).add(mesh);
@@ -153,9 +153,9 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
   // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
   const plates = spacers.map((sp) => {
     const plate =
-      sp.side === 'Y-' ? steel([x0 + STOP_PLATE, cb.min[1], floorZ], [x1, front, jawTop], ALU)
-      : sp.side === 'Y+' ? steel([x0 + STOP_PLATE, back, floorZ], [x1, cb.max[1], jawTop], ALU)
-      : steel([x0 + STOP_PLATE, front, floorZ], [x0 + STOP_PLATE + sp.mm, back, jawTop], ALU);
+      sp.side === 'Y-' ? steel([x0, cb.min[1], floorZ], [x1, front, jawTop], ALU)
+      : sp.side === 'Y+' ? steel([x0, back, floorZ], [x1, cb.max[1], jawTop], ALU)
+      : steel([x0, front, floorZ], [x0 + sp.mm, back, jawTop], ALU);
     (sp.side === 'Y-' ? moving : g).add(plate);
     return plate;
   });
@@ -164,7 +164,7 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
   g.add(moving);
   // The stop: a steel plate in the far-left corner, against the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.
-  g.add(steel([x0, cb.min[1] + 0.5, floorZ], [x0 + STOP_PLATE, cb.max[1], jawTop], STEEL_DARK, 0.6));
+  g.add(steel([x0 - STOP_PLATE, cb.min[1] + 0.5, floorZ], [x0, cb.max[1], jawTop], STEEL_DARK, 0.6));
   return { group: g, moving, jawMats, spacerEdges, ready };
 }
 
