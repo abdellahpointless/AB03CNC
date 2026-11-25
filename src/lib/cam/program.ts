@@ -20,6 +20,7 @@ import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
 import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW } from './clamp';
+import { editOpLines, type OpEdit } from './opEdit';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -171,6 +172,8 @@ export interface CamSetup {
   cales: number[];
   /** CAM AI's own parallels, when the designer's are used instead. */
   own?: number;
+  /** What the vise check was made with (its cuts aside): to check it again when an operation is edited (editProgram). */
+  vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number };
 }
 
 export interface Zone {
@@ -1303,6 +1306,29 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * own path misses it by less than a grid cell) runs at the feed of the move after it; checked again.
  * Any other rapid into material stays a collision (it blocks the program).
  */
+/**
+ * A made program with operations changed by hand (you, Beta 2: items 10 and 11), by operation key: the plan kept, those
+ * operations' lines moved or taken deeper (opEdit.ts), the vise check of their clampings done again with the new cuts,
+ * the program posted and checked again whole (later cuts and holders depend on what an edited one removed).
+ */
+export function editProgram(input: CamInput, r: CamResult, edits: Record<string, OpEdit>): CamResult & { check: CamCheck } {
+  const setups = r.setups.map((s) => {
+    let touched = false;
+    const ops = s.ops.map((op, k) => {
+      const e = edits[op.key ?? `${s.side}|${op.name}|${op.tool.code}|${k}`];
+      if (!e) return op;
+      touched = true;
+      return { ...op, lines: editOpLines(op.lines, e) };
+    });
+    if (!touched || !s.vise) return touched ? { ...s, ops } : s;
+    const v = s.vise;
+    const loads = ops.map((op) => loadOf(op, v.material, v.left, v.width, v.limits));
+    const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
+    return { ...s, ops, physics };
+  });
+  return checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) });
+}
+
 function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck } {
   const again = (code: string) => checkProgram(input.tris, code, input.brand, input.speeds, r.pose, r.corners);
   let code = r.code;
@@ -2373,7 +2399,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (wallMm3 > 0.5) notes.push({ key: 'jawWall', side: side.name, mm3: Math.max(1, Math.round(wallMm3)) });
     walls.push(...mine.map((w) => ({ R, t, ...w })));
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
+    const viseIn = nest
+      ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length }
+      : { material: mat, length: hold[0], width: contactOf(left, sb.lo[2], grip, twoVises, spacerX).width || hold[1], height: stockH, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits };
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ...(theirs && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);
