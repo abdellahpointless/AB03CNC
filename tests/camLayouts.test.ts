@@ -521,6 +521,21 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
+  it('holds a later clamping on the parallels asked for, from those the program made offers there', () => {
+    const made = camProgram(base);
+    const second = made.setups[1];
+    const other = second.cales.find((c) => c !== second.cale)!;
+    expect(other).toBeDefined();
+    const r = camProgram({ ...base, clamps: [null, other] });
+    expect(r.setups[0].cale).toBe(made.setups[0].cale);
+    expect(r.setups[1].cale).toBe(other);
+    expect(r.setups[1].own).toBe(second.cale);
+    expect(r.notes.filter((n) => n.key.startsWith('clamp'))).toEqual([]);
+    expect(r.code).toContain(`${other} MM UNTERLAGE`);
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
   it('finds a part that comes out bigger than the model, as the toolpath viewer does (the jaws on 10 of its 12 mm)', () => {
     const r = camProgram({ ...base, clamps: [30] });
     expect(r.setups[0].cale).toBe(30);
