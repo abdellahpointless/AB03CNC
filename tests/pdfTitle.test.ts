@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import plateUrl from './models/O1042013.pdf?inline';
-import holdingUrl from './models/O2504411.pdf?inline';
+import plateUrl from './models/O1998013.pdf?inline';
+import holdingUrl from './models/O2999411.pdf?inline';
 import { pdfInfo } from '../src/lib/pdfTitle';
 import { partTypeOf } from '../src/lib/cam/partType';
 

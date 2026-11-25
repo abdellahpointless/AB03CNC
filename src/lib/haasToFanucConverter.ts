@@ -3,7 +3,7 @@
  * of the reference library (tests/library/twins.test.ts): the same job posted for both controls.
  *
  * 1. "%" first and last. The O number: the program's full number from its file name when that is
- *    the same program ("O0131784.X20" for "O0784" -> "O0131784(X20)"), else the program's own.
+ *    the same program ("O0999784.X20" for "O0784" -> "O0999784(X20)"), else the program's own.
  * 2. Safety line "G40 G17 G53 G49 G80 G90" -> "G0 G53 G49 Z0 G94 M95"; a bare end retract
  *    "G53 G49 Z0" -> "G0 G53 G49 Z0" (M95 only at the start).
  * 3. Tool change: the tool's comment line carries the optional stop, "M01 (CHECK TOOL)" goes:
@@ -38,13 +38,13 @@ export interface HaasToFanucResult {
   };
 }
 
-/** The program's number in its file name ("O0131784.X20", the library's "O0131784_2.X20"), with the extension. */
+/** The program's number in its file name ("O0999784.X20", the library's "O0999784_2.X20"), with the extension. */
 export function fileProgramNumber(fileName: string): { digits: string; ext: string } | null {
   const m = fileName.match(/(?:^|[\\/])O(\d{5,8})(?:_\d+)?\.([A-Z0-9]{1,4})$/i);
   return m ? { digits: m[1], ext: m[2].toUpperCase() } : null;
 }
 
-/** The HAAS form of a long program number: first digit and last three (O0131784 -> O0784), as the shop's HAAS files. */
+/** The HAAS form of a long program number: first digit and last three (O0999784 -> O0784), as the shop's HAAS files. */
 export const haasProgramNumber = (digits: string) => (digits.length > 4 ? digits[0] + digits.slice(-3) : digits);
 
 const isCommentOnly = (l: string) => /^(N\d+\s*)?\(/i.test(l.trim()) && !codeOnly(l).replace(/^\s*N\d+/i, '').trim();
@@ -77,7 +77,7 @@ export function convertHaasToFanuc(haasCode: string, defaultFilename: string = '
     let line = input[i].trim();
     if (!line) continue;
 
-    // The O number: the full one when the file name is this program's ("O0131784" for "O0784").
+    // The O number: the full one when the file name is this program's ("O0999784" for "O0784").
     const o = line.match(/^O(\d+)/i);
     if (o && !stats.oCodeFormatted) {
       stats.oCodeFormatted = true;

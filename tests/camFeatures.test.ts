@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import hateUrl from './models/O2504411.pdf?inline';
-import plateUrl from './models/O1042013.pdf?inline';
-import pinUrl from './models/O0106607.stl?inline';
+import hateUrl from './models/O2999411.pdf?inline';
+import plateUrl from './models/O1998013.pdf?inline';
+import pinUrl from './models/O0999607.stl?inline';
 import { readModel } from '../src/lib/model';
 import { SIDES, sideFeatures } from '../src/lib/cam/features';
 import { area, intersection, offset, slice, turnTris } from '../src/lib/cam/geom';
@@ -11,7 +11,7 @@ const side = (n: string) => SIDES.find((s) => s.name === n)!;
 const count = (holes: { r: number }[], d: number) => holes.filter((h) => Math.abs(h.r * 2 - d) < 0.05).length;
 
 describe('features of a part from its 3D model', () => {
-  it('O2504411: the M3 core holes through from the side, the Ø3.2 holes from the top', async () => {
+  it('O2999411: the M3 core holes through from the side, the Ø3.2 holes from the top', async () => {
     const tris = await readModel(bytes(hateUrl));
     const x = sideFeatures(tris, side('X+'));
     expect(count(x.holes, 2.46)).toBe(4);
@@ -20,7 +20,7 @@ describe('features of a part from its 3D model', () => {
     expect(count(z.holes, 3.2)).toBe(2);
     expect(z.max[2] - z.min[2]).toBeCloseTo(9, 2);
   });
-  it('O1042013: its floors, holes and the 0.8 mm top chamfer from the top, the counterbores from below', async () => {
+  it('O1998013: its floors, holes and the 0.8 mm top chamfer from the top, the counterbores from below', async () => {
     const tris = await readModel(bytes(plateUrl));
     const z = sideFeatures(tris, side('Z+'));
     expect(z.floors[0].z).toBeCloseTo(z.max[2], 2);
@@ -39,7 +39,7 @@ describe('features of a part from its 3D model', () => {
     expect(area(offset(r, 1))).toBeGreaterThan(area(r));
     expect(area(offset(r, -0.5))).toBeLessThan(area(r));
   });
-  it('O0106607: a Ø5 bore under a Ø2.6 neck is not drilled from the neck side (it would cut the neck away)', async () => {
+  it('O0999607: a Ø5 bore under a Ø2.6 neck is not drilled from the neck side (it would cut the neck away)', async () => {
     const tris = await readModel(bytes(pinUrl));
     const disk = (c: [number, number], r: number) => [Array.from({ length: 32 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 16), c[1] + r * Math.sin((i * Math.PI) / 16)] as [number, number])];
     let checked = 0;

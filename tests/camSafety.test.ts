@@ -149,7 +149,7 @@ describe('text from outside in the program', () => {
   }, 180_000);
 
   it('keeps an ordinary name, upper case', () => {
-    expect(commentSafe('o2504411 top-plate_v2.1')).toBe('O2504411 TOP-PLATE_V2.1');
+    expect(commentSafe('o2999411 top-plate_v2.1')).toBe('O2999411 TOP-PLATE_V2.1');
     expect(commentSafe('  ')).toBe('TEIL');
   });
 });

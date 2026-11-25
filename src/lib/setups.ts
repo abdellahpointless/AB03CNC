@@ -460,7 +460,7 @@ function bySize(options: Mat3[], part: { min: Vec; max: Vec } | null, sizes: { x
 
 /**
  * The setup's own cuts must fit on the part: a turn that leaves the part narrower (along machine X
- * or Y) than what the setup cuts on it cannot be the one (O1705013: cuts 95 mm long in X, so the
+ * or Y) than what the setup cuts on it cannot be the one (O1994013: cuts 95 mm long in X, so the
  * 100 × 50 plate keeps its 100 along X). `radius` gives each move's tool radius, null for facing.
  */
 function byCuts(options: Mat3[], part: { min: Vec; max: Vec } | null, moves: Move[], radius: (m: Move) => number | null): Mat3[] {
@@ -973,8 +973,8 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       known.set('front', apply(transpose(orient), [0, 0, ins.side === 'back' ? 1 : -1]));
     }
     // The button (RAFI / TASTER) written here for the first time, its hole already cut in a setup
-    // before: where that hole was cut says where the button is (O1342013: cut at X- Y+, then
-    // "RAFI X+ Y+" means turned around Y). Not when another marker is in use (O1036013 writes TASTER
+    // before: where that hole was cut says where the button is (O1996013: cut at X- Y+, then
+    // "RAFI X+ Y+" means turned around Y). Not when another marker is in use (O1999013 writes TASTER
     // and RAFI for two different things: its TASTER hole is not the RAFI).
     const marker = ins.marker;
     if (k > 0 && marker && /RAFI|TASTER/.test(marker.name) && !known.has(marker.name) && ![...known.keys()].some((n) => n !== marker.name && /RAFI|TASTER|WINDOW/.test(n))) {
@@ -1141,7 +1141,7 @@ function analyseWith(tp: Toolpath, opts: SetupOptions, override: Map<number, Mat
       const f = turnedBox(orient, [0, 0, 0], finished);
       let left = size[2] - (f.max[2] - f.min[2]);
       // The header may write the finished size in any order: when the facing clearly disagrees
-      // (O2613002: "17.8X13X10", 13 high), the finished height that leaves what the facing takes off.
+      // (O2999002: "17.8X13X10", 13 high), the finished height that leaves what the facing takes off.
       if (faceLevels.length) {
         const faced = faceLevels[0] + step;
         const fit = finished.map((h) => size[2] - h).find((l) => l >= -0.01 && Math.abs(l - faced) <= Math.max(step, 0.5));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import pdfUrl from './models/O2504411.pdf?inline';
-import stlUrl from './models/O2504411.stl?inline';
+import pdfUrl from './models/O2999411.pdf?inline';
+import stlUrl from './models/O2999411.stl?inline';
 import { readModel, readStl } from '../src/lib/model';
 import { prcFromPdf } from '../src/lib/prc';
 
@@ -13,7 +13,7 @@ const box = (t: Float32Array) => [0, 1, 2].map((k) => {
 });
 
 describe('the model inside a 3D PDF', () => {
-  it('reads the same triangles as the STL exported with it (O2504411)', async () => {
+  it('reads the same triangles as the STL exported with it (O2999411)', async () => {
     const pdf = await readModel(bytes(pdfUrl));
     const stl = readStl(bytes(stlUrl));
     expect(pdf.length).toBe(stl.length);

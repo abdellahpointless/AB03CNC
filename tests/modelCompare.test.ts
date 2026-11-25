@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import pdfUrl from './models/O2504411.pdf?inline';
-import program from './models/O2504411.000.txt?raw';
+import pdfUrl from './models/O2999411.pdf?inline';
+import program from './models/O2999411.000.txt?raw';
 import { readModel } from '../src/lib/model';
 import { layModel, placeModel } from '../src/lib/modelCompare';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
@@ -22,7 +22,7 @@ describe('the real part laid on the simulated part', async () => {
   const input = buildInput(tp, an)!;
   const tris = await readModel(bytes(pdfUrl));
 
-  it('lies where the simulation made it (O2504411 and its 3D PDF)', () => {
+  it('lies where the simulation made it (O2999411 and its 3D PDF)', () => {
     const laid = layModel(tris, input, an.setups);
     if ('mismatch' in laid) throw new Error('no fit');
     expect(laid.overlap).toBeGreaterThan(0.95);

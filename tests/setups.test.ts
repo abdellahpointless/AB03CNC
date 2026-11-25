@@ -12,7 +12,7 @@ const programLines = (_tp: unknown, line: number) => program(10).replace('M0 (38
 const program = (side: number) =>
   [
     '%',
-    'O1061213 (KONTAKTTRAEGERPLATTE POM / 49X40X15 / ZUSCHNITT:54X44X30)',
+    'O1999213 (KONTAKTTRAEGERPLATTE POM / 49X40X15 / ZUSCHNITT:54X44X30)',
     'M0 (TEIL MIT 54 IN X UND 44 IN Y EINSPANNEN)',
     'M0 (38 MM UNTERLAGE)',
     'G52 X-23. Y28. Z10.',
@@ -137,7 +137,7 @@ describe('setups', () => {
   });
 
   it('turns a top plate by where its RAFI points and which side is up', () => {
-    // The shop's top plate 100x50x30: back, front, then on edge three times (O0170834).
+    // The shop's top plate 100x50x30: back, front, then on edge three times (O0999834).
     const lines = ['%', 'O0834', '(TOP PLATE FH / 100X50X30)'];
     const setup = (notes: string[], g52: string, x: number, y: number) => {
       lines.push(...notes.map((n) => `M0 (${n})`), g52, 'T2 M6 (FRAESER D6)', '(DIAMETER 6.00 MM/LENGTH 30.00 MM)', `G0 G90 X${x} Y${y} S5000 M3`, 'G43 H2 Z5.', 'G1 Z-2. F300', `G1 X${x + 1}.`, 'G0 Z50.');
@@ -167,7 +167,7 @@ describe('setups', () => {
     // clamping, so the 3D view showed every floor there 1 mm too deep. An engineers' G52 keeps 1.5 mm of tolerance.
     const two = (mark: boolean) =>
       program(10)
-        .replace('O1061213 ', mark ? 'O1061213\n(3D-MODELL)\n' : 'O1061213\n')
+        .replace('O1999213 ', mark ? 'O1999213\n(3D-MODELL)\n' : 'O1999213\n')
         .replace('G52 X-23. Y28. Z10.', 'G52 X-23. Y28. Z11.')
         .replace('M0 (38 MM UNTERLAGE / Z+ IN 15MM)', 'M0 (38 MM UNTERLAGE)')
         .replace('G52 X-25.5 Y30. Z-4.', 'G52 X-25.5 Y30. Z-3.');
@@ -253,7 +253,7 @@ describe('setups', () => {
     expect(partLook(code)).toBe('fh');
   });
 
-  it('reads "15 MM UNTERLAGE/ IN Y-" as a spacer on the Y- side, not a second support (O1233043)', () => {
+  it('reads "15 MM UNTERLAGE/ IN Y-" as a spacer on the Y- side, not a second support (O1999043)', () => {
     const r = readInstructions(['TEIL 180 GRAD UM Y DREHEN/24 IN X UND 14 IN Y', '38 MM UNTERLAGE', '15  MM UNTERLAGE/ IN Y-']);
     expect(r.support).toBe(38);
     expect(r.spacers).toEqual([{ mm: 15, side: 'Y-' }]);
@@ -275,7 +275,7 @@ describe('setups', () => {
     expect(Array.from(g.removed).some((r) => rapids.has(r))).toBe(false);
   });
   it('reads the other ways the shop writes sizes and supports', () => {
-    // Raw block after "//" instead of ZUSCHNITT (O0164578); a lone size after "//" is the finished part (O0169538).
+    // Raw block after "//" instead of ZUSCHNITT (O0999578); a lone size after "//" is the finished part (O0999538).
     expect(partSizes(['TOP PLATE POM / 100X50X30 // 104X54X40'])).toMatchObject({ finished: [100, 50, 30], raw: [104, 54, 40] });
     expect(partSizes([' INSERT (TOP PLATE FH // 150X100X30 ) '])).toMatchObject({ finished: [150, 100, 30], raw: null });
     expect(readInstructions(['TEIL MIT 104 UM X UND 54 UM Y EINSPANNEN']).sizes).toEqual({ x: 104, y: 54 });
@@ -290,7 +290,7 @@ describe('setups', () => {
     expect(readInstructions(['15 MM ZWISCHENLAGE IN Y-', '15 MM ZWISCHENLAGE IN Y+']).spacers).toEqual([{ mm: 15, side: 'Y-' }, { mm: 15, side: 'Y+' }]);
   });
 
-  it('turns the part over when a later clamping first says it is the back side (O0162220)', () => {
+  it('turns the part over when a later clamping first says it is the back side (O0999220)', () => {
     // First side: raw 154x104x60 faced in layers; the outline cut 20 deep. Then "RUECKS." with no
     // turn written: the first side was the front, so the part lies upside down now.
     const face = (zs: number[]) => zs.flatMap((z) => ['G0 X206.5 Y-17.833', `G1 Z${z} F600`, 'G1 X-56.5', 'G0 Z10.', 'G0 X206.5 Y-82.167', `G1 Z${z}`, 'G1 X-56.5', 'G0 Z10.']);
@@ -339,8 +339,8 @@ describe('cales and the jaw tops', () => {
     expect(readInstructions(['TEIL 180 GRAD UM Y DREHEN/18 IN X UND 8 IN Y', 'EPESSEUR DE 3 MMSUR L\'ETEAU']).onJaw).toBe(3);
     expect(readInstructions(['EPAISSEUR DE 8 MM SUR L\'ETAU']).onJaw).toBe(8);
     expect(readInstructions(['40 MM UNTERLAGE']).onJaw).toBeNull();
-    // O0171898, side 2: G52 Z-9 puts the floor at Z-48, the jaw tops at Z-3, the finished top 3 mm above.
-    const { setups } = analyseProgram(parseToolpath(programs['./programs/O0171898.X20.txt'], S), { jawHeight: 45 });
+    // O0999898, side 2: G52 Z-9 puts the floor at Z-48, the jaw tops at Z-3, the finished top 3 mm above.
+    const { setups } = analyseProgram(parseToolpath(programs['./programs/O0999898.X20.txt'], S), { jawHeight: 45 });
     expect(setups[1].onJaw).toBe(3);
     expect(setups[1].floorZ).toBeCloseTo(-48, 5);
     expect(setups[1].jawTopZ).toBeCloseTo(-3, 5);
@@ -370,7 +370,7 @@ describe('cales and the jaw tops', () => {
   });
 
   it('rejects a flip whose written clamping size the part does not have', () => {
-    const code = programs['./programs/O0171898.X20.txt'];
+    const code = programs['./programs/O0999898.X20.txt'];
     // As written: the part is 8 mm wide in Y where the jaws grip it.
     expect(analyseProgram(parseToolpath(code, S), { jawHeight: 45 }).setups[1].rejects).toEqual([]);
     const wrong = code.replace('18 IN X UND 8 IN Y', '18 IN X UND 3 IN Y');

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import plate from './models/O1042013.C60.txt?raw';
+import plate from './models/O1998013.C60.txt?raw';
 import { blankAlong, kindOf, readProgram, summarise } from '../src/lib/cam/learn';
 import knowledge from '../src/lib/cam/shopKnowledge.json';
 
-describe('learning from a program (O1042013, FH top plate)', () => {
-  const p = readProgram(plate, 'O1042013');
+describe('learning from a program (O1998013, FH top plate)', () => {
+  const p = readProgram(plate, 'O1998013');
   it('reads the part, its setups and each operation with its cutting data', () => {
     expect(p.material).toBe('FH');
     expect(p.size).toEqual([100, 50, 40]);

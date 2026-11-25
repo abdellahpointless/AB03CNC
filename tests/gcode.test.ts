@@ -82,8 +82,8 @@ describe('code generation', () => {
   });
 
   it('no G53 Y0 for the first clamping at the start of the program, only for the flips after it', () => {
-    // O0106607's start: the operator loads the raw part (M0 notes, G52) before anything moves.
-    const src = ['%', 'O0106607(X20)', 'N7 G0 G53 G49 Z0 G94 M95', 'N9 G54', 'N10 M0 (TEIL MIT 24.5 IN X UND 20 IN Y EINSPANNEN)', 'N11 M0 (40 MM UNTERLAGE)', 'N12 G52 X-48.000 Y48.000 Z16.000', 'N13 (TOOLPATH PLAN_MK40_1)', 'N14 T3 M6', 'N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)', 'N17 G00 G43 Z53. H3 M08', 'N18 G00 G90 X52.5 Y-8.125 S8000 M03', 'N19 G01 Z1.5 F3000', 'N20 T5 M6', 'N21 (FRAISE)', 'N22 M0 (TEIL 180 GRAD UM Y DREHEN)', 'N23 G52 X-48.000 Y48.000 Z10.000', 'N24 G01 X5. F300', 'N25 M30', '%'];
+    // O0999607's start: the operator loads the raw part (M0 notes, G52) before anything moves.
+    const src = ['%', 'O0999607(X20)', 'N7 G0 G53 G49 Z0 G94 M95', 'N9 G54', 'N10 M0 (TEIL MIT 24.5 IN X UND 20 IN Y EINSPANNEN)', 'N11 M0 (40 MM UNTERLAGE)', 'N12 G52 X-48.000 Y48.000 Z16.000', 'N13 (TOOLPATH PLAN_MK40_1)', 'N14 T3 M6', 'N15 M01 (MESSERKOPF D40 / MK_40.00_030_000_ALHS)', 'N17 G00 G43 Z53. H3 M08', 'N18 G00 G90 X52.5 Y-8.125 S8000 M03', 'N19 G01 Z1.5 F3000', 'N20 T5 M6', 'N21 (FRAISE)', 'N22 M0 (TEIL 180 GRAD UM Y DREHEN)', 'N23 G52 X-48.000 Y48.000 Z10.000', 'N24 G01 X5. F300', 'N25 M30', '%'];
     const out = applyG53BeforeG52(src).lines;
     expect(out.slice(0, 7)).toEqual(src.slice(0, 7)); // the start is left as it is
     expect(out.filter((l) => /G53 Y0/.test(l))).toHaveLength(2); // the flip and the end
@@ -371,7 +371,7 @@ const SHOP_HAAS = [
   'N35 G00 G90 X-30. Y-32. S8000 M03', 'N36 G01 Z5.25 F3000.', 'N37 G00 Z50.', 'N38 G0 G53 G49 Y0 Z0 M89', 'N39 ( Gesamt-Bearbeitungszeit =3.7MIN )', 'N40 M30', '%',
 ].join('\n');
 const SHOP_FANUC = [
-  '%', 'O0131784(X20)', 'N1 (NC_PROGRAM)', 'N2 (DATUM DER ERSTELLUNG: 02.09.25 / BEARBEITER: X)', 'N3 G0 G53 G49 Z0 G94 M95', 'N4 G54',
+  '%', 'O0999784(X20)', 'N1 (NC_PROGRAM)', 'N2 (DATUM DER ERSTELLUNG: 02.09.25 / BEARBEITER: X)', 'N3 G0 G53 G49 Z0 G94 M95', 'N4 G54',
   'N5 M0 (TEIL MIT 60 IN X UND 42 IN Y EINSPANNEN)', 'N6 G52 X-48.000 Y48.000 Z22.000',
   'N7 (TOOLPATH PLAN)', 'N8 T3 M6', 'N9 M01 (MESSERKOPF D40 / MK_40.00_030_000_AL)', 'N10 (DIAMETER 40.00 MM/LENGTH 40.00 MM)',
   'N11 G00 G43 Z52. H#513 D#513 M254 M08', 'N12 G00 G90 X86. Y-6. S8000 M03', 'N13 G01 Z1. F3000', 'N14 G01 X-20.', 'N15 G00 Z50.',
@@ -384,19 +384,19 @@ const SHOP_FANUC = [
 
 describe("HAAS <-> FANUC as the shop's posts write them", () => {
   it('HAAS -> FANUC gives the FANUC file, but G53 Y0 where it calls O7999 (not on the machines)', () => {
-    const out = convertHaasToFanuc(SHOP_HAAS, 'O0131784.X20').fanucCode.split('\n');
+    const out = convertHaasToFanuc(SHOP_HAAS, 'O0999784.X20').fanucCode.split('\n');
     const want = SHOP_FANUC.split('\n').map((l) => l.replace(/^N28 M98 P7999$/, 'N28 G53 Y0').replace(/^N35 M98 P7999$/, 'N35 G0 G53 G49 Y0 Z0'));
     expect(out).toEqual(want);
   });
 
   it('FANUC -> HAAS gives the HAAS file', () => {
-    expect(convertFanucToHaas(SHOP_FANUC, 'O0131784.X20').haasCode.split('\n')).toEqual(SHOP_HAAS.split('\n'));
+    expect(convertFanucToHaas(SHOP_FANUC, 'O0999784.X20').haasCode.split('\n')).toEqual(SHOP_HAAS.split('\n'));
   });
 
   it('the O number: the full one from the file name for FANUC, first digit and last three for HAAS', () => {
-    expect(convertHaasToFanuc(SHOP_HAAS, 'O0131784_2.X20').fanucCode.split('\n')[1]).toBe('O0131784(X20)');
+    expect(convertHaasToFanuc(SHOP_HAAS, 'O0999784_2.X20').fanucCode.split('\n')[1]).toBe('O0999784(X20)');
     // A file name that is not this program's number: the program's own O number stays.
-    expect(convertHaasToFanuc(SHOP_HAAS, 'O0131999.X20').fanucCode.split('\n')[1]).toBe('O0784');
+    expect(convertHaasToFanuc(SHOP_HAAS, 'O0999999.X20').fanucCode.split('\n')[1]).toBe('O0784');
     expect(convertHaasToFanuc(SHOP_HAAS, 'part.nc').fanucCode.split('\n')[1]).toBe('O0784');
     expect(convertFanucToHaas('O01203 (BRIDE ACIER)\nN1 M30', 'x.nc').haasCode.split('\n')[1]).toBe('O0203 (BRIDE ACIER)');
   });
@@ -410,7 +410,7 @@ describe("HAAS <-> FANUC as the shop's posts write them", () => {
   });
 
   it('a FANUC remap brings the table out with G53 Y0 where the program calls O7999, same N, nothing added', () => {
-    const { code } = remap(SHOP_FANUC.replace(/O0131784\(X20\)/, 'O0131784'), fanuc1, 'FANUC-1');
+    const { code } = remap(SHOP_FANUC.replace(/O0999784\(X20\)/, 'O0999784'), fanuc1, 'FANUC-1');
     const out = code.split('\n');
     expect(out).toContain('N28 G53 Y0');
     expect(out).toContain('N35 G53 Y0');
@@ -419,7 +419,7 @@ describe("HAAS <-> FANUC as the shop's posts write them", () => {
   });
 
   it('FANUC-2 keeps M98 P7999 and still brings the table out with G53 Y0 at the flip and at the end', () => {
-    const src = SHOP_FANUC.replace(/O0131784\(X20\)/, 'O0131784');
+    const src = SHOP_FANUC.replace(/O0999784\(X20\)/, 'O0999784');
     const out = remap(src, fanuc1, 'FANUC-2').code.split('\n');
     expect(out.filter((l) => /G53 Y0/.test(l))).toEqual(['N26 G53 Y0', 'N38 G53 Y0']);
     expect(out[out.indexOf('N26 G53 Y0') - 1]).toMatch(/^N25 T\d+ M6 G49/); // right after the flip tool's change, before its stops
@@ -428,7 +428,7 @@ describe("HAAS <-> FANUC as the shop's posts write them", () => {
   });
 
   it('FANUC-2: skipping the flip tool still brings the table out before the flip', () => {
-    const src = SHOP_FANUC.replace(/O0131784\(X20\)/, 'O0131784');
+    const src = SHOP_FANUC.replace(/O0999784\(X20\)/, 'O0999784');
     const a = analyzeGCode(src, fanuc1, 'FANUC-2');
     const skip: Tool = { id: 'skip', number: 0, category: 'empty', diameter: 0, length: 0, description: 'Skip Operation' };
     const out = generateRemappedCode(a.lines, a.blocks, { [a.blocks[2].blockId]: skip }, 'FANUC-2').finalCode.split('\n');
@@ -557,7 +557,7 @@ describe('an O number on the % line', () => {
 describe('the O line of a FANUC program', () => {
   it('drops the file extension written right after the number, keeps a name written after a space', () => {
     const first = (o: string) => convertFanucToHaas(`${o}\nN1 M30`, 'x.nc').haasCode.split('\n')[1];
-    expect(first('O0131784(X20)')).toBe('O0784');
+    expect(first('O0999784(X20)')).toBe('O0784');
     expect(first('O01234 (ROD)')).toBe('O0234 (ROD)');
     expect(first('O01234 (V2)')).toBe('O0234 (V2)');
     expect(first('O01203 (BRIDE ACIER)')).toBe('O0203 (BRIDE ACIER)');
@@ -592,7 +592,7 @@ describe('a pasted text', () => {
   it('is a whole program when it has its own O line (then the imported file name no longer fits it)', () => {
     expect(isWholeProgram('%\nO1033\nN1 (PART)\nN2 G40 G17 G53 G49 G80 G90')).toBe(true);
     expect(isWholeProgram('%O01234\nG0 G53 G49 Z0 G94 M95')).toBe(true);
-    expect(isWholeProgram('O0131784(X20)\nN1 (NC_PROGRAM)')).toBe(true);
+    expect(isWholeProgram('O0999784(X20)\nN1 (NC_PROGRAM)')).toBe(true);
     expect(isWholeProgram('N7 G01 X20. F300.\nN8 G00 Z50.')).toBe(false);
     expect(isWholeProgram('N9 M98 P7999\nN10 (O1234 IN A COMMENT)')).toBe(false);
   });

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import pdfUrl from './models/O2504411.pdf?inline';
-import program from './models/O2504411.000.txt?raw';
-import plateUrl from './models/O1042013.pdf?inline';
-import plate from './models/O1042013.C60.txt?raw';
+import pdfUrl from './models/O2999411.pdf?inline';
+import program from './models/O2999411.000.txt?raw';
+import plateUrl from './models/O1998013.pdf?inline';
+import plate from './models/O1998013.C60.txt?raw';
 import { readModel } from '../src/lib/model';
 import { searchTurns } from '../src/lib/fixTurns';
 import { parseToolpath, speedsFor, type Toolpath } from '../src/lib/toolpath';
@@ -22,7 +22,7 @@ const records = (tp: Toolpath, right: Mat3[]) =>
 afterEach(() => setTurnMemory([]));
 
 describe('turns learned from 3D models', () => {
-  it('keeps a program read right from its notes right once its turns are learned (O1042013)', async () => {
+  it('keeps a program read right from its notes right once its turns are learned (O1998013)', async () => {
     const tp = parseToolpath(plate, speedsFor('HAAS'));
     const right = searchTurns(await readModel(bytes(plateUrl)), tp, opts)!;
     expect(read(tp)).toEqual(right.orients.map((o) => o.join()));
@@ -31,7 +31,7 @@ describe('turns learned from 3D models', () => {
     expect(analyseProgram(tp, opts).setups.slice(1).every((s) => s.learned)).toBe(true);
   }, 300_000);
 
-  it('a wrong note corrected once is read right the next time (O2504411 with "Z+ WIRD Y-")', async () => {
+  it('a wrong note corrected once is read right the next time (O2999411 with "Z+ WIRD Y-")', async () => {
     const broken = program.replace('TEIL 90 GRAD UM X DREHEN/78 IN X UND 9 IN Y/Z+ WIRD Y+', 'TEIL 90 GRAD UM X DREHEN/78 IN X UND 9 IN Y/Z+ WIRD Y-');
     const tp = parseToolpath(broken, speedsFor('HAAS'));
     const right = searchTurns(await readModel(bytes(pdfUrl)), tp, opts)!;

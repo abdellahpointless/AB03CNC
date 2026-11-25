@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import pdfUrl from './models/O2504411.pdf?inline';
-import program from './models/O2504411.000.txt?raw';
+import pdfUrl from './models/O2999411.pdf?inline';
+import program from './models/O2999411.000.txt?raw';
 import { partLessonOf } from '../src/lib/lessons';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 

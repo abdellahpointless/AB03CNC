@@ -2,7 +2,7 @@
  * FANUC to HAAS: the program as the shop's HAAS post writes it. Checked against every true twin of
  * the reference library (tests/library/twins.test.ts): the same job posted for both controls.
  *
- * 1. "%" first and last. The O number: first digit and last three ("O0131784(X20)" -> "O0784"),
+ * 1. "%" first and last. The O number: first digit and last three ("O0999784(X20)" -> "O0784"),
  *    the file extension in brackets dropped, a program name comment kept.
  * 2. Safety line "G0 G53 G49 Z0 G94 M95" -> "G40 G17 G53 G49 G80 G90".
  * 3. M98 P7999 (the FANUC files' table out): "G53 Y0" at a part flip, "G0 G53 G49 Y0 Z0 M89" at the
@@ -82,7 +82,7 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     const o = line.match(/^O(\d+)(\s*)(\(.*\))?\s*$/i);
     if (o && !stats.oCodeRenamed) {
       stats.oCodeRenamed = true;
-      // The file extension in brackets right after the number ("O0131784(X20)", as all 49 of the
+      // The file extension in brackets right after the number ("O0999784(X20)", as all 49 of the
       // shop's FANUC files) goes; a program name stays ("O01234 (ROD)").
       const ext = !o[2] && !!o[3] && /^\(\s*[A-Z0-9]{1,4}\s*\)$/i.test(o[3]);
       const name = o[3] && !ext ? ` ${o[3].trim()}` : '';

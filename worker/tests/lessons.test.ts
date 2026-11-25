@@ -30,14 +30,14 @@ const call = (handler: (c: Ctx) => Promise<Response>, user: AuthedUser, body?: u
 
 describe('toolpath learning records', () => {
   it('are saved by toolpath users only, and exported with their data', async () => {
-    const lesson = { fileName: 'O1042013.C60', start: 0.744, match: 1, data: { version: 1, setups: [{ n: 2, notes: ['MOD. SPANNEN F. FRONTSEITE'], changed: true }] } };
+    const lesson = { fileName: 'O1998013.C60', start: 0.744, match: 1, data: { version: 1, setups: [{ n: 2, notes: ['MOD. SPANNEN F. FRONTSEITE'], changed: true }] } };
     expect((await call(handleSaveLesson, ali, lesson)).status).toBe(200);
     expect((await call(handleSaveLesson, omar, lesson)).status).toBe(403);
     expect((await call(handleSaveLesson, ali, { ...lesson, match: 2 })).status).toBe(400);
     expect((await call(handleSaveLesson, ali, { ...lesson, data: 'text' })).status).toBe(400);
     const out = await call(handleExportLessons, admin);
     expect(out.data?.lessons).toHaveLength(1);
-    expect(out.data?.lessons[0]).toMatchObject({ kind: 'turns', user: 'ali', fileName: 'O1042013.C60', start: 0.744, match: 1, version: 1 });
+    expect(out.data?.lessons[0]).toMatchObject({ kind: 'turns', user: 'ali', fileName: 'O1998013.C60', start: 0.744, match: 1, version: 1 });
   });
 
   it('are refused where the country switched off what the person uses', async () => {
@@ -60,7 +60,7 @@ describe('toolpath learning records', () => {
   });
 
   it('keep big part records (model + program) apart, exported page by page', async () => {
-    const part = { kind: 'part', fileName: 'O2504411.000', start: 1, match: 1, data: { version: 1, model: 'x'.repeat(1_000_000), program: 'y' } };
+    const part = { kind: 'part', fileName: 'O2999411.000', start: 1, match: 1, data: { version: 1, model: 'x'.repeat(1_000_000), program: 'y' } };
     expect((await call(handleSaveLesson, ali, part)).status).toBe(200);
     expect((await call(handleSaveLesson, ali, { ...part, fileName: 'O1.000' })).status).toBe(200);
     expect((await call(handleSaveLesson, ali, { ...part, data: { model: 'x'.repeat(2_000_000) } })).status).toBe(413);

@@ -157,7 +157,7 @@ describe('cutting follows the tool along a move', () => {
 describe('surfaces finished by a pass that skims a little more off', () => {
   it('draws a bore at its final size when a second, wider circle follows the first', () => {
     // A 5 mm end mill plunges, runs a circle of radius 0.3, then one of 0.5 and a lead-out arc
-    // (O1494033): the bore is 6.01 mm. The wider circle takes only a thin ring of samples.
+    // (O1999033): the bore is 6.01 mm. The wider circle takes only a thin ring of samples.
     const circle = (rad: number, z: number): Vec[] => Array.from({ length: 73 }, (_, i) => [rad * Math.cos((i / 72) * 2 * Math.PI), rad * Math.sin((i / 72) * 2 * Math.PI), z] as Vec);
     const leadOut: Vec[] = Array.from({ length: 13 }, (_, i) => {
       const a = (i / 12) * (Math.PI / 2);
