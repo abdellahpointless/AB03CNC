@@ -345,6 +345,8 @@ describe('cales and the jaw tops', () => {
     expect(setups[1].floorZ).toBeCloseTo(-48, 5);
     expect(setups[1].jawTopZ).toBeCloseTo(-3, 5);
     expect(setups[1].collisions).toEqual([]);
+    // Nothing under it: no parallels drawn, none checked against the tools, none for a through-cut to stop on.
+    expect(setups[1].cales).toBeNull();
   });
 
   it('a feed may go up to 1 mm into a parallel (shop rule); deeper, or any rapid below its top, is a hit', () => {

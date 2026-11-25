@@ -638,7 +638,8 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
     }
     if (settled || pass === out.setups.length + 1) {
       for (const s of out.setups) {
-        s.cales = placeCales(s, input, g);
+        // On the jaw tops ("SUR L'ETAU") nothing stands under the part.
+        s.cales = s.onJaw !== null ? null : placeCales(s, input, g);
         s.collisions.push(...caleHits(tp, s));
         s.grip = gripOf(s, input, g);
         const miss = sizeMiss(s, input, g);
