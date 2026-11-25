@@ -75,7 +75,7 @@ function cutsOf(d: Draft): DbTool['cuts'] | undefined {
   return Object.keys(cuts).length ? cuts : undefined;
 }
 
-export default function CamToolDb({ open, onOpenChange, stored, onSaved, family: first }: { open: boolean; onOpenChange: (o: boolean) => void; stored: Stored; onSaved: (s: Stored) => void; family?: Family }) {
+export default function CamToolDb({ open, onOpenChange, stored, onSaved, family: first, onChanged }: { open: boolean; onOpenChange: (o: boolean) => void; stored: Stored; onSaved: (s: Stored) => void; family?: Family; /** A tool saved or deleted (its code): the page asks to make again a program that uses it. */ onChanged?: (code: string) => void }) {
   const { t } = useTranslation('cam');
   const typeName = (k: string) => t(`camAi.db.type.${k as ToolType}`);
   const [fam, setFam] = useState<Family>(first ?? 'ALU');
@@ -83,6 +83,8 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
   const [sel, setSel] = useState<string | null>(null);
   const [adding, setAdding] = useState<{ type: string; d: string; length: string } | null>(null);
   const [draft, setDraft] = useState<Draft>({});
+  // Its role, whether CAM AI may use it, and (an added tool) its type (item 14).
+  const [meta, setMeta] = useState<{ role?: 'rough' | 'finish'; off?: true; type?: string }>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -111,6 +113,7 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
     setSel(r?.code ?? null);
     setAdding(null);
     setDraft(draftOf(r));
+    setMeta({ role: r?.db?.role, off: r?.db?.off, type: r && !r.template ? r.type : undefined });
     setErr(null);
   };
   useEffect(() => pick(null), [fam]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -130,6 +133,7 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
         await api('/lab/tools', { method: 'PUT', body: { family: fam, code, tool } });
       } else await api(`/lab/tools?family=${fam}&code=${encodeURIComponent(code)}`, { method: 'DELETE' });
       apply(code, tool);
+      onChanged?.(code);
       return true;
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -140,13 +144,14 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
   };
 
   const save = async () => {
+    const extra = { ...(meta.role ? { role: meta.role } : {}), ...(meta.off ? { off: true as const } : {}) };
     if (adding) {
       const d = Number(adding.d.replace(',', '.'));
       const length = Number(adding.length.replace(',', '.'));
       const code = codeOf(adding.type, d, length, fam);
       if (rows.some((r) => r.code === code)) return setErr(t('camAi.db.exists'));
       const cuts = cutsOf(draft);
-      if (await send(code, { added: { type: adding.type, d, length: Math.round(length) }, ...(cuts ? { cuts } : {}) })) {
+      if (await send(code, { added: { type: adding.type, d, length: Math.round(length) }, ...(cuts ? { cuts } : {}), ...extra })) {
         setAdding(null);
         setSel(code);
       }
@@ -154,12 +159,22 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
     }
     if (!row) return;
     const cuts = cutsOf(draft);
-    if (row.template) await send(row.code, cuts ? { cuts } : null);
-    else await send(row.code, { added: row.db!.added, ...(cuts ? { cuts } : {}) });
+    if (row.template) await send(row.code, cuts || Object.keys(extra).length ? { ...(cuts ? { cuts } : {}), ...extra } : null);
+    else if (meta.type && meta.type !== row.type) {
+      // Another type: another code. Saved under it first, then the old one deleted; its cuts for the old type go.
+      const code = codeOf(meta.type, row.d, row.length, fam);
+      if (rows.some((r) => r.code === code)) return setErr(t('camAi.db.exists'));
+      const kept = cuts && Object.fromEntries(Object.entries(cuts).filter(([k]) => (KINDS_OF[meta.type!] ?? []).includes(k as TemplateKind)));
+      if (await send(code, { added: { type: meta.type, d: row.d, length: row.length }, ...(kept && Object.keys(kept).length ? { cuts: kept } : {}), ...extra })) {
+        if (await send(row.code, null)) setSel(code);
+      }
+    } else await send(row.code, { added: row.db!.added, ...(cuts ? { cuts } : {}), ...extra });
   };
 
   const chip = (r: Row) =>
-    r.db?.removed ? (
+    r.db?.off ? (
+      <span className="text-[11px] px-1.5 rounded bg-[rgba(var(--ov),0.08)] text-[var(--orange-text)]">{t('camAi.db.offChip')}</span>
+    ) : r.db?.removed ? (
       <span className="text-[11px] px-1.5 rounded bg-[rgba(var(--ov),0.08)] text-[var(--text-secondary)]">{t('camAi.db.removed')}</span>
     ) : !r.template ? (
       <span className="text-[11px] px-1.5 rounded bg-[var(--green-500)]/15 text-[var(--green-text)]">{t('camAi.db.added')}</span>
@@ -281,6 +296,36 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
                   <p className="font-mono text-xs text-[var(--text-secondary)] break-all">{row.code}</p>
                   {stored.by[`${fam}/${row.code}`] && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.db.by', { who: stored.by[`${fam}/${row.code}`] })}</p>}
                   {row.db?.removed && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.db.removedHint')}</p>}
+                </div>
+              )}
+              {editing && !row?.db?.removed && (
+                <div className="space-y-2.5">
+                  {row && !row.template && (
+                    <label className="block space-y-1">
+                      <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.db.typeLabel')}</span>
+                      <select className="aurora-input w-full h-8 py-0 text-[13px]" value={meta.type ?? row.type} onChange={(e) => setMeta({ ...meta, type: e.target.value })} disabled={busy}>
+                        {Object.keys(ADDABLE).map((k) => <option key={k} value={k}>{typeName(k)} ({k})</option>)}
+                      </select>
+                      {meta.type && meta.type !== row.type && <span className="block text-xs text-[var(--orange-text)]">{t('camAi.db.typeChange')}</span>}
+                    </label>
+                  )}
+                  <fieldset className="space-y-1">
+                    <legend className="text-xs text-[var(--text-secondary)]">{t('camAi.db.role')}</legend>
+                    <div role="radiogroup" aria-label={t('camAi.db.role')} className="inline-flex flex-wrap rounded-[8px] border border-[var(--border-subtle)] p-0.5">
+                      {([undefined, 'rough', 'finish'] as const).map((v) => (
+                        <button key={v ?? 'both'} type="button" role="radio" aria-checked={meta.role === v} onClick={() => setMeta({ ...meta, role: v })} disabled={busy} className={`no-glass h-8 px-2.5 rounded-[6px] text-xs ${meta.role === v ? 'bg-[var(--blue-500)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                          {t(v === 'rough' ? 'camAi.db.roleRough' : v === 'finish' ? 'camAi.db.roleFinish' : 'camAi.db.roleBoth')}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="flex items-start gap-2 text-[13px] text-[var(--text-primary)] cursor-pointer">
+                    <input type="checkbox" className="mt-0.5 w-4 h-4 accent-[var(--blue-500)]" checked={!meta.off} onChange={(e) => setMeta({ ...meta, off: e.target.checked ? undefined : true })} disabled={busy} />
+                    <span>
+                      {t('camAi.db.on')}
+                      <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.db.onHint')}</span>
+                    </span>
+                  </label>
                 </div>
               )}
               {editing && kinds.length > 0 && (

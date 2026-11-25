@@ -141,7 +141,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [skipDraft, setSkipDraft] = useState<string[]>([]);
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
   // The last change by hand until it is kept: undone, or the program made again around it (item 7).
-  const [change, setChange] = useState<{ label: string; undo: () => void; again?: () => void } | null>(null);
+  const [change, setChange] = useState<{ label: string; undo?: () => void; again?: () => void } | null>(null);
   // A tool's row asked to be deleted (its clamping, its code): confirmed in a dialog, then made again without it.
   const [dropAsk, setDropAsk] = useState<{ i: number; code: string; tool: number } | null>(null);
   // The removed operations' paths, from the program before (shown faded), and the one picked in the list.
@@ -1253,7 +1253,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             {change && result && (
               <div role="status" className="absolute z-20 left-1/2 -translate-x-1/2 top-16 max-w-[calc(100%-2rem)] flex flex-wrap items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-[10px] border border-[var(--blue-500)]/40 bg-[#0E1526]/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
                 <span className="text-[13px] text-[var(--text-primary)]" title={t('camAi.bar.hint')}>{change.label}</span>
-                <button type="button" className="btn-secondary h-8 px-3 text-xs" disabled={busy || checking} onClick={() => { const c = change; setChange(null); c.undo(); }}>{t('camAi.bar.undo')}</button>
+                {change.undo && <button type="button" className="btn-secondary h-8 px-3 text-xs" disabled={busy || checking} onClick={() => { const c = change; setChange(null); c.undo!(); }}>{t('camAi.bar.undo')}</button>}
                 {change.again && <button type="button" className="btn-secondary h-8 px-3 text-xs" disabled={busy || checking} onClick={() => { const c = change; setChange(null); c.again!(); }}>{t('camAi.bar.again')}</button>}
                 <button type="button" className="btn-primary h-8 px-3 text-xs" onClick={() => setChange(null)}>{t('camAi.bar.keep')}</button>
               </div>
@@ -1410,7 +1410,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
       {newProgramDialog()}
       {dropDialog()}
-      <CamToolDb open={dbOpen} onOpenChange={setDbOpen} stored={toolDb} onSaved={setToolDb} family={templatesFor ? FAMILY[templatesFor] : undefined} />
+      <CamToolDb
+        open={dbOpen}
+        onOpenChange={setDbOpen}
+        stored={toolDb}
+        onSaved={setToolDb}
+        family={templatesFor ? FAMILY[templatesFor] : undefined}
+        // A tool this program uses changed in the database: asked to make it again (item 14).
+        onChanged={(code) => {
+          const op = result?.setups.flatMap((x) => x.ops).find((o) => o.code === code);
+          if (op) setChange({ label: t('camAi.db.usedChanged', { tool: op.tool }), again: () => generateRef.current() });
+        }}
+      />
     </div>
   );
 
