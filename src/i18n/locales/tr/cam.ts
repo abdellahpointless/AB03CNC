@@ -460,6 +460,8 @@ const cam: Translation<typeof en> = {
       camChoice: 'CAM AI’ın seçimini kullan',
     },
     hold: {
+      side: 'Üstteki yüz',
+      camChoice: 'CAM AI’ın',
       adjust: 'Bu bağlamayı ayarla',
       close: 'Tamam',
       parallels: 'Paraleller',

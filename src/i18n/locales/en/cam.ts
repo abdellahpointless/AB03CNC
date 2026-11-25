@@ -457,6 +457,8 @@ const cam = {
       camChoice: 'Use CAM AI’s choice',
     },
     hold: {
+      side: 'Side up',
+      camChoice: 'CAM AI’s',
       adjust: 'Adjust this clamping',
       close: 'Done',
       parallels: 'Parallels',
