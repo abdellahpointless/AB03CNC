@@ -60,6 +60,9 @@ export interface CamInput {
   noNest?: boolean;
   /** The side up in setup 2, when the operator picked it on the model (else CAM AI's choice). */
   second?: string;
+  /** The designer's sides for clampings 3 and on, in order (item 8): each taken after the first two, a side already
+   * used or unknown left out; what is still left after them, CAM AI's as before. */
+  sides?: string[];
   /** The operator's cutting values per tool code (the tool inspector). */
   cuts?: Record<string, CutEdit>;
   /** The shop's tool database (the Tool database dialog): template tools removed or with their own data, tools added. */
@@ -1714,6 +1717,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     for (let i = 0; i < occ.length; i++) if (reach[si][i]) covered[i] = 1;
   };
   for (const si of pair) take(si);
+  for (const name of input.sides ?? []) {
+    const si = SIDES.findIndex((x) => x.name === name);
+    if (si >= 0 && !chosen.includes(si)) take(si);
+  }
   // Turned over about the machine's X, as the shop mostly does (docs/knowledge: X180 in 63 of 100
   // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
   const [s1, s2] = chosen;
