@@ -18,6 +18,19 @@ describe('a spacer asked in the moving jaw (Y-)', () => {
     expect(r.notes.some((n) => n.key === 'stopRefused')).toBe(false);
   }, 300_000);
 
+  it('the stop spacer of a later clamping moves only that clamping, by exactly its thickness along X', () => {
+    expect(made.setups.length).toBeGreaterThan(1);
+    const r = camProgram({ ...input, stops: [null, 15] });
+    const x = (code: string) => g52(code).map((l) => Number(l.match(/X(-?[\d.]+)/)![1]));
+    const [was, now] = [x(made.code), x(r.code)];
+    expect(now[0]).toBeCloseTo(was[0], 6);
+    expect(now[1] - was[1]).toBeCloseTo(15, 6);
+    expect(r.setups[0].notes.some((n) => /ZWISCHENLAGE IN X-/.test(n))).toBe(false);
+    expect(r.setups[1].notes).toContain('15 MM ZWISCHENLAGE IN X-');
+    expect(r.check.collisions).toBe(0);
+    expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
   it('none asked: none, not even CAM AI’s own; another size: refused (noted)', () => {
     expect(camProgram({ ...input, spacersY: [0] }).setups.flatMap((s) => s.notes).some((n) => /ZWISCHENLAGE IN Y-/.test(n))).toBe(false);
     const r = camProgram({ ...input, spacersY: [20] });
