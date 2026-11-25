@@ -571,6 +571,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   showAllRef.current = showAll;
   const onPickToolRef = useRef(onPickTool);
   onPickToolRef.current = onPickTool;
+  const fitFor = useRef<{ path: unknown; at: string }>({ path: null, at: '' });
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<Api | null>(null);
   const clockRef = useRef(clock);
@@ -1368,7 +1369,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       controls.update();
       a.invalidate();
     };
-    a.fit();
+    // Framed again for another setup or program, not when only how it is held is redrawn (a preview).
+    if (fitFor.current.path !== path || fitFor.current.at !== `${range[0]}:${range[1]}`) {
+      fitFor.current = { path, at: `${range[0]}:${range[1]}` };
+      a.fit();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, setup, range[0], range[1], colorOf]);
 

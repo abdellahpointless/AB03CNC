@@ -22,7 +22,7 @@ import {
 } from '@tabler/icons-react';
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Vec } from '../lib/toolpath';
-import { analyseProgram, DEFAULT_JAW_HEIGHT, type SetupInfo } from '../lib/setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, jawsFrom, type SetupInfo } from '../lib/setups';
 import { partLook } from '../lib/partLook';
 import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
 import type { MeasureMode } from '../lib/measure';
@@ -52,6 +52,7 @@ export default function CamSim({
   onMeasureToggle,
   onModel,
   onPickTool,
+  preview = null,
 }: {
   code: string;
   brand?: string;
@@ -75,6 +76,8 @@ export default function CamSim({
   onModel?: (s: ModelState) => void;
   /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
   onPickTool?: (setup: number, tool: number) => void;
+  /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
+  preview?: { setup: number; cale?: number; stop?: number; y?: number } | null;
 }) {
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
@@ -103,7 +106,26 @@ export default function CamSim({
   }, [path]);
 
   const currentMove = step > 0 ? path.moves[Math.min(step, total) - 1] : null;
-  const sel: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
+  const made: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
+  // The asked hold drawn in place of the made one: the part where it is, the vise and its parallels round it.
+  const sel = useMemo((): SetupInfo | null => {
+    const p = preview;
+    if (!made || !p || made.index !== p.setup || made.floorZ === null || made.jawTopZ === null || made.restZ === null) return made;
+    const s: SetupInfo = { ...made };
+    if (p.cale !== undefined && made.onJaw === null) {
+      s.floorZ = made.restZ! - p.cale;
+      s.jawTopZ = s.floorZ + (made.jawTopZ! - made.floorZ!);
+      s.support = p.cale;
+      s.cales = p.cale > 0 && made.cales ? made.cales.map((c) => ({ ...c, top: made.restZ! })) : null;
+    }
+    if (p.stop !== undefined || p.y !== undefined) {
+      const kept = made.spacers.filter((x) => (p.stop === undefined || x.side !== 'X-') && (p.y === undefined || x.side !== 'Y-'));
+      s.spacers = [...kept, ...(p.stop ? [{ side: 'X-' as const, mm: p.stop }] : []), ...(p.y ? [{ side: 'Y-' as const, mm: p.y }] : [])];
+      if (p.stop !== undefined && made.grip) s.jawX = jawsFrom(made.grip.stop - p.stop);
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [made, preview?.setup, preview?.cale, preview?.stop, preview?.y]);
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const hard = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer');
   const hits = setups.reduce((n, x) => n + hard(x).length, 0);

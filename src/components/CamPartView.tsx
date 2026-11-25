@@ -261,7 +261,7 @@ type Api = {
  * the operator (view only), `next` the next taller parallels shown faintly while choosing, `flash` counting refused moves,
  * `bad`: parallels that cannot hold it (yellow), `stop`: the spacer between the stop and the part (mm).
  */
-export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number };
+export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number; y?: number };
 export type ClampAct = 'up' | 'down' | 'back' | 'forward' | 'open' | 'close';
 const CONTACT = 0x22c55e;
 
@@ -315,7 +315,7 @@ export default function CamPartView({
   ghostOn?: string | null;
   /** A right click (not a drag) on a path: its operation (you, Beta 2: change its tool from there). */
   onPathMenu?: (p: LivePath) => void;
-  /** Clamp mode: the vise round the blank (`blank` needed); the wheel steps the parallels (Ctrl/⌘ + wheel zooms), the arrows slide and open. */
+  /** Clamp mode: the vise round the blank (`blank` needed); the arrows slide and open, Page Up / Page Down step the parallels. */
   clamp?: ClampView | null;
   onClamp?: (act: ClampAct) => void;
   /** The canvas's accessible name. */
@@ -691,7 +691,7 @@ export default function CamPartView({
     const sp = clamp.stop ?? 0;
     const jawX = jawsFrom(lo[0] - sp);
     const spans = viseSpans({ jawX, twoVises: hi[0] > jawX[0] + VISE.width + 5 });
-    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, sp ? [{ side: 'X-', mm: sp }] : []);
+    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, [...(sp ? [{ side: 'X-' as const, mm: sp }] : []), ...(clamp.y ? [{ side: 'Y-' as const, mm: clamp.y }] : [])]);
     // The vise's model comes in once loaded: drawn again then.
     void v.ready.then(() => a.invalidate());
     // The moving jaw (front, Y-) opens toward the operator; the part slides, so the vise body moves the other way.
@@ -783,32 +783,6 @@ export default function CamPartView({
     if (a && clampOn) a.frame(Math.max(a.size * 1.2, 70));
   }, [clampOn]);
 
-  // The wheel steps the parallels (one step a notch, a trackpad's swipe summed); Ctrl/⌘ + wheel zooms as before.
-  const clampRef = useRef(onClamp);
-  clampRef.current = onClamp;
-  useEffect(() => {
-    const el = host.current;
-    if (!el || !clampOn) return;
-    let sum = 0;
-    let idle = 0;
-    const wheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      sum += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      window.clearTimeout(idle);
-      idle = window.setTimeout(() => (sum = 0), 250);
-      if (Math.abs(sum) >= 80) {
-        clampRef.current?.(sum < 0 ? 'up' : 'down');
-        sum = 0;
-      }
-    };
-    el.addEventListener('wheel', wheel, { capture: true, passive: false });
-    return () => {
-      el.removeEventListener('wheel', wheel, { capture: true });
-      window.clearTimeout(idle);
-    };
-  }, [clampOn]);
   const KEYS: Record<string, ClampAct> = { ArrowUp: 'back', ArrowDown: 'forward', ArrowLeft: 'open', ArrowRight: 'close', PageUp: 'up', PageDown: 'down' };
 
   return (
