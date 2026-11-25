@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { jawMove, stepCale } from '../src/lib/cam/clamp';
+import { allowedCales, jawMove, stepCale, whyNot } from '../src/lib/cam/clamp';
 
 describe('the clamping editor\'s moves (you, Beta 2)', () => {
   const cales = [42, 41, 40, 38, 36];
-  it('steps the parallels from none through the allowed heights, one at a time, and no further', () => {
-    expect(stepCale(cales, 0, 1)).toBe(36);
-    expect(stepCale(cales, 36, -1)).toBe(0);
-    expect(stepCale(cales, 0, -1)).toBeNull();
-    expect(stepCale(cales, 40, 1)).toBe(41);
-    expect(stepCale(cales, 42, 1)).toBeNull();
-    // A height not allowed (CAM AI's own outside the list): from the tallest.
-    expect(stepCale(cales, 25, -1)).toBe(42);
-    expect(stepCale([], 40, 1)).toBeNull();
+  it('steps through every parallel the shop has, from none, one at a time, and no further', () => {
+    expect(stepCale(0, 1)).toBe(8);
+    expect(stepCale(8, -1)).toBe(0);
+    expect(stepCale(0, -1)).toBeNull();
+    expect(stepCale(15, 1)).toBe(20);
+    expect(stepCale(42, 1)).toBe(43);
+    expect(stepCale(43, 1)).toBeNull();
+    // From CAM AI's own (none chosen yet): its next one.
+    expect(stepCale(null, 1)).toBeNull();
+  });
+
+  it('says why parallels cannot hold the part (19 mm of stock, its bottom 17 mm under the top)', () => {
+    expect(whyNot(40, 19, -17)).toBeNull();
+    expect(whyNot(43, 19, -17)).toBe('tooShallow');
+    expect(whyNot(25, 19, -17)).toBe('allStock');
+    expect(whyNot(28, 19, -17)).toBe('overTop');
+    expect(allowedCales(19, -17).every((c) => whyNot(c, 19, -17) === null)).toBe(true);
   });
 
   it('slides the part only between the jaws, opens to the jaw\'s travel, and closing pushes the part back', () => {

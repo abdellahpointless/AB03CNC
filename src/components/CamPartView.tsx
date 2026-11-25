@@ -258,9 +258,10 @@ type Api = {
 /**
  * Clamping 1 as the designer sets it up (you, Beta 2): its parallels (0: none, the part on the jaws' step, drawn at
  * `at` with the jaws lit, its real height not known), the moving jaw `open` mm off, the part slid `slide` mm toward
- * the operator (view only), `next` the next taller parallels shown faintly while choosing, `flash` counting refused moves.
+ * the operator (view only), `next` the next taller parallels shown faintly while choosing, `flash` counting refused moves,
+ * `bad`: parallels that cannot hold it (yellow), `stop`: the spacer between the stop and the part (mm).
  */
-export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number };
+export type ClampView = { cale: number; at: number; open: number; slide: number; next?: number; flash: number; bad?: boolean; stop?: number };
 export type ClampAct = 'up' | 'down' | 'back' | 'forward' | 'open' | 'close';
 const CONTACT = 0x22c55e;
 
@@ -686,9 +687,11 @@ export default function CamPartView({
     const floorZ = lo[2] - clamp.at;
     const jawTop = floorZ + JAW;
     // Pushed against the stop; a second vise when the part is longer than one (as the shop holds long parts).
-    const spans: [number, number][] = [[lo[0] - STOP_PLATE, lo[0] - STOP_PLATE + VISE.width]];
+    // The spacer at the stop (15 or 50 mm) between it and the part: the vise that much further left.
+    const sp = clamp.stop ?? 0;
+    const spans: [number, number][] = [[lo[0] - sp - STOP_PLATE, lo[0] - sp - STOP_PLATE + VISE.width]];
     if (hi[0] > spans[0][1] + 5) spans.push([spans[0][1] + VISE.gap, spans[0][1] + VISE.gap + VISE.width]);
-    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, []);
+    const v = buildVise({ min: [lo[0], lo[1]], max: [hi[0], hi[1]] }, floorZ, jawTop, spans, null, sp ? [{ side: 'X-', mm: sp }] : []);
     // The moving jaw (front, Y-) opens toward the operator; the part slides, so the vise body moves the other way.
     const body = new THREE.Group();
     body.add(v.group);
@@ -703,7 +706,12 @@ export default function CamPartView({
     const bars = (top: number): { y: [number, number]; top: number }[] => [{ y: [lo[1], lo[1] + w], top }, { y: [hi[1] - w, hi[1]], top }];
     // The parallels and contacts stay with the part, not the vise body.
     const put = (o: THREE.Object3D) => a.vise.add(o);
-    if (clamp.cale > 0) put(buildParallels(runs, PARALLEL_LENGTH, bars(lo[2]), floorZ, `${fmtNumber(clamp.cale, 0)} MM`));
+    if (clamp.cale > 0) {
+      const p = buildParallels(runs, PARALLEL_LENGTH, bars(lo[2]), floorZ, `${fmtNumber(clamp.cale, 0)} MM`);
+      // Parallels that cannot hold the part: yellow.
+      if (clamp.bad) p.traverse((o) => { const m = (o as THREE.Mesh).material; for (const x of m ? (Array.isArray(m) ? m : [m]) : []) if ('color' in x) (x as THREE.MeshStandardMaterial).color.setHex(0xfacc15); });
+      put(p);
+    }
     // The next taller parallels, faint, while the height is being chosen.
     if (clamp.next) {
       const ghost = buildParallels(runs, PARALLEL_LENGTH, bars(floorZ + clamp.next), floorZ, `${fmtNumber(clamp.next, 0)} MM`);
@@ -731,7 +739,8 @@ export default function CamPartView({
     if (clamp.cale > 0) for (const b of bars(lo[2])) plate([lo[0], b.y[0], lo[2] - 0.4], [Math.min(hi[0], runs[0] + PARALLEL_LENGTH), b.y[1], lo[2] - 0.1]);
     // On the jaws' step (no parallels): the jaws lit; a refused move: yellow for a moment.
     const lit = (color: number, k: number) => v.jawMats.forEach((m) => { m.emissive.setHex(color); m.emissiveIntensity = k; });
-    if (clamp.cale === 0) lit(0x2dd4bf, 0.45);
+    const steady = (): [number, number] => (clamp.bad ? [0xfacc15, 0.7] : clamp.cale === 0 ? [0x2dd4bf, 0.45] : [0x000000, 0]);
+    lit(...steady());
     // The jaw and the slide ease to where they go (not with reduced motion).
     const from = jawShown.current;
     let anim = 0;
@@ -753,7 +762,7 @@ export default function CamPartView({
       lastFlash.current = clamp.flash;
       lit(0xfacc15, 0.9);
       timer = window.setTimeout(() => {
-        lit(clamp.cale === 0 ? 0x2dd4bf : 0x000000, clamp.cale === 0 ? 0.45 : 0);
+        lit(...steady());
         a.invalidate();
       }, 600);
     }

@@ -73,13 +73,18 @@ export function firstPick(stockH: number, lo: number, H: number): { cale: number
   );
 }
 
-/** The parallels a step up (taller: the part higher) or down gives, from none (0) through `cales`; null: no further that way. */
-export function stepCale(cales: number[], now: number | null, dir: 1 | -1): number | null {
-  if (!cales.length) return null;
-  const steps = [0, ...[...cales].sort((p, q) => p - q)];
-  const i = now === null ? -1 : steps.indexOf(now);
-  const j = i < 0 ? steps.length - 1 : i + dir;
-  return j >= 0 && j < steps.length ? steps[j] : null;
+/** The parallels a step up (taller: the part higher) or down gives, from none (0) through every one the shop has; null: no further that way. */
+export function stepCale(now: number | null, dir: 1 | -1): number | null {
+  if (now === null) return null;
+  const steps = [0, ...[...CALE_HEIGHTS].sort((p, q) => p - q)];
+  const j = steps.indexOf(now) + dir;
+  return steps.indexOf(now) >= 0 && j >= 0 && j < steps.length ? steps[j] : null;
+}
+
+/** Why parallels cannot hold the part (allowedCales' three rules), or null when they can. */
+export function whyNot(cale: number, stockH: number, lo: number): 'tooShallow' | 'allStock' | 'overTop' | null {
+  const grip = JAW - cale;
+  return grip < 3 ? 'tooShallow' : grip > stockH - 1 ? 'allStock' : grip > -0.5 - lo ? 'overTop' : null;
 }
 
 /** How far the moving jaw opens (mm), the most. */

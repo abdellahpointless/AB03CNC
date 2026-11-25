@@ -25,7 +25,7 @@ import type { Mat3 } from '../lib/orient';
 import { fmtTime, passed, ProgramPanel, SetupPanel, ToolCard, ToolLabel, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
-import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -107,6 +107,8 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   // The designer's parallels for clamping 1 (you, Beta 2): a height, 0 for none, null for CAM AI's own; the jaw's
   // opening and the part's slide toward the operator are the view's only (mm); refused moves flash the jaws.
   const [clamp1, setClamp1] = useState<number | null>(null);
+  // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
+  const [stop1, setStop1] = useState<0 | 15 | 50>(0);
   // Later clampings' parallels, by clamping (1: the second), chosen on the program made: used when it is made again.
   const [later, setLater] = useState<Record<number, number>>({});
   const [jaw, setJaw] = useState({ open: 0, slide: 0 });
@@ -180,14 +182,11 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const side2 = second?.side ?? (chosen ? opposite(chosen.side) : '');
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
-  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling;
+  // Parallels that cannot hold the part are shown (yellow) but never made: why, if so.
+  const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1) : null;
+  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1;
 
   useEffect(() => () => worker.current?.terminate(), []);
-  // Another layout or blank: parallels it can no longer hold the part on go back to CAM AI's own.
-  const cales1Key = cales1.join(',');
-  useEffect(() => {
-    if (clamp1 !== null && clamp1 !== 0 && !cales1Key.split(',').includes(String(clamp1))) setClamp1(null);
-  }, [cales1Key, clamp1]);
 
   const newWorker = () => {
     worker.current?.terminate();
@@ -268,6 +267,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       author: user?.username,
       raw,
       margins,
+      stops: stop1 ? [stop1] : undefined,
       clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : later[k] ?? null)) : undefined,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },
@@ -393,7 +393,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
   const refuse = () => setFlash((f) => f + 1);
   const clampAct = (act: ClampAct) => {
     if (act === 'up' || act === 'down') {
-      const v = stepCale(cales1, cale1, act === 'up' ? 1 : -1);
+      const v = stepCale(cale1, act === 'up' ? 1 : -1);
       if (v === null) return refuse();
       // Later clampings hold what this one leaves: their choices go. A program made stays until it is made again
       // (one wheel notch must not throw it away).
@@ -401,7 +401,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
       setLater({});
       // The next taller parallels, faintly, for a moment.
       window.clearTimeout(hintTimer.current);
-      setNextHint(stepCale(cales1, v, 1) ?? undefined);
+      setNextHint(stepCale(v, 1) ?? undefined);
       hintTimer.current = window.setTimeout(() => setNextHint(undefined), 1100);
       return;
     }
@@ -614,7 +614,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                       }
                     : undefined
                 }
-                clamp={clampMode && cale1 !== null ? { cale: cale1, at: cale1 || cales1[0], open: jaw.open, slide: jaw.slide, next: nextHint, flash } : null}
+                clamp={clampMode && cale1 !== null ? { cale: cale1, at: cale1, open: jaw.open, slide: jaw.slide, next: nextHint, flash, bad: !!refused1, stop: stop1 } : null}
                 onClamp={clampAct}
                 label={clampMode ? t('camAi.clamp1.view') : picking !== null && !result ? t('camAi.view3d') : t('camAi.live.view')}
                 className="h-full rounded-none bg-transparent"
@@ -793,7 +793,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
                     )}
                   </>
                 )}
-                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - (cale1 || cales1[0])} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} onOwn={() => { setClamp1(null); setLater({}); }} />}
+                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { setStop1(v); setLater({}); }} onOwn={() => { setClamp1(null); setLater({}); }} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
                     n={sel.i + 1}
@@ -1063,7 +1063,7 @@ export default function CamAi({ onSend }: { onSend: (code: string, fileName: str
 }
 
 /** Clamping 1's parallels and vise (you, Beta 2): what holds it, CAM AI's own, a button for every move the 3D view takes. */
-function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; onAct: (a: ClampAct) => void; onOwn: () => void }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: 'tooShallow' | 'allStock' | 'overTop' | null; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   return (
@@ -1090,7 +1090,19 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, onAct
       <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">{t('camAi.clamp1.jaw', { open: fmt(jaw.open, 0), slide: fmt(-jaw.slide || 0, 0) })}</p>
       <p className="text-[11px] text-[var(--text-tertiary)]">{t('camAi.clamp1.hint')}</p>
       {cale === 0 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.noneWarn')}</p>}
-      {intoPart > 0.05 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.intoPart', { mm: fmt(intoPart, 1) })}</p>}
+      {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0) })}</p>}
+      <fieldset className="space-y-1">
+        <legend className="text-[var(--text-secondary)]">{t('camAi.clamp1.stop')}</legend>
+        <div className="inline-flex rounded-[var(--radius-md)] border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('camAi.clamp1.stop')}>
+          {([0, 15, 50] as const).map((v) => (
+            <button key={v} type="button" role="radio" aria-checked={stop === v} onClick={() => onStop(v)} className={`no-glass text-xs px-3 min-h-9 rounded-[calc(var(--radius-md)-2px)] ${stop === v ? 'bg-[var(--accent-primary)]/15 text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}>
+              {v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.clamp1.stopNone')}
+            </button>
+          ))}
+        </div>
+        {stopPending && <p className="text-[var(--text-primary)]">{stop ? t('camAi.clamp1.laterStop', { mm: stop }) : t('camAi.clamp1.laterStopNone')}</p>}
+      </fieldset>
+      {!refused && intoPart > 0.05 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.intoPart', { mm: fmt(intoPart, 1) })}</p>}
       {seam && <p className="text-[var(--text-secondary)]">{t('camAi.note.clampSeam', { setup: 1, cale: fmt(cale, 0) })}</p>}
     </section>
   );
