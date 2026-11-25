@@ -63,12 +63,17 @@ describe("CAM AI's tool database", () => {
   });
 
   it('holds at most MAX_LAB_TOOLS rows; a saved one can still be changed', async () => {
-    const fill = Array.from({ length: MAX_LAB_TOOLS }, (_, i) => DB.prepare("INSERT OR IGNORE INTO lab_tools (family, code, data, updated_by, updated_at) VALUES ('FH', ?, '{\"removed\":true}', 'x', 0)").bind(`SB_${String(i).padStart(3, '0')}.00_050_000_FH`));
-    await DB.batch(fill);
+    // Filled in one statement (a thousand separate inserts outlast the test's time under the full suite's load).
+    await DB.prepare(
+      `WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ? - 1)
+       INSERT OR IGNORE INTO lab_tools (family, code, data, updated_by, updated_at) SELECT 'FH', 'SB_' || printf('%03d', i) || '.00_050_000_FH', '{"removed":true}', 'x', 0 FROM n`,
+    )
+      .bind(MAX_LAB_TOOLS)
+      .run();
     expect((await call(handleSaveLabTool, admin, { body: { family: 'FH', code: 'SB_05.50_050_000_FH', tool: { removed: true } } })).status).toBe(409);
     expect((await call(handleSaveLabTool, admin, { body: { family: 'FH', code: 'SB_000.00_050_000_FH', tool: { cuts: { drill: { f: 300 } } } } })).status).toBe(200);
     await DB.prepare("DELETE FROM lab_tools WHERE family = 'FH'").run();
-  });
+  }, 30_000);
 
   it('is not there for anyone who may not use CAM AI', async () => {
     // A machinist, even a toolpath tester; another country; CAM AI switched off: as if it did not exist.
