@@ -42,7 +42,7 @@ const AUTO_EXCESS = [4, 4, 7];
 const opposite = (side: string) => side[0] + (side[1] === '+' ? '-' : '+');
 
 type Model = { name: string; bytes: Uint8Array };
-type Run = { state: 'idle' } | { state: 'preparing' } | { state: 'busy'; done: number; of: number } | { state: 'error'; error: ModelError | 'failed' } | { state: 'done'; result: CamSummary };
+type Run = { state: 'idle' } | { state: 'preparing' } | { state: 'busy'; done: number; of: number } | { state: 'error'; error: ModelError | 'failed' | 'toolDb' } | { state: 'done'; result: CamSummary };
 type Family = 'ALU' | 'POM' | 'FH';
 
 const SIDE_STOCK_KEY = 'cnc-camai-side-stock';
@@ -263,8 +263,17 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setRun({ state: 'idle' });
   };
 
-  const generate = (with_ = swap, edits = cuts, skips = skip) => {
+  const generate = async (with_ = swap, edits = cuts, skips = skip) => {
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
+    setRun({ state: 'busy', done: 0, of: 1 });
+    // The shop's tool database as it is now (it may have changed since): never a program made without it.
+    let db: StoredToolDb;
+    try {
+      db = await loadToolDb();
+    } catch {
+      return setRun({ state: 'error', error: 'toolDb' });
+    }
+    setToolDb(db);
     const w = newWorker();
     const speeds = speedsFor(machine.brand);
     const request: CamRequest = {
@@ -286,7 +295,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       prefer: with_.prefer,
       second: second && second.side !== opposite(chosen.side) ? second.side : undefined,
       cuts: edits,
-      toolDb: toolDb.db,
+      toolDb: db.db,
       skip: skips,
       finish: finishTris.length ? finishTris : undefined,
       white: partType === 'topPlate' ? white : undefined,
@@ -930,7 +939,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
             {run.state === 'error' && (
               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
-                {run.error === 'failed' ? t('camAi.failed') : t(`remapper:toolpath.model.errors.${run.error}`)}
+                {run.error === 'failed' ? t('camAi.failed') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`remapper:toolpath.model.errors.${run.error}`)}
               </p>
             )}
         </div>
