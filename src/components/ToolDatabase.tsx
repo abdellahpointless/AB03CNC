@@ -24,6 +24,8 @@ export default function ToolDatabase({
   // Category name in the page language (in English the id itself), and its upper-case form.
   const catName = (c: string) => t(`common:category.${c as ToolCategory}`, { defaultValue: c });
   const catUpper = (c: string) => catName(c).toLocaleUpperCase(locale());
+  // Ø and length with two decimals in the page's style: 2.90 / 2,90.
+  const mm2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [showImport, setShowImport] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [internalSelectedMachine, setInternalSelectedMachine] = useState<MachineId>('HAAS-1');
@@ -476,13 +478,13 @@ export default function ToolDatabase({
                           <div className="flex items-center gap-2">
                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.dia')}</span>
                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
-                              {tool.diameter ? tool.diameter.toFixed(2) : '-'} {t('common:units.mm')}
+                              {tool.diameter ? mm2(tool.diameter) : '-'} {t('common:units.mm')}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.len')}</span>
                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
-                              {tool.length ? tool.length.toFixed(2) : '-'} {t('common:units.mm')}
+                              {tool.length ? mm2(tool.length) : '-'} {t('common:units.mm')}
                             </span>
                           </div>
                         </>
