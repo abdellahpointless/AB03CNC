@@ -103,6 +103,8 @@ const cam = {
       camera: { top: 'Top', front: 'Front', iso: '3/4' },
       fit: 'Fit',
       show: { part: 'Part', model: 'Model', both: 'Both' },
+      diffLeft: 'More material than your model',
+      diffCut: 'Cut out of your model',
       hits_one: '{{count}} tool reaches the vise',
       hits_other: '{{count}} tools reach the vise',
       noHits: 'No tool reaches the jaws',

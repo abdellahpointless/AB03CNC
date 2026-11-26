@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { PIECE_COLORS } from '../lib/pieceColors';
 import * as THREE from 'three';
 import { box, buildParallels, buildVise, JAW_TOPS, JAW_TRAVEL, PLANE_EPS, steel, STEEL, STEEL_DARK, v3, VISE_DEPTH } from '../lib/vise3d';
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
@@ -104,6 +105,8 @@ interface Props {
   model?: { name: string; bytes: Uint8Array } | null;
   /** What is drawn: the simulated part, the model, or both (the model see-through). */
   modelView?: ModelView;
+  /** The differences from the model (yellow more, red missing) drawn in every view, not only with the model shown. */
+  diffs?: boolean;
   onModel?: (s: ModelState) => void;
   /** The NX view (you, Beta 2): every path of the setup over the finished part; nothing is cut away as the tool goes. */
   pathsOnly?: boolean;
@@ -122,10 +125,10 @@ export type ModelView = 'part' | 'model' | 'both';
 export type ModelState = { state: 'reading' } | { state: 'ready'; overlap: number; match: number; pieces: Piece[] } | { state: 'error'; error: ModelError };
 
 /** Colours of the differences: material left on, material cut too much. */
-export const PIECE_COLORS = { left: '#ffb020', cut: '#ff4d6d' } as const;
+export { PIECE_COLORS };
 
-/** Draw the simulated part, the model, or both (the model see-through over the part). */
-function showModel(a: Api, view: ModelView) {
+/** Draw the simulated part, the model, or both (the model see-through over the part); diffs: the differences in every view. */
+function showModel(a: Api, view: ModelView, diffs = false) {
   // The simulation's hole rims (measuring) go with the simulated part.
   a.solid.traverse((o) => {
     if (o.userData.simRims) o.visible = view !== 'model';
@@ -133,7 +136,7 @@ function showModel(a: Api, view: ModelView) {
   for (const c of a.solid.children) {
     if (c.userData.chunk) c.visible = view !== 'model';
     if (!c.userData.model) continue;
-    c.visible = view !== 'part';
+    c.visible = view !== 'part' || (diffs && c.userData.model === 'piece');
     if (c.userData.model !== 'mesh') continue;
     const m = c as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
     m.castShadow = m.receiveShadow = view === 'model';
@@ -554,9 +557,11 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
+  const diffsRef = useRef(diffs);
+  diffsRef.current = diffs;
   const onModelRef = useRef(onModel);
   onModelRef.current = onModel;
   const behindRef = useRef(behind);
@@ -966,7 +971,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     if (!a || !model || !input) return;
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     let mesh: THREE.Mesh | null = null;
-    const pieces: THREE.LineSegments[] = [];
+    const pieces: (THREE.LineSegments | THREE.Mesh)[] = [];
     onModelRef.current?.({ state: 'reading' });
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data as { tris?: Float32Array; overlap?: number; match?: number; pieces?: Piece[]; error?: ModelError };
@@ -988,20 +993,21 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       mesh.matrixAutoUpdate = false;
       mesh.userData.model = 'mesh';
       a.solid.add(mesh);
-      // Each difference outlined in its colour, seen through the part.
+      // Each difference outlined and lightly filled in its colour, seen through the part.
       for (const pc of msg.pieces!) {
         const size = pc.max.map((v, k) => Math.max(v - pc.min[k], 0.2));
-        const box = new THREE.LineSegments(
-          new THREE.EdgesGeometry(new THREE.BoxGeometry(size[0], size[1], size[2])),
-          new THREE.LineBasicMaterial({ color: PIECE_COLORS[pc.kind], depthTest: false, transparent: true }),
-        );
-        box.position.set((pc.min[0] + pc.max[0]) / 2, (pc.min[1] + pc.max[1]) / 2, (pc.min[2] + pc.max[2]) / 2);
-        box.renderOrder = 9;
-        box.userData.model = 'piece';
-        pieces.push(box);
-        a.solid.add(box);
+        const shape = new THREE.BoxGeometry(size[0], size[1], size[2]);
+        const box = new THREE.LineSegments(new THREE.EdgesGeometry(shape), new THREE.LineBasicMaterial({ color: PIECE_COLORS[pc.kind], depthTest: false, transparent: true }));
+        const fill = new THREE.Mesh(shape, new THREE.MeshBasicMaterial({ color: PIECE_COLORS[pc.kind], transparent: true, opacity: 0.22, depthTest: false, depthWrite: false }));
+        for (const m of [box, fill]) {
+          m.position.set((pc.min[0] + pc.max[0]) / 2, (pc.min[1] + pc.max[1]) / 2, (pc.min[2] + pc.max[2]) / 2);
+          m.renderOrder = 9;
+          m.userData.model = 'piece';
+          pieces.push(m);
+          a.solid.add(m);
+        }
       }
-      showModel(a, modelViewRef.current);
+      showModel(a, modelViewRef.current, diffsRef.current);
       onModelRef.current?.({ state: 'ready', overlap: msg.overlap!, match: msg.match!, pieces: msg.pieces! });
     };
     const setups = program.setups.map(({ index, orient, offset, stock }) => ({ index, orient, offset, stock }));
@@ -1018,8 +1024,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   }, [model, path, program]);
 
   useEffect(() => {
-    if (api.current) showModel(api.current, modelView);
-  }, [modelView]);
+    if (api.current) showModel(api.current, modelView, diffs);
+  }, [modelView, diffs]);
 
   // The setup's scene: fixture, toolpath, tool, markers.
   useEffect(() => {

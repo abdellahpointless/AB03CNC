@@ -106,6 +106,8 @@ const cam: Translation<typeof en> = {
       camera: { top: 'Üst', front: 'Ön', iso: '3/4' },
       fit: 'Sığdır',
       show: { part: 'Parça', model: 'Model', both: 'İkisi' },
+      diffLeft: 'Modelinizden fazla malzeme',
+      diffCut: 'Modelinizden kesilmiş',
       hits_one: '{{count}} takım mengeneye ulaşıyor',
       hits_other: '{{count}} takım mengeneye ulaşıyor',
       noHits: 'Hiçbir takım çenelere ulaşmıyor',
