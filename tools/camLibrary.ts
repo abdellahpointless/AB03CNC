@@ -24,6 +24,37 @@ import { buildInput, carve, KEPT } from '../src/lib/stockSim';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 const [LIB, OUT, ...ONLY] = process.argv.slice(2);
+
+/**
+ * The 0.5 mm method (you): clamping 1 cuts the outline whole, 0.5 mm under the part, and drills the holes along its
+ * axis; after the turn only the face is cut. Per program: the part's height and the blank along that axis, how far
+ * under the part's bottom clamping 1's outline goes (-0.5 wanted), clamping 1's drill operations, and what the
+ * later clampings on the same axis still cut (outline or drilling there: the method left).
+ */
+function methodOf(r: ReturnType<typeof camProgram>) {
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const low = (lines: string[]) => {
+    let z = 0;
+    for (const l of lines) for (const m of l.split('(')[0].matchAll(/Z(-?\d*\.?\d+)/g)) z = Math.min(z, Number(m[1]));
+    return z;
+  };
+  const axisOf = (s: { R: number[] }) => [6, 7, 8].findIndex((k) => Math.abs(s.R[k]) > 0.5);
+  const [s1, ...later] = r.setups;
+  const ax = axisOf(s1);
+  const H = r.size[ax];
+  const outline = s1.ops.filter((o) => o.purpose === 'outline');
+  const same = later.filter((s) => axisOf(s) === ax);
+  return {
+    H: r2(H),
+    raw: r2(r.raw[ax]),
+    setups: r.setups.length,
+    outline: outline.length ? r2(Math.min(...outline.map((o) => low(o.lines))) + H) : null,
+    drills: s1.ops.filter((o) => o.purpose === 'drill').length,
+    turned: same.map((s) => [...new Set(s.ops.map((o) => o.purpose))].join(' ')),
+    laterOutline: later.filter((s) => s.ops.some((o) => o.purpose === 'outline')).length,
+    laterDrills: same.reduce((n, s) => n + s.ops.filter((o) => o.purpose === 'drill').length, 0),
+  };
+}
 if (!LIB || !OUT) throw new Error('usage: npm run cam-library -- <library folder> <out.jsonl> [program file ...]');
 
 /** The header's material as CAM AI names it (null: CAM AI does not cut it). */
@@ -197,6 +228,7 @@ for (const folder of readdirSync(LIB).sort()) {
         // Through holes left closed at the far end; the blank centred on the part (the planner's fallback).
         row.short = r.short;
         row.centred = r.centred;
+        row.method = methodOf(r);
         if (MACHINE) row.machine = MACHINE;
         if (finish) row.finish = 'all';
         row.cam = summary(r.code);
