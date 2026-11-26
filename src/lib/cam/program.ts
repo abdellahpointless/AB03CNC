@@ -1968,9 +1968,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'spacerRefused', setup: setups.length + 1, cale: yAsked, side: 'Y-' });
     let spacerY = !nested && yOk ? yAsked! : 0;
     if (spacerY) setupNotes.push(`${spacerY} MM ZWISCHENLAGE IN Y-`);
+    // Each jaw 50 mm deep from its face (past any spacer: a review found a 50 mm spacer leaving the moving jaw's band empty).
     const beside = (d: number, end: number): Region =>
       union([
-        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] + spacerYp - d, b + end, held.hi[1] + spacerYp + 50)]),
+        ...spans.flatMap(([a, b]) => [...rect(a - end, held.lo[1] - spacerY - 50, b + end, held.lo[1] - spacerY + d), ...rect(a - end, held.hi[1] + spacerYp - d, b + end, held.hi[1] + spacerYp + 50)]),
         ...rect(sb.lo[0] - 50, held.lo[1] - 50, held.lo[0] + d, held.hi[1] + 50),
       ]);
     let jaws = nested ? [] : beside(0.1, 1);
