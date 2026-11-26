@@ -551,7 +551,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
-    if (!result || !machine || handTool || !passed(result, handEdited && accepted)) return;
+    if (!result || !machine || checking || handTool || !passed(result, handEdited && accepted)) return;
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
@@ -1588,7 +1588,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
           </button>
         )}
-        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
+        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (
