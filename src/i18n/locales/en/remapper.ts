@@ -92,7 +92,8 @@ const remapper = {
     subtitle: 'Match program tools against {{machine}} slots',
     missing: '{{count}} Missing',
     reviewApprox: 'Review Approximates',
-    stillMissing: '{{count}} Tool(s) Still Missing',
+    stillMissing_one: '{{count}} tool still missing',
+    stillMissing_other: '{{count}} tools still missing',
     apply: 'Apply & Generate Code',
   },
   skipped: {

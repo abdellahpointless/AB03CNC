@@ -89,7 +89,8 @@ const remapper: Translation<typeof en> = {
     subtitle: 'Programdaki takımları {{machine}} tezgahının cepleriyle eşleştirin',
     missing: '{{count}} eksik',
     reviewApprox: 'Yaklaşık eşleşmeleri kontrol edin',
-    stillMissing: '{{count}} takım hâlâ eksik',
+    stillMissing_one: '{{count}} takım hâlâ eksik',
+    stillMissing_other: '{{count}} takım hâlâ eksik',
     apply: 'Uygula ve Kodu Oluştur',
   },
   skipped: {
