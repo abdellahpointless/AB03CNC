@@ -28,7 +28,7 @@ const [LIB, OUT, ...ONLY] = process.argv.slice(2);
 /**
  * The 0.5 mm method (you): clamping 1 cuts the outline whole, 0.5 mm under the part, and drills the holes along its
  * axis; after the turn only the face is cut. Per program: the part's height and the blank along that axis, how far
- * under the part's bottom clamping 1's outline goes (-0.5 wanted), clamping 1's drill operations, and what the
+ * under the part's bottom clamping 1's deepest milling goes (-0.5 wanted: the outline through), clamping 1's drill operations, and what the
  * later clampings on the same axis still cut (outline or drilling there: the method left).
  */
 function methodOf(r: ReturnType<typeof camProgram>) {
@@ -42,7 +42,8 @@ function methodOf(r: ReturnType<typeof camProgram>) {
   const [s1, ...later] = r.setups;
   const ax = axisOf(s1);
   const H = r.size[ax];
-  const outline = s1.ops.filter((o) => o.purpose === 'outline');
+  // The deepest milling (not drilling) of clamping 1: the outline when it goes through (an opening inside counts too).
+  const outline = s1.ops.filter((o) => o.purpose !== 'drill' && o.purpose !== 'centre' && o.purpose !== 'pinHoles');
   const same = later.filter((s) => axisOf(s) === ax);
   return {
     H: r2(H),
