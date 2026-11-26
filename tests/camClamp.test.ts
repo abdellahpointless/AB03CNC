@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedCales, jawMove, stepCale, whyNot } from '../src/lib/cam/clamp';
+import { allowedCales, blankTop, jawMove, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
 
 describe('the clamping editor\'s moves (you, Beta 2)', () => {
   const cales = [42, 41, 40, 38, 36];
@@ -31,5 +31,38 @@ describe('the clamping editor\'s moves (you, Beta 2)', () => {
     expect(jawMove({ open: 4, slide: -4 }, 'close')).toEqual({ open: 2, slide: -2 });
     expect(jawMove({ open: 34, slide: 0 }, 'open')).toBeNull();
     expect(jawMove({ open: 1, slide: -1 }, 'close')).toEqual({ open: 0, slide: 0 });
+  });
+});
+
+describe('the 0.5 mm method (you): the outline and holes whole in clamping 1, 0.5 mm under the part, then only facing', () => {
+  // The outline 0.5 mm under the part and the jaws 0.5 mm under that: the jaws grip what is left of the stock under it.
+  it('places the blank 5 mm under the part where the Z stock allows (a 4 mm grip), else 4 (3 mm), at least 0.5 over it', () => {
+    expect(blankTop(7)).toBe(2);
+    expect(blankTop(6)).toBe(1);
+    expect(blankTop(5.5)).toBe(0.5);
+    expect(blankTop(5)).toBe(0.5);
+    expect(blankTop(4.5)).toBe(0.5);
+    // Under 4.5 mm: 4 under the part first (the grip), the rest over it.
+    expect(blankTop(4.2)).toBeCloseTo(0.2, 9);
+    expect(blankTop(3)).toBe(0);
+  });
+
+  it('wants 5 mm under the part (4 gripped), takes 4 (3 gripped) with a warning, and refuses less: a thicker blank', () => {
+    expect(underStock(5)).toBeNull();
+    expect(underStock(8)).toBeNull();
+    expect(underStock(4.5)).toBe('lowGrip');
+    expect(underStock(4)).toBe('lowGrip');
+    expect(underStock(3.9)).toBe('tooThin');
+    expect(underStock(0)).toBe('tooThin');
+  });
+
+  it('offers clamping 1 only parallels whose jaws stay under the outline (19 mm of stock, 5 under a 12 mm part)', () => {
+    // Grip 3 to 4: the jaw tops 1 mm or more under the part's bottom.
+    expect(allowedCales(19, -17, 12)).toEqual([42, 41]);
+    expect(whyNot(41, 19, -17, 12)).toBeNull();
+    expect(whyNot(42, 19, -17, 12)).toBeNull();
+    expect(whyNot(40, 19, -17, 12)).toBe('outline');
+    expect(whyNot(36, 19, -17, 12)).toBe('outline');
+    expect(whyNot(43, 19, -17, 12)).toBe('tooShallow');
   });
 });

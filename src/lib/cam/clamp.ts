@@ -9,8 +9,23 @@ export const JAW = 45;
 /** How deep the jaws' tops are across (mm; you: "depth doesn't matter, imagine it at 20"): what a part resting on them lies on. */
 export const JAW_DEPTH = 20;
 
-/** Stock over the part's top in clamping 1 (Auto and totals), for `extra` mm of Z stock in all. */
-export const blankTop = (extra: number) => (extra >= 4.5 ? Math.max(0.5, Math.min(2, extra - 4)) : Math.max(0, Math.min(2, extra / 2)));
+/**
+ * The 0.5 mm method (you, always): clamping 1 cuts the outline and the holes whole, 0.5 mm under the part, so after the
+ * turn only the face mill takes the rest. Its jaws stand 0.5 mm under that cut and grip what is left of the stock under
+ * the part: 4 mm wanted, 3 at the least (shown yellow), less refused (a thicker blank).
+ */
+export const GRIP_MIN = 3;
+export const GRIP_WANT = 4;
+/** The outline 0.5 mm under the part, the jaw tops 0.5 mm under that. */
+const UNDER_CUT = 1;
+
+/** Stock over the part's top in clamping 1 (Auto and totals), for `extra` mm of Z stock in all: the stock under the part first. */
+export const blankTop = (extra: number) =>
+  extra >= GRIP_WANT + UNDER_CUT + 0.5 ? Math.max(0.5, Math.min(2, extra - GRIP_WANT - UNDER_CUT)) : extra >= GRIP_MIN + UNDER_CUT + 0.5 ? 0.5 : Math.max(0, extra - GRIP_MIN - UNDER_CUT);
+
+/** Clamping 1's stock under the part (mm) for the 0.5 mm method: enough (null), a 3 mm grip only (yellow), or too thin (refused). */
+export const underStock = (under: number): 'tooThin' | 'lowGrip' | null =>
+  under < GRIP_MIN + UNDER_CUT - 1e-6 ? 'tooThin' : under < GRIP_WANT + UNDER_CUT - 1e-6 ? 'lowGrip' : null;
 
 /**
  * The blank side by side in clamping 1's frame (X-, X+, Y-, Y+, Z-, Z+) for Auto and totals, as the planner puts it:
@@ -28,9 +43,9 @@ export function blankSides(excess: number[], white = -1): number[] {
 
 /**
  * The parallels the jaws hold the part on (0: none, the part on the table they stand on): 3 mm grip at least, never all of
- * the stock, jaw tops 0.5 mm under its top.
+ * the stock, jaw tops 0.5 mm under its top. With the part's height H (clamping 1): under its outline too (the 0.5 mm method).
  */
-export const allowedCales = (stockH: number, lo: number): number[] => [...CALE_HEIGHTS, 0].filter((c) => JAW - c >= 3 && JAW - c <= stockH - 1 && JAW - c <= -0.5 - lo);
+export const allowedCales = (stockH: number, lo: number, H?: number): number[] => [...CALE_HEIGHTS, 0].filter((c) => whyNot(c, stockH, lo, H) === null);
 
 /**
  * The cale under the part for the grip wanted (the outside is cut down to 0.5 mm above the jaws):
@@ -86,10 +101,10 @@ export function stepCale(now: number | null, dir: 1 | -1): number | null {
   return steps.indexOf(now) >= 0 && j >= 0 && j < steps.length ? steps[j] : null;
 }
 
-/** Why parallels cannot hold the part (allowedCales' three rules), or null when they can. */
-export function whyNot(cale: number, stockH: number, lo: number): 'tooShallow' | 'allStock' | 'overTop' | null {
+/** Why parallels cannot hold the part (allowedCales' rules), or null when they can; H: clamping 1's part height (its outline). */
+export function whyNot(cale: number, stockH: number, lo: number, H?: number): 'tooShallow' | 'allStock' | 'overTop' | 'outline' | null {
   const grip = JAW - cale;
-  return grip < 3 ? 'tooShallow' : grip > stockH - 1 ? 'allStock' : grip > -0.5 - lo ? 'overTop' : null;
+  return grip < GRIP_MIN ? 'tooShallow' : grip > stockH - 1 ? 'allStock' : grip > -0.5 - lo ? 'overTop' : H !== undefined && grip > -H - lo - UNDER_CUT + 1e-6 ? 'outline' : null;
 }
 
 /** How far the moving jaw opens (mm), the most. */
