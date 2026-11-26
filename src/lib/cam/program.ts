@@ -1436,13 +1436,14 @@ function frameAt(input: CamInput, k: number): Mat3 | undefined {
 const MILLING: Purpose[] = ['outline', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave'];
 
 /**
- * A clamping's operations in the operator's order of tools (you: dragged in the list), each tool's own in their made
- * order; tools not listed keep their places. What runs before an operation it was made after (the facing before all,
- * a spot drill before the drills, the mills in their made order) is not verified by any check: that one is marked
- * unsafe (the program locks) and noted.
+ * A clamping's operations in the operator's order (you: tools dragged in the list), `want` their keys: those listed run
+ * in that order in the places they hold, the others stay where they were made. By key, never by tool: a tool changed by
+ * hand keeps its place, and a tool used in two places is not pulled together when another one is moved. What runs before
+ * an operation it was made after (the facing before all, a spot drill before the drills, the mills in their made order)
+ * is not verified by any check: that one is marked unsafe (the program locks) and noted.
  */
 export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: number): { ops: CamOp[]; notes: CamNote[] } {
-  const rank = (o: CamOp) => want?.indexOf(o.tool.code) ?? -1;
+  const rank = (o: CamOp) => (o.key === undefined ? -1 : (want?.indexOf(o.key) ?? -1));
   if (!want?.length || !ops.some((o) => rank(o) >= 0)) return { ops, notes: [] };
   const listed = ops.filter((o) => rank(o) >= 0).sort((a, b) => rank(a) - rank(b));
   let j = 0;

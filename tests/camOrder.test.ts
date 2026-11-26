@@ -1,8 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { camProgram, editProgram, type CamInput } from '../src/lib/cam/program';
-import { plateWithHoles, pocketPart, roundedRect } from './heightPart';
+import { camProgram, editProgram, reorderOps, type CamInput, type CamOp } from '../src/lib/cam/program';
+import { plateWithHoles, pocketPart, pocketWithHole, roundedRect } from './heightPart';
 
-// You: the operations of a clamping in the order the operator drags them to. The program is checked again; an order
+// You: the operations of a clamping in the order the operator drags them to (sent as their keys, which a tool changed
+// by hand keeps). The program is checked again; an order
 // whose cuts are not verified (an operation before the facing, a drill before its spot drill, a mill before the one
 // whose material it was made for) stays locked and says why.
 
@@ -20,13 +21,15 @@ beforeAll(() => {
 const codes = () => [...new Set(made.setups[0].ops.map((o) => o.tool.code))];
 const byPurpose = (p: string) => made.setups[0].ops.find((o) => o.purpose === p)!.tool.code;
 const side = () => made.setups[0].side;
+/** The keys of clamping 1's operations of these tools, the tools in this order (each tool's own as made). */
+const keysOf = (r: ReturnType<typeof camProgram>, tools: string[]) => tools.flatMap((c) => r.setups[0].ops.filter((o) => o.tool.code === c).map((o) => o.key!));
 
 describe('operations in the order the operator gives', () => {
   it('runs the drills before the outside when dragged there: checked again, every tool change whole, still unlocked', () => {
     const drills = made.setups[0].ops.filter((o) => o.purpose === 'centre' || o.purpose === 'drill').map((o) => o.tool.code);
     const order = [byPurpose('face'), ...drills, byPurpose('outline')];
     expect(codes().slice().sort()).toEqual(order.slice().sort());
-    const r = editProgram(input, made, {}, { [side()]: order });
+    const r = editProgram(input, made, {}, { [side()]: keysOf(made, order) });
     const got = [...new Set(r.setups[0].ops.map((o) => o.tool.code))];
     expect(got).toEqual(order);
     expect(r.setups[0].ops.some((o) => o.cut.unsafe)).toBe(false);
@@ -45,14 +48,14 @@ describe('operations in the order the operator gives', () => {
   it('locks an operation moved before the facing, and says which', () => {
     const face = byPurpose('face');
     const other = codes().find((c) => c !== face)!;
-    const r = editProgram(input, made, {}, { [side()]: [other, face] });
+    const r = editProgram(input, made, {}, { [side()]: keysOf(made, [other, face]) });
     expect(r.setups[0].ops[0].tool.code).toBe(other);
     expect(r.setups[0].ops[0].cut.unsafe).toBe(true);
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
   }, 600_000);
 
   it('locks a drill moved before its spot drill', () => {
-    const r = editProgram(input, made, {}, { [side()]: [byPurpose('drill'), byPurpose('centre')] });
+    const r = editProgram(input, made, {}, { [side()]: keysOf(made, [byPurpose('drill'), byPurpose('centre')]) });
     const drill = r.setups[0].ops.find((o) => o.purpose === 'drill')!;
     expect(drill.cut.unsafe).toBe(true);
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(true);
@@ -63,14 +66,39 @@ describe('operations in the order the operator gives', () => {
     expect(mills.map((o) => o.purpose)).toEqual(['rough', 'rest', 'rest']);
     const firstMill = mills[0].tool.code;
     const later = mills[2].tool.code;
-    const r = editProgram(pocket, madeB, {}, { [madeB.setups[0].side]: [later, firstMill] });
+    const r = editProgram(pocket, madeB, {}, { [madeB.setups[0].side]: keysOf(madeB, [later, firstMill]) });
     expect(r.setups[0].ops.find((o) => o.tool.code === later)!.cut.unsafe).toBe(true);
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(true);
   }, 600_000);
 
-  it('leaves unlisted operations where they were and ignores codes the program has not', () => {
-    const r = editProgram(input, made, {}, { [side()]: ['NOPE_00.00_000_000_X'] });
+  it('leaves unlisted operations where they were and ignores keys the program has not', () => {
+    const r = editProgram(input, made, {}, { [side()]: ['Z+|NOPE|NOPE_00.00_000_000_X|0'] });
     expect(r.setups[0].ops.map((o) => o.name)).toEqual(made.setups[0].ops.map((o) => o.name));
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(false);
+  }, 600_000);
+
+  it('moves only what was moved: a tool used in two places stays in both (one run of a tool after the drill)', () => {
+    // The face, the Ø16's outline, the drill, the Ø16's roughing, a rest mill: the rest mill dragged before the drill.
+    const op = (key: string, code: string, purpose: string) => ({ key, name: key, purpose, tool: { code, number: code.length }, cut: {}, lines: [] }) as unknown as CamOp;
+    const ops = [op('face', 'A', 'face'), op('outline', 'B', 'outline'), op('drill', 'C', 'drill'), op('rough', 'B', 'rough'), op('rest', 'D', 'rest')];
+    const r = reorderOps(ops, ['face', 'outline', 'rest', 'drill', 'rough'], 1);
+    expect(r.ops.map((o) => o.key)).toEqual(['face', 'outline', 'rest', 'drill', 'rough']);
+    // The rest mill now runs before the roughing it was made after: locked, said why.
+    expect(r.ops.find((o) => o.key === 'rest')!.cut.unsafe).toBe(true);
+    expect(r.ops.filter((o) => o.key !== 'rest').some((o) => o.cut.unsafe)).toBe(false);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
+  });
+
+  it('keeps a tool changed by hand where it was dragged', () => {
+    const part: CamInput = { ...input, tris: pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 }), raw: [44, 34, 16.5] };
+    const m = camProgram(part);
+    const ops = m.setups[0].ops;
+    const rest = ops.find((o) => o.purpose === 'rest')!;
+    const drill = ops.find((o) => o.purpose === 'drill')!;
+    // The rest mill dragged before the drill, then changed by hand to a Ø6.
+    const asked = ops.filter((o) => o !== rest).flatMap((o) => (o === drill ? [rest.key!, o.key!] : [o.key!]));
+    const r = editProgram(part, m, { [rest.key!]: { tool: { d: 6, l: 40 } } }, { [m.setups[0].side]: asked });
+    expect(r.setups[0].ops.map((o) => o.key)).toEqual(asked);
+    expect(r.setups[0].ops.find((o) => o.key === rest.key)!.tool.diameter).toBe(6);
   }, 600_000);
 });

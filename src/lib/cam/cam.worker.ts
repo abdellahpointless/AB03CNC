@@ -26,7 +26,7 @@ export type CamRequest = Omit<CamInput, 'tris' | 'live'> & { model: { name: stri
 export type PrepareRequest = { type: 'prepare'; model: { name: string; bytes: Uint8Array } };
 /** The last program made, its operations changed by hand (by operation key): answered with 'edited'. */
 /** toolDb: the shop's tool database as it is now (a tool added since the make can be swapped in). */
-/** order: each clamping's tools in the operator's order, by its side (editProgram, reorderOps). */
+/** order: each clamping's operation keys in the operator's order, by its side (editProgram, reorderOps). */
 export type EditRequest = { type: 'edit'; edits: Record<string, OpEdit>; order?: Record<string, string[]>; toolDb?: CamRequest['toolDb'] };
 
 export interface Prepared {

@@ -37,17 +37,20 @@ import { useAuth } from '../contexts/AuthContext';
 const CamPartView = lazy(() => import('./CamPartView'));
 const CamTurnGhost = lazy(() => import('./CamTurnGhost'));
 /**
- * A clamping's tools (by code) as the program runs them in the order the operator asked: the operations of the tools
- * asked for take their places in that order, each tool's own together, the others stay where they were made (as
- * program.ts reorderOps does).
+ * A clamping's operations in the order the operator asked (their keys): those listed run in that order in the places
+ * they hold, the others stay where they were made (as program.ts reorderOps does).
  */
-const toolOrder = (side: string, ops: { code: string }[], asked: Record<string, string[]>) => {
+const inOrder = <T extends { key: string }>(side: string, ops: T[], asked: Record<string, string[]>) => {
   const want = asked[side] ?? [];
-  const rank = (c: string) => want.indexOf(c);
-  const listed = ops.filter((o) => rank(o.code) >= 0).sort((a, b) => rank(a.code) - rank(b.code));
+  const rank = (o: T) => want.indexOf(o.key);
+  const listed = ops.filter((o) => rank(o) >= 0).sort((a, b) => rank(a) - rank(b));
   let j = 0;
-  return [...new Set(ops.map((o) => (rank(o.code) >= 0 ? listed[j++] : o).code))];
+  return ops.map((o) => (rank(o) >= 0 ? listed[j++] : o));
 };
+/** Its tools (by code), one row each, where each first runs. */
+const toolOrder = (side: string, ops: { key: string; code: string }[], asked: Record<string, string[]>) => [...new Set(inOrder(side, ops, asked).map((o) => o.code))];
+/** The tool an operation was made with (its key: side|name|code|n), whatever it was changed to by hand. */
+const madeCode = (key: string) => key.split('|')[2];
 /** A quarter turn about the machine's X or Y, + or - (you: the presses add up). */
 const QUARTER: Record<string, Mat3> = { 'X+': [1, 0, 0, 0, 0, -1, 0, 1, 0], 'X-': [1, 0, 0, 0, 0, 1, 0, -1, 0], 'Y+': [0, 0, 1, 0, 1, 0, -1, 0, 0], 'Y-': [0, 0, -1, 0, 1, 0, 1, 0, 0] };
 const mul3 = (a: Mat3, b: Mat3): Mat3 => [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j])) as Mat3;
@@ -479,18 +482,23 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
         for (const st of m.result.setups) if (st.side === side) for (const o of st.ops) if (o.code === code) swapped[o.key] = { tool };
       }
-      // A tool changed by hand keeps its place in the order asked: the one that took its paths stands there now.
+      // A tool changed by hand keeps its place in the order asked: made again with the one that took its paths, the
+      // operations of that one stand there now.
       for (const [k, tool] of Object.entries(swapsNow)) {
         const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
         const list = orderRef.current[side];
         const st = m.result.setups.find((x) => x.side === side);
-        if (!list || !st || st.ops.some((o) => o.code === code)) continue;
-        const now = tool.code ? st.ops.find((o) => o.code === tool.code)?.code : undefined;
-        if (now && !list.includes(now)) orderRef.current = { ...orderRef.current, [side]: list.map((c) => (c === code ? now : c)) };
+        if (!list || !st || !tool.code) continue;
+        const keys = new Set(st.ops.map((o) => o.key));
+        const moved = list.map((key) => {
+          const now = key.replace(`|${code}|`, `|${tool.code}|`);
+          return !keys.has(key) && keys.has(now) ? now : key;
+        });
+        if (moved.some((key, n) => key !== list[n])) orderRef.current = { ...orderRef.current, [side]: moved };
       }
       if (orderRef.current !== opOrder) setOpOrder(orderRef.current);
-      // The order dragged, for the tools this program still has in that clamping.
-      const ordered = Object.entries(orderRef.current).some(([side, codes]) => m.result.setups.some((st) => st.side === side && st.ops.some((o) => codes.includes(o.code))));
+      // The order dragged, for the operations this program still has in that clamping.
+      const ordered = Object.entries(orderRef.current).some(([side, keys]) => m.result.setups.some((st) => st.side === side && st.ops.some((o) => keys.includes(o.key))));
       if (carrying || Object.keys(swapped).length || ordered) {
         // Changes by hand go on with the new program where their operation is the same cut (its lines as made match:
         // a key only counts operations of one name and tool, so after a re-plan it can name another cut) in a clamping
@@ -804,12 +812,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     const s = result?.setups[i];
     if (!s || busy) return;
     // From the order last asked for (a move made before the one before it is checked builds on it), as the list shows it.
-    const list = toolOrder(s.side, s.ops, orderRef.current);
+    const seq = inOrder(s.side, s.ops, orderRef.current);
+    const list = [...new Set(seq.map((o) => o.code))];
     const from = list.indexOf(code);
     if (from < 0 || to < 0 || to > list.length) return;
-    const next = list.filter((c) => c !== code);
-    next.splice(to > from ? to - 1 : to, 0, code);
-    if (next.every((c, k) => c === list[k])) return;
+    // Only this tool's operations move, together, before the first of the tool now at that place; the others keep
+    // their order (a tool used in two places stays in both).
+    const rows = list.filter((c) => c !== code);
+    const at = to > from ? to - 1 : to;
+    const rest = seq.filter((o) => o.code !== code);
+    const cut = at < rows.length ? rest.findIndex((o) => o.code === rows[at]) : rest.length;
+    const next = [...rest.slice(0, cut), ...seq.filter((o) => o.code === code), ...rest.slice(cut)].map((o) => o.key);
+    if (next.every((k, n) => k === seq[n].key)) return;
     const was = orderRef.current;
     const order = { ...was, [s.side]: next };
     setOpOrder(order);
