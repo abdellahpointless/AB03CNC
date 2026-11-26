@@ -353,6 +353,7 @@ const cam: Translation<typeof en> = {
     notInMachine: 'makinede yok',
     notInMachineLong: 'Bu makinede yok: CAM AI takım veritabanından aldı',
     notInMachineHand: 'Bu makinede yok: elle yazılmış bir takım (remapper ona bir makine takımı verir)',
+    makeFirst: 'Değişiklikler Yeniden oluştur’u bekliyor: programla birlikte indirmek için yeniden oluşturun',
     toLoad: 'Takılacak',
     changedBadge: 'Değişti: yeniden oluşturun',
     downTo: 'Z{{z}} mm’ye kadar',

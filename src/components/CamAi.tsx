@@ -199,7 +199,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The changes since the program was made, newest last: listed by the one Make again button and undone one at a time,
   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
-  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string };
+  // now: in the program shown already (checked again); the others wait for Make again.
+  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true };
   const [changes, setChanges] = useState<Change[]>([]);
   const changeId = useRef(0);
   // The later clampings' turns the program shown was made with (the panel's "until it is made again").
@@ -551,7 +552,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
-    if (!result || !machine || checking || handTool || !passed(result, handEdited && accepted)) return;
+    if (!result || !machine || checking || waiting || handTool || !passed(result, handEdited && accepted)) return;
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
@@ -776,6 +777,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     generate(nextSwap, draft, nextSkip);
   };
   const shownChanges = changes.filter((c) => (c.cuts === undefined || changed.includes(c.cuts)) && (c.removed === undefined || (skipDraft.includes(c.removed) && !skip.includes(c.removed))));
+  // You: every change reaches the program downloaded. Those that wait for Make again lock Download and Send until then.
+  const waiting = shownChanges.some((c) => !c.now);
   const undoLast = () => {
     const c = [...shownChanges].reverse().find((x) => x.undo);
     if (!c) return;
@@ -811,6 +814,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setSel({ kind: 'setup', i });
     applyEdits(next, ops[0].key);
     addChange({
+      now: true,
       label: t('camAi.bar.deleted', { tool: ops[0].tool, n: i + 1 }),
       undo: () => applyEdits(was, ops[0].key),
       // Made again: CAM AI plans without them.
@@ -841,6 +845,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setOpOrder(order);
     applyEdits(editsRef.current, '', order);
     addChange({
+      now: true,
       label: t('camAi.bar.moved', { tool: s.ops.find((o) => o.code === code)!.tool, n: i + 1 }),
       undo: () => {
         setOpOrder(was);
@@ -1237,7 +1242,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       if (e) next[key] = e;
                       else delete next[key];
                       applyEdits(next, key);
-                      addChange({ label: t('camAi.bar.edited'), undo: () => applyEdits(was, key) });
+                      addChange({ now: true, label: t('camAi.bar.edited'), undo: () => applyEdits(was, key) });
                     }}
                     shop={catalog(templatesFor, tools, { exclude: swap.exclude, toolDb: toolDb.db })}
                     hits={result.collisions}
@@ -1262,6 +1267,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                         return n;
                       });
                       addChange({
+                        now: true,
                         label: tool ? t('camAi.bar.swapped', { tool: ops[0].tool }) : t('camAi.changes.back', { tool: ops[0].tool }),
                         undo: () => {
                           applyEdits(was, ops[0].key);
@@ -1588,11 +1594,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
           </button>
         )}
-        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || handTool} title={handTool ? t('camAi.opEdit.handTool') : ok ? undefined : t('camAi.locked')}>
+        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool} title={handTool ? t('camAi.opEdit.handTool') : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (
-          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy || checking} title={ok ? undefined : t('camAi.locked')}>
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
             <Send size={16} stroke={1.8} aria-hidden /> {t('camAi.send')}
           </button>
         ) : run.state === 'busy' ? (

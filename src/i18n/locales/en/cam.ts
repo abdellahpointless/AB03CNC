@@ -350,6 +350,7 @@ const cam = {
     notInMachine: 'not in machine',
     notInMachineLong: 'Not in this machine: CAM AI took it from the tool database',
     notInMachineHand: 'Not in this machine: a tool typed by hand (the remapper gives it a machine tool)',
+    makeFirst: 'Changes wait for Make again: make it again to download them with the program',
     toLoad: 'To load',
     changedBadge: 'Changed: make it again',
     downTo: 'down to Z{{z}} mm',
