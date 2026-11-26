@@ -8,7 +8,7 @@ import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
 
 describe('the safety double check', () => {
-  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], orient: { side: 'Z+', spin: false } });
+  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false } });
   const lines = r.code.split('\n');
 
   it("CAM AI's own program: no holder in the material, no rapid through it", () => {

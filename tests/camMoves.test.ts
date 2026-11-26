@@ -517,8 +517,8 @@ describe('entering a ring from the side', () => {
     const wide = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 50 }, (_, i) => (i >= 10 && i < 40 && j >= 8 && j < 32 ? 6 : 12))));
     let entries = 0;
     for (const [tris, raw] of [
-      [wide, [54, 44, 16]],
-      [twoSided, [34, 28, 20]],
+      [wide, [54, 44, 16.5]],
+      [twoSided, [34, 28, 20.5]],
     ] as const) {
       const r = camProgram({ ...base, tris, raw: [...raw] });
       expect(r.check.match).toBeGreaterThanOrEqual(0.99);
@@ -539,8 +539,8 @@ describe('entering a ring from the side', () => {
 
   it('never runs back over a cut at feed: an open piece’s zigzag down ends at its start, where its pass begins (the shop’s zigzag, no walk back)', () => {
     for (const [tris, raw] of [
-      [plate, [44, 34, 16]],
-      [twoSided, [34, 28, 20]],
+      [plate, [44, 34, 16.5]],
+      [twoSided, [34, 28, 20.5]],
     ] as const) {
       const r = camProgram({ ...base, tris, raw: [...raw] });
       expect(r.check.match).toBeGreaterThanOrEqual(0.99);
@@ -589,7 +589,7 @@ describe('fewer points', () => {
     const p = (i: number, z: number) => [15 + 15 * Math.cos((2 * Math.PI * i) / N), 15 + 15 * Math.sin((2 * Math.PI * i) / N), z];
     const t: number[] = [];
     for (let i = 0; i < N; i++) t.push(15, 15, 12, ...p(i, 12), ...p(i + 1, 12), 15, 15, 0, ...p(i + 1, 0), ...p(i, 0), ...p(i, 0), ...p(i + 1, 0), ...p(i + 1, 12), ...p(i, 0), ...p(i + 1, 12), ...p(i, 12));
-    const r = camProgram({ ...base, tris: new Float32Array(t), raw: [34, 34, 16] });
+    const r = camProgram({ ...base, tris: new Float32Array(t), raw: [34, 34, 16.5] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     // The longest run of moves at one height in a roughing op: one ring round the cylinder.

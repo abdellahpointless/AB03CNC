@@ -12,7 +12,7 @@ const ALU_CODES = new Set(LIBRARY.ALU.map((t) => t.code));
 
 describe('CAM AI', () => {
   it('programs a plate with a pocket that the simulation proves right, with the shop tools only', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', name: 'PLATE', raw: [44, 34, 16], limits: { maxRpm: 12000, maxFeed: 10000 } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', name: 'PLATE', raw: [44, 34, 16.5], limits: { maxRpm: 12000, maxFeed: 10000 } });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     // Faced, cut, written like the shop's programs and read back as such.
@@ -45,7 +45,7 @@ describe('CAM AI', () => {
   }, 180_000);
 
   it('roughs with the SFH 16, as the shop does (T4), and adds no finishing pass that removes nothing', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
     const ops = r.setups.flatMap((s) => s.ops);
     const rough = ops.filter((o) => o.name === 'FRAESEN_16MM');
     expect(rough.length).toBeGreaterThan(0);
@@ -60,7 +60,7 @@ describe('CAM AI', () => {
   it('finishes a top plate’s pocket after the SFH 16 with the SF 16 and the shop’s own data (S4)', () => {
     // A 60 x 40 x 12 top plate with a 40 x 24 pocket 6 deep, its walls picked: the Ø16 roughs it, leaving 0.15 mm, and finishes it.
     const top = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 10 && i < 50 && j >= 8 && j < 32 ? 6 : 12))));
-    const r = camProgram({ tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
+    const r = camProgram({ tris: top, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 16.5], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
     const finish = r.setups.flatMap((s) => s.ops).filter((o) => o.name === 'SCHLICHTEN_16MM');
     expect(finish.length).toBeGreaterThan(0);
     for (const o of finish) expect(o.tool.code).toMatch(/^SF_16\./);
@@ -71,14 +71,14 @@ describe('CAM AI', () => {
   }, 300_000);
 
   it('cuts no chamfer and no deburring where the model has none (you, Beta 2: no chamfer without need)', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
     expect(r.setups.flatMap((s) => s.ops.filter((o) => o.kind === 'chamfer' || o.tool.type === 'ST').map((o) => `${s.side} ${o.name}`))).toEqual([]);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
   it('leaves out a move to where the tool already is (improvement O1, approved)', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
     const code = r.code.split('\n').map((l) => l.replace(/^N\d+ /, ''));
     // The same rapid twice in a row (CAM AI wrote G00 Z4.5 so): the second moves nothing.
     expect(code.filter((l, i) => i > 0 && /^G0?0( [XYZ]-?[\d.]+)+$/.test(l) && l === code[i - 1])).toEqual([]);
@@ -87,7 +87,7 @@ describe('CAM AI', () => {
 
   it('never uses a tool the operator does not have', () => {
     const exclude = LIBRARY.ALU.filter((t) => t.type.startsWith('SF') && t.d === 16).map((t) => t.code);
-    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16], exclude });
+    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], exclude });
     expect(r.code).not.toMatch(/_16\.00_/);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 180_000);
