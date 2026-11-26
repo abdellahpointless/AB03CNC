@@ -44,6 +44,7 @@ export default function CamSim({
   brand,
   model,
   focus,
+  hidden = false,
   selected,
   runLabel,
   stepLabel,
@@ -61,6 +62,8 @@ export default function CamSim({
   model: { name: string; bytes: Uint8Array } | null;
   /** The page asks for a tool at work (its first move in that clamping, paused) or a clamping as it starts. */
   focus: SimFocus | null;
+  /** Kept alive under another view (its cut part and the part built ahead stay): no keys, nothing to click. */
+  hidden?: boolean;
   /** The tool picked in the page (its segments stay bright), and its clamping. */
   selected: { setup: number; tool: number } | null;
   /** What a run of a tool does (the timeline's tooltip): "T28 · End mill — Outline roughing". */
@@ -80,6 +83,8 @@ export default function CamSim({
   /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
   preview?: { setup: number; cale?: number; stop?: number; y?: number; yp?: number } | null;
 }) {
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
@@ -218,6 +223,7 @@ export default function CamSim({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
+      if (hiddenRef.current) return;
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return;
       if (e.key === ' ' && el?.tagName !== 'BUTTON') {
         e.preventDefault();
@@ -242,7 +248,7 @@ export default function CamSim({
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>
 
         {/* One floating toolbar. */}

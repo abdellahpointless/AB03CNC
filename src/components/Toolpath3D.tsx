@@ -113,6 +113,8 @@ interface Props {
   hull?: boolean;
   /** A tool's path hovered (lit in its colour) and clicked: that tool. */
   onPickTool?: (tool: number) => void;
+  /** Every change of setup turns the part (playing or not, forward or back), not only playing on into the next one. */
+  turnAlways?: boolean;
 }
 
 export type ModelView = 'part' | 'model' | 'both';
@@ -552,7 +554,7 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool, hull = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const onModelRef = useRef(onModel);
@@ -576,6 +578,8 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   playingRef.current = playing;
   const showAllRef = useRef(showAll);
   showAllRef.current = showAll;
+  const turnAlwaysRef = useRef(turnAlways);
+  turnAlwaysRef.current = turnAlways;
   const hullRef = useRef(hull);
   hullRef.current = hull;
   const onPickToolRef = useRef(onPickTool);
@@ -1575,9 +1579,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       if (jaw) jaw.obj.position.set(0, 0, open * jaw.travel); // three Z = machine -Y (towards the front)
     };
     const ease = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
-    // Scrubbing (not playing) and jumping to the end: straight to the new setup, no turn or cale change.
-    const instant = !playingRef.current && fresh?.kind !== 'flip';
-    if (!prev || prev.index >= setup.index || !a.solidReady || reduce || instant) {
+    // Scrubbing (not playing) and jumping to the end: straight to the new setup, no turn or cale change; unless every
+    // change turns (the owner: clicking a clamping or an operation in another one too, and going back).
+    const always = turnAlwaysRef.current && !!prev && prev.index !== setup.index && fresh?.kind !== 'end';
+    const instant = !playingRef.current && fresh?.kind !== 'flip' && !always;
+    if (!prev || (prev.index >= setup.index && !always) || !a.solidReady || reduce || instant) {
       a.solid.matrix.copy(end);
       a.solid.matrixWorldNeedsUpdate = true;
       if (fresh) whenShown(shown);

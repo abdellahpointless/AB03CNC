@@ -1354,9 +1354,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               </section>
             )}
             {prep && chosen ? (
-              result && !clampMode ? (
+              <>
+                {/* The simulation stays alive under the clamping 1 editor: its cut part and the part built ahead are kept
+                    (coming back must not cut the program again). */}
+                {result && (
+                  <div className={clampMode ? 'invisible pointer-events-none absolute inset-0' : 'contents'} aria-hidden={clampMode || undefined}>
                 <Suspense fallback={null}>
                   <CamSim
+                    hidden={clampMode}
                     code={result.code}
                     brand={machine?.brand}
                     model={model}
@@ -1375,7 +1380,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     onMeasureToggle={() => { setMeasuring((x) => !x); setMeasured(null); }}
                   />
                 </Suspense>
-              ) : (
+                  </div>
+                )}
+                {(!result || clampMode) && (
                 <div className="absolute inset-0">
             <Suspense fallback={null}>
               <CamPartView
@@ -1409,7 +1416,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               />
             </Suspense>
                 </div>
-              )
+                )}
+              </>
             ) : (
             <div className="absolute inset-0 grid place-items-center p-6">
               <button
