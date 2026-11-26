@@ -107,6 +107,8 @@ interface Props {
   /** The differences from the model drawn in every view, not only with the model shown; in these colours if given. */
   diffs?: boolean;
   diffColors?: { left: string; cut: string };
+  /** The differences to draw, already known (the planner's own check, in the part frame): drawn even where the model cannot be laid by its size. */
+  diffPieces?: { kind: 'left' | 'cut'; min: number[]; max: number[] }[];
   onModel?: (s: ModelState) => void;
   /** The NX view (you, Beta 2): every path of the setup over the finished part; nothing is cut away as the tool goes. */
   pathsOnly?: boolean;
@@ -557,13 +559,15 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, diffPieces, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const diffsRef = useRef(diffs);
   diffsRef.current = diffs;
   const diffColorsRef = useRef(diffColors);
   diffColorsRef.current = diffColors;
+  const diffPiecesRef = useRef(diffPieces);
+  diffPiecesRef.current = diffPieces;
   const onModelRef = useRef(onModel);
   onModelRef.current = onModel;
   const behindRef = useRef(behind);
@@ -996,7 +1000,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       mesh.userData.model = 'mesh';
       a.solid.add(mesh);
       // Each difference outlined in its colour, seen through the part.
-      for (const pc of msg.pieces!) {
+      for (const pc of diffPiecesRef.current ? [] : msg.pieces!) {
         const size = pc.max.map((v, k) => Math.max(v - pc.min[k], 0.2));
         const shape = new THREE.BoxGeometry(size[0], size[1], size[2]);
         const color = (diffColorsRef.current ?? PIECE_COLORS)[pc.kind];
@@ -1031,6 +1035,36 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   useEffect(() => {
     if (api.current) showModel(api.current, modelView, diffs);
   }, [modelView, diffs]);
+
+  // The differences given (diffPieces): outlined and lightly filled in their colours, seen through the part.
+  useEffect(() => {
+    const a = api.current;
+    if (!a || !diffPieces?.length) return;
+    const made: (THREE.LineSegments | THREE.Mesh)[] = [];
+    for (const pc of diffPieces) {
+      const size = pc.max.map((v, k) => Math.max(v - pc.min[k], 0.2));
+      const shape = new THREE.BoxGeometry(size[0], size[1], size[2]);
+      const color = (diffColorsRef.current ?? PIECE_COLORS)[pc.kind];
+      const box = new THREE.LineSegments(new THREE.EdgesGeometry(shape), new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
+      const fill = new THREE.Mesh(shape, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthTest: false, depthWrite: false }));
+      for (const m of [box, fill]) {
+        m.position.set((pc.min[0] + pc.max[0]) / 2, (pc.min[1] + pc.max[1]) / 2, (pc.min[2] + pc.max[2]) / 2);
+        m.renderOrder = 9;
+        m.userData.model = 'piece';
+        made.push(m);
+        a.solid.add(m);
+      }
+    }
+    showModel(a, modelViewRef.current, diffsRef.current);
+    return () => {
+      for (const m of made) {
+        a.solid.remove(m);
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      }
+      a.invalidate();
+    };
+  }, [diffPieces]);
 
   // The setup's scene: fixture, toolpath, tool, markers.
   useEffect(() => {

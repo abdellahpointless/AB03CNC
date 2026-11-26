@@ -1709,6 +1709,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     code={result.code}
                     brand={machine?.brand}
                     model={model}
+                    pieces={result.pieces}
                     focus={simFocus}
                     onPickTool={(i, tool) => {
                       const op = result.setups[i]?.ops.find((o) => o.tool === tool);
@@ -2294,7 +2295,7 @@ type Sel = { kind: 'part' } | { kind: 'stock' } | { kind: 'program' } | { kind: 
 
 /** The verdict, once there is a program. */
 function useVerdictOrNull(result: CamSummary | null, changed: number, accepted = false) {
-  const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, stops: 0, cales: 0, misplaced: 0, sized: false, gouge: 0, size: [], raw: [], blank: { lo: [], hi: [] }, missing: [], notes: [], nests: [], setups: [] };
+  const empty: CamSummary = { code: '', match: 0, minutes: 0, toolChanges: 0, collisions: 0, stops: 0, cales: 0, misplaced: 0, sized: false, gouge: 0, pieces: [], size: [], raw: [], blank: { lo: [], hi: [] }, missing: [], notes: [], nests: [], setups: [] };
   const v = useVerdict(result ?? empty, changed, accepted);
   return result ? v : null;
 }

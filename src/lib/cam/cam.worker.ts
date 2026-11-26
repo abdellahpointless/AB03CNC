@@ -60,6 +60,8 @@ export interface CamSummary {
   sized: boolean;
   /** The largest piece cut out of the part that the model keeps (mm³): a gouge. */
   gouge: number;
+  /** Where the finished part differs from the model (the program's check, with the pose it was planned in; part frame): left more material, cut missing. */
+  pieces: { kind: 'left' | 'cut'; mm3: number; min: number[]; max: number[] }[];
   size: number[];
   raw: number[];
   /** Where the blank was planned (model frame, centred on its box). */
@@ -241,6 +243,7 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
     misplaced: r.check.misplaced,
     sized: r.check.sized,
     gouge: gougeOf(r.check),
+    pieces: r.check.pieces.map(({ kind, mm3, min, max }) => ({ kind, mm3, min: [...min], max: [...max] })),
     size: r.size,
     raw: r.raw,
     blank: r.blank,

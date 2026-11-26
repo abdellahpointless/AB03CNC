@@ -57,8 +57,11 @@ export default function CamSim({
   onModel,
   onPickTool,
   previews = {},
+  pieces,
 }: {
   code: string;
+  /** Where the finished part differs from the model, from the program's own check (you: yellow more, red missing). */
+  pieces?: { kind: 'left' | 'cut'; mm3: number; min: number[]; max: number[] }[];
   brand?: string;
   /** The part's own model (laid over the simulated part: Show). */
   model: { name: string; bytes: Uint8Array } | null;
@@ -108,7 +111,8 @@ export default function CamSim({
   const [jump, setJump] = useState<Jump | null>(null);
   const [modelState, setModelState] = useState<ModelState | null>(null);
   // Where the finished part differs from the model (you: yellow more material, red missing), drawn in every view.
-  const diffKinds = modelState?.state === 'ready' ? (['left', 'cut'] as const).filter((k) => modelState.pieces.some((pc) => pc.kind === k)) : [];
+  const shownPieces = pieces ?? (modelState?.state === 'ready' ? modelState.pieces : []);
+  const diffKinds = (['left', 'cut'] as const).filter((k) => shownPieces.some((pc) => pc.kind === k));
   const behind = useRef(false);
   const shell = useRef<HTMLDivElement>(null);
   const look = useMemo(() => partLook(code), [code]);
@@ -258,7 +262,7 @@ export default function CamSim({
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} diffPieces={pieces} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>
 
         {/* One floating toolbar. */}
