@@ -22,8 +22,8 @@ const remapper = {
   /** Floating toast after "Download program". */
   toast: {
     title: 'Program downloaded',
-    extracted: 'Program downloaded. Saved ~{{saved}} on manual programming ⏱️',
-    queued: 'Program downloaded. No connection right now - the history entry will upload automatically.',
+    extracted: 'Saved ~{{saved}} on manual programming ⏱️',
+    queued: 'No connection right now - the history entry will upload automatically.',
     close: 'Close notification',
   },
   alerts: {

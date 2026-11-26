@@ -723,7 +723,7 @@ N190 M30`;
             exit={{ opacity: 0, y: 24, scale: 0.9, filter: 'blur(6px)', transition: { duration: 0.2, ease: EASE_OUT } }}
             transition={{ type: 'spring', duration: 0.55, bounce: 0.3 }}
             style={{ transformOrigin: 'bottom right' }}
-            className="fixed bottom-6 right-6 z-[100] max-w-md flex items-center gap-3 glass-modal text-[var(--text-primary)] px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-[var(--green-500)]/40 bg-[rgba(var(--surface),0.95)] rounded-[var(--radius-lg)]"
+            className="fixed bottom-6 right-6 z-[100] max-w-[min(28rem,calc(100vw-3rem))] flex items-center gap-3 glass-modal text-[var(--text-primary)] px-4 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] border border-[var(--green-500)]/40 bg-[rgba(var(--surface),0.95)] rounded-[var(--radius-lg)]"
           >
             <div className="w-8 h-8 rounded-full bg-[var(--green-500)]/20 border border-[var(--green-500)]/40 flex items-center justify-center text-[var(--green-500)] shrink-0 shadow-[0_0_10px_var(--green-glow)]">
               <CheckCircle size={16} />
@@ -732,7 +732,7 @@ N190 M30`;
               <span className="font-bold text-xs text-[var(--text-primary)]">
                 {t('toast.title')}
               </span>
-              <span className="text-xs text-[var(--text-secondary)] font-normal truncate max-w-xs">
+              <span className="text-xs text-[var(--text-secondary)] font-normal">
                 {extractionToast}
               </span>
             </div>

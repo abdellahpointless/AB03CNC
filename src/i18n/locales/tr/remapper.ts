@@ -23,8 +23,8 @@ const remapper: Translation<typeof en> = {
   },
   toast: {
     title: 'Program indirildi',
-    extracted: 'Program indirildi. Elle programlamaya göre ~{{saved}} kazanıldı ⏱️',
-    queued: 'Program indirildi. Şu anda bağlantı yok - geçmiş kaydı otomatik olarak yüklenecek.',
+    extracted: 'Elle programlamaya göre ~{{saved}} kazanıldı ⏱️',
+    queued: 'Şu anda bağlantı yok - geçmiş kaydı otomatik olarak yüklenecek.',
     close: 'Bildirimi kapat',
   },
   alerts: {
