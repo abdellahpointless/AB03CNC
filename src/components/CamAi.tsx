@@ -35,6 +35,18 @@ import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
 
 const CamPartView = lazy(() => import('./CamPartView'));
+/**
+ * A clamping's tools (by code) as the program runs them in the order the operator asked: the operations of the tools
+ * asked for take their places in that order, each tool's own together, the others stay where they were made (as
+ * program.ts reorderOps does).
+ */
+const toolOrder = (side: string, ops: { code: string }[], asked: Record<string, string[]>) => {
+  const want = asked[side] ?? [];
+  const rank = (c: string) => want.indexOf(c);
+  const listed = ops.filter((o) => rank(o.code) >= 0).sort((a, b) => rank(a.code) - rank(b.code));
+  let j = 0;
+  return [...new Set(ops.map((o) => (rank(o.code) >= 0 ? listed[j++] : o).code))];
+};
 
 /** The automatic raw block: the part plus 4 mm in X and Y and 7 mm in Z (in the vise), centred. */
 const AUTO_EXCESS = [4, 4, 7];
@@ -441,6 +453,16 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
         for (const st of m.result.setups) if (st.side === side) for (const o of st.ops) if (o.code === code) swapped[o.key] = { tool };
       }
+      // A tool changed by hand keeps its place in the order asked: the one that took its paths stands there now.
+      for (const [k, tool] of Object.entries(swapsNow)) {
+        const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
+        const list = orderRef.current[side];
+        const st = m.result.setups.find((x) => x.side === side);
+        if (!list || !st || st.ops.some((o) => o.code === code)) continue;
+        const now = tool.code ? st.ops.find((o) => o.code === tool.code)?.code : undefined;
+        if (now && !list.includes(now)) orderRef.current = { ...orderRef.current, [side]: list.map((c) => (c === code ? now : c)) };
+      }
+      if (orderRef.current !== opOrder) setOpOrder(orderRef.current);
       // The order dragged, for the tools this program still has in that clamping.
       const ordered = Object.entries(orderRef.current).some(([side, codes]) => m.result.setups.some((st) => st.side === side && st.ops.some((o) => codes.includes(o.code))));
       if (carrying || Object.keys(swapped).length || ordered) {
@@ -755,8 +777,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const moveTool = (i: number, code: string, to: number) => {
     const s = result?.setups[i];
     if (!s || busy) return;
-    const list = [...new Set(s.ops.map((o) => o.code))];
+    // From the order last asked for (a move made before the one before it is checked builds on it), as the list shows it.
+    const list = toolOrder(s.side, s.ops, orderRef.current);
     const from = list.indexOf(code);
+
     if (from < 0 || to < 0 || to > list.length) return;
     const next = list.filter((c) => c !== code);
     next.splice(to > from ? to - 1 : to, 0, code);
@@ -921,7 +945,13 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </p>
           )}
           <ul aria-label={t('camAi.ws.tools')} className="px-2 space-y-0.5">
-            {[...new Map((result.setups[opNow]?.ops ?? []).map((o) => [o.code, o] as const)).values()].map((o, idx, all) => {
+            {(() => {
+              // One row per tool, in the order asked (shown at once, before it is checked), else as made.
+              const ops = result.setups[opNow]?.ops ?? [];
+              const byCode = new Map(ops.map((o) => [o.code, o] as const));
+              return toolOrder(result.setups[opNow]?.side ?? '', ops, opOrder).map((c) => byCode.get(c)!);
+            })().map((o, idx, all) => {
+
               const on = sel.kind === 'tool' && sel.i === opNow && sel.code === o.code;
               const secs = result.setups[opNow].ops.filter((x) => x.code === o.code).reduce((a, x) => a + x.seconds, 0);
               const label = `T${o.tool}`;
