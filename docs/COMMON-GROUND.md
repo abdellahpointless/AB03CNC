@@ -210,6 +210,30 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-26
 - **Context:** Planner (later clampings), clamp panel
 
+### A029: A tool changed by hand is the operator's call
+
+- **Type:** stated
+- **Assumption:** A tool changed by hand to another Ø may leave the part bigger, so the vise holds it off where a later clamping's zero assumes. That no longer locks the program: the operator's tick ("I accept this part as it is") accepts it, and the text says to check that zero at the machine. Anything that hits the machine or the vise is never accepted.
+- **Source:** Owner, 2026-11-27 ("if the user changed the tool to what they want then they know why")
+- **Validated:** 2026-11-27
+- **Context:** Accept tick, Download
+
+### A030: Holes and tool starts for the VF-4
+
+- **Type:** stated
+- **Assumption:** Holes: R 0.5 mm over where the material over the hole starts; G81 up to 1 x D deep, G73 up to 3 x D in short-chip materials (ALU, MS, FH, EPO, RESOPAL), G83 deeper or in the plastics; Q from the shop's data; the holes of one tool in nearest-neighbour order; G98, G99 only where the stock proves the way between two holes at R clear; a note per hole saying the choice and why. A hole a little wider than its mill: arcs (a helix one G02/G03 a turn, one circle a level). Every tool starts G00 G17 G21 G40 G80 G90, then its first point with S and M03, then G43 H and the coolant; T and H within 1-200 (a tool the machine lacks takes a free number; Download refuses anything else). `holes: { legacy: true }` writes the old output.
+- **Source:** Owner, 2026-11-27 (the hole rules from another review, "implement it in its logic"); which materials count as short-chip is CAM AI's reading
+- **Validated:** 2026-11-27
+- **Context:** Planner (drilling, milling), post, Download
+
+### A031: Parallels 5 mm wide
+
+- **Type:** stated
+- **Assumption:** The shop's parallels are 5 mm wide (narrower under a narrow part, its held width / 6, as before).
+- **Source:** Owner, 2026-11-27 (Q009)
+- **Validated:** 2026-11-27
+- **Context:** Simulation, planner
+
 ---
 
 ## WORKING
@@ -226,7 +250,7 @@ Medium confidence. Use but flag if contradicted.
 
 ### A028: Resting on a step by itself
 
-- **Type:** assumed
+- **Type:** stated (2026-11-27: Q010 "it normally should", Q013 "yes")
 - **Assumption:** Not typed, CAM AI rests a later clamping on the deepest step that fits and holds; it turns it a quarter about Z when the parallels only fit beside the body that way, also on a side of the face pair the operator picked (its turn note says so), never on a clamping the operator turned by hand. Taller parallels then, the jaws on the step's faces 1.3 mm or more under Z0, the body 5 mm or more over the vise floor, each parallel 0.5 mm clear of the body and bearing on the step over 85 % of its length.
 - **Source:** CAM AI, from the owner's picture and about 30 "UNTERLAGE IN EP" notes in the library (which do not say when); Q009, Q010 and Q013 ask the owner
 - **Validated:** 2026-11-26
@@ -248,41 +272,7 @@ Low confidence. Ask before assuming.
 
 Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 
-### Q008: A deep step in a hole
-
-- **Type:** uncertain
-- **Question:** A Ø1.5 hole 9 mm deep with a smaller one going on from its floor (Pde1d25de, Pf3d9b947) is now made like a counterbore, by a Ø1 end mill (+1.8 min on each part). Is such a deep, narrow step a counterbore (end mill), or drilled to its depth and its floor left as the drill leaves it? Where is the line (depth against Ø)?
-- **Source:** Library run s42 against s44
-
-### Q009: Parallels beside a hanging body
-
-- **Type:** uncertain
-- **Question:** Resting on a step, CAM AI takes the parallels as wide as the simulation draws them (the held width / 6, 6 mm at most), 0.5 mm clear of the hanging body, each bearing on the step over 85 % of its length (holes and rounded ends of a flange). What widths does the shop have, and is 85 % enough?
-- **Source:** The uploaded part (its flange leaves 3.8 mm beside the boss across the jaws, 9.9 mm along them)
-
-### Q010: A step by itself
-
-- **Type:** uncertain
-- **Question:** CAM AI now rests a later clamping on the deepest step that fits and holds, by itself. Should it always, or only when the body under the step is narrower than some share of the part (a rule the library does not show)?
-- **Source:** The owner's picture and the library's "UNTERLAGE IN EP" notes (which do not say when)
-
-### Q011: The cut-off sentence
-
-- **Type:** uncertain
-- **Question:** The request had "when i click the settings on the" with nothing after it. Read here as the OP settings button (parallels and how the part lies). Was something else meant?
-- **Source:** Owner's message, 2026-11-26
-
-### Q013: A quarter turn on the operator's pair
-
-- **Type:** uncertain
-- **Question:** To rest on a step, CAM AI may now turn a clamping of the face pair the operator picked a quarter about Z (A028); until now it never changed how the operator laid a clamping. Allowed, or should it only say that a quarter turn would rest it on the step?
-- **Source:** The uploaded part (its step only takes parallels along the jaws)
-
-### Q012: Moving a drill among the mills
-
-- **Type:** uncertain
-- **Question:** Drills may be moved before or after the mills (the simulation checks rapids and collisions; a drill moved after a pocket only cuts air longer), but a mill that goes into a drill's holes (a counterbore's seat, an entry down the hole) locks when moved before that drill: it would plunge into solid there. Is there another order the shop never allows that should lock too?
-- **Source:** The reorder locks (A024)
+(none open from batch 10: Q008-Q013 answered on 2026-11-27, see the history)
 
 ---
 
@@ -308,3 +298,11 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
   A027 (inferred) and A028 (assumed), with Q013. The step rest's parallels and G52 Z rest on A028: settle Q009, Q010
   and Q013 before a deploy. A023 now also covers a blind hole the reader ended early (library run s47).
 - 2026-11-26: an independent review of batch 10: a drag no longer pulls together a tool used in two places (A027).
+
+- 2026-11-27: the owner's answers. Q008: a counterbore is two holes on one axis, the big one shallower; through, the small
+  one is a drill and the big one an end mill (or a drill then an end mill). The library (91 programs, 260 counterbores):
+  an end mill made the big Ø in 242, after the small hole was drilled in nearly all (spot, small drill, end mill), as
+  CAM AI does; 112 by an end mill of the big Ø plunged in G83, 79 by a smaller one going round (CAM AI's way); 33 a pilot
+  drill first; 18 a drill alone. Q009: 5 mm parallels (A031); the 85 % is how much of each parallel's length must touch
+  the step (holes and rounded ends leave gaps). Q010 and Q013: yes (A028 stated). Q011: read rightly. Q012: no more
+  locks for now. A029 and A030 new; A020's rhythm kept.

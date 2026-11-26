@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-26T23:30:00Z",
-  "next_id": 29,
+  "last_updated": "2026-11-27T00:00:00Z",
+  "next_id": 32,
   "assumptions": [
     {
       "id": "A001",
@@ -547,106 +547,6 @@
       ]
     },
     {
-      "id": "Q008",
-      "title": "A deep step in a hole",
-      "type": "uncertain",
-      "tier": "OPEN",
-      "assumption": "See COMMON-GROUND.md",
-      "source": "Batch 10 work",
-      "validated": null,
-      "context": "Batch 10",
-      "created": "2026-11-26T20:00:00Z",
-      "history": [
-        {
-          "date": "2026-11-26T20:00:00Z",
-          "action": "created",
-          "from_tier": null,
-          "to_tier": "OPEN",
-          "reason": "Open question for the owner"
-        }
-      ]
-    },
-    {
-      "id": "Q009",
-      "title": "Parallels beside a hanging body",
-      "type": "uncertain",
-      "tier": "OPEN",
-      "assumption": "See COMMON-GROUND.md",
-      "source": "Batch 10 work",
-      "validated": null,
-      "context": "Batch 10",
-      "created": "2026-11-26T20:00:00Z",
-      "history": [
-        {
-          "date": "2026-11-26T20:00:00Z",
-          "action": "created",
-          "from_tier": null,
-          "to_tier": "OPEN",
-          "reason": "Open question for the owner"
-        }
-      ]
-    },
-    {
-      "id": "Q010",
-      "title": "A step by itself",
-      "type": "uncertain",
-      "tier": "OPEN",
-      "assumption": "See COMMON-GROUND.md",
-      "source": "Batch 10 work",
-      "validated": null,
-      "context": "Batch 10",
-      "created": "2026-11-26T20:00:00Z",
-      "history": [
-        {
-          "date": "2026-11-26T20:00:00Z",
-          "action": "created",
-          "from_tier": null,
-          "to_tier": "OPEN",
-          "reason": "Open question for the owner"
-        }
-      ]
-    },
-    {
-      "id": "Q011",
-      "title": "The cut-off sentence",
-      "type": "uncertain",
-      "tier": "OPEN",
-      "assumption": "See COMMON-GROUND.md",
-      "source": "Batch 10 work",
-      "validated": null,
-      "context": "Batch 10",
-      "created": "2026-11-26T20:00:00Z",
-      "history": [
-        {
-          "date": "2026-11-26T20:00:00Z",
-          "action": "created",
-          "from_tier": null,
-          "to_tier": "OPEN",
-          "reason": "Open question for the owner"
-        }
-      ]
-    },
-    {
-      "id": "Q012",
-      "title": "Moving a drill among the mills",
-      "type": "uncertain",
-      "tier": "OPEN",
-      "assumption": "See COMMON-GROUND.md",
-      "source": "Batch 10 work",
-      "validated": null,
-      "context": "Batch 10",
-      "created": "2026-11-26T20:00:00Z",
-      "history": [
-        {
-          "date": "2026-11-26T20:00:00Z",
-          "action": "created",
-          "from_tier": null,
-          "to_tier": "OPEN",
-          "reason": "Open question for the owner"
-        }
-      ]
-    },
-    {
       "id": "A027",
       "title": "Orders that lock",
       "type": "inferred",
@@ -676,8 +576,8 @@
     {
       "id": "A028",
       "title": "Resting on a step by itself",
-      "type": "assumed",
-      "tier": "WORKING",
+      "type": "stated",
+      "tier": "ESTABLISHED",
       "assumption": "Not typed: the deepest step that fits and holds; a quarter turn about Z when the parallels only fit along the jaws (also the operator's face pair, never a hand-turned clamping).",
       "source": "CAM AI, from the owner's picture and the library's notes",
       "validated": "2026-11-26",
@@ -690,6 +590,210 @@
           "from_tier": null,
           "to_tier": "WORKING",
           "reason": "Split from A026"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "promoted",
+          "from_tier": "WORKING",
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner: Q010 yes, Q013 yes"
+        }
+      ]
+    },
+    {
+      "id": "A029",
+      "title": "A tool changed by hand is the operator's call",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The accept tick also accepts a part the vise holds off a later zero after a hand tool change; never anything that hits.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "CAM AI",
+      "created": "2026-11-27T00:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner's answer"
+        }
+      ]
+    },
+    {
+      "id": "A030",
+      "title": "Holes and tool starts for the VF-4",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "R 0.5 over the material, G81/G73/G83 by depth and material, nearest-neighbour, G99 only proven clear, notes, arcs for micro loops, safe tool start, T/H 1-200; legacy flag.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "CAM AI",
+      "created": "2026-11-27T00:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner's answer"
+        }
+      ]
+    },
+    {
+      "id": "A031",
+      "title": "Parallels 5 mm wide",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Parallels 5 mm wide (held width / 6 under narrow parts).",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "CAM AI",
+      "created": "2026-11-27T00:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner's answer"
+        }
+      ]
+    }
+  ],
+  "archived": [
+    {
+      "id": "Q008",
+      "title": "A deep step in a hole",
+      "type": "uncertain",
+      "tier": "ARCHIVED",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
+        }
+      ]
+    },
+    {
+      "id": "Q009",
+      "title": "Parallels beside a hanging body",
+      "type": "uncertain",
+      "tier": "ARCHIVED",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
+        }
+      ]
+    },
+    {
+      "id": "Q010",
+      "title": "A step by itself",
+      "type": "uncertain",
+      "tier": "ARCHIVED",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
+        }
+      ]
+    },
+    {
+      "id": "Q011",
+      "title": "The cut-off sentence",
+      "type": "uncertain",
+      "tier": "ARCHIVED",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
+        }
+      ]
+    },
+    {
+      "id": "Q012",
+      "title": "Moving a drill among the mills",
+      "type": "uncertain",
+      "tier": "ARCHIVED",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
         }
       ]
     },
@@ -697,7 +801,7 @@
       "id": "Q013",
       "title": "A quarter turn on the operator's pair",
       "type": "uncertain",
-      "tier": "OPEN",
+      "tier": "ARCHIVED",
       "assumption": "See COMMON-GROUND.md",
       "source": "Batch 10 review",
       "validated": null,
@@ -710,9 +814,15 @@
           "from_tier": null,
           "to_tier": "OPEN",
           "reason": "Open question for the owner"
+        },
+        {
+          "date": "2026-11-27T00:00:00Z",
+          "action": "answered",
+          "from_tier": "OPEN",
+          "to_tier": "ARCHIVED",
+          "reason": "Answered by the owner 2026-11-27"
         }
       ]
     }
-  ],
-  "archived": []
+  ]
 }
