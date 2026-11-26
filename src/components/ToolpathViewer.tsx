@@ -19,7 +19,7 @@ import { TARGET } from '../lib/fixTurns';
 import type { MeasureMode } from '../lib/measure';
 import { iosBackdrop, iosSurface } from '../lib/motion';
 import { useT } from '../i18n';
-import { fmtDuration, fmtNumber, locale } from '../i18n/format';
+import { fmtClock, fmtDuration, fmtNumber, locale } from '../i18n/format';
 
 const Toolpath3D = lazy(() => import('./Toolpath3D'));
 const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
@@ -60,8 +60,6 @@ function fitView(minA: number, maxA: number, minB: number, maxB: number): View {
 
 /** Measurements: always two decimals, as on a drawing. */
 const fmt2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
 /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
 /** holderHits: holders found going into the part (the remapper's collision check, for this code); focusHit: open at the first collision. */

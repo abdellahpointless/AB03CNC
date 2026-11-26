@@ -55,6 +55,12 @@ export function timeAgo(ts: number | null | undefined, now = Date.now()): string
   return d === 1 ? t('common:time.yesterday') : t('common:time.daysAgo', { count: d });
 }
 
+/** A clock in seconds as "4:05" (minutes:seconds); rounded first, so 59.6 s is "1:00", never "0:60". */
+export function fmtClock(seconds: number): string {
+  const r = Math.round(seconds);
+  return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
+}
+
 /** A duration in seconds as "2 h 15 min" / "2 sa 15 dk". */
 export function fmtDuration(seconds: number): string {
   const t = i18n.t.bind(i18n);
