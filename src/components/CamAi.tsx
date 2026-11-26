@@ -213,7 +213,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // A clamping changed on a made program: listed, its Undo back to every hold choice as it was before this change.
   const holdChanged = (label: string) => {
     if (!result) return;
-    const was = { clamp1, stop1, later, laterX };
+    // The later clampings' turns too (the change cleared them: resetLater).
+    const was = { clamp1, stop1, later, laterX, turned };
     addChange({
       label,
       undo: () => {
@@ -221,6 +222,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         setStop1(was.stop1);
         setLater(was.later);
         setLaterX(was.laterX);
+        setTurned(was.turned);
       },
     });
   };
@@ -262,7 +264,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const cooling = machine ? coolingOf(engineMachineId(currentRegion().id, machine)) : null;
   const wrongCooling = !!need && !!cooling && need !== cooling;
   const busy = run.state === 'busy' || run.state === 'preparing';
-  const chosen = prep?.layouts[layout];
+  const picked = prep?.layouts[layout];
+  // Clamping 1 turned by hand (its settings): its blank, its sides and its parallels as it lies so, never as picked.
+  const chosen =
+    picked && prep && turned[0]
+      ? { ...picked, R: turned[0].R, side: upOf(turned[0].R), spin: false, size: [0, 1, 2].map((j) => [0, 1, 2].reduce((a, k) => a + Math.abs(turned[0].R[j * 3 + k]) * prep.size[k], 0)) as typeof picked.size }
+      : picked;
   // A top plate's white face as a side of clamping 1 (0..5 as X-, X+, Y-, Y+, Z-, Z+): no stock on it, ever.
   const whiteAt = chosen && partType === 'topPlate' && white ? viseSide(chosen.R, white) : -1;
   const sideValue = (i: number) => (i === whiteAt ? 0 : Number(sides[i]));
@@ -580,12 +587,13 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     if (i !== layout) setFinishWalls([]);
     setSecond(null);
     setLocked2(false);
-    // Parallels chosen for another way of lying are not for this one.
+    // Parallels chosen for another way of lying are not for this one, nor turns by hand.
     if (i !== layout) {
       setClamp1(null);
       setStop1(0);
       setLater({});
       setLaterX({});
+      setTurned({});
     }
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
   };
