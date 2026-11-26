@@ -199,6 +199,6 @@ None open. Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for no
   used for now (hidden on the page; the planner keeps it). Q006: 80 % is right; the designer can take the stand-in's
   operation down by hand (checked again, locked past the drill's length). Q007: the vise opens to 300 mm.
 - 2026-11-26: the 0.5 mm method (A015-A020), answered by the owner. Measured first on the 24 parts: the outline was
-  already cut whole in clamping 1 on all 16 blanks with 4.5 mm or more of Z stock (18 of 24 in all); 6 of the 8
-  thinner blanks fell short. The table (no parallels) and parallels gripping the part's own walls are no longer offered for
+  already cut whole in clamping 1 on all 16 blanks with 4.5 mm or more of Z stock (18 of 24 in all; measured as
+  clamping 1's deepest milling, which also counts openings inside the part); 6 of the 8 thinner blanks fell short. The table (no parallels) and parallels gripping the part's own walls are no longer offered for
   clamping 1; they stay for later clampings. A deploy now also follows A020 (the owner said deploy that way).
