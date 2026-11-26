@@ -384,10 +384,10 @@ export const NEST_WALL = 12;
 export const NEST_FLOOR = 8;
 export const NEST_GAP = 0.1;
 /**
- * The shop's vise (Haas HMV-6F): jaws 125 mm long (X), 45 mm high, open up to 400 mm (Y). The original one has
+ * The shop's vise (Haas HMV-6F): jaws 125 mm long (X), 45 mm high, open up to 300 mm (Y, the owner). The original one has
  * the stop and the machine zero; the second one stands 50 mm to its right, open on both sides.
  */
-export const VISE = { width: 125, height: DEFAULT_JAW_HEIGHT, opening: 400, gap: 50 } as const;
+export const VISE = { width: 125, height: DEFAULT_JAW_HEIGHT, opening: 300, gap: 50 } as const;
 /**
  * The first vise's jaws as the checks take them (X): from the stop's face (where the part, or the spacer before it,
  * is pushed; X = 0) the jaws' 125 mm, nothing more (the owner's picture of the vise). The stop stands before it.
