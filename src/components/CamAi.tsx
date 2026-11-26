@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database, IconTrash as Trash } from '@tabler/icons-react';
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database, IconTrash as Trash, IconRotate as RotateCcw } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
 import { useTranslation } from 'react-i18next';
@@ -140,6 +140,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [skip, setSkip] = useState<string[]>([]);
   const [skipDraft, setSkipDraft] = useState<string[]>([]);
   const [skipLabels, setSkipLabels] = useState<Record<string, string>>({});
+  // What each deleted operation was (you: a deleted one stays in the lists, crossed out, until restored), by key.
+  type GoneOp = { side: string; code: string; tool: number; type: string; diameter: number; length: number; purpose: Purpose };
+  const [gone, setGone] = useState<Record<string, GoneOp>>({});
+  // The clamping whose settings are open (its OP's settings button, or Adjust): after a program is made, clamping 1's
+  // parallels editor opens only so (you: never just by going to OP10).
+  const [setupOpen, setSetupOpen] = useState<number | null>(null);
   // The changes since the program was made, newest last: listed by the one Make again button and undone one at a time,
   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
@@ -270,6 +276,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setChanges([]);
     // Nothing by hand from the part before goes on with this one (a review: they reached its program).
     setOpEdits({});
+    setGone({});
     setEditsDropped(false);
     carry.current = null;
     plain.current = null;
@@ -495,6 +502,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
   // The browser's selected item, what the properties panel edits.
   const [sel, setSel] = useState<Sel>({ kind: 'part' });
+  // Leaving the clamping whose settings are open closes them.
+  useEffect(() => {
+    if (setupOpen !== null && (sel.kind !== 'setup' || sel.i !== setupOpen)) setSetupOpen(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel.kind, sel.kind === 'setup' ? sel.i : -1]);
   // A program opened from a file (an engineer's): shown and changed by hand in its own view (CamOpened).
   const [opened, setOpened] = useState<{ name: string; code: string } | null>(null);
   const [openError, setOpenError] = useState(false);
@@ -528,7 +540,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // Or a later clamping picked: the part as the clampings before left it, the finished part over it (you, Beta 2).
   const focusTool = useMemo(() => {
     if (run.state !== 'done') return null;
-    if (sel.kind === 'setup' && sel.i > 0 && run.result.setups[sel.i]) return { setup: sel.i, key: ++focusSeq.current };
+    // Clamping 1 too (its parallels editor opens only from its settings now).
+    if (sel.kind === 'setup' && run.result.setups[sel.i]) return { setup: sel.i, key: ++focusSeq.current };
     if (sel.kind !== 'tool') return null;
     const op = run.result.setups[sel.i]?.ops.find((o) => o.code === sel.code);
     return op ? { setup: sel.i, tool: op.tool, key: ++focusSeq.current } : null;
@@ -551,7 +564,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
   // Measuring before a program keeps the vise: its bed, jaw faces and tops, and the stop are planes to measure to
   // (item 17). Once made, Measure goes to the simulation, as before.
-  const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && (!measuring || !result) && cales1.length > 0;
+  const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && (!measuring || !result) && cales1.length > 0 && (!result || setupOpen === 0);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
@@ -655,7 +668,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     c.undo!();
   };
   // Removing an operation (or keeping it after all): it stays in the browser, struck through, until the program is made again.
+  const remember = (i: number, ops: CamSummary['setups'][number]['ops']) => {
+    const side = result?.setups[i]?.side;
+    if (side) setGone((g) => ({ ...g, ...Object.fromEntries(ops.map((o) => [o.key, { side, code: o.code, tool: o.tool, type: o.type, diameter: o.diameter, length: o.length, purpose: o.purpose }])) }));
+  };
   const toggleOp = (o: { key: string; purpose: Purpose; tool: number }, remove: boolean) => {
+    if (remove && result) {
+      const i = result.setups.findIndex((x) => x.ops.some((y) => y.key === o.key));
+      if (i >= 0) remember(i, result.setups[i].ops.filter((y) => y.key === o.key));
+    }
     setSkipDraft((d) => (remove ? [...new Set([...d, o.key])] : d.filter((k) => k !== o.key)));
     const label = `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})`;
     if (remove) {
@@ -671,6 +692,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     const was = opEdits;
     const next: Record<string, OpEdit> = { ...opEdits };
     for (const o of ops) next[o.key] = { off: true };
+    remember(i, ops);
     setSel({ kind: 'setup', i });
     applyEdits(next, ops[0].key);
     addChange({
@@ -679,6 +701,38 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       // Made again: CAM AI plans without them.
       skip: Object.fromEntries(ops.map((o) => [o.key, `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})`])),
     });
+  };
+  // Deleted operations still deleted (by hand now, or for the next program made), and bringing them back.
+  const isGone = (k: string) => !!opEdits[k]?.off || skipDraft.includes(k);
+  const restore = (keys: string[], what: string) => {
+    const offs = keys.filter((k) => opEdits[k]?.off);
+    if (offs.length) {
+      const next = { ...opEdits };
+      for (const k of offs) delete next[k];
+      applyEdits(next, '');
+      setChanges((l) => l.filter((c) => !c.skip || !Object.keys(c.skip).some((k) => offs.includes(k))));
+    }
+    const drafted = keys.filter((k) => skipDraft.includes(k));
+    if (drafted.length) {
+      setSkipDraft((d) => d.filter((k) => !drafted.includes(k)));
+      setChanges((l) => l.filter((c) => c.removed === undefined || !drafted.includes(c.removed)));
+      // Gone from the program as made: back the next time it is made.
+      if (drafted.some((k) => skip.includes(k))) addChange({ label: t('camAi.changes.restored', { what }), undo: () => setSkipDraft((d) => [...new Set([...d, ...drafted])]) });
+    }
+  };
+  // A clamping's deleted tools no operation of which is left in the program shown: crossed-out rows (by tool).
+  const goneTools = (i: number) => {
+    const s = result?.setups[i];
+    if (!s) return [];
+    const live = new Set(s.ops.map((o) => o.code));
+    const by = new Map<string, { g: GoneOp; keys: string[] }>();
+    for (const [k, g] of Object.entries(gone)) {
+      if (g.side !== s.side || live.has(g.code) || !(isGone(k) || skip.includes(k))) continue;
+      const e = by.get(g.code) ?? { g, keys: [] };
+      e.keys.push(k);
+      by.set(g.code, e);
+    }
+    return [...by.values()];
   };
   // Changes by hand, checked again on the plan the worker kept (the operation `key` stays picked).
   const applyEdits = (next: Record<string, OpEdit>, key: string) => {
@@ -761,9 +815,24 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <div className="flex items-center gap-2 p-2">
             <div role="tablist" aria-label={t('camAi.ws.clampings')} className="flex-1 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)]" style={{ gridTemplateColumns: `repeat(${result.setups.length}, minmax(0, 1fr))` }}>
               {result.setups.map((_, i) => (
-                <button key={i} type="button" role="tab" aria-selected={opNow === i} onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} className={`no-glass h-8 rounded-[6px] text-[13px] ${opNow === i ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                <div key={i} className="group relative grid">
+                <button type="button" role="tab" aria-selected={opNow === i} onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} className={`no-glass h-8 rounded-[6px] text-[13px] ${opNow === i ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
                   OP{(i + 1) * 10}
                 </button>
+                {/* Its settings on hover (you): parallels and how the part lies; also from the keyboard. */}
+                {/* A span holds its place: every button is position: relative (index.css), over Tailwind's absolute. */}
+                <span className="absolute right-0.5 top-0 bottom-0 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); setSetupOpen(i); if (wide) setRightOpen(true); else setRightDrawer(true); }}
+                    aria-label={t('camAi.ws.opSettings', { op: (i + 1) * 10 })}
+                    title={t('camAi.ws.opSettings', { op: (i + 1) * 10 })}
+                    className="no-glass grid place-items-center w-7 h-7 rounded-[6px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.1)] opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <Settings2 size={14} stroke={1.8} aria-hidden />
+                  </button>
+                </span>
+                </div>
               ))}
             </div>
             {!narrow && (
@@ -787,7 +856,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                 <li key={o.code}>
                   <button
                     type="button"
-                    className={row(on)}
+                    // A tool CAM AI took from the database, not in the chosen machine (you): yellow.
+                    className={`${row(on)} ${o.inMachine ? '' : 'ring-1 ring-inset ring-[#facc15]/70 bg-[#facc15]/[0.08]'}`}
                     aria-current={on || undefined}
                     onClick={() => { setSwapAsk(null); setSel({ kind: 'tool', i: opNow, code: o.code }); if (!wide) setRightDrawer(true); }}
                     // Right click: straight to changing the tool (you, Beta 2).
@@ -799,7 +869,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
-                      <span className="block text-xs text-[var(--text-secondary)] tabular-nums">Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}</span>
+                      <span className="block text-xs text-[var(--text-secondary)] tabular-nums truncate">
+                        Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}
+                        {!o.inMachine && <span className="text-[#facc15]" title={t('camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
+                      </span>
                     </span>
                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
                     <span className="text-xs text-[var(--text-secondary)] tabular-nums">{fmtTime(secs)}</span>
@@ -818,6 +891,27 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                         <Trash size={14} stroke={1.8} aria-hidden />
                       </button>
                     </div>
+                  )}
+                </li>
+              );
+            })}
+            {/* Deleted tools (you): crossed out, never gone from the list; Restore brings them back. */}
+            {goneTools(opNow).map(({ g, keys }) => {
+              const label = `T${g.tool}`;
+              const still = keys.some(isGone);
+              return (
+                <li key={`gone-${g.code}`} className="flex items-center gap-2 px-2 min-h-11 rounded-[8px] text-[var(--text-secondary)]">
+                  <span className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs line-through opacity-60" style={{ background: `${toolColor(g.tool)}14`, color: toolColor(g.tool) }}>
+                    {label}
+                  </span>
+                  <span className={`flex-1 min-w-0 ${still ? 'line-through opacity-70' : ''}`}>
+                    <span className="block text-[13px] truncate">{t(`camAi.tools.${g.type}`, { defaultValue: g.type })}</span>
+                    <span className="block text-xs tabular-nums">Ø{fmt(g.diameter, 2)} · L{fmt(g.length, 0)}{still ? '' : ` · ${t('camAi.ws.backNext')}`}</span>
+                  </span>
+                  {still && (
+                    <button type="button" className={rowAct} onClick={() => restore(keys, label)} disabled={busy} aria-label={t('camAi.ws.rowRestore', { tool: label })} title={t('camAi.ws.rowRestore', { tool: label })}>
+                      <RotateCcw size={14} stroke={1.8} aria-hidden />
+                    </button>
                   )}
                 </li>
               );
@@ -984,6 +1078,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     }}
                     removing={skipDraft}
                     onRemove={toggleOp}
+                    gone={Object.entries(gone)
+                      .filter(([k, g]) => g.side === result.setups[sel.i]?.side && g.code === sel.code && !result.setups[sel.i].ops.some((o) => o.key === k) && (isGone(k) || skip.includes(k)))
+                      .map(([k, g]) => ({ key: k, purpose: g.purpose, still: isGone(k) }))}
+                    onRestore={(k) => restore([k], `T${gone[k]?.tool ?? ''}`)}
                     focus={sel.op ?? null}
                     onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
                     options={alternatives(templatesFor, tools, sel.code, swap.exclude, toolDb.db)}
@@ -1128,9 +1226,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     )}
                   </>
                 )}
-                {sel.i === 0 && clampMode && cale1 !== null && <ClampPanel cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { holdChanged(v ? t('camAi.changes.stop', { n: 1, mm: v }) : t('camAi.changes.stopNone', { n: 1 })); setStop1(v); resetLater(); }} onOwn={() => { holdChanged(t('camAi.changes.own', { n: 1 })); setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { holdChanged(v ? t('camAi.changes.parallels', { n: 1, mm: fmt(v, 0) }) : t('camAi.changes.table', { n: 1 })); setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => { holdChanged(v === undefined ? t('camAi.changes.yAuto', { n: 1 }) : v ? t('camAi.changes.y', { n: 1, mm: v }) : t('camAi.changes.yNone', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } })); }} yp={laterX[0]?.yp} onYp={(v) => { holdChanged(t('camAi.hold.changed', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result} />}
+                {sel.i === 0 && (clampMode || (!!result && !busy)) && cale1 !== null && <ClampPanel key={setupOpen === 0 ? 'open' : 'shut'} cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { holdChanged(v ? t('camAi.changes.stop', { n: 1, mm: v }) : t('camAi.changes.stopNone', { n: 1 })); setStop1(v); resetLater(); }} onOwn={() => { holdChanged(t('camAi.changes.own', { n: 1 })); setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { holdChanged(v ? t('camAi.changes.parallels', { n: 1, mm: fmt(v, 0) }) : t('camAi.changes.table', { n: 1 })); setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => { holdChanged(v === undefined ? t('camAi.changes.yAuto', { n: 1 }) : v ? t('camAi.changes.y', { n: 1, mm: v }) : t('camAi.changes.yNone', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } })); }} yp={laterX[0]?.yp} onYp={(v) => { holdChanged(t('camAi.hold.changed', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result && setupOpen !== 0} onOpenChange={(o) => setSetupOpen(o ? 0 : null)} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
+                    key={`${sel.i}-${setupOpen === sel.i}`}
+                    openAt={setupOpen === sel.i}
                     n={sel.i + 1}
                     made={result.setups[sel.i]}
                     used={result.setups.slice(0, sel.i).map((x) => x.side)}
@@ -1812,7 +1912,7 @@ function AdjustToggle({ open, onToggle }: { open: boolean; onToggle: () => void 
   );
 }
 
-function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: ReturnType<typeof whyNot>; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made, onOpenChange }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: ReturnType<typeof whyNot>; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean; onOpenChange?: (open: boolean) => void }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   // Open while preparing; once a program is made, folded until asked for.
@@ -1832,7 +1932,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
         </p>
       )}
       {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0) })}</p>}
-      <AdjustToggle open={open} onToggle={() => setOpen((o) => !o)} />
+      <AdjustToggle open={open} onToggle={() => { setOpen(!open); onOpenChange?.(!open); }} />
       {open && (
         <div className="space-y-3">
           <ParallelsPick label={t('camAi.hold.parallels')} value={String(cale)} heights={heights} onChange={(k) => onCale(Number(k))} />
@@ -1871,9 +1971,9 @@ const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
  * table, or the jaw tops by one of its faces (you), and its spacers (item 3); for the next time it is made, previewed
  * in the 3D view until then.
  */
-function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, refusals, onAsk }: { n: number; /** The turn the program shown was made with. */ madeTurn: Pick<LaterX, 'flip' | 'quarter'>; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: LaterX; onAsk: (v: Hold | null, x: LaterX) => void }) {
+function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, refusals, onAsk, openAt }: { n: number; /** Opened from its OP's settings button. */ openAt?: boolean; /** The turn the program shown was made with. */ madeTurn: Pick<LaterX, 'flip' | 'quarter'>; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: LaterX; onAsk: (v: Hold | null, x: LaterX) => void }) {
   const { t } = useTranslation('cam');
-  const [open, setOpen] = useState(asked !== undefined || Object.keys(spacers).length > 0);
+  const [open, setOpen] = useState(!!openAt || asked !== undefined || Object.keys(spacers).length > 0);
   const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
   const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : { cale: made.cale };
   const now = asked ?? mine;

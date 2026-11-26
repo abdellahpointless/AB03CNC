@@ -8,6 +8,7 @@ import { downloadBlob } from '../lib/download';
 import { forMachine } from '../lib/cam/export';
 import type { CamTool } from '../lib/cam/tools';
 import type { CamSummary } from '../lib/cam/cam.worker';
+import type { Purpose } from '../lib/cam/program';
 import type { PhysicsIssue } from '../lib/cam/physics';
 import { GOUGE_MM3 } from '../lib/cam/limits';
 import ToolSize from './ToolSize';
@@ -282,6 +283,8 @@ export function ToolCard({
   onEdit,
   removing,
   onRemove,
+  gone = [],
+  onRestore,
   focus,
   onFocus,
   options,
@@ -306,6 +309,9 @@ export function ToolCard({
   /** Operations (keys) marked for removal: gone from the program the next time it is made. */
   removing: string[];
   onRemove: (op: Op, remove: boolean) => void;
+  /** This tool's operations deleted and no longer in the program shown (you: crossed out, never gone), and restoring one. */
+  gone?: { key: string; purpose: Purpose; still: boolean }[];
+  onRestore?: (key: string) => void;
   /** The operation whose path alone is shown in the view, and a way to pick one. */
   focus: string | null;
   onFocus: (key: string | null) => void;
@@ -417,6 +423,20 @@ export function ToolCard({
             </li>
           );
         })}
+        {/* Deleted operations (you): crossed out, never gone; Restore brings one back. */}
+        {gone.map((g) => (
+          <li key={`gone-${g.key}`} className="flex items-center gap-1 rounded-[8px] px-2 py-1.5 min-h-11">
+            <span className={`flex-1 min-w-0 text-[13px] text-[var(--text-secondary)] ${g.still ? 'line-through' : ''}`}>
+              {t(`camAi.purpose.${g.purpose}`)}
+              {!g.still && <span className="block text-xs no-underline">{t('camAi.ws.backNext')}</span>}
+            </span>
+            {g.still && onRestore && (
+              <button type="button" onClick={() => onRestore(g.key)} disabled={busy} aria-label={t('camAi.keepOp', { name: t(`camAi.purpose.${g.purpose}`) })} title={t('camAi.keepOp', { name: t(`camAi.purpose.${g.purpose}`) })} className="no-glass shrink-0 grid place-items-center w-9 h-9 rounded-[6px] text-[var(--text-secondary)] hover:bg-[rgba(var(--ov),0.08)] hover:text-[var(--text-primary)] disabled:opacity-40">
+                <RotateCcw size={15} aria-hidden />
+              </button>
+            )}
+          </li>
+        ))}
       </ul>
       {op.unsafe && (
         <p className="mx-4 mt-2 flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="alert">
