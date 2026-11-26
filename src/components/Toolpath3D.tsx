@@ -1546,11 +1546,20 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
   // A turn that is waiting to start hides the new clamp and toolpaths; if it is called off, this
   // puts everything where the turn would have left it (else the clamp stayed hidden).
   const callOff = useRef<(() => void) | null>(null);
+  // A turn under way: cut short by the next change, it is finished at once first (a review: else the paths, markers
+  // and new parallels it hides stayed hidden).
+  const turnUnderWay = useRef<(() => void) | null>(null);
   useEffect(() => {
     const a = api.current;
     clearTimeout(turnLater.current);
     callOff.current?.();
     callOff.current = null;
+    if (turnUnderWay.current) {
+      const done = turnUnderWay.current;
+      turnUnderWay.current = null;
+      if (a) a.anim = null;
+      done();
+    }
     const fresh = jump && jump !== lastJump.current ? jump : null;
     lastJump.current = jump;
     if (setup === lastSetup.current && !fresh) return;
@@ -1753,6 +1762,9 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
       return true;
     };
     function finish() {
+      turnUnderWay.current = null;
+      // The camera back where it was (it steps back while the part turns).
+      if (start) a!.camera.position.copy(target).add(off);
       a!.solid.matrix.copy(end);
       a!.solid.matrixWorldNeedsUpdate = true;
       setJaw(0);
@@ -1776,11 +1788,15 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         shown();
         turnLater.current = window.setTimeout(() => {
           callOff.current = null;
+          turnUnderWay.current = finish;
           a.anim = run;
           a.invalidate();
         }, 450);
       });
-    } else a.anim = run;
+    } else {
+      turnUnderWay.current = finish;
+      a.anim = run;
+    }
     a.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup, jump]);
