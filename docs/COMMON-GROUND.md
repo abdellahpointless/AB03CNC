@@ -170,6 +170,46 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-26
 - **Context:** Blank placement, stock panel, planner
 
+### A022: Coolant by machine
+
+- **Type:** stated
+- **Assumption:** The coolant is the machine's, the same on every tool and never asked per tool: HAAS-1, HAAS-5, FANUC-1 and FANUC-2 coolant (M08); HAAS-2 and HAAS-4 air (the Moroccan standard).
+- **Source:** Owner, 2026-11-26
+- **Validated:** 2026-11-26
+- **Context:** Post, tool panel, download
+
+### A023: A drilled hole is not milled again
+
+- **Type:** stated
+- **Assumption:** No end mill goes into a hole a drill made at its Ø: not to mill it again, not to make its bottom flush (and never to clean a drill's point under the part). A counterbore (a hole with a smaller one going on from its floor) is made by an end mill after the smaller hole is drilled, never by a drill of its Ø. Where the drill did not make the material (a hole going on past where the drill could reach, a through hole's end over a parallel inside the part), the mill still cuts it.
+- **Source:** Owner, 2026-11-26
+- **Validated:** 2026-11-26
+- **Context:** Planner (holes), library run s42 against the baseline s44
+
+### A024: Operations in the operator's order
+
+- **Type:** stated
+- **Assumption:** A clamping's tools can be dragged into any order (also Alt + arrows, or the up and down buttons; one row per tool, so a tool's operations move together); the program is checked again. An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for.
+- **Source:** Owner, 2026-11-26 (the order); the locks are CAM AI's, the simulation does not see a tool cutting more than it was made for
+- **Validated:** 2026-11-26
+- **Context:** Tool list, editProgram
+
+### A025: The part turned by quarter turns
+
+- **Type:** stated
+- **Assumption:** Each OP's settings (the button on its tab) turn the part +90 or -90 about the machine's X or Y; the presses add up, a green figure of the uploaded model shows it, and Make again plans that clamping lying exactly so (any of the 24 ways; the operator's turn notes follow). They replace the flip and quarter controls of later clampings.
+- **Source:** Owner, 2026-11-26
+- **Validated:** 2026-11-26
+- **Context:** OP settings, planner frames
+
+### A026: Resting on a step
+
+- **Type:** stated
+- **Assumption:** A later clamping rests on the parallels by a wider step, its narrower body hanging between them, as the engineers write it ("41 MM UNTERLAGE IN EP 4.5 MM"), never by that narrow body: at the thickness the operator types, else the deepest step that fits and holds; turned a quarter when the parallels only fit beside the body that way (also a side of the operator's face pair, whose turn note says so; never a clamping the operator turned by hand). Taller parallels then, the jaws on the step's faces 1.3 mm or more under Z0, the body 5 mm or more over the vise floor.
+- **Source:** Owner, 2026-11-26 (with a picture of the uploaded part); the notation from the library (about 30 "UNTERLAGE IN EP" notes)
+- **Validated:** 2026-11-26
+- **Context:** Planner (later clampings), clamp panel
+
 ---
 
 ## WORKING
@@ -190,7 +230,37 @@ Medium confidence. Use but flag if contradicted.
 
 Low confidence. Ask before assuming.
 
-None open. Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
+Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
+
+### Q008: A deep step in a hole
+
+- **Type:** uncertain
+- **Question:** A Ø1.5 hole 9 mm deep with a smaller one going on from its floor (Pde1d25de, Pf3d9b947) is now made like a counterbore, by a Ø1 end mill (+1.8 min on each part). Is such a deep, narrow step a counterbore (end mill), or drilled to its depth and its floor left as the drill leaves it? Where is the line (depth against Ø)?
+- **Source:** Library run s42 against s44
+
+### Q009: Parallels beside a hanging body
+
+- **Type:** uncertain
+- **Question:** Resting on a step, CAM AI takes the parallels as wide as the simulation draws them (the held width / 6, 6 mm at most), 0.2 mm clear of the hanging body, each bearing on the step over 85 % of its length (holes and rounded ends of a flange). What widths does the shop have, and is 85 % enough?
+- **Source:** The uploaded part (its flange leaves 3.8 mm beside the boss across the jaws, 9.9 mm along them)
+
+### Q010: A step by itself
+
+- **Type:** uncertain
+- **Question:** CAM AI now rests a later clamping on the deepest step that fits and holds, by itself. Should it always, or only when the body under the step is narrower than some share of the part (a rule the library does not show)?
+- **Source:** The owner's picture and the library's "UNTERLAGE IN EP" notes (which do not say when)
+
+### Q011: The cut-off sentence
+
+- **Type:** uncertain
+- **Question:** The request had "when i click the settings on the" with nothing after it. Read here as the OP settings button (parallels and how the part lies). Was something else meant?
+- **Source:** Owner's message, 2026-11-26
+
+### Q012: Moving a drill among the mills
+
+- **Type:** uncertain
+- **Question:** Drills may be moved before or after the mills (the simulation checks rapids and collisions; a drill moved after a pocket only cuts air longer). Is there an order the shop never allows that should lock too?
+- **Source:** The reorder locks (A024)
 
 ---
 
@@ -211,3 +281,4 @@ None open. Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for no
   clamping 1's deepest milling, which also counts openings inside the part); 6 of the 8 thinner blanks fell short. The table (no parallels) and parallels gripping the part's own walls are no longer offered for
   clamping 1; they stay for later clampings. A deploy now also follows A020 (the owner said deploy that way).
 - 2026-11-26: A021 from the owner: always 0.5 mm over the part to face (4.5 mm of extra Z at the least).
+- 2026-11-26: batch 10 from the owner (A022-A026); open questions Q008-Q012 from the work on it.

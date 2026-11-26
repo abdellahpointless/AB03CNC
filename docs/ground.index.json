@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-26T15:00:00Z",
+  "last_updated": "2026-11-26T20:00:00Z",
   "next_id": 22,
   "assumptions": [
     {
@@ -422,6 +422,206 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A022",
+      "title": "Coolant by machine",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Coolant is the machine's, on every tool: HAAS-1/5 and FANUC-1/2 coolant, HAAS-2/4 air.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Post, tool panel, download",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner (batch 10)"
+        }
+      ]
+    },
+    {
+      "id": "A023",
+      "title": "A drilled hole is not milled again",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "No end mill in a hole its drill made (no re-milling, no flush bottom, no point cleaning under the part); a counterbore is milled after its smaller hole is drilled.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Planner (holes)",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner (batch 10)"
+        }
+      ]
+    },
+    {
+      "id": "A024",
+      "title": "Operations in the operator's order",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Tools can be reordered per clamping; an order no check covers (before the facing, a drill before its spot drill, mills out of their made order) locks.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Tool list, editProgram",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner (batch 10)"
+        }
+      ]
+    },
+    {
+      "id": "A025",
+      "title": "The part turned by quarter turns",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "OP settings turn the part +/-90 about machine X or Y, adding up, with a green figure of the model; planned exactly so (frames).",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "OP settings, planner",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner (batch 10)"
+        }
+      ]
+    },
+    {
+      "id": "A026",
+      "title": "Resting on a step",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A later clamping rests on parallels by a wider step (UNTERLAGE IN EP), typed or the deepest that fits and holds; turned a quarter when needed.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Planner (later clampings), clamp panel",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner (batch 10)"
+        }
+      ]
+    },
+    {
+      "id": "Q008",
+      "title": "A deep step in a hole",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q009",
+      "title": "Parallels beside a hanging body",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q010",
+      "title": "A step by itself",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q011",
+      "title": "The cut-off sentence",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q012",
+      "title": "Moving a drill among the mills",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 work",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
         }
       ]
     }
