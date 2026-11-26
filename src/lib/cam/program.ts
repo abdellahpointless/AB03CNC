@@ -1786,8 +1786,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const turnRaw = prevR && setups.length >= 1 ? input.turns?.[choiceIndex(si)] : undefined;
     const turnAsked = turnRaw && (turnRaw.flip === 'X' || turnRaw.flip === 'Y' || turnRaw.quarter === 1 || turnRaw.quarter === 2 || turnRaw.quarter === 3) ? turnRaw : undefined;
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
-    // the one the operator reaches from the clamping before with fewer turns (not when the designer turned it).
-    if (prevR && setups.length >= 2 && !turnAsked) {
+    // the one the operator reaches from the clamping before with fewer turns. Once: the designer's turn is counted
+    // from this frame (the one shown), and a side planned again keeps it.
+    if (prevR && setups.length >= 2 && !turnedAsked.has(si)) {
       const turns = (R: Mat3) => {
         const phrase = turnPhrase(mul(R, transpose(prevR!)));
         return phrase ? phrase.match(/DREHEN/g)!.length : R.every((v, k) => Math.abs(v - prevR![k]) < 1e-9) ? 0 : 3;

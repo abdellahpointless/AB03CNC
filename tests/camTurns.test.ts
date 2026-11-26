@@ -36,6 +36,19 @@ describe('a later clamping turned as the designer asks', () => {
     passes(r);
   }, 900_000);
 
+  // A review: the quarter turns were counted from CAM AI's frame before its own choice; counted from the one shown,
+  // four quarter turns are the frame shown again, and 1 and 3 are not the same.
+  it('counts quarter turns from the frame CAM AI chose and showed', () => {
+    const [q1, q3] = [camProgram({ ...input, turns: [null, null, { quarter: 1 }] }), camProgram({ ...input, turns: [null, null, { quarter: 3 }] })];
+    expect(q1.setups[2].R).not.toEqual(q3.setups[2].R);
+    // A quarter turn about Z of the frame shown: Z row kept, X row = the shown -Y row... checked as rows of SPIN · R.
+    const a = made.setups[2].R;
+    const spin = [-a[3], -a[4], -a[5], a[0], a[1], a[2], a[6], a[7], a[8]];
+    q1.setups[2].R.forEach((v, k) => expect(v).toBeCloseTo(spin[k], 9));
+    passes(q1);
+    passes(q3);
+  }, 900_000);
+
   it('a flip asked of a clamping that is not the opposite side changes nothing', () => {
     const r = camProgram({ ...input, turns: [null, null, { flip: 'Y' }] });
     expect(r.setups[2].R).toEqual(made.setups[2].R);
