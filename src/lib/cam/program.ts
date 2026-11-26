@@ -116,6 +116,8 @@ export interface CamInput {
   finish?: number[];
   /** Who makes it (the signed-in admin), written as the programmer ("BEARBEITER"), as the shop's programs do. */
   author?: string;
+  /** The simpler face up in clamping 1 (CAM AI's fallback when no side was picked and the busiest face first fails the checks). */
+  simplerFirst?: boolean;
   /** A top plate's white face (the operator's pick, a side name): never faced; the blank flush with it, all its stock on the other side. */
   white?: string;
   /** What is being done, as it is done: for the page's live console and 3D paths. */
@@ -1577,6 +1579,8 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       if (better) [best, bestAxis, bestInput] = [now, axis, inp];
     });
   plans(input);
+  // No side picked and the busiest face first fails the checks: the other face first (the 0.5 mm method holds either way).
+  if ((!best || !good(best)) && !input.orient && !input.white) plans({ ...input, simplerFirst: true });
   if (!best && thin) throw thin;
   // None passes with the blank 2 mm over the part (e.g. the outside cut through first leaves the next clamping
   // only a narrow face to hold, where the shop rests the part on a ledge): planned again with it centred.
@@ -1719,7 +1723,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // A top plate's white face up first whatever else (never faced: all the Z stock is on the other side, under the part
   // in clamping 1, where the 0.5 mm method's jaws grip it).
   const whiteUp = [a, bSide].find((si) => SIDES[si].name === input.white);
-  const pair = first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : whiteUp !== undefined ? [whiteUp, whiteUp === a ? bSide : a] : busy(a) >= busy(bSide) ? [a, bSide] : [bSide, a];
+  const pair = first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : whiteUp !== undefined ? [whiteUp, whiteUp === a ? bSide : a] : busy(a) >= busy(bSide) !== !!input.simplerFirst ? [a, bSide] : [bSide, a];
   // The blank 2 mm over the part on the first clamping's side, as the shop faces it (2-3 mm in 64 of 95 first
   // clampings), the rest under the part, where the jaws grip it and the outside goes through (a centred blank
   // left the jaws only the foot of the part's wall).

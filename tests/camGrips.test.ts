@@ -184,6 +184,12 @@ describe('the 0.5 mm method (you): always the outline whole in clamping 1', () =
     expect(lowest(r)).toBeCloseTo(-50.5, 3);
   }, 600_000);
 
+  it('turns the simpler face up first only when asked (its fallback when the busiest face first fails the checks)', () => {
+    const r = camProgram({ material: 'ALU', tools: [], brand: 'HAAS', noNest: true, tris: plate, raw: [44, 34, 19], simplerFirst: true });
+    expect(r.setups[0].side).toBe('Z-');
+    expect(lowest(r)).toBeCloseTo(-12.5, 3);
+  }, 300_000);
+
   it('turns the busiest face up in clamping 1 when nobody chose (the pocket first, the plain face after the turn)', () => {
     const r = camProgram({ material: 'ALU', tools: [], brand: 'HAAS', noNest: true, tris: plate, raw: [44, 34, 19] });
     expect(r.setups[0].side).toBe('Z+');
