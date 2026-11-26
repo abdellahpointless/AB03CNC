@@ -2126,10 +2126,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
         keepHoles.push(h);
         continue;
       }
-      const exact = drillFor(h, h.top - depth);
       // Neither a drill of its Ø nor an end mill to mill it (item 15): the nearest smaller drill of the shop, down to
       // 80 % of its Ø, flagged temporary (the right drill stays listed as missing); the hole is that much smaller.
       const millsIt = mills.length > 0 && mills[mills.length - 1].diameter <= h.r * 2 - 0.2;
+      // You: a counterbore is made by an end mill after its smaller hole is drilled, never by a drill of its Ø (whose
+      // point the mill then had to flatten): left to the milling, no drill listed for it.
+      if (seat && millsIt) continue;
+      const exact = drillFor(h, h.top - depth);
       const stand = exact || millsIt ? undefined : drills.filter((x) => x.length >= reachTo(h.top - depth) && x.diameter < h.r * 2 && x.diameter >= h.r * 2 * 0.8).sort((p, q) => q.diameter - p.diameter)[0];
       const d = exact ?? stand;
       if (stand) {

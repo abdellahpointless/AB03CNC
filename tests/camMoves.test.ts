@@ -286,7 +286,8 @@ describe('a hole and its counterbore', () => {
     const cycles = (s: CamSetup) => s.ops.filter((o) => o.kind === 'drill').flatMap((o) => o.lines.filter((l) => /G8[123]/.test(l)).map((l) => `${o.tool.diameter}@${Math.abs(Number(l.match(/X(-?[\d.]+)/)![1]))},${Math.abs(Number(l.match(/Y(-?[\d.]+)/)![1]))}`));
     const [top, bottom] = [r.setups.find((s) => s.side === 'Z+')!, r.setups.find((s) => s.side === 'Z-')!];
     expect(cycles(top)).toEqual([]);
-    expect(cycles(bottom).sort()).toEqual(['10@8,0', '5@8,0']);
+    // You: the counterbore by an end mill after the hole is drilled, no Ø10 drill.
+    expect(cycles(bottom).sort()).toEqual(['5@8,0']);
   }, 300_000);
 });
 
@@ -317,18 +318,21 @@ describe('blind holes', () => {
       .filter(([, b]) => b[2] < -0.2 && Math.hypot(b[0], b[1]) < 2.5);
     expect(inHole).toEqual([]);
   }, 300_000);
-  // A counterbore's floor is a seat (a screw head): flattened, by a mill that goes down the drilled counterbore in one
-  // move, its passes only under where the Ø10 drill's full Ø ends (Z-2: the floor at Z-5, the point 3 mm).
-  it('flattens a counterbore\'s floor, its passes only under the drill\'s full Ø', () => {
+  // You: a counterbore is made by an end mill after its smaller hole is drilled, never by a drill of its Ø (whose point
+  // a mill then flattened): its passes from the top down to its flat floor (Z-5), a flat seat for the screw head.
+  it('mills a counterbore whole down to its flat floor, no drill of its Ø', () => {
     const tris = plateWithCounterbore(40, 30, 12, { c: [12, 15], d: 5, D: 10, depth: 5 });
     const r = camProgram({ ...base, tris, raw: [44, 34, 19] });
     const bottom = r.setups.find((s) => s.side === 'Z-')!;
+    expect(bottom.ops.some((o) => o.kind === 'drill' && o.tool.diameter > 5.5)).toBe(false);
     const inSeat = bottom.ops
       .filter((o) => o.kind === 'pocket')
       .flatMap((o) => feeds(o.lines))
       .filter(([a, b]) => a[2] === b[2] && b[2] < -0.2 && Math.hypot(Math.abs(b[0]) - 8, b[1]) < 5);
     expect(inSeat.length).toBeGreaterThan(0);
-    expect(Math.max(...inSeat.map(([, b]) => b[2]))).toBeLessThanOrEqual(-2 + 1e-6);
+    expect(Math.min(...inSeat.map(([, b]) => b[2]))).toBeCloseTo(-5, 1);
+    expect(Math.max(...inSeat.map(([, b]) => b[2]))).toBeGreaterThan(-2);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
   it('sends no mill into a hole whose drilling the operator removed', () => {
     const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point: false });
