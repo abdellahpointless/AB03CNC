@@ -29,7 +29,7 @@ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import CamOpened from './CamOpened';
 import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
-import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, stepCale, underStock, whyNot } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
@@ -233,6 +233,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const cales1 = chosen && shown ? allowedCales(stockH1, lo1, chosen.size[2]).sort((p, q) => p - q) : [];
   // The 0.5 mm method (you): 5 mm under the part wanted (a 4 mm grip), 4 taken (3 mm, yellow), less refused.
   const under1 = chosen && shown ? underStock(shown[4]) : null;
+  // And 0.5 mm over the part to face (you), but on a top plate's white face.
+  const topThin = !!chosen && !!shown && whiteAt !== 5 && shown[5] < TOP_MIN - 1e-6;
   const own1 = chosen && shown && cales1.length ? firstPick(stockH1, lo1, chosen.size[2]).cale : null;
   // The program made says what CAM AI used (its blank may have gone centred); before one, the page's own pick.
   const cale1 = clamp1 ?? (run.state === 'done' ? run.result.setups[0]?.cale : undefined) ?? own1;
@@ -244,7 +246,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
   // Parallels that cannot hold the part are shown (yellow) but never made: why, if so.
   const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1, chosen.size[2]) : null;
-  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1 && under1 !== 'tooThin';
+  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1 && under1 !== 'tooThin' && !topThin;
 
   useEffect(() => () => worker.current?.terminate(), []);
 
@@ -571,7 +573,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
-  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw || under1 === 'tooThin' ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
+  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw || under1 === 'tooThin' || topThin ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
   // A setup picked again after a program was made: that program is no longer the one shown.
   const unlock = (k: 0 | 1) => {
     if (k === 0) {
@@ -1060,6 +1062,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                   </fieldset>
                 )}
                 {shown && under1 === 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{whiteAt === 4 ? t('camAi.stock.whiteDown') : t('camAi.stock.tooThin', { mm: fmt(shown[4], 1) })}</p>}
+                {shown && topThin && under1 !== 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.topThin', { mm: fmt(shown[5], 1) })}</p>}
                 {shown && under1 === 'lowGrip' && <p className="flex gap-2 text-[#facc15]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.lowGrip', { mm: fmt(shown[4], 1) })}</p>}
                 {raw && excess && (
                   <dl className="grid grid-cols-3 gap-2">

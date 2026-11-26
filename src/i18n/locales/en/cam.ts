@@ -311,6 +311,7 @@ const cam = {
       partIn: 'Part {{x}} × {{y}} × {{z}} mm, as clamping 1 holds it (Z+ up, Y- toward you)',
       whiteNone: 'No stock on {{side}}: it is the white face, never faced.',
       tooSmall: 'The raw block must be at least as big as the part (and at most 200 mm more per axis).',
+      topThin: 'Too little over the part in Z: clamping 1 faces its top, 0.5 mm at the least ({{mm}} mm now). Use a thicker blank or put 0.5 mm on Z+.',
       tooThin: 'Too thin in Z: clamping 1 cuts the outline 0.5 mm under the part and the jaws grip under that, 3 mm at the least, so the blank needs 4 mm under the part ({{mm}} mm now). Use a thicker blank.',
       lowGrip: 'Only {{mm}} mm under the part: the jaws grip 3 mm under the outline cut (4 mm wanted: 5 mm under the part).',
       whiteDown: 'The white face is under the part in clamping 1, where the jaws must grip stock under the outline cut. Turn the part so the white face is up.',

@@ -314,6 +314,7 @@ const cam: Translation<typeof en> = {
       partIn: 'Parça {{x}} × {{y}} × {{z}} mm, 1. bağlamadaki gibi (Z+ yukarı, Y- size doğru)',
       whiteNone: '{{side}} tarafında ham yok: beyaz yüz, hiç alın frezelenmez.',
       tooSmall: 'Ham blok en az parça kadar büyük olmalı (ve eksen başına en fazla 200 mm fazla).',
+      topThin: 'Z’de parçanın üstünde çok az ham: 1. bağlama üst yüzü alından frezeler, en az 0,5 mm (şimdi {{mm}} mm). Daha kalın bir ham blok kullanın ya da Z+’ya 0,5 mm verin.',
       tooThin: 'Z’de çok ince: 1. bağlama konturu parçanın 0,5 mm altına kadar keser ve çeneler bunun altında en az 3 mm tutar; ham blok parçanın altında 4 mm ister (şimdi {{mm}} mm). Daha kalın bir ham blok kullanın.',
       lowGrip: 'Parçanın altında yalnızca {{mm}} mm: çeneler kontur kesiminin altında 3 mm tutar (4 mm istenir: parçanın altında 5 mm).',
       whiteDown: 'Beyaz yüz 1. bağlamada parçanın altında; çeneler orada kontur kesiminin altındaki hamı tutmalı. Parçayı beyaz yüz üstte olacak şekilde çevirin.',
