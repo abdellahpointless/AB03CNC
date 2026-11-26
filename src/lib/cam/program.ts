@@ -2427,11 +2427,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (!worth.has(pick.tool) && pick.share * all < 0.5) continue;
         worth.add(pick.tool);
         const r = pick.tool.diameter / 2;
-        const rings = (bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings).map((g) => {
-          // A ring that only cleans a drill's point: its passes start where the drill's full Ø ends (air above).
-          const d = drilledHere.find((x) => x.done > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
-          return d ? { ...g, from: d.z + 0.3 * d.tool.diameter } : g;
-        });
+        const pointOf = (g: Ring) => drilledHere.find((x) => x.done > z + 1e-6 && area(difference(swept([g], r), [circle(x.h.c, x.tool.diameter / 2 + 0.15)])) < 0.05);
+        const rings = (bored.length ? pick.rings.filter((g) => area(difference(swept([g], r), bored)) > 0.05) : pick.rings)
+          // You: no end mill after a drill where nothing of the part is left to cut: a drill's point under the part's
+          // bottom (a through hole drilled over a parallel, the stock under the part) is never cleaned.
+          .filter((g) => z >= -H - 1e-6 || !pointOf(g))
+          .map((g) => {
+            // A ring that only cleans a drill's point: its passes start where the drill's full Ø ends (air above).
+            const d = pointOf(g);
+            return d ? { ...g, from: d.z + 0.3 * d.tool.diameter } : g;
+          });
         if (rings.length) (perTool.get(pick.tool) ?? perTool.set(pick.tool, []).get(pick.tool)!).push({ z, above: levelTop, rings, keep: off, inside, thin, finish: area(strip) > 0.01, zone });
         level.took.push({ dia: pick.tool.diameter, gone: pick.gone });
         todo = opened(difference(todo, pick.gone));

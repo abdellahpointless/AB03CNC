@@ -66,4 +66,20 @@ describe('a hole a drill made', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 600_000);
+
+  it('never cleans a drill\'s point under the part (a through hole drilled over a parallel after the turn)', () => {
+    // 60 x 40 x 12, a Ø3.3 hole 4 mm from its edge with a Ø6 counterbore 4 deep from its bottom face: drilled from there
+    // after the turn, over the parallel under that edge, its point 0.95 into it (camSafety). Its narrow end lies under
+    // the part's bottom (Z-12): nothing of the part, so no mill goes in after the drill.
+    const tris = plateWithCounterbore(60, 40, 12, { c: [30, 4], d: 3.3, D: 6, depth: 4 });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 19], orient: { side: 'Z+', spin: false } });
+    const s = r.setups.find((x) => x.side === 'Z-')!;
+    expect(s.ops.some((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3.3) < 0.01)).toBe(true);
+    // Every mill feed under the part's bottom (Z-12) within the hole: none (the hole at X0 Y-16 or Y16, the frame centred).
+    const under = s.ops
+      .filter((o) => o.kind !== 'drill' && o.kind !== 'face')
+      .flatMap((o) => o.lines.filter((l) => /^G0?1/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) < -12 - 0.05 && Math.abs(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99)) < 1.65 && Math.abs(Math.abs(Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) - 16) < 1.65).map((l) => `${o.name} ${l}`));
+    expect(under).toEqual([]);
+    expect(r.check).toMatchObject({ cales: 0, collisions: 0 });
+  }, 600_000);
 });
