@@ -651,7 +651,7 @@
       "title": "Orders that lock",
       "type": "inferred",
       "tier": "WORKING",
-      "assumption": "One row per tool; a dragged tool's operations move together, the others keep their places (kept by operation); an order no check covers locks (before the facing, a drill before its spot drill, mills out of their made order).",
+      "assumption": "One row per tool; a dragged tool's operations move together, the others keep their places (kept by operation); an order no check covers locks (before the facing, a drill before its spot drill, mills out of their made order, a mill before a drill whose holes it goes into).",
       "source": "CAM AI (the checks it has)",
       "validated": "2026-11-26",
       "context": "Tool list, editProgram",

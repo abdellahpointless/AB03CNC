@@ -219,7 +219,7 @@ Medium confidence. Use but flag if contradicted.
 ### A027: Orders that lock
 
 - **Type:** inferred
-- **Assumption:** One row per tool; a dragged tool's operations move together, every other operation keeps its place (a tool used in two places stays in both; the order is kept by operation, so a tool changed by hand keeps its place). An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for (the simulation does not see a tool cutting more than it was made for).
+- **Assumption:** One row per tool; a dragged tool's operations move together, every other operation keeps its place (a tool used in two places stays in both; the order is kept by operation, so a tool changed by hand keeps its place). An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for (the simulation does not see a tool cutting more than it was made for), a mill before a drill whose holes it goes into.
 - **Source:** CAM AI (the checks it has); Q012 asks the owner
 - **Validated:** 2026-11-26
 - **Context:** Tool list, editProgram
@@ -281,7 +281,7 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 ### Q012: Moving a drill among the mills
 
 - **Type:** uncertain
-- **Question:** Drills may be moved before or after the mills (the simulation checks rapids and collisions; a drill moved after a pocket only cuts air longer). Is there an order the shop never allows that should lock too?
+- **Question:** Drills may be moved before or after the mills (the simulation checks rapids and collisions; a drill moved after a pocket only cuts air longer), but a mill that goes into a drill's holes (a counterbore's seat, an entry down the hole) locks when moved before that drill: it would plunge into solid there. Is there another order the shop never allows that should lock too?
 - **Source:** The reorder locks (A024)
 
 ---
