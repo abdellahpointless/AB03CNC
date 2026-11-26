@@ -558,7 +558,7 @@ export const turnMs = (prev: SetupInfo | null, next: SetupInfo | null): number =
   FLIP_MS + FLIP_MS * 0.55 * Math.max(0, (next?.turns.length ?? 1) - 1) + (prev && next && calesKey(prev) !== calesKey(next) ? CALE_MS : 0);
 
 /** Width of the parallels drawn and checked under the held part (mm). */
-export const parallelWidth = (holdY: number) => Math.min(6, holdY / 6);
+export const parallelWidth = (holdY: number) => Math.min(5, holdY / 6);
 /** How deep a feed may go into a parallel (mm; shop rule): deeper, or a rapid at all, is a hit. */
 export const CALE_TOUCH = 1;
 
