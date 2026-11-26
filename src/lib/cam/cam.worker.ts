@@ -124,7 +124,7 @@ export type CamMessage =
   | { type: 'live'; e: LiveEvent }
   | { type: 'done'; result: CamSummary; lesson: unknown }
   | { type: 'edited'; result: CamSummary }
-  | { type: 'error'; error: ModelError | 'failed' };
+  | { type: 'error'; error: ModelError | 'failed' | 'thinBlank' };
 
 const post = (m: CamMessage) => postMessage(m);
 
@@ -157,7 +157,8 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest | EditReques
     post({ type: 'done', lesson, result: summaryOf(r, input) });
   } catch (err) {
     console.error(err);
-    post({ type: 'error', error: 'failed' });
+    // The blank too thin under the part for the 0.5 mm method: said as such (a thicker blank), never a plain failure.
+    post({ type: 'error', error: /^thinBlank/.test((err as Error).message) ? 'thinBlank' : 'failed' });
   }
 };
 

@@ -29,7 +29,7 @@ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import CamOpened from './CamOpened';
 import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
-import { allowedCales, blankSides, clearOf, firstPick, JAW, jawMove, stepCale, whyNot } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, stepCale, underStock, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,7 +42,7 @@ const AUTO_EXCESS = [4, 4, 7];
 const opposite = (side: string) => side[0] + (side[1] === '+' ? '-' : '+');
 
 type Model = { name: string; bytes: Uint8Array };
-type Run = { state: 'idle' } | { state: 'preparing' } | { state: 'busy'; done: number; of: number } | { state: 'error'; error: ModelError | 'failed' | 'toolDb' } | { state: 'done'; result: CamSummary };
+type Run = { state: 'idle' } | { state: 'preparing' } | { state: 'busy'; done: number; of: number } | { state: 'error'; error: ModelError | 'failed' | 'toolDb' | 'thinBlank' } | { state: 'done'; result: CamSummary };
 type Family = 'ALU' | 'POM' | 'FH';
 
 const SIDE_STOCK_KEY = 'cnc-camai-side-stock';
@@ -230,7 +230,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // Clamping 1's parallels (clamp.ts, as the planner takes them): those the jaws hold the blank on, lowest first, and CAM AI's own.
   const lo1 = chosen && shown ? -(chosen.size[2] + shown[4]) : 0;
   const stockH1 = chosen && shown ? chosen.size[2] + shown[4] + shown[5] : 0;
-  const cales1 = chosen && shown ? allowedCales(stockH1, lo1).sort((p, q) => p - q) : [];
+  const cales1 = chosen && shown ? allowedCales(stockH1, lo1, chosen.size[2]).sort((p, q) => p - q) : [];
+  // The 0.5 mm method (you): 5 mm under the part wanted (a 4 mm grip), 4 taken (3 mm, yellow), less refused.
+  const under1 = chosen && shown ? underStock(shown[4]) : null;
   const own1 = chosen && shown && cales1.length ? firstPick(stockH1, lo1, chosen.size[2]).cale : null;
   // The program made says what CAM AI used (its blank may have gone centred); before one, the page's own pick.
   const cale1 = clamp1 ?? (run.state === 'done' ? run.result.setups[0]?.cale : undefined) ?? own1;
@@ -241,8 +243,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
   // Parallels that cannot hold the part are shown (yellow) but never made: why, if so.
-  const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1) : null;
-  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1;
+  const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1, chosen.size[2]) : null;
+  const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1 && under1 !== 'tooThin';
 
   useEffect(() => () => worker.current?.terminate(), []);
 
@@ -569,7 +571,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
-  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
+  const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw || under1 === 'tooThin' ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
   // A setup picked again after a program was made: that program is no longer the one shown.
   const unlock = (k: 0 | 1) => {
     if (k === 0) {
@@ -1057,6 +1059,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t(sidesOk ? 'camAi.stock.tooSmall' : 'camAi.stock.sideRange')}</p>}
                   </fieldset>
                 )}
+                {shown && under1 === 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{whiteAt === 4 ? t('camAi.stock.whiteDown') : t('camAi.stock.tooThin', { mm: fmt(shown[4], 1) })}</p>}
+                {shown && under1 === 'lowGrip' && <p className="flex gap-2 text-[#facc15]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.lowGrip', { mm: fmt(shown[4], 1) })}</p>}
                 {raw && excess && (
                   <dl className="grid grid-cols-3 gap-2">
                     {(['X', 'Y', 'Z'] as const).map((axis, k) => (
@@ -1162,7 +1166,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
             {run.state === 'error' && (
               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
-                {run.error === 'failed' ? t('camAi.failed') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`remapper:toolpath.model.errors.${run.error}`)}
+                {run.error === 'failed' ? t('camAi.failed') : run.error === 'thinBlank' ? t('camAi.stock.thinRefused') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`remapper:toolpath.model.errors.${run.error}`)}
               </p>
             )}
         </div>
@@ -1803,7 +1807,7 @@ function AdjustToggle({ open, onToggle }: { open: boolean; onToggle: () => void 
   );
 }
 
-function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: 'tooShallow' | 'allStock' | 'overTop' | null; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: ReturnType<typeof whyNot>; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   // Open while preparing; once a program is made, folded until asked for.
@@ -1844,6 +1848,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
         </div>
       )}
       {cale === 0 && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.clamp1.noneWarn')}</p>}
+      {!refused && cale > 0 && grip < GRIP_WANT && <p className="flex gap-2 text-[#facc15]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.lowGrip', { grip: fmt(grip, 0) })}</p>}
       {!refused && intoPart > 0.05 && <p className="flex gap-2 text-[var(--orange-text)]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.clamp1.intoPart', { mm: fmt(intoPart, 1) })}</p>}
       {seam && <p className="text-[var(--text-secondary)]">{t('camAi.note.clampSeam', { setup: 1, cale: fmt(cale, 0) })}</p>}
     </section>
