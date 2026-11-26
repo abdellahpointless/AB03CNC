@@ -98,6 +98,11 @@ export interface CamInput {
    */
   spacersYp?: (number | null)[];
   /**
+   * The designer's turn of a later clamping (the owner): turned over about X or Y from the clamping before (only when
+   * its side is the opposite one), then in the vise a quarter turn 1, 2 or 3 times; keyed as the other choices.
+   */
+  turns?: ({ flip?: 'X' | 'Y'; quarter?: 1 | 2 | 3 } | null)[];
+  /**
    * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
    * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
    * else refused (jawRefused). Wins over `clamps` there.
@@ -1763,18 +1768,44 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const ownCales = new Map<number, number>();
   // cap: the largest end mill this clamping may use (planned again lighter when the vise cannot hold the bigger ones).
   // rest: resting on the jaw tops by the face this deep under Z0 (planned again so, at grip `fixed`).
+  // The designer's choices for clamping 3 and on go with the side they were made for: an asked side with nothing to
+  // cut gets no clamping, and its choices never slide onto the next one (a review found that). With sides named
+  // (the page names every clamping that carries a choice), a side no one named takes no choice (-1).
+  const choiceIndex = (si: number): number => {
+    const sidesAsked = input.sides ?? [];
+    if (setups.length < 2 || !sidesAsked.length) return setups.length;
+    const k = sidesAsked.indexOf(SIDES[si].name);
+    return k >= 0 ? k + 2 : -1;
+  };
+  // Sides turned as the designer asked: once each (a side planned again keeps its turn).
+  const turnedAsked = new Set<number>();
   const addSetup = (si: number, fixed?: number, cap?: number, rest?: number): boolean => {
     // Never a tool the tool database keeps for finishing (item 14): it finishes (below), it does not rough.
     const mills = (cap === undefined ? allMills : allMills.filter((m) => m.diameter <= cap + 1e-6)).filter((m) => m.role !== 'finish');
+    // The designer's turn for this clamping, checked as given (flip X or Y, quarter 1 to 3; anything else ignored).
+    const turnRaw = prevR && setups.length >= 1 ? input.turns?.[choiceIndex(si)] : undefined;
+    const turnAsked = turnRaw && (turnRaw.flip === 'X' || turnRaw.flip === 'Y' || turnRaw.quarter === 1 || turnRaw.quarter === 2 || turnRaw.quarter === 3) ? turnRaw : undefined;
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
-    // the one the operator reaches from the clamping before with fewer turns.
-    if (prevR && setups.length >= 2) {
+    // the one the operator reaches from the clamping before with fewer turns (not when the designer turned it).
+    if (prevR && setups.length >= 2 && !turnAsked) {
       const turns = (R: Mat3) => {
         const phrase = turnPhrase(mul(R, transpose(prevR!)));
         return phrase ? phrase.match(/DREHEN/g)!.length : R.every((v, k) => Math.abs(v - prevR![k]) < 1e-9) ? 0 : 3;
       };
       const other = mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], feats[si].R);
       if (turns(other) < turns(feats[si].R)) feats[si] = sideFeatures(tris, SIDES[si], false, other);
+    }
+    if (turnAsked && prevR && !turnedAsked.has(si)) {
+      turnedAsked.add(si);
+      let R = feats[si].R;
+      // Turned over from the clamping before: about the machine's X, or its Y (the same side up, turned 180° about Z).
+      const prevSide = SIDES.findIndex((x) => x.name === setups[setups.length - 1].side);
+      if (turnAsked.flip && prevSide >= 0 && SIDES[si].d.every((v, k) => v === -SIDES[prevSide].d[k])) {
+        const overX = mul([1, 0, 0, 0, -1, 0, 0, 0, -1], prevR);
+        R = turnAsked.flip === 'X' ? overX : mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], overX);
+      }
+      for (let q = 0; q < (turnAsked.quarter ?? 0); q++) R = mul(SPIN, R);
+      feats[si] = sideFeatures(tris, SIDES[si], false, R);
     }
     // What this try changes, to undo when the vise asks for another grip and it is planned again.
     const was = { drilled: new Map(drilled), notes: notes.length };
@@ -1874,15 +1905,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const cales = allowedCales(stockH, sb.lo[2]);
     // The faces it could rest on the jaw tops by: never in the first clamping (the raw block has none) or the nest.
     const ledges = setups.length && !nested ? ledgesOf(P, left, sb) : [];
-    // The designer's choices for clamping 3 and on go with the side they were made for: an asked side with nothing to
-    // cut gets no clamping, and its choices never slide onto the next one (a review found that). With sides named
-    // (the page names every clamping that carries a choice), a side no one named takes no choice (-1).
-    const choiceAt = ((): number => {
-      const sidesAsked = input.sides ?? [];
-      if (setups.length < 2 || !sidesAsked.length) return setups.length;
-      const k = sidesAsked.indexOf(side.name);
-      return k >= 0 ? k + 2 : -1;
-    })();
+    // The designer's choices for this clamping (choiceIndex).
+    const choiceAt = choiceIndex(si);
     const jawAsked = input.jawRests?.[choiceAt] ?? undefined;
     const onJaw = rest ?? (jawAsked !== undefined ? ledges.find((d) => Math.abs(d - jawAsked) < 0.05) : undefined);
     if (rest === undefined && jawAsked !== undefined && onJaw === undefined) notes.push({ key: 'jawRefused', setup: setups.length + 1, cale: jawAsked });
@@ -2539,7 +2563,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
       // preferred, but not over a clamping that holds), once; never against the operator's layout.
-      if (!theirs && !quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
+      if (!theirs && !turnAsked && !quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
         quartered.add(si);
         feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));
         drilled.clear();
