@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { camProgram, editProgram, reorderOps, type CamInput, type CamOp } from '../src/lib/cam/program';
-import { plateWithHoles, pocketPart, pocketWithHole, roundedRect } from './heightPart';
+import { plateWithCounterbore, plateWithHoles, pocketPart, pocketWithHole, roundedRect } from './heightPart';
 
 // You: the operations of a clamping in the order the operator drags them to (sent as their keys, which a tool changed
 // by hand keeps). The program is checked again; an order
@@ -101,4 +101,31 @@ describe('operations in the order the operator gives', () => {
     expect(r.setups[0].ops.map((o) => o.key)).toEqual(asked);
     expect(r.setups[0].ops.find((o) => o.key === rest.key)!.tool.diameter).toBe(6);
   }, 600_000);
+
+  it('locks a mill moved before a drill it was made after (it may go down through the drilled hole)', () => {
+    // The counterbore: the Ø5.5 drilled, then an end mill makes the Ø10 seat, entering through the hole.
+    const part: CamInput = { ...input, tris: plateWithCounterbore(40, 30, 12, { c: [20, 15], d: 5.5, D: 10, depth: 5.5 }), raw: [40, 30, 17.5], orient: { side: 'Z-', spin: false } };
+    const m = camProgram(part);
+    const ops = m.setups[0].ops;
+    const drill = ops.findIndex((o) => o.purpose === 'drill');
+    const mill = ops.findIndex((o, i) => i > drill && o.kind !== 'drill');
+    expect(drill).toBeGreaterThanOrEqual(0);
+    expect(mill).toBeGreaterThan(drill);
+    const asked = [...ops.slice(0, drill), ops[mill], ...ops.slice(drill).filter((_, i) => i + drill !== mill)].map((o) => o.key!);
+    const r = editProgram(part, m, {}, { [m.setups[0].side]: asked });
+    expect(r.setups[0].ops.find((o) => o.key === ops[mill].key)!.cut.unsafe).toBe(true);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
+  }, 600_000);
+
+  it('lets a drill go after a mill that never enters its holes, and locks one that does', () => {
+    const op = (key: string, purpose: string, lines: string[], d = 8) => ({ key, name: key, purpose, kind: purpose === 'drill' ? 'drill' : 'pocket', tool: { code: key, number: key.length, diameter: d }, cut: {}, lines }) as unknown as CamOp;
+    const drill = op('drill', 'drill', ['G00 G90 X0. Y0. S3000 M03', 'G00 Z2.', 'G98 G83 Z-12. R2. Q3. F300.', 'X10. Y0.', 'G80', 'G00 Z50.'], 5);
+    const away = op('away', 'rough', ['G00 X30. Y20.', 'G01 Z-3. F300.', 'G01 X40.', 'G00 Z50.']);
+    const into = op('into', 'rough', ['G00 X10. Y0.', 'G00 Z1.', 'G01 Z-6. F300.', 'G00 Z50.']);
+    const face = op('face', 'face', []);
+    expect(reorderOps([face, drill, away], ['face', 'away', 'drill'], 1).ops.some((o) => o.cut.unsafe)).toBe(false);
+    const r = reorderOps([face, drill, into], ['face', 'into', 'drill'], 1);
+    expect(r.ops.find((o) => o.key === 'into')!.cut.unsafe).toBe(true);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
+  });
 });

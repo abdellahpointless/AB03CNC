@@ -1439,8 +1439,9 @@ const MILLING: Purpose[] = ['outline', 'rough', 'rest', 'finish', 'contour', 'th
  * A clamping's operations in the operator's order (you: tools dragged in the list), `want` their keys: those listed run
  * in that order in the places they hold, the others stay where they were made. By key, never by tool: a tool changed by
  * hand keeps its place, and a tool used in two places is not pulled together when another one is moved. What runs before
- * an operation it was made after (the facing before all, a spot drill before the drills, the mills in their made order)
- * is not verified by any check: that one is marked unsafe (the program locks) and noted.
+ * an operation it was made after (the facing before all, a spot drill before the drills, the mills in their made order,
+ * a mill before a drill whose holes it goes into) is not verified by any check: that one is marked unsafe (the program
+ * locks) and noted.
  */
 export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: number): { ops: CamOp[]; notes: CamNote[] } {
   const rank = (o: CamOp) => (o.key === undefined ? -1 : (want?.indexOf(o.key) ?? -1));
@@ -1449,7 +1450,45 @@ export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: numb
   let j = 0;
   const out = ops.map((o) => (rank(o) >= 0 ? listed[j++] : o));
   const made = new Map(ops.map((o, i) => [o, i]));
-  const mustFollow = (a: CamOp, b: CamOp) => a.purpose === 'face' || (a.purpose === 'centre' && (b.purpose === 'drill' || b.purpose === 'pinHoles')) || (MILLING.includes(a.purpose) && MILLING.includes(b.purpose));
+  // A mill made after a drill that feeds inside one of its holes under Z0 (a counterbore's seat, a pocket's entry down
+  // the hole) cuts air there only once the hole is drilled: never before it.
+  const holes = new Map<CamOp, P2[]>();
+  const holesOf = (op: CamOp) => {
+    let out = holes.get(op);
+    if (!out) {
+      out = [];
+      let [x, y, cycle] = [NaN, NaN, false];
+      for (const l of op.lines) {
+        x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
+        y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
+        if (/G8[1-3]/.test(l)) {
+          cycle = true;
+          out.push([x, y]);
+        } else if (/G80/.test(l)) cycle = false;
+        else if (cycle && /[XY]-?[\d.]/.test(l)) out.push([x, y]);
+      }
+      holes.set(op, out);
+    }
+    return out;
+  };
+  const entersHoles = (mill: CamOp, drill: CamOp) => {
+    const at = holesOf(drill);
+    const r = drill.tool.diameter / 2;
+    let [x, y, z, g] = [NaN, NaN, NaN, 0];
+    for (const l of mill.lines) {
+      g = Number(l.match(/\bG0?([0-3])\b/)?.[1] ?? g);
+      x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
+      y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
+      z = Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? z);
+      if (g >= 1 && z < -0.05 && at.some(([hx, hy]) => Math.hypot(x - hx, y - hy) < r)) return true;
+    }
+    return false;
+  };
+  const mustFollow = (a: CamOp, b: CamOp) =>
+    a.purpose === 'face' ||
+    (a.purpose === 'centre' && (b.purpose === 'drill' || b.purpose === 'pinHoles')) ||
+    (MILLING.includes(a.purpose) && MILLING.includes(b.purpose)) ||
+    ((a.purpose === 'drill' || a.purpose === 'pinHoles') && MILLING.includes(b.purpose) && entersHoles(b, a));
   const notes: CamNote[] = [];
   const ordered = out.map((b, i) => {
     // The first one made before b, and made for b to follow it, that now runs after it.
