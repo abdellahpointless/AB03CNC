@@ -23,7 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Vec } from '../lib/toolpath';
-import { analyseProgram, DEFAULT_JAW_HEIGHT, jawsFrom, type SetupInfo } from '../lib/setups';
+import { analyseProgram, DEFAULT_JAW_HEIGHT, jawsFrom, reachAt, type SetupInfo } from '../lib/setups';
 import { partLook } from '../lib/partLook';
 import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
 import type { MeasureMode } from '../lib/measure';
@@ -120,15 +120,19 @@ export default function CamSim({
       s.jawTopZ = s.floorZ + (made.jawTopZ! - made.floorZ!);
       s.support = p.cale;
       s.cales = p.cale > 0 && made.cales ? made.cales.map((c) => ({ ...c, top: made.restZ! })) : null;
+      // The jaws and the stop on what the part really has between the floor and the new jaw tops (the owner saw it
+      // sunk into the jaws held lower: a wider part of it comes between them).
+      const r = reachAt(program, s, s.floorZ);
+      if (r && made.grip) s.grip = { stop: r.stop ?? made.grip.stop, front: r.front ?? made.grip.front, back: r.back ?? made.grip.back };
     }
     if (p.stop !== undefined || p.y !== undefined || p.yp !== undefined) {
       const kept = made.spacers.filter((x) => (p.stop === undefined || x.side !== 'X-') && (p.y === undefined || x.side !== 'Y-') && (p.yp === undefined || x.side !== 'Y+'));
       s.spacers = [...kept, ...(p.stop ? [{ side: 'X-' as const, mm: p.stop }] : []), ...(p.y ? [{ side: 'Y-' as const, mm: p.y }] : []), ...(p.yp ? [{ side: 'Y+' as const, mm: p.yp }] : [])];
-      if (p.stop !== undefined && made.grip) s.jawX = jawsFrom(made.grip.stop - p.stop);
     }
+    if (s.grip && (s.grip !== made.grip || p.stop !== undefined)) s.jawX = jawsFrom(s.grip.stop - (p.stop ?? s.spacers.find((x) => x.side === 'X-')?.mm ?? 0));
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [made, preview?.setup, preview?.cale, preview?.stop, preview?.y, preview?.yp]);
+  }, [made, program, preview?.setup, preview?.cale, preview?.stop, preview?.y, preview?.yp]);
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const hard = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer');
   const hits = setups.reduce((n, x) => n + hard(x).length, 0);

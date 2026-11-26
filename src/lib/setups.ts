@@ -651,6 +651,7 @@ function withLedges(tp: Toolpath, opts: SetupOptions, chosen: Map<number, Mat3>,
         if (miss) s.rejects.push({ ...miss, line: tp.setups[s.index].notes.find((n) => /IN\s*[XY]\b/i.test(n.text))?.line ?? s.line });
         if (s.grip) s.jawX = jawsFrom(s.grip.stop - spacerAt(s, 'X-'));
       }
+      reachers.set(out, (s, from) => jawReach(s, input, g, from));
       return out;
     }
     boxes = nextBoxes;
@@ -805,6 +806,18 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid, exact = false): Setu
     // CAM AI's own program: parallels exactly as tall as its note, on its G52 floor (never up to the part).
     return { y: [y0, y0 + w] as [number, number], top: written ?? (near ? Math.max(floor, z) : rest) };
   });
+}
+
+// Each analysis's own stock grid, kept for what the views ask of it later (reachAt).
+const reachers = new WeakMap<ProgramSetups, (s: SetupInfo, from: number) => ReturnType<typeof jawReach>>();
+
+/**
+ * How far the part reaches (stop side, far side, front, back) between `from` and s.jawTopZ at the start of setup s, on
+ * the grid the program was analysed with: where the jaws and the stop really touch it when its hold is changed (other
+ * parallels: a wider part of it may come between the jaws). Null when the analysis kept no grid.
+ */
+export function reachAt(program: ProgramSetups, s: SetupInfo, from: number): ReturnType<typeof jawReach> {
+  return reachers.get(program)?.(s, from) ?? null;
 }
 
 /** How far the part reaches along machine X (stop side, far side) and Y (front, back) between `from` (default the vise floor) and the jaw tops, at the start of setup s. */
