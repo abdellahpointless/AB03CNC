@@ -14,6 +14,7 @@ export type SafetyLevel = 'error' | 'warning';
 export type SafetyCode =
   | 'noOffset' // cutting with no tool length offset (G43) active
   | 'offsetMismatch' // HAAS: G43 H number is not the tool in the spindle
+  | 'offsetRange' // G43 H number outside 1-200 (H0: no tool length at all)
   | 'spindleOff' // cutting with the spindle stopped
   | 'noFeed' // first cutting move with no feed rate ever set
   | 'noWorkOffset' // moving before any work offset (G54...) was selected
@@ -30,16 +31,16 @@ export interface SafetyFinding {
 }
 
 /** The checks that ran, so the panel can list passed ones too. */
-export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd', 'tooBig'];
+export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd', 'tooBig'];
 
 export interface SafetyReport {
   findings: SafetyFinding[];
   errors: number;
   warnings: number;
   /** Check codes that found nothing. */
-  passed: Exclude<SafetyCode, 'offsetMismatch'>[];
+  passed: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[];
   /** The checks that ran (the memory check only runs for a FANUC). */
-  ran: Exclude<SafetyCode, 'offsetMismatch'>[];
+  ran: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[];
 }
 
 export interface ToolDepthCheck {
@@ -47,6 +48,9 @@ export interface ToolDepthCheck {
   length: number;
   depth: number;
 }
+
+/** Highest H offset number (the owner's rule for the HAAS controls: T and H 1-200). */
+const MAX_H = 200;
 
 const CYCLES = new Set([73, 74, 76, 81, 82, 83, 84, 85, 86, 87, 88, 89]);
 
@@ -138,7 +142,9 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: 
     if (has(w.g, 43, 44)) {
       offsetActive = true;
       const h = w.get('H');
-      if (!opts.fanuc && h !== undefined && !h.startsWith('#') && tool !== null && Number(h) !== Number(tool)) {
+      if (h !== undefined && !h.startsWith('#') && !(Number(h) >= 1 && Number(h) <= MAX_H)) {
+        add(Number(h) === 0 ? 'error' : 'warning', 'offsetRange', i, { h: `H${Number(h)}` });
+      } else if (!opts.fanuc && h !== undefined && !h.startsWith('#') && tool !== null && Number(h) !== Number(tool)) {
         add('warning', 'offsetMismatch', i, { h: `H${Number(h)}`, t: `T${Number(tool)}` });
       }
     }
@@ -185,7 +191,7 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?: 
 
   findings.sort((a, b) => (a.level === b.level ? (a.line ?? 1e9) - (b.line ?? 1e9) : a.level === 'error' ? -1 : 1));
   const errors = findings.filter((f) => f.level === 'error').length;
-  const found = new Set<SafetyCode>(findings.map((f) => (f.code === 'offsetMismatch' ? 'noOffset' : f.code)));
+  const found = new Set<SafetyCode>(findings.map((f) => (f.code === 'offsetMismatch' || f.code === 'offsetRange' ? 'noOffset' : f.code)));
   const ran = SAFETY_CHECKS.filter((c) => c !== 'tooBig' || !!opts.memoryKb);
   return { findings, errors, warnings: findings.length - errors, passed: ran.filter((c) => !found.has(c)), ran };
 }

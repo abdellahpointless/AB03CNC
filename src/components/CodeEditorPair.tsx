@@ -116,6 +116,7 @@ interface CodeEditorPairProps {
 const CHECK_SYMBOL: Record<SafetyCode, { icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>; code: string }> = {
   noOffset: { icon: Ruler, code: 'G43' },
   offsetMismatch: { icon: Ruler, code: 'H≠T' },
+  offsetRange: { icon: Ruler, code: 'H' },
   spindleOff: { icon: RotateCw, code: 'M3' },
   noFeed: { icon: Gauge, code: 'F' },
   noWorkOffset: { icon: Crosshair, code: 'G54' },
@@ -144,7 +145,7 @@ function SafetyPanel({
 }) {
   const { t } = useT('remapper');
   const statusOf = (c: SafetyCode): { level: keyof typeof LEVEL_COLOR; line: number | null } => {
-    const related = report.findings.filter((f) => f.code === c || (c === 'noOffset' && f.code === 'offsetMismatch'));
+    const related = report.findings.filter((f) => f.code === c || (c === 'noOffset' && (f.code === 'offsetMismatch' || f.code === 'offsetRange')));
     const worst = related.find((f) => f.level === 'error') ?? related[0];
     return { level: worst ? worst.level : 'ok', line: worst?.line ?? null };
   };

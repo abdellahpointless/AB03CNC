@@ -56,6 +56,29 @@ describe('machine identity given to the G-code engine', () => {
     expect(run(engineMachineId('tr', { id: 'HAAS-2', brand: 'HAAS' }), FANUC_TOOLS, program)).toMatch(/Z50\. M08/);
   });
 
+  it('spot drills: T4 only on HAAS-1 and T250550 only on the FANUCs, and only the machine\'s own pointeur of that number', () => {
+    const program = ['%', 'O1000', 'N4 T38 M6', 'N5 (2,3MM ZENTRIERBOHRER/38MM LANG / ZB_02.30_038_000_ALHS)', 'N6 G00 G43 H38 Z50. M08', 'N7 G98 G81 Z-.92 R2. F300.', 'N8 G80', 'N9 M30', '%'].join('\n');
+    const mill4: Tool = { id: 'm', number: 4, category: 'fraise', description: 'Fraise', diameter: 4, length: 33 };
+    const spot7: Tool = { id: 's', number: 7, category: 'pointeur', description: 'Pointeur', diameter: 2.3, length: 38 };
+    const tool = (machineId: string, tools: Tool[]) => analyzeGCode(program, tools, machineId).blocks[0].matchedTool?.number ?? null;
+    // Another country's HAAS, or HAAS-3: their own spot drill, never their T4 end mill.
+    expect(tool(engineMachineId('tr', { id: 'VF4', brand: 'HAAS' }), [mill4, spot7])).toBe(7);
+    expect(run(engineMachineId('tr', { id: 'VF4', brand: 'HAAS' }), [mill4, spot7], program)).toMatch(/N4 T7 M6[\s\S]*G43 H7 Z50\./);
+    expect(tool('HAAS-3', [mill4, spot7])).toBe(7);
+    // HAAS-1: T4 when it is its pointeur; a T4 end mill is never taken for one.
+    expect(tool('HAAS-1', [{ ...mill4, category: 'pointeur' }, spot7])).toBe(4);
+    expect(tool('HAAS-1', [mill4, spot7])).toBe(7);
+    // FANUC-2 (HAAS code, H offsets) without a 250550: its own pointeur, H7, never H250550.
+    expect(run('FANUC-2', [spot7], program)).toMatch(/T7 M6[\s\S]*G43 H7 Z50\./);
+    expect(tool('FANUC-1', FANUC_TOOLS)).toBe(250550);
+    // No such tool in the machine: nothing invented, the dialog asks.
+    for (const id of ['HAAS-1', 'FANUC-2', engineMachineId('tr', { id: 'VF4', brand: 'HAAS' })]) {
+      const a = analyzeGCode(program, [mill4], id);
+      expect(a.blocks[0].matchedTool, id).toBeNull();
+      expect(a.success, id).toBe(false);
+    }
+  });
+
   it('pocket limits match the old hard-coded values for Morocco', () => {
     expect(maxPocketsFor({ brand: 'HAAS', pockets: 41 })).toBe(41); // HAAS-1
     expect(maxPocketsFor({ brand: 'FANUC', pockets: null })).toBe(21);

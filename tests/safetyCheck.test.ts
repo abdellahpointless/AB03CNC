@@ -62,4 +62,14 @@ describe('program safety check', () => {
     expect(codes(checkProgram(big, { fanuc: true, memoryKb: 512 }))).toContain('warning:tooBig@');
     expect(checkProgram(big, { fanuc: false }).ran).not.toContain('tooBig');
   });
+
+  it('finds an H offset outside 1-200 (H0 has no length at all: red)', () => {
+    const big = haasOk.replace('T4 M6 (POINTEUR)', 'T250550 M6').replace('G43 H4 Z50. M8', 'G43 H250550 Z50. M8');
+    const r = checkProgram(big, { fanuc: false });
+    expect(codes(r)).toEqual(['warning:offsetRange@6']);
+    expect(r.findings[0].params).toMatchObject({ h: 'H250550' });
+    expect(r.passed).not.toContain('noOffset');
+    expect(codes(checkProgram(haasOk.replace('G43 H7 Z50.', 'G43 H0 Z50.'), { fanuc: false }))).toEqual(['error:offsetRange@13']);
+    expect(codes(checkProgram(haasOk.replace('G43 H7 Z50.', 'G43 H200 Z50.').replace('T7 M6', 'T200 M6'), { fanuc: false }))).toEqual([]);
+  });
 });

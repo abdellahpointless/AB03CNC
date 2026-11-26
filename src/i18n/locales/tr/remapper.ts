@@ -254,6 +254,7 @@ const remapper: Translation<typeof en> = {
     msg: {
       noOffset: '{{t}} boy ofseti (G43) olmadan kesiyor',
       offsetMismatch: 'G43 {{h}} kullanıyor ama iş milindeki takım {{t}}',
+      offsetRange: 'G43 {{h}} kullanıyor: takım ofsetleri H1 ile H200 arasındadır (H0 takım boyu uygulamaz)',
       spindleOff: '{{t}} iş mili dururken kesiyor (takım değişiminden sonra M3/M4 yok)',
       noFeed: 'İlk kesme hareketinde ilerleme hızı (F) yok',
       noWorkOffset: 'Tezgah, iş parçası sıfırı (G54…) seçilmeden hareket ediyor',

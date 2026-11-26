@@ -574,22 +574,16 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
     }
   }
 
-  // Apply pointeur rule for other machines (FANUC or HAAS-1)
-  const isFanuc = machineId?.includes('FANUC');
-  const pointeurNumber = isFanuc ? 250550 : 4;
-  for (let i = 0; i < blocks.length; i++) {
+  // The shop's spot drill number: T4 on HAAS-1, T250550 on the FANUCs. Only when the machine has that
+  // tool and it is a pointeur (never invented, never its end mill); every other machine, and these
+  // without it, pick their spot drill like any other tool (or the dialog asks).
+  const pointeurNumber = machineId === 'HAAS-1' ? 4 : machineId?.startsWith('FANUC') ? 250550 : null;
+  const shopPointeur = tools.find((x: Tool) => x.number === pointeurNumber && x.category === 'pointeur');
+  for (let i = 0; i < blocks.length && shopPointeur; i++) {
     const block = blocks[i];
-    // HAAS-2, HAAS-4, HAAS-5 have their own pointeur rules and should not force tool #4
-    if (machineId && ['HAAS-2', 'HAAS-4', 'HAAS-5'].includes(machineId)) {
-      continue;
-    }
     const isPointeur = block.parsedCategory === 'pointeur' || /pointeur|ZENTRIERBOHREN|CENTER\s*DRILL/i.test(block.contextStr) || (block.matchedTool && block.matchedTool.category === 'pointeur');
     if (isPointeur) {
-      let targetT = tools.find((x: Tool) => x.number === pointeurNumber);
-      if (!targetT) {
-         targetT = { id: `auto-${pointeurNumber}`, number: pointeurNumber, pocket: isFanuc ? 4 : undefined, category: 'pointeur', diameter: 0, length: 50, description: `Auto-assigned T${pointeurNumber}` };
-      }
-      block.matchedTool = targetT;
+      block.matchedTool = shopPointeur;
       block.matchType = 'exact';
     }
   }

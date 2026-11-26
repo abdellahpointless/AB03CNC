@@ -263,6 +263,7 @@ const remapper = {
     msg: {
       noOffset: '{{t}} cuts with no length offset (G43) active',
       offsetMismatch: 'G43 uses {{h}} but the tool in the spindle is {{t}}',
+      offsetRange: 'G43 uses {{h}}: tool offsets go from H1 to H200 (H0 applies no tool length)',
       spindleOff: '{{t}} cuts with the spindle stopped (no M3/M4 after the tool change)',
       noFeed: 'The first cutting move has no feed rate (F)',
       noWorkOffset: 'The machine moves before a work offset (G54…) is selected',
