@@ -7,7 +7,7 @@ import { ToolExcelImport } from './ToolExcelImport';
 import { useSync } from '../contexts/SyncContext';
 import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon, CenterDrillIcon, FaceMillIcon, TapIcon, EmptyIcon } from './ToolIcons';
 import { useT } from '../i18n';
-import { locale } from '../i18n/format';
+import { locale, searchFold } from '../i18n/format';
 
 interface ToolDatabaseProps {
   selectedMachine?: MachineId;
@@ -69,10 +69,10 @@ export default function ToolDatabase({
     });
   }, [rawTools]);
   const [query, setQuery] = useState('');
-  const q = query.trim().toLowerCase();
+  const q = searchFold(query.trim());
   const shown = q
     ? toolsForMachine.filter((tool) =>
-        [`t${tool.number}`, tool.description ?? '', tool.category, catName(tool.category), tool.diameter ? String(tool.diameter) : ''].some((s) => s.toLowerCase().includes(q)),
+        [`t${tool.number}`, tool.description ?? '', tool.category, catName(tool.category), tool.diameter ? String(tool.diameter) : ''].some((s) => searchFold(s).includes(q)),
       )
     : toolsForMachine;
 

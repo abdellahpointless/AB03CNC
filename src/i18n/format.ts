@@ -10,6 +10,11 @@ export function locale(): string {
   return i18n.language === 'tr' ? 'tr-TR' : 'en-GB';
 }
 
+/** Text for a case-blind search, the same in both languages: KILAVUZ = kılavuz, FİNİŞ = finiş = FINIŞ. */
+export function searchFold(s: string): string {
+  return s.replace(/[İI]/g, 'i').toLowerCase().replace(/ı/g, 'i');
+}
+
 export function fmtDate(ts: number | string | Date | null | undefined): string {
   if (ts === null || ts === undefined || ts === '') return '-';
   const d = new Date(ts);

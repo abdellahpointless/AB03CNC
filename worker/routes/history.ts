@@ -187,8 +187,18 @@ export async function handleCreateHistory(ctx: Ctx): Promise<Response> {
   return json({ ok: true });
 }
 
-function escapeLike(s: string): string {
-  return s.replace(/[\\%_]/g, (c) => '\\' + c);
+/**
+ * "Contains q, any case" as a GLOB pattern. SQLite's LIKE ignores case for ASCII letters only, so
+ * 'çapak' missed 'ÇAPAK'; here every letter is a class of its cases, and I, İ, ı, i are one letter.
+ */
+function anyCaseGlob(q: string): string {
+  const one = (c: string): string => {
+    if (/[iıİI]/.test(c)) return '[iıİI]';
+    const cases = [...new Set([c, c.toLowerCase(), c.toUpperCase()])].filter((v) => [...v].length === 1);
+    if (cases.length > 1) return `[${cases.join('')}]`;
+    return /[*?[]/.test(c) ? `[${c}]` : c;
+  };
+  return `*${[...q].map(one).join('')}*`;
 }
 
 // GET /api/history?limit=&offset=&user=&q=
@@ -208,10 +218,13 @@ export async function handleListHistory(ctx: Ctx): Promise<Response> {
     binds.push(user);
   }
   if (q) {
-    const like = `%${escapeLike(q)}%`;
+    const glob = anyCaseGlob(q);
     const cols = ['original_file_name', 'exported_file_name', 'username', 'machine', 'changes'];
-    where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(' OR ')})`);
-    binds.push(...cols.map(() => like));
+    // D1 refuses a LIKE or GLOB pattern over 50 bytes (about 11 letters here).
+    // shortcut: a longer query uses instr(lower()), which ignores case for ASCII letters only; enough for long file names.
+    const short = new TextEncoder().encode(glob).length <= 50;
+    where.push(`(${cols.map((c) => (short ? `${c} GLOB ?` : `instr(lower(${c}), ?) > 0`)).join(' OR ')})`);
+    binds.push(...cols.map(() => (short ? glob : q.replace(/[A-Z]/g, (c) => c.toLowerCase()))));
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
