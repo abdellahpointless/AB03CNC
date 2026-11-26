@@ -1,4 +1,4 @@
-import { carve, drilledHoles, fillEnclosed, mesher, soonAt, thicknessAt, wallThickness, type Grid, type Mesher, type SimInput } from './stockSim';
+import { carve, drilledHoles, fillEnclosed, mesher, soonAt, thicknessAt, wallThickness, type ChunkMesh, type Grid, type Mesher, type SimInput } from './stockSim';
 import { readTris } from './model';
 import { differences, layModel, placeModel, type Placed } from './modelCompare';
 import type { ModelError } from './modelLimits';
@@ -16,6 +16,9 @@ import { lessonOf } from './lessons';
  * heat is asked for (it takes a second on big parts), then sent with every chunk.
  * step is an instant of the program (move × SUB + share of the move, see stockSim), so the cut
  * follows the tool along a move. Only the chunks that change between two instants are sent again.
+ *   { type: 'prebuild', steps } -> (nothing): the part built ahead at those instants (each operation's start), in the
+ *   background between requests, so a jump to one is answered from it at once (the owner: no waiting); then
+ *   { type: 'prebuilt', built, of, bytes } (fewer built than asked when the memory budget ran out).
  *   { type: 'holes', before } -> { type: 'holes', before, holes }: the round holes plunged before move `before`.
  *   { type: 'model', bytes, input, setups } -> { type: 'model', tris (part frame), overlap } or { type: 'model', error }:
  *   the real part (3D PDF or STL) read and laid on the simulated finished part, with how alike they
@@ -52,6 +55,51 @@ let input: SimInput | null = null;
 let th: Float32Array | null = null;
 let last = -1;
 let lastUntil: number | null = null;
+// Built ahead (prebuild): the part at each instant asked, as the chunks that changed since the instant before (all of
+// them at the first). A chunk at steps[j] is the latest layer up to j that has it. Kept under a memory budget.
+const PRE_BYTES = 150e6;
+let pre: { steps: number[]; layers: Map<number, ChunkMesh>[]; bytes: number; j: number; ids: number[]; k: number } | null = null;
+let preTimer = 0;
+const sizeOf = (c: ChunkMesh) => c.positions.byteLength + c.normals.byteLength + c.cut.byteLength;
+const cachedAt = (id: number, j: number): ChunkMesh | null => {
+  for (let i = j; i >= 0; i--) {
+    const c = pre!.layers[i]?.get(id);
+    if (c) return c;
+  }
+  return null;
+};
+/** A slice of the building ahead (a few chunks), then the worker is free for what is asked. */
+function preSlice() {
+  preTimer = 0;
+  if (!pre || !m) return;
+  if (pre.j >= pre.steps.length || pre.bytes > PRE_BYTES) {
+    self.postMessage({ type: 'prebuilt', built: pre.j, of: pre.steps.length, bytes: pre.bytes });
+    return;
+  }
+  const p = pre;
+  if (p.k === 0 && p.ids.length === 0) p.ids = p.j === 0 ? Array.from({ length: m.chunks }, (_, i) => i) : m.dirty(p.steps[p.j - 1], p.steps[p.j]);
+  const layer = (p.layers[p.j] ??= new Map());
+  const until = performance.now() + 120;
+  while (p.k < p.ids.length && performance.now() < until) {
+    const c = m.build(p.ids[p.k++], p.steps[p.j]);
+    layer.set(c.id, c);
+    p.bytes += sizeOf(c);
+  }
+  if (p.k >= p.ids.length) {
+    p.j++;
+    p.k = 0;
+    p.ids = [];
+  }
+  preTimer = self.setTimeout(preSlice, 0) as unknown as number;
+}
+/** The last instant built ahead that is not after `step` (its layers complete), or -1. */
+const preBefore = (step: number) => {
+  if (!pre) return -1;
+  let j = -1;
+  for (let i = 0; i < pre.j && pre.steps[i] <= step; i++) j = i;
+  return j;
+};
+
 // The outer shape: made again for each instant asked, all of it sent each time.
 let hull: { at: number; m: Mesher } | null = null;
 let lastHull = false;
@@ -61,6 +109,7 @@ self.onmessage = (e: MessageEvent) => {
     | { type: 'init'; input: SimInput }
     | { type: 'mesh'; step: number; heat?: boolean; until?: number | null; hull?: boolean }
     | { type: 'holes'; before: number }
+    | { type: 'prebuild'; steps: number[] }
     | { type: 'model'; bytes: Uint8Array; input: SimInput; setups: Placed[] }
     | { type: 'search'; bytes: Uint8Array; code: string; brand?: string };
   if (msg.type === 'search') {
@@ -77,6 +126,12 @@ self.onmessage = (e: MessageEvent) => {
     );
     return;
   }
+  if (msg.type === 'prebuild' && m) {
+    const steps = [...new Set(msg.steps.filter((x) => Number.isFinite(x) && x >= 0))].sort((a, b) => a - b);
+    pre = { steps, layers: [], bytes: 0, j: 0, ids: [], k: 0 };
+    if (!preTimer) preTimer = self.setTimeout(preSlice, 0) as unknown as number;
+    return;
+  }
   if (msg.type === 'holes' && g) {
     self.postMessage({ type: 'holes', before: msg.before, holes: drilledHoles(input!, g, msg.before) });
     return;
@@ -85,6 +140,7 @@ self.onmessage = (e: MessageEvent) => {
     input = msg.input;
     g = carve(msg.input, (share) => self.postMessage({ type: 'progress', share }));
     m = mesher(g, msg.input);
+    pre = null;
     th = null;
     last = -1;
     self.postMessage({ type: 'ready', size: g.size });
@@ -106,8 +162,13 @@ self.onmessage = (e: MessageEvent) => {
     if (outer && hull?.at !== msg.step) hull = { at: msg.step, m: mesher(fillEnclosed(g!, msg.step), input!) };
     const use = outer ? hull!.m : m;
     const ids = full ? Array.from({ length: m.chunks }, (_, i) => i) : m.dirty(last, msg.step);
+    // Built ahead: a chunk unchanged since the last instant built ahead before this one is taken from there (copied:
+    // what is sent is given away); only the others are built now.
+    const j = outer ? -1 : preBefore(msg.step);
+    const changed = j >= 0 && pre!.steps[j] !== msg.step ? new Set(m.dirty(pre!.steps[j], msg.step)) : null;
     const chunks = ids.map((id) => {
-      const c = use.build(id, msg.step);
+      const kept = j >= 0 && !changed?.has(id) ? cachedAt(id, j) : null;
+      const c = kept ? { id, positions: kept.positions.slice(), normals: kept.normals.slice(), cut: kept.cut.slice() } : use.build(id, msg.step);
       return { ...c, ...(th && !outer ? { thick: thicknessAt(g!, th, c.positions) } : {}), ...(until !== null && !outer ? { soon: soonAt(g!, c.positions, msg.step, until) } : {}) };
     });
     last = msg.step;

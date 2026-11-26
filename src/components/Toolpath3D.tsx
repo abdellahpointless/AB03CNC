@@ -883,6 +883,11 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         if (a.stockFill) a.stockFill.visible = false;
         onSolidRef.current?.({ state: 'meshing', share: 1 });
         ask(a.meshAt);
+        // Built ahead, in the background: the part where a click on a clamping or an operation goes (each tool run's
+        // first move done) and at the end, so those open at once (the owner).
+        const moves = path.moves;
+        const starts = moves.flatMap((mv, i) => (i === 0 || mv.setup !== moves[i - 1].setup || mv.tool !== moves[i - 1].tool ? [instant(i + 1)] : []));
+        worker.postMessage({ type: 'prebuild', steps: [...starts, instant(moves.length)] });
       }
       if (msg.type === 'holes') {
         holeAsks.get(msg.before)?.forEach((f) => f(msg.holes));
