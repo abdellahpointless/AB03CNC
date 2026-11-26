@@ -468,6 +468,18 @@ const cam = {
       hits: 'This tool or its holder hits the jaws or the stop: Download stays locked.',
       camChoice: 'Use CAM AI’s choice',
     },
+    turn: {
+      title: 'How the part lies',
+      ghost: 'Your model as turned, {{side}} up (green), over how it lies as made (grey lines)',
+      press: 'Turn the part {{deg}} about the machine’s {{axis}}',
+      up: '{{side}} up',
+      by: 'turned by you: {{turns}}',
+      none: 'back as it was',
+      pending: 'applies when made again',
+      taken: '{{side}} is already up in an earlier clamping: CAM AI cannot make this one that way and keeps its own',
+      hint: 'Each press turns the part 90° about the machine’s X or Y; the presses add up (two +90 X: 180° about X). Make again plans it lying this way.',
+      own: 'Back to CAM AI’s way',
+    },
     hold: {
       step: 'By the step {{depth}} mm under Z0, on {{cale}} mm parallels',
       typeStep: 'Or type the thickness where the parallels touch the part (mm under Z0)',
@@ -498,6 +510,8 @@ const cam = {
     changes: {
       restored: '{{what}} back',
       step: 'Clamping {{n}}: on the parallels by its step {{mm}} mm under Z0',
+      turned: 'OP{{op}}: turned {{turn}}',
+      turnOwn: 'OP{{op}}: as CAM AI lays it',
       flip: 'Clamping {{n}}: turned over about {{axis}}',
       flipAuto: 'Clamping {{n}}: CAM AI’s way of turning it over',
       quarter: 'Clamping {{n}}: turned {{deg}}° in the vise',

@@ -471,6 +471,18 @@ const cam: Translation<typeof en> = {
       hits: 'Bu takım ya da tutucusu çenelere veya dayamaya çarpıyor: İndirme kilitli kalır.',
       camChoice: 'CAM AI’ın seçimini kullan',
     },
+    turn: {
+      title: 'Parçanın duruşu',
+      ghost: 'Döndürülmüş modeliniz, {{side}} yukarıda (yeşil), yapıldığı hâlinin üstünde (gri çizgiler)',
+      press: 'Parçayı makinenin {{axis}} ekseni etrafında {{deg}} döndür',
+      up: '{{side}} yukarıda',
+      by: 'sizin döndürmeniz: {{turns}}',
+      none: 'eski hâline döndü',
+      pending: 'yeniden yapılınca uygulanır',
+      taken: '{{side}} daha önceki bir bağlamada zaten yukarıda: CAM AI bunu böyle yapamaz, kendi yolunu kullanır',
+      hint: 'Her basış parçayı makinenin X veya Y ekseni etrafında 90° döndürür; basışlar toplanır (iki kez +90 X: X etrafında 180°). Yeniden yap, onu bu duruşta planlar.',
+      own: 'CAM AI’nin yoluna dön',
+    },
     hold: {
       step: 'Z0’ın {{depth}} mm altındaki basamaktan, {{cale}} mm paraleller üstünde',
       typeStep: 'Veya paralellerin parçaya değdiği kalınlığı yazın (Z0’ın altında mm)',
@@ -501,6 +513,8 @@ const cam: Translation<typeof en> = {
     changes: {
       restored: '{{what}} geri',
       step: '{{n}}. bağlama: Z0’ın {{mm}} mm altındaki basamağından paralellere oturtuldu',
+      turned: 'OP{{op}}: {{turn}} döndürüldü',
+      turnOwn: 'OP{{op}}: CAM AI’nin yerleştirdiği gibi',
       flip: '{{n}}. bağlama: {{axis}} ekseninde çevrildi',
       flipAuto: '{{n}}. bağlama: CAM AI’ın çevirme şekli',
       quarter: '{{n}}. bağlama: mengenede {{deg}}° döndürüldü',

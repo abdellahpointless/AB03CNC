@@ -32,7 +32,7 @@ const ROOTS: [RegExp, Access][] = [
   [/\/src\/App\.tsx$/, 'user'],
   [/\/src\/components\/MasterApp\.tsx$/, 'master'],
   [/\/src\/components\/AdminExtractionAnalytics\.tsx$/, 'admin'],
-  [/\/src\/components\/(CamAi|CamPartView)\.tsx$/, 'cam'],
+  [/\/src\/components\/(CamAi|CamPartView|CamTurnGhost)\.tsx$/, 'cam'],
   [/\/src\/(i18n\/camLocales|lib\/cam\/news)\.ts$/, 'cam'],
   [/\/src\/components\/(ToolpathViewer|Toolpath3D)\.tsx$/, 'toolpath'],
 ];
