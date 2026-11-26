@@ -9,7 +9,7 @@ describe('the paths within 0.02 mm of the part', () => {
     // A 40x30x10 plate held as it is, a Ø11 hole in the middle (no Ø11 drill: milled). The model's hole is a
     // 48-sided polygon in the Ø11 circle: measured against the circle it stands for (the facets lie 0.012 inside).
     const plate = plateWithHoles(40, 30, 10, [{ c: [20, 15], d: 11 }]);
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [40, 30, 10], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [40, 30, 15], orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     let worst = -Infinity;
     let near = 0;
@@ -32,7 +32,7 @@ describe('the paths within 0.02 mm of the part', () => {
   it('a flat wall roughed to size: the first ring 0.02 mm into it, no more (so a slot of the tool\'s own Ø still has a path)', () => {
     // 40 x 30 x 10 with a 20 x 12 pocket 6 deep, held as it is: walls at X ±10, Y ±6 (the part's middle is X0 Y0).
     const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 4 : 10))));
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [40, 30, 10], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [40, 30, 15], orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     let worst = -Infinity;
     for (const m of tp.moves) {

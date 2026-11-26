@@ -14,7 +14,8 @@ describe('the first clamping', () => {
   it.each([
     // You: the outline whole in the first clamping, 0.5 mm under the part, gripped as deep as that allows.
     [22, 38, 'stock enough under the part for the outside to go through: gripped 7 of its 8 mm, 1 mm under the outline'],
-    [16, 40, 'only 2 mm under the part: the jaws hold the foot of its wall, the next clamping cuts the outside left there'],
+    // The 0.5 mm method (you): 4 mm under the part, gripped 3 under the outline (shown yellow on the page).
+    [16, 42, 'only 4 mm under the part: gripped 3 mm under the outline cut'],
   ])('stands on its parallels as deep as the outside allows: raw %i high, on %i mm, %s', (rawH, cale) => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, rawH] });
     expect(r.setups[0].cale).toBe(cale);
@@ -38,9 +39,9 @@ describe('the first clamping', () => {
   }, 300_000);
 
   it('grips a part too thin for 5 mm as little as holds (3 mm)', () => {
-    // A 40 x 30 x 4 plate on a 6 mm blank: 5 mm would leave the outside between the clampings' jaws uncut.
+    // A 40 x 30 x 4 plate on an 8.5 mm blank: 4 mm under it, the outline 0.5 under the part, the jaws 3 mm under that.
     const thin = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, () => 4)));
-    const r = camProgram({ ...base, tris: thin, raw: [44, 34, 6] });
+    const r = camProgram({ ...base, tris: thin, raw: [44, 34, 8.5] });
     expect(r.setups[0].grip).toBe(3);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
@@ -67,7 +68,9 @@ describe('a later clamping', () => {
     const r = camProgram({ ...base, tris: plate, raw: [56, 34, 16], second: 'X+' });
     const s = r.setups.find((x) => x.side === 'X+')!;
     expect(s.grip).toBeGreaterThanOrEqual(5);
-    expect(s.physics.ok).toBe(true);
+    // The 0.5 mm method's clamping 1 cuts the outline free: on its edge the part then stands on the stock under it
+    // alone, and the vise check locks it (too tall for that grip). The method turns it over instead.
+    expect(s.physics.issues.map((i) => i.key)).toContain('tall');
   }, 300_000);
 
   it.each([
@@ -120,9 +123,9 @@ describe('a later clamping', () => {
 
 describe('the blank', () => {
   it('stands lower on a thin Z stock, 4 mm under the part, so the outline still goes through in the first clamping', () => {
-    // 5 mm on the thickness: 1 over the part, 4 under it (3 gripped, the outline 0.5 under the part, 0.5 over the jaws).
+    // 5 mm on the thickness: 0.5 over the part, 4.5 under it (3 gripped, the outline 0.5 under the part, 0.5 over the jaws).
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 17] });
-    expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 1MM$/);
+    expect(r.setups[0].notes[0]).toMatch(/\/Z\+ IN 0.5MM$/);
     expect(r.setups[0].grip).toBe(3);
     const lowest = Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
     expect(lowest).toBeCloseTo(-12.5, 3);
@@ -151,5 +154,31 @@ describe('the blank', () => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, 22], centred: true });
     expect(r.blank.hi.map((v) => Math.round(v * 1000) / 1000)).toEqual([22, 17, 11]);
     expect(r.blank.lo.map((v) => Math.round(v * 1000) / 1000)).toEqual([-22, -17, -11]);
+  }, 300_000);
+});
+
+describe('the 0.5 mm method (you): always the outline whole in clamping 1', () => {
+  const lowest = (r: ReturnType<typeof camProgram>) =>
+    Math.min(...r.setups[0].ops.filter((o) => o.name.startsWith('FRAESEN')).flatMap((o) => o.lines.flatMap((l) => (/^G01.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : []))));
+
+  it('refuses a blank with under 4 mm of Z stock for the jaws under the outline: a thicker blank is needed', () => {
+    // 3 mm on the thickness: 0.5 cut under the part and 0.5 over the jaws leave them under 3 mm to grip.
+    expect(() => camProgram({ ...base, tris: plate, raw: [44, 34, 15] })).toThrow(/thinBlank/);
+    // Typed side by side: 3.5 mm under the part, however much over it.
+    expect(() => camProgram({ ...base, tris: plate, margins: { lo: [2, 2, 3.5], hi: [2, 2, 3] } })).toThrow(/thinBlank/);
+  });
+
+  it('holds a blank with 4 mm under the part by 3 mm, the outline still 0.5 mm under the part', () => {
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16] });
+    expect(r.setups[0].grip).toBe(3);
+    expect(lowest(r)).toBeCloseTo(-12.5, 3);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('turns the busiest face up in clamping 1 when nobody chose (the pocket first, the plain face after the turn)', () => {
+    const r = camProgram({ material: 'ALU', tools: [], brand: 'HAAS', noNest: true, tris: plate, raw: [44, 34, 19] });
+    expect(r.setups[0].side).toBe('Z+');
+    expect(r.setups[1].ops.filter((o) => o.kind === 'pocket' || o.kind === 'finish')).toEqual([]);
   }, 300_000);
 });

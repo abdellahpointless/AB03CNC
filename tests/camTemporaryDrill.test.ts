@@ -8,7 +8,7 @@ import { plateWithHoles } from './heightPart';
 // flagged temporary, and the right drill stays listed as missing.
 describe('a hole with neither its drill nor an end mill that fits', () => {
   const tris = plateWithHoles(30, 20, 8, [{ c: [10, 10], d: 3 }, { c: [20, 10], d: 3 }]);
-  const input = { tris, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [3, 2, 3] as [number, number, number], hi: [3, 2, 2] as [number, number, number] } };
+  const input = { tris, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [3, 2, 5] as [number, number, number], hi: [3, 2, 2] as [number, number, number] } };
   const off = LIBRARY.ALU.filter((t) => (t.type === 'SB' && Math.abs(t.d - 3) <= 0.12) || (t.type !== 'SB' && t.d <= 2.8));
   const toolDb: ToolDb = { ALU: Object.fromEntries(off.map((t) => [t.code, { removed: true as const }])) };
 

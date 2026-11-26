@@ -20,7 +20,7 @@ import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
-import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, JAW, JAW_DEPTH } from './clamp';
+import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, GRIP_MIN, JAW, JAW_DEPTH, underStock } from './clamp';
 import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
@@ -1554,9 +1554,21 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   let bestAxis = order[0];
   const at = (r: CamResult & { check: CamCheck }) => ({ minutes: r.check.minutes, clampings: r.setups.length });
   let bestInput = input;
+  // A blank too thin under the part for the 0.5 mm method that way up: that way is not planned (thinBlank); none: refused.
+  let thin: Error | null = null;
   const plans = (inp: CamInput) =>
     order.forEach((axis, i) => {
-      const r = planFor(inp, axis);
+      let r: CamResult;
+      try {
+        r = planFor(inp, axis);
+      } catch (e) {
+        if (!/^thinBlank/.test((e as Error).message)) throw e;
+        thin ??= e as Error;
+        // The live view back where the program made stands (this way was dropped after it began).
+        input.live?.({ kind: 'stage', stage: 'post' });
+        progress(i + 1, order.length);
+        return;
+      }
       input.live?.({ kind: 'stage', stage: 'check' });
       const now = checked(inp, r);
       input.live?.({ kind: 'stage', stage: 'post' });
@@ -1565,6 +1577,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
       if (better) [best, bestAxis, bestInput] = [now, axis, inp];
     });
   plans(input);
+  if (!best && thin) throw thin;
   // None passes with the blank 2 mm over the part (e.g. the outside cut through first leaves the next clamping
   // only a narrow face to hold, where the shop rests the part on a ledge): planned again with it centred.
   if (!good(best!) && !input.margins) plans({ ...input, centred: true });
@@ -1698,12 +1711,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
   input.live?.({ kind: 'stage', stage: 'features' });
   input.live?.({ kind: 'stage', stage: 'stock' });
-  // The simpler face first (fewer floors and holes), the finished front last of the two.
+  // The busiest face first (most floors and holes; you: the 0.5 mm method, after the turn only the face mill).
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
   const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
   // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
   const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
-  const pair = first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : busy(a) <= busy(bSide) ? [a, bSide] : [bSide, a];
+  // A top plate's white face up first whatever else (never faced: all the Z stock is on the other side, under the part
+  // in clamping 1, where the 0.5 mm method's jaws grip it).
+  const whiteUp = [a, bSide].find((si) => SIDES[si].name === input.white);
+  const pair = first >= 0 ? [first, second >= 0 && second !== first ? second : first === a ? bSide : a] : whiteUp !== undefined ? [whiteUp, whiteUp === a ? bSide : a] : busy(a) >= busy(bSide) ? [a, bSide] : [bSide, a];
   // The blank 2 mm over the part on the first clamping's side, as the shop faces it (2-3 mm in 64 of 95 first
   // clampings), the rest under the part, where the jaws grip it and the outside goes through (a centred blank
   // left the jaws only the foot of the part's wall).
@@ -1848,6 +1864,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // first clampings, also where that grips the foot of the part's wall), as long as the outside cuts of both
     // clampings still meet (each 1 mm over its jaws, the next one gripping 3 mm). Else: what is under the part.
     const waste = -H - sb.lo[2];
+    // You (the 0.5 mm method, always): clamping 1 cuts the outline 0.5 mm under the part and its jaws grip under that,
+    // 3 mm at the least: a blank with less under the part is refused (a thicker one is needed).
+    if (!setups.length && !nested && underStock(waste) === 'tooThin') throw new Error(`thinBlank: ${Math.round(waste * 100) / 100} mm under the part, ${GRIP_MIN + 1} needed`);
     // A later clamping: as deep as its own cuts beside the held faces allow, as the shop holds it (jaw tops under
     // every such cut in 159 of 160 later clampings, the deepest such grip in 101): 1 mm under the lowest stock
     // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its chamfers
@@ -1903,7 +1922,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // Clamping 1 clear of the seam where its outline meets the next clamping's cut (clamp.ts: firstPick, clearOf).
     let pick = nested ? { cale: nestCale(nestDepth), grip: nestDepth } : !setups.length && fixed === undefined ? firstPick(stockH, sb.lo[2], H) : caleFor(stockH, fixed ?? want, fixed ?? 3);
     // The designer's parallels (input.clamps): only those the jaws hold the part on (3 mm or more, never all of it, under its top).
-    const cales = allowedCales(stockH, sb.lo[2]);
+    const cales = allowedCales(stockH, sb.lo[2], !setups.length && !nested ? H : undefined);
     // The faces it could rest on the jaw tops by: never in the first clamping (the raw block has none) or the nest.
     const ledges = setups.length && !nested ? ledgesOf(P, left, sb) : [];
     // The designer's choices for this clamping (choiceIndex).

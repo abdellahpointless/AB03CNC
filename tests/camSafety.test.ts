@@ -95,11 +95,12 @@ describe('drilling before the pocket above the hole is milled (shop order)', () 
   }, 300_000);
 });
 
-describe('through holes and the parallels (shop rule: up to 1 mm into one)', () => {
-  // A 60x40x8 plate held as it is (no stock to cut): a Ø3.3 hole in the middle, between the parallels,
-  // and one 3.5 mm from the front edge, over the front parallel (6 mm wide, 0.3 mm in from the edge).
+describe('through holes and the parallels (the 0.5 mm method: stock under the part, never a parallel)', () => {
+  // A 60x40x8 plate, no stock round it but 5 mm under it (0.5 over): a Ø3.3 hole in the middle, between the parallels,
+  // and one 3.5 mm from the front edge, over the front parallel (6 mm wide, 0.3 mm in from the edge). Before the
+  // method it was held as it is and the second went the shop's 1 mm into the parallel; now both go into the stock.
   const plate = plateWithHoles(60, 40, 8, [{ c: [30, 20], d: 3.3 }, { c: [30, 3.5], d: 3.3 }]);
-  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [60, 40, 8], orient: { side: 'Z+', spin: false } });
+  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [60, 40, 13.5], orient: { side: 'Z+', spin: false } });
   /** The Z of each cycle the Ø3.3 drill runs, per clamping (its first section in it). */
   const depths = (clamping: number) => {
     const lines = r.code.split('\n');
@@ -109,13 +110,12 @@ describe('through holes and the parallels (shop rule: up to 1 mm into one)', () 
     return lines.slice(from, to).flatMap((l) => (/G8[13] /.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])).sort((a, b) => a - b);
   };
 
-  it('drills out the one between the parallels; the one over a parallel goes the shop’s 1 mm into it, never again from the other side', () => {
-    const [deep, onCale] = depths(1);
-    // Out at full size: the point 0.3 d + 0.5 under the part.
-    expect(deep).toBeLessThanOrEqual(-8 - (0.3 * 3.3 + 0.5) + 0.01);
-    // You: the shop's full 1 mm into the parallel (0.95, the check's margin): the Ø3.3's point (0.99 mm) leaves
-    // 0.04 mm, nothing to note.
-    expect(onCale).toBeCloseTo(-8.95, 2);
+  it('drills both out in clamping 1, full size 0.5 mm past the part, into the stock under it: neither reaches a parallel, never drilled again', () => {
+    // One cycle for both (the same depth: the second hole's line carries no Z).
+    const cycles = depths(1);
+    expect(cycles.length).toBeGreaterThan(0);
+    // Out at full size: the point 0.3 d + 0.5 under the part, both.
+    for (const z of cycles) expect(z).toBeCloseTo(-8 - (0.3 * 3.3 + 0.5), 2);
     // You: a hole through the part is made in one clamping (from the other side it would not meet it on one axis).
     expect(r.code.split('\n').filter((l) => /TOOLPATH BOHREN_3\.3MM/.test(l))).toHaveLength(1);
     expect(r.short).toBe(0);
@@ -123,14 +123,18 @@ describe('through holes and the parallels (shop rule: up to 1 mm into one)', () 
     expect(r.check).toMatchObject({ cales: 0, collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   });
+
+  it('refuses the plate held as it is, with no stock under it: the outline and holes cannot go 0.5 mm under it', () => {
+    expect(() => camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [60, 40, 8], orient: { side: 'Z+', spin: false } })).toThrow(/thinBlank/);
+  });
 });
 
 describe('no tool deeper than 1 mm into a parallel (shop rule for CAM AI)', () => {
-  it('a narrow plate with a hole milled through over the front parallel: the cut stays within 1 mm of its top', () => {
-    // 40 x 9 x 5.5, a Ø4.5 hole through it near the front edge: the parallels under the front and
-    // back edges, the hole's milling over the front one (46 hits if it went 0.2 below the part).
+  it('a narrow plate with a hole milled through over the front parallel: with the stock under it the cut never reaches the parallel', () => {
+    // 40 x 9 x 5.5, a Ø4.5 hole through it near the front edge, over the front parallel: milled 0.5 mm under the part
+    // into the 5 mm of stock under it (the 0.5 mm method; before, held as it is, it went up to 1 mm into the parallel).
     const holed = plateWithHoles(40, 9, 5.5, [{ c: [20, 2.6], d: 4.5 }]);
-    const r = camProgram({ tris: holed, material: 'POM', tools: [], brand: 'HAAS', raw: [40, 9, 5.5], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: holed, material: 'POM', tools: [], brand: 'HAAS', raw: [40, 9, 11], orient: { side: 'Z+', spin: false } });
     expect(r.check).toMatchObject({ cales: 0, collisions: 0, holders: 0, rapids: 0 });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 900_000);

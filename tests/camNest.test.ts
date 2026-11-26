@@ -60,7 +60,7 @@ describe('CAM AI falls back on the nest only when no way of holding passes', () 
     const { camProgram } = await import('../src/lib/cam/program');
     const { heightPart } = await import('./heightPart');
     const pin = heightPart(Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 60)));
-    const r = camProgram({ tris: pin, material: 'POM', tools: [], brand: 'HAAS', raw: [10, 10, 62], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: pin, material: 'POM', tools: [], brand: 'HAAS', raw: [10, 10, 66], orient: { side: 'Z+', spin: false } });
     const nested = r.setups.filter((s) => s.nest);
     expect(nested.length).toBeGreaterThan(0);
     for (const s of nested) {

@@ -50,7 +50,8 @@ function facedAll(s: CamSetup): boolean {
 
 describe('milling after the face is cut', () => {
   it('cuts nothing above Z0 once the face mill has taken it (shop: strategy.faceFirst), and from the raw top when the operator removed the facing', () => {
-    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16] });
+    // 7 mm on the thickness: 2 over the part (faced), 5 under it (the 0.5 mm method's 4 mm grip).
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     // The operations in the program in the order planned (the facing first in its clamping).
@@ -64,13 +65,13 @@ describe('milling after the face is cut', () => {
       for (const o of s.ops.filter((x) => x.kind === 'pocket' || x.kind === 'finish')) expect(Math.max(...feeds(o.lines).map(([, b]) => b[2])), `${s.side} ${o.name}`).toBeLessThanOrEqual(0.001);
     }
     // The operator removed the facing of the first clamping: its milling starts at the raw top (2 mm above Z0).
-    const kept = camProgram({ ...base, tris: plate, raw: [44, 34, 16], skip: [r.setups[0].ops[0].key!] });
+    const kept = camProgram({ ...base, tris: plate, raw: [44, 34, 19], skip: [r.setups[0].ops[0].key!] });
     expect(kept.setups[0].ops.some((o) => o.kind === 'face')).toBe(false);
     expect(Math.max(...kept.setups[0].ops.filter((o) => o.kind === 'pocket').flatMap((o) => feeds(o.lines).map(([, b]) => b[2])))).toBeGreaterThan(0.5);
   }, 600_000);
 
   it('faces the whole stock with the largest end mill when there is no face mill', () => {
-    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16], exclude: LIBRARY.ALU.filter((t) => t.type === 'MK').map((t) => t.code) });
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 17], exclude: LIBRARY.ALU.filter((t) => t.type === 'MK').map((t) => t.code) });
     const faced = r.setups.filter((s) => s.ops.some((o) => o.kind === 'face'));
     expect(faced.length).toBe(2);
     for (const s of faced) {
@@ -109,7 +110,7 @@ describe('the plane between cuts', () => {
   it('is Z2, 2 mm above the faced top, for every operation after the facing and every drill cycle (the shop’s links and R2)', () => {
     // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate, 2 mm of stock on top.
     const holed = plateWithHoles(40, 30, 8, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 5 }]);
-    const r = camProgram({ ...base, tris: holed, raw: [44, 34, 12] });
+    const r = camProgram({ ...base, tris: holed, raw: [44, 34, 15] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     const s = r.setups[0];
@@ -121,7 +122,7 @@ describe('the plane between cuts', () => {
     for (const o of s.ops.filter((x) => x.kind === 'drill' || x.kind === 'centre')) expect(o.lines[o.lines.findIndex((l) => /G98 G8/.test(l)) - 1]).toBe('G00 Z2.');
     // The facing removed by the operator: the raw top stays, the plane stays 2 mm above it (Z4), and so do
     // the drill cycles' R (never on the raw top: a review finding).
-    const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 12], skip: [s.ops[0].key!] });
+    const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 15], skip: [s.ops[0].key!] });
     expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
     expect(rPlanes(kept.setups[0]).length).toBeGreaterThan(0);
     for (const z of rPlanes(kept.setups[0])) expect(z).toBeGreaterThanOrEqual(3.999);
@@ -294,7 +295,7 @@ describe('blind holes', () => {
   // the full Ø stopped 0.3 x Ø short; the engineers drill to the point CAD draws (Z-28.642 for a wall ending at 27.2).
   const drillZ = (point: boolean) => {
     const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point });
-    const r = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 17] });
     const cycle = r.setups[0].ops.filter((o) => o.kind === 'drill').flatMap((o) => o.lines).find((l) => /G83/.test(l));
     return Number(cycle?.match(/ Z(-?[\d.]+)/)?.[1]);
   };
@@ -308,7 +309,7 @@ describe('blind holes', () => {
   // the drill's tip at its bottom and leave the point (Pb361ad9d: Ø4, 2.5 deep; Pfae5765f: Ø2, 7.5 deep).
   it('leaves the drill\'s point at the flat bottom of a plain blind hole: no mill goes in', () => {
     const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point: false });
-    const r = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 17] });
     expect(r.check.collisions).toBe(0);
     const inHole = r.setups[0].ops
       .filter((o) => o.kind === 'pocket')
@@ -331,9 +332,9 @@ describe('blind holes', () => {
   }, 300_000);
   it('sends no mill into a hole whose drilling the operator removed', () => {
     const tris = plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 5, depth: 8, point: false });
-    const first = camProgram({ ...base, tris, raw: [44, 34, 16] });
+    const first = camProgram({ ...base, tris, raw: [44, 34, 17] });
     const drill = first.setups[0].ops.find((o) => o.kind === 'drill')!;
-    const r = camProgram({ ...base, tris, raw: [44, 34, 16], skip: [drill.key!] });
+    const r = camProgram({ ...base, tris, raw: [44, 34, 17], skip: [drill.key!] });
     expect(r.setups[0].ops.some((o) => o.kind === 'drill')).toBe(false);
     // Every move of a mill (rapid or feed) below the top, in the hole's circle: none.
     const into = r.setups[0].ops
@@ -359,7 +360,7 @@ describe('the roughing mill', () => {
   // The study: CAM AI roughed with the largest mill, the Ø30 (the shop's POM data: 1000 rpm, F500, 8 deep), 10 minutes;
   // the engineers took the Ø20 (4000 rpm, F1200), 1.7 minutes for the whole outline.
   it('is the one that takes the most material a minute, not the largest', () => {
-    const r = camProgram({ ...base, material: 'POM', tris: plate, raw: [44, 34, 16] });
+    const r = camProgram({ ...base, material: 'POM', tris: plate, raw: [44, 34, 17] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     const d = r.setups.flatMap((s) => s.ops).filter((o) => o.name.startsWith('FRAESEN')).map((o) => o.tool.diameter);
     expect(d).not.toContain(30);
@@ -374,7 +375,7 @@ describe('inside corners', () => {
   // The same with a slot 3 wide, 6 long, 4 deep off the pocket's side (y 6 to 12): only a Ø3 or smaller reaches into it.
   const slotted = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : i >= 19 && i < 22 && j >= 21 && j < 27 ? 8 : 12))));
   const mills = (tris: Float32Array) => {
-    const r = camProgram({ ...base, material: 'POM', tris, raw: [44, 34, 16] });
+    const r = camProgram({ ...base, material: 'POM', tris, raw: [44, 34, 17] });
     return { r, d: r.setups.flatMap((s) => s.ops).filter((o) => /^(FRAESEN|SCHLICHT)/.test(o.name)).map((o) => o.tool.diameter) };
   };
   it('sends no smaller mill after the pocket mill only for its corners', () => {
@@ -461,7 +462,7 @@ describe('going down into material', () => {
   });
 
   it('ramps at 15° with the end mills the shop takes in that steeply (ALU Ø2 to 8), at 5° with the high-feed mill and where the shop never does', () => {
-    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16] });
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 17] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     const s = slopes(r);
@@ -473,12 +474,12 @@ describe('going down into material', () => {
     for (const e of steep.filter((x) => Number.isFinite(x.min))) expect(e.min, `SF ${e.d}`).toBeGreaterThanOrEqual(tan(15) - 0.003);
     for (const e of s.filter((x) => x.type !== 'SF' || x.d < 2 || x.d > 8)) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
     // The machine's own roughing mill with no shop template: nothing in the library to go by, 5° (a review finding).
-    const own = camProgram({ ...base, tris: plate, raw: [44, 34, 16], tools: [{ id: 'x', number: 7, category: 'fraise ebauche', description: 'FRAISE EBAUCHE D8', diameter: 8, length: 40 }] });
+    const own = camProgram({ ...base, tris: plate, raw: [44, 34, 17], tools: [{ id: 'x', number: 7, category: 'fraise ebauche', description: 'FRAISE EBAUCHE D8', diameter: 8, length: 40 }] });
     const rougher = slopes(own).filter((e) => e.d === 8);
     expect(rougher.length).toBeGreaterThan(0);
     for (const e of rougher) expect(e.max, `${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
     // Brass: no ramp or plunge into material in the shop's programs to go by: 5° throughout.
-    const ms = camProgram({ ...base, material: 'MS', tris: plate, raw: [44, 34, 16] });
+    const ms = camProgram({ ...base, material: 'MS', tris: plate, raw: [44, 34, 17] });
     expect(slopes(ms).length).toBeGreaterThan(0);
     for (const e of slopes(ms)) expect(e.max, `MS ${e.type} ${e.d}`).toBeLessThanOrEqual(tan(5) + 0.001);
   }, 300_000);
@@ -487,7 +488,7 @@ describe('going down into material', () => {
     // The study (docs/knowledge/cam-part-study.md): the engineers ramp once into closed material and plunge 2 mm into
     // the next level; CAM AI's ramps were 61 % of its lines. Ø3 to 8, as the shop takes them in steeply.
     for (const material of ['POM', 'FH', 'RESOPAL'] as const) {
-      const r = camProgram({ ...base, material, tris: plate, raw: [44, 34, 16] });
+      const r = camProgram({ ...base, material, tris: plate, raw: [44, 34, 17] });
       expect(r.check.match, material).toBeGreaterThanOrEqual(0.99);
       expect(r.check.collisions, material).toBe(0);
       // What a pass goes deeper than the plunge: ramped at the shop's steep 15°.

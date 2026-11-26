@@ -329,22 +329,24 @@ describe('the jaws of a later clamping', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
-  it('keeps a mill running down the jaws\' end, past the held face, 1 mm clear of it (a review found that margin untested)', () => {
-    // As above, the hole 12 x 6 from 2 mm before the jaws' end: 4 mm of it beside the boss, where a mill
-    // goes below the jaw top past the held face, along the jaws' end.
+  it('cuts the opening beside the boss through in clamping 1 (the 0.5 mm method); after the turn nothing below the jaw tops comes within 1 mm of the jaws\' end', () => {
+    // As above, the hole 12 x 6 from 2 mm before the jaws' end, 4 mm of it beside the boss (through the plate): before
+    // the 0.5 mm method clamping 2 cut it, a mill running below its jaw tops along the jaws' end (a review found that
+    // margin untested). Now clamping 1 cuts it through, 0.5 mm under the part (14 high); clamping 2 keeps the margin.
     const tris = longBossPlate(176, (i, j) => i >= 123 && i < 135 && j >= 1 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [180, 38, 18], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [180, 38, 19], noNest: true, orient: { side: 'Z+', spin: false } });
+    const low = Math.min(...r.setups[0].ops.flatMap((o) => o.lines.filter((l) => /^G0?1\b/.test(l)).flatMap((l) => [...l.matchAll(/Z(-?[\d.]+)/g)].map((m) => Number(m[1])))));
+    expect(low).toBeCloseTo(-14.5, 3);
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
     const pastFace = (p: number[]) => p[1] < s.clampBox!.min[1] || p[1] > s.clampBox!.max[1];
-    expect(tp.moves.some((m) => m.setup === 1 && m.kind === 'feed' && m.points.some((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] - dia(m) / 2 < s.jawX[1] + 2))).toBe(true);
-    // Every such cut keeps its edge the 1 mm (less the first ring's 0.02) past the jaws' end, where the G52 puts them.
+    // Every cut below the jaw tops past the held face keeps its edge the 1 mm (less the first ring's 0.02) past the jaws' end.
     const end = s.clampBox!.min[0] + VISE.width;
     const clear = tp.moves
       .filter((m) => m.setup === 1 && m.kind === 'feed')
       .flatMap((m) => m.points.filter((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] > end).map((p) => p[0] - dia(m) / 2 - end));
-    expect(Math.min(...clear)).toBeGreaterThanOrEqual(0.979);
+    expect(Math.min(Infinity, ...clear)).toBeGreaterThanOrEqual(0.979);
     expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
@@ -504,9 +506,10 @@ describe('the blank, side by side (you, Beta 2)', () => {
   }, 300_000);
 
   it('gives the page its own rule for the stock over the top (Auto)', () => {
+    // The 0.5 mm method: the stock under the part first (5 mm, a 4 mm grip), 0.5 to 2 over it.
     expect(blankTop(7)).toBe(2);
-    expect(blankTop(5)).toBe(1);
-    expect(blankTop(3)).toBe(1.5);
+    expect(blankTop(5)).toBe(0.5);
+    expect(blankTop(3)).toBe(0);
   });
 });
 
@@ -516,22 +519,30 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
   const base = { tris: plate, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins };
 
   it('holds clamping 1 on the parallels asked for, exactly, and says which ones CAM AI would have used', () => {
-    const r = camProgram({ ...base, clamps: [36] });
+    const r = camProgram({ ...base, clamps: [42] });
     const s = r.setups[0];
-    expect(s.cale).toBe(36);
-    expect(s.grip).toBe(9);
-    // 3 mm grip at least, the jaw tops 0.5 mm under the part's top (17 mm of the stock under it): 42 to 30 mm.
-    expect(s.cales).toEqual([42, 41, 40, 38, 36, 35, 33, 30]);
+    expect(s.cale).toBe(42);
+    expect(s.grip).toBe(3);
+    // The 0.5 mm method: 3 mm grip at least, the jaw tops 1 mm under the part's bottom (5 mm of the stock under it): 42, 41.
+    expect(s.cales).toEqual([42, 41]);
     // The page's numbers (clamp.ts) are the planner's: 19 mm of stock, its bottom 17 mm under the top, the part 12 tall.
-    expect(allowedCales(19, -17)).toEqual(s.cales);
+    expect(allowedCales(19, -17, 12)).toEqual(s.cales);
     expect(s.own).toBe(firstPick(19, -17, 12).cale);
-    expect(s.own).not.toBe(36);
-    expect(r.code).toContain('36 MM UNTERLAGE');
+    expect(s.own).toBe(41);
+    expect(r.code).toContain('42 MM UNTERLAGE');
     expect(r.check.sized).toBe(true);
     expect(r.notes.filter((n) => n.key.startsWith('clamp'))).toEqual([]);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
+  }, 300_000);
+
+  it('refuses clamping 1 parallels whose jaws would stand where the outline is cut (the 0.5 mm method), and says so', () => {
+    // 36 mm: the jaws 9 mm up, on the part's own wall, where clamping 1 cuts the outline 0.5 mm under the part.
+    const r = camProgram({ ...base, clamps: [36] });
+    expect(r.setups[0].cale).toBe(41);
+    expect(r.notes).toContainEqual({ key: 'clampRefused', setup: 1, cale: 36 });
+    expect(r.check.collisions).toBe(0);
   }, 300_000);
 
   it('holds a later clamping on the parallels asked for, from those the program made offers there', () => {
@@ -549,9 +560,9 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
-  it('finds a part that comes out bigger than the model, as the toolpath viewer does (the jaws on 10 of its 12 mm)', () => {
-    const r = camProgram({ ...base, clamps: [30] });
-    expect(r.setups[0].cale).toBe(30);
+  it('finds a part that comes out bigger than the model, as the toolpath viewer does (2 mm left on its walls)', () => {
+    // The 0.5 mm method keeps clamping 1's jaws off the part's walls: the walls left 2 mm out (side stock) instead.
+    const r = camProgram({ ...base, sideStock: 2 });
     expect(r.check.sized).toBe(false);
     // The viewer's own test: each axis within 1.5 mm (or 5 %) of the model's, turned any way.
     const box = { lo: [0, 0, 0] as [number, number, number], hi: [40, 30, 12] as [number, number, number] };
@@ -609,7 +620,8 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
       Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, () => (body(j) ? 0 : 20))),
       Array.from({ length: 30 }, () => Array.from({ length: 40 }, () => 28)),
     );
-    const at = { tris: tee, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z-', spin: false }, margins: { lo: [2, 2, 2] as [number, number, number], hi: [2, 2, 2] as [number, number, number] } };
+    // 5 mm under the part in clamping 1 (its Z+ side, the Z- face up): the 0.5 mm method's outline and a 4 mm grip.
+    const at = { tris: tee, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z-', spin: false }, margins: { lo: [2, 2, 2] as [number, number, number], hi: [2, 2, 5] as [number, number, number] } };
     const own = camProgram(at);
     // The flange's underside, 8 mm under clamping 2's top, is offered there.
     expect(own.setups[1].ledges).toContain(8);
@@ -636,12 +648,13 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(odd.notes).toContainEqual({ key: 'jawRefused', setup: 2, cale: 12 });
   }, 900_000);
 
-  it('holds a tall part on the table, no parallels, the note says so and no tool comes within 0.5 mm of the table (you)', () => {
-    // 40 x 24 x 50 with a 6 x 6 hole through it, no stock under it: the hole is cut down to the table but never into it.
+  it('holds a tall part on the table after the turn, no parallels, the note says so and no tool comes within 0.5 mm of the table (you)', () => {
+    // 40 x 24 x 50 with a 6 x 6 hole through it. Clamping 1 cuts the outline and the hole 0.5 mm under the part (the
+    // 0.5 mm method, 5 mm under it), so the table holds it after the turn: the jaws grip 45 mm of the part itself.
     const tall = heightPart(Array.from({ length: 24 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 17 && i < 23 && j >= 9 && j < 15 ? 0 : 50))));
-    const at = { tris: tall, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [2, 2, 0] as [number, number, number], hi: [2, 2, 2] as [number, number, number] } };
-    const r = camProgram({ ...at, clamps: [0] });
-    const s = r.setups[0];
+    const at = { tris: tall, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [2, 2, 5] as [number, number, number], hi: [2, 2, 2] as [number, number, number] } };
+    const r = camProgram({ ...at, clamps: [null, 0] });
+    const s = r.setups[1];
     expect(s.cales).toContain(0);
     expect(s.cale).toBe(0);
     expect(s.grip).toBe(45);
@@ -652,8 +665,8 @@ describe('the designer\'s parallels (you, Beta 2)', () => {
     expect(Math.min(...zs)).toBeGreaterThanOrEqual(-49.5 - 1e-6);
     expect(r.notes.filter((n) => n.key.startsWith('clamp') || n.key === 'floorHit')).toEqual([]);
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
-    expect(an.setups[0].rejects).toEqual([]);
-    expect(an.setups[0].cales ?? []).toEqual([]);
+    expect(an.setups[1].rejects).toEqual([]);
+    expect(an.setups[1].cales ?? []).toEqual([]);
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
     expect(r.check.sized).toBe(true);

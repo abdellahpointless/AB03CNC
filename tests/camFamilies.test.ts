@@ -11,7 +11,7 @@ describe('part families', () => {
     const plate = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (i >= 20 && i < 40 && j >= 15 && j < 25 ? 4 : L(i, j) ? 9.8 : 10))));
     // The operator picks the pocket's walls to finish.
     const pocket = wallsOf(plate, (x, y) => x > 19 && x < 41 && y > 14 && y < 26);
-    const r = camProgram({ tris: plate, material: 'POM', tools: [], brand: 'HAAS', raw: [64, 44, 14], orient: { side: 'Z+', spin: false }, partType: 'topPlate', finish: pocket });
+    const r = camProgram({ tris: plate, material: 'POM', tools: [], brand: 'HAAS', raw: [64, 44, 17], orient: { side: 'Z+', spin: false }, partType: 'topPlate', finish: pocket });
     const top = r.setups[0];
     expect(top.ops.map((o) => o.purpose)).toEqual(expect.arrayContaining(['face', 'rough', 'contour', 'engrave']));
     // Finishing after all the roughing.
@@ -32,7 +32,7 @@ describe('part families', () => {
   it('a top plate: only the walls the operator picked are finished; none picked, none finished', () => {
     // 60 x 40 x 10, two 15 x 20 pockets 6 deep: A on the left (x 10-25), B on the right (x 35-50). A's walls picked.
     const two = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 60 }, (_, i) => (j >= 10 && j < 30 && ((i >= 10 && i < 25) || (i >= 35 && i < 50)) ? 4 : 10))));
-    const input = { tris: two, material: 'POM', tools: [], brand: 'HAAS', raw: [64, 44, 14] as [number, number, number], orient: { side: 'Z+', spin: false }, partType: 'topPlate' as const, noNest: true };
+    const input = { tris: two, material: 'POM', tools: [], brand: 'HAAS', raw: [64, 44, 17] as [number, number, number], orient: { side: 'Z+', spin: false }, partType: 'topPlate' as const, noNest: true };
     const a = camProgram({ ...input, finish: wallsOf(two, (x, y) => x > 9 && x < 26 && y > 9 && y < 31) });
     const fin = a.setups[0].ops.filter((o) => o.kind === 'finish');
     expect(fin.length).toBeGreaterThan(0);
@@ -81,7 +81,7 @@ describe('part families', () => {
   it('a pin plate: the Ø1, Ø2, Ø3 holes drilled 0.98, 1.97, 2.96; a sub plate keeps the plain drills', () => {
     const plate = plateWithHoles(40, 20, 8, [{ c: [8, 10], d: 1 }, { c: [20, 10], d: 2 }, { c: [32, 10], d: 3 }]);
     const drills = (partType: 'pinPlate' | 'subPlate') =>
-      ops(camProgram({ tris: plate, material: 'POM', tools: [], brand: 'HAAS', raw: [44, 24, 10], orient: { side: 'Z+', spin: false }, partType }))
+      ops(camProgram({ tris: plate, material: 'POM', tools: [], brand: 'HAAS', raw: [44, 24, 13], orient: { side: 'Z+', spin: false }, partType }))
         .filter((o) => o.kind === 'drill')
         .map((o) => [o.tool.diameter, o.purpose]);
     expect(drills('pinPlate')).toEqual(expect.arrayContaining([[0.98, 'pinHoles'], [1.97, 'pinHoles'], [2.96, 'pinHoles']]));
