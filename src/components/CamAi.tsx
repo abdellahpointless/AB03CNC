@@ -1069,7 +1069,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
                       <span className="block text-xs text-[var(--text-secondary)] tabular-nums truncate">
                         Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}
-                        {!o.inMachine && <span className="text-[#facc15]" title={t('camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
+                        {!o.inMachine && <span className="text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
                       </span>
                     </span>
                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}

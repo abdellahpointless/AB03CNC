@@ -1005,7 +1005,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
         const shape = new THREE.BoxGeometry(size[0], size[1], size[2]);
         const color = (diffColorsRef.current ?? PIECE_COLORS)[pc.kind];
         const box = new THREE.LineSegments(new THREE.EdgesGeometry(shape), new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
-        // Filled too where they are shown in every view (CAM AI); the viewer keeps its outlines only.
+        // Filled too where they are shown in every view (diffs); the viewer keeps its outlines only.
         const fill = diffsRef.current ? new THREE.Mesh(shape, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthTest: false, depthWrite: false })) : null;
         if (!fill) shape.dispose();
         for (const m of fill ? [box, fill] : [box]) {
