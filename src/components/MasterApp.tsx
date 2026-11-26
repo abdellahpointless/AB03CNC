@@ -279,7 +279,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
         <span className={status === 'active' ? 'badge-positive' : status === 'notSetUp' ? 'badge-warning' : 'badge-neutral'}>{t(`status.${status}`)}</span>
       </div>
 
-      {!country.available && <p className="text-xs text-[var(--text-secondary)]">{country.error ?? t('card.notConnectedText')}</p>}
+      {!country.available && <p className="text-xs text-[var(--text-secondary)]">{country.error ? t('card.readError') : t('card.notConnectedText')}</p>}
       {country.available && !active && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-xs text-[var(--text-secondary)]">{t('card.notSetUpText')}</p>

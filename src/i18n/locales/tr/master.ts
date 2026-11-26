@@ -37,6 +37,7 @@ const master: Translation<typeof en> = {
     noActivity: 'Henüz program yok',
     notSetUpText: 'Bu ülkede henüz hesap yok. Başlamak için ilk yöneticiyi oluşturun.',
     notConnectedText: 'Bu ülkeye henüz bir veritabanı bağlanmadı.',
+    readError: 'Bu ülkenin verileri şu anda okunamıyor.',
     createFirstAdmin: 'İlk yöneticiyi oluştur',
     programs30: 'Programlar, son 30 gün',
     gcodeOnly: 'Yalnızca G-kod düzenleyici',

@@ -39,6 +39,8 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
       credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
+        // The master hub answers in the language its dashboard shows (a country always uses its own).
+        'X-CNC-Lang': i18n.language === 'tr' ? 'tr' : 'en',
         ...(method !== 'GET' ? { 'X-CNC-Client': '1' } : {}),
         ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },

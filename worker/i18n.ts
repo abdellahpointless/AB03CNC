@@ -1,4 +1,4 @@
-import type { Language } from '../src/regions';
+import { regionById, type Language, type RegionId } from '../src/regions';
 
 /*
  * Server messages are written in English. For a country whose language is not English, the
@@ -11,6 +11,15 @@ type Pattern = [RegExp, (...groups: string[]) => string];
 
 const TR_EXACT: Record<string, string> = {};
 const TR_PATTERNS: Pattern[] = [];
+
+/**
+ * The language of a response's messages: the country's own. The master dashboard can be read in
+ * either language, so the app says which one it shows (X-CNC-Lang); it only picks the words.
+ */
+export function messageLanguage(instance: RegionId | 'master', request: Request): Language | undefined {
+  if (instance === 'master') return request.headers.get('X-CNC-Lang') === 'tr' ? 'tr' : 'en';
+  return regionById(instance)?.language;
+}
 
 export function translateMessage(message: string, language: Language | undefined): string {
   if (!language || language === 'en' || !message) return message;

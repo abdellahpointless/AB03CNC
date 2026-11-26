@@ -15,7 +15,7 @@ import {
   handleSetup,
 } from './auth';
 import { audit } from './security';
-import { translateMessage } from './i18n';
+import { messageLanguage, translateMessage } from './i18n';
 import './i18n-tr';
 import { readFeatures } from './features';
 import { handlePrivateAsset, isPrivateAssetPath } from './assets';
@@ -372,7 +372,7 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
 }
 
 async function respond(request: Request, env: Env, url: URL, instance: RegionId | 'master', rest: string, exec?: ExecutionContext): Promise<Response> {
-  const language = instance === 'master' ? 'en' : regionById(instance)?.language;
+  const language = messageLanguage(instance, request);
   try {
     return await handleApi(request, env, url, instance, rest, exec);
   } catch (err) {

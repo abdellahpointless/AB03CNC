@@ -15,6 +15,8 @@ const FIELD: Record<string, string> = {
   'Current password': 'Mevcut şifre',
   Challenge: 'Doğrulama oturumu',
   Code: 'Kod',
+  // master hub (Telegram invitations)
+  Name: 'Ad',
   // history
   id: 'Kayıt kimliği',
   machine: 'Tezgah',
@@ -111,7 +113,7 @@ registerTurkish(
     'At least one admin account must remain': 'En az bir yönetici hesabı kalmalıdır.',
     'You cannot delete your own account': 'Kendi hesabınızı silemezsiniz.',
 
-    // ---- routes/master.ts (mostly master hub, which answers in English; kept for completeness) ----
+    // ---- routes/master.ts (master hub: in Turkish when its dashboard is in Turkish) ----
     'This country is not connected yet.': 'Bu ülke henüz bağlanmadı.',
     'Unknown country': 'Bilinmeyen ülke.',
     'This username is already used by a master account.':
@@ -119,6 +121,20 @@ registerTurkish(
     'A master account already exists. Ask a master admin to add more.':
       'Zaten bir ana yönetici hesabı var. Yeni hesap eklemek için bir ana yöneticiye başvurun.',
     'This country could not be read right now.': 'Bu ülkenin verileri şu anda okunamıyor.',
+    'At least one master account must remain': 'En az bir ana yönetici hesabı kalmalıdır.',
+    'Invalid value': 'Geçersiz değer.',
+
+    // ---- routes/alerts.ts, alerts.ts (Telegram alerts, master dashboard) ----
+    'Telegram is not set up yet': 'Telegram henüz kurulmadı.',
+    'Telegram is not set up': 'Telegram kurulmadı.',
+    'Telegram could not be reached. Check the bot token.': "Telegram'a ulaşılamadı. Bot anahtarını (token) kontrol edin.",
+    'Telegram could not be reached': "Telegram'a ulaşılamadı.",
+    'Invalid person': 'Geçersiz kişi.',
+    'This link belongs to another account': 'Bu bağlantı başka bir hesaba ait.',
+    'This link has expired. Create a new one.': 'Bu bağlantının süresi doldu. Yeni bir bağlantı oluşturun.',
+    'Telegram is not linked': 'Telegram bağlı değil.',
+    'Invalid Telegram username': 'Geçersiz Telegram kullanıcı adı.',
+    'Add your Telegram username first': 'Önce Telegram kullanıcı adınızı ekleyin.',
 
     // ---- routes/admin.ts (backup restore / import) ----
     'users must be an array (max 3 per request)': 'Kullanıcılar bir liste olarak gönderilmelidir (istek başına en fazla 3).',

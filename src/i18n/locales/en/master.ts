@@ -34,6 +34,7 @@ const master = {
     noActivity: 'No program yet',
     notSetUpText: 'This country has no account yet. Create its first admin to start.',
     notConnectedText: 'This country has no database connected yet.',
+    readError: 'This country could not be read right now.',
     createFirstAdmin: 'Create the first admin',
     programs30: 'Programs, last 30 days',
     gcodeOnly: 'G-code remapper only',
