@@ -1875,14 +1875,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // The faces it could rest on the jaw tops by: never in the first clamping (the raw block has none) or the nest.
     const ledges = setups.length && !nested ? ledgesOf(P, left, sb) : [];
     // The designer's choices for clamping 3 and on go with the side they were made for: an asked side with nothing to
-    // cut gets no clamping, and its choices never slide onto the next one (a review found that); CAM AI's own sides
-    // after the asked ones keep their numbers as asked.
+    // cut gets no clamping, and its choices never slide onto the next one (a review found that). With sides named
+    // (the page names every clamping that carries a choice), a side no one named takes no choice (-1).
     const choiceAt = ((): number => {
       const sidesAsked = input.sides ?? [];
       if (setups.length < 2 || !sidesAsked.length) return setups.length;
       const k = sidesAsked.indexOf(side.name);
-      if (k >= 0) return k + 2;
-      return 2 + sidesAsked.length + setups.slice(2).filter((x) => !sidesAsked.includes(x.side)).length;
+      return k >= 0 ? k + 2 : -1;
     })();
     const jawAsked = input.jawRests?.[choiceAt] ?? undefined;
     const onJaw = rest ?? (jawAsked !== undefined ? ledges.find((d) => Math.abs(d - jawAsked) < 0.05) : undefined);

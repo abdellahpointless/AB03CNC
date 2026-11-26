@@ -31,6 +31,10 @@ describe('the sides of later clampings, as the designer picks them', () => {
     const r = camProgram({ ...input, sides: ['X-'], spacersYp: [null, null, 15] });
     expect(sides(r)).toEqual(['Y+', 'Y-', 'X+']);
     expect(yp(r)).toEqual([false, false, false]);
+    // With sides named, a clamping no named side got takes no one's choice: clamping 4's (named X+) goes with X+,
+    // the X+ CAM AI makes on its own when 4 is not named gets none.
+    expect(yp(camProgram({ ...input, sides: ['X-', 'X+'], spacersYp: [null, null, null, 15] }))).toEqual([false, false, true]);
+    expect(yp(camProgram({ ...input, sides: ['X-'], spacersYp: [null, null, null, 15] }))).toEqual([false, false, false]);
   }, 900_000);
 
   it('makes no clamping for a side with nothing to cut, and leaves out one already used or unknown; CAM AI covers the rest', () => {

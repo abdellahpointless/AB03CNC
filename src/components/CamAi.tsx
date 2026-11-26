@@ -322,12 +322,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       margins,
       stops: stop1 || Object.values(laterX).some((x) => x.stop) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => (k === 0 ? stop1 || null : (laterX[k]?.stop ?? null))) : undefined,
       spacersY: Object.values(laterX).some((x) => x.y !== undefined) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.y ?? null) : undefined,
-      // The sides asked for clamping 3 and on (item 8), up to the last one asked; those before it as made.
+      // The sides asked for clamping 3 and on (item 8); every clamping that carries a choice named by its side (as
+      // made, when not asked), so its choices go with that side (program.ts: choiceAt).
       sides: (() => {
         const asked = Object.entries(laterX).filter(([k, x]) => Number(k) >= 2 && x.side).map(([k]) => Number(k));
         if (!asked.length) return undefined;
+        const carried = [...Object.keys(laterX), ...Object.keys(later)].map(Number).filter((k) => k >= 2);
         const made = run.state === 'done' ? run.result.setups : [];
-        return Array.from({ length: Math.max(...asked) - 1 }, (_, j) => laterX[j + 2]?.side ?? made[j + 2]?.side ?? '').filter(Boolean);
+        return Array.from({ length: Math.max(...asked, ...carried) - 1 }, (_, j) => laterX[j + 2]?.side ?? made[j + 2]?.side ?? '').filter(Boolean);
       })(),
       spacersYp: Object.values(laterX).some((x) => x.yp) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.yp ?? null) : undefined,
       clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : (later[k] && 'cale' in later[k] ? later[k].cale : null))) : undefined,
