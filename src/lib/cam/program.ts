@@ -2229,7 +2229,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         return g.r > h.r + 0.05 && !g.through && g.top - opp.max[2] > -0.1 && Math.abs(h.bottom + H - (g.top - g.bottom)) < 0.1 && [0, 1, 2].every((k) => k === axis || Math.abs(p[k] - q[k]) < 0.05);
       });
     };
-    for (const h of holes) {
+    for (const hole of holes) {
+      let h = hole;
       const k = keyOf(h);
       if (drilled.get(k) === undefined && counterbored(h)) {
         keepHoles.push(h);
@@ -2246,6 +2247,22 @@ function planFor(input: CamInput, vertical: number): CamResult {
         !seat &&
         inside(under, h.c) === 0 &&
         [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [h.c[0] + 0.75 * h.r * dx, h.c[1] + 0.75 * h.r * dy]) !== 0);
+      // You: no end mill after a drill where the drill could have made the hole. A blind hole whose whole disc is open in
+      // the model on down through the part's bottom (where it runs into an opening on its axis the reader split off) is
+      // drilled through as one hole, the through hole's limits over a parallel and the vise floor kept.
+      const openBelow =
+        !h.through &&
+        !seat &&
+        !pointed &&
+        h.bottom > -H + 0.3 &&
+        (() => {
+          for (let z = h.bottom - 0.25; z > -H + 0.05; z -= 0.5) {
+            const s = slice(P, z);
+            if ([[0, 0], [0.9, 0], [0, 0.9], [-0.9, 0], [0, -0.9]].some(([dx, dy]) => inside(s, [h.c[0] + dx * h.r, h.c[1] + dy * h.r]) !== 0)) return false;
+          }
+          return true;
+        })();
+      if (openBelow) h = { ...h, bottom: -H, through: true };
       const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
       const lip = drilled.get(k);
       // Drilled already. You: a hole through the part is made in one clamping. The far end one left narrow over a
