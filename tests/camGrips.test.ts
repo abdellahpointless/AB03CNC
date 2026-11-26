@@ -104,20 +104,37 @@ describe('a later clamping', () => {
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
 
-  it('stays on the faces it holds at 3 mm: a boss is gripped no deeper than the boss, its size written', () => {
-    // A 30 x 30 x 6 flange with a 16 x 16 boss 10 high: turned over, the jaws hold the boss, 1 mm short of the flange.
-    const flanged = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= 7 && i < 23 && j >= 7 && j < 23 ? 16 : 6))));
-    const r = camProgram({ ...base, tris: flanged, raw: [34, 34, 20.5] });
+  // A 30 x 30 x 6 flange with a b x b boss 10 high, turned over: the boss under the flange.
+  const flangedBy = (b: number) => {
+    const [lo, hi] = [(30 - b) / 2, (30 + b) / 2];
+    return heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= lo && i < hi && j >= lo && j < hi ? 16 : 6))));
+  };
+  it('stays on the faces it holds at 3 mm: a boss too wide for parallels beside it is gripped no deeper than the boss, its size written', () => {
+    // A 26 mm boss: no room under the flange for a parallel beside it, so the jaws hold the boss, 1 mm short of the flange.
+    const r = camProgram({ ...base, tris: flangedBy(26), raw: [34, 34, 20.5] });
     const s = r.setups[1];
     expect(s.side).toBe('Z-');
+    expect(s.notes.join(' ')).not.toMatch(/IN EP/);
     expect(s.grip).toBeGreaterThan(3);
     expect(s.grip).toBeLessThanOrEqual(9);
-    expect(s.held[2] - s.held[0]).toBeCloseTo(16, 1);
-    expect(s.held[3] - s.held[1]).toBeCloseTo(16, 1);
+    expect(s.held[2] - s.held[0]).toBeCloseTo(26, 1);
+    expect(s.held[3] - s.held[1]).toBeCloseTo(26, 1);
     expect(s.physics.issues.map((i) => i.key)).not.toContain('jawContact');
     expect(s.physics.issues.map((i) => i.key)).not.toContain('restContact');
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
+  it('rests the flange on the parallels by its step when the boss is narrow, never the boss in the jaws (you, a picture)', () => {
+    // A 16 mm boss: the flange on 41 mm parallels 6 mm under Z0, the boss hanging between them, the jaws on the flange.
+    const r = camProgram({ ...base, tris: flangedBy(16), raw: [34, 34, 20.5] });
+    const s = r.setups[1];
+    expect(s.side).toBe('Z-');
+    expect(s.notes).toContain('41 MM UNTERLAGE IN EP 6 MM');
+    expect(s.held[2] - s.held[0]).toBeCloseTo(30, 0);
+    expect(s.held[3] - s.held[1]).toBeCloseTo(30, 0);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check).toMatchObject({ collisions: 0, cales: 0 });
   }, 300_000);
 });
 

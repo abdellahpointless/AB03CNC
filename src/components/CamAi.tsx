@@ -191,7 +191,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const holdLabel = (n: number, wasHold: Hold | undefined, wasX: LaterX, hold: Hold | null, x: LaterX): string => {
     if (hold === null && !Object.keys(x).length) return t('camAi.changes.own', { n });
     if (hold && JSON.stringify(hold) !== JSON.stringify(wasHold ?? null))
-      return 'jaw' in hold ? t('camAi.changes.jaw', { n, mm: fmt(hold.jaw, 1) }) : hold.cale === 0 ? t('camAi.changes.table', { n }) : t('camAi.changes.parallels', { n, mm: fmt(hold.cale, 0) });
+      return 'jaw' in hold ? t('camAi.changes.jaw', { n, mm: fmt(hold.jaw, 1) }) : 'step' in hold ? t('camAi.changes.step', { n, mm: fmt(hold.step, 1) }) : hold.cale === 0 ? t('camAi.changes.table', { n }) : t('camAi.changes.parallels', { n, mm: fmt(hold.cale, 0) });
     if (x.side !== wasX.side) return x.side ? t('camAi.changes.side', { n, side: x.side }) : t('camAi.changes.own', { n });
     if (x.stop !== wasX.stop) return x.stop ? t('camAi.changes.stop', { n, mm: x.stop }) : t('camAi.changes.stopNone', { n });
     if (x.y !== wasX.y) return x.y === undefined ? t('camAi.changes.yAuto', { n }) : x.y ? t('camAi.changes.y', { n, mm: x.y }) : t('camAi.changes.yNone', { n });
@@ -394,6 +394,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       spacersYp: Y_PLUS && Object.values(laterX).some((x) => x.yp) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.yp ?? null) : undefined,
       clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : (later[k] && 'cale' in later[k] ? later[k].cale : null))) : undefined,
       jawRests: Object.values(later).some((h) => 'jaw' in h) ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (later[k] && 'jaw' in later[k] ? later[k].jaw : null)) : undefined,
+      // The thickness where the parallels touch the part, typed or picked (you; "UNTERLAGE IN EP").
+      steps: Object.values(later).some((h) => 'step' in h) ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (later[k] && 'step' in later[k] ? later[k].step : null)) : undefined,
       partType,
       orient: { side: chosen.side, spin: chosen.spin },
       sideStock: sideStock || undefined,
@@ -1350,7 +1352,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     spacers={laterX[sel.i] ?? {}}
                     madeTurn={madeTurns[sel.i] ?? {}}
                     emptySide={!!laterX[sel.i]?.side && result.notes.some((x) => x.key === 'sideEmpty' && x.side === laterX[sel.i]?.side)}
-                    refusals={result.notes.filter((x) => x.setup === sel.i + 1 && (x.key === 'clampRefused' || x.key === 'jawRefused' || x.key === 'stopRefused' || x.key === 'spacerRefused' || x.key === 'clampNest'))}
+                    refusals={result.notes.filter((x) => x.setup === sel.i + 1 && (x.key === 'clampRefused' || x.key === 'jawRefused' || x.key === 'stepRefused' || x.key === 'stopRefused' || x.key === 'spacerRefused' || x.key === 'clampNest'))}
                     onAsk={(v, x) => {
                       const i = sel.i;
                       holdChanged(holdLabel(i + 1, later[i], laterX[i] ?? {}, v, x));
@@ -2075,8 +2077,9 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
 /** A later clamping's spacers and side up, as the designer chose them. */
 type LaterX = { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string; flip?: 'X' | 'Y'; quarter?: 1 | 2 | 3 };
 /** A later clamping's hold: parallels of that height (0: the table), or resting on the jaw tops by a face that deep. */
-type Hold = { cale: number } | { jaw: number };
-const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
+/** On parallels by its bottom, on the jaw tops by a face, or on parallels by a step (you: the thickness where they touch). */
+type Hold = { cale: number } | { jaw: number } | { step: number };
+const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : 'jaw' in h ? `j${h.jaw}` : `s${h.step}`);
 
 /**
  * A later clamping's hold, on the program made (what it holds is what the clampings before left): its parallels, the
@@ -2086,8 +2089,10 @@ const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
 function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, refusals, onAsk, openAt }: { n: number; /** Opened from its OP's settings button. */ openAt?: boolean; /** The turn the program shown was made with. */ madeTurn: Pick<LaterX, 'flip' | 'quarter'>; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: LaterX; onAsk: (v: Hold | null, x: LaterX) => void }) {
   const { t } = useTranslation('cam');
   const [open, setOpen] = useState(!!openAt || asked !== undefined || Object.keys(spacers).length > 0);
-  const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
-  const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : { cale: made.cale };
+  const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale })), ...made.steps.map((s) => ({ hold: { step: s.depth } as Hold, level: s.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
+  const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : made.step !== undefined ? { step: made.step } : { cale: made.cale };
+  // The thickness where the parallels touch, typed (you: as the engineers write it).
+  const [thick, setThick] = useState(asked && 'step' in asked ? String(asked.step) : '');
   const now = asked ?? mine;
   // A choice the program made does not have yet (made again, it shows as made; a side with nothing to cut is said apart).
   const spacerOf = (at: string) => Number(made.notes.join(' ').match(new RegExp(`(\\d+) MM ZWISCHENLAGE IN ${at.replace('+', '\\+')}`))?.[1] ?? 0);
@@ -2104,7 +2109,7 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
   const sideNow = spacers.side ?? made.side;
   const opposite = !!before && before[0] === sideNow[0] && before !== sideNow;
   const all = steps.some((h) => holdKey(h) === holdKey(now)) ? steps : [now, ...steps];
-  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
+  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(made.steps.find((x) => x.depth === h.step)?.cale ?? made.cale, 0) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
   const pickHold = (key: string) => {
     const h = all.find((x) => holdKey(x) === key)!;
     onAsk(holdKey(h) === holdKey(mine) && made.own === undefined ? null : h, spacers);
@@ -2114,7 +2119,7 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
     <section aria-labelledby={`clamp${n}-title`} className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
       <h3 id={`clamp${n}-title`} className="section-label">{t('camAi.clamp1.title')}</h3>
       <p className="text-[var(--text-primary)]">
-        {made.onJaw !== undefined ? t('camAi.clamp1.onJaw', { depth: fmt(made.onJaw, 1), grip: fmt(made.grip, 0) }) : made.cale === 0 ? t('camAi.clamp1.onTable') : t('camAi.clamp1.on', { cale: fmt(made.cale, 0), grip: fmt(made.grip, 0) })}
+        {made.onJaw !== undefined ? t('camAi.clamp1.onJaw', { depth: fmt(made.onJaw, 1), grip: fmt(made.grip, 0) }) : made.step !== undefined ? t('camAi.clamp1.onStep', { cale: fmt(made.cale, 0), depth: fmt(made.step, 1), grip: fmt(made.grip, 0) }) : made.cale === 0 ? t('camAi.clamp1.onTable') : t('camAi.clamp1.on', { cale: fmt(made.cale, 0), grip: fmt(made.grip, 0) })}
       </p>
       {made.own !== undefined && <p className="text-[var(--text-secondary)]">{t('camAi.clamp1.own', { cale: fmt(made.own, 0) })}</p>}
       <AdjustToggle open={open} onToggle={() => setOpen((o) => !o)} />

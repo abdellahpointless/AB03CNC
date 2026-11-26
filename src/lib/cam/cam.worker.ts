@@ -87,6 +87,9 @@ export interface CamSummary {
     onJaw?: number;
     /** The faces it could rest on the jaw tops by here, and how high each holds it (as the parallels' height would). */
     jaws: { depth: number; cale: number }[];
+    /** Resting on the parallels by a step this deep under Z0 ("UNTERLAGE IN EP"), and the steps it could rest by here. */
+    step?: number;
+    steps: { depth: number; cale: number }[];
     /** learned: cutting data from the shop's templates or programs (false: a careful default). */
     ops: {
       /** The operation's name in the program (CamInput.skip removes by it). */
@@ -255,7 +258,9 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
       ...(s.own !== undefined ? { own: s.own } : {}),
       ...(s.onJaw !== undefined ? { onJaw: s.onJaw } : {}),
       // The stock's bottom over the table is floor + cale; on a face d deep the jaws grip -d - bottom of it.
-      jaws: s.vise && !s.nest ? s.ledges.map((d) => ({ depth: d, cale: JAW - (-d - (s.vise!.floor + s.cale)) })) : [],
+      jaws: s.vise && !s.nest ? s.ledges.map((d) => ({ depth: d, cale: JAW - (-d - (s.bottom ?? s.vise!.floor + s.cale)) })) : [],
+      ...(s.step !== undefined ? { step: s.step } : {}),
+      steps: s.steps ?? [],
       zones: s.zones,
       box: s.box,
       contact: s.contact,
