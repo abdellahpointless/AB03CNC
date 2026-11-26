@@ -1012,7 +1012,7 @@ function ledgesOf(P: Float32Array, left: Left, sb: { lo: Vec; hi: Vec }): number
 /**
  * On the parallels by the step whose underside is at z, the part's narrower body hanging between them: the parallels
  * that hold it so, or null. They stand under the Y faces of the band over the step, 0.3 mm in (as the reader puts them),
- * each wholly under the step; the body clear of them by 0.2 mm and 5 mm or more over the vise floor (a drill's point
+ * each wholly under the step; the body clear of them by 0.5 mm and 5 mm or more over the vise floor (a drill's point
  * past it); the jaws 3 mm or more up the band and 1.3 mm or more under Z0 (the face mill's and the graver's room).
  */
 function stepFit(left: Left, sb: { lo: Vec; hi: Vec }, z: number, k: 0 | 1 = 1): { cale: number; grip: number } | null {
@@ -1022,8 +1022,8 @@ function stepFit(left: Left, sb: { lo: Vec; hi: Vec }, z: number, k: 0 | 1 = 1):
   if (!over || !body) return null;
   // k: the axis across the jaws (Y as the part lies; X: as it would lie turned a quarter in the vise).
   const w = parallelWidth(over.hi[k] - over.lo[k]);
-  // shortcut: 0.2 mm between the body and a parallel as wide as the reader draws it (the shop's own widths unknown).
-  if (body.lo[k] < over.lo[k] + 0.3 + w + 0.2 || body.hi[k] > over.hi[k] - 0.3 - w - 0.2) return null;
+  // shortcut: 0.5 mm between the body and a parallel as wide as the reader draws it (the shop's own widths unknown).
+  if (body.lo[k] < over.lo[k] + 0.3 + w + 0.5 || body.hi[k] > over.hi[k] - 0.3 - w - 0.5) return null;
   const strips = [over.lo[k] + 0.3, over.hi[k] - 0.3 - w].map((a) => (k === 1 ? rect(over.lo[0], a, over.hi[0], a + w) : rect(a, over.lo[1], a + w, over.hi[1])));
   // shortcut: 85 % of each parallel under the step bears it (holes and rounded ends of a flange over them); the shop's own figure unknown.
   if (!strips.every((st) => area(intersection(left.at(z, z + 0.3), st)) >= 0.85 * area(st))) return null;
@@ -2052,11 +2052,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // 6 MM", the engineers' way), never by that narrow body: at the thickness typed (steps), else the deepest that fits.
     const stepAsked = setups.length && !nested ? (input.steps?.[choiceAt] ?? undefined) : undefined;
     let step: { d: number; cale: number; grip: number } | undefined;
+    // The part may be turned a quarter for a step (once, never one the operator turned).
+    const mayQuarter = !framed && !turnAsked && !quartered.has(si);
+    let quarterForStep = false;
     if (setups.length && !nested && onJaw === undefined && fixed === undefined && !stepless.has(si)) {
       if (stepAsked !== undefined) {
         const d = ledges.find((x) => Math.abs(x - stepAsked) < 0.05);
         const fit = d !== undefined ? stepFit(left, sb, -d) : null;
         if (fit) step = { d: d!, ...fit };
+        else if (d !== undefined && mayQuarter && stepFit(left, sb, -d, 0)) quarterForStep = true;
         else notes.push({ key: 'stepRefused', setup: setups.length + 1, cale: stepAsked });
       } else if (!theirs)
         for (const d of [...ledges].sort((p, q) => q - p)) {
@@ -2070,7 +2074,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A step the parallels only fit under with the part turned a quarter (its overhang along the jaws): turned so, once,
     // the jaws then on its other pair of faces. Also a side of the operator's pair (you: never on the narrow body; the
     // operator picked which face is up, the turn note says the quarter turn), never one the operator turned by hand.
-    if (!step && stepAsked === undefined && !theirs && setups.length && !nested && onJaw === undefined && fixed === undefined && !stepless.has(si) && !framed && !turnAsked && !quartered.has(si) && ledges.some((d) => stepFit(left, sb, -d, 0))) {
+    if (quarterForStep || (!step && stepAsked === undefined && !theirs && setups.length && !nested && onJaw === undefined && fixed === undefined && !stepless.has(si) && mayQuarter && ledges.some((d) => stepFit(left, sb, -d, 0)))) {
       quartered.add(si);
       turnedForStep.add(si);
       feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));

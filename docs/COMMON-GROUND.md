@@ -241,7 +241,7 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 ### Q009: Parallels beside a hanging body
 
 - **Type:** uncertain
-- **Question:** Resting on a step, CAM AI takes the parallels as wide as the simulation draws them (the held width / 6, 6 mm at most), 0.2 mm clear of the hanging body, each bearing on the step over 85 % of its length (holes and rounded ends of a flange). What widths does the shop have, and is 85 % enough?
+- **Question:** Resting on a step, CAM AI takes the parallels as wide as the simulation draws them (the held width / 6, 6 mm at most), 0.5 mm clear of the hanging body, each bearing on the step over 85 % of its length (holes and rounded ends of a flange). What widths does the shop have, and is 85 % enough?
 - **Source:** The uploaded part (its flange leaves 3.8 mm beside the boss across the jaws, 9.9 mm along them)
 
 ### Q010: A step by itself

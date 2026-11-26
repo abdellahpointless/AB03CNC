@@ -58,6 +58,15 @@ describe('resting on the parallels by a wider step', () => {
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 900_000);
 
+  it('turns it a quarter for a thickness typed too, when the parallels only fit along the jaws', () => {
+    const r = camProgram({ ...base, tris: flanged(16, 26), steps: [null, 6] });
+    const s = r.setups[1];
+    expect(r.notes.some((n) => n.key === 'stepRefused')).toBe(false);
+    expect(s.notes.join(' ')).toMatch(/TEIL 90 GRAD UM Z DREHEN/);
+    expect(s.notes).toContain('41 MM UNTERLAGE IN EP 6 MM');
+    expect(r.check).toMatchObject({ collisions: 0, cales: 0, misplaced: 0 });
+  }, 900_000);
+
   it('keeps the parallels under the body when the step is too narrow for them either way', () => {
     // The boss 36 x 26 of the flange's 40 x 30: no room for a parallel beside it under the flange.
     const r = camProgram({ ...base, tris: flanged(36, 26) });
