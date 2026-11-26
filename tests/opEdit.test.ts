@@ -110,6 +110,15 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     expect(r.check.match).toBeLessThan(0.99);
   }, 300_000);
 
+  it('keeps a change that alters the part and says where: more material left (yellow), cut out (red) (batch 10)', () => {
+    // The check sees a difference three of its samples thick or more (here 2 mm under the pocket's floor, not 1 mm).
+    const lower = editProgram(input, made, { [POCKET]: { dz: -2 } });
+    expect(lower.check.pieces.some((p) => p.kind === 'cut' && p.min[2] < -7.5)).toBe(true);
+    const smaller = editProgram(input, made, { [POCKET]: { tool: { d: 6, l: 40 } } });
+    expect(smaller.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!.tool.diameter).toBe(6);
+    expect(smaller.check.pieces.some((p) => p.kind === 'left')).toBe(true);
+  }, 300_000);
+
   it('locks an outline pushed sideways into the jaw below its top (3 mm toward the moving jaw, 1 mm down)', () => {
     const r = editProgram(input, made, { [OUTLINE]: { dy: -3, dz: -1 } });
     expect(r.check.collisions).toBeGreaterThan(0);
