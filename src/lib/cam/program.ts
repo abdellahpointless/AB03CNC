@@ -1928,7 +1928,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const stopAsked = input.stops?.[choiceAt] ?? undefined;
     // The designer's spacer at the fixed jaw: the part that much toward the operator (only in the vise).
     const ypAsked = input.spacersYp?.[choiceAt] ?? undefined;
-    const spacerYp = !nested && ypAsked !== undefined && (SPACERS_Y as readonly number[]).includes(ypAsked) ? ypAsked : 0;
+    // Part and spacers within the vise's opening (a review: nothing checked it).
+    const spacerYp = !nested && ypAsked !== undefined && (SPACERS_Y as readonly number[]).includes(ypAsked) && hold[1] + ypAsked <= VISE.opening ? ypAsked : 0;
     if (ypAsked !== undefined && ypAsked !== 0 && !spacerYp) notes.push({ key: 'spacerRefused', setup: setups.length + 1, cale: ypAsked, side: 'Y+' });
     const spacerX = !nested && (stopAsked === 15 || stopAsked === 50) ? stopAsked : 0;
     // Pushed on every try: a try planned again resets the notes to before it.
@@ -1964,7 +1965,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // is there to be cut into, and the part stays where the program puts it (it rests on the fixed jaw and the stop).
     // The designer's from the start, or none at all; else CAM AI's own where a wall would stay at that jaw (below).
     const yAsked = input.spacersY?.[choiceAt] ?? undefined;
-    const yOk = yAsked !== undefined && (SPACERS_Y as readonly number[]).includes(yAsked);
+    const yOk = yAsked !== undefined && (SPACERS_Y as readonly number[]).includes(yAsked) && hold[1] + spacerYp + yAsked <= VISE.opening;
     if (yAsked !== undefined && yAsked !== 0 && (nested || !yOk)) notes.push({ key: 'spacerRefused', setup: setups.length + 1, cale: yAsked, side: 'Y-' });
     let spacerY = !nested && yOk ? yAsked! : 0;
     if (spacerY) setupNotes.push(`${spacerY} MM ZWISCHENLAGE IN Y-`);
@@ -2236,7 +2237,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // A wall the moving jaw would leave across a pocket opening onto the face it holds: a spacer there instead
       // (the shop's, 15 mm), from this level on; it moves nothing, so it needs no other reason (a fixed jaw's or
       // the stop's would shift the part: not used).
-      if (!spacerY && yAsked !== 0 && !nested && over() && area(intersection(intersection(todo, wallBand), atMovingJaw)) > 0.01) {
+      if (!spacerY && yAsked !== 0 && !nested && hold[1] + spacerYp + SPACER_Y <= VISE.opening && over() && area(intersection(intersection(todo, wallBand), atMovingJaw)) > 0.01) {
         spacerY = SPACER_Y;
         jaws = beside(0.1, 1);
         pastJaws = beside(-0.05, 0);
