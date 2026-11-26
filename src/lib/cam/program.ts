@@ -103,6 +103,12 @@ export interface CamInput {
    */
   turns?: ({ flip?: 'X' | 'Y'; quarter?: 1 | 2 | 3 } | null)[];
   /**
+   * The part as the operator turned it (you: +90 / -90 about the machine's X or Y, adding up), by clamping, keyed as the
+   * other choices: the model -> clamping frame itself (one of the 24 turns, 9 numbers by rows), its side the one it puts
+   * up. Wins over `turns` and over CAM AI's own way to lay that side; anything else is ignored.
+   */
+  frames?: (number[] | null)[];
+  /**
    * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
    * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
    * else refused (jawRefused). Wins over `clamps` there.
@@ -1386,6 +1392,12 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * operations' lines moved or taken deeper (opEdit.ts), the vise check of their clampings done again with the new cuts,
  * the program posted and checked again whole (later cuts and holders depend on what an edited one removed).
  */
+/** The operator's turn of clamping k (CamInput.frames), when it is one of the 24 turns of the part. */
+function frameAt(input: CamInput, k: number): Mat3 | undefined {
+  const f = k >= 0 ? input.frames?.[k] : undefined;
+  return f && f.length === 9 && ALL.some((R) => R.every((v, i) => v === f[i])) ? (f.slice() as Mat3) : undefined;
+}
+
 /** Milling made for what the mills before it left: their order is the plan's own (a rest or finish mill first would cut full stock). */
 const MILLING: Purpose[] = ['outline', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave'];
 
@@ -1749,6 +1761,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   };
   const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
   const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
+  // The operator's turn of clamping 1 (its side up the one asked, orient), used as given.
+  const frame0 = frameAt(input, 0);
+  if (frame0 && first >= 0 && apply(frame0, SIDES[first].d)[2] === 1) feats[first] = sideFeatures(tris, SIDES[first], false, frame0);
   input.live?.({ kind: 'stage', stage: 'features' });
   input.live?.({ kind: 'stage', stage: 'stock' });
   // The busiest face first (most floors and holes; you: the 0.5 mm method, after the turn only the face mill).
@@ -1844,7 +1859,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A later clamping: of its two frames with the same footprint (as found, and turned 180° about Z),
     // the one the operator reaches from the clamping before with fewer turns. Once: the designer's turn is counted
     // from this frame (the one shown), and a side planned again keeps it.
-    if (prevR && setups.length >= 2 && !turnedAsked.has(si)) {
+    // The operator's own turn of this clamping (frames): as given, once, whatever else would turn it.
+    const frame = setups.length >= 1 ? frameAt(input, choiceIndex(si)) : undefined;
+    const framed = frame && apply(frame, SIDES[si].d)[2] === 1 ? frame : undefined;
+    if (framed && !turnedAsked.has(si)) {
+      turnedAsked.add(si);
+      feats[si] = sideFeatures(tris, SIDES[si], false, framed);
+    }
+    if (!framed && prevR && setups.length >= 2 && !turnedAsked.has(si)) {
       const turns = (R: Mat3) => {
         const phrase = turnPhrase(mul(R, transpose(prevR!)));
         return phrase ? phrase.match(/DREHEN/g)!.length : R.every((v, k) => Math.abs(v - prevR![k]) < 1e-9) ? 0 : 3;
@@ -1852,7 +1874,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const other = mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], feats[si].R);
       if (turns(other) < turns(feats[si].R)) feats[si] = sideFeatures(tris, SIDES[si], false, other);
     }
-    if (turnAsked && prevR && !turnedAsked.has(si)) {
+    if (!framed && turnAsked && prevR && !turnedAsked.has(si)) {
       turnedAsked.add(si);
       let R = feats[si].R;
       // Turned over from the clamping before: about the machine's X, or its Y (the same side up, turned 180° about Z).
