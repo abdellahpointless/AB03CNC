@@ -41,8 +41,10 @@ function millsInDrilled(ops: CamOp[]): string[] {
   return [...new Set(out)];
 }
 
-describe.skipIf(!LIB)('reference library: a hole open through the part is drilled through, no end mill after the drill', () => {
-  for (const [id, material] of [['Pf2990f37', 'ALU'], ['P6b923b7f', 'ALU'], ['P29c8c5a5', 'PCGF']] as const)
+describe.skipIf(!LIB)('reference library: a hole open on down in the model is drilled to where it closes, no end mill after the drill', () => {
+  // Pf2990f37, P6b923b7f, P29c8c5a5: open on down through the part. P242c06c0, P16bf7182: a Ø3.3 hole the reader ended
+  // 5 mm above where the model closes. P5295c45b: a Ø1.6 hole the reader split in two (open on to 1 mm over the bottom).
+  for (const [id, material] of [['Pf2990f37', 'ALU'], ['P6b923b7f', 'ALU'], ['P29c8c5a5', 'PCGF'], ['P242c06c0', 'ALU'], ['P16bf7182', 'ALU'], ['P5295c45b', 'POM']] as const)
     it(`${id}: no end mill of a hole's Ø goes on down a drilled hole`, { timeout: 30 * 60_000 }, async () => {
       const r = await plan(id, material);
       expect(r.setups.flatMap((s) => millsInDrilled(s.ops))).toEqual([]);

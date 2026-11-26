@@ -2243,30 +2243,38 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // A blind hole CAD draws with a drill point (its middle open under where the wall ends, no smaller hole on
       // from there, and solid 0.75 r off its middle at that height, under a point's cone: not a cross hole or a
       // cavity): drilled to that point, 0.3 x its Ø lower, as the engineers do (the study's E3).
-      const under = h.through ? [] : slice(P, h.bottom - 0.3 * h.r);
+      const pointedAt = (g: Hole) => {
+        const under = slice(P, g.bottom - 0.3 * g.r);
+        return inside(under, g.c) === 0 && [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [g.c[0] + 0.75 * g.r * dx, g.c[1] + 0.75 * g.r * dy]) !== 0);
+      };
       // A counterbore's floor: a smaller hole goes on from its bottom (a seat, kept flat).
       const seat = holes.some((o) => o !== h && o.r < h.r && Math.hypot(o.c[0] - h.c[0], o.c[1] - h.c[1]) < 0.05 && Math.abs(o.top - h.bottom) < 0.05);
-      const pointed =
-        !h.through &&
-        !seat &&
-        inside(under, h.c) === 0 &&
-        [[1, 0], [0, 1], [-1, 0], [0, -1]].every(([dx, dy]) => inside(under, [h.c[0] + 0.75 * h.r * dx, h.c[1] + 0.75 * h.r * dy]) !== 0);
-      // You: no end mill after a drill where the drill could have made the hole. A blind hole whose whole disc is open in
-      // the model on down through the part's bottom (where it runs into an opening on its axis the reader split off) is
-      // drilled through as one hole, the through hole's limits over a parallel and the vise floor kept.
-      const openBelow =
-        !h.through &&
-        !seat &&
-        !pointed &&
-        h.bottom > -H + 0.3 &&
-        (() => {
-          for (let z = h.bottom - 0.25; z > -H + 0.05; z -= 0.5) {
-            const s = slice(P, z);
-            if ([[0, 0], [0.9, 0], [0, 0.9], [-0.9, 0], [0, -0.9]].some(([dx, dy]) => inside(s, [h.c[0] + dx * h.r, h.c[1] + dy * h.r]) !== 0)) return false;
+      let pointed = !h.through && !seat && pointedAt(h);
+      // You: no end mill after a drill where the drill could have made the hole. A blind hole whose whole disc stays open
+      // in the model under where the reader ended it (a cross hole or a drawn thread splits it; Pf2990f37, P242c06c0,
+      // P5295c45b) goes on as one hole: through the part's bottom, drilled through (the through hole's limits over a
+      // parallel and the vise floor kept); else to where the model closes, found to 0.02 mm, its point there if drawn.
+      if (!h.through && !seat && !pointed && h.bottom > -H + 0.3) {
+        const open = (z: number) => {
+          const s = slice(P, z);
+          return [[0, 0], [0.9, 0], [0, 0.9], [-0.9, 0], [0, -0.9]].every(([dx, dy]) => inside(s, [h.c[0] + dx * h.r, h.c[1] + dy * h.r]) === 0);
+        };
+        let z = h.bottom - 0.25;
+        while (z > -H + 0.05 && open(z)) z -= 0.5;
+        if (z <= -H + 0.05) h = { ...h, bottom: -H, through: true };
+        else if (z < h.bottom - 0.5) {
+          let [lo, hi] = [z, z + 0.5];
+          while (hi - lo > 0.02) {
+            const m = (lo + hi) / 2;
+            if (open(m)) hi = m;
+            else lo = m;
           }
-          return true;
-        })();
-      if (openBelow) h = { ...h, bottom: -H, through: true };
+          h = { ...h, bottom: hi };
+          pointed = pointedAt(h);
+          // A drawn point's cone reaches 0.9 r of the middle 0.06 r under where its wall ends (118°): the wall's end.
+          if (pointed) h = { ...h, bottom: hi + 0.06 * h.r };
+        }
+      }
       const depth = h.top - h.bottom + (h.through ? 0.3 * h.r * 2 + 0.5 : pointed ? 0.6 * h.r : 0);
       const lip = drilled.get(k);
       // Drilled already. You: a hole through the part is made in one clamping. The far end one left narrow over a
