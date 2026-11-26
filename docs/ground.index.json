@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-26T13:00:00Z",
-  "next_id": 21,
+  "last_updated": "2026-11-26T15:00:00Z",
+  "next_id": 22,
   "assumptions": [
     {
       "id": "A001",
@@ -398,6 +398,26 @@
       "history": [
         {
           "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A021",
+      "title": "Always 0.5 mm to face on top",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 4.5 mm of extra Z at the least; less is refused.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Blank placement, stock panel, planner",
+      "created": "2026-11-26T15:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T15:00:00Z",
           "action": "created",
           "from_tier": null,
           "to_tier": "ESTABLISHED",

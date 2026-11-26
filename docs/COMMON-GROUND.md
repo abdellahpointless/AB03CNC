@@ -162,6 +162,14 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-26
 - **Context:** Every change
 
+### A021: Always 0.5 mm to face on top
+
+- **Type:** stated
+- **Assumption:** Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 4.5 mm of extra Z at the least (0.5 over, 4 under); less is refused like a thinner blank.
+- **Source:** Owner, 2026-11-26 (a 4 mm blank left the top raw on a test part)
+- **Validated:** 2026-11-26
+- **Context:** Blank placement, stock panel, planner
+
 ---
 
 ## WORKING
@@ -202,3 +210,4 @@ None open. Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for no
   already cut whole in clamping 1 on all 16 blanks with 4.5 mm or more of Z stock (18 of 24 in all; measured as
   clamping 1's deepest milling, which also counts openings inside the part); 6 of the 8 thinner blanks fell short. The table (no parallels) and parallels gripping the part's own walls are no longer offered for
   clamping 1; they stay for later clampings. A deploy now also follows A020 (the owner said deploy that way).
+- 2026-11-26: A021 from the owner: always 0.5 mm over the part to face (4.5 mm of extra Z at the least).
