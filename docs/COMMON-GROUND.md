@@ -181,16 +181,16 @@ High confidence assumptions. Treat as premises.
 ### A023: A drilled hole is not milled again
 
 - **Type:** stated
-- **Assumption:** No end mill goes into a hole a drill made at its Ø: not to mill it again, not to make its bottom flush (and never to clean a drill's point under the part). A counterbore (a hole with a smaller one going on from its floor) is made by an end mill after the smaller hole is drilled, never by a drill of its Ø. Where the drill did not make the material (a hole going on past where the drill could reach, a through hole's end over a parallel inside the part), the mill still cuts it.
-- **Source:** Owner, 2026-11-26
+- **Assumption:** No end mill goes into a hole a drill made at its Ø: not to mill it again, not to make its bottom flush (and never to clean a drill's point under the part). A counterbore (a hole with a smaller one going on from its floor) is made by an end mill after the smaller hole is drilled, never by a drill of its Ø. Where the drill did not make the material (a hole going on past where the drill could reach, a through hole's end over a parallel inside the part), the mill still cuts it. A blind hole whose whole disc stays open in the model under where the app's reader ended it (a cross hole or a drawn thread splits it) is drilled on as one hole: through the part when it is open to its bottom, else to where the model closes (its drawn point kept).
+- **Source:** Owner, 2026-11-26 (the rule); where the reader ends a hole is the app's (library parts Pf2990f37, P242c06c0, P16bf7182, P5295c45b)
 - **Validated:** 2026-11-26
-- **Context:** Planner (holes), library run s42 against the baseline s44
+- **Context:** Planner (holes), library runs s44 (93 end mill entries into drilled holes), s45 (55), s47 (14)
 
 ### A024: Operations in the operator's order
 
 - **Type:** stated
-- **Assumption:** A clamping's tools can be dragged into any order (also Alt + arrows, or the up and down buttons; one row per tool, so a tool's operations move together); the program is checked again. An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for.
-- **Source:** Owner, 2026-11-26 (the order); the locks are CAM AI's, the simulation does not see a tool cutting more than it was made for
+- **Assumption:** A clamping's tools can be dragged into any order (also Alt + arrows, or the up and down buttons); the program is checked again. The locks on some orders are A027 (CAM AI's, not stated).
+- **Source:** Owner, 2026-11-26
 - **Validated:** 2026-11-26
 - **Context:** Tool list, editProgram
 
@@ -205,7 +205,7 @@ High confidence assumptions. Treat as premises.
 ### A026: Resting on a step
 
 - **Type:** stated
-- **Assumption:** A later clamping rests on the parallels by a wider step, its narrower body hanging between them, as the engineers write it ("41 MM UNTERLAGE IN EP 4.5 MM"), never by that narrow body: at the thickness the operator types, else the deepest step that fits and holds; turned a quarter when the parallels only fit beside the body that way (also a side of the operator's face pair, whose turn note says so; never a clamping the operator turned by hand). Taller parallels then, the jaws on the step's faces 1.3 mm or more under Z0, the body 5 mm or more over the vise floor.
+- **Assumption:** A part is not laid unstably on a narrow lower step when a wider, higher step can rest on taller parallels; the operator can type the thickness where the parallels touch the part, and the part sits on the parallels at that thickness, as the engineers write it ("41 MM UNTERLAGE IN EP 4.5 MM"). How CAM AI chooses by itself is A028.
 - **Source:** Owner, 2026-11-26 (with a picture of the uploaded part); the notation from the library (about 30 "UNTERLAGE IN EP" notes)
 - **Validated:** 2026-11-26
 - **Context:** Planner (later clampings), clamp panel
@@ -215,6 +215,22 @@ High confidence assumptions. Treat as premises.
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
+
+### A027: Orders that lock
+
+- **Type:** inferred
+- **Assumption:** One row per tool, so a tool's operations move together. An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for (the simulation does not see a tool cutting more than it was made for).
+- **Source:** CAM AI (the checks it has); Q012 asks the owner
+- **Validated:** 2026-11-26
+- **Context:** Tool list, editProgram
+
+### A028: Resting on a step by itself
+
+- **Type:** assumed
+- **Assumption:** Not typed, CAM AI rests a later clamping on the deepest step that fits and holds; it turns it a quarter about Z when the parallels only fit beside the body that way, also on a side of the face pair the operator picked (its turn note says so), never on a clamping the operator turned by hand. Taller parallels then, the jaws on the step's faces 1.3 mm or more under Z0, the body 5 mm or more over the vise floor, each parallel 0.5 mm clear of the body and bearing on the step over 85 % of its length.
+- **Source:** CAM AI, from the owner's picture and about 30 "UNTERLAGE IN EP" notes in the library (which do not say when); Q009, Q010 and Q013 ask the owner
+- **Validated:** 2026-11-26
+- **Context:** Planner (later clampings)
 
 ### A013: CAM AI scope
 
@@ -256,6 +272,12 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - **Question:** The request had "when i click the settings on the" with nothing after it. Read here as the OP settings button (parallels and how the part lies). Was something else meant?
 - **Source:** Owner's message, 2026-11-26
 
+### Q013: A quarter turn on the operator's pair
+
+- **Type:** uncertain
+- **Question:** To rest on a step, CAM AI may now turn a clamping of the face pair the operator picked a quarter about Z (A028); until now it never changed how the operator laid a clamping. Allowed, or should it only say that a quarter turn would rest it on the step?
+- **Source:** The uploaded part (its step only takes parallels along the jaws)
+
 ### Q012: Moving a drill among the mills
 
 - **Type:** uncertain
@@ -282,3 +304,6 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
   clamping 1; they stay for later clampings. A deploy now also follows A020 (the owner said deploy that way).
 - 2026-11-26: A021 from the owner: always 0.5 mm over the part to face (4.5 mm of extra Z at the least).
 - 2026-11-26: batch 10 from the owner (A022-A026); open questions Q008-Q012 from the work on it.
+- 2026-11-26: review of batch 10's log: A024 and A026 kept to what the owner stated; CAM AI's own choices split off as
+  A027 (inferred) and A028 (assumed), with Q013. The step rest's parallels and G52 Z rest on A028: settle Q009, Q010
+  and Q013 before a deploy. A023 now also covers a blind hole the reader ended early (library run s47).

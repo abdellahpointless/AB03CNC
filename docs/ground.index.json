@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-26T20:00:00Z",
-  "next_id": 22,
+  "last_updated": "2026-11-26T23:00:00Z",
+  "next_id": 29,
   "assumptions": [
     {
       "id": "A001",
@@ -450,7 +450,7 @@
       "title": "A drilled hole is not milled again",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "No end mill in a hole its drill made (no re-milling, no flush bottom, no point cleaning under the part); a counterbore is milled after its smaller hole is drilled.",
+      "assumption": "No end mill in a hole its drill made (no re-milling, no flush bottom, no point cleaning under the part); a counterbore is milled after its smaller hole is drilled; a blind hole open on down in the model is drilled to where it closes (or through).",
       "source": "Owner, 2026-11-26",
       "validated": "2026-11-26",
       "context": "Planner (holes)",
@@ -462,6 +462,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Stated by the owner (batch 10)"
+        },
+        {
+          "date": "2026-11-26T23:00:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Holes the reader ended early (library run s47)"
         }
       ]
     },
@@ -470,7 +477,7 @@
       "title": "Operations in the operator's order",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "Tools can be reordered per clamping; an order no check covers (before the facing, a drill before its spot drill, mills out of their made order) locks.",
+      "assumption": "Tools can be reordered per clamping and the program is checked again (the locks are A027).",
       "source": "Owner, 2026-11-26",
       "validated": "2026-11-26",
       "context": "Tool list, editProgram",
@@ -482,6 +489,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Stated by the owner (batch 10)"
+        },
+        {
+          "date": "2026-11-26T23:00:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Kept to what the owner stated; the locks split off as A027"
         }
       ]
     },
@@ -510,7 +524,7 @@
       "title": "Resting on a step",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "A later clamping rests on parallels by a wider step (UNTERLAGE IN EP), typed or the deepest that fits and holds; turned a quarter when needed.",
+      "assumption": "No unstable rest on a narrow lower step when a wider step can rest on taller parallels; the operator types the thickness where the parallels touch (UNTERLAGE IN EP). CAM AI's own choice is A028.",
       "source": "Owner, 2026-11-26",
       "validated": "2026-11-26",
       "context": "Planner (later clampings), clamp panel",
@@ -522,6 +536,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Stated by the owner (batch 10)"
+        },
+        {
+          "date": "2026-11-26T23:00:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Kept to what the owner stated; CAM AI's choice split off as A028"
         }
       ]
     },
@@ -618,6 +639,66 @@
       "history": [
         {
           "date": "2026-11-26T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "A027",
+      "title": "Orders that lock",
+      "type": "inferred",
+      "tier": "WORKING",
+      "assumption": "One row per tool; an order no check covers locks (before the facing, a drill before its spot drill, mills out of their made order).",
+      "source": "CAM AI (the checks it has)",
+      "validated": "2026-11-26",
+      "context": "Tool list, editProgram",
+      "created": "2026-11-26T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "WORKING",
+          "reason": "Split from A024"
+        }
+      ]
+    },
+    {
+      "id": "A028",
+      "title": "Resting on a step by itself",
+      "type": "assumed",
+      "tier": "WORKING",
+      "assumption": "Not typed: the deepest step that fits and holds; a quarter turn about Z when the parallels only fit along the jaws (also the operator's face pair, never a hand-turned clamping).",
+      "source": "CAM AI, from the owner's picture and the library's notes",
+      "validated": "2026-11-26",
+      "context": "Planner (later clampings)",
+      "created": "2026-11-26T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "WORKING",
+          "reason": "Split from A026"
+        }
+      ]
+    },
+    {
+      "id": "Q013",
+      "title": "A quarter turn on the operator's pair",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Batch 10 review",
+      "validated": null,
+      "context": "Batch 10",
+      "created": "2026-11-26T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T23:00:00Z",
           "action": "created",
           "from_tier": null,
           "to_tier": "OPEN",
