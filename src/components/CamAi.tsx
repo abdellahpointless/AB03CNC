@@ -152,6 +152,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const addChange = (c: Omit<Change, 'id'>) => setChanges((l) => [...l, { ...c, id: ++changeId.current }]);
   // Hand edits carried over to the next program made (where their operation is still in it).
   const carry = useRef<Record<string, OpEdit> | null>(null);
+  // The last program as made (never one changed by hand): what carried edits are checked against.
+  const plain = useRef<CamSummary | null>(null);
   // A clamping changed on a made program: listed, its Undo back to every hold choice as it was before this change.
   const holdChanged = (label: string) => {
     if (!result) return;
@@ -264,7 +266,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setChanges([]);
     // Nothing by hand from the part before goes on with this one (a review: they reached its program).
     setOpEdits({});
+    setEditsDropped(false);
     carry.current = null;
+    plain.current = null;
     setPrep(null);
     setViews([]);
     setFace1(undefined);
@@ -320,7 +324,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     // The hand edits Make again carries (this make only), and the program they were made on.
     const carrying = carry.current;
     carry.current = null;
-    const before = run.state === 'done' ? run.result : null;
+    const before = plain.current;
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
     setRun({ state: 'busy', done: 0, of: 1 });
     // The shop's tool database as it is now (it may have changed since): never a program made without it.
@@ -396,15 +400,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       }
       // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
       setRun({ state: 'done', result: m.result });
+      plain.current = m.result;
       setMadeTurns(turnsAsked.current);
       if (carrying) {
-        // Changes by hand go on with the new program where their operation is still in it, in a clamping with the same
-        // side and the same frame (a move is in the clamping's own X, Y, Z: turned, it would cut elsewhere, a review
-        // found); the rest are said gone.
+        // Changes by hand go on with the new program where their operation is the same cut (its lines as made match:
+        // a key only counts operations of one name and tool, so after a re-plan it can name another cut) in a clamping
+        // with the same side and frame (a move is in the clamping's own X, Y, Z: turned, it would cut elsewhere, a
+        // review found); the rest are said gone.
         const clampingOf = (r: CamSummary, key: string) => r.setups.find((x) => x.ops.some((o) => o.key === key));
         const same = (key: string) => {
           const [a, b] = [before && clampingOf(before, key), clampingOf(m.result, key)];
-          return !!a && !!b && a.side === b.side && a.R.every((v, k) => Math.abs(v - b.R[k]) < 1e-9);
+          const sig = (x: CamSummary['setups'][number]) => x.ops.find((o) => o.key === key)!.sig;
+          return !!a && !!b && a.side === b.side && a.R.every((v, k) => Math.abs(v - b.R[k]) < 1e-9) && sig(a) === sig(b);
         };
         const keep = Object.fromEntries(Object.entries(carrying).filter(([k]) => same(k)));
         if (Object.keys(keep).length) applyEdits(keep, '');

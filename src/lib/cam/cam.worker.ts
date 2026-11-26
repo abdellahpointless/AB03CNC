@@ -108,6 +108,8 @@ export interface CamSummary {
       ap: number;
       coolant: Coolant;
       zMin: number;
+      /** Its lines in short (a hash): two that match are the same cut. */
+      sig: string;
       /** The operator's values are more than the tool takes. */
       unsafe: boolean;
     }[];
@@ -181,6 +183,16 @@ function opSeconds(tp: ReturnType<typeof parseToolpath>, setups: { ops: { name: 
     });
   });
   return out;
+}
+
+/** FNV-1a of the lines, in hex. */
+function sigOf(lines: string[]): string {
+  let h = 0x811c9dc5;
+  for (const l of lines) {
+    for (let i = 0; i < l.length; i++) h = Math.imul(h ^ l.charCodeAt(i), 0x01000193);
+    h = Math.imul(h ^ 10, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
 }
 
 /** The lowest Z an operation's cuts reach (its setup frame, Z0 the top). */
@@ -263,6 +275,7 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
         ap: o.cut.ap,
         coolant: o.tool.edit?.coolant ?? 'flood',
         zMin: deepest(o.lines),
+        sig: sigOf(o.lines),
         unsafe: !!o.cut.unsafe,
       })),
     })),
