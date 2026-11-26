@@ -2071,7 +2071,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
             break;
           }
         }
-    }
+    } else if (stepAsked !== undefined && stepless.has(si)) notes.push({ key: 'stepHold', setup: setups.length + 1, cale: stepAsked });
     // A step the parallels only fit under with the part turned a quarter (its overhang along the jaws): turned so, once,
     // the jaws then on its other pair of faces. Also a side of the operator's pair (you: never on the narrow body; the
     // operator picked which face is up, the turn note says the quarter turn), never one the operator turned by hand.

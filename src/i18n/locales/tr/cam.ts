@@ -653,6 +653,7 @@ const cam: Translation<typeof en> = {
       orderLocked: '{{setup}}. bağlama: T{{used}} artık T{{d}} takımından önce çalışıyor, oysa onun ardından gelmek üzere yapıldı (kesimleri T{{d}} takımının bıraktığına göre): bu sırayı hiçbir kontrol doğrulamıyor, kilitli kalır. T{{d}} takımının arkasına geri taşıyın',
       jawRefused: '{{setup}}. bağlama: parçanın üstünden {{cale}} mm aşağıda çene üstlerine oturacak bir yüzü yok (çenelerin altta tuttuğundan geniş): CAM AI kendi yoluyla tuttu',
       stepRefused: '{{setup}}. bağlama: parçanın Z0’ın {{cale}} mm altında, dar gövdesinin yanında paralellerin altına girebileceği bir basamağı yok (o gövde mengene tabanından 5 mm yukarıda): CAM AI kendi yoluyla tuttu',
+      stepHold: '{{setup}}. bağlama: Z0’ın {{cale}} mm altındaki basamakta çeneler parçayı tam ilerlemede tutamazdı: CAM AI onu tabanından tuttu',
     },
     view: 'Takım yolu görüntüleyicisinde aç',
     download: 'İndir',

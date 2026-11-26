@@ -650,6 +650,7 @@ const cam = {
       orderLocked: 'Clamping {{setup}}: T{{used}} now runs before T{{d}}, which it was made to follow (its cuts are for what T{{d}} leaves): no check covers that order, so it stays locked. Move it back after T{{d}}',
       jawRefused: 'Clamping {{setup}}: the part has no face {{cale}} mm under its top to rest on the jaw tops by (wider than what the jaws grip below it): CAM AI held it its own way',
       stepRefused: 'Clamping {{setup}}: the part has no step {{cale}} mm under Z0 the parallels can stand under beside its narrower body (with that body 5 mm over the vise floor): CAM AI held it its own way',
+      stepHold: 'Clamping {{setup}}: on the step {{cale}} mm under Z0 the jaws would not hold the part at full feed: CAM AI held it on its bottom',
     },
     view: 'Open in the toolpath viewer',
     download: 'Download',

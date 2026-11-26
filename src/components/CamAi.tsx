@@ -1471,7 +1471,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     spacers={laterX[sel.i] ?? {}}
                     madeTurn={madeTurns[sel.i] ?? {}}
                     emptySide={!!laterX[sel.i]?.side && result.notes.some((x) => x.key === 'sideEmpty' && x.side === laterX[sel.i]?.side)}
-                    refusals={result.notes.filter((x) => x.setup === sel.i + 1 && (x.key === 'clampRefused' || x.key === 'jawRefused' || x.key === 'stepRefused' || x.key === 'stopRefused' || x.key === 'spacerRefused' || x.key === 'clampNest'))}
+                    refusals={result.notes.filter((x) => x.setup === sel.i + 1 && (x.key === 'clampRefused' || x.key === 'jawRefused' || x.key === 'stepRefused' || x.key === 'stepHold' || x.key === 'stopRefused' || x.key === 'spacerRefused' || x.key === 'clampNest'))}
                     onAsk={(v, x) => {
                       const i = sel.i;
                       holdChanged(holdLabel(i + 1, later[i], laterX[i] ?? {}, v, x));
@@ -2200,6 +2200,8 @@ type LaterX = { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: 
 /** On parallels by its bottom, on the jaw tops by a face, or on parallels by a step (you: the thickness where they touch). */
 type Hold = { cale: number } | { jaw: number } | { step: number };
 const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : 'jaw' in h ? `j${h.jaw}` : `s${h.step}`);
+/** The same hold: a step within 0.05 mm is the same step (the planner takes the model's step that near the one typed). */
+const sameHold = (a: Hold, b: Hold) => ('step' in a && 'step' in b ? Math.abs(a.step - b.step) < 0.05 : holdKey(a) === holdKey(b));
 
 /**
  * A later clamping's hold, on the program made (what it holds is what the clampings before left): its parallels, the
@@ -2253,18 +2255,19 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
   // A choice the program made does not have yet (made again, it shows as made; a side with nothing to cut is said apart).
   const spacerOf = (at: string) => Number(made.notes.join(' ').match(new RegExp(`(\\d+) MM ZWISCHENLAGE IN ${at.replace('+', '\\+')}`))?.[1] ?? 0);
   const pending =
-    (asked !== undefined && holdKey(asked) !== holdKey(mine)) ||
+    (asked !== undefined && !sameHold(asked, mine)) ||
     (spacers.side !== undefined && spacers.side !== made.side && !emptySide) ||
     (spacers.stop ?? 0) !== spacerOf('X-') ||
     (spacers.y !== undefined && spacers.y !== spacerOf('Y-')) ||
     (spacers.yp ?? 0) !== spacerOf('Y+') ||
     spacers.flip !== madeTurn.flip ||
     spacers.quarter !== madeTurn.quarter;
-  const all = steps.some((h) => holdKey(h) === holdKey(now)) ? steps : [now, ...steps];
+  const all = steps.some((h) => sameHold(h, now)) ? steps : [now, ...steps];
+  const nowKey = holdKey(all.find((h) => sameHold(h, now))!);
   const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(made.steps.find((x) => x.depth === h.step)?.cale ?? made.cale, 0) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
   const pickHold = (key: string) => {
     const h = all.find((x) => holdKey(x) === key)!;
-    onAsk(holdKey(h) === holdKey(mine) && made.own === undefined ? null : h, spacers);
+    onAsk(sameHold(h, mine) && made.own === undefined ? null : h, spacers);
   };
   const setX = (x: LaterX) => onAsk(asked ?? null, Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined)));
   return (
@@ -2282,13 +2285,14 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
           {refusals.map(({ key, ...v }, i) => (
             <p key={i} className="text-xs text-[var(--orange-text)]" role="status">{t(`camAi.note.${key}`, v)}</p>
           ))}
-          <ParallelsPick label={t('camAi.hold.parallels')} value={holdKey(now)} heights={all.map((h) => ({ key: holdKey(h), label: said(h) }))} onChange={pickHold} />
+          <ParallelsPick label={t('camAi.hold.parallels')} value={nowKey} heights={all.map((h) => ({ key: holdKey(h), label: said(h) }))} onChange={pickHold} />
           <form
             className="flex items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               const v = Number(thick.replace(',', '.'));
-              if (Number.isFinite(v) && v > 0 && v <= 200) onAsk({ step: Math.round(v * 100) / 100 }, spacers);
+              const near = made.steps.find((x) => Math.abs(x.depth - v) < 0.05);
+              if (Number.isFinite(v) && v > 0 && v <= 200) onAsk({ step: near ? near.depth : Math.round(v * 100) / 100 }, spacers);
             }}
           >
             <label className="flex-1 min-w-0 text-xs text-[var(--text-secondary)]">
