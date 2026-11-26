@@ -331,7 +331,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const made = run.state === 'done' ? run.result.setups : [];
         return Array.from({ length: Math.max(...asked, ...carried) - 1 }, (_, j) => laterX[j + 2]?.side ?? made[j + 2]?.side ?? '').filter(Boolean);
       })(),
-      spacersYp: Object.values(laterX).some((x) => x.yp) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.yp ?? null) : undefined,
+      spacersYp: Y_PLUS && Object.values(laterX).some((x) => x.yp) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.yp ?? null) : undefined,
       clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : (later[k] && 'cale' in later[k] ? later[k].cale : null))) : undefined,
       jawRests: Object.values(later).some((h) => 'jaw' in h) ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (later[k] && 'jaw' in later[k] ? later[k].jaw : null)) : undefined,
       partType,
@@ -1675,6 +1675,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 /** The spacers a clamping's panel offers (mm): in the moving jaw (CAM AI's choice, none, the shop's sizes), and at the fixed jaw (special cases). */
 const Y_SPACERS = ['auto', 0, 15, 20, 50] as const;
 const YP_SPACERS = [0, 15, 20, 50] as const;
+/** The spacer at the fixed jaw (Y+): not used for now (the owner, docs/COMMON-GROUND.md Q005); the planner keeps it. */
+const Y_PLUS = false;
 
 /** A row of choices, one picked (radio buttons), for the clamping panels. */
 function Seg<V extends string | number>({ legend, value, options, onChange }: { legend: string; value: V; options: { v: V; label: string }[]; onChange: (v: V) => void }) {
@@ -1744,8 +1746,8 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
           {stopPending && <p className="text-[var(--text-primary)]">{stop ? t('camAi.clamp1.laterStop', { mm: stop }) : t('camAi.clamp1.laterStopNone')}</p>}
           <Seg legend={t('camAi.hold.spacerY')} value={y ?? 'auto'} options={Y_SPACERS.map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.auto') : v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => onY(v === 'auto' ? undefined : v)} />
           <p className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.yHint')}</p>
-          <Seg legend={t('camAi.hold.spacerYp')} value={yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => onYp(v || undefined)} />
-          {yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
+          {Y_PLUS && <Seg legend={t('camAi.hold.spacerYp')} value={yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => onYp(v || undefined)} />}
+          {Y_PLUS && yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
           <div className="grid grid-cols-2 gap-1.5">
             <button type="button" className={btn} onClick={() => onAct('back')}><ArrowUp size={14} aria-hidden />{t('camAi.clamp1.back')}</button>
             <button type="button" className={btn} onClick={() => onAct('forward')}><ArrowDown size={14} aria-hidden />{t('camAi.clamp1.forward')}</button>
@@ -1814,8 +1816,8 @@ function LaterClampPanel({ n, made, used, asked, spacers, emptySide, refusals, o
           <Seg legend={t('camAi.hold.stopX')} value={spacers.stop ?? 0} options={([0, 15, 50] as const).map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.clamp1.stopNone') }))} onChange={(v) => setX({ ...spacers, stop: v || undefined })} />
           <Seg legend={t('camAi.hold.spacerY')} value={spacers.y ?? 'auto'} options={Y_SPACERS.map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.auto') : v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, y: v === 'auto' ? undefined : v })} />
           <p className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.yHint')}</p>
-          <Seg legend={t('camAi.hold.spacerYp')} value={spacers.yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, yp: v || undefined })} />
-          {spacers.yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
+          {Y_PLUS && <Seg legend={t('camAi.hold.spacerYp')} value={spacers.yp ?? 0} options={YP_SPACERS.map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, yp: v || undefined })} />}
+          {Y_PLUS && spacers.yp !== undefined && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.hold.ypHint')}</p>}
           {(asked !== undefined || Object.keys(spacers).length > 0) && (
             <p className="flex flex-wrap items-center gap-2 text-[var(--text-primary)]" aria-live="polite">
               {pending && !refusals.length && t('camAi.hold.preview')}
