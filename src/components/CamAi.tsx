@@ -552,7 +552,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
-    if (!result || !machine || checking || waiting || handTool || !passed(result, handEdited && accepted)) return;
+    if (!result || !machine || checking || waiting || handTool || badNumber !== undefined || !passed(result, handEdited && accepted)) return;
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
@@ -699,6 +699,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const handEdited = Object.keys(opEdits).length > 0 || Object.values(opOrder).some((c) => c.length > 0);
   // A tool changed by hand has no machine number: only the remapper gives it one (Send), never Download.
   const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.endsWith('_HAND')));
+  // The owner's rule: T and H a Haas takes (1-200), else no file (the remapper gives the tool a machine number).
+  const badNumber = result?.setups.flatMap((s) => s.ops).find((o) => o.tool < 1 || o.tool > 200)?.tool;
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
@@ -1594,7 +1596,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
           </button>
         )}
-        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool} title={handTool ? t('camAi.opEdit.handTool') : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
+        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool || badNumber !== undefined} title={handTool ? t('camAi.opEdit.handTool') : badNumber !== undefined ? t('camAi.opEdit.badNumber', { t: badNumber }) : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (

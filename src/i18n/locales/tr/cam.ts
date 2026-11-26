@@ -265,6 +265,7 @@ const cam: Translation<typeof en> = {
       l: 'Boy (mm)',
       badTool: 'Takımın Ø’ı 0–200 mm, boyu 0–400 mm olmalı.',
       handTool: 'Elle değiştirilen takım hiçbir makinede yok: ona bir makine takımı seçmek için programı remapper’a gönderin.',
+      badNumber: 'T{{t}} bir Haas’ın aldığı numara değil (1 ile 200 arası): ona bir makine takımı vermek için programı remapper’a gönderin.',
       apply: 'Uygula ve kontrol et',
       checking: 'Kontrol ediliyor…',
       undo: 'Geri al',

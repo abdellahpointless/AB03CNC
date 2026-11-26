@@ -262,6 +262,7 @@ const cam = {
       l: 'Length (mm)',
       badTool: 'A tool needs a Ø of 0 to 200 mm and a length of 0 to 400 mm.',
       handTool: 'A tool changed by hand is in no machine: send the program to the remapper to choose a machine tool for it.',
+      badNumber: 'T{{t}} is not a number a Haas takes (1 to 200): send the program to the remapper to give it a machine tool.',
       apply: 'Apply and check',
       checking: 'Checking…',
       undo: 'Undo',
