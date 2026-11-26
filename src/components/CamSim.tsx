@@ -219,6 +219,11 @@ export default function CamSim({
     }
   };
 
+  // Hidden under the clamping 1 editor: paused (a review: it played on unseen).
+  useEffect(() => {
+    if (hidden) setPlaying(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hidden]);
   // Keys in the viewport: Space plays, ← → step, F fits (never while typing).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
