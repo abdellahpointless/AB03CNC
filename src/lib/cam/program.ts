@@ -1435,7 +1435,8 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
     return { ...s, ops, physics };
   });
-  return checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) });
+  // The same last pass as a made program (shop), under the same rule: kept only when nothing is worse.
+  return shop(input, checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) }));
 }
 
 /** The lowest Z an operation's lines go to (its own frame): its moves and drill cycles, not a machine position. */
@@ -1535,6 +1536,45 @@ function overParallels(code: string, speeds: MachineSpeeds): string {
 export const gougeOf = (c: CamCheck) => Math.round(Math.max(0, ...c.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3)));
 
 /**
+ * Written the shop's way at the end (a made program and one edited by hand): the same moves in the shop's
+ * words (style.ts proves them alike, the check holds), then circles as arcs, checked again in the simulation
+ * and taken only when nothing is worse than before.
+ */
+function shop<T extends CamResult & { check: CamCheck }>(input: CamInput, r: T): T {
+  // With improvement O1 (approved): a move to where the tool already is is left out.
+  const words = shopStyle(r.code, input.brand, (c) => shorten(c, true)).code;
+  const arced = arcs(words);
+  const was = r.check;
+  const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose, r.corners);
+  // Nothing worse: the match (never from a pass to below 0.99), collisions, holders, rapids, grazes, cales, gouges.
+  const ok =
+    arced !== words &&
+    c.match >= was.match - 0.0005 &&
+    (was.match < 0.99 || c.match >= 0.99) &&
+    c.collisions <= was.collisions &&
+    c.holders <= was.holders &&
+    c.rapids <= was.rapids &&
+    c.grazes.length <= was.grazes.length &&
+    c.cales <= was.cales &&
+    c.misplaced <= was.misplaced &&
+    gougeOf(c) <= gougeOf(was);
+  let [code, check] = ok ? [arced, c] : [words, was];
+  // Last, on a finer grid than the check's: a rapid down past stock it cannot see feeds the rest of the
+  // way (checked again, kept when nothing is worse).
+  const finer = finerRapids(code, input.brand, input.speeds);
+  if (finer !== code) {
+    const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose, r.corners);
+    if (f.match >= check.match - 0.0005 && f.collisions <= check.collisions && f.rapids <= check.rapids && f.cales <= check.cales && f.misplaced <= check.misplaced && gougeOf(f) <= gougeOf(check)) [code, check] = [finer, f];
+  }
+  // The program as it goes out, once more on the finer grid: its cuts into the part count as gouges too.
+  check = { ...check, pieces: [...check.pieces, ...fineCuts(input.tris, code, input.brand, input.speeds, r.pose)] };
+  // A side the designer asked for that got no clamping (nothing left to cut there): said, never silently.
+  const made = new Set(r.setups.map((x) => x.side));
+  const empty = [...new Set(input.sides ?? [])].filter((x) => SIDES.some((y) => y.name === x) && !made.has(x)).map((side): CamNote => ({ key: 'sideEmpty', side }));
+  return { ...r, notes: [...r.notes.filter((n) => n.key !== 'sideEmpty'), ...empty], code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
+}
+
+/**
  * The program for a part: planned with each of its sides as the height in the vise (thinnest
  * first), each checked like the toolpath viewer checks it, the right one (99 % like the model, no
  * collision, held safely) that takes the least time kept. `progress` after each try.
@@ -1580,43 +1620,7 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
   // Planned again with them nested; each nest gets its own program (POM, held in the vise).
   const kept = best!;
   const fails = (x: CamResult) => x.setups.filter((st) => !st.physics.ok).map((st) => st.side);
-  // Written the shop's way at the end: the same moves in the shop's words (style.ts proves them
-  // alike, the check holds), then circles as arcs, checked again in the simulation and taken only
-  // when nothing is worse than before.
-  const shop = <T extends CamResult & { check: CamCheck }>(r: T): T => {
-    // With improvement O1 (approved): a move to where the tool already is is left out.
-    const words = shopStyle(r.code, input.brand, (c) => shorten(c, true)).code;
-    const arced = arcs(words);
-    const was = r.check;
-    const c = arced === words ? was : checkProgram(input.tris, arced, input.brand, input.speeds, r.pose, r.corners);
-    // Nothing worse: the match (never from a pass to below 0.99), collisions, holders, rapids, grazes, cales, gouges.
-    const ok =
-      arced !== words &&
-      c.match >= was.match - 0.0005 &&
-      (was.match < 0.99 || c.match >= 0.99) &&
-      c.collisions <= was.collisions &&
-      c.holders <= was.holders &&
-      c.rapids <= was.rapids &&
-      c.grazes.length <= was.grazes.length &&
-      c.cales <= was.cales &&
-      c.misplaced <= was.misplaced &&
-      gougeOf(c) <= gougeOf(was);
-    let [code, check] = ok ? [arced, c] : [words, was];
-    // Last, on a finer grid than the check's: a rapid down past stock it cannot see feeds the rest of the
-    // way (checked again, kept when nothing is worse).
-    const finer = finerRapids(code, input.brand, input.speeds);
-    if (finer !== code) {
-      const f = checkProgram(input.tris, finer, input.brand, input.speeds, r.pose, r.corners);
-      if (f.match >= check.match - 0.0005 && f.collisions <= check.collisions && f.rapids <= check.rapids && f.cales <= check.cales && f.misplaced <= check.misplaced && gougeOf(f) <= gougeOf(check)) [code, check] = [finer, f];
-    }
-    // The program as it goes out, once more on the finer grid: its cuts into the part count as gouges too.
-    check = { ...check, pieces: [...check.pieces, ...fineCuts(input.tris, code, input.brand, input.speeds, r.pose)] };
-    // A side the designer asked for that got no clamping (nothing left to cut there): said, never silently.
-    const made = new Set(r.setups.map((x) => x.side));
-    const empty = [...new Set(input.sides ?? [])].filter((x) => SIDES.some((y) => y.name === x) && !made.has(x)).map((side): CamNote => ({ key: 'sideEmpty', side }));
-    return { ...r, notes: [...r.notes, ...empty], code: code.replace(`=${TIME}MIN`, `=${(Math.round(check.minutes * 10) / 10).toFixed(1)}MIN`), check };
-  };
-  if (input.noNest || !fails(kept).length) return shop(kept);
+  if (input.noNest || !fails(kept).length) return shop(input, kept);
   // Planned again with the failing sides nested, and again with any side that then fails.
   let sides = fails(kept);
   let nested: CamResult & { check: CamCheck } = kept;
@@ -1629,14 +1633,14 @@ export function camProgram(input: CamInput, progress: (done: number, of: number)
     if (!more.length) break;
     sides = [...sides, ...more];
   }
-  if (!good(nested) && !(nested.check.match >= kept.check.match - 0.002 && fails(nested).length < fails(kept).length)) return shop(kept);
+  if (!good(nested) && !(nested.check.match >= kept.check.match - 0.002 && fails(nested).length < fails(kept).length)) return shop(input, kept);
   nested.nests = nested.setups
     .filter((x) => x.nest)
     .map((x) => {
       const own = camProgram({ tris: x.nest!.tris, material: 'POM', tools: input.tools, brand: input.brand, limits: input.limits, speeds: input.speeds, name: `${input.name ?? 'TEIL'} NEST`, noNest: true });
       return { side: x.side, nest: x.nest!, code: own.code, check: own.check };
     });
-  return shop(nested);
+  return shop(input, nested);
 }
 
 /** The program with the part's `vertical` model axis as its height in the first two setups. */

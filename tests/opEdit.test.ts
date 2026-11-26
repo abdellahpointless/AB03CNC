@@ -29,7 +29,7 @@ describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', ()
   });
 });
 
-import { camProgram, editProgram } from '../src/lib/cam/program';
+import { camProgram, editProgram, gougeOf } from '../src/lib/cam/program';
 import { catalog } from '../src/lib/cam/tools';
 import { heightPart } from './heightPart';
 
@@ -148,5 +148,16 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     // The vise check of that clamping is done again with the edited cuts.
     expect(r.setups[0].physics).not.toBe(made.setups[0].physics);
     expect(r.setups[1].physics).toBe(made.setups[1].physics);
+  }, 300_000);
+
+  it('writes an edited program the shop’s way too: about as long as the made one, its check no worse', () => {
+    const r = editProgram(input, made, { 'Z+|PLAN|MK_40.00_030_000_ALHS|0': { dz: 0.5 } });
+    // Without the shop's words and arcs it came out 4× longer here.
+    expect(r.code.split('\n').length).toBeLessThan(made.code.split('\n').length * 1.2);
+    const [c, was] = [r.check, made.check];
+    expect(c.match).toBeGreaterThanOrEqual(was.match - 0.0005);
+    for (const k of ['collisions', 'holders', 'rapids', 'cales', 'misplaced'] as const) expect(c[k]).toBeLessThanOrEqual(was[k]);
+    expect(c.grazes.length).toBeLessThanOrEqual(was.grazes.length);
+    expect(gougeOf(c)).toBeLessThanOrEqual(gougeOf(was));
   }, 300_000);
 });
