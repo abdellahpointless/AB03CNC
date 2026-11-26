@@ -134,9 +134,13 @@ export function catalog(material: string, machine: Tool[], opts: { exclude?: str
     const [want, other] = t.type === 'SFH' ? ['fraise ebauche', 'fraise finition'] : t.type === 'SF' ? ['fraise finition', 'fraise ebauche'] : [null, null];
     const m = fits.find((x) => x.category === want) ?? fits.find((x) => x.category !== other);
     if (m) used.add(m);
-    // One T number per tool in a program (an added tool to load: the first one free).
+    // One T number per tool in a program. One the machine has not: its template's number when no machine tool has it
+    // and a Haas takes it (T and H 1-200, the owner's rule), else the first number free (it is loaded there).
     let number = m?.number ?? (added ? 1 : t.number);
-    while (!m && numbers.has(number)) number += added ? 1 : 1_000_000;
+    if (!m && (numbers.has(number) || number < 1 || number > 200)) {
+      number = 1;
+      while (numbers.has(number) && number <= 200) number++;
+    }
     numbers.add(number);
     out.push({
       ...(m ?? {}),

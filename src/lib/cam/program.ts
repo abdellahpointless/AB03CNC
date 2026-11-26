@@ -3012,6 +3012,9 @@ export function commentSafe(text: string | undefined, fallback = 'TEIL'): string
   return clean || fallback;
 }
 
+/** Each tool's start (the owner's rule): plane, metric, no radius comp, no cycle, absolute, before anything moves. */
+export const SAFE_START = 'G00 G17 G21 G40 G80 G90';
+
 function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string {
   const s0 = setups[0];
   const fin = apply(s0?.R ?? IDENTITY, size).map(Math.abs);
@@ -3036,6 +3039,11 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
     else if (!s.ops.length) out.push('M05', 'M09', 'G53 Y0', ...clamp);
     s.ops.forEach((op, k) => {
       const t = op.tool;
+      // The owner's tool start (unless legacy): every modal state set before the first move, the tool over its first
+      // point with the spindle on, then its length and the coolant. Legacy: the length first, as the engineers write it.
+      const legacy = !!input.holes?.legacy;
+      const at = !legacy && /^G00 G90 X\S+ Y\S+ S\d+ M0?3$/.test(op.lines[0] ?? '') ? 1 : 0;
+      const g43 = `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[input.coolant ?? 'flood']}`;
       out.push(
         'M09',
         `(TOOLPATH ${op.name})`,
@@ -3044,10 +3052,10 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         `(DIAMETER ${t.diameter.toFixed(2)} MM/LENGTH ${(t.length || 0).toFixed(2)} MM)`,
         ...(!first && k === 0 ? ['G53 Y0', ...clamp] : []),
         'M01 (CHECK TOOL)',
-        `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[input.coolant ?? 'flood']}`,
+        ...(at ? [SAFE_START, op.lines[0], g43] : legacy ? [g43] : [SAFE_START, g43]),
       );
       // One line at a time: an operation can have hundreds of thousands, too many arguments for one push.
-      for (const l of op.lines) out.push(l);
+      for (let i = at; i < op.lines.length; i++) out.push(op.lines[i]);
       out.push(`G00 Z${SAFE}.`);
     });
   }
