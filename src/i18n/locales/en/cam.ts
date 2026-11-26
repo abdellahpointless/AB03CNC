@@ -270,6 +270,8 @@ const cam = {
       changed: 'Changed by hand: {{count}} operation(s). The part differs from the model ({{pct}} % alike, {{mm3}} mm³ cut out of it).',
       accept: 'I accept this part as it is',
       acceptedText: 'Changed by hand, accepted as it is: nothing hits the machine or the vise.',
+      acceptedHold_one: 'In {{count}} clamping the vise holds it off where that clamping\'s zero assumes: check the zero at the machine.',
+      acceptedHold_other: 'In {{count}} clampings the vise holds it off where their zero assumes: check the zeros at the machine.',
       dropped: 'Made again: changes by hand to operations the new program no longer has are gone.',
     },
     clamp1: {

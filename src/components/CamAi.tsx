@@ -22,7 +22,7 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import { IDENTITY, type Mat3 } from '../lib/orient';
-import { alike, fmtTime, passed, ProgramPanel, safe, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
+import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
@@ -1346,7 +1346,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             {result && handEdited && (
               <section className="space-y-1.5 rounded-[var(--radius-md)] border border-[var(--accent-primary)]/40 p-2.5" aria-live="polite">
                 <p className="text-[var(--text-primary)]">{t('camAi.opEdit.changed', { count: Object.keys(opEdits).length, pct: fmt(result.match * 100, 1), mm3: fmt(result.gouge, 0) })}</p>
-                {safe(result) && !alike(result) && (
+                {safeButHold(result) && (!alike(result) || result.misplaced > 0) && (
                   <label className="flex items-center gap-2 min-h-9 text-[var(--text-primary)]">
                     <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
                     {t('camAi.opEdit.accept')}

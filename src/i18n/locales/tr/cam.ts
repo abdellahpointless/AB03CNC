@@ -273,6 +273,8 @@ const cam: Translation<typeof en> = {
       changed: 'Elle değiştirildi: {{count}} işlem. Parça modelden farklı (%{{pct}} benzer, {{mm3}} mm³ parçadan kesiliyor).',
       accept: 'Bu parçayı olduğu gibi kabul ediyorum',
       acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: makineye ya da mengeneye hiçbir şey çarpmıyor.',
+      acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı makinede kontrol edin.',
+      acceptedHold_other: '{{count}} bağlamada mengene parçayı sıfırlarının varsaydığı yerden farklı tutuyor: sıfırları makinede kontrol edin.',
       dropped: 'Yeniden yapıldı: yeni programda artık olmayan işlemlerdeki elle değişiklikler kalktı.',
     },
     clamp1: {

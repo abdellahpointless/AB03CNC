@@ -22,10 +22,15 @@ export { GOUGE_MM3 };
 // The designer's parallels or jaw rest not used as asked (clampRefused, clampAsk, jawRefused): not the program they asked
 // for. A cut within 0.5 mm of the vise floor (floorHit): the simulation has none.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
+export const safeButHold = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
+export const safe = (r: CamSummary) => safeButHold(r) && !r.misplaced;
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
-export const passed = (r: CamSummary, accepted = false) => safe(r) && (alike(r) || accepted);
+/**
+ * Accepted (you): a part changed by hand as it is, also where the vise then holds it off where a later clamping's zero
+ * assumes (a tool of another Ø changed by hand: the operator knows why). Nothing that hits the machine is ever accepted.
+ */
+export const passed = (r: CamSummary, accepted = false) => safeButHold(r) && (accepted || (!r.misplaced && alike(r)));
 
 const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a855f7', engraving: '#f59e0b' };
 /** Pressure on the jaws, by its share of what the material takes: calm, watch, high. */
@@ -64,8 +69,8 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
   // The designer's parallels not used as asked: why it stays locked.
   const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
   const text = ok
-    ? accepted && !alike(result)
-      ? t('camAi.opEdit.acceptedText')
+    ? accepted && (!alike(result) || result.misplaced)
+      ? [t('camAi.opEdit.acceptedText'), result.misplaced ? t('camAi.opEdit.acceptedHold', { count: result.misplaced }) : ''].filter(Boolean).join(' ')
       : t('camAi.proven')
     : changed
       ? t('camAi.recalcFirst')
