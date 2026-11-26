@@ -845,7 +845,35 @@ export function byPlace(work: Work[], r: number): (Work & { fresh?: boolean })[]
  * in that ring's path by rapid to 1 mm above the pass, across, round, and lifted and over by
  * rapid for an open piece's next pass (never back over the cut at feed).
  */
-function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null, raised?: (ring: Ring, z: number, top: number) => void): CamOp {
+/**
+ * A closed ring that is a circle smaller than the tool (a hole a little wider than the mill: the owner's "micro loop"),
+ * every point within 0.005 mm of it: its centre (a least-squares fit), radius and way round; else null.
+ */
+export function microCircle(pts: P2[], toolR: number): { c: P2; r: number; ccw: boolean } | null {
+  const n = pts.length;
+  if (n < 6) return null;
+  // Kasa fit: x² + y² + D x + E y + F = 0 by least squares (normal equations, 3 x 3).
+  let [sx, sy, sxx, syy, sxy, sz, sxz, syz] = [0, 0, 0, 0, 0, 0, 0, 0];
+  for (const [x, y] of pts) {
+    const z = x * x + y * y;
+    sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; sz += z; sxz += x * z; syz += y * z;
+  }
+  const A = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]];
+  const b = [-sxz, -syz, -sz];
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const d0 = det(A);
+  if (Math.abs(d0) < 1e-12) return null;
+  const col = (k: number) => A.map((row, i) => row.map((v, j) => (j === k ? b[i] : v)));
+  const [D, E, F] = [det(col(0)) / d0, det(col(1)) / d0, det(col(2)) / d0];
+  const c: P2 = [-D / 2, -E / 2];
+  const r = Math.sqrt(Math.max(0, c[0] * c[0] + c[1] * c[1] - F));
+  if (r < 0.005 || r >= toolR || pts.some((p) => Math.abs(dist2(p, c) - r) > 0.005)) return null;
+  let a = 0;
+  for (let i = 0; i < n; i++) a += pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1];
+  return { c, r, ccw: a > 0 };
+}
+
+function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, stockTop: number, clear: number, material: (lo: number, hi: number) => Region, purpose: Purpose, upTo?: (ring: Ring, z: number) => number | null, raised?: (ring: Ring, z: number, top: number) => void, helix = false): CamOp {
   const finish = purpose === 'finish' || purpose === 'contour' || purpose === 'thinWalls';
   // Each ring with as few points as keep its own within 0.005 mm (finishing 0.002), not every facet and
   // step of the model's curves (CAM AI wrote 27 % of its roughing moves under 0.01 mm, the shop 2 %).
@@ -930,6 +958,10 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
       const pts = ring.pts;
       const m = pts.length;
       const tiny = m < 2 || perimeter(ring) < 1;
+      // The owner's hole rule: a ring that is a circle smaller than the tool is written as arcs, a helix one G02/G03 a
+      // turn down (never steeper than the ramp) and one full circle a level, not hundreds of tiny G01 chords.
+      const circ = helix && ring.closed ? microCircle(pts, tool.diameter / 2) : null;
+      const arc = (to: P2, z?: number) => `${circ!.ccw ? 'G03' : 'G02'} ${xy(to)}${z === undefined ? '' : ` Z${n3(z)}`} I${n3(circ!.c[0] - to[0])} J${n3(circ!.c[1] - to[1])}`;
       let at: P2 = pts[0];
       // Vertex index the closed ring continues from (the ramp ends between two of them).
       let k0 = 0;
@@ -952,7 +984,10 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
         if (z0 !== null) lines.push(`G01 Z${n3(z0)} F${c.fz}.`);
         const zs = z0 ?? (ring.closed ? zAt : from);
         if (zs > pz + 1e-6) {
-          if (ring.closed) {
+          if (circ) {
+            const turns = Math.max(1, Math.ceil((zs - pz) / slope / (2 * Math.PI * circ.r) - 1e-9));
+            for (let t = 1; t <= turns; t++) lines.push(`${arc(at, zs - ((zs - pz) * t) / turns)}${t === 1 ? ` F${c.fz}.` : ''}`);
+          } else if (ring.closed) {
             const start = k0;
             const rp = ramp(at, (k) => pts[(start + 1 + k) % m], zs, pz, slope);
             rp.pts.forEach((p, i) => lines.push(`G01 ${xyz(p)}${i ? '' : ` F${c.fz}.`}`));
@@ -964,7 +999,8 @@ function milling(tool: CamTool, planned: Work[], mat: string, limits: Limits, st
         // The ring at this depth, from where the tool is back to it.
         let fset = false;
         const feed = () => (fset ? '' : ((fset = true), ` F${c.f}.`));
-        if (ring.closed) {
+        if (circ) lines.push(`${arc(at)}${feed()}`);
+        else if (ring.closed) {
           for (let i = 1; i <= m; i++) lines.push(`G01 ${xy(pts[(k0 + i) % m])}${feed()}`);
           if (dist2(pts[k0 % m], at) > 1e-6) lines.push(`G01 ${xy(at)}`);
         } else for (const p of pts.slice(1)) lines.push(`G01 ${xy(p)}${feed()}`);
@@ -2714,8 +2750,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
           if (stay.length) after = union(after, swept(stay, r));
         }
       }
-      if (early.length) ops.splice(drillAt, 0, milling(tool, early, mat, limits, millTop, plane, left.at, 'outline', upTo, raised));
-      if (!early.length || late.length) ops.push(milling(tool, early.length ? late : work, mat, limits, millTop, plane, left.at, purpose, upTo, raised));
+      if (early.length) ops.splice(drillAt, 0, milling(tool, early, mat, limits, millTop, plane, left.at, 'outline', upTo, raised, !input.holes?.legacy));
+      if (!early.length || late.length) ops.push(milling(tool, early.length ? late : work, mat, limits, millTop, plane, left.at, purpose, upTo, raised, !input.holes?.legacy));
     }
     // 3b. The walls are finished from the side out of their roughing: one pass (shop rule: more cost
     // too much time); a top plate's or contour insert's pockets only. A seal cage's
@@ -2753,7 +2789,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         work[straight ? work.length - 1 : work.length] = { z: w.z, above: straight ? prev.above : w.above, rings, keep: w.keep, done: w.rings };
         lastFin = fin;
       }
-      if (work.length) ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour'));
+      if (work.length) ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour', undefined, undefined, !input.holes?.legacy));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
     // You (Beta 2): a chamfer is cut once. A 45° face is a chamfer from two sides; one a clamping before cut is done.
