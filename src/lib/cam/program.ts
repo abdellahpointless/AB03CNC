@@ -1386,7 +1386,35 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * operations' lines moved or taken deeper (opEdit.ts), the vise check of their clampings done again with the new cuts,
  * the program posted and checked again whole (later cuts and holders depend on what an edited one removed).
  */
-export function editProgram(input: CamInput, r: CamResult, edits: Record<string, OpEdit>): CamResult & { check: CamCheck } {
+/** Milling made for what the mills before it left: their order is the plan's own (a rest or finish mill first would cut full stock). */
+const MILLING: Purpose[] = ['outline', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave'];
+
+/**
+ * A clamping's operations in the operator's order of tools (you: dragged in the list), each tool's own in their made
+ * order; tools not listed keep their places. What runs before an operation it was made after (the facing before all,
+ * a spot drill before the drills, the mills in their made order) is not verified by any check: that one is marked
+ * unsafe (the program locks) and noted.
+ */
+export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: number): { ops: CamOp[]; notes: CamNote[] } {
+  const rank = (o: CamOp) => want?.indexOf(o.tool.code) ?? -1;
+  if (!want?.length || !ops.some((o) => rank(o) >= 0)) return { ops, notes: [] };
+  const listed = ops.filter((o) => rank(o) >= 0).sort((a, b) => rank(a) - rank(b));
+  let j = 0;
+  const out = ops.map((o) => (rank(o) >= 0 ? listed[j++] : o));
+  const made = new Map(ops.map((o, i) => [o, i]));
+  const mustFollow = (a: CamOp, b: CamOp) => a.purpose === 'face' || (a.purpose === 'centre' && (b.purpose === 'drill' || b.purpose === 'pinHoles')) || (MILLING.includes(a.purpose) && MILLING.includes(b.purpose));
+  const notes: CamNote[] = [];
+  const ordered = out.map((b, i) => {
+    // The first one made before b, and made for b to follow it, that now runs after it.
+    const a = out.slice(i + 1).find((x) => made.get(x)! < made.get(b)! && mustFollow(x, b));
+    if (!a) return b;
+    if (!notes.some((n) => n.used === b.tool.number)) notes.push({ key: 'orderLocked', setup, used: b.tool.number, d: a.tool.number });
+    return { ...b, cut: { ...b.cut, unsafe: true } };
+  });
+  return { ops: ordered, notes };
+}
+
+export function editProgram(input: CamInput, r: CamResult, edits: Record<string, OpEdit>, order?: Record<string, string[]>): CamResult & { check: CamCheck } {
   // A tool changed by hand gets a T number nothing else in the program uses (from 99 down) and a code no inventory has
   // (the shop's pattern, so the remapper reads its type, Ø and length, ending "_HAND"): only the remapper gives it a
   // machine tool, never Download by mistake.
@@ -1412,9 +1440,10 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     if (!ok) throw new Error('An edit by hand out of range.');
   }
   // An edited cut that reaches the vise floor is noted and locks the program (checked, below).
-  const setups = r.setups.map((s) => {
+  const orderNotes: CamNote[] = [];
+  const setups = r.setups.map((s, si) => {
     let touched = false;
-    const ops = s.ops.flatMap((op, k): CamOp[] => {
+    const edited = s.ops.flatMap((op, k): CamOp[] => {
       const e = edits[op.key ?? `${s.side}|${op.name}|${op.tool.code}|${k}`];
       if (!e) return [op];
       touched = true;
@@ -1438,13 +1467,18 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
       const unsafe = !!op.cut.unsafe || (op.kind !== 'drill' && op.kind !== 'centre' && (moved.cut.ap > d || op.cut.ae > d));
       return [{ ...moved, tool, lines: scaleSpeeds(lines, k2, kf), cut: { ...moved.cut, s: s2, f: Math.round(op.cut.f * kf), fz: Math.round(op.cut.fz * kf), unsafe } }];
     });
+    // Then the operator's order (the edits above went by the made keys).
+    const re = reorderOps(edited, order?.[s.side], si + 1);
+    const ops = re.ops;
+    orderNotes.push(...re.notes);
+    touched ||= ops.some((o, i) => o !== s.ops[i]) || ops.length !== s.ops.length;
     if (!touched || !s.vise) return touched ? { ...s, ops } : s;
     const v = s.vise;
     const loads = ops.map((op) => loadOf(op, v.material, v.left, v.width, v.limits));
     const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
     return { ...s, ops, physics };
   });
-  return checked(input, { ...r, setups, code: post(input, setups, r.size, r.raw) });
+  return checked(input, { ...r, setups, notes: [...r.notes.filter((n) => n.key !== 'orderLocked'), ...orderNotes], code: post(input, setups, r.size, r.raw) });
 }
 
 /** The lowest Z an operation's lines go to (its own frame): its moves and drill cycles, not a machine position. */

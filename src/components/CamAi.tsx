@@ -149,6 +149,16 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // Tools changed by hand, by clamping side and the tool they replace (you: a tool change always applies, also after Make
   // again: where the plan made again still uses the old tool there, the new one takes its paths).
   const [toolSwaps, setToolSwaps] = useState<Record<string, { d: number; l: number; code?: string }>>({});
+  // The operator's order of each clamping's tools (you: dragged in the list), by side: sent with every change by hand,
+  // kept after Make again for the tools still there (program.ts reorderOps).
+  const [opOrder, setOpOrder] = useState<Record<string, string[]>>({});
+  const orderRef = useRef(opOrder);
+  orderRef.current = opOrder;
+  const editsRef = useRef<Record<string, OpEdit>>({});
+  editsRef.current = opEdits;
+  // The tool row being dragged, and the row it would land before.
+  const [dragCode, setDragCode] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
   // The changes since the program was made, newest last: listed by the one Make again button and undone one at a time,
   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
@@ -281,6 +291,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setOpEdits({});
     setGone({});
     setToolSwaps({});
+    setOpOrder({});
+    orderRef.current = {};
+    editsRef.current = {};
     setEditsDropped(false);
     carry.current = null;
     plain.current = null;
@@ -426,7 +439,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
         for (const st of m.result.setups) if (st.side === side) for (const o of st.ops) if (o.code === code) swapped[o.key] = { tool };
       }
-      if (carrying || Object.keys(swapped).length) {
+      // The order dragged, for the tools this program still has in that clamping.
+      const ordered = Object.entries(orderRef.current).some(([side, codes]) => m.result.setups.some((st) => st.side === side && st.ops.some((o) => codes.includes(o.code))));
+      if (carrying || Object.keys(swapped).length || ordered) {
         // Changes by hand go on with the new program where their operation is the same cut (its lines as made match:
         // a key only counts operations of one name and tool, so after a re-plan it can name another cut) in a clamping
         // with the same side and frame (a move is in the clamping's own X, Y, Z: turned, it would cut elsewhere, a
@@ -440,7 +455,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const kept = Object.fromEntries(Object.entries(carrying ?? {}).filter(([k]) => same(k)));
         const keep: Record<string, OpEdit> = { ...kept };
         for (const [k, e] of Object.entries(swapped)) keep[k] = { ...keep[k], ...e };
-        if (Object.keys(keep).length) applyEdits(keep, '');
+        if (Object.keys(keep).length || ordered) applyEdits(keep, '');
         else setOpEdits({});
         setEditsDropped(Object.keys(kept).length < Object.keys(carrying ?? {}).length);
       } else
@@ -610,7 +625,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const changed = Object.keys({ ...draft, ...cuts }).filter((k) => JSON.stringify(draft[k] ?? {}) !== JSON.stringify(cuts[k] ?? {}));
   const toolName = useToolName();
   // A part changed by hand may be accepted as it is (the tick), never what could hit the machine (safe()).
-  const handEdited = Object.keys(opEdits).length > 0;
+  const handEdited = Object.keys(opEdits).length > 0 || Object.values(opOrder).some((c) => c.length > 0);
   // A tool changed by hand has no machine number: only the remapper gives it one (Send), never Download.
   const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.endsWith('_HAND')));
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
@@ -732,6 +747,30 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       skip: Object.fromEntries(ops.map((o) => [o.key, `T${o.tool} · ${t(`camAi.purpose.${o.purpose}`)} (${o.key.split('|')[0]})`])),
     });
   };
+  // A tool moved in its clamping's list (you: drag and drop, or Alt + arrows): its operations there run in that place,
+  // checked again (an order no check covers locks it, program.ts reorderOps); kept after Make again for its tools.
+  // to: the place it goes before (0 to the number of tools).
+  const moveTool = (i: number, code: string, to: number) => {
+    const s = result?.setups[i];
+    if (!s || busy) return;
+    const list = [...new Set(s.ops.map((o) => o.code))];
+    const from = list.indexOf(code);
+    if (from < 0 || to < 0 || to > list.length) return;
+    const next = list.filter((c) => c !== code);
+    next.splice(to > from ? to - 1 : to, 0, code);
+    if (next.every((c, k) => c === list[k])) return;
+    const was = orderRef.current;
+    const order = { ...was, [s.side]: next };
+    setOpOrder(order);
+    applyEdits(editsRef.current, '', order);
+    addChange({
+      label: t('camAi.bar.moved', { tool: s.ops.find((o) => o.code === code)!.tool, n: i + 1 }),
+      undo: () => {
+        setOpOrder(was);
+        applyEdits(editsRef.current, '', was);
+      },
+    });
+  };
   // Deleted operations still deleted (by hand now, or for the next program made), and bringing them back.
   const isGone = (k: string) => !!opEdits[k]?.off || skipDraft.includes(k);
   const restore = (keys: string[], what: string) => {
@@ -765,13 +804,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     return [...by.values()];
   };
   // Changes by hand, checked again on the plan the worker kept (the operation `key` stays picked).
-  const applyEdits = (next: Record<string, OpEdit>, key: string) => {
+  const applyEdits = (next: Record<string, OpEdit>, key: string, order = orderRef.current) => {
     setOpEdits(next);
+    editsRef.current = next;
+    orderRef.current = order;
     setEditsDropped(false);
     setAccepted(false);
     setChecking(true);
     following.current = key;
-    worker.current?.postMessage({ type: 'edit', edits: next, toolDb: toolDbRef.current.db });
+    worker.current?.postMessage({ type: 'edit', edits: next, order, toolDb: toolDbRef.current.db });
   };
   // The browser's setups: the two picked ones before a program, the program's after.
   const setupNodes = result ? result.setups.map((s, i) => ({ i, side: s.side })) : chosen ? [{ i: 0, side: chosen.side }, ...(locked1 ? [{ i: 1, side: side2 }] : [])] : [];
@@ -878,21 +919,41 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </p>
           )}
           <ul aria-label={t('camAi.ws.tools')} className="px-2 space-y-0.5">
-            {[...new Map((result.setups[opNow]?.ops ?? []).map((o) => [o.code, o] as const)).values()].map((o) => {
+            {[...new Map((result.setups[opNow]?.ops ?? []).map((o) => [o.code, o] as const)).values()].map((o, idx, all) => {
               const on = sel.kind === 'tool' && sel.i === opNow && sel.code === o.code;
               const secs = result.setups[opNow].ops.filter((x) => x.code === o.code).reduce((a, x) => a + x.seconds, 0);
               const label = `T${o.tool}`;
               return (
-                <li key={o.code}>
+                <li
+                  key={o.code}
+                  // Dragged to another place in the clamping (you); the line shows where it lands.
+                  draggable={!busy}
+                  onDragStart={(e) => { setDragCode(o.code); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', o.code); }}
+                  onDragOver={(e) => {
+                    if (!dragCode) return;
+                    e.preventDefault();
+                    const r = e.currentTarget.getBoundingClientRect();
+                    setDropAt(e.clientY < r.top + r.height / 2 ? idx : idx + 1);
+                  }}
+                  onDrop={(e) => { e.preventDefault(); if (dragCode && dropAt !== null) moveTool(opNow, dragCode, dropAt); setDragCode(null); setDropAt(null); }}
+                  onDragEnd={() => { setDragCode(null); setDropAt(null); }}
+                  className={`rounded-[8px] ${dragCode === o.code ? 'opacity-50' : ''} ${dragCode && dropAt === idx ? 'shadow-[inset_0_2px_0_var(--accent-primary)]' : dragCode && dropAt === all.length && idx === all.length - 1 ? 'shadow-[inset_0_-2px_0_var(--accent-primary)]' : ''}`}
+                >
                   <button
                     type="button"
                     // A tool CAM AI took from the database, not in the chosen machine (you): yellow.
-                    className={`${row(on)} ${o.inMachine ? '' : 'ring-1 ring-inset ring-[#facc15]/70 bg-[#facc15]/[0.08]'}`}
+                    className={`${row(on)} ${o.inMachine ? '' : 'ring-1 ring-inset ring-[#facc15]/70 bg-[#facc15]/[0.08]'} ${busy ? '' : 'cursor-grab active:cursor-grabbing'}`}
                     aria-current={on || undefined}
                     onClick={() => { setSwapAsk(null); setSel({ kind: 'tool', i: opNow, code: o.code }); if (!wide) setRightDrawer(true); }}
                     // Right click: straight to changing the tool (you, Beta 2).
                     onContextMenu={(e) => { e.preventDefault(); setSwapAsk(o.code); setSel({ kind: 'tool', i: opNow, code: o.code }); }}
-                    title={t('camAi.rightClickSwap')}
+                    // Alt + arrows: the same as dragging it one place.
+                    onKeyDown={(e) => {
+                      if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+                      e.preventDefault();
+                      moveTool(opNow, o.code, e.key === 'ArrowUp' ? idx - 1 : idx + 2);
+                    }}
+                    title={`${t('camAi.rightClickSwap')} · ${t('camAi.ws.dragHint')}`}
                   >
                     <span title={label} className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs overflow-hidden whitespace-nowrap" style={{ background: `${toolColor(o.tool)}26`, color: toolColor(o.tool) }}>
                       {label.length > 5 ? `${label.slice(0, 4)}…` : label}
@@ -916,6 +977,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       </button>
                       <button type="button" className={rowAct} onClick={() => (wide ? setRightOpen(true) : setRightDrawer(true))} aria-label={t('camAi.ws.rowSettings')} title={t('camAi.ws.rowSettings')}>
                         <Settings2 size={14} stroke={1.8} aria-hidden />
+                      </button>
+                      <button type="button" className={rowAct} onClick={() => moveTool(opNow, o.code, idx - 1)} disabled={busy || idx === 0} aria-label={t('camAi.ws.rowUp', { tool: o.tool })} title={t('camAi.ws.rowUp', { tool: o.tool })}>
+                        <ArrowUp size={14} stroke={1.8} aria-hidden />
+                      </button>
+                      <button type="button" className={rowAct} onClick={() => moveTool(opNow, o.code, idx + 2)} disabled={busy || idx === all.length - 1} aria-label={t('camAi.ws.rowDown', { tool: o.tool })} title={t('camAi.ws.rowDown', { tool: o.tool })}>
+                        <ArrowDown size={14} stroke={1.8} aria-hidden />
                       </button>
                       <button type="button" className={`${rowAct} hover:!text-red-400`} onClick={() => setDropAsk({ i: opNow, code: o.code, tool: o.tool })} disabled={busy} aria-label={t('camAi.ws.rowDelete')} title={t('camAi.ws.rowDelete')}>
                         <Trash size={14} stroke={1.8} aria-hidden />

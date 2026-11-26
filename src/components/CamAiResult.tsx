@@ -22,7 +22,7 @@ export { GOUGE_MM3 };
 // The designer's parallels or jaw rest not used as asked (clampRefused, clampAsk, jawRefused): not the program they asked
 // for. A cut within 0.5 mm of the vise floor (floorHit): the simulation has none.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
+export const safe = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && !r.misplaced && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
 export const passed = (r: CamSummary, accepted = false) => safe(r) && (alike(r) || accepted);
@@ -59,6 +59,8 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
   const ok = passed(result, accepted) && !changed;
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
+  // An operation dragged before one it was made to follow: why it is locked (it is also marked unsafe).
+  const orderNote = result.notes.find((n) => n.key === 'orderLocked');
   // The designer's parallels not used as asked: why it stays locked.
   const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
   const text = ok
@@ -67,7 +69,9 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
       : t('camAi.proven')
     : changed
       ? t('camAi.recalcFirst')
-      : unsafe
+      : orderNote
+        ? t('camAi.note.orderLocked', { setup: orderNote.setup, used: orderNote.used, d: orderNote.d })
+        : unsafe
         ? t('camAi.unsafe')
         : result.cales
           ? t('camAi.intoCale', { count: result.cales })
