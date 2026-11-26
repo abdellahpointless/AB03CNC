@@ -171,7 +171,7 @@ export async function restoreBackup(data: any, opts: { replaceTools: boolean }, 
     log(i18n.t('data:log.importingHistory', { count: history.length }));
     summary.history = await importHistory(history, log, isNew ? data.programs : undefined);
     if (isNew && data.programs) summary.programs = Object.keys(data.programs).length;
-    log(i18n.t('data:log.historyRestored', { added: summary.history, present: history.length - summary.history }), 'ok');
+    log(i18n.t('data:log.historyRestored', { count: summary.history, present: history.length - summary.history }), 'ok');
   }
 
   if (isNew && Array.isArray(data.partEntries) && data.partEntries.length && currentFeatures().partTracking) {

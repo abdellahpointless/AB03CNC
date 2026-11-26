@@ -60,7 +60,8 @@ const history = {
     viewCodeTitle: 'Inspect remapped G-Code directly in browser',
     downloadTitle: 'Download remapped G-Code file',
     toolModifications: 'Tool Modifications',
-    toolsMapped: '{{count}} tool(s) mapped',
+    toolsMapped_one: '{{count}} tool mapped',
+    toolsMapped_other: '{{count}} tools mapped',
     autoSelection: 'Auto Selection',
     manualOverride: 'Manual Override',
     originalRequest: 'Original Request',
@@ -91,7 +92,8 @@ const history = {
     },
     alerts: {
       nothingToArchive: 'There are no records older than 30 days.',
-      archiveDone: 'Archive downloaded. {{count}} record(s) older than 30 days were removed from the server.',
+      archiveDone_one: 'Archive downloaded. {{count}} record older than 30 days was removed from the server.',
+      archiveDone_other: 'Archive downloaded. {{count}} records older than 30 days were removed from the server.',
     },
   },
 

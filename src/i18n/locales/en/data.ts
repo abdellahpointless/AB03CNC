@@ -45,7 +45,8 @@ const data = {
     /** The word the admin has to type to clear all history. */
     deleteWord: 'DELETE',
     noneOlder: 'No records older than {{days}} days.',
-    removed: 'Archive downloaded, {{count}} record(s) removed.',
+    removed_one: 'Archive downloaded, {{count}} record removed.',
+    removed_other: 'Archive downloaded, {{count}} records removed.',
   },
   /** Progress lines shown to the admin during import / backup / restore (lib/migration). */
   log: {
@@ -62,8 +63,10 @@ const data = {
     backupReady: 'Backup ready.',
     toolsReplaced: 'Tool inventory replaced: {{count}} tools.',
     toolsSkipped: 'Tool inventory in the file was skipped (tick "Replace tool inventory" to restore it).',
-    importingHistory: 'Importing {{count}} history record(s)...',
-    historyRestored: 'History: {{added}} new record(s) added, {{present}} already present.',
+    importingHistory_one: 'Importing {{count}} history record...',
+    importingHistory_other: 'Importing {{count}} history records...',
+    historyRestored_one: 'History: {{count}} new record added, {{present}} already present.',
+    historyRestored_other: 'History: {{count}} new records added, {{present}} already present.',
     restoreFinished: 'Restore finished.',
   },
   errors: {

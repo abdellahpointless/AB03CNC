@@ -332,7 +332,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-text)]' : 'text-[var(--green-500)]'} />
-              {t('card.mfa', { count: country.users.adminsWithMfa, total: country.users.admins })}
+              {t('card.mfa', { count: country.users.admins, n: country.users.adminsWithMfa })}
             </span>
             <span className={country.security.failedSignIns7d > 20 ? 'text-[var(--orange-text)]' : ''}>{t('card.failed', { count: country.security.failedSignIns7d })}</span>
             <span>{country.programs.lastAt ? t('card.lastActivity', { time: timeAgo(country.programs.lastAt) }) : t('card.noActivity')}</span>

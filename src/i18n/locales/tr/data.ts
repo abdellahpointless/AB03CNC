@@ -45,7 +45,8 @@ const data: Translation<typeof en> = {
     typeToConfirm: 'Onaylamak için {{word}} yazın',
     deleteWord: 'SİL',
     noneOlder: '{{days}} günden eski kayıt yok.',
-    removed: 'Arşiv indirildi, {{count}} kayıt silindi.',
+    removed_one: 'Arşiv indirildi, {{count}} kayıt silindi.',
+    removed_other: 'Arşiv indirildi, {{count}} kayıt silindi.',
   },
   log: {
     createdAccounts: 'Oluşturulan hesaplar: {{names}}',
@@ -62,8 +63,10 @@ const data: Translation<typeof en> = {
     toolsReplaced: 'Takım listesi değiştirildi: {{count}} takım.',
     toolsSkipped:
       'Dosyadaki takım listesi atlandı (geri yüklemek için "Takım listesini dosyadakiyle değiştir" seçeneğini işaretleyin).',
-    importingHistory: '{{count}} geçmiş kaydı içe aktarılıyor...',
-    historyRestored: 'Geçmiş: {{added}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
+    importingHistory_one: '{{count}} geçmiş kaydı içe aktarılıyor...',
+    importingHistory_other: '{{count}} geçmiş kaydı içe aktarılıyor...',
+    historyRestored_one: 'Geçmiş: {{count}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
+    historyRestored_other: 'Geçmiş: {{count}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
     restoreFinished: 'Geri yükleme tamamlandı.',
   },
   errors: {

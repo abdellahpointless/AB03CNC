@@ -60,7 +60,8 @@ const history: Translation<typeof en> = {
     viewCodeTitle: 'Eşleştirilmiş G-kodunu doğrudan tarayıcıda inceleyin',
     downloadTitle: 'Eşleştirilmiş G-kodu dosyasını indirin',
     toolModifications: 'Takım Değişiklikleri',
-    toolsMapped: '{{count}} takım eşleştirildi',
+    toolsMapped_one: '{{count}} takım eşleştirildi',
+    toolsMapped_other: '{{count}} takım eşleştirildi',
     autoSelection: 'Otomatik Seçim',
     manualOverride: 'Manuel Seçim',
     originalRequest: 'Programdaki İstek',
@@ -91,7 +92,8 @@ const history: Translation<typeof en> = {
     },
     alerts: {
       nothingToArchive: '30 günden eski kayıt yok.',
-      archiveDone: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
+      archiveDone_one: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
+      archiveDone_other: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
     },
   },
 
