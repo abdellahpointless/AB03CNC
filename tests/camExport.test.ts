@@ -45,7 +45,7 @@ describe("CAM AI's program as each machine gets it", () => {
 
   it('has arcs and drilling cycles, and the shop’s end', () => {
     expect(r.code).toMatch(/ G0[23] X/);
-    expect(r.code).toMatch(/ G98 G8[13] /);
+    expect(r.code).toMatch(/ G9[89] (?:G8[13]|G73) /);
     expect(r.code).toMatch(/G0 G53 G49 Y0 Z0 M89\n.*Gesamt-Bearbeitungszeit =\d+\.\dMIN/);
   }, 600_000);
 
@@ -77,7 +77,7 @@ describe("CAM AI's program as each machine gets it", () => {
     expect(changes.length).toBeGreaterThan(1);
     for (const l of changes) expect(l).toMatch(/(?<![A-Z])G49(?![0-9])/);
     expect(Math.max(...sent.flatMap((l) => [...l.matchAll(/(?<![A-Z])S(\d+)/g)].map((m) => Number(m[1]))))).toBeLessThanOrEqual(5000);
-    const pecks = sent.filter((l) => /(?<![A-Z])G83(?![0-9])/.test(l));
+    const pecks = sent.filter((l) => !/^N?\d* ?\(/.test(l) && /(?<![A-Z])G(?:83|73)(?![0-9])/.test(l));
     expect(pecks.length).toBeGreaterThan(0);
     for (const l of pecks) expect(l).toMatch(/(?<![A-Z])Q2\.?(?![0-9])/);
     // FANUC-2 runs HAAS code: the HAAS end stays.
@@ -88,7 +88,7 @@ describe("CAM AI's program as each machine gets it", () => {
     // A model named after another material: its name comes before the material in the header.
     const named = r.code.replace(/\(([^()]*?)\bALU\b/, '(POM-PLATE ALU');
     expect(named).toContain('POM-PLATE ALU');
-    const pecks = (code: string) => code.split('\n').filter((l) => /(?<![A-Z])G83(?![0-9])/.test(l));
+    const pecks = (code: string) => code.split('\n').filter((l) => !/^N?\d* ?\(/.test(l) && /(?<![A-Z])G(?:83|73)(?![0-9])/.test(l));
     for (const l of pecks(forMachine(named, 'FANUC-2', 'O0001.NC', 'ALU'))) expect(l).toMatch(/(?<![A-Z])Q2\.?(?![0-9])/);
     // An FH part named like a POM one keeps its pecks to 5 mm.
     const fh = named.replace('POM-PLATE ALU', 'POM-PLATE FH').replace(/(?<![A-Z])Q[\d.]+/g, 'Q8.');

@@ -84,13 +84,13 @@ describe('drilling before the pocket above the hole is milled (shop order)', () 
   const tools = [tool(1, 'tourteau', 40, 30), tool(2, 'fraise', 10, 40), tool(3, 'fraise', 4, 25), tool(4, 'foret', 4, 50)];
   const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false } });
 
-  it('starts every cycle above the material still over the hole (the shop: R2 above the faced top)', () => {
+  it('starts every cycle above the material still over the hole (R 0.5 mm over it, the owner\'s rule; the shop wrote R2)', () => {
     const lines = r.code.split('\n');
     const g52 = lines.flatMap((l, i) => (/G52 /.test(l) ? [i] : []));
-    const cycles = lines.slice(g52[0], g52[1] ?? lines.length).filter((l) => /G8[13] /.test(l));
+    const cycles = lines.slice(g52[0], g52[1] ?? lines.length).filter((l) => /G8[13] |G73 /.test(l));
     expect(cycles.length).toBeGreaterThan(0);
     // The hole drilled before the pocket: the pocket's material is still over it, up to Z0.
-    for (const l of cycles) expect(Number(l.match(/R(-?[\d.]+)/)![1])).toBeGreaterThanOrEqual(2);
+    for (const l of cycles) expect(Number(l.match(/R(-?[\d.]+)/)![1])).toBeGreaterThanOrEqual(0.5);
     expect(r.check).toMatchObject({ rapids: 0, collisions: 0 });
   }, 300_000);
 });
@@ -107,7 +107,7 @@ describe('through holes and the parallels (the 0.5 mm method: stock under the pa
     const g52 = lines.flatMap((l, i) => (/G52 /.test(l) ? [i] : []));
     const from = lines.findIndex((l, i) => i > (g52[clamping - 1] ?? 0) - 12 && /TOOLPATH BOHREN_3\.3MM/.test(l) && (clamping === 1 || i > g52[0]));
     const to = lines.findIndex((l, i) => i > from + 12 && /TOOLPATH/.test(l));
-    return lines.slice(from, to).flatMap((l) => (/G8[13] /.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])).sort((a, b) => a - b);
+    return lines.slice(from, to).flatMap((l) => (/G8[13] |G73 /.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])).sort((a, b) => a - b);
   };
 
   it('drills both out in clamping 1, full size 0.5 mm past the part, into the stock under it: neither reaches a parallel, never drilled again', () => {
@@ -136,7 +136,7 @@ describe('a through hole drilled after the turn, from its counterbore (the shop\
     const tris = plateWithCounterbore(60, 40, 12, { c: [30, 4], d: 3.3, D: 6, depth: 4 });
     const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 19], orient: { side: 'Z+', spin: false } });
     const s = r.setups.find((x) => x.side === 'Z-')!;
-    const z = s.ops.filter((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3.3) < 0.01).flatMap((o) => o.lines.filter((l) => /G8[13]/.test(l)).map((l) => Number(l.match(/ Z(-?[\d.]+)/)![1])));
+    const z = s.ops.filter((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3.3) < 0.01).flatMap((o) => o.lines.filter((l) => /G8[13] |G73 /.test(l)).map((l) => Number(l.match(/ Z(-?[\d.]+)/)![1])));
     expect(z.length).toBeGreaterThan(0);
     expect(Math.min(...z)).toBeGreaterThanOrEqual(-12 - 0.95 - 1e-6);
     expect(Math.min(...z)).toBeLessThanOrEqual(-12 - 0.9);

@@ -114,6 +114,8 @@ export interface CamInput {
    * the parallels; one of that clamping's `ledges` that fits so, else refused (stepRefused). Not asked: the deepest that fits.
    */
   steps?: (number | null)[];
+  /** How holes are written (HoleOpts; the defaults when left out, `legacy` for the output before 2026-11-27). */
+  holes?: HoleOpts;
   /**
    * The designer's rest on the jaw tops (you), by clamping: the depth (mm under Z0) of a face the part's wider part rests
    * on, its narrower body gripped below ("SANS CALE / EPAISSEUR DE 8 MM SUR L'ETAU"); one of that clamping's `ledges`,
@@ -550,12 +552,57 @@ function facing(fm: CamTool, mat: string, limits: Limits, sb: { lo: Vec; hi: Vec
 }
 
 /**
- * Centre-drill, then drill (G83 pecking), one tool after the other. `surface`: where the material
- * over a hole starts when it is drilled. The shop drills before the pockets (143 of 157 library
- * setups) from R2 above the faced top (513 drill cycles): a cycle starts 2 mm above that material,
- * never in it (its way down to R is a rapid).
+ * How holes are written (the owner's rules for the VF-4, 2026-11-27): R just over where the material over each hole
+ * starts, the cycle by depth and material, the holes in nearest-neighbour order, G99 where the stock proves the way
+ * between two holes at R clear; `legacy` writes them as before (R 2 mm over the material, G83 always, the order read,
+ * G98 always, G43 before the first move).
  */
-function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number): CamOp[] {
+export interface HoleOpts {
+  legacy?: boolean;
+  /** R this far over where the material over a hole starts (mm). */
+  rMargin?: number;
+  /** G81 (one feed down) up to this many Ø deep (from where the material starts). */
+  g81?: number;
+  /** G73 (chip-breaking pecks) up to this many Ø deep in materials with short chips; G83 (full retracts) deeper or else. */
+  g73?: number;
+  /** G99 between two holes where the stock proves the way at R clear. */
+  g99?: boolean;
+}
+export const HOLE_DEFAULTS: Required<HoleOpts> = { legacy: false, rMargin: 0.5, g81: 1, g73: 3, g99: true };
+/** Short chips or dust (brass, aluminium, the laminates): chip-breaking pecks; the plastics' long chips want full retracts. */
+const CHIP_FRIENDLY = new Set(['ALU', 'MS', 'FH', 'EPO', 'RESOPAL']);
+/** The cycle for a hole `deep` mm from where its material starts, by a drill of Ø `d`. */
+export function holeCycle(deep: number, d: number, mat: string, o: Required<HoleOpts> = HOLE_DEFAULTS): { cycle: 'G81' | 'G73' | 'G83'; why: string } {
+  const xd = `${mm(Math.round((deep / d) * 10) / 10)} X D`;
+  // Said in words (no G or X word in a comment: readers that look for them in a line must not find them there).
+  if (o.legacy) return { cycle: 'G83', why: 'AS BEFORE' };
+  if (deep <= o.g81 * d + 1e-9) return { cycle: 'G81', why: `ONE FEED DOWN, ${mm(deep)} MM DEEP = ${xd} OR LESS` };
+  if (deep <= o.g73 * d + 1e-9 && CHIP_FRIENDLY.has(mat)) return { cycle: 'G73', why: `CHIP BREAKING PECKS, ${mm(deep)} MM DEEP = ${xd}, SHORT CHIPS` };
+  return { cycle: 'G83', why: `PECKS WITH FULL RETRACT, ${mm(deep)} MM DEEP = ${xd}` };
+}
+/** Holes in nearest-neighbour order from the first: less travel between them. */
+export function nearestOrder<T extends { h: { c: P2 } }>(hs: T[]): T[] {
+  if (hs.length < 3) return hs;
+  const rest = hs.slice(1);
+  const out = [hs[0]];
+  while (rest.length) {
+    const at = out[out.length - 1].h.c;
+    let k = 0;
+    for (let i = 1; i < rest.length; i++) if (dist2(rest[i].h.c, at) < dist2(rest[k].h.c, at) - 1e-9) k = i;
+    out.push(rest.splice(k, 1)[0]);
+  }
+  return out;
+}
+
+/**
+ * Centre-drill, then drill, one tool after the other. `surface`: where the material over a hole starts when it is
+ * drilled. The shop drills before the pockets (143 of 157 library setups); a cycle starts over that material, never in
+ * it (its way down to R is a rapid): R2 as the shop writes it (513 drill cycles) when `legacy`, else rMargin over it.
+ * `clearAt(a, b, s, r)`: whether a tool of radius r goes from a to b with no material over height s on the way.
+ */
+function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number, opts: HoleOpts = {}, clearAt?: (a: P2, b: P2, s: number, r: number) => boolean): CamOp[] {
+  const o = { ...HOLE_DEFAULTS, ...opts };
+  const over = o.legacy ? 2 : o.rMargin;
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one). The shop spots
@@ -564,23 +611,33 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], 
   if (spot && fresh.length) {
     const cut = cutData(spot, 'centre', mat, limits);
     const lines = [`G00 G90 X${n3(fresh[0].h.c[0])} Y${n3(fresh[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
-    fresh.forEach(({ h }, i) => {
+    (o.legacy ? fresh : nearestOrder(fresh)).forEach(({ h }, i) => {
       const s = surface(h);
       const z = s - Math.min(h.r, spot.diameter / 2) * 0.8;
-      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)} F${cut.fz}.`);
+      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + over)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + over)} F${cut.fz}.`);
     });
     lines.push('G80');
     ops.push({ kind: 'centre', purpose: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
   }
   const byTool = new Map<CamTool, { h: Hole; z: number }[]>();
   for (const { h, tool, z } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z });
-  for (const [tool, hs] of byTool) {
+  for (const [tool, all] of byTool) {
     const cut = cutData(tool, 'drill', mat, limits);
+    const hs = o.legacy ? all : nearestOrder(all);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
-    for (const { h, z } of hs) {
+    const rows = hs.map(({ h, z }) => {
       const s = surface(h);
-      lines.push(`G98 G83 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + 2)} Q${n3(Math.min(cut.q, s - z))} F${cut.fz}.`);
-    }
+      return { h, z, s, ...holeCycle(s - z, tool.diameter, mat, o) };
+    });
+    // Each hole's cycle and why (the owner's rule), before the drilling.
+    if (!o.legacy) rows.forEach((r, i) => lines.push(`(HOLE ${i + 1} AT ${n3(r.h.c[0])}/${n3(r.h.c[1])}: ${r.why})`));
+    rows.forEach((r, i) => {
+      const next = rows[i + 1];
+      // Back to R only where the way on to the next hole at R is proven clear (else to the start height).
+      const back = !o.legacy && o.g99 && next && clearAt?.(r.h.c, next.h.c, r.s, tool.diameter / 2) ? 'G99' : 'G98';
+      const q = r.cycle === 'G81' ? '' : ` Q${n3(Math.min(cut.q, r.s - r.z))}`;
+      lines.push(`${back} ${r.cycle} X${n3(r.h.c[0])} Y${n3(r.h.c[1])} Z${n3(r.z)} R${n3(r.s + over)}${q} F${cut.fz}.`);
+    });
     lines.push('G80');
     ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
   }
@@ -1459,9 +1516,10 @@ export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: numb
       out = [];
       let [x, y, cycle] = [NaN, NaN, false];
       for (const l of op.lines) {
+        if (l.startsWith('(')) continue;
         x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
         y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
-        if (/G8[1-3]/.test(l)) {
+        if (/G8[1-3]|G73/.test(l)) {
           cycle = true;
           out.push([x, y]);
         } else if (/G80/.test(l)) cycle = false;
@@ -2385,7 +2443,16 @@ function planFor(input: CamInput, vertical: number): CamResult {
       }
       return s;
     };
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface));
+    // Between two holes at R (s + margin): clear when no material stands over s along the way, the tool's radius and
+    // half a mm round it (the facing takes all over the faced top; jaws and stop stand outside the stock).
+    const clearAt = (a: P2, b: P2, s: number, r: number) => {
+      if (s >= faced - 1e-6) return true;
+      const m = offset(left.at(s + 0.001, faced), r + 0.5);
+      const n = Math.max(2, Math.ceil(dist2(a, b) / 0.5));
+      for (let i = 0; i <= n; i++) if (inside(m, [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]) !== 0) return false;
+      return true;
+    };
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface, input.holes, clearAt));
     // The holes this clamping's drills make: not one whose drilling the operator removed (its op goes after planning).
     // Such a hole stays solid down through its bottom: no mill is sent under it (nothing drilled to reach it by).
     const drilledHere = toDrill.filter((d) => !input.skip?.some((k) => k.startsWith(`${side.name}|BOHREN_${mm(d.tool.diameter)}MM|${d.tool.code}|`)));

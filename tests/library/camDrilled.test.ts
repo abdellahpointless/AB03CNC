@@ -22,10 +22,11 @@ function millsInDrilled(ops: CamOp[]): string[] {
       let y = NaN;
       let tip = NaN;
       for (const l of op.lines) {
+        if (l.startsWith('(')) continue;
         x = Number(l.match(/X(-?[\d.]+)/)?.[1] ?? x);
         y = Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? y);
-        if (/G8[1-3]/.test(l)) tip = Number(l.match(/ Z(-?[\d.]+)/)![1]);
-        if (/G8[1-3]/.test(l) || (/^X|^Y/.test(l.trim()) && holes.length)) holes.push({ x, y, d: op.tool.diameter, tip });
+        if (/G8[1-3]|G73/.test(l)) tip = Number(l.match(/ Z(-?[\d.]+)/)![1]);
+        if (/G8[1-3]|G73/.test(l) || (/^X|^Y/.test(l.trim()) && holes.length)) holes.push({ x, y, d: op.tool.diameter, tip });
       }
       continue;
     }

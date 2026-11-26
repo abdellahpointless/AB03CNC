@@ -13,7 +13,7 @@ const words = (s: string) => [...s.matchAll(new RegExp(`([A-Z])(${NUM})`, 'g'))]
 const num = (v: string) => Number(v);
 const short = (v: string) => v.replace(/^(-?)0\.(?=\d)/, '$1.');
 
-/** A drilling cycle line as CAM AI writes it: "G98 G83 X.. Y.. Z.. R.. Q.. F..". */
+/** A drilling cycle line as CAM AI writes it: "G98 G83 X.. Y.. Z.. R.. Q.. F.." (G98 or G99; G81, G73 or G83). */
 interface Hole { cycle: string; x: string | null; y: string | null; rest: [string, string][] }
 
 /** The holes of one drilling block (from its cycle line to G80), or null when it is written some other way. */
@@ -22,10 +22,10 @@ function holesOf(block: string[]): Hole[] | null {
   let cycle = '';
   let rest: [string, string][] = [];
   for (const l of block) {
-    const g = l.match(/^G98 (G8[13]) /);
+    const g = l.match(/^(G9[89] (?:G8[13]|G73)) /);
     if (g) cycle = g[1];
     else if (!cycle || !/^[XYZRQF]/.test(l)) return null;
-    const w = words(g ? l.slice(8) : l);
+    const w = words(g ? l.slice(g[0].length) : l);
     if (w.some(([k]) => !'XYZRQF'.includes(k))) return null;
     const x = w.find(([k]) => k === 'X')?.[1] ?? null;
     const y = w.find(([k]) => k === 'Y')?.[1] ?? null;
@@ -51,7 +51,7 @@ function shopDrilling(block: string[], at: { x: string | null; y: string | null 
       if (open) out.push('G80');
       // To the hole at the cycle's start height, then the cycle there.
       if (move) out.push(`G00 ${move}`);
-      out.push(`G98 ${key}`);
+      out.push(key);
       open = key;
     } else if (move) out.push(move);
     [x, y] = [h.x ?? x, h.y ?? y];
@@ -93,7 +93,7 @@ export function shorten(code: string, still = false): string {
       continue;
     }
     // A drilling block: from its first cycle line to G80.
-    if (/^G98 G8[13] /.test(l)) {
+    if (/^G9[89] (?:G8[13]|G73) /.test(l)) {
       const end = src.findIndex((s, k) => k > i && /^N\d+ G80$/.test(s));
       const block = end > 0 ? src.slice(i, end).map((s) => s.replace(/^N\d+ /, '')) : null;
       const shop = block && shopDrilling(block, { x: pos.X, y: pos.Y });
