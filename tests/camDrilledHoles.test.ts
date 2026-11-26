@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { camProgram } from '../src/lib/cam/program';
 import type { CamSetup } from '../src/lib/cam/program';
 import { plateWithBlindHole, plateWithCounterbore, plateWithHoles } from './heightPart';
+import { haasTools } from '../src/lib/defaultTools';
 
 // You: no end mill in a hole a drill already made (drilled at its own Ø): not to mill it again, not to make its
 // bottom flush. A counterbore is made by an end mill, no drill of its Ø, after its smaller hole is drilled.
@@ -81,5 +82,26 @@ describe('a hole a drill made', () => {
       .flatMap((o) => o.lines.filter((l) => /^G0?1/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) < -12 - 0.05 && Math.abs(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99)) < 1.65 && Math.abs(Math.abs(Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) - 16) < 1.65).map((l) => `${o.name} ${l}`));
     expect(under).toEqual([]);
     expect(r.check).toMatchObject({ cales: 0, collisions: 0 });
+  }, 600_000);
+
+  it('never sends an end mill down a hole kept for the other side, to what lies under it (you: a mill drilling holes)', () => {
+    // 40 x 30 x 12, a Ø4.1 hole through with a Ø6.5 counterbore 3.5 deep from the bottom face; the top up first. The hole
+    // is drilled from the counterbore's side (after the turn); the machine has a Ø4 end mill, which fits the hole.
+    const tris = plateWithCounterbore(40, 30, 12, { c: [20, 15], d: 4.1, D: 6.5, depth: 3.5 });
+    const r = camProgram({ tris, material: 'POM', tools: haasTools, brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, noNest: true });
+    const s = r.setups[0];
+    expect(s.side).toBe('Z+');
+    // No mill feeds inside the hole under the top in clamping 1 (centred frame: the hole at X0 Y0), the position modal.
+    const inside = s.ops
+      .filter((o) => o.kind !== 'drill' && o.kind !== 'face')
+      .flatMap((o) => {
+        let [x, y, z] = [NaN, NaN, NaN];
+        return o.lines.flatMap((l) => {
+          [x, y, z] = ['X', 'Y', 'Z'].map((a, k) => Number(l.match(new RegExp(`${a}(-?[\\d.]+)`))?.[1] ?? [x, y, z][k]));
+          return /^G0?1/.test(l) && z < -0.1 && Math.hypot(x, y) < 2.1 ? [`${o.name} ${l}`] : [];
+        });
+      });
+    expect(inside).toEqual([]);
+    expect(r.check.collisions).toBe(0);
   }, 600_000);
 });

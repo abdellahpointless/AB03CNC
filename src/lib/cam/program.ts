@@ -2318,6 +2318,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // A hole clear of both by half a mm: drilled out over the gap between them.
     const betweenCales = (h: Hole) => flat && h.c[1] - h.r - 0.5 > held.lo[1] + 0.3 + caleW && h.c[1] + h.r + 0.5 < held.hi[1] - 0.3 - caleW;
     const keepHoles: Hole[] = [];
+    // Holes made from the other side with their counterbore (you): solid here down through their bottom, so no mill
+    // goes down one to what lies under it (an end mill of the hole's Ø would drill it, and take the levels under it).
+    const otherSide = new Set<Hole>();
     // You: a hole with a bigger one round it (a counterbore) is made in the same clamping as that one. One opening
     // in the opposite face, on its axis, down to where this hole ends: both are made from there, never one from
     // either side after a turn (they would not meet on one axis).
@@ -2336,6 +2339,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const k = keyOf(h);
       if (drilled.get(k) === undefined && counterbored(h)) {
         keepHoles.push(h);
+        otherSide.add(h);
         continue;
       }
       // A blind hole CAD draws with a drill point (its middle open under where the wall ends, no smaller hole on
@@ -2481,7 +2485,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const keepAt = (z: number): Region => {
       while (si2 < samples.length && samples[si2] > z + 0.001) above = union(above, slice(P, samples[si2++]));
       let k = union(above, slice(P, z + 0.001));
-      const disks = keepHoles.filter((h) => h.top > z + 0.001 && (h.bottom < z || undrilled.has(h))).map((h) => circle(h.c, h.r));
+      const disks = keepHoles.filter((h) => h.top > z + 0.001 && (h.bottom < z || undrilled.has(h) || otherSide.has(h))).map((h) => circle(h.c, h.r));
       if (disks.length) k = union(k, disks);
       // The operator's side stock: the walls are left that much out.
       return input.sideStock ? offset(k, input.sideStock) : k;
