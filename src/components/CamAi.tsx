@@ -389,7 +389,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const generate = async (with_ = swap, edits = cuts, skips = skip) => {
     // The hand edits Make again carries (this make only), and the program they were made on.
     const carrying = carry.current;
-    const swapsNow = toolSwaps;
+    const swapsAll = toolSwaps;
     carry.current = null;
     const before = plain.current;
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
@@ -402,6 +402,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       return setRun({ state: 'error', error: 'toolDb' });
     }
     setToolDb(db);
+    // A tool changed by hand that the shop no longer has here (another machine, the database changed): not carried, said.
+    const shelf = catalog(templatesFor, tools, { toolDb: db.db });
+    const swapsNow = Object.fromEntries(Object.entries(swapsAll).filter(([, x]) => !x.code || shelf.some((c) => c.code === x.code)));
+    const swapsLost = Object.keys(swapsNow).length < Object.keys(swapsAll).length;
     const w = newWorker();
     const speeds = speedsFor(machine.brand);
     const request: CamRequest = {
@@ -515,10 +519,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         for (const [k, e] of Object.entries(swapped)) keep[k] = { ...keep[k], ...e };
         if (Object.keys(keep).length || ordered) applyEdits(keep, '');
         else setOpEdits({});
-        setEditsDropped(Object.keys(kept).length < Object.keys(carrying ?? {}).length);
+        setEditsDropped(swapsLost || Object.keys(kept).length < Object.keys(carrying ?? {}).length);
       } else
         setOpEdits((was) => {
-          if (Object.keys(was).length) setEditsDropped(true);
+          if (Object.keys(was).length || swapsLost) setEditsDropped(true);
           return {};
         });
       setAccepted(false);
@@ -1240,8 +1244,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                         else delete next[o.key];
                       }
                       applyEdits(next, ops[0].key);
-                      const code = sel.code;
-                      const sk = `${result.setups[sel.i].side}|${code}`;
+                      // By the tool they were made with (a second change, or Back, replaces the first).
+                      const sk = `${result.setups[sel.i].side}|${madeCode(ops[0].key)}`;
                       const swapsWas = toolSwaps;
                       setToolSwaps((w) => {
                         const n = { ...w };
@@ -1288,14 +1292,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     onFocus={(op) => setSel({ kind: 'tool', i: sel.i, code: sel.code, op: op ?? undefined })}
                     options={alternatives(templatesFor, tools, sel.code, swap.exclude, toolDb.db)}
                     toolName={toolName}
-                    onSwap={(code, standIn) => {
+                    onSwap={(_code, standIn) => {
                       // Listed like every change (the owner: one Make again for all); made with the others. Kept too: where
                       // the plan made again still uses the old tool in this clamping, the new one takes its paths (you).
                       const st = catalog(templatesFor, tools, { toolDb: toolDb.db }).find((x) => x.code === standIn);
-                      const sk = `${result.setups[sel.i].side}|${code}`;
+                      const made = madeCode(ops[0].key);
+                      const sk = `${result.setups[sel.i].side}|${made}`;
                       const swapsWas = toolSwaps;
                       if (st) setToolSwaps((w) => ({ ...w, [sk]: { d: st.diameter, l: st.length, code: st.code } }));
-                      addChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => setToolSwaps(swapsWas), swap: { exclude: code, prefer: standIn } });
+                      addChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => setToolSwaps(swapsWas), swap: { exclude: made, prefer: standIn } });
                     }}
                   />
                   <p className="px-4 pb-4 text-xs text-[var(--text-secondary)]">{t('camAi.everywhere')}</p>
