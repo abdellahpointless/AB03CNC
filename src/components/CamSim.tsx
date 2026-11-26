@@ -28,7 +28,8 @@ import { partLook } from '../lib/partLook';
 import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
 import type { MeasureMode } from '../lib/measure';
 import type { Jump, Measurement, ModelState, ModelView, SolidState } from './Toolpath3D';
-import { PIECE_COLORS } from '../lib/pieceColors';
+// Where the finished part differs from the model (you): yellow, material left the model has not; red, cut out of it.
+const DIFF_COLORS = { left: '#facc15', cut: '#ef4444' } as const;
 import { useTranslation } from 'react-i18next';
 
 const Toolpath3D = lazy(() => import('./Toolpath3D'));
@@ -257,7 +258,7 @@ export default function CamSim({
     <div ref={shell} className="absolute inset-0 flex flex-col">
       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>
 
         {/* One floating toolbar. */}
@@ -340,7 +341,7 @@ export default function CamSim({
           <span className="absolute left-3 bottom-12 inline-flex items-center gap-3 h-7 px-2.5 rounded-[8px] border border-[rgba(255,255,255,0.12)] bg-[#0E1526]/85 text-xs text-[var(--text-primary)]">
             {diffKinds.map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: PIECE_COLORS[k] }} aria-hidden />
+                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: DIFF_COLORS[k] }} aria-hidden />
                 {t(k === 'left' ? 'camAi.sim.diffLeft' : 'camAi.sim.diffCut')}
               </span>
             ))}
