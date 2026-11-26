@@ -741,7 +741,7 @@ export default function CodeEditorPair({
                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
                 aria-disabled={(countryOn && !toolpathOn) || undefined}
                 aria-haspopup={countryOn ? undefined : 'dialog'}
-                className={`btn-secondary text-xs py-1 px-2.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : caleShown ? '!border-[#f5b942] !text-[var(--orange-text)] !bg-[#f5b942]/10' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
+                className={`btn-secondary text-xs min-h-11 px-3.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : caleShown ? '!border-[#f5b942] !text-[var(--orange-text)] !bg-[#f5b942]/10' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
                 title={hitShown ? t('toolpath.openHitTitle') : caleShown ? t('toolpath.openCaleTitle') : toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
               >
                 {hitShown || caleShown ? <ShieldAlert size={13} /> : toolpathOn ? <Route size={13} /> : <Lock size={13} />}
