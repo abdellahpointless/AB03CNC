@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { camProgram, checkProgram, commentSafe, fineCuts, finerRapids, gougeOf } from '../src/lib/cam/program';
 import type { Tool } from '../src/types';
-import { heightPart, plateWithHoles, pocketWithHole } from './heightPart';
+import { heightPart, plateWithCounterbore, plateWithHoles, pocketWithHole } from './heightPart';
 import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
@@ -127,6 +127,21 @@ describe('through holes and the parallels (the 0.5 mm method: stock under the pa
   it('refuses the plate held as it is, with no stock under it: the outline and holes cannot go 0.5 mm under it', () => {
     expect(() => camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [60, 40, 8], orient: { side: 'Z+', spin: false } })).toThrow(/thinBlank/);
   });
+});
+
+describe('a through hole drilled after the turn, from its counterbore (the shop\'s 1 mm into a parallel)', () => {
+  it('drills it from the counterbore\'s side over the back parallel: the shop\'s full 1 mm into it (0.95, the check\'s margin), no more', () => {
+    // A 60 x 40 x 12 plate, a Ø3.3 hole 4 mm from its edge with a Ø6 counterbore 4 deep from its bottom face: made from
+    // there (the counterbore rule, kept with the 0.5 mm method), after the turn, over the parallel under that edge.
+    const tris = plateWithCounterbore(60, 40, 12, { c: [30, 4], d: 3.3, D: 6, depth: 4 });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [64, 44, 19], orient: { side: 'Z+', spin: false } });
+    const s = r.setups.find((x) => x.side === 'Z-')!;
+    const z = s.ops.filter((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3.3) < 0.01).flatMap((o) => o.lines.filter((l) => /G8[13]/.test(l)).map((l) => Number(l.match(/ Z(-?[\d.]+)/)![1])));
+    expect(z.length).toBeGreaterThan(0);
+    expect(Math.min(...z)).toBeGreaterThanOrEqual(-12 - 0.95 - 1e-6);
+    expect(Math.min(...z)).toBeLessThanOrEqual(-12 - 0.9);
+    expect(r.check).toMatchObject({ cales: 0, collisions: 0 });
+  }, 600_000);
 });
 
 describe('no tool deeper than 1 mm into a parallel (shop rule for CAM AI)', () => {

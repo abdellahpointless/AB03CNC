@@ -341,12 +341,13 @@ describe('the jaws of a later clamping', () => {
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     const dia = (m: (typeof tp.moves)[number]) => m.dia ?? tp.tools.find((t) => t.tool === m.tool)?.diameter ?? 0;
     const pastFace = (p: number[]) => p[1] < s.clampBox!.min[1] || p[1] > s.clampBox!.max[1];
-    // Every cut below the jaw tops past the held face keeps its edge the 1 mm (less the first ring's 0.02) past the jaws' end.
+    // After the turn nothing is left to cut there: no cut below the jaw tops past the held face beyond the jaws' end
+    // (so this part no longer tests that such a cut keeps 1 mm off the jaws' end; that margin has no direct test now).
     const end = s.clampBox!.min[0] + VISE.width;
-    const clear = tp.moves
+    const near = tp.moves
       .filter((m) => m.setup === 1 && m.kind === 'feed')
       .flatMap((m) => m.points.filter((p) => p[2] < s.jawTopZ! - 0.5 && pastFace(p) && p[0] > end).map((p) => p[0] - dia(m) / 2 - end));
-    expect(Math.min(Infinity, ...clear)).toBeGreaterThanOrEqual(0.979);
+    expect(near).toEqual([]);
     expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
