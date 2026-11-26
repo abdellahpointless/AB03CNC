@@ -176,6 +176,14 @@ describe('the 0.5 mm method (you): always the outline whole in clamping 1', () =
     expect(r.check.collisions).toBe(0);
   }, 300_000);
 
+  it('keeps clamping 1\'s jaws under the outline even where the vise check would want them deeper (a tall part)', () => {
+    // 40 x 24 x 50, 5 mm under it: a 4 mm grip under a tall part; the retry for a better hold never climbs the wall.
+    const tall = heightPart(Array.from({ length: 24 }, () => Array.from({ length: 40 }, () => 50)));
+    const r = camProgram({ ...base, tris: tall, margins: { lo: [2, 2, 5], hi: [2, 2, 2] } });
+    expect(r.setups[0].grip).toBeLessThanOrEqual(4);
+    expect(lowest(r)).toBeCloseTo(-50.5, 3);
+  }, 600_000);
+
   it('turns the busiest face up in clamping 1 when nobody chose (the pocket first, the plain face after the turn)', () => {
     const r = camProgram({ material: 'ALU', tools: [], brand: 'HAAS', noNest: true, tris: plate, raw: [44, 34, 19] });
     expect(r.setups[0].side).toBe('Z+');

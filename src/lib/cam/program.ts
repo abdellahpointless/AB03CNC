@@ -1948,6 +1948,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       pick = { cale: JAW - (-onJaw - sb.lo[2]), grip: -onJaw - sb.lo[2] };
     }
     const { cale, grip } = pick;
+    // The 0.5 mm method, whatever chose the grip: clamping 1's jaws 1 mm or more under the part's bottom (its outline).
+    if (!setups.length && !nested && sb.lo[2] + grip > -H - 1 + 1e-6) throw new Error(`method: clamping 1's jaws ${Math.round((sb.lo[2] + grip + H) * 100) / 100} mm from the part's bottom`);
     const jawTop = sb.lo[2] + grip;
     const floor = sb.lo[2] - cale;
     // The vise holds the part by its faces between the parallels and the jaw tops (as contactOf and the
@@ -2553,7 +2555,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       : physicsAt(grip);
     if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
       // The designer's parallels stay: only lighter mills at their grip.
-      const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most);
+      // Clamping 1 (the 0.5 mm method): never deeper than 1 mm under the part's bottom, where its outline is cut.
+      const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most && (setups.length > 0 || g <= waste - 1 + 1e-6));
       const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
