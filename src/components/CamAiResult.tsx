@@ -563,7 +563,8 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
   const [v, setV] = useState({ deeper: String(was?.deeper ?? 0), dx: String(was?.dx ?? 0), dy: String(was?.dy ?? 0), dz: String(was?.dz ?? 0), d: String(was?.tool?.d ?? d), l: String(was?.tool?.l ?? l) });
   const nums = { deeper: Number(v.deeper) || 0, dx: Number(v.dx) || 0, dy: Number(v.dy) || 0, dz: Number(v.dz) || 0 };
   const tool = { d: Number(v.d), l: Number(v.l) };
-  const toolOk = tool.d > 0 && tool.d <= 200 && tool.l > 0 && tool.l <= 400;
+  // The operation's own tool as it is is fine (a face mill is planned with length 0).
+  const toolOk = (tool.d === d && tool.l === l) || (tool.d > 0 && tool.d <= 200 && tool.l > 0 && tool.l <= 400);
   // `d`, `l`: the operation's tool now (already the one changed by hand, if so: kept unless undone).
   const newTool = toolOk && (!!was?.tool || tool.d !== d || tool.l !== l);
   const none = Object.values(nums).every((x) => x === 0) && !newTool;
