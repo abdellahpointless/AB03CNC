@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-25T17:00:00Z",
-  "next_id": 15,
+  "last_updated": "2026-11-26T13:00:00Z",
+  "next_id": 21,
   "assumptions": [
     {
       "id": "A001",
@@ -282,6 +282,126 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Confirmed by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A015",
+      "title": "The 0.5 mm method, always",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Clamping 1 cuts the outline and the through holes whole, 0.5 mm under the part (drills at full diameter 0.5 mm past the bottom); after the turn only the face mill takes the rest, plus what only that side reaches. Extra clampings stay for side features.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Every CAM AI program",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A016",
+      "title": "Clamping 1 grip",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The jaws grip under the outline cut: 4 mm by default (5 mm of stock under the part), the designer may go down to 3 mm (4 under the part), shown yellow with a warning; less is refused and a thicker Z blank asked for. Never under 3 mm.",
+      "source": "Owner, 2026-11-26 (answered: the 3-4 mm is the jaws' grip)",
+      "validated": "2026-11-26",
+      "context": "Blank placement, clamp panel, planner",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A017",
+      "title": "Counterbore on the other face",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A through hole whose counterbore opens on the second clamping's face is still made with it, from that side (the earlier rule wins over drilling it in clamping 1).",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Hole drilling",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A018",
+      "title": "Busiest face first",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Clamping 1 is the face with the most pockets and holes; after the turn only the face mill, plus anything only that side reaches.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Clamping order",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A019",
+      "title": "Blind holes at drawn depth",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Only holes through the part get the extra 0.5 mm; blind holes keep the depth on the model.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Hole drilling",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
+        }
+      ]
+    },
+    {
+      "id": "A020",
+      "title": "Test and deploy rhythm",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Test on a few parts, not big runs; deploy after a few tests, run the rest in the background, then push again for the final deploy.",
+      "source": "Owner, 2026-11-26",
+      "validated": "2026-11-26",
+      "context": "Every change",
+      "created": "2026-11-26T13:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-26T13:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Answered by the owner"
         }
       ]
     }
