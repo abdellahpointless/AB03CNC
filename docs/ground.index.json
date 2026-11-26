@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-26T23:00:00Z",
+  "last_updated": "2026-11-26T23:30:00Z",
   "next_id": 29,
   "assumptions": [
     {
@@ -651,7 +651,7 @@
       "title": "Orders that lock",
       "type": "inferred",
       "tier": "WORKING",
-      "assumption": "One row per tool; an order no check covers locks (before the facing, a drill before its spot drill, mills out of their made order).",
+      "assumption": "One row per tool; a dragged tool's operations move together, the others keep their places (kept by operation); an order no check covers locks (before the facing, a drill before its spot drill, mills out of their made order).",
       "source": "CAM AI (the checks it has)",
       "validated": "2026-11-26",
       "context": "Tool list, editProgram",
@@ -663,6 +663,13 @@
           "from_tier": null,
           "to_tier": "WORKING",
           "reason": "Split from A024"
+        },
+        {
+          "date": "2026-11-26T23:30:00Z",
+          "action": "updated",
+          "from_tier": "WORKING",
+          "to_tier": "WORKING",
+          "reason": "A drag no longer regroups a tool used in two places"
         }
       ]
     },

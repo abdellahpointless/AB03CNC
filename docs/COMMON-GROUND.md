@@ -219,7 +219,7 @@ Medium confidence. Use but flag if contradicted.
 ### A027: Orders that lock
 
 - **Type:** inferred
-- **Assumption:** One row per tool, so a tool's operations move together. An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for (the simulation does not see a tool cutting more than it was made for).
+- **Assumption:** One row per tool; a dragged tool's operations move together, every other operation keeps its place (a tool used in two places stays in both; the order is kept by operation, so a tool changed by hand keeps its place). An order no check covers stays locked and says why: anything before the facing, a drill before its spot drill, a mill before the one whose material it was made for (the simulation does not see a tool cutting more than it was made for).
 - **Source:** CAM AI (the checks it has); Q012 asks the owner
 - **Validated:** 2026-11-26
 - **Context:** Tool list, editProgram
@@ -307,3 +307,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-26: review of batch 10's log: A024 and A026 kept to what the owner stated; CAM AI's own choices split off as
   A027 (inferred) and A028 (assumed), with Q013. The step rest's parallels and G52 Z rest on A028: settle Q009, Q010
   and Q013 before a deploy. A023 now also covers a blind hole the reader ended early (library run s47).
+- 2026-11-26: an independent review of batch 10: a drag no longer pulls together a tool used in two places (A027).
