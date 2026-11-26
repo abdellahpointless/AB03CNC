@@ -146,6 +146,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The clamping whose settings are open (its OP's settings button, or Adjust): after a program is made, clamping 1's
   // parallels editor opens only so (you: never just by going to OP10).
   const [setupOpen, setSetupOpen] = useState<number | null>(null);
+  // Tools changed by hand, by clamping side and the tool they replace (you: a tool change always applies, also after Make
+  // again: where the plan made again still uses the old tool there, the new one takes its paths).
+  const [toolSwaps, setToolSwaps] = useState<Record<string, { d: number; l: number; code?: string }>>({});
   // The changes since the program was made, newest last: listed by the one Make again button and undone one at a time,
   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
@@ -277,6 +280,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     // Nothing by hand from the part before goes on with this one (a review: they reached its program).
     setOpEdits({});
     setGone({});
+    setToolSwaps({});
     setEditsDropped(false);
     carry.current = null;
     plain.current = null;
@@ -334,6 +338,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const generate = async (with_ = swap, edits = cuts, skips = skip) => {
     // The hand edits Make again carries (this make only), and the program they were made on.
     const carrying = carry.current;
+    const swapsNow = toolSwaps;
     carry.current = null;
     const before = plain.current;
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
@@ -415,7 +420,13 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       setRun({ state: 'done', result: m.result });
       plain.current = m.result;
       setMadeTurns(turnsAsked.current);
-      if (carrying) {
+      // The tools changed by hand, on every operation of the new plan that still uses the old tool in that clamping.
+      const swapped: Record<string, OpEdit> = {};
+      for (const [k, tool] of Object.entries(swapsNow)) {
+        const [side, code] = [k.slice(0, k.indexOf('|')), k.slice(k.indexOf('|') + 1)];
+        for (const st of m.result.setups) if (st.side === side) for (const o of st.ops) if (o.code === code) swapped[o.key] = { tool };
+      }
+      if (carrying || Object.keys(swapped).length) {
         // Changes by hand go on with the new program where their operation is the same cut (its lines as made match:
         // a key only counts operations of one name and tool, so after a re-plan it can name another cut) in a clamping
         // with the same side and frame (a move is in the clamping's own X, Y, Z: turned, it would cut elsewhere, a
@@ -426,10 +437,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           const sig = (x: CamSummary['setups'][number]) => x.ops.find((o) => o.key === key)!.sig;
           return !!a && !!b && a.side === b.side && a.R.every((v, k) => Math.abs(v - b.R[k]) < 1e-9) && sig(a) === sig(b);
         };
-        const keep = Object.fromEntries(Object.entries(carrying).filter(([k]) => same(k)));
+        const kept = Object.fromEntries(Object.entries(carrying ?? {}).filter(([k]) => same(k)));
+        const keep: Record<string, OpEdit> = { ...kept };
+        for (const [k, e] of Object.entries(swapped)) keep[k] = { ...keep[k], ...e };
         if (Object.keys(keep).length) applyEdits(keep, '');
         else setOpEdits({});
-        setEditsDropped(Object.keys(keep).length < Object.keys(carrying).length);
+        setEditsDropped(Object.keys(kept).length < Object.keys(carrying ?? {}).length);
       } else
         setOpEdits((was) => {
           if (Object.keys(was).length) setEditsDropped(true);
@@ -564,6 +577,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The clamping editor: clamping 1 picked and confirmed, its blank known, nothing being made.
   // Measuring before a program keeps the vise: its bed, jaw faces and tops, and the stop are planes to measure to
   // (item 17). Once made, Measure goes to the simulation, as before.
+  // Holds asked for and not made yet, by clamping: the simulation draws them whatever is picked (you: a tool of OP20
+  // picked, or OP10 and back, kept the old parallels). Clamping 1's from its panel, the later ones' from theirs.
+  const previews = useMemo(() => {
+    const out: Record<number, { cale?: number; stop?: number; y?: number; yp?: number }> = {};
+    if (run.state !== 'done') return out;
+    for (const k of new Set([...Object.keys(later), ...Object.keys(laterX)].map(Number))) {
+      if (k === 0 || !(later[k] || laterX[k])) continue;
+      const h = later[k];
+      out[k] = { cale: h && 'cale' in h ? (h as { cale: number }).cale : undefined, stop: laterX[k]?.stop ?? 0, y: laterX[k]?.y, yp: laterX[k]?.yp ?? 0 };
+    }
+    const made0 = run.result.setups[0];
+    const stop0 = Number(made0?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0);
+    if (made0 && ((clamp1 !== null && clamp1 !== made0.cale) || laterX[0] || stop1 !== stop0)) out[0] = { cale: clamp1 ?? undefined, stop: stop1, y: laterX[0]?.y, yp: laterX[0]?.yp ?? 0 };
+    return out;
+  }, [run, later, laterX, clamp1, stop1]);
   const clampMode = sel.kind === 'setup' && sel.i === 0 && locked1 && !!raw && !busy && (!measuring || !result) && cales1.length > 0 && (!result || setupOpen === 0);
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
@@ -639,9 +667,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     // The latest choice for each tool wins; back to CAM AI's tool (prefer '') cancels the ones before it.
     const picked = new Map<string, string>();
     for (const c of changes) if (c.swap) picked.set(c.swap.exclude, c.swap.prefer);
-    const ex = [...picked].filter(([, b]) => b).map(([a]) => a);
+    // Preferred only, the old tool not left out (you: a tool change always applies; where the plan keeps the old tool,
+    // the new one takes its paths, toolSwaps).
     const pr = [...picked.values()].filter(Boolean);
-    const nextSwap = ex.length ? { exclude: [...new Set([...swap.exclude, ...ex])], prefer: [...new Set([...swap.prefer, ...pr])] } : swap;
+    const nextSwap = pr.length ? { exclude: swap.exclude, prefer: [...new Set([...swap.prefer, ...pr])] } : swap;
     const dropped = Object.assign({}, ...changes.map((c) => c.skip ?? {})) as Record<string, string>;
     const nextSkip = [...new Set([...skipDraft, ...Object.keys(dropped)])];
     if (Object.keys(dropped).length) setSkipLabels((l) => ({ ...l, ...dropped }));
@@ -649,7 +678,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     for (const [k, e] of Object.entries(opEdits)) {
       const rest: OpEdit = { ...e };
       delete rest.off;
-      if (rest.tool?.code && nextSwap.prefer.includes(rest.tool.code)) delete rest.tool;
+      // A tool changed by hand comes back by its clamping and the tool it replaced (toolSwaps), never by this cut.
+      delete rest.tool;
       if (Object.keys(rest).length) hand[k] = rest;
     }
     carry.current = Object.keys(hand).length ? hand : null;
@@ -1049,11 +1079,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       }
                       applyEdits(next, ops[0].key);
                       const code = sel.code;
+                      const sk = `${result.setups[sel.i].side}|${code}`;
+                      const swapsWas = toolSwaps;
+                      setToolSwaps((w) => {
+                        const n = { ...w };
+                        if (tool) n[sk] = tool;
+                        else delete n[sk];
+                        return n;
+                      });
                       addChange({
                         label: tool ? t('camAi.bar.swapped', { tool: ops[0].tool }) : t('camAi.changes.back', { tool: ops[0].tool }),
-                        undo: () => applyEdits(was, ops[0].key),
-                        // Made again around it: CAM AI plans with that tool preferred and the old one left out.
-                        ...(tool?.code ? { swap: { exclude: code, prefer: tool.code } } : !tool ? { swap: { exclude: code, prefer: '' } } : {}),
+                        undo: () => {
+                          applyEdits(was, ops[0].key);
+                          setToolSwaps(swapsWas);
+                        },
+                        // Made again: the plan as before, this tool on the old one's paths again (toolSwaps), never planned around.
                       });
                     }}
                     ops={ops}
@@ -1087,8 +1127,13 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     options={alternatives(templatesFor, tools, sel.code, swap.exclude, toolDb.db)}
                     toolName={toolName}
                     onSwap={(code, standIn) => {
-                      // Listed like every change (the owner: one Make again for all); made with the others.
-                      addChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => undefined, swap: { exclude: code, prefer: standIn } });
+                      // Listed like every change (the owner: one Make again for all); made with the others. Kept too: where
+                      // the plan made again still uses the old tool in this clamping, the new one takes its paths (you).
+                      const st = catalog(templatesFor, tools, { toolDb: toolDb.db }).find((x) => x.code === standIn);
+                      const sk = `${result.setups[sel.i].side}|${code}`;
+                      const swapsWas = toolSwaps;
+                      if (st) setToolSwaps((w) => ({ ...w, [sk]: { d: st.diameter, l: st.length, code: st.code } }));
+                      addChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => setToolSwaps(swapsWas), swap: { exclude: code, prefer: standIn } });
                     }}
                   />
                   <p className="px-4 pb-4 text-xs text-[var(--text-secondary)]">{t('camAi.everywhere')}</p>
@@ -1512,7 +1557,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     runLabel={runLabel}
                     stepLabel={(i) => { const st = stepName(i); return `OP${(i + 1) * 10} · ${st.turn}${st.rest ? ` · ${st.rest}` : ''}`; }}
                     parallels={parallelsText}
-                    preview={sel.kind === 'setup' && sel.i > 0 && (later[sel.i] || laterX[sel.i]) ? { setup: sel.i, cale: later[sel.i] && 'cale' in later[sel.i] ? (later[sel.i] as { cale: number }).cale : undefined, stop: laterX[sel.i]?.stop ?? 0, y: laterX[sel.i]?.y, yp: laterX[sel.i]?.yp ?? 0 } : null}
+                    previews={previews}
                     nx={nx}
                     measure={{ on: measuring, mode: measureMode, onMeasure: setMeasured }}
                     onMeasureToggle={() => { setMeasuring((x) => !x); setMeasured(null); }}

@@ -54,7 +54,7 @@ export default function CamSim({
   onMeasureToggle,
   onModel,
   onPickTool,
-  preview = null,
+  previews = {},
 }: {
   code: string;
   brand?: string;
@@ -81,7 +81,8 @@ export default function CamSim({
   /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
   onPickTool?: (setup: number, tool: number) => void;
   /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
-  preview?: { setup: number; cale?: number; stop?: number; y?: number; yp?: number } | null;
+  /** The holds asked for but not made yet, by clamping: drawn whenever that clamping is shown, whatever is picked (you). */
+  previews?: Record<number, { cale?: number; stop?: number; y?: number; yp?: number }>;
 }) {
   const hiddenRef = useRef(hidden);
   hiddenRef.current = hidden;
@@ -117,8 +118,8 @@ export default function CamSim({
   const made: SetupInfo | null = setups[turning ?? currentMove?.setup ?? 0] ?? null;
   // The asked hold drawn in place of the made one: the part where it is, the vise and its parallels round it.
   const sel = useMemo((): SetupInfo | null => {
-    const p = preview;
-    if (!made || !p || made.index !== p.setup || made.floorZ === null || made.jawTopZ === null || made.restZ === null) return made;
+    const p = made ? previews[made.index] : undefined;
+    if (!made || !p || made.floorZ === null || made.jawTopZ === null || made.restZ === null) return made;
     const s: SetupInfo = { ...made };
     if (p.cale !== undefined && made.onJaw === null) {
       s.floorZ = made.restZ! - p.cale;
@@ -137,7 +138,7 @@ export default function CamSim({
     if (s.grip && (s.grip !== made.grip || p.stop !== undefined)) s.jawX = jawsFrom(s.grip.stop - (p.stop ?? s.spacers.find((x) => x.side === 'X-')?.mm ?? 0));
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [made, program, preview?.setup, preview?.cale, preview?.stop, preview?.y, preview?.yp]);
+  }, [made, program, made ? JSON.stringify(previews[made.index] ?? null) : '']);
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
   const hard = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer');
   const hits = setups.reduce((n, x) => n + hard(x).length, 0);
