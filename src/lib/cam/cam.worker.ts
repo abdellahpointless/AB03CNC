@@ -69,6 +69,8 @@ export interface CamSummary {
   nests: { side: string; size: number[]; depth: number; screws: number; code: string; match: number; collisions: number; minutes: number }[];
   setups: {
     side: string;
+    /** Its frame (machine = R · part + t): a hand move is carried to a new program only where it is the same. */
+    R: number[];
     notes: string[];
     /** The part as held (setup frame: x0, y0, x1, y1; X along the jaws) and where the vise touches it. */
     box: [number, number, number, number];
@@ -230,6 +232,7 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
     nests: (r.nests ?? []).map((n) => ({ side: n.side, size: n.nest.size, depth: n.nest.pocket.depth, screws: n.nest.screws.length, code: n.code, match: n.check.match, collisions: n.check.collisions, minutes: n.check.minutes })),
     setups: r.setups.map((s, i) => ({
       side: s.side,
+      R: [...s.R],
       notes: s.notes,
       grip: s.grip,
       physics: s.physics,
