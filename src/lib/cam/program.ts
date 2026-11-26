@@ -20,7 +20,7 @@ import type { PartType } from './partType';
 import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
-import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, GRIP_MIN, JAW, JAW_DEPTH, underStock } from './clamp';
+import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, GRIP_MIN, JAW, JAW_DEPTH, TOP_MIN, underStock } from './clamp';
 import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
@@ -1871,6 +1871,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // You (the 0.5 mm method, always): clamping 1 cuts the outline 0.5 mm under the part and its jaws grip under that,
     // 3 mm at the least: a blank with less under the part is refused (a thicker one is needed).
     if (!setups.length && !nested && underStock(waste) === 'tooThin') throw new Error(`thinBlank: ${Math.round(waste * 100) / 100} mm under the part, ${GRIP_MIN + 1} needed`);
+    // And 0.5 mm over it at the least, to face (you), but on a top plate's white face (never faced).
+    if (!setups.length && !nested && side.name !== input.white && sb.hi[2] < TOP_MIN - 1e-6) throw new Error(`thinBlank: ${Math.round(Math.max(0, sb.hi[2]) * 100) / 100} mm over the part, ${TOP_MIN} needed`);
     // A later clamping: as deep as its own cuts beside the held faces allow, as the shop holds it (jaw tops under
     // every such cut in 159 of 160 later clampings, the deepest such grip in 101): 1 mm under the lowest stock
     // still outside the part (what its outside cuts take, slivers under 0.3 mm left out) and under its chamfers

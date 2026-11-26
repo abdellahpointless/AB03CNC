@@ -36,15 +36,15 @@ describe('the clamping editor\'s moves (you, Beta 2)', () => {
 
 describe('the 0.5 mm method (you): the outline and holes whole in clamping 1, 0.5 mm under the part, then only facing', () => {
   // The outline 0.5 mm under the part and the jaws 0.5 mm under that: the jaws grip what is left of the stock under it.
-  it('places the blank 5 mm under the part where the Z stock allows (a 4 mm grip), else 4 (3 mm), at least 0.5 over it', () => {
+  it('places the blank 5 mm under the part where the Z stock allows (a 4 mm grip), else 4 (3 mm), always 0.5 over it to face', () => {
     expect(blankTop(7)).toBe(2);
     expect(blankTop(6)).toBe(1);
     expect(blankTop(5.5)).toBe(0.5);
     expect(blankTop(5)).toBe(0.5);
     expect(blankTop(4.5)).toBe(0.5);
-    // Under 4.5 mm: 4 under the part first (the grip), the rest over it.
-    expect(blankTop(4.2)).toBeCloseTo(0.2, 9);
-    expect(blankTop(3)).toBe(0);
+    // Under 4.5 mm (you): still 0.5 over it to face; what is left under it is too thin (refused, underStock).
+    expect(blankTop(4.2)).toBe(0.5);
+    expect(blankTop(3)).toBe(0.5);
   });
 
   it('wants 5 mm under the part (4 gripped), takes 4 (3 gripped) with a warning, and refuses less: a thicker blank', () => {

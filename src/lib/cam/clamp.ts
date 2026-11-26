@@ -19,9 +19,11 @@ export const GRIP_WANT = 4;
 /** The outline 0.5 mm under the part, the jaw tops 0.5 mm under that. */
 const UNDER_CUT = 1;
 
-/** Stock over the part's top in clamping 1 (Auto and totals), for `extra` mm of Z stock in all: the stock under the part first. */
-export const blankTop = (extra: number) =>
-  extra >= GRIP_WANT + UNDER_CUT + 0.5 ? Math.max(0.5, Math.min(2, extra - GRIP_WANT - UNDER_CUT)) : extra >= GRIP_MIN + UNDER_CUT + 0.5 ? 0.5 : Math.max(0, extra - GRIP_MIN - UNDER_CUT);
+/** Stock over the part to face in clamping 1 at the least (you: the top is always faced, but on a white face). */
+export const TOP_MIN = 0.5;
+
+/** Stock over the part's top in clamping 1 (Auto and totals), for `extra` mm of Z stock in all: 0.5 to face, then the stock under the part first. */
+export const blankTop = (extra: number) => (extra >= GRIP_WANT + UNDER_CUT + TOP_MIN ? Math.max(TOP_MIN, Math.min(2, extra - GRIP_WANT - UNDER_CUT)) : Math.min(TOP_MIN, extra));
 
 /** Clamping 1's stock under the part (mm) for the 0.5 mm method: enough (null), a 3 mm grip only (yellow), or too thin (refused). */
 export const underStock = (under: number): 'tooThin' | 'lowGrip' | null =>
