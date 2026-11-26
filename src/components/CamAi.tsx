@@ -124,11 +124,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [later, setLater] = useState<Record<number, Hold>>({});
   // Spacers asked by clamping (item 3): at the stop (X-, later clampings; clamping 1 has stop1) and in the moving jaw
   // (Y-: 15, or 0 for none; absent: CAM AI decides).
-  const [laterX, setLaterX] = useState<Record<number, { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }>>({});
+  const [laterX, setLaterX] = useState<Record<number, LaterX>>({});
   // A change upstream: what the later clampings hold changes, so their choices go (clamping 1's own spacer stays).
   const resetLater = () => {
     setLater({});
-    setLaterX((x): Record<number, { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }> => (x[0] ? { 0: x[0] } : {}));
+    setLaterX((x): Record<number, LaterX> => (x[0] ? { 0: x[0] } : {}));
   };
   const [jaw, setJaw] = useState({ open: 0, slide: 0 });
   const [flash, setFlash] = useState(0);
@@ -146,6 +146,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string };
   const [changes, setChanges] = useState<Change[]>([]);
   const changeId = useRef(0);
+  // The later clampings' turns the program shown was made with (the panel's "until it is made again").
+  const [madeTurns, setMadeTurns] = useState<Record<number, Pick<LaterX, 'flip' | 'quarter'>>>({});
+  const turnsAsked = useRef<Record<number, Pick<LaterX, 'flip' | 'quarter'>>>({});
   const addChange = (c: Omit<Change, 'id'>) => setChanges((l) => [...l, { ...c, id: ++changeId.current }]);
   // Hand edits carried over to the next program made (where their operation is still in it).
   const carry = useRef<Record<string, OpEdit> | null>(null);
@@ -171,6 +174,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     if (x.side !== wasX.side) return x.side ? t('camAi.changes.side', { n, side: x.side }) : t('camAi.changes.own', { n });
     if (x.stop !== wasX.stop) return x.stop ? t('camAi.changes.stop', { n, mm: x.stop }) : t('camAi.changes.stopNone', { n });
     if (x.y !== wasX.y) return x.y === undefined ? t('camAi.changes.yAuto', { n }) : x.y ? t('camAi.changes.y', { n, mm: x.y }) : t('camAi.changes.yNone', { n });
+    if (x.flip !== wasX.flip) return x.flip ? t('camAi.changes.flip', { n, axis: x.flip }) : t('camAi.changes.flipAuto', { n });
+    if (x.quarter !== wasX.quarter) return t('camAi.changes.quarter', { n, deg: (x.quarter ?? 0) * 90 });
     return t('camAi.hold.changed', { n });
   };
   // A tool's row asked to be deleted (its clamping, its code): confirmed in a dialog, then made again without it.
@@ -341,6 +346,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         const made = run.state === 'done' ? run.result.setups : [];
         return Array.from({ length: Math.max(...asked, ...carried) - 1 }, (_, j) => laterX[j + 2]?.side ?? made[j + 2]?.side ?? '').filter(Boolean);
       })(),
+      turns: Object.values(laterX).some((x) => x.flip || x.quarter)
+        ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => (laterX[k]?.flip || laterX[k]?.quarter ? { ...(laterX[k].flip ? { flip: laterX[k].flip } : {}), ...(laterX[k].quarter ? { quarter: laterX[k].quarter } : {}) } : null))
+        : undefined,
       spacersYp: Y_PLUS && Object.values(laterX).some((x) => x.yp) ? Array.from({ length: Math.max(0, ...Object.keys(laterX).map(Number)) + 1 }, (_, k) => laterX[k]?.yp ?? null) : undefined,
       clamps: clamp1 !== null || Object.keys(later).length ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (k === 0 ? clamp1 : (later[k] && 'cale' in later[k] ? later[k].cale : null))) : undefined,
       jawRests: Object.values(later).some((h) => 'jaw' in h) ? Array.from({ length: Math.max(0, ...Object.keys(later).map(Number)) + 1 }, (_, k) => (later[k] && 'jaw' in later[k] ? later[k].jaw : null)) : undefined,
@@ -381,6 +389,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       }
       // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
       setRun({ state: 'done', result: m.result });
+      setMadeTurns(turnsAsked.current);
       const carried = carry.current;
       carry.current = null;
       if (carried) {
@@ -404,6 +413,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     // What a removed operation cut: kept from the program it was in, to show where it was.
     setGhosts((g) => [...g.filter((p) => p.key && skips.includes(p.key) && !live.paths.some((q) => q.key === p.key)), ...live.paths.filter((p) => p.key && skips.includes(p.key))]);
     setLive(NO_LIVE);
+    turnsAsked.current = Object.fromEntries(Object.entries(laterX).map(([k, x]) => [k, { flip: x.flip, quarter: x.quarter }]));
     w.postMessage(request);
   };
 
@@ -1099,6 +1109,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     used={result.setups.slice(0, sel.i).map((x) => x.side)}
                     asked={later[sel.i]}
                     spacers={laterX[sel.i] ?? {}}
+                    madeTurn={madeTurns[sel.i] ?? {}}
                     emptySide={!!laterX[sel.i]?.side && result.notes.some((x) => x.key === 'sideEmpty' && x.side === laterX[sel.i]?.side)}
                     refusals={result.notes.filter((x) => x.setup === sel.i + 1 && (x.key === 'clampRefused' || x.key === 'jawRefused' || x.key === 'stopRefused' || x.key === 'spacerRefused' || x.key === 'clampNest'))}
                     onAsk={(v, x) => {
@@ -1822,7 +1833,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
 }
 
 /** A later clamping's spacers and side up, as the designer chose them. */
-type LaterX = { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string };
+type LaterX = { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string; flip?: 'X' | 'Y'; quarter?: 1 | 2 | 3 };
 /** A later clamping's hold: parallels of that height (0: the table), or resting on the jaw tops by a face that deep. */
 type Hold = { cale: number } | { jaw: number };
 const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
@@ -1832,7 +1843,7 @@ const holdKey = (h: Hold) => ('cale' in h ? `c${h.cale}` : `j${h.jaw}`);
  * table, or the jaw tops by one of its faces (you), and its spacers (item 3); for the next time it is made, previewed
  * in the 3D view until then.
  */
-function LaterClampPanel({ n, made, used, asked, spacers, emptySide, refusals, onAsk }: { n: number; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }; onAsk: (v: Hold | null, x: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }) => void }) {
+function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, refusals, onAsk }: { n: number; /** The turn the program shown was made with. */ madeTurn: Pick<LaterX, 'flip' | 'quarter'>; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: LaterX; onAsk: (v: Hold | null, x: LaterX) => void }) {
   const { t } = useTranslation('cam');
   const [open, setOpen] = useState(asked !== undefined || Object.keys(spacers).length > 0);
   const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
@@ -1845,14 +1856,19 @@ function LaterClampPanel({ n, made, used, asked, spacers, emptySide, refusals, o
     (spacers.side !== undefined && spacers.side !== made.side && !emptySide) ||
     (spacers.stop ?? 0) !== spacerOf('X-') ||
     (spacers.y !== undefined && spacers.y !== spacerOf('Y-')) ||
-    (spacers.yp ?? 0) !== spacerOf('Y+');
+    (spacers.yp ?? 0) !== spacerOf('Y+') ||
+    spacers.flip !== madeTurn.flip ||
+    spacers.quarter !== madeTurn.quarter;
+  // Turned over from the clamping before (its side the opposite one): about X or Y, the operator's choice.
+  const before = used[used.length - 1];
+  const opposite = !!before && before[0] === made.side[0] && before !== made.side;
   const all = steps.some((h) => holdKey(h) === holdKey(now)) ? steps : [now, ...steps];
   const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
   const pickHold = (key: string) => {
     const h = all.find((x) => holdKey(x) === key)!;
     onAsk(holdKey(h) === holdKey(mine) && made.own === undefined ? null : h, spacers);
   };
-  const setX = (x: { stop?: 15 | 50; y?: 0 | 15 | 20 | 50; yp?: 15 | 20 | 50; side?: string }) => onAsk(asked ?? null, Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined)));
+  const setX = (x: LaterX) => onAsk(asked ?? null, Object.fromEntries(Object.entries(x).filter(([, v]) => v !== undefined)));
   return (
     <section aria-labelledby={`clamp${n}-title`} className="space-y-2 border-t border-[var(--border-subtle)] pt-2">
       <h3 id={`clamp${n}-title`} className="section-label">{t('camAi.clamp1.title')}</h3>
@@ -1867,6 +1883,9 @@ function LaterClampPanel({ n, made, used, asked, spacers, emptySide, refusals, o
             <ParallelsPick label={t('camAi.hold.side')} value={spacers.side ?? made.side} heights={['Z+', 'Z-', 'X+', 'X-', 'Y+', 'Y-'].filter((x) => x === made.side || !used.includes(x)).map((x) => ({ key: x, label: x === made.side && !spacers.side ? `${x} · ${t('camAi.hold.camChoice')}` : x }))} onChange={(k) => setX({ ...spacers, side: k })} />
           )}
           {emptySide && <p className="text-xs text-[var(--orange-text)]" role="status">{t('camAi.note.sideEmpty', { side: spacers.side })}</p>}
+          {opposite && <Seg legend={t('camAi.hold.flip')} value={spacers.flip ?? 'auto'} options={(['auto', 'X', 'Y'] as const).map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.camChoice') : t('camAi.hold.about', { axis: v }) }))} onChange={(v) => setX({ ...spacers, flip: v === 'auto' ? undefined : v })} />}
+          <Seg legend={t('camAi.hold.quarter')} value={spacers.quarter ?? 0} options={([0, 1, 2, 3] as const).map((v) => ({ v, label: `${v * 90}°` }))} onChange={(v) => setX({ ...spacers, quarter: v || undefined })} />
+          <p className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.turnHint')}</p>
           {refusals.map(({ key, ...v }, i) => (
             <p key={i} className="text-xs text-[var(--orange-text)]" role="status">{t(`camAi.note.${key}`, v)}</p>
           ))}

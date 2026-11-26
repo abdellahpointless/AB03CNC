@@ -451,6 +451,10 @@ const cam = {
       camChoice: 'Use CAM AI’s choice',
     },
     hold: {
+      flip: 'Turned over from the clamping before',
+      about: 'About {{axis}}',
+      quarter: 'Then turned in the vise',
+      turnHint: 'How the operator turns the part from the clamping before. CAM AI plans the clamping that way and checks it when made again; the turn is written in its note.',
       side: 'Side up',
       camChoice: 'CAM AI’s',
       adjust: 'Adjust this clamping',
@@ -470,6 +474,9 @@ const cam = {
       changed: 'Clamping {{n}} changed',
     },
     changes: {
+      flip: 'Clamping {{n}}: turned over about {{axis}}',
+      flipAuto: 'Clamping {{n}}: CAM AI’s way of turning it over',
+      quarter: 'Clamping {{n}}: turned {{deg}}° in the vise',
       title_one: '{{count}} change',
       title_other: '{{count}} changes',
       undo: 'Undo',

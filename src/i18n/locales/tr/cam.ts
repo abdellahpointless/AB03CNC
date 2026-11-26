@@ -454,6 +454,10 @@ const cam: Translation<typeof en> = {
       camChoice: 'CAM AI’ın seçimini kullan',
     },
     hold: {
+      flip: 'Önceki bağlamadan çevrilişi',
+      about: '{{axis}} ekseninde',
+      quarter: 'Sonra mengenede döndürme',
+      turnHint: 'Operatörün parçayı önceki bağlamadan nasıl çevirdiği. CAM AI bağlamayı böyle planlar ve yeniden yapınca kontrol eder; çevirme notuna yazılır.',
       side: 'Üstteki yüz',
       camChoice: 'CAM AI’ın',
       adjust: 'Bu bağlamayı ayarla',
@@ -473,6 +477,9 @@ const cam: Translation<typeof en> = {
       changed: '{{n}}. bağlama değişti',
     },
     changes: {
+      flip: '{{n}}. bağlama: {{axis}} ekseninde çevrildi',
+      flipAuto: '{{n}}. bağlama: CAM AI’ın çevirme şekli',
+      quarter: '{{n}}. bağlama: mengenede {{deg}}° döndürüldü',
       title_one: '{{count}} değişiklik',
       title_other: '{{count}} değişiklik',
       undo: 'Geri al',
