@@ -274,7 +274,8 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
         f: o.cut.f,
         ae: o.cut.ae,
         ap: o.cut.ap,
-        coolant: o.tool.edit?.coolant ?? 'flood',
+        // The machine's, on every tool (never per tool).
+        coolant: input.coolant ?? 'flood',
         zMin: deepest(o.lines),
         sig: sigOf(o.lines),
         unsafe: !!o.cut.unsafe,

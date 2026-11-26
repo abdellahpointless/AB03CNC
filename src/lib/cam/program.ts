@@ -116,6 +116,8 @@ export interface CamInput {
   finish?: number[];
   /** Who makes it (the signed-in admin), written as the programmer ("BEARBEITER"), as the shop's programs do. */
   author?: string;
+  /** The machine's cooling (you: by machine, the same on every tool, never asked per tool): coolant (default) or air. */
+  coolant?: 'flood' | 'air';
   /** The simpler face up in clamping 1 (CAM AI's fallback when no side was picked and the busiest face first fails the checks). */
   simplerFirst?: boolean;
   /** A top plate's white face (the operator's pick, a side name): never faced; the blank flush with it, all its stock on the other side. */
@@ -2710,7 +2712,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   return { code: post(input, setups, size, raw), setups, missing, notes, size, raw, pose, blank: { lo: rawLo, hi: rawHi }, short, centred: !!input.centred, corners: cornersOut };
 }
 
-/** The coolant word after the tool's first move: flood, air (HAAS 2 and 4 always get air when the program is sent), none. */
+/** The coolant word after the tool's first move: the machine's (CamInput.coolant), the same for every tool. */
 const COOLANT = { flood: ' M08', air: ' M83', off: '' } as const;
 
 /** The program text, like the shop's. */
@@ -2760,7 +2762,7 @@ function post(input: CamInput, setups: CamSetup[], size: Vec, raw: Vec): string 
         `(DIAMETER ${t.diameter.toFixed(2)} MM/LENGTH ${(t.length || 0).toFixed(2)} MM)`,
         ...(!first && k === 0 ? ['G53 Y0', ...clamp] : []),
         'M01 (CHECK TOOL)',
-        `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[t.edit?.coolant ?? 'flood']}`,
+        `G00 G43 H${String(t.number).padStart(2, '0')} Z${SAFE}.${COOLANT[input.coolant ?? 'flood']}`,
       );
       // One line at a time: an operation can have hundreds of thousands, too many arguments for one push.
       for (const l of op.lines) out.push(l);

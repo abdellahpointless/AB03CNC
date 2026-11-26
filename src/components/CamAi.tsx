@@ -346,6 +346,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       material: templatesFor,
       tools,
       brand: machine.brand,
+      // The machine's cooling on every tool (you: HAAS-2 and HAAS-4 air, the others coolant).
+      coolant: cooling === 'air' ? 'air' : 'flood',
       name: name.slice(0, 40),
       author: user?.username,
       raw,

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { Coolant, CutEdit } from '../lib/cam/tools';
+import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -266,7 +266,6 @@ export function SetupPanel({ setup }: { setup: Setup }) {
 }
 
 const MILL_PURPOSES = new Set(['face', 'outline', 'rough', 'rest', 'finish', 'contour', 'thinWalls', 'chamfer', 'engrave']);
-const COOLANTS: Coolant[] = ['flood', 'air', 'off'];
 
 /**
  * A tool in a setup: what it is, what it does there (from its operations), its cutting values to
@@ -381,14 +380,10 @@ export function ToolCard({
         {field('feed', 'f', 10)}
         {mill && field('ae', 'ae', 0.1)}
         {mill && field('ap', 'ap', 0.1)}
-        <label className="col-span-2 flex flex-col gap-1 min-w-0 text-xs text-[var(--text-secondary)]">
-          {t('camAi.cut.coolant')}
-          <select className="aurora-input w-full min-w-0 h-8 py-0 text-[13px] px-2 cursor-pointer" disabled={busy} value={draft.coolant ?? op.coolant} onChange={(e) => onEdit({ coolant: e.target.value as Coolant })}>
-            {COOLANTS.map((c) => (
-              <option key={c} value={c} className="bg-[var(--bg-panel)]">{t(`camAi.coolant.${c}`)}</option>
-            ))}
-          </select>
-        </label>
+        {/* The machine's cooling, the same on every tool (you): shown, never asked. */}
+        <p className="col-span-2 text-xs text-[var(--text-secondary)]">
+          {t('camAi.cut.coolant')}: <span className="text-[var(--text-primary)]">{t(`camAi.coolant.${op.coolant}`)}</span> · {t('camAi.cut.coolantMachine')}
+        </p>
       </div>
       <p className="px-4 pb-2 flex justify-between text-xs text-[var(--text-secondary)] tabular-nums">
         <span>{t('camAi.ops')}</span>

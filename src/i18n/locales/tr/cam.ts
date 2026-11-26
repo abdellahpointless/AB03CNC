@@ -344,7 +344,7 @@ const cam: Translation<typeof en> = {
     toLoad: 'Takılacak',
     changedBadge: 'Değişti: yeniden oluşturun',
     downTo: 'Z{{z}} mm’ye kadar',
-    cut: { rpm: 'Devir (dev/dk)', feed: 'İlerleme (mm/dk)', ae: 'Yan paso ae (mm)', ap: 'Derinlik ap (mm)', coolant: 'Soğutma' },
+    cut: { rpm: 'Devir (dev/dk)', feed: 'İlerleme (mm/dk)', ae: 'Yan paso ae (mm)', ap: 'Derinlik ap (mm)', coolant: 'Soğutma', coolantMachine: 'makineye göre, her takımda aynı' },
     coolant: { flood: 'Sıvı (M08)', air: 'Hava (M83)', off: 'Kapalı' },
     unsafe: 'Bu değerler takımın kaldırabileceğinden fazla (eğilir veya kırılır). Düşürün: İndir ve Gönder kilitli kalır.',
     everywhere: 'Değişiklikler bu takımın kullanıldığı her yerde geçerlidir. Devir hiçbir zaman makinenin en yüksek devrini aşmaz.',

@@ -31,7 +31,7 @@ describe("the operator's cutting values", () => {
 });
 
 describe('the operator picks the sides and sees it being made', () => {
-  it('setup 2 on the side picked, coolant as chosen, every step reported', () => {
+  it('setup 2 on the side picked, the machine\'s coolant (air) on every tool, every step reported', () => {
     const events: LiveEvent[] = [];
     const code = LIBRARY.ALU.find((t) => t.type === 'MK')?.code ?? '';
     const r = camProgram({
@@ -42,7 +42,7 @@ describe('the operator picks the sides and sees it being made', () => {
       raw: [44, 34, 19],
       orient: { side: 'Z+', spin: false },
       second: 'Y+',
-      cuts: code ? { [code]: { coolant: 'air' } } : {},
+      coolant: 'air',
       noNest: true,
       live: (e) => events.push(e),
     });
@@ -52,7 +52,9 @@ describe('the operator picks the sides and sees it being made', () => {
     expect(stages).toContain('check');
     expect(stages.at(-1)).toBe('post');
     expect(events.some((e) => e.kind === 'path' && e.pts.length >= 6)).toBe(true);
-    if (code && r.code.includes(code)) expect(r.code).toMatch(/Z50\. M83/);
+    // The machine's air on every tool, no coolant anywhere (you: by machine, never per tool).
+    expect(r.code).toMatch(/Z50\. M83/);
+    expect(r.code).not.toMatch(/Z50\. M08/);
   }, 900_000);
 });
 

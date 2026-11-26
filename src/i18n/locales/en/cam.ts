@@ -341,7 +341,7 @@ const cam = {
     toLoad: 'To load',
     changedBadge: 'Changed: make it again',
     downTo: 'down to Z{{z}} mm',
-    cut: { rpm: 'Spindle (rpm)', feed: 'Feed (mm/min)', ae: 'Step-over ae (mm)', ap: 'Depth ap (mm)', coolant: 'Coolant' },
+    cut: { rpm: 'Spindle (rpm)', feed: 'Feed (mm/min)', ae: 'Step-over ae (mm)', ap: 'Depth ap (mm)', coolant: 'Coolant', coolantMachine: 'set by the machine, the same on every tool' },
     coolant: { flood: 'Flood (M08)', air: 'Air (M83)', off: 'Off' },
     unsafe: 'These values are more than this tool takes (it would bend or break). Lower them: Download and Send stay locked.',
     everywhere: 'Changes apply wherever this tool is used. The spindle never goes over the machine’s top speed.',
