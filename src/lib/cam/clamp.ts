@@ -3,6 +3,11 @@
  * the parallels the jaws can hold it on, and the ones the planner picks. One source, so the page shows what is planned.
  */
 import { CALE_HEIGHTS } from '../cales';
+import type { CamNote } from './tools';
+
+/** A later clamping's hold asked (parallels, a jaw-top face, a step) that the program made refused: its note, for that value. */
+export const refusedHold = (n: CamNote, h: { cale: number } | { jaw: number } | { step: number }) =>
+  'step' in h ? (n.key === 'stepRefused' || n.key === 'stepHold') && Math.abs((n.cale ?? NaN) - h.step) < 0.05 : 'jaw' in h ? n.key === 'jawRefused' && n.cale === h.jaw : n.key === 'clampRefused' && n.cale === h.cale;
 
 /** The vise's jaws over its bed (mm): the grip is JAW - parallels. */
 export const JAW = 45;

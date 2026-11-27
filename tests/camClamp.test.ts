@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { allowedCales, blankTop, jawMove, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
+import { allowedCales, blankTop, jawMove, refusedHold, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
+
+describe('a later clamping\'s hold the program made refused (its note says so)', () => {
+  it('matches the note of its kind for the value asked, a step within 0.05 mm', () => {
+    expect(refusedHold({ key: 'stepRefused', setup: 2, cale: 7 }, { step: 7 })).toBe(true);
+    expect(refusedHold({ key: 'stepHold', setup: 2, cale: 4.5 }, { step: 4.52 })).toBe(true);
+    expect(refusedHold({ key: 'jawRefused', setup: 2, cale: 6 }, { jaw: 6 })).toBe(true);
+    expect(refusedHold({ key: 'clampRefused', setup: 2, cale: 30 }, { cale: 30 })).toBe(true);
+    // Another value asked since (not made yet), or a note of another kind: not refused.
+    expect(refusedHold({ key: 'stepRefused', setup: 2, cale: 7 }, { step: 6 })).toBe(false);
+    expect(refusedHold({ key: 'clampRefused', setup: 2, cale: 30 }, { step: 30 })).toBe(false);
+    expect(refusedHold({ key: 'sideEmpty', setup: 2 }, { cale: 30 })).toBe(false);
+  });
+});
 
 describe('the clamping editor\'s moves (you, Beta 2)', () => {
   const cales = [42, 41, 40, 38, 36];

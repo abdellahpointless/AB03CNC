@@ -29,7 +29,7 @@ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import CamOpened from './CamOpened';
 import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
-import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, refusedHold, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
@@ -607,6 +607,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           return {};
         });
       setAccepted(false);
+      // A later clamping's hold the program refused (its note says so) is asked no more: its panel shows the hold used,
+      // the 3D view no longer previews it, and the next make does not ask it again.
+      setLater((l) => {
+        const kept = Object.fromEntries(Object.entries(l).filter(([k, h]) => !m.result.notes.some((n) => n.setup === Number(k) + 1 && refusedHold(n, h))));
+        return Object.keys(kept).length === Object.keys(l).length ? l : kept;
+      });
       // A part record for the learning records (Admin > Data). Best effort; only programs that
       // passed every check (a failed run would teach the wrong thing).
       if (m.lesson && passed(m.result)) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
@@ -2395,7 +2401,9 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
     spacers.quarter !== madeTurn.quarter;
   const all = steps.some((h) => sameHold(h, now)) ? steps : [now, ...steps];
   const nowKey = holdKey(all.find((h) => sameHold(h, now))!);
-  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(made.steps.find((x) => x.depth === h.step)?.cale ?? made.cale, 0) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
+  // A step the program made does not know (typed, not made yet): its parallels are not known either, never guessed.
+  const stepParallels = (h: { step: number }) => made.steps.find((x) => x.depth === h.step)?.cale ?? (made.step !== undefined && Math.abs(made.step - h.step) < 0.05 ? made.cale : undefined);
+  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? (stepParallels(h) === undefined ? t('camAi.hold.stepOnly', { depth: fmt(h.step, 1) }) : t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(stepParallels(h)!, 0) })) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
   const pickHold = (key: string) => {
     const h = all.find((x) => holdKey(x) === key)!;
     onAsk(sameHold(h, mine) && made.own === undefined ? null : h, spacers);
