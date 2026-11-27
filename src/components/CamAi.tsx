@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconArrowsMaximize as JawsOpen, IconArrowsMinimize as JawsClose, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconAlertTriangle as AlertTriangle, IconBox as Box, IconCheck as Check, IconCircleCheck as CheckCircle2, IconCircle as Circle, IconCpu as Cpu, IconDownload as Download, IconRuler as Ruler, IconFileCode as FileCode2, IconFilePlus as FilePlus2, IconLoader2 as Loader2, IconLock as Lock, IconClick as MousePointerClick, IconPencil as Pencil, IconPlayerPlay as Play, IconRefresh as RefreshCw, IconRoute as Route, IconSend as Send, IconSettings as Settings2, IconSquare as Square, IconUpload as Upload, IconArrowLeft as ArrowLeft, IconCube as Cube, IconX as X, IconDots as Dots, IconClockHour4 as Clock, IconLayoutSidebarLeftCollapse as SidebarLeftCollapse, IconLayoutSidebarLeftExpand as SidebarLeftExpand, IconLayoutSidebarRightCollapse as SidebarRightCollapse, IconLayoutSidebarRightExpand as SidebarRightExpand, IconStack2 as Parallels, IconPlayerPlay as PlayerPlay, IconDatabase as Database, IconTrash as Trash, IconRotate as RotateCcw } from '@tabler/icons-react';
 import { Dialog, Popover } from 'radix-ui';
 import { useSync } from '../contexts/SyncContext';
@@ -1147,14 +1147,16 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     }}
                     title={`${t('camAi.rightClickSwap')} · ${t('camAi.ws.dragHint')}`}
                   >
-                    <span title={label} className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs overflow-hidden whitespace-nowrap" style={{ background: `${toolColor(o.tool)}26`, color: toolColor(o.tool) }}>
+                    {/* The tool's colour as the tint; its number in that colour on the dark theme, in the text colour on the light one (readable). */}
+                    <span title={label} className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs overflow-hidden whitespace-nowrap text-[var(--text-primary)] dark:text-[var(--tool)]" style={{ background: `${toolColor(o.tool)}26`, '--tool': toolColor(o.tool) } as CSSProperties}>
                       {label.length > 5 ? `${label.slice(0, 4)}…` : label}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
-                      <span className="block text-xs text-[var(--text-secondary)] tabular-nums truncate">
-                        Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}
-                        {!o.inMachine && <span className="text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
+                      {/* The size gives way first: "not in machine" stays whole (amber text on the light theme). */}
+                      <span className="flex text-xs text-[var(--text-secondary)] tabular-nums">
+                        <span className="truncate">Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}</span>
+                        {!o.inMachine && <span className="shrink-0 whitespace-pre text-[#854d0e] dark:text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
                       </span>
                     </span>
                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
@@ -1190,7 +1192,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               const still = keys.some(isGone);
               return (
                 <li key={`gone-${g.code}`} className="flex items-center gap-2 px-2 min-h-11 rounded-[8px] text-[var(--text-secondary)]">
-                  <span className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs line-through opacity-60" style={{ background: `${toolColor(g.tool)}14`, color: toolColor(g.tool) }}>
+                  <span className="w-[52px] h-[22px] shrink-0 grid place-items-center rounded-[6px] font-mono text-xs line-through opacity-60 text-[var(--text-primary)] dark:text-[var(--tool)]" style={{ background: `${toolColor(g.tool)}14`, '--tool': toolColor(g.tool) } as CSSProperties}>
                     {label}
                   </span>
                   <span className={`flex-1 min-w-0 ${still ? 'line-through opacity-70' : ''}`}>
