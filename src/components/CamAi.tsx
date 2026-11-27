@@ -1481,7 +1481,13 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
             {result && handEdited && (
               <section className="space-y-1.5 rounded-[var(--radius-md)] border border-[var(--accent-primary)]/40 p-2.5" aria-live="polite">
-                <p className="text-[var(--text-primary)]">{t('camAi.opEdit.changed', { count: Object.keys(opEdits).length, pct: fmt(result.match * 100, 1), mm3: fmt(result.gouge, 0) })}</p>
+                <p className="text-[var(--text-primary)]">
+                  {[
+                    Object.keys(opEdits).length ? t('camAi.opEdit.changed', { count: Object.keys(opEdits).length }) : '',
+                    Object.values(opOrder).some((c) => c.length > 0) ? t('camAi.opEdit.moved') : '',
+                    alike(result) ? t('camAi.opEdit.alike', { pct: fmt(result.match * 100, 1) }) : t('camAi.opEdit.differs', { pct: fmt(result.match * 100, 1), mm3: fmt(result.gouge, 0) }),
+                  ].filter(Boolean).join(' ')}
+                </p>
                 {safeButHold(result) && (!alike(result) || result.misplaced > 0) && (
                   <label className="flex items-center gap-2 min-h-9 text-[var(--text-primary)]">
                     <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />

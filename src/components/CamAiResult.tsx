@@ -234,14 +234,17 @@ export function ProgramPanel({
           </button>
         </div>
       ))}
-      {result.notes.length > 0 && (
-        <ul className="text-xs text-[var(--text-secondary)] list-disc pl-4 space-y-0.5">
-          {result.notes.map((n, i) => {
-            const { key, ...v } = n;
-            return <li key={i}>{t(`camAi.note.${key}`, v)}</li>;
-          })}
-        </ul>
-      )}
+      {(() => {
+        // The notes, but the one the verdict at the top already says.
+        const notes = result.notes.map(({ key, ...v }) => t(`camAi.note.${key}`, v)).filter((n) => n !== text);
+        return (
+          notes.length > 0 && (
+            <ul className="text-xs text-[var(--text-secondary)] list-disc pl-4 space-y-0.5">
+              {notes.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+          )
+        );
+      })()}
     </div>
   );
 }
