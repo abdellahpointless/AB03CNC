@@ -697,20 +697,21 @@ function MachineSheet({
       transition={{ duration: 0.22, ease: EASE_OUT }}
       className="overflow-hidden"
     >
-      <div className="flex gap-2 pt-2">
+      {/* Wraps in the narrow column: the buttons go under the field rather than being cut. */}
+      <div className="flex flex-wrap gap-2 pt-2">
         <input
           autoFocus
-          className="aurora-input flex-1 text-xs"
+          className="aurora-input flex-1 min-w-[10rem] text-xs"
           placeholder={t('problem.placeholder')}
           value={problemText}
           maxLength={300}
           onChange={(e) => setProblemText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendProblem()}
         />
-        <button className="btn-danger text-xs py-1.5 px-3" disabled={!!busy} onClick={sendProblem}>
+        <button className="btn-danger text-xs py-1.5 px-3 shrink-0 whitespace-nowrap" disabled={!!busy} onClick={sendProblem}>
           {t('problem.send')}
         </button>
-        <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setProblemFor(null)}>
+        <button className="btn-secondary text-xs py-1.5 px-3 shrink-0 whitespace-nowrap" onClick={() => setProblemFor(null)}>
           {t('common:actions.cancel')}
         </button>
       </div>
