@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage } from '../lib/api';
 import { setLanguage, useT } from '../i18n';
-import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, timeAgo } from '../i18n/format';
+import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, fmtPercent, timeAgo } from '../i18n/format';
 import { MASTER_PATH } from '../lib/instance';
 import { regionById, type RegionFeatures, type RegionId } from '../regions';
 
@@ -316,7 +316,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
               <Stat
                 icon={<Timer size={13} />}
                 label={t('card.autoShare')}
-                value={country.programs.appSelected + country.programs.manual ? `${fmtNumber((country.programs.appSelected / (country.programs.appSelected + country.programs.manual)) * 100, 0)} %` : '-'}
+                value={country.programs.appSelected + country.programs.manual ? fmtPercent(country.programs.appSelected / (country.programs.appSelected + country.programs.manual)) : '-'}
                 detail={t('card.autoShareDetail')}
               />
             )}
@@ -419,7 +419,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
 
 function ComparisonTable({ countries }: { countries: ActiveCountry[] }) {
   const { t } = useT('master');
-  const pct = (a: number, b: number) => (a + b ? `${fmtNumber((a / (a + b)) * 100, 0)} %` : '-');
+  const pct = (a: number, b: number) => (a + b ? fmtPercent(a / (a + b)) : '-');
   const notUsed = t('compare.notUsed');
   const ifUses = (feature: keyof CountryFeatures, value: (c: ActiveCountry) => string) => (c: ActiveCountry) => (uses(c, feature) ? value(c) : notUsed);
   const rows: { label: string; value: (c: ActiveCountry) => string }[] = [

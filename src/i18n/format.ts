@@ -38,6 +38,11 @@ export function fmtNumber(n: number | null | undefined, maxFractionDigits = 2): 
   return n.toLocaleString(locale(), { maximumFractionDigits: maxFractionDigits });
 }
 
+/** 0.23 -> "23%" / "%23" (Turkish puts the sign first). */
+export function fmtPercent(fraction: number, maxFractionDigits = 0): string {
+  return Number.isFinite(fraction) ? fraction.toLocaleString(locale(), { style: 'percent', maximumFractionDigits: maxFractionDigits }) : '-';
+}
+
 /** "2026-10" -> "October 2026" / "Ekim 2026" (or the short form "Oct 2026" / "Eki 2026"). */
 export function fmtMonth(monthKey: string, short = false): string {
   const m = /^(\d{4})-(\d{2})$/.exec(monthKey);
