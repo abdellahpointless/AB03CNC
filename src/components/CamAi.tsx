@@ -1443,7 +1443,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     {prep.sap && <div><dt className="inline text-[var(--text-secondary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
                   </dl>
                 ) : (
-                  <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
+                  // The type chosen: only the fact stays, neutral (a step no longer missing).
+                  partType ? <p className="text-[var(--text-secondary)]">{t('camAi.part.noName')}</p> : <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
                 )}
                 {partFields()}
                 {shapesList()}

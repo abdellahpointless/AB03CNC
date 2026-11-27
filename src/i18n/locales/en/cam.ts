@@ -414,6 +414,7 @@ const cam = {
       title: 'Name on the drawing',
       sap: 'SAP number',
       noTitle: 'No name found in the file: choose the part type.',
+      noName: 'No name found in the file.',
       type: 'Part type',
       choose: 'Choose…',
       typeHint: 'It decides where precision matters. Change it if the name does not fit the part.',

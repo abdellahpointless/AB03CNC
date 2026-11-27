@@ -417,6 +417,7 @@ const cam: Translation<typeof en> = {
       title: 'Çizimdeki adı',
       sap: 'SAP numarası',
       noTitle: 'Dosyada ad bulunamadı: parça tipini seçin.',
+      noName: 'Dosyada ad bulunamadı.',
       type: 'Parça tipi',
       choose: 'Seçin…',
       typeHint: 'Hassasiyetin nerede önemli olduğunu belirler. Ad parçaya uymuyorsa değiştirin.',
