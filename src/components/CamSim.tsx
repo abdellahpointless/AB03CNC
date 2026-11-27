@@ -194,6 +194,9 @@ export default function CamSim({
   }, [path]);
   // The track is the moves' own time (tool changes are not segments of it).
   const totalSeconds = Math.max(1e-6, runs.reduce((a, r) => a + r.seconds, 0));
+  // Where a clamping starts on the track (%): past the middle its name reads leftward from there (one near the end ran
+  // into the clock).
+  const tickAt = (s: SetupInfo) => ((s.moves && s.moves[0] > 0 ? timeline[s.moves[0] - 1] : 0) / totalSeconds) * 100;
   const playOn = () => {
     soloEnd.current = null;
     setHeat(false);
@@ -384,7 +387,7 @@ export default function CamSim({
           <span className="absolute top-0 w-0.5 h-[26px] rounded bg-white shadow-[0_0_0_2px_rgba(10,15,28,0.7)] pointer-events-none" style={{ left: `${(atSeconds / totalSeconds) * 100}%` }} aria-hidden />
           {setups.map((s) =>
             s.moves ? (
-              <span key={s.index} className="absolute top-6 flex items-center gap-1 text-xs text-[var(--text-secondary)] whitespace-nowrap" style={{ left: `${((s.moves[0] > 0 ? timeline[s.moves[0] - 1] : 0) / totalSeconds) * 100}%` }}>
+              <span key={s.index} className={`absolute top-6 flex items-center gap-1 text-xs text-[var(--text-secondary)] whitespace-nowrap ${tickAt(s) > 50 ? 'flex-row-reverse' : ''}`} style={tickAt(s) > 50 ? { right: `${100 - tickAt(s)}%` } : { left: `${tickAt(s)}%` }}>
                 <span className="w-px h-2.5 bg-[var(--text-secondary)]" aria-hidden />
                 {stepLabel(s.index)}
               </span>

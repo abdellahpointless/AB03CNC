@@ -22,7 +22,7 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import { IDENTITY, type Mat3 } from '../lib/orient';
-import { alike, badToolNumber, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
+import { alike, badToolNumber, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict, writtenTurns } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
@@ -1040,9 +1040,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const stepName = (i: number) => {
     const s = result?.setups[i];
     if (!s) return { n: i + 1, turn: setupNodes.find((x) => x.i === i)?.side ?? '', rest: '' };
-    const turn = s.notes.join(' ').match(/(\d+)\s*GRAD\s*UM\s*([XYZ])/);
+    // Every turn the note writes (a flip, then a quarter turn for a step: "180° X + 90° Z").
+    const turn = writtenTurns(s.notes.join(' ')).join(' + ');
     const rest = s.notes.some((x) => /POM-NEST/.test(x)) ? t('camAi.sim.nest') : s.notes.some((x) => /SUR L'ETAU/.test(x)) ? t('camAi.sim.onJaw') : s.cale === 0 ? t('camAi.sim.onTable') : fmt(s.cale, 0);
-    return { n: i + 1, turn: i === 0 ? t('camAi.ws.vise') : turn ? `${turn[1]}° ${turn[2]}` : s.side, rest };
+    return { n: i + 1, turn: i === 0 ? t('camAi.ws.vise') : turn || s.side, rest };
   };
   const parallelsText = (i: number) => {
     const s = result?.setups[i];

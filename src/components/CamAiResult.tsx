@@ -46,6 +46,8 @@ const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8 
 export const cutText = (typed: string | undefined, kept: number | undefined, made: number) => (typed !== undefined && (typed === '' ? kept === undefined : Number(typed) === kept) ? typed : String(kept ?? made));
 
 export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+/** The turns a clamping's note writes from the one before (fixTurns' turnPhrase), each as "180° X", in the note's order. */
+export const writtenTurns = (note: string) => [...note.matchAll(/(\d+)\s*GRAD\s*UM\s*([XYZ])/g)].map((m) => `${m[1]}° ${m[2]}`);
 
 export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
 
