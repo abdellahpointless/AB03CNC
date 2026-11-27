@@ -29,7 +29,7 @@ function find(id: string): { text: string; pdf: Uint8Array } | null {
 }
 
 /** CAM AI on the program with this id, as tools/camLibrary.ts plans it. */
-export async function plan(id: string, material: CamInput['material']) {
+export async function plan(id: string, material: CamInput['material'], extra: Partial<CamInput> = {}) {
   const found = find(id);
   expect(found, id).toBeTruthy();
   const tris = await readTris(found!.pdf);
@@ -43,5 +43,5 @@ export async function plan(id: string, material: CamInput['material']) {
   });
   const raw = blankAlong(read, size);
   const named = found!.text.split('\n').slice(0, 15).find((l) => /\d\s*X\s*\d+(?:[.,]\d+)?\s*X\s*\d/i.test(l))?.replace(/^\s*N\d+\s*/, '').replace(/^\(/, '').split('/')[0] ?? '';
-  return camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined });
+  return camProgram({ tris, material, tools: [], brand: 'HAAS', name: 'TEIL', raw, partType: partTypeOf(named) ?? undefined, ...extra });
 }
