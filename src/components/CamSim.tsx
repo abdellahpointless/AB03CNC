@@ -266,6 +266,8 @@ export default function CamSim({
     }
   };
 
+  // Framed again (another clamping or program, Fit): the 3D view is back at 3/4, and so is the camera menu's name.
+  useEffect(() => setView3d(null), [path, range[0], range[1], fitKey]);
   // Hidden under the clamping 1 editor: paused (a review: it played on unseen).
   useEffect(() => {
     if (hidden) setPlaying(false);
