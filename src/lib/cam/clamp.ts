@@ -87,7 +87,8 @@ export function caleFor(height: number, want: number, least = 3): { cale: number
  */
 export function firstWant(lo: number, H: number, gap = JAW_GAP): number {
   const waste = -H - lo;
-  return waste >= underNeed(gap) ? waste - underCut(gap) : waste > 0.5 ? Math.min(5, -lo - 5) : waste - 0.5;
+  // underStock's tolerance: a blank it takes (4.4999999 mm under the part, float) is gripped under the outline too.
+  return waste >= underNeed(gap) - 1e-6 ? waste - underCut(gap) : waste > 0.5 ? Math.min(5, -lo - 5) : waste - 0.5;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedCales, blankTop, firstPick, jawGap, jawMove, refusedHold, stepCale, underNeed, underStock, whyNot } from '../src/lib/cam/clamp';
+import { allowedCales, blankTop, firstPick, firstWant, jawGap, jawMove, refusedHold, stepCale, underNeed, underStock, whyNot } from '../src/lib/cam/clamp';
 
 describe('a later clamping\'s hold the program made refused (its note says so)', () => {
   it('matches the note of its kind for the value asked, a step within 0.05 mm', () => {
@@ -104,6 +104,10 @@ describe('the 0.5 mm method (you): the outline and holes whole in clamping 1, 0.
     expect(allowedCales(20.5, -18.5, 12, 1.5)).toEqual([42, 41]);
     expect(whyNot(40, 20.5, -18.5, 12, 1.5)).toBe('outline');
     expect(firstPick(20.5, -18.5, 12, 1.5)).toEqual({ cale: 41, grip: 4 });
+    // A blank underStock takes at its limit (4.5 mm under the part, a float short of it): 3 gripped, under the outline.
+    expect(underStock(4.4999999)).toBe('lowGrip');
+    expect(firstWant(-29.4999999, 25)).toBeCloseTo(3, 5);
+    expect(firstPick(30, -29.4999999, 25)).toEqual({ cale: 42, grip: 3 });
     // Never under 1 mm, whatever is asked.
     expect(allowedCales(20.5, -18.5, 12, 0.5)).toEqual([42, 41, 40]);
   });
