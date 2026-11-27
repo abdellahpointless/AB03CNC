@@ -1,4 +1,4 @@
-From 05d96fea1a954d475a2abe7593aec67d1471c920 Mon Sep 17 00:00:00 2001
+From b78b2d4fa5ceb98365556caa770b19736bf0003c Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 27 Nov 2026 00:40:38 +0000
 Subject: [PATCH] =?UTF-8?q?CAM=20AI:=20a=20clamping's=20chip,=20list=20hea?=
@@ -22,15 +22,15 @@ Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
  create mode 100644 tests/turnLabel.test.ts
 
 diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
-index 5ce0d57..1df2d08 100644
+index cfdcc2e..b993928 100644
 --- a/src/components/CamAi.tsx
 +++ b/src/components/CamAi.tsx
 @@ -22,7 +22,7 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
  import type { MeasureMode } from '../lib/measure';
  import type { Measurement } from '../lib/measure3d';
  import { IDENTITY, type Mat3 } from '../lib/orient';
--import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
-+import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict, writtenTurns } from './CamAiResult';
+-import { alike, badToolNumber, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
++import { alike, badToolNumber, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict, writtenTurns } from './CamAiResult';
  import type { ClampAct, FacePick } from './CamPartView';
  import CamStockBox, { STOCK_SIDES } from './CamStockBox';
  import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
@@ -48,10 +48,10 @@ index 5ce0d57..1df2d08 100644
    const parallelsText = (i: number) => {
      const s = result?.setups[i];
 diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
-index 1c12720..4638a4b 100644
+index 9ab18ff..b30fb1a 100644
 --- a/src/components/CamAiResult.tsx
 +++ b/src/components/CamAiResult.tsx
-@@ -38,6 +38,8 @@ const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8
+@@ -40,6 +40,8 @@ const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8
  
  /** 164 s -> "2:44". */
  export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
