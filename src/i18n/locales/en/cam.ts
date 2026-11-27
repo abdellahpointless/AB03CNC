@@ -479,6 +479,7 @@ const cam = {
       step: 'By the step {{depth}} mm under Z0, on {{cale}} mm parallels',
       typeStep: 'Or type the thickness where the parallels touch the part (mm under Z0)',
       useStep: 'Rest it there',
+      stepBad: 'Type a thickness over 0 and at most 200 mm (under Z0).',
       stepHint: 'As the engineers write it ("35 MM UNTERLAGE IN EP 8 MM"): the part sits on the parallels by its face that deep, its narrower body hanging between them.',
       flip: 'Turned over from the clamping before',
       quarter: 'Then turned in the vise',

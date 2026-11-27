@@ -482,6 +482,7 @@ const cam: Translation<typeof en> = {
       step: 'Z0’ın {{depth}} mm altındaki basamaktan, {{cale}} mm paraleller üstünde',
       typeStep: 'Veya paralellerin parçaya değdiği kalınlığı yazın (Z0’ın altında mm)',
       useStep: 'Oraya oturt',
+      stepBad: '0’dan büyük, en fazla 200 mm bir kalınlık girin (Z0’ın altında).',
       stepHint: 'Mühendislerin yazdığı gibi ("35 MM UNTERLAGE IN EP 8 MM"): parça o derinlikteki yüzüyle paralellere oturur, dar gövdesi aralarında sarkar.',
       flip: 'Önceki bağlamadan çevrilişi',
       quarter: 'Sonra mengenede döndürme',

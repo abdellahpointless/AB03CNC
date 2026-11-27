@@ -2381,6 +2381,7 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
   const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : made.step !== undefined ? { step: made.step } : { cale: made.cale };
   // The thickness where the parallels touch, typed (you: as the engineers write it).
   const [thick, setThick] = useState(asked && 'step' in asked ? String(asked.step) : '');
+  const [thickBad, setThickBad] = useState(false);
   const now = asked ?? mine;
   // A choice the program made does not have yet (made again, it shows as made; a side with nothing to cut is said apart).
   const spacerOf = (at: string) => Number(made.notes.join(' ').match(new RegExp(`(\\d+) MM ZWISCHENLAGE IN ${at.replace('+', '\\+')}`))?.[1] ?? 0);
@@ -2422,15 +2423,18 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
               e.preventDefault();
               const v = Number(thick.replace(',', '.'));
               const near = made.steps.find((x) => Math.abs(x.depth - v) < 0.05);
-              if (Number.isFinite(v) && v > 0 && v <= 200) onAsk({ step: near ? near.depth : Math.round(v * 100) / 100 }, spacers);
+              const okV = Number.isFinite(v) && v > 0 && v <= 200;
+              setThickBad(!okV);
+              if (okV) onAsk({ step: near ? near.depth : Math.round(v * 100) / 100 }, spacers);
             }}
           >
             <label className="flex-1 min-w-0 text-xs text-[var(--text-secondary)]">
               {t('camAi.hold.typeStep')}
-              <input type="text" inputMode="decimal" value={thick} onChange={(e) => setThick(e.target.value)} className="aurora-input mt-1 w-full h-9 px-2 text-[13px] tabular-nums" aria-describedby={`step${n}-hint`} />
+              <input type="text" inputMode="decimal" value={thick} onChange={(e) => { setThick(e.target.value); setThickBad(false); }} className="aurora-input mt-1 w-full h-9 px-2 text-[13px] tabular-nums" aria-invalid={thickBad || undefined} aria-describedby={`step${n}-hint`} />
             </label>
             <button type="submit" className="btn-secondary text-xs min-h-9 px-3" disabled={!thick.trim()}>{t('camAi.hold.useStep')}</button>
           </form>
+          {thickBad && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.hold.stepBad')}</p>}
           <p id={`step${n}-hint`} className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.stepHint')}</p>
           <Seg legend={t('camAi.hold.stopX')} value={spacers.stop ?? 0} options={([0, 15, 50] as const).map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.clamp1.stopNone') }))} onChange={(v) => setX({ ...spacers, stop: v || undefined })} />
           <Seg legend={t('camAi.hold.spacerY')} value={spacers.y ?? 'auto'} options={Y_SPACERS.map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.auto') : v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, y: v === 'auto' ? undefined : v })} />
