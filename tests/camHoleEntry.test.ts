@@ -19,7 +19,8 @@ describe('a hole an end mill only just fits', () => {
         let [x, y, z] = [NaN, NaN, NaN];
         return o.lines.flatMap((l) => {
           [x, y, z] = ['X', 'Y', 'Z'].map((a, k) => Number(l.match(new RegExp(`${a}(-?[\\d.]+)`))?.[1] ?? [x, y, z][k]));
-          if (!/^G0?1 /.test(l) || !(Math.hypot(x, y) < 3.2)) return [];
+          // A helix (G02/G03 with Z) cuts as it goes down; only a G01 straight down is a plunge.
+          if (!/^G0?[123] /.test(l) || !(Math.hypot(x, y) < 3.2)) return [];
           const into = /^G0?1 Z/.test(l) && z < cut - 0.05;
           cut = Math.min(cut, z);
           return into ? [`${o.name} ${l}`] : [];
