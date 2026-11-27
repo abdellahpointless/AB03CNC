@@ -267,9 +267,9 @@ const cam: Translation<typeof en> = {
     legend: { hover: 'İmlecin altındaki yüz', top: 'Bağlamanın üst yüzü', stock: 'Ham blok', finish: 'Son paso duvarları' },
     opEdit: {
       deeper: 'Daha derin (mm)',
-      dx: 'X kaydır',
-      dy: 'Y kaydır',
-      dz: 'Z kaydır',
+      dx: 'X kaydır (mm)',
+      dy: 'Y kaydır (mm)',
+      dz: 'Z kaydır (mm)',
       d: 'Takım Ø (mm)',
       l: 'Boy (mm)',
       badMove: 'X, Y ve Z en çok 200 mm, Daha derin en çok 50 mm değiştirilebilir (iki yönde de).',

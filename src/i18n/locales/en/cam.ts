@@ -264,9 +264,9 @@ const cam = {
     legend: { hover: 'Face under the pointer', top: 'Top of a setup', stock: 'Raw block', finish: 'Walls to finish' },
     opEdit: {
       deeper: 'Deeper (mm)',
-      dx: 'Move X',
-      dy: 'Move Y',
-      dz: 'Move Z',
+      dx: 'Move X (mm)',
+      dy: 'Move Y (mm)',
+      dz: 'Move Z (mm)',
       d: 'Tool Ø (mm)',
       l: 'Length (mm)',
       badMove: 'Move X, Y and Z by at most 200 mm, and Deeper by at most 50 mm, either way.',

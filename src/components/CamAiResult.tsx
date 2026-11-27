@@ -626,7 +626,7 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
   );
   return (
     <div className="w-full px-2 pb-2 space-y-1.5">
-      <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
+      <div className="grid grid-cols-2 gap-1.5">{(['dx', 'dy', 'dz', 'deeper'] as const).map(field)}</div>
       <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
       {!movesOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badMove')}</p>}
       {!toolOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
