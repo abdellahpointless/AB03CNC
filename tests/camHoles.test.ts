@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { camProgram, HOLE_DEFAULTS, holeCycle, microCircle, nearestOrder, SAFE_START, type CamInput } from '../src/lib/cam/program';
+import { simulate } from '../src/lib/cam/holeSim';
+import { DEFAULT_LIMITS } from '../src/lib/cam/limits';
+import { camProgram, drilling, HOLE_DEFAULTS, holeCycle, microCircle, nearestOrder, SAFE_START, type CamInput } from '../src/lib/cam/program';
+import { shopStyle } from '../src/lib/cam/style';
 import { catalog } from '../src/lib/cam/tools';
 import { haasTools } from '../src/lib/defaultTools';
 import { plateWithHoles } from './heightPart';
@@ -33,6 +36,27 @@ describe('the drilling cycle', () => {
     expect(microCircle(ring(0.3).reverse(), 3)!.ccw).toBe(false);
     expect(microCircle(ring(4), 3)).toBeNull();
     expect(microCircle([[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0], [1, 0.5]], 3)).toBeNull();
+  });
+});
+
+describe('the way from hole to hole', () => {
+  it('goes back up to the start height before a hole whose way on is not proven clear, after one that stayed at R', () => {
+    const drill = catalog('ALU', haasTools).find((t) => t.type === 'SB' && Math.abs(t.diameter - 3.3) < 1e-6)!;
+    const hole = (x: number) => ({ h: { c: [x, 0] as [number, number], r: 1.65, top: 0, bottom: -5, through: false, closed: true }, tool: drill, z: -5 });
+    // A wall between the second and the third hole: from 1 to 2 the way at R is clear, from 2 to 3 it is not.
+    const clearAt = (a: [number, number], b: [number, number]) => Math.max(a[0], b[0]) < 30;
+    const [op] = drilling([hole(0), hole(10), hole(50)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0, {}, clearAt);
+    // A control takes the start height again at each line naming the cycle (the app's reader does): read that way.
+    const across = (code: string) => simulate(code).moves.filter((m) => m.kind === 'rapid' && Math.abs(m.to[0] - m.from[0]) > 1e-6).map((m) => [m.to[0], m.to[2]]);
+    const raw = ['%', 'O0001', ...['T1 M6', 'G00 G43 H01 Z50. M08', ...op.lines, 'G00 Z50.', 'M30'].map((l, i) => `N${i + 1} ${l}`), '%'].join('\n');
+    expect(across(raw)).toEqual([
+      [10, 0.5],
+      [50, 2],
+    ]);
+    // And as the shop's shorter program (what Download writes).
+    const shop = shopStyle(raw, 'HAAS');
+    expect(shop.shortened).toBe(true);
+    expect(across(shop.code)).toEqual(across(raw));
   });
 });
 

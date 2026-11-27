@@ -600,7 +600,7 @@ export function nearestOrder<T extends { h: { c: P2 } }>(hs: T[]): T[] {
  * it (its way down to R is a rapid): R2 as the shop writes it (513 drill cycles) when `legacy`, else rMargin over it.
  * `clearAt(a, b, s, r)`: whether a tool of radius r goes from a to b with no material over height s on the way.
  */
-function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number, opts: HoleOpts = {}, clearAt?: (a: P2, b: P2, s: number, r: number) => boolean): CamOp[] {
+export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number, opts: HoleOpts = {}, clearAt?: (a: P2, b: P2, s: number, r: number) => boolean): CamOp[] {
   const o = { ...HOLE_DEFAULTS, ...opts };
   const over = o.legacy ? 2 : o.rMargin;
   const ops: CamOp[] = [];
@@ -631,10 +631,15 @@ function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], 
     });
     // Each hole's cycle and why (the owner's rule), before the drilling.
     if (!o.legacy) rows.forEach((r, i) => lines.push(`(HOLE ${i + 1} AT ${n3(r.h.c[0])}/${n3(r.h.c[1])}: ${r.why})`));
+    let before = 'G98';
     rows.forEach((r, i) => {
       const next = rows[i + 1];
       // Back to R only where the way on to the next hole at R is proven clear (else to the start height).
       const back = !o.legacy && o.g99 && next && clearAt?.(r.h.c, next.h.c, r.s, tool.diameter / 2) ? 'G99' : 'G98';
+      // After a hole that stayed at R, a control may take R as the start height a G98 goes back to: over this hole at
+      // R (that way is proven), up, the cycle again from there, so the way on is at the start height however it is read.
+      if (back === 'G98' && before === 'G99' && next) lines.push('G80', `G00 X${n3(r.h.c[0])} Y${n3(r.h.c[1])}`, `G00 Z${n3(clear)}`);
+      before = back;
       const q = r.cycle === 'G81' ? '' : ` Q${n3(Math.min(cut.q, r.s - r.z))}`;
       lines.push(`${back} ${r.cycle} X${n3(r.h.c[0])} Y${n3(r.h.c[1])} Z${n3(r.z)} R${n3(r.s + over)}${q} F${cut.fz}.`);
     });
