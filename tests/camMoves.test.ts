@@ -52,7 +52,7 @@ function facedAll(s: CamSetup): boolean {
 describe('milling after the face is cut', () => {
   it('cuts nothing above Z0 once the face mill has taken it (shop: strategy.faceFirst), and from the raw top when the operator removed the facing', () => {
     // 7 mm on the thickness: 2 over the part (faced), 5 under it (the 0.5 mm method's 4 mm grip).
-    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 19] });
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 20.5] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     // The operations in the program in the order planned (the facing first in its clamping).
@@ -66,7 +66,7 @@ describe('milling after the face is cut', () => {
       for (const o of s.ops.filter((x) => x.kind === 'pocket' || x.kind === 'finish')) expect(Math.max(...feeds(o.lines).map(([, b]) => b[2])), `${s.side} ${o.name}`).toBeLessThanOrEqual(0.001);
     }
     // The operator removed the facing of the first clamping: its milling starts at the raw top (2 mm above Z0).
-    const kept = camProgram({ ...base, tris: plate, raw: [44, 34, 19], skip: [r.setups[0].ops[0].key!] });
+    const kept = camProgram({ ...base, tris: plate, raw: [44, 34, 20.5], skip: [r.setups[0].ops[0].key!] });
     expect(kept.setups[0].ops.some((o) => o.kind === 'face')).toBe(false);
     expect(Math.max(...kept.setups[0].ops.filter((o) => o.kind === 'pocket').flatMap((o) => feeds(o.lines).map(([, b]) => b[2])))).toBeGreaterThan(0.5);
   }, 600_000);
@@ -109,9 +109,9 @@ describe('the plane between cuts', () => {
   const rPlanes = (s: CamSetup) => s.ops.flatMap((o) => o.lines.flatMap((l) => (/ R(-?[\d.]+)/.test(l) ? [Number(l.match(/ R(-?[\d.]+)/)![1])] : [])));
 
   it('is Z2, 2 mm above the faced top, for every operation after the facing; the drill cycles start there, R just over the material', () => {
-    // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate, 2 mm of stock on top.
+    // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate, 2 mm of stock on top (8.5 mm of Z stock: 6.5 under the part).
     const holed = plateWithHoles(40, 30, 8, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 5 }]);
-    const r = camProgram({ ...base, tris: holed, raw: [44, 34, 15] });
+    const r = camProgram({ ...base, tris: holed, raw: [44, 34, 16.5] });
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
     const s = r.setups[0];
@@ -123,7 +123,7 @@ describe('the plane between cuts', () => {
     for (const o of s.ops.filter((x) => x.kind === 'drill' || x.kind === 'centre')) expect(o.lines.slice(0, o.lines.findIndex((l) => /^G9[89] (?:G8|G73)/.test(l))).filter((l) => /^G00 Z/.test(l)).pop()).toBe('G00 Z2.');
     // The facing removed by the operator: the raw top stays, the plane stays 2 mm above it (Z4), and so do
     // the drill cycles' R (never on the raw top: a review finding).
-    const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 15], skip: [s.ops[0].key!] });
+    const kept = camProgram({ ...base, tris: holed, raw: [44, 34, 16.5], skip: [s.ops[0].key!] });
     expect(Math.max(...lifts(kept.setups[0]))).toBeCloseTo(4, 3);
     expect(rPlanes(kept.setups[0]).length).toBeGreaterThan(0);
     // R 0.5 mm over the raw top (Z2): the material over the hole starts there (the owner's rule; the shop wrote R2).

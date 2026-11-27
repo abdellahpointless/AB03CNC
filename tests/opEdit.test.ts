@@ -52,7 +52,7 @@ describe('a tool changed by hand on one operation (you, Beta 2: item 11)', () =>
 
 describe('a made program edited by hand, checked again whole (you, Beta 2: items 10 and 11)', () => {
   const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
-  const input = { tris: plate, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [5, 2, 5] as [number, number, number], hi: [5, 2, 2] as [number, number, number] } };
+  const input = { tris: plate, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, noNest: true, orient: { side: 'Z+', spin: false }, margins: { lo: [5, 2, 6.5] as [number, number, number], hi: [5, 2, 2] as [number, number, number] } };
   const made = camProgram(input);
   const OUTLINE = 'Z+|FRAESEN_16MM|SFH_16.00_055_000_ALHS|0';
   const POCKET = 'Z+|FRAESEN_8MM|SF_08.00_040_000_ALHS|0';
@@ -125,19 +125,21 @@ describe('a made program edited by hand, checked again whole (you, Beta 2: items
     // The check sees a difference three of its samples thick or more (here 2 mm under the pocket's floor, not 1 mm).
     const lower = editProgram(input, made, { [POCKET]: { dz: -2 } });
     expect(lower.check.pieces.some((p) => p.kind === 'cut' && p.min[2] < -7.5)).toBe(true);
-    const smaller = editProgram(input, made, { [POCKET]: { tool: { d: 6, l: 40 } } });
-    expect(smaller.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!.tool.diameter).toBe(6);
+    // A Ø4 on the Ø8's path: 2 mm left on the pocket's walls (a Ø6's 1 mm is at the check's three samples).
+    const smaller = editProgram(input, made, { [POCKET]: { tool: { d: 4, l: 40 } } });
+    expect(smaller.setups[0].ops.find((o) => o.name === 'FRAESEN_8MM')!.tool.diameter).toBe(4);
     expect(smaller.check.pieces.some((p) => p.kind === 'left')).toBe(true);
   }, 300_000);
 
-  it('locks an outline pushed sideways into the jaw below its top (3 mm toward the moving jaw, 1 mm down)', () => {
-    const r = editProgram(input, made, { [OUTLINE]: { dy: -3, dz: -1 } });
+  it('locks an outline pushed sideways into the jaw below its top (3 mm toward the moving jaw, 2 mm down)', () => {
+    // The jaw tops 1 mm under the outline's bottom (the gap): 2 mm down takes it 1 mm into the jaw.
+    const r = editProgram(input, made, { [OUTLINE]: { dy: -3, dz: -2 } });
     expect(r.check.collisions).toBeGreaterThan(0);
   }, 300_000);
 
   it('locks anything taken down to the vise floor, which the simulation does not have (a floor note)', () => {
-    // The plate on 40 mm parallels: the floor 40 mm under the stock's bottom (17 mm under the top): Z-57.
-    const r = editProgram(input, made, { [POCKET]: { dz: -52 } });
+    // The plate on 40 mm parallels: the floor 40 mm under the stock's bottom (18.5 mm under the top): Z-58.5.
+    const r = editProgram(input, made, { [POCKET]: { dz: -53 } });
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'floorHit', setup: 1 }));
   }, 300_000);
 
