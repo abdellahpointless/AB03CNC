@@ -567,7 +567,8 @@ export default function ToolpathViewer({
                 {t('toolpath.unsupported.title', { count: path.unsupported.length })}
               </span>
             )}
-            <button onClick={() => setPanelOpen((x) => !x)} aria-pressed={panelOpen} className="btn-icon w-11 h-11 hidden lg:grid place-items-center" title={t('toolpath.panel')} aria-label={t('toolpath.panel')}>
+            {/* Below lg the panel sits under the view and cannot slide away: the button only brings back one closed on a wider screen. */}
+            <button onClick={() => setPanelOpen((x) => !x)} aria-pressed={panelOpen} className={`btn-icon w-11 h-11 ${panelOpen ? 'max-lg:!hidden' : ''}`} title={t('toolpath.panel')} aria-label={t('toolpath.panel')}>
               <PanelRight size={17} />
             </button>
             <button onClick={onClose} className="btn-icon w-11 h-11" title={t('common:actions.close')} aria-label={t('common:actions.close')}>
@@ -582,13 +583,12 @@ export default function ToolpathViewer({
           <div className={`flex-1 min-h-0 grid grid-cols-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-1 transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${panelOpen ? 'lg:grid-cols-[1fr_340px]' : 'lg:grid-cols-[1fr_0px]'}`}>
             <div className="min-h-0 flex flex-col">
               {/* Top view */}
-              <div className="relative flex-1 min-h-0 bg-[#0A0F19]">
+              <div className="@container relative flex-1 min-h-0 bg-[#0A0F19]">
                 {mode3d && (
                   <Suspense fallback={null}>
                     <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} isolate={isolate} heat={heat} pathsOnly={pathsOnly} playing={playing} measure={measure} mode={measureMode} onMeasure={setMeasured} jump={jump} look={look} outline={outline} section={section} view={view3d} focus={focus} seeThrough={seeThrough} details={details} behind={behind} model={model} modelView={modelView} onModel={onModel} />
                   </Suspense>
                 )}
-                {!mode3d && <span className="absolute left-3 top-2 text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
                 {/* The cales (parallels) the part stands on; while the part turns, the change. */}
                 {mode3d && heat && (
                   <div className="absolute right-3 bottom-3 z-10 w-64 rounded-[var(--radius-md,12px)] border border-[var(--border-subtle)] bg-[#0E1421]/90 px-3 py-2 space-y-1.5" role="note">
@@ -771,7 +771,8 @@ export default function ToolpathViewer({
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <div className="tp-bar absolute left-3 right-3 top-3 z-10 flex items-center gap-2 flex-wrap">
+                {/* One row (wrapped, it covers the part): labels only where the view is wide enough (@4xl), and on a phone it scrolls sideways. */}
+                <div className="tp-bar absolute left-3 right-3 top-3 z-10 flex items-center gap-2 flex-wrap max-sm:flex-nowrap max-sm:overflow-x-auto">
                   <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[#0E1421]/80 p-0.5" role="radiogroup" aria-label="3D / 2D">
                     {[true, false].map((m) => (
                       <button key={String(m)} role="radio" aria-checked={mode3d === m} onClick={() => setMode3d(m)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${mode3d === m ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-secondary)]'}`}>
@@ -779,6 +780,7 @@ export default function ToolpathViewer({
                       </button>
                     ))}
                   </div>
+                  {!mode3d && <span className="text-[11px] font-mono text-[#7F8BA0] pointer-events-none">XY ↑</span>}
                   {mode3d && (
                     <>
                       <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden="true" />
@@ -790,7 +792,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.measureHelp')}
                     >
                       <Ruler size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.measure')}</span>
+                      <span className="sr-only @4xl:not-sr-only">{t('toolpath.measure')}</span>
                     </button>
                   )}
 {mode3d && (
@@ -805,7 +807,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.heatHelp')}
                     >
                       <Flame size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.heat')}</span>
+                      <span className="sr-only @4xl:not-sr-only">{t('toolpath.heat')}</span>
                     </button>
                   )}
 {mode3d && (
@@ -816,7 +818,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.nxViewHelp')}
                     >
                       <Route size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.nxView')}</span>
+                      <span className="sr-only @4xl:not-sr-only">{t('toolpath.nxView')}</span>
                     </button>
                   )}
 {mode3d && (
@@ -827,7 +829,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.sectionHelp')}
                     >
                       <Scissors size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.section')}</span>
+                      <span className="sr-only @4xl:not-sr-only">{t('toolpath.section')}</span>
                     </button>
                   )}
                       <span className="w-px h-5 bg-[var(--border-subtle)]" aria-hidden="true" />
@@ -851,7 +853,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.isolateHelp')}
                     >
                       <Box size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.isolate')}</span>
+                      <span>{t('toolpath.isolate')}</span>
                     </button>
                   )}
 {mode3d && (
@@ -862,7 +864,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.outlineHelp')}
                     >
                       <PenLine size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.outline')}</span>
+                      <span>{t('toolpath.outline')}</span>
                     </button>
                   )}
 {mode3d && !isolate && (
@@ -873,7 +875,7 @@ export default function ToolpathViewer({
                       title={t('toolpath.seeThroughHelp')}
                     >
                       <Eye size={12} />
-                      <span className="sr-only sm:not-sr-only">{t('toolpath.seeThrough')}</span>
+                      <span>{t('toolpath.seeThrough')}</span>
                     </button>
                   )}
 {mode3d && (
@@ -884,7 +886,7 @@ export default function ToolpathViewer({
                         title={t('toolpath.model.importHelp')}
                       >
                         <Upload size={12} />
-                        <span className="sr-only sm:not-sr-only">{t('toolpath.model.import')}</span>
+                        <span>{t('toolpath.model.import')}</span>
                       </button>
                       <input
                         ref={modelInput}
