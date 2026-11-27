@@ -31,6 +31,7 @@ const cam: Translation<typeof en> = {
       issues_one: '{{count}} sorun',
       issues_other: '{{count}} sorun',
       checking: 'Program hazırlanıyor…',
+      waiting: 'Değişiklikler Yeniden oluştur’u bekliyor',
       notMade: 'Henüz hazırlanmadı',
       checksTitle: 'Tüm kontroller',
       timeChip: '≈{{min}} dk · {{n}} takım değişimi',

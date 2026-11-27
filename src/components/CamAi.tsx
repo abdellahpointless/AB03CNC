@@ -1055,7 +1055,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         { label: t('camAi.ws.check.cutting'), value: t(result.setups.some((s) => s.ops.some((o) => o.unsafe)) ? 'camAi.ws.check.no' : 'camAi.ws.check.yes'), bad: result.setups.some((s) => s.ops.some((o) => o.unsafe)) },
       ]
     : [];
-  const issues = Math.max(ok ? 0 : 1, checks.filter((c) => c.bad).length);
+  // Changes waiting for Make again (any kind: typed, removed, a clamping) are no issue: the chip says they wait, alike for all.
+  const pendingMake = waiting || changed.length + pendingSkips > 0;
+  // A lock with no row of its own (a hold refused, the floor hit) stays an issue: only the changes waiting are not.
+  const issues = Math.max(result && !passed(result, handEdited && accepted) ? 1 : 0, checks.filter((c) => c.bad).length);
   const collapseBtn = 'no-glass w-8 h-8 grid place-items-center rounded-[8px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]';
   const barBtn = 'no-glass h-8 shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-3 rounded-[8px] border border-[var(--border-subtle)] text-[13px] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40 disabled:hover:bg-transparent';
   const menuItem = 'no-glass w-full flex items-center gap-2.5 h-9 px-2.5 rounded-[6px] text-[13px] text-left text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)] disabled:opacity-40';
@@ -1642,15 +1645,15 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         )}
         <Popover.Root>
           <Popover.Trigger asChild>
-            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : ok ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
-              {run.state === 'busy' ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : ok ? <CheckCircle2 size={14} stroke={2} aria-hidden /> : <AlertTriangle size={14} stroke={2} aria-hidden />}
-              {run.state === 'busy' ? t('camAi.ws.checking') : !result ? t('camAi.ws.notMade') : ok ? t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) }) : t('camAi.ws.issues', { count: issues })}
+            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' || (result && !issues && pendingMake) ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : !issues ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
+              {run.state === 'busy' ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : issues ? <AlertTriangle size={14} stroke={2} aria-hidden /> : pendingMake ? <RefreshCw size={14} stroke={2} aria-hidden /> : <CheckCircle2 size={14} stroke={2} aria-hidden />}
+              {run.state === 'busy' ? t('camAi.ws.checking') : !result ? t('camAi.ws.notMade') : issues ? t('camAi.ws.issues', { count: issues }) : pendingMake ? t('camAi.ws.waiting') : t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) })}
             </button>
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content align="start" sideOffset={6} className="cam-pop z-[1000] w-[22rem] p-2">
-              <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
-                {verdict ? verdict.text : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
+              <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : !issues && pendingMake ? 'text-[var(--blue-text)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
+                {verdict ? (!issues && pendingMake ? t('camAi.makeFirst') : verdict.text) : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
               </p>
               {checks.length > 0 && (
                 <ul aria-label={t('camAi.ws.checksTitle')}>

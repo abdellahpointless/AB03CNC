@@ -28,6 +28,7 @@ const cam = {
       issues_one: '{{count}} issue',
       issues_other: '{{count}} issues',
       checking: 'Making the program…',
+      waiting: 'Changes wait for Make again',
       notMade: 'Not made yet',
       checksTitle: 'Every check',
       timeChip: '≈{{min}} min · {{n}} tool changes',
