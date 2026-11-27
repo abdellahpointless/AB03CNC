@@ -259,7 +259,7 @@ High confidence assumptions. Treat as premises.
 ### A034: Adding tools in Türkiye
 
 - **Type:** stated
-- **Assumption:** Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. Morocco is unchanged.
+- **Assumption:** Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. The remapper's Add tool (a tool the program needs) picks from the database too, narrowed to the program's Ø. Morocco is unchanged.
 - **Source:** Owner, 2026-11-27 (Türkiye tool database request)
 - **Validated:** 2026-11-27
 - **Context:** Türkiye tool inventory
@@ -386,3 +386,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A030 refined after review: R under the faced top adds half a grid layer; the 1-200 Download lock is for Haas machines only.
 - 2026-11-27: Q020 archived: it came from R 0.5 sitting within a grid layer of a floor CAM AI knows only to that layer; with half a layer added there (A030), P51d8d6c6 plans as before (4 clampings, 43.8 min), so no evidence is left for a ranking question.
 - 2026-11-27: A032-A035 from the owner: Türkiye's tool database and machines.
+- 2026-11-27: A034 widened by the owner: the remapper's Add tool picks from the tool database as well.

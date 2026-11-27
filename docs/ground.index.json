@@ -825,7 +825,7 @@
       "title": "Adding tools in Türkiye",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. Morocco is unchanged.",
+      "assumption": "Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. The remapper's Add tool (a tool the program needs) picks from the database too, narrowed to the program's Ø. Morocco is unchanged.",
       "source": "Owner, 2026-11-27",
       "validated": "2026-11-27",
       "context": "Türkiye tool inventory",
@@ -837,6 +837,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Owner answered"
+        },
+        {
+          "date": "2026-11-27T11:10:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner: the remapper's Add tool picks from the database too"
         }
       ]
     },

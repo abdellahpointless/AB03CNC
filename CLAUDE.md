@@ -22,6 +22,8 @@ free plan.
 - `src/regions.ts` countries, per-country feature switches, machine helpers.
 - `src/lib/gcodeProcessor.ts`, `*Converter.ts` remapper engine and machine-specific rules.
 - `src/lib/toolpath.ts`, `stockSim.ts`, `setups.ts` toolpath parsing, voxel simulation, vise/flips.
+- `src/lib/toolCatalog.ts` the tool database (Türkiye, feature `toolCatalog`): reads the shop's tool list, the
+  narrowing dropdowns, next slot; the server keeps it in `settings` (`tool_catalog`), never in the repo.
 - `src/lib/cam/` CAM AI planner (runs in `cam.worker.ts`); `library.json` and
   `shopKnowledge.json` are the shop's confidential cutting data.
 - `worker/` API. `index.ts` router (one D1 database per country, hub DB for masters),
