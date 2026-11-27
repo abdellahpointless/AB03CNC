@@ -295,6 +295,14 @@ export default function CamSim({
   const seg = (on: boolean) => `no-glass h-7 px-2.5 rounded-[6px] text-[13px] ${on ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`;
   const cameraName = view3d ? t(`camAi.sim.camera.${view3d.kind}`) : t('camAi.sim.camera.iso');
   const setupNow = sel?.index ?? 0;
+  // Measuring when another clamping is shown: put away, its value with it (its vise planes were the last clamping's,
+  // and its picks stayed drawn there, a review); Measure measures the new one.
+  const measuredIn = useRef(setupNow);
+  useEffect(() => {
+    if (measure.on && measuredIn.current !== setupNow) onMeasureToggle();
+    measuredIn.current = setupNow;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupNow]);
   const atSeconds = Math.min(elapsed, totalSeconds);
   // Played on into another clamping (or turned for it): the page told.
   useEffect(() => {
