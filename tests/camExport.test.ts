@@ -38,7 +38,7 @@ const codeOf = (text: string) =>
 describe("CAM AI's program as each machine gets it", () => {
   // A plate with a pocket (arcs in its corners) and a hole (drilling cycles).
   const part = pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 });
-  const r = camProgram({ tris: part, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true });
+  const r = camProgram({ tris: part, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true });
   const moved = (ms: Move[]) => ms.filter((m) => m.kind === 'drill' || m.points.some((p) => p.some((v, c) => Math.abs(v - m.points[0][c]) > 1e-9)));
   const geometry = (code: string, brand: string) => moved(parseToolpath(code, speedsFor(brand)).moves).map((m) => ({ kind: m.kind, setup: m.setup, depth: m.depth, points: m.points.map((p) => p.map((v) => Math.round(v * 1000) / 1000)) }));
   const machines = ['HAAS-1', 'HAAS-2', 'HAAS-3', 'FANUC-1', 'FANUC-2'];
@@ -117,7 +117,7 @@ describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
       const tools = defaultToolbox[machine]!;
       // Only what the machine holds: every template tool it lacks is left out.
       const exclude = catalog('ALU', tools).filter((t) => !t.inMachine).map((t) => t.code);
-      const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, exclude });
+      const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 17], noNest: true, exclude });
       expect(r.check.match).toBeGreaterThanOrEqual(0.99);
       for (const s of r.setups) for (const o of s.ops) expect(o.tool.inMachine, o.tool.code).toBe(true);
       const own = new Set(tools.map((t) => t.number));
@@ -155,7 +155,7 @@ describe("CAM AI's tool numbers are the machine's (decision 9)", () => {
     const own = defaultToolbox['HAAS-1']!;
     const tools = [...own.filter((t) => t.number !== 2), own.find((t) => t.number === 2)!];
     const top = pocketWithHole(60, 40, 12, [10, 8, 50, 32], 6, { c: [5, 5], d: 3 });
-    const r = camProgram({ tris: top, material: 'ALU', tools, brand: 'HAAS', raw: [64, 44, 16.5], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
+    const r = camProgram({ tris: top, material: 'ALU', tools, brand: 'HAAS', raw: [64, 44, 17], noNest: true, partType: 'topPlate', orient: { side: 'Z+', spin: false }, finish: wallsOf(top, (x, y) => x > 9 && x < 51 && y > 7 && y < 33) });
     const ops = r.setups.flatMap((s) => s.ops);
     for (const o of ops.filter((x) => x.name === 'FRAESEN_16MM')) expect(o.tool.number).toBe(2);
     const fin = ops.filter((x) => x.name === 'SCHLICHTEN_16MM');

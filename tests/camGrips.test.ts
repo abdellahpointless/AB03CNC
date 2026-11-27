@@ -15,7 +15,7 @@ describe('the first clamping', () => {
     // You: the outline whole in the first clamping, 0.5 mm under the part, gripped as deep as that allows.
     [22, 38, 'stock enough under the part for the outside to go through: gripped 7 of its 8 mm, 1 mm under the outline'],
     // The 0.5 mm method (you): 4 mm under the part, gripped 3 under the outline (shown yellow on the page).
-    [16.5, 42, 'only 4 mm under the part (0.5 over it): gripped 3 mm under the outline cut'],
+    [17, 42, 'only 4 mm under the part (0.5 over it): gripped 3 mm under the outline cut'],
   ])('stands on its parallels as deep as the outside allows: raw %i high, on %i mm, %s', (rawH, cale) => {
     const r = camProgram({ ...base, tris: plate, raw: [44, 34, rawH] });
     expect(r.setups[0].cale).toBe(cale);
@@ -41,7 +41,7 @@ describe('the first clamping', () => {
   it('grips a part too thin for 5 mm as little as holds (3 mm)', () => {
     // A 40 x 30 x 4 plate on an 8.5 mm blank: 4 mm under it, the outline 0.5 under the part, the jaws 3 mm under that.
     const thin = heightPart(Array.from({ length: 30 }, () => Array.from({ length: 40 }, () => 4)));
-    const r = camProgram({ ...base, tris: thin, raw: [44, 34, 8.5] });
+    const r = camProgram({ ...base, tris: thin, raw: [44, 34, 9] });
     expect(r.setups[0].grip).toBe(3);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
@@ -65,7 +65,7 @@ describe('a later clamping', () => {
 
   it('grips into the stock it stands on: what is under the part is never cut there (a review finding)', () => {
     // On an edge (X+ up) with 8 mm of stock under the part: gripped in it, not 3 mm.
-    const r = camProgram({ ...base, tris: plate, raw: [56, 34, 16.5], second: 'X+' });
+    const r = camProgram({ ...base, tris: plate, raw: [56, 34, 17], second: 'X+' });
     const s = r.setups.find((x) => x.side === 'X+')!;
     expect(s.grip).toBeGreaterThanOrEqual(5);
     // The 0.5 mm method's clamping 1 cuts the outline free: on its edge the part then stands on the stock under it
@@ -111,7 +111,7 @@ describe('a later clamping', () => {
   };
   it('stays on the faces it holds at 3 mm: a boss too wide for parallels beside it is gripped no deeper than the boss, its size written', () => {
     // A 26 mm boss: no room under the flange for a parallel beside it, so the jaws hold the boss, 1 mm short of the flange.
-    const r = camProgram({ ...base, tris: flangedBy(26), raw: [34, 34, 20.5] });
+    const r = camProgram({ ...base, tris: flangedBy(26), raw: [34, 34, 21] });
     const s = r.setups[1];
     expect(s.side).toBe('Z-');
     expect(s.notes.join(' ')).not.toMatch(/IN EP/);
@@ -127,7 +127,7 @@ describe('a later clamping', () => {
 
   it('rests the flange on the parallels by its step when the boss is narrow, never the boss in the jaws (you, a picture)', () => {
     // A 16 mm boss: the flange on 41 mm parallels 6 mm under Z0, the boss hanging between them, the jaws on the flange.
-    const r = camProgram({ ...base, tris: flangedBy(16), raw: [34, 34, 20.5] });
+    const r = camProgram({ ...base, tris: flangedBy(16), raw: [34, 34, 21] });
     const s = r.setups[1];
     expect(s.side).toBe('Z-');
     expect(s.notes).toContain('41 MM UNTERLAGE IN EP 6 MM');
@@ -189,7 +189,7 @@ describe('the 0.5 mm method (you): always the outline whole in clamping 1', () =
   });
 
   it('holds a blank with 4 mm under the part by 3 mm, the outline still 0.5 mm under the part', () => {
-    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 16.5] });
+    const r = camProgram({ ...base, tris: plate, raw: [44, 34, 17] });
     expect(r.setups[0].grip).toBe(3);
     expect(lowest(r)).toBeCloseTo(-12.5, 3);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);

@@ -92,7 +92,7 @@ describe('operations in the order the operator gives', () => {
   });
 
   it('keeps a tool changed by hand where it was dragged', () => {
-    const part: CamInput = { ...input, tris: pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 }), raw: [44, 34, 16.5] };
+    const part: CamInput = { ...input, tris: pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 }), raw: [44, 34, 17] };
     const m = camProgram(part);
     const ops = m.setups[0].ops;
     const rest = ops.find((o) => o.purpose === 'rest')!;

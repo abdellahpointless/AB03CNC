@@ -47,14 +47,14 @@ describe('how the part lies in the vise', () => {
 
   it('the planner holds a block by its long faces (the engineers: 21 of 24 clampings)', () => {
     const block = heightPart(Array.from({ length: 40 }, () => Array.from({ length: 22 }, () => 15)));
-    const r = camProgram({ tris: block, material: 'ALU', tools: [], brand: 'HAAS', raw: [26, 44, 19.5] });
+    const r = camProgram({ tris: block, material: 'ALU', tools: [], brand: 'HAAS', raw: [26, 44, 20] });
     for (const s of r.setups) expect(s.held[2] - s.held[0]).toBeGreaterThanOrEqual(s.held[3] - s.held[1]);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
   }, 300_000);
 
   it('the planner follows the chosen layout', () => {
     const tools: Tool[] = [{ id: 'f', number: 1, category: 'tourteau', description: '', diameter: 40, length: 30 }];
-    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: true } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 17], orient: { side: 'Z+', spin: true } });
     // Turned: the 34 side lies along the jaws (X), the 44 between them (Y).
     expect(r.code).toMatch(/M0 \(TEIL MIT 34 IN X UND 44 IN Y EINSPANNEN/);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
@@ -64,7 +64,7 @@ describe('how the part lies in the vise', () => {
 describe('where a clamping puts the part', () => {
   it('puts the faces the vise holds at the stop and the fixed jaw, and writes their size, in every clamping (gap P1)', () => {
     // After the first clamping has cut the outside, the jaws hold the finished faces, not the raw stock above them.
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true, orient: { side: 'Z+', spin: false } });
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
     expect(an.setups.length).toBeGreaterThanOrEqual(2);
     an.setups.forEach((s, k) => {
@@ -96,7 +96,7 @@ describe('where a clamping puts the part', () => {
   it('places a part held by a band off its middle where the program puts it (P1: the boss the jaws grip after the turn)', () => {
     // A 30 x 30 x 8 plate with a 12 x 24 boss 6 high off the middle in X: turned over, the jaws hold the boss only.
     const boss = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 30 }, (_, i) => (i >= 4 && i < 16 && j >= 3 && j < 27 ? 14 : 8))));
-    const r = camProgram({ tris: boss, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 34, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: boss, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 34, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
     expect(an.setups.length).toBeGreaterThanOrEqual(2);
     // The held band really is off the stock's middle (else this tests nothing).
@@ -138,7 +138,7 @@ describe('the jaws of a later clamping', () => {
     });
 
   it('counts a tool into the X stop below the jaw top as a collision (a review found the check blind there)', () => {
-    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     const an = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT });
     const s = an.setups[1];
     const [x0, y, z] = [s.clampBox!.min[0] - STOP_PLATE, ((s.clampBox!.min[1] + s.clampBox!.max[1]) / 2).toFixed(3), (s.jawTopZ! - 1).toFixed(3)];
@@ -160,7 +160,7 @@ describe('the jaws of a later clamping', () => {
   it('looks for the stop where the G52 puts it, not where the simulation has the part (a review found a tool 0.075 mm into it unseen)', () => {
     // A seal cage whose first clamping's finishing the operator left out: 0.15 mm stays on the faces held next,
     // so the part sits that far from where the program puts it. The stop stands at the G52's face.
-    const input = { tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18.5] as [number, number, number], noNest: true, partType: 'sealCage' as const, orient: { side: 'Z+', spin: false } };
+    const input = { tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 19] as [number, number, number], noNest: true, partType: 'sealCage' as const, orient: { side: 'Z+', spin: false } };
     const all = camProgram(input);
     const r = camProgram({ ...input, skip: all.setups[0].ops.filter((o) => o.kind === 'finish').map((o) => o.key!) });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
@@ -178,7 +178,7 @@ describe('the jaws of a later clamping', () => {
 
   // Each as a plain part and as a top plate, whose walls are roughed 0.15 mm out and finished by other calls.
   it.each([undefined, 'topPlate' as const])('keeps every tool off the X stop below the jaw top where the part above stands out past the face it touches (a review found 3 mm into it; part type %s)', (partType) => {
-    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18.5], noNest: true, partType, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: atStop, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 19], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
     // The case itself: held by the boss (12 along the jaws), a mill cutting the hole in it below the jaw top.
@@ -195,7 +195,7 @@ describe('the jaws of a later clamping', () => {
   it.each([undefined, 'topPlate' as const])('keeps every tool off the jaws below their top where the part above overhangs what they hold (the validation found 270 hits; part type %s)', (partType) => {
     // The hole across the boss's Y- face (4 x 4): half beside the boss, half in it.
     const tris = bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18.5], noNest: true, partType, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 19], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const an = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT });
     expect(an.setups.length).toBeGreaterThanOrEqual(2);
@@ -216,7 +216,7 @@ describe('the jaws of a later clamping', () => {
     // The boss plate above, the hole across the boss's other long face: after the turn it opens onto the face the
     // moving jaw (Y-) holds, under the jaw tops.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 27 && j < 31);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     expect(r.code).toMatch(/M0 \(15 MM ZWISCHENLAGE IN Y-\)/);
     expect(r.notes.map((n) => n.key)).not.toContain('jawWall');
     // The part stays where the program puts it (a spacer at Y- moves nothing), nothing hits the jaws.
@@ -229,7 +229,7 @@ describe('the jaws of a later clamping', () => {
 
   it('the designer\'s "None" in that clamping forbids the spacer CAM AI would add: the wall is left and noted, nothing hits', () => {
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 27 && j < 31);
-    const input = { tris, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, raw: [34, 38.1, 18.5] as [number, number, number], noNest: true, orient: { side: 'Z+', spin: false } };
+    const input = { tris, material: 'ALU' as const, tools: [], brand: 'HAAS' as const, raw: [34, 38.1, 19] as [number, number, number], noNest: true, orient: { side: 'Z+', spin: false } };
     const at = camProgram(input).setups.findIndex((s) => s.notes.some((n) => /ZWISCHENLAGE IN Y-/.test(n)));
     expect(at).toBeGreaterThan(-1);
     const r = camProgram({ ...input, spacersY: Array.from({ length: at + 1 }, (_, i) => (i === at ? 0 : null)) });
@@ -242,8 +242,8 @@ describe('the jaws of a later clamping', () => {
   // Each part stands out past one held side only: its plate as wide as the boss (past the face at the
   // stop), or as long as it (over the jaws). Either alone must keep the tools off.
   it.each([
-    { past: 'the stop', hole: (i: number, j: number) => i >= 1 && i < 7 && j >= 14 && j < 20, plate: (_i: number, j: number) => j >= 5 && j < 29, raw: [34, 28, 18.5] as [number, number, number] },
-    { past: 'the jaws', hole: (i: number, j: number) => i >= 8 && i < 12 && j >= 3 && j < 7, plate: (i: number) => i >= 4 && i < 16, raw: [16, 38, 18.5] as [number, number, number] },
+    { past: 'the stop', hole: (i: number, j: number) => i >= 1 && i < 7 && j >= 14 && j < 20, plate: (_i: number, j: number) => j >= 5 && j < 29, raw: [34, 28, 19] as [number, number, number] },
+    { past: 'the jaws', hole: (i: number, j: number) => i >= 8 && i < 12 && j >= 3 && j < 7, plate: (i: number) => i >= 4 && i < 16, raw: [16, 38, 19] as [number, number, number] },
   ])('keeps every tool off what the part stands out past, $past only (a review found either half of that test untested)', ({ past, hole, plate, raw }) => {
     const r = camProgram({ tris: bossPlate(hole, plate), material: 'ALU', tools: [], brand: 'HAAS', raw, noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
@@ -271,7 +271,7 @@ describe('the jaws of a later clamping', () => {
     ['a jaw', bossPlate((i, j) => i >= 8 && i < 12 && j >= 3 && j < 7)],
     ['the stop', atStop],
   ])('notes no wall that lies in the side stock the operator leaves on the held face, at %s (a review found it noted)', (_at, tris) => {
-    const plan = (sideStock: number) => camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 18.5], noNest: true, sideStock, orient: { side: 'Z+', spin: false } });
+    const plan = (sideStock: number) => camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38, 19], noNest: true, sideStock, orient: { side: 'Z+', spin: false } });
     // Without side stock the wall is there, and noted.
     expect(plan(0).notes.some((n) => n.key === 'jawWall')).toBe(true);
     const r = plan(0.3);
@@ -282,7 +282,7 @@ describe('the jaws of a later clamping', () => {
   it('asks for no smaller end mill for what lies where no tool may go (a review found a Ø1 asked for)', () => {
     // The hole across the boss's Y- face, 10 wide; a blank whose grid shows the cut face a quarter cell out.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 39.3, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 39.3, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     expect(r.setups[1].held[3] - r.setups[1].held[1]).toBeCloseTo(24, 0);
     expect(r.missing.filter((m) => m.why.key === 'narrow')).toEqual([]);
     expect(r.check.collisions).toBe(0);
@@ -302,7 +302,7 @@ describe('the jaws of a later clamping', () => {
     // 125 mm from its X- face (where the tools keep off the jaws, 1 mm past their end, it begins).
     const len = 168;
     const tris = longBossPlate(len, (i, j) => i >= 129 && i < 133 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [len + 4, 38, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     // Held along the jaws' whole length (the 125 mm from the stop).
@@ -323,7 +323,7 @@ describe('the jaws of a later clamping', () => {
     const hole = (i: number, j: number) => i >= 105 && i < 141 && j >= 2 && j < 32;
     const lo = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && boss(i, j) ? 19 : 0)));
     const hi = Array.from({ length: 70 }, (_, j) => Array.from({ length: 180 }, (_, i) => (hole(i, j) && !boss(i, j) ? 0 : boss(i, j) ? 20 : 12)));
-    const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 24.5], noNest: true, partType, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: columnPart(lo, hi), material: 'ALU', tools: [], brand: 'HAAS', raw: [184, 74, 25], noNest: true, partType, orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const s = analyseProgram(tp, { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     // The case: a mill of Ø8 or more cutting below the jaw top past the jaws' end, next to a held face.
@@ -363,7 +363,7 @@ describe('the jaws of a later clamping', () => {
     // 200 mm from its X- face: in the second vise (from 175 mm).
     // (the plate 1 mm narrower than the boss each side: the jaws hold the boss, the hole opens onto the face they hold)
     const tris = longBossPlate(230, (i, j) => i >= 204 && i < 208 && j >= 3 && j < 7, (j) => j >= 6 && j < 28);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [234, 38, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [234, 38, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     const s = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT }).setups[1];
     expect(s.twoVises).toBe(true);
     expect(r.setups[1].notes).toContain('MIT 2 SCHRAUBSTOECKEN 50 MM ABSTAND');
@@ -396,7 +396,7 @@ describe('the jaws of a later clamping', () => {
   it('notes the thin wall the jaws leave across a pocket that opens onto a held face, and plans no clamping more for it (a review found a third one, misplaced)', () => {
     // As above, on a blank whose grid shows that wall (under 0.1 mm thick) a whole cell thick.
     const tris = bossPlate((i, j) => i >= 5 && i < 15 && j >= 3 && j < 7);
-    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 18.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris, material: 'ALU', tools: [], brand: 'HAAS', raw: [34, 38.1, 19], noNest: true, orient: { side: 'Z+', spin: false } });
     expect(r.setups).toHaveLength(2);
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'jawWall', side: r.setups[1].side }));
     expect(r.check.collisions).toBe(0);
@@ -407,7 +407,7 @@ describe('the jaws of a later clamping', () => {
 
 describe('where a clamping puts the part, with side stock or in the nest', () => {
   it('writes the size the jaws hold with the side stock the operator asked for (walls left 0.3 mm out)', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, sideStock: 0.3, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true, sideStock: 0.3, orient: { side: 'Z+', spin: false } });
     const turned = r.code.match(/DREHEN\/(\d+(?:\.\d+)?) IN X UND (\d+(?:\.\d+)?) IN Y/)!;
     // The walls stand 0.3 mm out of the model: the jaws hold 40.6 x 30.6, not the model's 40 x 30.
     expect(Number(turned[1])).toBeCloseTo(40.6, 1);
@@ -415,7 +415,7 @@ describe('where a clamping puts the part, with side stock or in the nest', () =>
   }, 300_000);
 
   it('makes the nest’s pocket round what sits in it, and puts the part by it (a review found it placed by the whole stock)', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], nestSides: ['Z-'], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], nestSides: ['Z-'], orient: { side: 'Z+', spin: false } });
     const s = r.setups.find((x) => x.nest)!;
     expect(s).toBeTruthy();
     // After the first clamping the part's lower faces are its finished 40 x 30 walls: the pocket is 0.1 mm over them.
@@ -441,7 +441,7 @@ describe('turning the part over', () => {
 
   it('turns it about X, as the shop mostly does (docs/knowledge: second clamping X180 in 63 of 100, Y180 in 31), laid along X or across', () => {
     for (const spin of [false, true]) {
-      const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin } });
+      const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true, orient: { side: 'Z+', spin } });
       expect(r.setups[1].notes[0], `spin ${spin}`).toMatch(/^TEIL 180 GRAD UM X DREHEN\//);
       expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     }

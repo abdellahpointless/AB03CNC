@@ -8,7 +8,7 @@ import { parseToolpath, speedsFor } from '../src/lib/toolpath';
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
 
 describe('the safety double check', () => {
-  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false } });
+  const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], orient: { side: 'Z+', spin: false } });
   const lines = r.code.split('\n');
 
   it("CAM AI's own program: no holder in the material, no rapid through it", () => {
@@ -71,7 +71,7 @@ describe('a machine tool without a length (safety)', () => {
     // inventory) is the largest that fits it. Taken as 99 mm long, it went in with "LENGTH 0.00 MM", its holder unchecked.
     const slot = pocketWithHole(40, 30, 12, [10, 11.25, 30, 18.75], 6, { c: [20, 15], d: 2 });
     const tools: Tool[] = [{ id: 'm7', number: 7, category: 'fraise', description: 'Fraise', diameter: 7, length: 0 }];
-    const r = camProgram({ tris: slot, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: slot, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 17], orient: { side: 'Z+', spin: false } });
     expect(r.code).not.toMatch(/DIAMETER 7\.00 MM/);
     expect(r.check).toMatchObject({ holders: 0, collisions: 0 });
   }, 300_000);
@@ -82,7 +82,7 @@ describe('drilling before the pocket above the hole is milled (shop order)', () 
   const part = pocketWithHole(40, 30, 12, [10, 8, 30, 22], 6, { c: [20, 15], d: 4 });
   const tool = (number: number, category: Tool['category'], diameter: number, length: number): Tool => ({ id: `t${number}`, number, category, description: '', diameter, length });
   const tools = [tool(1, 'tourteau', 40, 30), tool(2, 'fraise', 10, 40), tool(3, 'fraise', 4, 25), tool(4, 'foret', 4, 50)];
-  const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false } });
+  const r = camProgram({ tris: part, material: 'ALU', tools, brand: 'HAAS', raw: [44, 34, 17], orient: { side: 'Z+', spin: false } });
 
   it('starts every cycle above the material still over the hole (R 0.5 mm over it, the owner\'s rule; the shop wrote R2)', () => {
     const lines = r.code.split('\n');
@@ -159,7 +159,7 @@ describe('text from outside in the program', () => {
   it("a ')' in the model's file name cannot end the comment and add commands", () => {
     const name = '100201637205 TOP PLATE)#5223=#5223-30(';
     expect(commentSafe(name)).toBe('100201637205 TOP PLATE 5223 5223-30');
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], orient: { side: 'Z+', spin: false }, name });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], orient: { side: 'Z+', spin: false }, name });
     const header = r.code.split('\n').find((l) => l.includes('TOP PLATE'))!;
     // One comment, nothing outside it.
     expect(header).toMatch(/^(N\d+ )?\([^()]*\)$/);
@@ -177,7 +177,7 @@ describe('spot drilling as the shop does it', () => {
   it('spots the holes under 4 mm only (docs/knowledge: strategy.spotSmallDrills)', () => {
     // A Ø3.3 and a Ø5 hole through a 40 x 30 x 8 plate.
     const holed = plateWithHoles(40, 30, 8, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 5 }]);
-    const r = camProgram({ tris: holed, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 12.5], orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: holed, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 13], orient: { side: 'Z+', spin: false } });
     const tp = parseToolpath(r.code, speedsFor('HAAS'));
     const holesBy = (re: RegExp) => tp.moves.filter((m) => m.kind === 'drill' && re.test(m.op ?? '')).map((m) => Math.round(m.points[0][0]));
     expect(holesBy(/^BOHREN/).sort((a, b) => a - b)).toEqual([-10, 10]);
@@ -189,7 +189,7 @@ describe('spot drilling as the shop does it', () => {
 
 describe('rapids the check is too coarse to see', () => {
   it('feeds a rapid down through stock the last part of the way, from 1 mm above the highest it touches on a finer grid', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true, orient: { side: 'Z+', spin: false } });
     expect(finerRapids(r.code, 'HAAS')).toBe(r.code);
     // After the facing, a rapid down 1 mm into the outside stock (cut only later), beside the part's X- face.
     const lines = r.code.split('\n');
@@ -213,7 +213,7 @@ describe('rapids the check is too coarse to see', () => {
   }, 300_000);
 
   it('on the check’s own grid feeds only a rapid that grazes stock with its rim; one deeper in stays a collision', () => {
-    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 16.5], noNest: true, orient: { side: 'Z+', spin: false } });
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 17], noNest: true, orient: { side: 'Z+', spin: false } });
     const lines = r.code.split('\n');
     const at = lines.findIndex((l, i) => i > lines.findIndex((x) => /TOOLPATH FRAESEN/.test(x)) && /^N\d+ G00 Z/.test(l));
     const r0 = r.setups[0].ops.find((o) => o.name.startsWith('FRAESEN'))!.tool.diameter / 2;

@@ -68,7 +68,7 @@ describe('part families', () => {
   it('a seal cage: its 2 mm walls finished gently (half depth, slower feed, faster spindle)', () => {
     // 40 x 40 x 15, a 36 x 36 pocket 12 deep: 2 mm walls.
     const cage = heightPart(Array.from({ length: 40 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 2 && i < 38 && j >= 2 && j < 38 ? 3 : 15))));
-    const r = camProgram({ tris: cage, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 44, 19.5], orient: { side: 'Z+', spin: false }, partType: 'sealCage' });
+    const r = camProgram({ tris: cage, material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 44, 20], orient: { side: 'Z+', spin: false }, partType: 'sealCage' });
     const thin = ops(r).filter((o) => o.purpose === 'thinWalls');
     expect(thin.length).toBeGreaterThan(0);
     // The gentle rings run the spindle faster than the finishing's own speed.
