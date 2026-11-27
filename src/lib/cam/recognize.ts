@@ -42,6 +42,9 @@ export interface Feature {
   /** A hole, counterbore, countersink: its axis and where it lies across it (the other two axes, in order). */
   axis?: 'X' | 'Y' | 'Z';
   at?: [number, number];
+  /** A hole at an angle (no axis): its direction (unit, toward its upper end) and the middle of its axis. */
+  dir?: [number, number, number];
+  on?: [number, number, number];
   /** Ø (a hole, counterbore, boss; a countersink's at the face). */
   d?: number;
   depth?: number;
@@ -322,6 +325,42 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       holeFaces.add(x.face);
       holeDiscs.push({ k, c, r: Math.max(x.rHi, x.rLo), lo: x.lo, hi: x.hi });
     }
+  }
+
+  // Holes at an angle (along no axis): each its own, Ø and length along its axis between the middles of its ends; no
+  // straight side reaches them (the part tilted, or a fifth axis).
+  const tilted: ExactFace[][] = [];
+  for (const f of faces) {
+    if (f.kind !== 'cylinder' || !f.concave || axisOf(f.n) >= 0) continue;
+    const g = tilted.find((x) => Math.abs(Math.abs(dot(x[0].n, f.n)) - 1) < 1e-4 && Math.abs(x[0].r! - f.r!) < 0.005 && lineGap(x[0], f) < 0.01);
+    if (g) g.push(f);
+    else tilted.push([f]);
+  }
+  for (const fs of tilted) {
+    if (coverage(fs.flatMap((f) => arcsOf(P, f))) <= 200) continue;
+    const f0 = fs[0];
+    // Out of its upper end: Z up first, then Y, then X.
+    const ka = [2, 1, 0].find((k) => Math.abs(f0.n[k]) > 1e-3)!;
+    const dir: Vec = f0.n[ka] > 0 ? f0.n : [-f0.n[0], -f0.n[1], -f0.n[2]];
+    const pts = fs.flatMap((f) => f.tris.flatMap((t) => [0, 1, 2].map((c) => cornerOf(P, t, c))));
+    const ts = pts.map((p) => dot(p, dir));
+    const mid = (Math.min(...ts) + Math.max(...ts)) / 2;
+    const o = f0.at;
+    // Each end's middle: where the axis meets the flat face its rim lies on (else the rim's mean).
+    const endOf = (rim: Vec[]) => {
+      const f = faces.find((x) => x.kind === 'plane' && Math.abs(dot(x.n, dir)) > 1e-3 && rim.filter((p) => Math.abs(dot(x.n, p) - dot(x.n, x.at)) < 1e-3).length >= 0.9 * rim.length);
+      return f ? dot(o, dir) + (dot(f.n, f.at) - dot(f.n, o)) / dot(f.n, dir) : rim.reduce((a, p) => a + dot(p, dir), 0) / rim.length;
+    };
+    const [tLo, tHi] = [endOf(pts.filter((p) => dot(p, dir) < mid)), endOf(pts.filter((p) => dot(p, dir) >= mid))];
+    const onAxis = (t: number): Vec => [0, 1, 2].map((k) => o[k] + (t - dot(o, dir)) * dir[k]) as Vec;
+    const [lo, hi] = [Math.min(...ts), Math.max(...ts)];
+    const openHi = !solidAt(P, onAxis(hi + 0.05));
+    const openLo = !solidAt(P, onAxis(lo - 0.05));
+    // Its flat bottom: a face square to it at a closed end, inside it.
+    const flat = faces.filter((f) => f.kind === 'plane' && Math.abs(Math.abs(dot(f.n, dir)) - 1) < 1e-4 && ((!openLo && Math.abs(dot(f.at, dir) - lo) < 0.01) || (!openHi && Math.abs(dot(f.at, dir) - hi) < 0.01)));
+    const own = [...fs.map((f) => f.id), ...flat.map((f) => f.id)];
+    features.push({ kind: 'hole', dir: dir.map(r3) as Vec, on: onAxis((tLo + tHi) / 2).map(r3) as Vec, d: r3(2 * f0.r!), depth: r3(tHi - tLo), through: openHi && openLo, from: [], faces: own });
+    own.forEach((x) => holeFaces.add(x));
   }
 
   // 2. Milled shapes, from each side: at every floor height (a flat face looking that way) what is open from above
@@ -891,7 +930,24 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
   // Holes, counterbores, countersinks: round their axis over their length; the edges' shapes: near their face.
   for (const f of features) {
     const fs = f.faces.map((id) => byId.get(id)!).filter(Boolean);
-    if (f.kind === 'hole' || f.kind === 'counterbore' || f.kind === 'countersink') {
+    if (f.dir) {
+      // A hole at an angle: round its axis between its ends.
+      const d = f.dir;
+      for (const h of fs) {
+        const pts = h.tris.flatMap((t) => [cornerOf(P, t, 0), cornerOf(P, t, 1), cornerOf(P, t, 2)]);
+        const ts = pts.map((p) => dot(p, d));
+        const [lo, hi] = [Math.min(...ts), Math.max(...ts)];
+        const o = h.at;
+        const rad = h.r ?? 0;
+        const radial = (p: Vec) => {
+          const q: Vec = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+          const t = dot(q, d);
+          return Math.hypot(q[0] - t * d[0], q[1] - t * d[1], q[2] - t * d[2]);
+        };
+        const ends = [lo, hi].map((t) => [0, 1, 2].map((k) => o[k] + (t - dot(o, d)) * d[k]));
+        mark(done, part, n, st, bb, (p) => dot(p, d) >= lo - 1e-6 && dot(p, d) <= hi + 1e-6 && radial(p) <= rad + 1e-6, ...([0, 1, 2].map((k) => [k, Math.min(ends[0][k], ends[1][k]) - rad, Math.max(ends[0][k], ends[1][k]) + rad]) as [number, number, number][]));
+      }
+    } else if (f.kind === 'hole' || f.kind === 'counterbore' || f.kind === 'countersink') {
       const k = AX.indexOf(f.axis!);
       const [i2, j2] = others(k);
       for (const h of fs) {
@@ -1197,4 +1253,11 @@ function arcsOf(P: ArrayLike<number>, f: ExactFace): [number, number][] {
     const q: Vec = [p[0] - f.at[0], p[1] - f.at[1], p[2] - f.at[2]];
     return Math.atan2(dot(q, w), dot(q, u));
   })));
+}
+
+/** How far apart two cylinders' axes run (they lie along one line: 0). */
+function lineGap(a: ExactFace, b: ExactFace): number {
+  const q: Vec = [b.at[0] - a.at[0], b.at[1] - a.at[1], b.at[2] - a.at[2]];
+  const t = dot(q, a.n);
+  return Math.hypot(q[0] - t * a.n[0], q[1] - t * a.n[1], q[2] - t * a.n[2]);
 }

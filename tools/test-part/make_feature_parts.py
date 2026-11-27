@@ -230,6 +230,21 @@ def blind_t_slot():
     ]
 
 
+def tilted_holes():
+    # A Ø6 through at 30° off Z in the XZ plane, in at (12, 15) on top; a Ø5 at 45° off Z in the YZ plane, in at
+    # (30, 10) on top, 8 deep along its axis with a flat bottom. No straight side reaches them. "on": the middle of
+    # the axis between the middles of its ends.
+    t30 = 20 / math.cos(math.radians(30))
+    part = Box(40, 30, 20, align=LO) - Pos(12, 15, 20) * Rot(0, -30, 0) * Cylinder(3, 60)
+    bottom = (30, 10 + 8 * math.sin(math.radians(45)), 20 - 8 * math.cos(math.radians(45)))
+    part = part - Pos(*bottom) * Rot(45, 0, 0) * Cylinder(2.5, 14, align=HOLE)
+    s45 = round(math.sin(math.radians(45)), 3)
+    return part, [
+        {"kind": "hole", "dir": [-0.5, 0, round(math.cos(math.radians(30)), 3)], "on": [round(12 + 10 * math.tan(math.radians(30)), 3), 15, 10], "d": 6, "depth": round(t30, 3), "through": True, "from": []},
+        {"kind": "hole", "dir": [0, -s45, s45], "on": [30, round(10 + 4 * s45, 3), round(20 - 4 * s45, 3)], "d": 5, "depth": 8, "through": False, "from": []},
+    ]
+
+
 PARTS = {
     "pocket-hole": (pocket_part, (50, 40, 20)),
     "counterbore-break": (counterbore_break, (30, 20, 15)),
@@ -247,6 +262,7 @@ PARTS = {
     "open-slots": (open_slots, (60, 30, 20)),
     "chamfer-slot": (chamfer_slot, (60, 30, 20)),
     "blind-t-slot": (blind_t_slot, (60, 30, 20)),
+    "tilted-holes": (tilted_holes, (40, 30, 20)),
 }
 
 for name, (make, size) in PARTS.items():
