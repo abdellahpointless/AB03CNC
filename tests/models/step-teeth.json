@@ -1,0 +1,72 @@
+{
+ "size": [
+  20,
+  10,
+  16
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Y",
+   "at": [
+    10,
+    3.5
+   ],
+   "d": 3.2,
+   "depth": 4,
+   "through": true,
+   "from": [
+    "Y+",
+    "Y-"
+   ]
+  },
+  {
+   "kind": "counterbore",
+   "axis": "Y",
+   "at": [
+    10,
+    3.5
+   ],
+   "d": 8,
+   "depth": 6,
+   "from": [
+    "Y+"
+   ],
+   "open": true
+  },
+  {
+   "kind": "slope",
+   "from": [
+    "Y+",
+    "Y-",
+    "Z-"
+   ],
+   "box": [
+    0,
+    0,
+    0,
+    8,
+    10,
+    4.619
+   ],
+   "angle": 30
+  },
+  {
+   "kind": "slope",
+   "from": [
+    "Y+",
+    "Y-",
+    "Z-"
+   ],
+   "box": [
+    12,
+    0,
+    0,
+    20,
+    10,
+    4.619
+   ],
+   "angle": 30
+  }
+ ]
+}

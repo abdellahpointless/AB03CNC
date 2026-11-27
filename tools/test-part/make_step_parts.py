@@ -28,6 +28,7 @@ teeth               20 x 10 x 16. Block whose bottom (Z-) slopes up 30° to both
 Plan them with camProgram(tris from stepTriangles(src/lib/step.ts), orient: { side, spin: false }) for each first side.
 """
 
+import json
 import math
 import sys
 from pathlib import Path
@@ -108,6 +109,51 @@ PARTS = {
     "teeth": (teeth, (20, 10, 16)),
 }
 
+# The shape engine's answer keys (src/lib/cam/recognize.ts; the rule in tools/test-part/make_feature_parts.py), written
+# next to each part as step-<name>.json and checked by tests/camRecognize.test.ts.
+def zh(at, d, depth):
+    return {"kind": "hole", "axis": "Z", "at": at, "d": d, "depth": depth, "through": True, "from": ["Z+", "Z-"]}
+
+
+KEYS = {
+    "fin": [
+        zh([22, 10], 3.3, 10),
+        zh([32, 20], 3.3, 10),
+        # Behind the fin from every side but the top: the step round it is cut from Z+ only.
+        {"kind": "step", "from": ["Z+"], "box": [0, 0, 10, 40, 30, 28], "depth": 18},
+        {"kind": "boss", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18},
+    ],
+    "foot-under-body": [
+        zh([15, 12], 4.5, 15.75),
+        {"kind": "countersink", "axis": "Z", "at": [15, 12], "d": 9, "angle": 90, "from": ["Z+"]},
+        {"kind": "step", "from": ["Z-"], "box": [0, 0, 0, 30, 24, 8], "depth": 8},
+        {"kind": "boss", "from": ["Z-"], "box": [7, 6, 0, 23, 18, 8], "height": 8},
+        # The half-round notch through the body (Z 8..18): under it is the step's room.
+        {"kind": "notch", "from": ["Z+", "Z-"], "box": [11, 20, 8, 19, 24, 18], "through": True, "corner": 4},
+    ],
+    "side-tab": [
+        {"kind": "step", "from": ["X+"], "box": [40, 0, 0, 52, 30, 8], "depth": 12},
+        {"kind": "boss", "from": ["X+"], "box": [40, 10, 2.75, 52, 20, 5.25], "height": 12},
+    ],
+    "t-stem": [
+        *[zh([x, y], 4.5, 6) for x, y in ((5, 5), (31, 5), (5, 31), (31, 31))],
+        {"kind": "step", "from": ["Z+"], "box": [0, 0, 6, 36, 36, 31], "depth": 25},
+        {"kind": "boss", "from": ["Z+"], "box": [14, 14, 6, 22, 22, 31], "height": 25},
+    ],
+    "angled-and-fillets": [
+        zh([8, 15], 6.6, 13.5),
+        {"kind": "counterbore", "axis": "Z", "at": [8, 15], "d": 11, "depth": 6.5, "from": ["Z+"]},
+        {"kind": "pocket", "from": ["Z+"], "box": [16, 7, 15, 26, 23, 20], "depth": 5, "corner": 2},
+        {"kind": "slope", "from": ["Y+", "Y-", "Z+"], "box": [30, 0, round(20 - 10 * math.tan(math.radians(30)), 3), 40, 30, 20], "angle": 30},
+        {"kind": "round", "from": ["X+", "X-", "Y+", "Y-"], "r": 3, "count": 4},
+    ],
+    "teeth": [
+        {"kind": "hole", "axis": "Y", "at": [10, 3.5], "d": 3.2, "depth": 4, "through": True, "from": ["Y+", "Y-"]},
+        {"kind": "counterbore", "axis": "Y", "at": [10, 3.5], "d": 8, "depth": 6, "from": ["Y+"], "open": True},
+        *[{"kind": "slope", "from": ["Y+", "Y-", "Z-"], "box": [x0, 0, 0, x1, 10, round(8 * math.tan(math.radians(30)), 3)], "angle": 30} for x0, x1 in ((0, 8), (12, 20))],
+    ],
+}
+
 for name, (make, size) in PARTS.items():
     part, volume = make()
     bb = part.bounding_box()
@@ -118,4 +164,5 @@ for name, (make, size) in PARTS.items():
     assert abs(part.volume - volume) < 0.005 * volume, (name, part.volume, volume)
     path = OUT / f"step-{name}.step"
     export_step(part, str(path), unit=Unit.MM, timestamp="2026-01-01T00:00:00")
+    (OUT / f"step-{name}.json").write_text(json.dumps({"size": list(size), "features": KEYS[name]}, indent=1) + "\n")
     print(f"{path.name}: {got[0]:g} x {got[1]:g} x {got[2]:g}, {part.volume:.0f} mm3, {path.stat().st_size // 1024} KB")

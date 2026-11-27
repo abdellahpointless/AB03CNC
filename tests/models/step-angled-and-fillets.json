@@ -1,0 +1,81 @@
+{
+ "size": [
+  40,
+  30,
+  20
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    8,
+    15
+   ],
+   "d": 6.6,
+   "depth": 13.5,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "counterbore",
+   "axis": "Z",
+   "at": [
+    8,
+    15
+   ],
+   "d": 11,
+   "depth": 6.5,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "pocket",
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    16,
+    7,
+    15,
+    26,
+    23,
+    20
+   ],
+   "depth": 5,
+   "corner": 2
+  },
+  {
+   "kind": "slope",
+   "from": [
+    "Y+",
+    "Y-",
+    "Z+"
+   ],
+   "box": [
+    30,
+    0,
+    14.226,
+    40,
+    30,
+    20
+   ],
+   "angle": 30
+  },
+  {
+   "kind": "round",
+   "from": [
+    "X+",
+    "X-",
+    "Y+",
+    "Y-"
+   ],
+   "r": 3,
+   "count": 4
+  }
+ ]
+}

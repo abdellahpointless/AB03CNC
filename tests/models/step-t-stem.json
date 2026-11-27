@@ -1,0 +1,99 @@
+{
+ "size": [
+  36,
+  36,
+  31
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    5,
+    5
+   ],
+   "d": 4.5,
+   "depth": 6,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    31,
+    5
+   ],
+   "d": 4.5,
+   "depth": 6,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    5,
+    31
+   ],
+   "d": 4.5,
+   "depth": 6,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    31,
+    31
+   ],
+   "d": 4.5,
+   "depth": 6,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "step",
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    0,
+    0,
+    6,
+    36,
+    36,
+    31
+   ],
+   "depth": 25
+  },
+  {
+   "kind": "boss",
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    14,
+    14,
+    6,
+    22,
+    22,
+    31
+   ],
+   "height": 25
+  }
+ ]
+}

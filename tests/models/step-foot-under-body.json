@@ -1,0 +1,84 @@
+{
+ "size": [
+  30,
+  24,
+  18
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    15,
+    12
+   ],
+   "d": 4.5,
+   "depth": 15.75,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "countersink",
+   "axis": "Z",
+   "at": [
+    15,
+    12
+   ],
+   "d": 9,
+   "angle": 90,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "step",
+   "from": [
+    "Z-"
+   ],
+   "box": [
+    0,
+    0,
+    0,
+    30,
+    24,
+    8
+   ],
+   "depth": 8
+  },
+  {
+   "kind": "boss",
+   "from": [
+    "Z-"
+   ],
+   "box": [
+    7,
+    6,
+    0,
+    23,
+    18,
+    8
+   ],
+   "height": 8
+  },
+  {
+   "kind": "notch",
+   "from": [
+    "Z+",
+    "Z-"
+   ],
+   "box": [
+    11,
+    20,
+    8,
+    19,
+    24,
+    18
+   ],
+   "through": true,
+   "corner": 4
+  }
+ ]
+}
