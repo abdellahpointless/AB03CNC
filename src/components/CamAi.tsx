@@ -1151,7 +1151,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           {result.setups[opNow] && (
             <p className="px-4 pb-2 flex justify-between gap-2 text-xs text-[var(--text-secondary)] tabular-nums">
               <span className="min-w-0">{stepName(opNow).turn} · {parallelsText(opNow)}</span>
-              <span>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
+              <span title={t('camAi.ws.timeHelp')}>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
             </p>
           )}
           <ul aria-label={t('camAi.ws.tools')} className="px-2 space-y-0.5">
@@ -1209,7 +1209,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       </span>
                     </span>
                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
-                    <span className="text-xs text-[var(--text-secondary)] tabular-nums">{fmtTime(secs)}</span>
+                    <span className="text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.ws.timeHelp')}>{fmtTime(secs)}</span>
                   </button>
                   {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}
                   {on && (

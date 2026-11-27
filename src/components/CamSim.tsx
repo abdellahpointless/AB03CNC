@@ -459,7 +459,7 @@ export default function CamSim({
             aria-label={t('camAi.sim.position')}
           />
         </div>
-        <span className="font-mono text-xs text-[var(--text-secondary)] tabular-nums">{clockText(atSeconds)} / {clockText(totalSeconds)}</span>
+        <span className="font-mono text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.sim.clockHelp')}>{clockText(atSeconds)} / {clockText(totalSeconds)}</span>
         <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
           {t('camAi.sim.speed')}
           <select className="aurora-input h-8 py-0 px-2 text-[13px]" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
