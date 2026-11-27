@@ -428,6 +428,16 @@ describe('where a clamping puts the part, with side stock or in the nest', () =>
 });
 
 describe('turning the part over', () => {
+  it('lays clamping 1 turned a quarter about Z when the operator turns it so (you: +90 or -90 about Z), its side up the same', () => {
+    const Rz: number[] = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const r = camProgram({ tris: plate, material: 'ALU', tools: [], brand: 'HAAS', noNest: true, raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, frames: [Rz] });
+    expect(r.setups[0].side).toBe('Z+');
+    expect(Array.from(r.setups[0].R)).toEqual(Rz);
+    // The 40 mm side now lies along the machine's Y; the part is still made whole.
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 300_000);
+
   it('reaches a later clamping with one turn where one will do (a review found two after the turn about X)', () => {
     // A 40 x 30 x 12 block with an off-centre pocket and a step on its top, laid X+ up first.
     const tris = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 4 && i < 16 && j >= 5 && j < 14 ? 6 : i >= 30 && i < 38 && j >= 20 && j < 28 ? 9 : 12))));

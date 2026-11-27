@@ -504,7 +504,7 @@ const cam = {
       none: 'back as it was',
       pending: 'applies when made again',
       taken: '{{side}} is already up in an earlier clamping: CAM AI cannot make this one that way and keeps its own',
-      hint: 'Each press turns the part 90° about the machine’s X or Y; the presses add up (two +90 X: 180° about X). Make again plans it lying this way.',
+      hint: 'Each press turns the part 90° about the machine’s X, Y or Z (Z: the same side up, turned in the vise); the presses add up (two +90 X: 180° about X). Make again plans it lying this way.',
       own: 'Back to CAM AI’s way',
     },
     hold: {

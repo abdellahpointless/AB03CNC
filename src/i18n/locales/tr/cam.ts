@@ -507,7 +507,7 @@ const cam: Translation<typeof en> = {
       none: 'eski hâline döndü',
       pending: 'yeniden yapılınca uygulanır',
       taken: '{{side}} daha önceki bir bağlamada zaten yukarıda: CAM AI bunu böyle yapamaz, kendi yolunu kullanır',
-      hint: 'Her basış parçayı tezgahın X veya Y ekseni etrafında 90° döndürür; basışlar toplanır (iki kez +90 X: X etrafında 180°). Yeniden yap, onu bu duruşta planlar.',
+      hint: 'Her basış parçayı tezgahın X, Y veya Z ekseni etrafında 90° döndürür (Z: aynı yüz yukarıda, mengenede döner); basışlar toplanır (iki kez +90 X: X etrafında 180°). Yeniden yap, onu bu duruşta planlar.',
       own: 'CAM AI’nin yoluna dön',
     },
     hold: {

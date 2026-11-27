@@ -52,8 +52,8 @@ const inOrder = <T extends { key: string }>(side: string, ops: T[], asked: Recor
 const toolOrder = (side: string, ops: { key: string; code: string }[], asked: Record<string, string[]>) => [...new Set(inOrder(side, ops, asked).map((o) => o.code))];
 /** The tool an operation was made with (its key: side|name|code|n), whatever it was changed to by hand. */
 const madeCode = (key: string) => key.split('|')[2];
-/** A quarter turn about the machine's X or Y, + or - (you: the presses add up). */
-const QUARTER: Record<string, Mat3> = { 'X+': [1, 0, 0, 0, 0, -1, 0, 1, 0], 'X-': [1, 0, 0, 0, 0, 1, 0, -1, 0], 'Y+': [0, 0, 1, 0, 1, 0, -1, 0, 0], 'Y-': [0, 0, -1, 0, 1, 0, 1, 0, 0] };
+/** A quarter turn about the machine's X, Y or Z, + or - (you: the presses add up; Z turns it in the vise, the same side up). */
+const QUARTER: Record<string, Mat3> = { 'X+': [1, 0, 0, 0, 0, -1, 0, 1, 0], 'X-': [1, 0, 0, 0, 0, 1, 0, -1, 0], 'Y+': [0, 0, 1, 0, 1, 0, -1, 0, 0], 'Y-': [0, 0, -1, 0, 1, 0, 1, 0, 0], 'Z+': [0, -1, 0, 1, 0, 0, 0, 0, 1], 'Z-': [0, 1, 0, -1, 0, 0, 0, 0, 1] };
 const mul3 = (a: Mat3, b: Mat3): Mat3 => [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j])) as Mat3;
 /** The model side a turn puts up. */
 const upOf = (R: Mat3) => (['Z+', 'Z-', 'X+', 'X-', 'Y+', 'Y-'] as const).find((n) => { const k = 'XYZ'.indexOf(n[0]); const sg = n[1] === '+' ? 1 : -1; return R[6 + k] * sg === 1; })!;
@@ -2515,8 +2515,8 @@ function TurnPanel({ n, made, turned, tris, used, onPress, onOwn }: { n: number;
       <Suspense fallback={<div className="h-[170px] rounded-[8px] bg-[#0B1222]" aria-hidden />}>
         <CamTurnGhost tris={tris} made={made} turned={R} label={t('camAi.turn.ghost', { side: up })} />
       </Suspense>
-      <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={t('camAi.turn.title')}>
-        {['X+', 'Y+', 'X-', 'Y-'].map((p) => (
+      <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t('camAi.turn.title')}>
+        {['X+', 'Y+', 'Z+', 'X-', 'Y-', 'Z-'].map((p) => (
           <button key={p} type="button" className="btn-secondary min-h-11 !px-1 !text-xs font-mono whitespace-nowrap" onClick={() => onPress(p)} aria-label={t('camAi.turn.press', { axis: p[0], deg: deg(p) })} title={t('camAi.turn.press', { axis: p[0], deg: deg(p) })}>
             {deg(p).replace('°', '')} {p[0]}
           </button>
