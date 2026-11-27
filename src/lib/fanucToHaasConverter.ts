@@ -30,6 +30,8 @@ export interface FanucToHaasResult {
     feedRatesFixed: number;
     trailingZFixed: number;
     g53Y0Added: number;
+    /** G43 lines whose H (the FANUC tool number) is outside 1-200: the remap sets the machine's own. */
+    hOverRange: number;
     totalLines: number;
   };
 }
@@ -57,6 +59,7 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
     feedRatesFixed: 0,
     trailingZFixed: 0,
     g53Y0Added: 0,
+    hOverRange: 0,
     totalLines: 0,
   };
 
@@ -128,6 +131,8 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string = 
       }
     }
 
+    // An H the HAAS control cannot take stays (it alarms, where a valid wrong one would run): the remap sets it.
+    if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line)) && !(Number(lastToolNumber) >= 1 && Number(lastToolNumber) <= 200)) stats.hOverRange++;
     // A feed approach ("G01 G43 Z5. H#513 D#513 M254 F500"): the block stays whole and only the
     // offset words change (split, the G00 G43 line would turn it and the moves after it into
     // rapids); its feed and Z get their dots below.

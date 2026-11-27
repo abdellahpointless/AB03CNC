@@ -484,6 +484,7 @@ export default function CodeEditorPair({
     if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98ToTableOut', { count: result.stats.m98LinesDeleted }));
     if (result.stats.g43Converted > 0) details.push(t('convert.g43Converted', { count: result.stats.g43Converted }));
     if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
+    if (result.stats.hOverRange > 0) details.push(t('convert.hOverRange', { count: result.stats.hOverRange }));
 
     const summaryText = details.length > 0
       ? t('convert.toHaas', { details: details.join(', ') })

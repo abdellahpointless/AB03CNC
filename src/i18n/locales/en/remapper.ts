@@ -226,6 +226,7 @@ const remapper = {
     m98ToTableOut: '{{count}} M98 P7999 -> table out (G53 Y0 / end line)',
     g43Converted: '{{count}} G43 converted',
     g53Added: '{{count}} G53 Y0 added (part flip / end of program)',
+    hOverRange: '{{count}} G43 with the FANUC tool number as H (outside H1-H200): Analyze & Remap sets each tool\'s own',
     toHaas: 'Switched to HAAS: {{details}}',
     toHaasPlain: 'Switched code to HAAS dialect',
     securityLines: 'Security lines -> G0 G53 G49 Z0 G94 M95',

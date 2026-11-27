@@ -217,6 +217,7 @@ const remapper: Translation<typeof en> = {
     m98ToTableOut: '{{count}} M98 P7999 -> tablayı dışarı alma (G53 Y0 / son satır)',
     g43Converted: '{{count}} G43 dönüştürüldü',
     g53Added: '{{count}} G53 Y0 eklendi (parça çevirme / program sonu)',
+    hOverRange: '{{count}} G43 satırında H, FANUC takım numarası (H1-H200 dışında): "Analiz Et ve Eşleştir" her takımın kendi numarasını yazar',
     toHaas: 'HAAS’a dönüştürüldü: {{details}}',
     toHaasPlain: 'Kod HAAS formatına dönüştürüldü',
     securityLines: 'Güvenlik satırları -> G0 G53 G49 Z0 G94 M95',

@@ -368,6 +368,10 @@ describe('FANUC -> HAAS fixes', () => {
     const i = out.findIndex((l) => l.includes('G43 H230850 Z30.'));
     expect(out[i - 1]).toMatch(/^N\d+ G0 G90 G54 X0 Y0 S8000 M3$/);
   });
+  it('counts the G43 lines whose H (the FANUC tool number) is outside 1-200: Analyze & Remap must set them', () => {
+    expect(convertFanucToHaas(src, 'x.nc').stats.hOverRange).toBe(2);
+    expect(convertFanucToHaas('O1\nT6 M6\nG43 H#513 D#513 M254 Z50.\nM30', 'x.nc').stats.hOverRange).toBe(0);
+  });
   it('turns a numbered FANUC safety line into the HAAS one instead of deleting it', () => {
     expect(out[2]).toMatch(/G40 G17 G53 G49 G80 G90$/);
   });
