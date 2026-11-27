@@ -1119,10 +1119,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       {result ? (
         <>
           <div className="flex items-center gap-2 p-2">
-            <div role="tablist" aria-label={t('camAi.ws.clampings')} className="flex-1 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)]" style={{ gridTemplateColumns: `repeat(${result.setups.length}, minmax(0, 1fr))` }}>
+            {/* Three a row at most: more side by side ran together, and each one's settings button covered it (a review). */}
+            <div role="tablist" aria-label={t('camAi.ws.clampings')} className="flex-1 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)] bg-[rgba(var(--ov),0.03)]" style={{ gridTemplateColumns: `repeat(${Math.min(3, result.setups.length)}, minmax(0, 1fr))` }}>
               {result.setups.map((_, i) => (
                 <div key={i} className="group relative grid">
-                <button type="button" role="tab" aria-selected={opNow === i} onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} className={`no-glass h-8 rounded-[6px] text-[13px] ${opNow === i ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                <button type="button" role="tab" aria-selected={opNow === i} onClick={() => { setOpTab(i); setSel({ kind: 'setup', i }); }} className={`no-glass h-8 rounded-[6px] text-[13px] group-hover:pr-7 group-focus-within:pr-7 ${opNow === i ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
                   OP{(i + 1) * 10}
                 </button>
                 {/* Its settings on hover (you): parallels and how the part lies; also from the keyboard. */}
@@ -1841,7 +1842,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         <main className="flex-1 min-w-0 flex flex-col" aria-label={t('camAi.ws.viewport')}>
           {/* The clampings, one chip each. */}
           {(result || setupNodes.length > 0) && (
-            <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-[var(--border-subtle)] overflow-x-auto hide-scrollbar">
+            // Wrapped onto a second row when they do not fit: every clamping's chip in sight (a sixth was cut at the edge).
+            <div className="min-h-12 shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[var(--border-subtle)]">
               {narrow && (
                 <button type="button" className={barBtn} onClick={toggleTools} aria-expanded={toolsOpen}>
                   <SidebarLeftExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.tools')}

@@ -154,7 +154,7 @@ export default function CamOpened({
 
       <div className="flex-1 min-h-0 flex">
         <nav aria-label={t('camAi.ws.tools')} className="w-[260px] shrink-0 flex flex-col overflow-y-auto border-r border-[var(--border-subtle)] bg-[var(--bg-panel)]">
-          <div role="tablist" aria-label={t('camAi.ws.clampings')} className="m-2 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)]" style={{ gridTemplateColumns: `repeat(${setupCount}, minmax(0, 1fr))` }}>
+          <div role="tablist" aria-label={t('camAi.ws.clampings')} className="m-2 grid gap-0.5 p-0.5 rounded-[8px] border border-[var(--border-subtle)]" style={{ gridTemplateColumns: `repeat(${Math.min(3, setupCount)}, minmax(0, 1fr))` }}>
             {Array.from({ length: setupCount }, (_, i) => (
               <button key={i} type="button" role="tab" aria-selected={op === i} onClick={() => { setOp(i); setFocus({ setup: i, key: Date.now() }); }} className={`no-glass h-8 rounded-[6px] text-[13px] ${op === i ? 'bg-[rgba(var(--ov),0.12)] font-semibold' : 'text-[var(--text-secondary)]'}`}>
                 OP{(i + 1) * 10}
