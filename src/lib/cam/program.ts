@@ -2647,7 +2647,11 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const all = area(todo);
         const attempt = (tool: CamTool) => {
           const cut = cutData(tool, 'pocket', mat, limits);
-          const rings = clearLevel(offR, todo, tool.diameter / 2, cut.ae, inside);
+          // A closed ring under 1 mm round (a hole the tool's size, as milling() simplifies it) has nothing to ramp along:
+          // it would go straight down a whole pass. Only where the material takes that (POM; FH, RESOPAL 2 mm): else a
+          // smaller mill ramps round it.
+          const plunged = plungesInto(tool, mat) && cut.ap <= plungeMm(mat);
+          const rings = clearLevel(offR, todo, tool.diameter / 2, cut.ae, inside).filter((g) => plunged || !g.closed || perimeter({ ...g, pts: simplify(g.pts, 0.005, true) }) >= 1);
           if (!rings.length) return null;
           const gone = swept(rings, tool.diameter / 2);
           return { tool, rings, gone, share: area(intersection(todo, gone)) / all };
