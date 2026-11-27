@@ -1765,8 +1765,8 @@ function overParallels(code: string, speeds: MachineSpeeds): string {
   return lines.join('\n');
 }
 
-/** The largest piece cut out of the part that the model keeps (mm³): an overcut. */
-export const gougeOf = (c: CamCheck) => Math.round(Math.max(0, ...c.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3)));
+/** All the pieces cut out of the part that the model keeps, added up (mm³): an overcut (four small ones are one bad part). */
+export const gougeOf = (c: CamCheck) => Math.round(c.pieces.reduce((t, p) => t + (p.kind === 'cut' ? p.mm3 : 0), 0));
 
 /**
  * The program for a part: planned with each of its sides as the height in the vise (thinnest

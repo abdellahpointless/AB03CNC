@@ -227,3 +227,12 @@ describe('rapids the check is too coarse to see', () => {
     expect(finerRapids(deep, 'HAAS')).toMatch(/G01 Z-1\. F/);
   }, 300_000);
 });
+
+describe('the overcut the check reports (gougeOf)', () => {
+  it('adds up every piece cut into the part: four of 3.7 mm³ are one bad part, never four under the 5 mm³ limit', () => {
+    const piece = (kind: 'cut' | 'left', mm3: number) => ({ kind, mm3, min: [0, 0, 0] as [number, number, number], max: [1, 1, 1] as [number, number, number], move: null });
+    const check = { pieces: [piece('cut', 3.7), piece('cut', 3.7), piece('left', 40), piece('cut', 3.7), piece('cut', 3.7)] } as Parameters<typeof gougeOf>[0];
+    expect(gougeOf(check)).toBe(15);
+    expect(gougeOf({ ...check, pieces: [piece('left', 40)] })).toBe(0);
+  });
+});

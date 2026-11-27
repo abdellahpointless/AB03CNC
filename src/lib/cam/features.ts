@@ -134,11 +134,17 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
     const r = Math.sqrt(Math.max(0, cx * cx + cy * cy - sol[2]));
     if (!(r > 0.1)) continue;
     let err = 0;
+    // Round along its edges too, not only at its corners: a square pocket's rounded corners lie near one circle, its
+    // straight walls (long chords of it) do not. A facet's middle bows 6 % of r in on the coarsest mesh of a hole this
+    // patch takes (9 sides); a straight wall between small rounded corners 18 % or more.
+    let bow = 0;
     let concave = 0;
     for (const t of list) {
       for (let c = 0; c < 3; c++) {
         const i = t * 9 + c * 3;
+        const j = t * 9 + ((c + 1) % 3) * 3;
         err = Math.max(err, Math.abs(Math.hypot(P[i] - cx, P[i + 1] - cy) - r));
+        bow = Math.max(bow, r - Math.hypot((P[i] + P[j]) / 2 - cx, (P[i + 1] + P[j + 1]) / 2 - cy));
       }
       // A hole's walls face its axis (the material is outside).
       const i = t * 9;
@@ -146,7 +152,7 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
       const my = (P[i + 1] + P[i + 4] + P[i + 7]) / 3 - cy;
       concave += normals[t][0] * mx + normals[t][1] * my < 0 ? 1 : -1;
     }
-    if (err > Math.max(0.02, r * 0.03)) continue;
+    if (err > Math.max(0.02, r * 0.03) || bow > Math.max(0.02, r * 0.08)) continue;
     out.push({ c: [cx, cy], r, lo, hi, concave: concave > 0, closed: widest < (50 * Math.PI) / 180, err });
   }
   return out;

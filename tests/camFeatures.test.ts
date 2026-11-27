@@ -5,6 +5,7 @@ import pinUrl from './models/O0999607.stl?inline';
 import { readModel } from '../src/lib/model';
 import { SIDES, sideFeatures } from '../src/lib/cam/features';
 import { area, intersection, offset, slice, turnTris } from '../src/lib/cam/geom';
+import { pocketPart, roundedRect } from './heightPart';
 
 const bytes = (url: string) => Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), (c) => c.charCodeAt(0));
 const side = (n: string) => SIDES.find((s) => s.name === n)!;
@@ -51,5 +52,16 @@ describe('features of a part from its 3D model', () => {
         for (let z = h.top + 0.1; z < f.max[2] - 0.05; z += 0.25, checked++) expect(area(intersection(slice(P, z), disk(h.c, h.r - 0.05)))).toBeLessThan(0.01);
     }
     expect(checked).toBeGreaterThan(0);
+  });
+  it('a pocket with straight walls and small rounded corners is no hole (its corners lie near one circle, its walls not)', () => {
+    const holesIn = (outline: [number, number][]) => sideFeatures(pocketPart(30, 30, 10, outline, 4), side('Z+')).holes;
+    // 3.9 and 4.9 mm square with R0.5 corners: read as Ø5 and Ø6.4 holes and drilled before.
+    expect(holesIn(roundedRect([13.05, 13.05, 16.95, 16.95], 0.5))).toEqual([]);
+    expect(holesIn(roundedRect([12.55, 12.55, 17.45, 17.45], 0.5))).toEqual([]);
+    // 28 x 18 with R1.5 corners: a Ø31.74 'hole'.
+    expect(sideFeatures(pocketPart(40, 30, 12, roundedRect([6, 6, 34, 24], 1.5), 5), side('Z+')).holes).toEqual([]);
+    // A round one stays a hole, faceted as coarsely as the finder takes one (9 sides) or finely.
+    const round = (n: number) => Array.from({ length: n }, (_, k) => [15 + 2.5 * Math.cos((2 * Math.PI * k) / n), 15 + 2.5 * Math.sin((2 * Math.PI * k) / n)] as [number, number]);
+    for (const n of [9, 16, 48]) expect(holesIn(round(n)).map((h) => Math.round(h.r * 20) / 10)).toEqual([5]);
   });
 });
