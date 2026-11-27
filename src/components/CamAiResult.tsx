@@ -23,7 +23,7 @@ export { GOUGE_MM3 };
 // The designer's parallels or jaw rest not used as asked (clampRefused, clampAsk, jawRefused): not the program they asked
 // for. A cut within 0.5 mm of the vise floor (floorHit): the simulation has none.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safeButHold = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
+export const safeButHold = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe || o.orderLocked !== undefined)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
 export const safe = (r: CamSummary) => safeButHold(r) && !r.misplaced;
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
@@ -75,7 +75,7 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
   const ok = passed(result, accepted) && !changed;
   const unheld = result.setups.find((s) => !s.physics.ok);
   const unsafe = result.setups.some((s) => s.ops.some((o) => o.unsafe));
-  // An operation dragged before one it was made to follow: why it is locked (it is also marked unsafe).
+  // An operation dragged before one it was made to follow: why it is locked (it is also marked orderLocked).
   const orderNote = result.notes.find((n) => n.key === 'orderLocked');
   // The designer's parallels not used as asked: why it stays locked.
   const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
@@ -361,6 +361,8 @@ export function ToolCard({
   // The cutting values as typed (an emptied field stays empty, never back to CAM AI's value under the caret).
   const [typedCut, setTypedCut] = useState<Partial<Record<'s' | 'f' | 'ae' | 'ap', string>>>({});
   const op = ops[0];
+  // One of its operations moved before a tool it was made to follow (reorderOps): not its cutting data.
+  const moved = ops.find((o) => o.orderLocked !== undefined);
   // The tool picked to swap in, and what differs from the one it replaces (warned, never refused).
   const TYPED = '__typed';
   const chosenTool = pick === TYPED ? null : (options.find((o) => o.code === pick) ?? shop.find((o) => o.code === pick) ?? null);
@@ -398,7 +400,7 @@ export function ToolCard({
     </label>
   );
   return (
-    <div className={`text-[13px] ${op.unsafe ? 'ring-1 ring-[#ef4444]/50 rounded-[8px]' : ''}`}>
+    <div className={`text-[13px] ${op.unsafe || moved ? 'ring-1 ring-[#ef4444]/50 rounded-[8px]' : ''}`}>
       {/* T28 · End mill, then Ø20 · L65 · in the machine. */}
       <div className="pl-4 pr-2 pt-3 pb-3 border-b border-[var(--border-subtle)] flex items-start gap-2">
         <div className="flex-1 min-w-0 pt-1">
@@ -472,6 +474,11 @@ export function ToolCard({
       {op.unsafe && (
         <p className="mx-4 mt-2 flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="alert">
           <AlertTriangle size={14} className="shrink-0 mt-px" /> {t('camAi.unsafe')}
+        </p>
+      )}
+      {moved && (
+        <p className="mx-4 mt-2 flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="alert">
+          <AlertTriangle size={14} className="shrink-0 mt-px" /> {t('camAi.orderLocked', { used: moved.tool, d: moved.orderLocked })}
         </p>
       )}
       <div className="px-4 pt-4 pb-1 space-y-2">

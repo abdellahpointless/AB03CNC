@@ -32,7 +32,7 @@ describe('operations in the order the operator gives', () => {
     const r = editProgram(input, made, {}, { [side()]: keysOf(made, order) });
     const got = [...new Set(r.setups[0].ops.map((o) => o.tool.code))];
     expect(got).toEqual(order);
-    expect(r.setups[0].ops.some((o) => o.cut.unsafe)).toBe(false);
+    expect(r.setups[0].ops.some((o) => o.cut.unsafe || o.orderLocked !== undefined)).toBe(false);
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(false);
     expect(r.check.collisions).toBe(0);
     expect(r.check.match).toBeGreaterThanOrEqual(made.check.match - 0.002);
@@ -50,14 +50,14 @@ describe('operations in the order the operator gives', () => {
     const other = codes().find((c) => c !== face)!;
     const r = editProgram(input, made, {}, { [side()]: keysOf(made, [other, face]) });
     expect(r.setups[0].ops[0].tool.code).toBe(other);
-    expect(r.setups[0].ops[0].cut.unsafe).toBe(true);
+    expect(r.setups[0].ops[0].orderLocked).toBeDefined();
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
   }, 600_000);
 
   it('locks a drill moved before its spot drill', () => {
     const r = editProgram(input, made, {}, { [side()]: keysOf(made, [byPurpose('drill'), byPurpose('centre')]) });
     const drill = r.setups[0].ops.find((o) => o.purpose === 'drill')!;
-    expect(drill.cut.unsafe).toBe(true);
+    expect(drill.orderLocked).toBeDefined();
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(true);
   }, 600_000);
 
@@ -67,7 +67,7 @@ describe('operations in the order the operator gives', () => {
     const firstMill = mills[0].tool.code;
     const later = mills[2].tool.code;
     const r = editProgram(pocket, madeB, {}, { [madeB.setups[0].side]: keysOf(madeB, [later, firstMill]) });
-    expect(r.setups[0].ops.find((o) => o.tool.code === later)!.cut.unsafe).toBe(true);
+    expect(r.setups[0].ops.find((o) => o.tool.code === later)!.orderLocked).toBeDefined();
     expect(r.notes.some((n) => n.key === 'orderLocked')).toBe(true);
   }, 600_000);
 
@@ -84,8 +84,10 @@ describe('operations in the order the operator gives', () => {
     const r = reorderOps(ops, ['face', 'outline', 'rest', 'drill', 'rough'], 1);
     expect(r.ops.map((o) => o.key)).toEqual(['face', 'outline', 'rest', 'drill', 'rough']);
     // The rest mill now runs before the roughing it was made after: locked, said why.
-    expect(r.ops.find((o) => o.key === 'rest')!.cut.unsafe).toBe(true);
-    expect(r.ops.filter((o) => o.key !== 'rest').some((o) => o.cut.unsafe)).toBe(false);
+    // Locked for its order, naming the tool it follows; its cutting data is not called too much (finding H1-41).
+    expect(r.ops.find((o) => o.key === 'rest')!.orderLocked).toBe(1);
+    expect(r.ops.some((o) => o.cut.unsafe)).toBe(false);
+    expect(r.ops.filter((o) => o.key !== 'rest').some((o) => o.orderLocked !== undefined)).toBe(false);
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
   });
 
@@ -113,7 +115,7 @@ describe('operations in the order the operator gives', () => {
     expect(mill).toBeGreaterThan(drill);
     const asked = [...ops.slice(0, drill), ops[mill], ...ops.slice(drill).filter((_, i) => i + drill !== mill)].map((o) => o.key!);
     const r = editProgram(part, m, {}, { [m.setups[0].side]: asked });
-    expect(r.setups[0].ops.find((o) => o.key === ops[mill].key)!.cut.unsafe).toBe(true);
+    expect(r.setups[0].ops.find((o) => o.key === ops[mill].key)!.orderLocked).toBeDefined();
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
   }, 600_000);
 
@@ -123,9 +125,9 @@ describe('operations in the order the operator gives', () => {
     const away = op('away', 'rough', ['G00 X30. Y20.', 'G01 Z-3. F300.', 'G01 X40.', 'G00 Z50.']);
     const into = op('into', 'rough', ['G00 X10. Y0.', 'G00 Z1.', 'G01 Z-6. F300.', 'G00 Z50.']);
     const face = op('face', 'face', []);
-    expect(reorderOps([face, drill, away], ['face', 'away', 'drill'], 1).ops.some((o) => o.cut.unsafe)).toBe(false);
+    expect(reorderOps([face, drill, away], ['face', 'away', 'drill'], 1).ops.some((o) => o.orderLocked !== undefined)).toBe(false);
     const r = reorderOps([face, drill, into], ['face', 'into', 'drill'], 1);
-    expect(r.ops.find((o) => o.key === 'into')!.cut.unsafe).toBe(true);
+    expect(r.ops.find((o) => o.key === 'into')!.orderLocked).toBe(drill.tool.number);
     expect(r.notes).toContainEqual(expect.objectContaining({ key: 'orderLocked', setup: 1 }));
   });
 });

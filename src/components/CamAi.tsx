@@ -1107,6 +1107,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         { label: t('camAi.ws.check.gouge'), value: result.gouge >= 1 ? `${fmt(result.gouge, 0)} mm³` : t('camAi.ws.check.none'), bad: result.gouge >= 1 && !accepted },
         { label: t('camAi.ws.check.hold'), value: t(result.setups.every((s) => s.physics.ok) ? 'camAi.ws.check.yes' : 'camAi.ws.check.no'), bad: !result.setups.every((s) => s.physics.ok) },
         { label: t('camAi.ws.check.cutting'), value: t(result.setups.some((s) => s.ops.some((o) => o.unsafe)) ? 'camAi.ws.check.no' : 'camAi.ws.check.yes'), bad: result.setups.some((s) => s.ops.some((o) => o.unsafe)) },
+        { label: t('camAi.ws.check.order'), value: t(result.setups.some((s) => s.ops.some((o) => o.orderLocked !== undefined)) ? 'camAi.ws.check.no' : 'camAi.ws.check.yes'), bad: result.setups.some((s) => s.ops.some((o) => o.orderLocked !== undefined)) },
       ]
     : [];
   // Changes waiting for Make again (any kind: typed, removed, a clamping) are no issue: the chip says they wait, alike for all.
@@ -1219,7 +1220,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                         {!o.inMachine && <span className="shrink-0 whitespace-pre text-[#854d0e] dark:text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
                       </span>
                     </span>
-                    {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
+                    {(changed.includes(o.code) || o.unsafe || result.setups[opNow].ops.some((x) => x.code === o.code && x.orderLocked !== undefined)) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
                     <span className="text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.ws.timeHelp')}>{fmtTime(secs)}</span>
                   </button>
                   {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}

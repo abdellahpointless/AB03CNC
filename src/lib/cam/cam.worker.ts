@@ -118,6 +118,8 @@ export interface CamSummary {
       sig: string;
       /** The operator's values are more than the tool takes. */
       unsafe: boolean;
+      /** Moved before this tool (its T), which it was made to follow: locked until moved back. */
+      orderLocked?: number;
     }[];
     /** Where precision matters (setup frame): the contour, thin walls, engraving. */
     zones: Zone[];
@@ -288,6 +290,7 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
         zMin: deepest(o.lines),
         sig: sigOf(o.lines),
         unsafe: !!o.cut.unsafe,
+        orderLocked: o.orderLocked,
       })),
     })),
   };

@@ -189,6 +189,8 @@ export interface CamOp {
   tool: CamTool;
   cut: Cut;
   lines: string[];
+  /** Moved by the operator before this tool (its T), which it was made to follow (reorderOps): the program locks. */
+  orderLocked?: number;
 }
 
 export interface CamSetup {
@@ -1544,8 +1546,8 @@ const MILLING: Purpose[] = ['outline', 'rough', 'rest', 'finish', 'contour', 'th
  * in that order in the places they hold, the others stay where they were made. By key, never by tool: a tool changed by
  * hand keeps its place, and a tool used in two places is not pulled together when another one is moved. What runs before
  * an operation it was made after (the facing before all, a spot drill before the drills, the mills in their made order,
- * a mill before a drill whose holes it goes into) is not verified by any check: that one is marked unsafe (the program
- * locks) and noted.
+ * a mill before a drill whose holes it goes into) is not verified by any check: that one is marked orderLocked (the
+ * program locks) and noted; its cutting data stays as made.
  */
 export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: number): { ops: CamOp[]; notes: CamNote[] } {
   const rank = (o: CamOp) => (o.key === undefined ? -1 : (want?.indexOf(o.key) ?? -1));
@@ -1600,7 +1602,7 @@ export function reorderOps(ops: CamOp[], want: string[] | undefined, setup: numb
     const a = out.slice(i + 1).find((x) => made.get(x)! < made.get(b)! && mustFollow(x, b));
     if (!a) return b;
     if (!notes.some((n) => n.used === b.tool.number)) notes.push({ key: 'orderLocked', setup, used: b.tool.number, d: a.tool.number });
-    return { ...b, cut: { ...b.cut, unsafe: true } };
+    return { ...b, orderLocked: a.tool.number };
   });
   return { ops: ordered, notes };
 }

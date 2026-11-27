@@ -16,6 +16,10 @@ describe('a part changed by hand, accepted as it is', () => {
   it('never passes what hits the machine or the vise, tick or not', () => {
     for (const bad of [{ collisions: 1 }, { cales: 1 }]) expect(passed({ ...base, ...bad, misplaced: 1 } as CamSummary, true)).toBe(false);
   });
+  it('never passes a tool moved before the one it follows, tick or not (its cutting data as made)', () => {
+    const moved = { ...base, setups: [{ physics: { ok: true }, ops: [{ unsafe: false, orderLocked: 9 }] }] } as unknown as CamSummary;
+    expect(passed(moved, true)).toBe(false);
+  });
   it('passes as before without changes', () => {
     expect(passed(base)).toBe(true);
     expect(passed({ ...base, match: 0.97 } as CamSummary)).toBe(false);
