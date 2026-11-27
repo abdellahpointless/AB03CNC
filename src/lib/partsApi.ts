@@ -114,6 +114,19 @@ export function shiftPeriod(p: PartsPeriod, by: number): PartsPeriod {
   return { from: move(p.from), to: move(p.to) };
 }
 
+/** The day `by` days after `s` (YYYY-MM-DD). */
+export function addDays(s: string, by: number): string {
+  const [y, m, d] = s.split('-').map(Number);
+  return ymd(new Date(y, m - 1, d + by));
+}
+
+/** The period with one end set to `day`; the other end moves when they would meet (the end day is not counted, so From = To is empty). */
+export function setPeriodEnd(p: PartsPeriod, end: 'from' | 'to', day: string): PartsPeriod {
+  const next = { ...p, [end]: day };
+  if (next.from < next.to) return next;
+  return end === 'from' ? { from: day, to: addDays(day, 1) } : { from: addDays(day, -1), to: day };
+}
+
 /** The period as times (ms) on this PC's calendar, the end excluded. */
 export const periodMs = (p: PartsPeriod) => ({ from: dayMs(p.from), to: dayMs(p.to) });
 const periodQs = (p: PartsPeriod) => `from=${dayMs(p.from)}&to=${dayMs(p.to)}`;

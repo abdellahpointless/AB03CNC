@@ -56,7 +56,12 @@ export default function PreventiveReports() {
         setData(r);
         setError('');
       },
-      (e) => alive && setError(errorMessage(e)),
+      (e) => {
+        if (!alive) return;
+        // No numbers from an earlier period under the error (they would read as this period's).
+        setData(null);
+        setError(errorMessage(e));
+      },
     );
     return () => {
       alive = false;

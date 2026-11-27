@@ -13,6 +13,7 @@ describe('Turkish server messages', () => {
     expect(tr('Two-step sign-in is already on.')).toBe('İki adımlı doğrulama zaten açık.');
     expect(tr('Unknown machine')).toBe('Bilinmeyen tezgah.');
     expect(tr('Out of stock')).toBe('Stokta yok.');
+    expect(tr('Invalid date range')).toBe('Geçersiz tarih aralığı.');
   });
 
   it('translates messages with a number or a name, keeping the value', () => {

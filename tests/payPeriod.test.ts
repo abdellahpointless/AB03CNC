@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { payPeriod, shiftPeriod } from '../src/lib/partsApi';
+import { payPeriod, setPeriodEnd, shiftPeriod } from '../src/lib/partsApi';
 
 describe('26th to 26th period', () => {
   it('starts on the 26th of this month from the 26th on, else on the 26th of last month', () => {
@@ -14,5 +14,13 @@ describe('26th to 26th period', () => {
   it('moves a chosen period by whole months', () => {
     expect(shiftPeriod({ from: '2026-12-26', to: '2027-01-26' }, 1)).toEqual({ from: '2027-01-26', to: '2027-02-26' });
     expect(shiftPeriod({ from: '2026-01-26', to: '2026-02-26' }, -1)).toEqual({ from: '2025-12-26', to: '2026-01-26' });
+  });
+  it('never lets From reach To (the end day is not counted, so the same day is an empty period)', () => {
+    const p = { from: '2026-10-26', to: '2026-11-26' };
+    expect(setPeriodEnd(p, 'from', '2026-11-01')).toEqual({ from: '2026-11-01', to: '2026-11-26' });
+    expect(setPeriodEnd(p, 'from', '2026-11-26')).toEqual({ from: '2026-11-26', to: '2026-11-27' });
+    expect(setPeriodEnd(p, 'from', '2026-12-31')).toEqual({ from: '2026-12-31', to: '2027-01-01' });
+    expect(setPeriodEnd(p, 'to', '2026-10-26')).toEqual({ from: '2026-10-25', to: '2026-10-26' });
+    expect(setPeriodEnd(p, 'to', '2026-03-01')).toEqual({ from: '2026-02-28', to: '2026-03-01' });
   });
 });

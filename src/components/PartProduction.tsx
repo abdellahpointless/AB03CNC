@@ -34,6 +34,7 @@ export default function PartProduction({ period }: { period: PartsPeriod }) {
         setRows(res.rows);
         setError(null);
       } else {
+        setRows([]);
         setError(res.error);
       }
       setLoading(false);

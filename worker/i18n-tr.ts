@@ -211,6 +211,7 @@ registerTurkish(
     'Quantity must be between 1 and 9999.': 'Adet 1 ile 9999 arasında olmalıdır.',
     'Kind must be PRODUCED or MODIFICATION': 'Tür PRODUCED (üretim) veya MODIFICATION (modifikasyon) olmalıdır.',
     'Invalid month': 'Geçersiz ay.',
+    'Invalid date range': 'Geçersiz tarih aralığı.',
     'status must be APPROVED or REJECTED': 'Durum APPROVED (onaylandı) veya REJECTED (reddedildi) olmalıdır.',
     'ids must be a list of entry ids (max 200)': 'Kayıt kimlikleri bir liste olarak gönderilmelidir (en fazla 200).',
     'Month filter must look like YYYY-MM': 'Ay filtresi YYYY-AA biçiminde olmalıdır (ör. 2026-10).',
