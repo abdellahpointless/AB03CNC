@@ -54,6 +54,12 @@ describe('the exact faces of a STEP model', () => {
     expect(e.some((x) => !x.concave)).toBe(true);
   });
 
+  it('keeps rounded edges out of the chamfers (a vertical R3 edge seen from the side: no graver round it)', () => {
+    const y = SIDES.find((s) => s.name === 'Y+')!;
+    expect(sideFeatures(angled.tris, y).chamfers.length).toBeGreaterThan(0);
+    expect(sideFeatures(angled.tris, y, false, undefined, fa).chamfers).toHaveLength(0);
+  });
+
   it('takes a side\'s holes from the exact cylinders: the Ø6.6 through and its Ø11 counterbore, to the micron', () => {
     const z = SIDES.find((s) => s.name === 'Z+')!;
     const holes = sideFeatures(angled.tris, z, false, undefined, fa).holes;

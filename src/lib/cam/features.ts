@@ -167,6 +167,9 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
   const floors = new Map<number, number>();
   const chamfers = new Map<string, { lo: number; hi: number; area: number; min: P2; max: P2; tris: number[] }>();
   let freeform = 0;
+  // A STEP model's rounded edges are rounds, not chamfers: their facets at 45° (a vertical round edge seen from the side)
+  // took the graver round edges an end mill had already cut (your angled test part).
+  const round = exact ? new Set(exact.filter((f) => f.kind === 'cylinder').flatMap((f) => f.tris)) : undefined;
   for (let i = 0; i < P.length; i += 9) {
     const nv = norm(P, i);
     const nz = nv[2];
@@ -174,7 +177,7 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
     if (nz > 0.999) {
       const z = Math.round(((P[i + 2] + P[i + 5] + P[i + 8]) / 3) * 200) / 200;
       floors.set(z, (floors.get(z) ?? 0) + a);
-    } else if (nz > 0.69 && nz < 0.72) {
+    } else if (nz > 0.69 && nz < 0.72 && !round?.has(i / 9)) {
       const lo = Math.round(Math.min(P[i + 2], P[i + 5], P[i + 8]) * 100) / 100;
       const hi = Math.round(Math.max(P[i + 2], P[i + 5], P[i + 8]) * 100) / 100;
       const k = `${lo}:${hi}`;
