@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T02:15:00Z",
-  "next_id": 32,
+  "last_updated": "2026-11-27T10:30:00Z",
+  "next_id": 36,
   "assumptions": [
     {
       "id": "A001",
@@ -777,6 +777,86 @@
           "from_tier": null,
           "to_tier": "OPEN",
           "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "A032",
+      "title": "Türkiye tool database: server only, no cutting data",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Türkiye's tool database lives only in Türkiye's database, never in the public code: per tool its code, type, Ø, length, radius or angle, flutes, materials and description. The rpm, feeds, step-down and NX file names of the shop's list stay out. Only admins change it (re-importing the list in the app); users only read it.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Türkiye tool inventory",
+      "created": "2026-11-27T10:30:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T10:30:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A033",
+      "title": "Reamers and countersinks",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A reamer (RA) is its own type, which the remapper never puts in for a drill call; a 90° countersink (KS) counts as a chamfer tool. SR is a roughing mill, AB with a 118° point a drill, AB 90° a spot drill.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Türkiye tool inventory",
+      "created": "2026-11-27T10:30:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T10:30:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A034",
+      "title": "Adding tools in Türkiye",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. Morocco is unchanged.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Türkiye tool inventory",
+      "created": "2026-11-27T10:30:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T10:30:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A035",
+      "title": "Türkiye's machines",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Türkiye has 17 machines (layout v2): ASB Haas K (50 slots, the probe not counted), Haas M, G, E, F, H (41), Fanuc P, A, C, O, D, B (21); OSB Haas 1, Haas 2 (41), Fanuc 1, 2, 3 (21). The live HAAS F goes from 32 to 41 slots and keeps its tools; the 16 others are added. Done on the owner's deploy.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Türkiye tool inventory",
+      "created": "2026-11-27T10:30:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T10:30:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
         }
       ]
     }

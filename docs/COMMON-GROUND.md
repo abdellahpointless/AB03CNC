@@ -2,7 +2,7 @@
 
 **Project:** CNC Process Pro
 **Created:** 2026-11-25T17:00:00Z
-**Last Updated:** 2026-11-25T17:00:00Z
+**Last Updated:** 2026-11-27T10:30:00Z
 
 ---
 
@@ -236,6 +236,46 @@ High confidence assumptions. Treat as premises.
 
 ---
 
+### A032: Türkiye tool database: server only, no cutting data
+
+- **Type:** stated
+- **Assumption:** Türkiye's tool database lives only in Türkiye's database, never in the public code: per tool its code, type, Ø, length, radius or angle, flutes, materials and description. The rpm, feeds, step-down and NX file names of the shop's list stay out. Only admins change it (re-importing the list in the app); users only read it.
+- **Source:** Owner, 2026-11-27 (Türkiye tool database request)
+- **Validated:** 2026-11-27
+- **Context:** Türkiye tool inventory
+
+---
+
+### A033: Reamers and countersinks
+
+- **Type:** stated
+- **Assumption:** A reamer (RA) is its own type, which the remapper never puts in for a drill call; a 90° countersink (KS) counts as a chamfer tool. SR is a roughing mill, AB with a 118° point a drill, AB 90° a spot drill.
+- **Source:** Owner, 2026-11-27 (Türkiye tool database request)
+- **Validated:** 2026-11-27
+- **Context:** Türkiye tool inventory
+
+---
+
+### A034: Adding tools in Türkiye
+
+- **Type:** stated
+- **Assumption:** Türkiye's users add a tool to a machine only from the database: Add new tool opens the next slot (the last slot + 1, or 1), then dropdowns (type, Ø, length, material, ...) narrow each other in any order until one tool is left. Admins can still type a tool the list lacks. Morocco is unchanged.
+- **Source:** Owner, 2026-11-27 (Türkiye tool database request)
+- **Validated:** 2026-11-27
+- **Context:** Türkiye tool inventory
+
+---
+
+### A035: Türkiye's machines
+
+- **Type:** stated
+- **Assumption:** Türkiye has 17 machines (layout v2): ASB Haas K (50 slots, the probe not counted), Haas M, G, E, F, H (41), Fanuc P, A, C, O, D, B (21); OSB Haas 1, Haas 2 (41), Fanuc 1, 2, 3 (21). The live HAAS F goes from 32 to 41 slots and keeps its tools; the 16 others are added. Done on the owner's deploy.
+- **Source:** Owner, 2026-11-27 (Türkiye tool database request)
+- **Validated:** 2026-11-27
+- **Context:** Türkiye tool inventory
+
+---
+
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
@@ -345,3 +385,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: open questions Q014-Q020 from the hole rules, the library run and the night's bug hunt.
 - 2026-11-27: A030 refined after review: R under the faced top adds half a grid layer; the 1-200 Download lock is for Haas machines only.
 - 2026-11-27: Q020 archived: it came from R 0.5 sitting within a grid layer of a floor CAM AI knows only to that layer; with half a layer added there (A030), P51d8d6c6 plans as before (4 clampings, 43.8 min), so no evidence is left for a ranking question.
+- 2026-11-27: A032-A035 from the owner: Türkiye's tool database and machines.
