@@ -339,12 +339,12 @@ export default function PartReview() {
         )}
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--border-subtle)] pt-4 text-xs">
           <span className="text-[var(--text-tertiary)]">
             {t('review.footer')}
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0 || isLoading}
