@@ -436,7 +436,7 @@ const cam: Translation<typeof en> = {
       choose: 'Seçin…',
       typeHint: 'Hassasiyetin nerede önemli olduğunu belirler. Ad parçaya uymuyorsa değiştirin.',
       types: {
-        topPlate: 'Üst plaka (beyaz RAFI yüzündeki kontur)',
+        topPlate: 'Üst plaka (beyaz yüz)',
         sealCage: 'Conta kafesi (ince duvarlar)',
         pinPlate: 'Pim plakası (çakılan pimler)',
         contourInsert: 'Kontur insörtü',

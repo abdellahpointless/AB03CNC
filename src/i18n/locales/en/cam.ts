@@ -433,7 +433,7 @@ const cam = {
       choose: 'Choose…',
       typeHint: 'It decides where precision matters. Change it if the name does not fit the part.',
       types: {
-        topPlate: 'Top plate (contour on the white RAFI face)',
+        topPlate: 'Top plate (white face)',
         sealCage: 'Seal cage (thin walls)',
         pinPlate: 'Pin plate (pressed pins)',
         contourInsert: 'Contour insert',
