@@ -267,7 +267,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const fileRef = useRef<HTMLInputElement>(null);
   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
   const tools = machine ? toolbox[machine.id] ?? [] : [];
-  const name = model ? model.name.replace(/\.(pdf|stl)$/i, '') : '';
+  const name = model ? model.name.replace(/\.(pdf|stl|step|stp)$/i, '') : '';
   const fileName = `${name || 'PROGRAMM'}.nc`;
   // The material the templates are taken for (inox waits for the operator's yes to MS).
   const templatesFor: CamMaterial | null = material === 'INOX' || material === '' ? null : material === 'OTHER' ? family : material;
