@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedCales, blankTop, jawMove, refusedHold, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
+import { allowedCales, blankTop, firstPick, jawGap, jawMove, refusedHold, stepCale, underNeed, underStock, whyNot } from '../src/lib/cam/clamp';
 
 describe('a later clamping\'s hold the program made refused (its note says so)', () => {
   it('matches the note of its kind for the value asked, a step within 0.05 mm', () => {
@@ -48,34 +48,63 @@ describe('the clamping editor\'s moves (you, Beta 2)', () => {
 });
 
 describe('the 0.5 mm method (you): the outline and holes whole in clamping 1, 0.5 mm under the part, then only facing', () => {
-  // The outline 0.5 mm under the part and the jaws 0.5 mm under that: the jaws grip what is left of the stock under it.
-  it('places the blank 5 mm under the part where the Z stock allows (a 4 mm grip), else 4 (3 mm), always 0.5 over it to face', () => {
-    expect(blankTop(7)).toBe(2);
-    expect(blankTop(6)).toBe(1);
-    expect(blankTop(5.5)).toBe(0.5);
+  // The outline 0.5 mm under the part, the jaw tops the gap (1 mm; 1 to 1.5 in the settings) under that: the jaws grip
+  // what is left of the stock under it, 5 mm wanted, 3 at the least.
+  it('keeps the gap within 1 to 1.5 mm, 1 when not given', () => {
+    expect(jawGap()).toBe(1);
+    expect(jawGap(1.25)).toBe(1.25);
+    expect(jawGap(0.5)).toBe(1);
+    expect(jawGap(2)).toBe(1.5);
+    expect(jawGap(NaN)).toBe(1);
+    expect(underNeed()).toBe(4.5);
+    expect(underNeed(1, 5)).toBe(6.5);
+    expect(underNeed(1.5)).toBe(5);
+  });
+
+  it('places the blank 6.5 mm under the part where the Z stock allows (a 5 mm grip), else 0.5 over it to face and the rest under', () => {
+    expect(blankTop(9)).toBe(2);
+    expect(blankTop(8.5)).toBe(2);
+    expect(blankTop(7.5)).toBe(1);
+    expect(blankTop(7)).toBe(0.5);
+    expect(blankTop(6)).toBe(0.5);
     expect(blankTop(5)).toBe(0.5);
+    // Under 5 mm (you): still 0.5 over it to face; what is left under it is too thin (refused, underStock).
     expect(blankTop(4.5)).toBe(0.5);
-    // Under 4.5 mm (you): still 0.5 over it to face; what is left under it is too thin (refused, underStock).
-    expect(blankTop(4.2)).toBe(0.5);
     expect(blankTop(3)).toBe(0.5);
+    // A 1.5 mm gap: 7 mm under the part for the 5 mm grip.
+    expect(blankTop(8.5, 1.5)).toBe(1.5);
+    expect(blankTop(7.5, 1.5)).toBe(0.5);
   });
 
-  it('wants 5 mm under the part (4 gripped), takes 4 (3 gripped) with a warning, and refuses less: a thicker blank', () => {
-    expect(underStock(5)).toBeNull();
+  it('wants 6.5 mm under the part (5 gripped), takes 4.5 (3 gripped) with a warning, and refuses less: a thicker blank', () => {
+    expect(underStock(6.5)).toBeNull();
     expect(underStock(8)).toBeNull();
+    expect(underStock(6)).toBe('lowGrip');
     expect(underStock(4.5)).toBe('lowGrip');
-    expect(underStock(4)).toBe('lowGrip');
-    expect(underStock(3.9)).toBe('tooThin');
+    expect(underStock(4.4)).toBe('tooThin');
+    expect(underStock(4)).toBe('tooThin');
     expect(underStock(0)).toBe('tooThin');
+    // A 1.5 mm gap: 5 mm at the least, 7 wanted.
+    expect(underStock(4.5, 1.5)).toBe('tooThin');
+    expect(underStock(5, 1.5)).toBe('lowGrip');
+    expect(underStock(6.5, 1.5)).toBe('lowGrip');
+    expect(underStock(7, 1.5)).toBeNull();
   });
 
-  it('offers clamping 1 only parallels whose jaws stay under the outline (19 mm of stock, 5 under a 12 mm part)', () => {
-    // Grip 3 to 4: the jaw tops 1 mm or more under the part's bottom.
-    expect(allowedCales(19, -17, 12)).toEqual([42, 41]);
-    expect(whyNot(41, 19, -17, 12)).toBeNull();
+  it('offers clamping 1 only parallels whose jaw tops stay the gap under the outline cut', () => {
+    // 19 mm of stock, 5 under a 12 mm part: the jaw tops 1.5 mm or more under the part's bottom, so a 3 mm grip only.
+    expect(allowedCales(19, -17, 12)).toEqual([42]);
     expect(whyNot(42, 19, -17, 12)).toBeNull();
-    expect(whyNot(40, 19, -17, 12)).toBe('outline');
+    expect(whyNot(41, 19, -17, 12)).toBe('outline');
     expect(whyNot(36, 19, -17, 12)).toBe('outline');
     expect(whyNot(43, 19, -17, 12)).toBe('tooShallow');
+    // 6.5 under it: up to 5 gripped, CAM AI's own the deepest (40 mm parallels); with a 1.5 mm gap up to 4 (41).
+    expect(allowedCales(20.5, -18.5, 12)).toEqual([42, 41, 40]);
+    expect(firstPick(20.5, -18.5, 12)).toEqual({ cale: 40, grip: 5 });
+    expect(allowedCales(20.5, -18.5, 12, 1.5)).toEqual([42, 41]);
+    expect(whyNot(40, 20.5, -18.5, 12, 1.5)).toBe('outline');
+    expect(firstPick(20.5, -18.5, 12, 1.5)).toEqual({ cale: 41, grip: 4 });
+    // Never under 1 mm, whatever is asked.
+    expect(allowedCales(20.5, -18.5, 12, 0.5)).toEqual([42, 41, 40]);
   });
 });

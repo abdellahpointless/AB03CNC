@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T10:30:00Z",
+  "last_updated": "2026-11-27T12:56:00Z",
   "next_id": 36,
   "assumptions": [
     {
@@ -290,9 +290,9 @@
       "title": "The 0.5 mm method, always",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "Clamping 1 cuts the outline and the through holes whole, 0.5 mm under the part (drills at full diameter 0.5 mm past the bottom); after the turn only the face mill takes the rest, plus what only that side reaches. Extra clampings stay for side features.",
+      "assumption": "Clamping 1 cuts the outline and the through holes whole, 0.5 mm under the part (drills at full diameter 0.5 mm past the bottom); after the turn only the face mill takes the rest, plus what only that side reaches. Extra clampings stay for side features. Under that cut a gap down to the jaw tops: 1 mm by default, 1 to 1.5 mm in CAM AI's settings (it was 0.5); the tools keep it over the jaws.",
       "source": "Owner, 2026-11-26",
-      "validated": "2026-11-26",
+      "validated": "2026-11-27",
       "context": "Every CAM AI program",
       "created": "2026-11-26T13:00:00Z",
       "history": [
@@ -302,6 +302,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Answered by the owner"
+        },
+        {
+          "date": "2026-11-27T12:56:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner: the gap under the outline cut 1 mm, settable 1 to 1.5"
         }
       ]
     },
@@ -310,9 +317,9 @@
       "title": "Clamping 1 grip",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "The jaws grip under the outline cut: 4 mm by default (5 mm of stock under the part), the designer may go down to 3 mm (4 under the part), shown yellow with a warning; less is refused and a thicker Z blank asked for. Never under 3 mm.",
+      "assumption": "The jaws grip the stock under the gap (A015): 5 mm wanted (6.5 mm of stock under the part with the 1 mm gap), the designer may go down to 3 mm (4.5 under the part), shown yellow with a warning; less is refused and a thicker Z blank asked for. Never under 3 mm.",
       "source": "Owner, 2026-11-26 (answered: the 3-4 mm is the jaws' grip)",
-      "validated": "2026-11-26",
+      "validated": "2026-11-27",
       "context": "Blank placement, clamp panel, planner",
       "created": "2026-11-26T13:00:00Z",
       "history": [
@@ -322,6 +329,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Answered by the owner"
+        },
+        {
+          "date": "2026-11-27T12:56:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner: 5 mm wanted, down to 3 with a warning"
         }
       ]
     },
@@ -410,9 +424,9 @@
       "title": "Always 0.5 mm to face on top",
       "type": "stated",
       "tier": "ESTABLISHED",
-      "assumption": "Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 4.5 mm of extra Z at the least; less is refused.",
+      "assumption": "Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 5 mm of extra Z at the least with the 1 mm gap (0.5 over, 4.5 under; 7 mm for the 5 mm grip); less is refused like a thinner blank.",
       "source": "Owner, 2026-11-26",
-      "validated": "2026-11-26",
+      "validated": "2026-11-27",
       "context": "Blank placement, stock panel, planner",
       "created": "2026-11-26T15:00:00Z",
       "history": [
@@ -422,6 +436,13 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Answered by the owner"
+        },
+        {
+          "date": "2026-11-27T12:56:00Z",
+          "action": "updated",
+          "from_tier": "ESTABLISHED",
+          "to_tier": "ESTABLISHED",
+          "reason": "The least extra Z follows the 1 mm gap"
         }
       ]
     },

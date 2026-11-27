@@ -2,7 +2,7 @@
 
 **Project:** CNC Process Pro
 **Created:** 2026-11-25T17:00:00Z
-**Last Updated:** 2026-11-27T10:30:00Z
+**Last Updated:** 2026-11-27T12:56:00Z
 
 ---
 
@@ -117,17 +117,17 @@ High confidence assumptions. Treat as premises.
 ### A015: The 0.5 mm method, always
 
 - **Type:** stated
-- **Assumption:** Clamping 1 cuts the outline and the through holes whole, 0.5 mm under the part (drills at full diameter 0.5 mm past the bottom); after the turn only the face mill takes the rest, plus what only that side reaches. Extra clampings stay for side features.
-- **Source:** Owner, 2026-11-26
-- **Validated:** 2026-11-26
+- **Assumption:** Clamping 1 cuts the outline and the through holes whole, 0.5 mm under the part (drills at full diameter 0.5 mm past the bottom); after the turn only the face mill takes the rest, plus what only that side reaches. Extra clampings stay for side features. Under that cut a gap down to the jaw tops: 1 mm by default, 1 to 1.5 mm in CAM AI's settings (it was 0.5); the tools keep it over the jaws.
+- **Source:** Owner, 2026-11-26; the gap 2026-11-27
+- **Validated:** 2026-11-27
 - **Context:** Every CAM AI program
 
 ### A016: Clamping 1 grip
 
 - **Type:** stated
-- **Assumption:** The jaws grip under the outline cut: 4 mm by default (5 mm of stock under the part), the designer may go down to 3 mm (4 under the part), shown yellow with a warning; less is refused and a thicker Z blank asked for. Never under 3 mm.
-- **Source:** Owner, 2026-11-26 (answered: the 3-4 mm is the jaws' grip)
-- **Validated:** 2026-11-26
+- **Assumption:** The jaws grip the stock under the gap (A015): 5 mm wanted (6.5 mm of stock under the part with the 1 mm gap), the designer may go down to 3 mm (4.5 under the part), shown yellow with a warning; less is refused and a thicker Z blank asked for. Never under 3 mm.
+- **Source:** Owner, 2026-11-26 (answered: the 3-4 mm is the jaws' grip); 5 mm wanted, 2026-11-27 ("5 wanted, down to 3 with a warning")
+- **Validated:** 2026-11-27
 - **Context:** Blank placement, clamp panel, planner
 
 ### A017: Counterbore on the other face
@@ -165,9 +165,9 @@ High confidence assumptions. Treat as premises.
 ### A021: Always 0.5 mm to face on top
 
 - **Type:** stated
-- **Assumption:** Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 4.5 mm of extra Z at the least (0.5 over, 4 under); less is refused like a thinner blank.
+- **Assumption:** Clamping 1 always faces the top: at least 0.5 mm over the part (but on a white face), so the blank needs 5 mm of extra Z at the least with the 1 mm gap (0.5 over, 4.5 under; 7 mm for the 5 mm grip); less is refused like a thinner blank.
 - **Source:** Owner, 2026-11-26 (a 4 mm blank left the top raw on a test part)
-- **Validated:** 2026-11-26
+- **Validated:** 2026-11-27
 - **Context:** Blank placement, stock panel, planner
 
 ### A022: Coolant by machine
@@ -387,3 +387,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: Q020 archived: it came from R 0.5 sitting within a grid layer of a floor CAM AI knows only to that layer; with half a layer added there (A030), P51d8d6c6 plans as before (4 clampings, 43.8 min), so no evidence is left for a ranking question.
 - 2026-11-27: A032-A035 from the owner: Türkiye's tool database and machines.
 - 2026-11-27: A034 widened by the owner: the remapper's Add tool picks from the tool database as well.
+- 2026-11-27: from the owner: under clamping 1's outline cut (0.5 mm under the part, unchanged) the gap to the jaw tops is 1 mm, settable 1 to 1.5 mm (it was 0.5; A015), and the grip under it 5 mm wanted, 3 at the least with the yellow warning (A016). The top's 0.5 mm stays (A021). Under the part: 4.5 mm at the least, 6.5 wanted (1 mm gap).

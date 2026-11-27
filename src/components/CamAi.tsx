@@ -29,7 +29,7 @@ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
 import CamOpened from './CamOpened';
 import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
 import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
-import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, refusedHold, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
+import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, JAW_GAP, JAW_GAP_MAX, jawGap, jawMove, refusedHold, stepCale, TOP_MIN, underNeed, underStock, whyNot } from '../lib/cam/clamp';
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
@@ -87,6 +87,16 @@ const readSideStock = () => {
     return Number.isFinite(v) && v >= 0 && v <= 0.5 ? v : 0;
   } catch {
     return 0;
+  }
+};
+// Clamping 1's gap from the outline cut down to the jaw tops (CAM AI settings: 1 to 1.5 mm).
+const JAW_GAP_KEY = 'cnc-camai-jaw-gap';
+const readJawGap = () => {
+  try {
+    const v = localStorage.getItem(JAW_GAP_KEY);
+    return v === null ? JAW_GAP : jawGap(Number(v));
+  } catch {
+    return JAW_GAP;
   }
 };
 
@@ -210,7 +220,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
   // now: in the program shown already (checked again); the others wait for Make again.
   // sideStock: the side stock the program shown was made with (one change for it, however many keys are typed).
-  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true; sideStock?: number };
+  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true; sideStock?: number; jawGap?: number };
   const [changes, setChanges] = useState<Change[]>([]);
   const changeId = useRef(0);
   // The later clampings' turns the program shown was made with (the panel's "until it is made again").
@@ -263,6 +273,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The side stock as typed (null: as kept): only 0 to 0.5 mm is kept, anything else is said, never changed under the caret.
   const [sideText, setSideText] = useState<string | null>(null);
   const sideTextOk = sideText === null || (sideText.trim() !== '' && Number(sideText) >= 0 && Number(sideText) <= 0.5);
+  // Clamping 1's jaw gap, kept and as typed (the same way).
+  const [gapMm, setGapMm] = useState(readJawGap);
+  const [gapText, setGapText] = useState<string | null>(null);
+  const gapTextOk = gapText === null || (gapText.trim() !== '' && Number(gapText) >= JAW_GAP && Number(gapText) <= JAW_GAP_MAX);
   const [swap, setSwap] = useState<{ exclude: string[]; prefer: string[] }>({ exclude: [], prefer: [] });
   const [run, setRun] = useState<Run>({ state: 'idle' });
   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
@@ -302,18 +316,18 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const raw = prep && chosen && excess && excessOk ? (toModelAxes(chosen.R, excess).map((e, k) => prep.size[k] + e) as [number, number, number]) : null;
   // The blank side by side in clamping 1 (X-, X+, Y-, Y+, Z-, Z+): as typed, or where the planner puts Auto and totals
   // (clamp.ts); as the model's sides, and the blank it makes (model frame, centred on the part) that the 3D view draws.
-  const shown = chosen && excess && raw ? (!autoStock && stockMode === 'side' ? [0, 1, 2, 3, 4, 5].map(sideValue) : blankSides(excess, whiteAt)) : null;
+  const shown = chosen && excess && raw ? (!autoStock && stockMode === 'side' ? [0, 1, 2, 3, 4, 5].map(sideValue) : blankSides(excess, whiteAt, gapMm)) : null;
   const shownSides = chosen && shown ? toModelSides(chosen.R, [0, 2, 4].map((i) => shown[i]), [1, 3, 5].map((i) => shown[i])) : null;
   const sideBlank = prep && shownSides ? { lo: prep.size.map((s, k) => -s / 2 - shownSides.lo[k]), hi: prep.size.map((s, k) => s / 2 + shownSides.hi[k]) } : null;
   // Clamping 1's parallels (clamp.ts, as the planner takes them): those the jaws hold the blank on, lowest first, and CAM AI's own.
   const lo1 = chosen && shown ? -(chosen.size[2] + shown[4]) : 0;
   const stockH1 = chosen && shown ? chosen.size[2] + shown[4] + shown[5] : 0;
-  const cales1 = chosen && shown ? allowedCales(stockH1, lo1, chosen.size[2]).sort((p, q) => p - q) : [];
-  // The 0.5 mm method (you): 5 mm under the part wanted (a 4 mm grip), 4 taken (3 mm, yellow), less refused.
-  const under1 = chosen && shown ? underStock(shown[4]) : null;
+  const cales1 = chosen && shown ? allowedCales(stockH1, lo1, chosen.size[2], gapMm).sort((p, q) => p - q) : [];
+  // The 0.5 mm method (you): 6.5 mm under the part wanted (a 5 mm grip under the 1 mm gap), 4.5 taken (3 mm, yellow), less refused.
+  const under1 = chosen && shown ? underStock(shown[4], gapMm) : null;
   // And 0.5 mm over the part to face (you), but on a top plate's white face.
   const topThin = !!chosen && !!shown && whiteAt !== 5 && shown[5] < TOP_MIN - 1e-6;
-  const own1 = chosen && shown && cales1.length ? firstPick(stockH1, lo1, chosen.size[2]).cale : null;
+  const own1 = chosen && shown && cales1.length ? firstPick(stockH1, lo1, chosen.size[2], gapMm).cale : null;
   // The program made says what CAM AI used (its blank may have gone centred); before one, the page's own pick.
   const cale1 = clamp1 ?? (run.state === 'done' ? run.result.setups[0]?.cale : undefined) ?? own1;
   // Sent to the planner when typed side by side, or with the designer's parallels (the blank they were chosen for, never
@@ -323,7 +337,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const picking = !prep || busy ? null : !locked1 ? 0 : !locked2 ? 1 : null;
   const picks: FacePick[] = chosen ? [{ side: chosen.side, face: face1, locked: locked1 }, ...(locked1 ? [{ side: side2, face: second?.face, locked: locked2 }] : [])] : [];
   // Parallels that cannot hold the part are shown (yellow) but never made: why, if so.
-  const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1, chosen.size[2]) : null;
+  const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1, chosen.size[2], gapMm) : null;
   const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1 && under1 !== 'tooThin' && !topThin;
 
   // Made again over a program shown: the page as it was, and the worker holding that program's plan, back on Stop (you:
@@ -516,6 +530,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       orient: turned[0] ? { side: upOf(turned[0].R), spin: false } : { side: chosen.side, spin: chosen.spin },
       frames: Object.keys(turned).length ? Array.from({ length: Math.max(...Object.keys(turned).map(Number)) + 1 }, (_, k) => turned[k]?.R ?? null) : undefined,
       sideStock: sideStock || undefined,
+      jawGap: gapMm,
       exclude: with_.exclude,
       prefer: with_.prefer,
       second: turned[1] ? upOf(turned[1].R) : second && second.side !== opposite(chosen.side) ? second.side : undefined,
@@ -671,6 +686,23 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       addChange({ label: t('camAi.changes.sideStock', { mm: fmt(was, 2) }), sideStock: was, undo: () => storeSideStock(was) });
     }
     storeSideStock(ok);
+  };
+  const storeGap = (v: number) => {
+    setGapMm(v);
+    try {
+      localStorage.setItem(JAW_GAP_KEY, String(v));
+    } catch {
+      /* a convenience: the default works without it */
+    }
+  };
+  // As the side stock: one change for it on a program made, Undo back to what it was made with.
+  const saveGap = (v: number) => {
+    const ok = jawGap(v);
+    if (result && ok !== gapMm && !changes.some((c) => c.jawGap !== undefined)) {
+      const was = gapMm;
+      addChange({ label: t('camAi.changes.jawGap', { mm: fmt(was, 2) }), jawGap: was, undo: () => storeGap(was) });
+    }
+    storeGap(ok);
   };
   const choosePartType = (v: PartType) => {
     const was = partType;
@@ -1550,9 +1582,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     {!excessOk && <p className="text-[var(--orange-text)]" role="alert">{t(sidesOk ? 'camAi.stock.tooSmall' : 'camAi.stock.sideRange')}</p>}
                   </fieldset>
                 )}
-                {shown && under1 === 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{whiteAt === 4 ? t('camAi.stock.whiteDown') : t('camAi.stock.tooThin', { mm: fmt(shown[4], 1) })}</p>}
+                {shown && under1 === 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{whiteAt === 4 ? t('camAi.stock.whiteDown') : t('camAi.stock.tooThin', { mm: fmt(shown[4], 1), gap: fmt(gapMm, 2), need: fmt(underNeed(gapMm), 2) })}</p>}
                 {shown && topThin && under1 !== 'tooThin' && <p className="flex gap-2 text-[var(--orange-text)]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.topThin', { mm: fmt(shown[5], 1) })}</p>}
-                {shown && under1 === 'lowGrip' && <p className="flex gap-2 text-[#facc15]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.lowGrip', { mm: fmt(shown[4], 1) })}</p>}
+                {shown && under1 === 'lowGrip' && <p className="flex gap-2 text-[#facc15]" role="status"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t('camAi.stock.lowGrip', { mm: fmt(shown[4], 1), want: fmt(underNeed(gapMm, GRIP_WANT), 2) })}</p>}
                 {raw && excess && (
                   <dl className="grid grid-cols-3 gap-2">
                     {(['X', 'Y', 'Z'] as const).map((axis, k) => (
@@ -1628,7 +1660,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     onOwn={() => turnOwn(sel.i)}
                   />
                 )}
-                {sel.i === 0 && (clampMode || (!!result && !busy)) && cale1 !== null && <ClampPanel key={setupOpen === 0 ? 'open' : 'shut'} cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1)} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { holdChanged(v ? t('camAi.changes.stop', { n: 1, mm: v }) : t('camAi.changes.stopNone', { n: 1 })); setStop1(v); resetLater(); }} onOwn={() => { holdChanged(t('camAi.changes.own', { n: 1 })); setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { holdChanged(v ? t('camAi.changes.parallels', { n: 1, mm: fmt(v, 0) }) : t('camAi.changes.table', { n: 1 })); setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => { holdChanged(v === undefined ? t('camAi.changes.yAuto', { n: 1 }) : v ? t('camAi.changes.y', { n: 1, mm: v }) : t('camAi.changes.yNone', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } })); }} yp={laterX[0]?.yp} onYp={(v) => { holdChanged(t('camAi.hold.changed', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result && setupOpen !== 0} onOpenChange={(o) => setSetupOpen(o ? 0 : null)} />}
+                {sel.i === 0 && (clampMode || (!!result && !busy)) && cale1 !== null && <ClampPanel key={setupOpen === 0 ? 'open' : 'shut'} cale={cale1} own={clamp1 !== null ? own1 : null} mine={clamp1 !== null} grip={JAW - cale1} intoPart={cale1 > 0 && chosen ? JAW - cale1 - (-chosen.size[2] - lo1) : 0} seam={!!chosen && -chosen.size[2] - lo1 > 0.5 && cale1 > 0 && !clearOf(lo1, chosen.size[2], JAW - cale1, gapMm)} gap={gapMm} jaw={jaw} onAct={clampAct} pending={result && clamp1 !== null && clamp1 !== result.setups[0]?.cale ? clamp1 : undefined} refused={refused1} stop={stop1} stopPending={!!result && stop1 !== Number(result.setups[0]?.notes.join(' ').match(/(\d+) MM ZWISCHENLAGE IN X-/)?.[1] ?? 0)} onStop={(v) => { holdChanged(v ? t('camAi.changes.stop', { n: 1, mm: v }) : t('camAi.changes.stopNone', { n: 1 })); setStop1(v); resetLater(); }} onOwn={() => { holdChanged(t('camAi.changes.own', { n: 1 })); setClamp1(null); resetLater(); }} cales={cales1} onCale={(v) => { holdChanged(v ? t('camAi.changes.parallels', { n: 1, mm: fmt(v, 0) }) : t('camAi.changes.table', { n: 1 })); setClamp1(v); resetLater(); }} y={laterX[0]?.y} onY={(v) => { holdChanged(v === undefined ? t('camAi.changes.yAuto', { n: 1 }) : v ? t('camAi.changes.y', { n: 1, mm: v }) : t('camAi.changes.yNone', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], y: v } })); }} yp={laterX[0]?.yp} onYp={(v) => { holdChanged(t('camAi.hold.changed', { n: 1 })); setLaterX((x) => ({ ...x, 0: { ...x[0], yp: v } })); resetLater(); }} made={!!result && setupOpen !== 0} onOpenChange={(o) => setSetupOpen(o ? 0 : null)} />}
                 {sel.i > 0 && result?.setups[sel.i] && !busy && (
                   <LaterClampPanel
                     key={`${sel.i}-${setupOpen === sel.i}`}
@@ -1847,6 +1879,27 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                 </label>
                 {!sideTextOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.sideStockBad', { mm: fmt(sideStock, 2) })}</p>}
                 <p className="text-xs text-[var(--text-secondary)]">{t('camAi.sideStockHint')}</p>
+                <label className="block space-y-1 pt-1">
+                  <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.jawGap')}</span>
+                  <input
+                    className="aurora-input w-full h-8 py-0 text-[13px]"
+                    type="number"
+                    min={JAW_GAP}
+                    max={JAW_GAP_MAX}
+                    step={0.1}
+                    inputMode="decimal"
+                    value={gapText ?? gapMm}
+                    aria-invalid={!gapTextOk || undefined}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setGapText(v);
+                      if (v.trim() !== '' && Number(v) >= JAW_GAP && Number(v) <= JAW_GAP_MAX) saveGap(Number(v));
+                    }}
+                    onBlur={() => setGapText(null)}
+                  />
+                </label>
+                {!gapTextOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.jawGapBad', { mm: fmt(gapMm, 2) })}</p>}
+                <p className="text-xs text-[var(--text-secondary)]">{t('camAi.jawGapHint', { need: fmt(underNeed(gapMm, GRIP_WANT), 2) })}</p>
                 <Popover.Close asChild>
                   <button type="button" className={`${menuItem} -mx-2.5 w-[calc(100%+1.25rem)]`} onClick={() => setDbOpen(true)}>
                     <Database size={16} stroke={1.6} aria-hidden /> {t('camAi.db.menu')}
@@ -2387,7 +2440,7 @@ function AdjustToggle({ open, onToggle }: { open: boolean; onToggle: () => void 
   );
 }
 
-function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made, onOpenChange }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; jaw: { open: number; slide: number }; pending?: number; refused: ReturnType<typeof whyNot>; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean; onOpenChange?: (open: boolean) => void }) {
+function ClampPanel({ cale, own, mine, grip, intoPart, seam, gap, jaw, pending, refused, stop, stopPending, onStop, onAct, onOwn, cales, onCale, y, onY, yp, onYp, made, onOpenChange }: { cale: number; own: number | null; mine: boolean; grip: number; intoPart: number; seam: boolean; gap: number; jaw: { open: number; slide: number }; pending?: number; refused: ReturnType<typeof whyNot>; stop: 0 | 15 | 50; stopPending: boolean; onStop: (v: 0 | 15 | 50) => void; onAct: (a: ClampAct) => void; onOwn: () => void; cales: number[]; onCale: (v: number) => void; y: 0 | 15 | 20 | 50 | undefined; onY: (v: 0 | 15 | 20 | 50 | undefined) => void; yp: 15 | 20 | 50 | undefined; onYp: (v: 15 | 20 | 50 | undefined) => void; made: boolean; onOpenChange?: (open: boolean) => void }) {
   const { t } = useTranslation('cam');
   const btn = 'btn-secondary text-xs min-h-11 px-2 flex items-center justify-center gap-1.5';
   // Open while preparing; once a program is made, folded until asked for.
@@ -2406,7 +2459,7 @@ function ClampPanel({ cale, own, mine, grip, intoPart, seam, jaw, pending, refus
           {mine && <button type="button" onClick={onOwn} className="btn-secondary text-xs min-h-9 px-2">{t('camAi.clamp1.useOwn')}</button>}
         </p>
       )}
-      {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0) })}</p>}
+      {refused && <p className="flex gap-2 text-[#facc15]" role="alert"><AlertTriangle size={15} className="shrink-0" aria-hidden />{t(`camAi.clamp1.refused.${refused}`, { cale: fmt(cale, 0), gap: fmt(gap, 2) })}</p>}
       <AdjustToggle open={open} onToggle={() => { setOpen(!open); onOpenChange?.(!open); }} />
       {open && (
         <div className="space-y-3">
