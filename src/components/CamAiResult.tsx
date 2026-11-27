@@ -532,6 +532,7 @@ export function ToolCard({
               ))}
             </div>
           )}
+          {pick === TYPED && typed.d !== '' && typed.l !== '' && !sizeOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
           {warns.map((w) => (
             <p key={w} className="flex items-start gap-1.5 text-xs text-[var(--orange-text)]" role="status">
               <AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden /> {w}
