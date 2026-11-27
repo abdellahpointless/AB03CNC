@@ -318,13 +318,29 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const refused1 = chosen && clamp1 !== null ? whyNot(clamp1, stockH1, lo1, chosen.size[2]) : null;
   const ready = !!prep && !!partType && !!chosen?.fits && locked1 && locked2 && !!raw && !!machine && tools.length > 0 && !!templatesFor && !wrongCooling && !refused1 && under1 !== 'tooThin' && !topThin;
 
-  useEffect(() => () => worker.current?.terminate(), []);
+  // Made again over a program shown: the page as it was, and the worker holding that program's plan, back on Stop (you:
+  // Stop cancels only the new make); gone once the new one is made or fails.
+  const remake = useRef<{ run: Run; changes: Change[]; swap: typeof swap; cuts: typeof cuts; skip: string[]; skipDraft: string[]; skipLabels: Record<string, string>; live: Live; ghosts: Live['paths']; worker: Worker | null } | null>(null);
+  const endRemake = () => {
+    remake.current?.worker?.terminate();
+    remake.current = null;
+  };
+  // Each make, counted: one stopped while the tool database loads never goes on to make.
+  const makeSeq = useRef(0);
+  useEffect(
+    () => () => {
+      worker.current?.terminate();
+      remake.current?.worker?.terminate();
+    },
+    [],
+  );
 
   const newWorker = () => {
     worker.current?.terminate();
     const w = new Worker(new URL('../lib/cam/cam.worker.ts', import.meta.url), { type: 'module' });
     worker.current = w;
     w.onerror = () => {
+      if (worker.current === w) endRemake();
       w.terminate();
       worker.current = null;
       setRun({ state: 'error', error: 'failed' });
@@ -336,6 +352,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     if (!file) return;
     if (file.size > MODEL_MAX_BYTES) return setRun({ state: 'error', error: 'tooBig' });
     const m = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+    endRemake();
     setModel(m);
     setChanges([]);
     // Nothing by hand from the part before goes on with this one (a review: they reached its program).
@@ -396,9 +413,23 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   };
 
   const stop = () => {
+    makeSeq.current++;
     worker.current?.terminate();
     worker.current = null;
-    setRun({ state: 'idle' });
+    const was = remake.current;
+    remake.current = null;
+    if (!was) return setRun({ state: 'idle' });
+    // The program shown before, its changes as listed and its plan's worker (for changes by hand).
+    worker.current = was.worker;
+    setRun(was.run);
+    setChanges(was.changes);
+    setSwap(was.swap);
+    setCuts(was.cuts);
+    setSkip(was.skip);
+    setSkipDraft(was.skipDraft);
+    setSkipLabels(was.skipLabels);
+    setLive(was.live);
+    setGhosts(was.ghosts);
   };
 
   const generate = async (with_ = swap, edits = cuts, skips = skip) => {
@@ -408,14 +439,24 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     carry.current = null;
     const before = plain.current;
     if (!model || !machine || !ready || !chosen || !templatesFor || !partType) return;
+    // The page as this render has it, before Make again changed it (its setters take effect on the next render).
+    endRemake();
+    if (run.state === 'done') {
+      remake.current = { run, changes, swap, cuts, skip, skipDraft, skipLabels, live, ghosts, worker: worker.current };
+      worker.current = null;
+    }
     setRun({ state: 'busy', done: 0, of: 1 });
+    const seq = ++makeSeq.current;
     // The shop's tool database as it is now (it may have changed since): never a program made without it.
     let db: StoredToolDb;
     try {
       db = await loadToolDb();
     } catch {
+      if (seq !== makeSeq.current) return;
+      endRemake();
       return setRun({ state: 'error', error: 'toolDb' });
     }
+    if (seq !== makeSeq.current) return;
     setToolDb(db);
     // A tool changed by hand that the shop no longer has here (another machine, the database changed): not carried, said.
     const shelf = catalog(templatesFor, tools, { toolDb: db.db });
@@ -509,9 +550,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         w.terminate();
         worker.current = null;
         setChecking(false);
+        endRemake();
         return setRun({ state: 'error', error: m.error });
       }
       // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
+      endRemake();
       setRun({ state: 'done', result: m.result });
       plain.current = m.result;
       checkedEdits.current = { edits: {}, order: {} };
@@ -1674,7 +1717,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               {result && (
                 <>
                   <Popover.Close asChild>
-                    <button type="button" className={menuItem} onClick={makeAgain} disabled={!ready || busy}>
+                    <button type="button" className={menuItem} onClick={makeAgain} disabled={!ready || busy || checking}>
                       <RefreshCw size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.againKey')}
                     </button>
                   </Popover.Close>
