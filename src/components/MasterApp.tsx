@@ -532,7 +532,7 @@ function MonthlyChart({ countries, kind }: { countries: ActiveCountry[]; kind: '
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {[...rows].reverse().map((r) => ( // newest month first: the current one is not below the fold
                 <tr key={r.month as string} className="border-b border-[var(--border-subtle)] last:border-0">
                   <td className="p-2 text-[var(--text-secondary)]">{fmtMonth(r.month as string)}</td>
                   {countries.map((c) => (
