@@ -447,6 +447,7 @@ const cam: Translation<typeof en> = {
     },
     settings: 'Ayarlar',
     sideStock: 'Yan pay (mm)',
+    sideStockBad: 'Yalnızca 0 ile 0,5 mm arası: yan pay {{mm}} mm olarak kalır.',
     sideStockHint: 'Her duvarda bilerek bırakılır, 0 ile 0,5 mm arası. Şablonların kendi payı kullanılmaz.',
     toolsToLoad: '{{name}} tezgahına takılacak takımlar',
     notHave: 'Bende yok',

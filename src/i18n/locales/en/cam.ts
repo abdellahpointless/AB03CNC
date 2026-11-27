@@ -444,6 +444,7 @@ const cam = {
     },
     settings: 'Settings',
     sideStock: 'Side stock (mm)',
+    sideStockBad: 'Only 0 to 0.5 mm: the side stock stays {{mm}} mm.',
     sideStockHint: 'Left on every wall on purpose, 0 to 0.5 mm. The templates’ own stock is not used.',
     toolsToLoad: 'Tools to load into {{name}}',
     notHave: 'I don’t have it',

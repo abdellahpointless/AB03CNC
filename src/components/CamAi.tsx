@@ -256,6 +256,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER'>('FH');
   const [family, setFamily] = useState<Family>('ALU');
   const [sideStock, setSideStock] = useState(readSideStock);
+  // The side stock as typed (null: as kept): only 0 to 0.5 mm is kept, anything else is said, never changed under the caret.
+  const [sideText, setSideText] = useState<string | null>(null);
+  const sideTextOk = sideText === null || (sideText.trim() !== '' && Number(sideText) >= 0 && Number(sideText) <= 0.5);
   const [swap, setSwap] = useState<{ exclude: string[]; prefer: string[] }>({ exclude: [], prefer: [] });
   const [run, setRun] = useState<Run>({ state: 'idle' });
   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
@@ -1771,8 +1774,24 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                 <span className="flex items-center gap-2 text-[13px] font-medium"><Settings2 size={16} stroke={1.6} aria-hidden /> {t('camAi.settings')}</span>
                 <label className="block space-y-1">
                   <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.sideStock')}</span>
-                  <input className="aurora-input w-full h-8 py-0 text-[13px]" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
+                  <input
+                    className="aurora-input w-full h-8 py-0 text-[13px]"
+                    type="number"
+                    min={0}
+                    max={0.5}
+                    step={0.01}
+                    inputMode="decimal"
+                    value={sideText ?? sideStock}
+                    aria-invalid={!sideTextOk || undefined}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSideText(v);
+                      if (v.trim() !== '' && Number(v) >= 0 && Number(v) <= 0.5) saveSideStock(Number(v));
+                    }}
+                    onBlur={() => setSideText(null)}
+                  />
                 </label>
+                {!sideTextOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.sideStockBad', { mm: fmt(sideStock, 2) })}</p>}
                 <p className="text-xs text-[var(--text-secondary)]">{t('camAi.sideStockHint')}</p>
                 <Popover.Close asChild>
                   <button type="button" className={`${menuItem} -mx-2.5 w-[calc(100%+1.25rem)]`} onClick={() => setDbOpen(true)}>
