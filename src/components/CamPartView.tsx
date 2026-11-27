@@ -41,6 +41,7 @@ const PATH_COLOR: Record<Purpose, number> = {
   thinWalls: 0x22d3ee,
   chamfer: 0x22d3ee,
   engrave: 0x22d3ee,
+  slope: 0x22d3ee,
   centre: 0xef4444,
   drill: 0xef4444,
   pinHoles: 0xef4444,

@@ -374,7 +374,7 @@ export interface Need {
   diameter: number;
   minLength: number;
   /** What for (camAi.why.* on the page): with a hole's Ø and depth, a volume, a count. */
-  why: { key: 'face' | 'hole' | 'holeMilled' | 'holeSmaller' | 'narrow' | 'chamfer'; d?: number; depth?: number; mm3?: number; count?: number; used?: number };
+  why: { key: 'face' | 'hole' | 'holeMilled' | 'holeSmaller' | 'narrow' | 'chamfer' | 'slope'; d?: number; depth?: number; mm3?: number; count?: number; used?: number };
 }
 
 /** What CAM AI did not program (camAi.note.* on the page). */

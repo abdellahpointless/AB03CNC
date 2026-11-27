@@ -635,6 +635,7 @@ const cam: Translation<typeof en> = {
       thinWalls: 'İnce duvarların hafifçe finiş işlenmesi',
       chamfer: 'Kenarlara pah kırılması',
       engrave: 'Yazının kazınması',
+      slope: 'Eğimlerin küresel frezeyle bitirilmesi',
     },
     zone: {
       contour: 'Hassas kontur',
@@ -668,6 +669,8 @@ const cam: Translation<typeof en> = {
       narrow: 'parmak frezelerin ulaşamadığı dar cepler ve iç köşeler ({{mm3}} mm³ kalıyor)',
       chamfer_one: '45° {{count}} pah (90° kalem eklenene kadar programa alınmadı)',
       chamfer_other: '45° {{count}} pah (90° kalem eklenene kadar programa alınmadı)',
+      slope_one: 'üstten kesilecek {{count}} eğim (küresel freze eklenene kadar yan bağlamaya bırakıldı)',
+      slope_other: 'üstten kesilecek {{count}} eğim (küresel freze eklenene kadar yan bağlamalara bırakıldı)',
     },
     setup: 'Bağlama {{n}} · {{side}} yüzü yukarıda',
     ops: 'İşlemler',

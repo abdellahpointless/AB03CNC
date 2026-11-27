@@ -9,7 +9,8 @@ import { analyseProgram, jawsFrom, OVERHANG, parallelWidth, stopHits, VISE, vise
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, SPIN, upTurn, type Hole, type SideFeatures } from './features';
-import { exactFaces } from './faces';
+import { exactFaces, faceEdges } from './faces';
+import { slopePasses, slopesOf, type Slope } from './slopes';
 import { area, bounds, difference, inside, intersection, offset, rect, simplify, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
@@ -188,7 +189,7 @@ export function opSegments(lines: string[]): number[] {
 }
 
 /** What an operation is for, in plain words (camAi.purpose.* on the page). */
-export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'outline' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave';
+export type Purpose = 'face' | 'centre' | 'drill' | 'pinHoles' | 'outline' | 'rough' | 'rest' | 'finish' | 'contour' | 'thinWalls' | 'chamfer' | 'engrave' | 'slope';
 
 export interface CamOp {
   /** Stable name of the operation in the program (its setup's side, its name, its tool, which one of those): what the operator removes by. */
@@ -228,6 +229,8 @@ export interface CamSetup {
   ops: CamOp[];
   /** The model's chamfer triangles this clamping's FASE cut: no later clamping cuts them again. */
   chamfered?: number[];
+  /** The exact faces (ids) its ball end mill finished as slopes: never again in a later clamping. */
+  sloped?: number[];
   /** The parallels the designer may choose here (the jaws grip 3 mm or more, under the part's top, never all of it). */
   cales: number[];
   /** CAM AI's own parallels, when the designer's are used instead. */
@@ -1101,6 +1104,36 @@ function chamfering(tool: CamTool, paths: { z: number; pts: P2[]; top: number }[
   }
   lines.push(`G00 Z${n3(clear)}`);
   return { kind: 'chamfer', purpose: 'chamfer', name: 'FASE', tool, cut, lines };
+}
+
+/**
+ * A ball end mill over a clamping's flat slopes from the top (you, 2026-11-27), finished to a 0.01 mm scallop. First down
+ * to them 0.5 mm at a time (square to the slope), from what the end mills' levels leave there (their step down × the
+ * slope's cosine), a radius apart; zigzag, each pass at one Z, from 1 mm past the face's edges.
+ */
+function ballFinish(tool: CamTool, slopes: Slope[], P: Float32Array, mat: string, limits: Limits, clear: number, stepDown: number): CamOp {
+  const cut = cutData(tool, 'ball', mat, limits);
+  const r = tool.diameter / 2;
+  const lines: string[] = [];
+  for (const s of slopes) {
+    // The end mills' levels leave steps on it, up to a level apart: that × the slope's cosine square to it (and the grid's margin).
+    const most = stepDown * s.n[2] + 0.1;
+    const stocks: number[] = [];
+    for (let d = Math.ceil(most / 0.5) * 0.5; d > 0.25; d -= 0.5) stocks.push(d);
+    for (const stock of [...stocks, 0]) {
+      // Roughing: a radius apart (its scallop 0.134 r); finishing: 0.01 mm.
+      const passes = slopePasses(P, s, r, stock ? r * (1 - Math.sqrt(0.75)) : 0.01, stock);
+      passes.forEach((p, i) => {
+        const [a, b] = i % 2 ? [p.b, p.a] : [p.a, p.b];
+        if (!lines.length) lines.push(`G00 G90 X${n3(a[0])} Y${n3(a[1])} S${cut.s} M03`);
+        if (!i) lines.push(`G00 Z${n3(clear)}`, `G00 X${n3(a[0])} Y${n3(a[1])}`, `G00 Z${n3(p.z + 1)}`, `G01 Z${n3(p.z)} F${cut.fz}.`);
+        else lines.push(`G01 X${n3(a[0])} Y${n3(a[1])} Z${n3(p.z)}`);
+        lines.push(`G01 X${n3(b[0])} Y${n3(b[1])}${i ? '' : ` F${cut.f}.`}`);
+      });
+      lines.push(`G00 Z${n3(clear)}`);
+    }
+  }
+  return { kind: 'finish', purpose: 'slope', name: `SCHLICHTEN_KUGEL_R${mm(r)}`, tool, cut, lines };
 }
 
 /** The outline of a region (min and max X, Y). */
@@ -1998,6 +2031,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
   // A STEP model's exact faces (faces.ts): its holes taken from them, exact.
   const exact = input.faces && input.faces.length === tris.length / 9 ? exactFaces(tris, input.faces) : undefined;
+  // Which of them meet in inside corners (a slope next to a wall is left: the ball would cut into the wall).
+  const edges = exact && input.faces ? faceEdges(tris, input.faces) : [];
   const featuresOf = (side: (typeof SIDES)[number], spin = false, turn?: Mat3) => sideFeatures(tris, side, spin, turn, exact);
   const feats = SIDES.map((s, si) => featuresOf(s, spun(si)));
   // The operator's turn of clamping 1 (its side up the one asked, orient), used as given.
@@ -2934,6 +2969,22 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (work.length) ops.push(milling(tool, work, mat, limits, millTop, plane, left.at, thinAny ? 'thinWalls' : input.partType === 'sealCage' ? 'finish' : 'contour', undefined, undefined, !input.holes?.legacy));
     }
     // 4. Chamfers on the edges facing up, with the 90° graver.
+    let sloped: number[] | undefined;
+    // 4b. You (2026-11-27): a flat slope this clamping sees from above, a ball end mill's from the top (never a clamping on
+    // the side cutting it as a wall). A STEP model's only (its exact faces), above the jaws, never one cut before.
+    if (exact) {
+      const done = new Set(setups.flatMap((x) => x.sloped ?? []));
+      const found = slopesOf(P, exact, edges).filter((x) => x.lo > jawLimit + 1 && !done.has(x.id));
+      if (found.length) {
+        const low = Math.min(...found.map((x) => x.lo));
+        const ball = usable(tools, ['KF']).find((b) => b.length >= stockTop - low + 2);
+        if (!ball) needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: found.length } });
+        else {
+          ops.push(ballFinish(ball, found, P, mat, limits, plane, maxAp));
+          sloped = found.map((x) => x.id);
+        }
+      }
+    }
     // You (Beta 2): a chamfer is cut once. A 45° face is a chamfer from two sides; one a clamping before cut is done.
     const cutBefore = new Set(setups.flatMap((x) => x.chamfered ?? []));
     const fresh = f.chamfers.filter((c) => c.tris.some((k) => !cutBefore.has(k)));
@@ -3120,7 +3171,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const viseIn = nest
       ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
       : { material: mat, length: hold[0], width: contactOf(left, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: sb.hi[2] - base, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor, span: sb.hi[0] - sb.lo[0] };
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), ...(sloped && done.some((o) => o.purpose === 'slope') ? { sloped } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);

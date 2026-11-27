@@ -632,6 +632,7 @@ const cam = {
       thinWalls: 'Finishing the thin walls gently',
       chamfer: 'Chamfering the edges',
       engrave: 'Engraving the lettering',
+      slope: 'Finishing the slopes with a ball end mill',
     },
     zone: {
       contour: 'Precise contour',
@@ -665,6 +666,8 @@ const cam = {
       narrow: 'narrow pockets and inside corners the end mills cannot reach ({{mm3}} mm³ left)',
       chamfer_one: '{{count}} chamfer at 45° (left out until a 90° graver is added)',
       chamfer_other: '{{count}} chamfers at 45° (left out until a 90° graver is added)',
+      slope_one: '{{count}} slope cut from the top (left to a clamping on its side until a ball end mill is added)',
+      slope_other: '{{count}} slopes cut from the top (left to clampings on their side until a ball end mill is added)',
     },
     setup: 'Setup {{n}} · side {{side}} up',
     ops: 'Operations',
