@@ -215,7 +215,6 @@ registerTurkish(
     'status must be APPROVED or REJECTED': 'Durum APPROVED (onaylandı) veya REJECTED (reddedildi) olmalıdır.',
     'ids must be a list of entry ids (max 200)': 'Kayıt kimlikleri bir liste olarak gönderilmelidir (en fazla 200).',
     'Month filter must look like YYYY-MM': 'Ay filtresi YYYY-AA biçiminde olmalıdır (ör. 2026-10).',
-    'Invalid date range': 'Geçersiz tarih aralığı.',
 
     // ---- routes/users.ts, analytics.ts, cales.ts ----
     'toolpathBeta must be true or false, on its own': 'toolpathBeta tek başına ve true veya false olarak gönderilmelidir.',
