@@ -18,7 +18,7 @@ function millsIn(s: CamSetup, holes: { c: [number, number]; d: number }[]) {
           const x = l.match(/X(-?[\d.]+)/);
           const y = l.match(/Y(-?[\d.]+)/);
           const z = l.match(/Z(-?[\d.]+)/);
-          if (!/^G0?1/.test(l) || !x || !y || !z || Number(z[1]) > -0.1) return [];
+          if (!/^G0?[123]/.test(l) || !x || !y || !z || Number(z[1]) > -0.1) return [];
           return Math.hypot(Number(x[1]) - h.c[0], Number(y[1]) - h.c[1]) < h.d / 2 - o.tool.diameter / 2 + 0.05 && o.tool.diameter < h.d ? [`${o.name} ${l}`] : [];
         }),
       ),
@@ -59,7 +59,7 @@ describe('a hole a drill made', () => {
     const seat = s.ops
       .map((o, i) => ({ o, i }))
       .filter(({ o }) => o.kind === 'pocket' && o.tool.diameter < 10)
-      .filter(({ o }) => o.lines.some((l) => /^G0?1/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) <= -5.4 && Math.hypot(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99), Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) < 5));
+      .filter(({ o }) => o.lines.some((l) => /^G0?[123]/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) <= -5.4 && Math.hypot(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99), Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) < 5));
     expect(seat.length).toBeGreaterThan(0);
     expect(seat.every(({ i }) => i > firstDrill)).toBe(true);
     // No mill in the Ø5.5 hole under the counterbore's floor.
@@ -79,7 +79,7 @@ describe('a hole a drill made', () => {
     // Every mill feed under the part's bottom (Z-12) within the hole: none (the hole at X0 Y-16 or Y16, the frame centred).
     const under = s.ops
       .filter((o) => o.kind !== 'drill' && o.kind !== 'face')
-      .flatMap((o) => o.lines.filter((l) => /^G0?1/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) < -12 - 0.05 && Math.abs(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99)) < 1.65 && Math.abs(Math.abs(Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) - 16) < 1.65).map((l) => `${o.name} ${l}`));
+      .flatMap((o) => o.lines.filter((l) => /^G0?[123]/.test(l) && Number(l.match(/Z(-?[\d.]+)/)?.[1] ?? 0) < -12 - 0.05 && Math.abs(Number(l.match(/X(-?[\d.]+)/)?.[1] ?? 99)) < 1.65 && Math.abs(Math.abs(Number(l.match(/Y(-?[\d.]+)/)?.[1] ?? 99)) - 16) < 1.65).map((l) => `${o.name} ${l}`));
     expect(under).toEqual([]);
     expect(r.check).toMatchObject({ cales: 0, collisions: 0 });
   }, 600_000);
@@ -98,7 +98,7 @@ describe('a hole a drill made', () => {
         let [x, y, z] = [NaN, NaN, NaN];
         return o.lines.flatMap((l) => {
           [x, y, z] = ['X', 'Y', 'Z'].map((a, k) => Number(l.match(new RegExp(`${a}(-?[\\d.]+)`))?.[1] ?? [x, y, z][k]));
-          return /^G0?1/.test(l) && z < -0.1 && Math.hypot(x, y) < 2.1 ? [`${o.name} ${l}`] : [];
+          return /^G0?[123]/.test(l) && z < -0.1 && Math.hypot(x, y) < 2.1 ? [`${o.name} ${l}`] : [];
         });
       });
     expect(inside).toEqual([]);
