@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T01:00:00Z",
+  "last_updated": "2026-11-27T01:30:00Z",
   "next_id": 32,
   "assumptions": [
     {
@@ -773,6 +773,26 @@
       "history": [
         {
           "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q020",
+      "title": "Fewest clampings even when much slower",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Library runs s48 and s49",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:30:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:30:00Z",
           "action": "created",
           "from_tier": null,
           "to_tier": "OPEN",

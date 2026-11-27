@@ -310,6 +310,13 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - **Question:** The Turkish screens call the parallels kale in some places and paralel in others (H4-10, H5-7). Which word does the shop use?
 - **Source:** Night bug hunt
 
+
+### Q020: Fewest clampings even when much slower
+
+- **Type:** uncertain
+- **Question:** Among the plans that pass the checks, CAM AI takes the one with the fewest clampings, then the shortest. On P51d8d6c6, since the hole rules' R 0.5, CAM AI takes a 3-clamping plan: the whole part (100 %), 94.5 min, much of it with Ø2-Ø3 mills, where the deployed version took 4 clampings, 43.9 min and left a hole short (99.58 %). The engineers: 2 clampings, 78.2 min. Keep fewest first, or weigh the time (e.g. a clamping saved is worth N minutes)? Both plans check clean and either version makes either plan when given its sides; R 0.5 changes which side CAM AI picks by itself for the third clamping (with R 2 the old choice returns), by a path not yet found.
+- **Source:** Library runs s48 and s49, bisected to 1356245
+
 ---
 
 ## History
@@ -342,4 +349,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
   drill first; 18 a drill alone. Q009: 5 mm parallels (A031); the 85 % is how much of each parallel's length must touch
   the step (holes and rounded ends leave gaps). Q010 and Q013: yes (A028 stated). Q011: read rightly. Q012: no more
   locks for now. A029 and A030 new; A020's rhythm kept.
-- 2026-11-27: open questions Q014-Q019 from the hole rules and the night's bug hunt.
+- 2026-11-27: open questions Q014-Q020 from the hole rules, the library run and the night's bug hunt.
