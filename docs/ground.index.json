@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T17:15:00Z",
+  "last_updated": "2026-11-27T17:40:00Z",
   "next_id": 36,
   "assumptions": [
     {
@@ -939,6 +939,46 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A038",
+      "title": "A tool's work in another clamping",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The operator can move a tool's work from one clamping to another (OP10 to OP20 or any other); CAM AI makes it there in that clamping's own order. Done for drills first: the drill's holes (and their spot drilling) go to the clamping asked when it reaches the same holes from its side, else a note says so and they stay. Milling tools wait for the shape recognition (each tool's shapes known), so that a moved mill takes exactly its shapes.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Tool list, planner (CamInput.moves)",
+      "created": "2026-11-27T17:40:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T17:40:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner asked"
+        }
+      ]
+    },
+    {
+      "id": "A039",
+      "title": "A quarter turn about Z",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Each clamping can be turned +90 or -90 about the machine's Z in its settings (the same side up, turned in the vise), as about X and Y.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Clamping settings",
+      "created": "2026-11-27T17:40:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T17:40:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner asked"
         }
       ]
     }

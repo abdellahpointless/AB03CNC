@@ -5,7 +5,7 @@ import { camProgram, drilling, HOLE_DEFAULTS, holeCycle, microCircle, nearestOrd
 import { shopStyle } from '../src/lib/cam/style';
 import { catalog, cutData } from '../src/lib/cam/tools';
 import { haasTools } from '../src/lib/defaultTools';
-import { plateWithHoles } from './heightPart';
+import { plateWithBlindHole, plateWithHoles } from './heightPart';
 
 // The owner's hole rules for the VF-4 (2026-11-27): the cycle by depth and material, R just over where the material
 // starts, holes in nearest-neighbour order, each tool started safe, T and H within 1-200, a hole a little wider than its
@@ -177,5 +177,35 @@ describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
     expect(ops.filter((o) => o.kind === 'drill').flatMap((o) => o.sizes ?? []).map((x) => x.d)).not.toContain(6.5);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+  }, 900_000);
+});
+
+// You (2026-11-27): a tool's work moved to another clamping, CAM AI ordering it there. For drills: the holes the clamping
+// asked reaches from its side.
+describe('a drill moved to another clamping (you, 2026-11-27)', () => {
+  const base: CamInput = { tris: plateWithHoles(40, 30, 12, [{ c: [10, 15], d: 3.3 }, { c: [30, 15], d: 3.3 }]), material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, noNest: true };
+
+  it('drills its through holes in the clamping asked, in that clamping\'s order (spot drill, drill), and no longer in its own', () => {
+    const made = camProgram(base);
+    const drill = made.setups[0].ops.find((o) => o.kind === 'drill')!;
+    expect(drill).toBeDefined();
+    const r = camProgram({ ...base, moves: [{ from: made.setups[0].side, code: drill.tool.code, to: made.setups[1].side }] });
+    expect(r.setups[0].ops.some((o) => o.kind === 'drill' || o.kind === 'centre')).toBe(false);
+    const kinds = r.setups[1].ops.map((o) => o.kind);
+    expect(kinds).toContain('drill');
+    expect(kinds.indexOf('centre')).toBeLessThan(kinds.indexOf('drill'));
+    expect(r.setups[1].ops.find((o) => o.kind === 'drill')!.lines.filter((l) => /^G9[89] G8[13] /.test(l))).toHaveLength(2);
+    expect(r.notes.some((n) => n.key === 'moveRefused')).toBe(false);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 900_000);
+
+  it('keeps a blind hole the clamping asked cannot reach where it was, and says so', () => {
+    const blind: CamInput = { ...base, tris: plateWithBlindHole(40, 30, 12, { c: [20, 15], d: 3.3, depth: 6, point: false }) };
+    const made = camProgram(blind);
+    const drill = made.setups[0].ops.find((o) => o.kind === 'drill')!;
+    const r = camProgram({ ...blind, moves: [{ from: made.setups[0].side, code: drill.tool.code, to: made.setups[1].side }] });
+    expect(r.setups[0].ops.some((o) => o.kind === 'drill')).toBe(true);
+    expect(r.notes).toContainEqual(expect.objectContaining({ key: 'moveRefused', setup: 1, side: made.setups[1].side, d: drill.tool.diameter }));
   }, 900_000);
 });

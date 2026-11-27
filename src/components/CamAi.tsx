@@ -205,6 +205,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // Tools changed by hand, by clamping side and the tool they replace (you: a tool change always applies, also after Make
   // again: where the plan made again still uses the old tool there, the new one takes its paths).
   const [toolSwaps, setToolSwaps] = useState<Record<string, { d: number; l: number; code?: string }>>({});
+  // A drill's holes made in another clamping (you): by the side up it was made in and its code, the side up asked.
+  const [moves, setMoves] = useState<{ from: string; code: string; to: string }[]>([]);
   // The operator's order of each clamping's tools (you: dragged in the list), by side: sent with every change by hand,
   // kept after Make again for the tools still there (program.ts reorderOps).
   const [opOrder, setOpOrder] = useState<Record<string, string[]>>({});
@@ -386,6 +388,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setOpEdits({});
     setGone({});
     setToolSwaps({});
+    setMoves([]);
     setOpOrder({});
     setTurned({});
     orderRef.current = {};
@@ -531,6 +534,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       frames: Object.keys(turned).length ? Array.from({ length: Math.max(...Object.keys(turned).map(Number)) + 1 }, (_, k) => turned[k]?.R ?? null) : undefined,
       sideStock: sideStock || undefined,
       jawGap: gapMm,
+      moves: moves.length ? moves : undefined,
       exclude: with_.exclude,
       prefer: with_.prefer,
       second: turned[1] ? upOf(turned[1].R) : second && second.side !== opposite(chosen.side) ? second.side : undefined,
@@ -739,6 +743,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       setLater({});
       setLaterX({});
       setTurned({});
+      setMoves([]);
     }
     if (prep) setTotals(prep.layouts[i].size.map((v, k) => String(Math.round((v + AUTO_EXCESS[k]) * 10) / 10)));
   };
@@ -1504,6 +1509,32 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       addChange({ label: t('camAi.bar.swapped', { tool: ops[0].tool }), undo: () => setToolSwaps(swapsWas), swap: { exclude: made, prefer: standIn } });
                     }}
                   />
+                  {ops.some((o) => o.purpose === 'drill') && result.setups.length > 1 && (() => {
+                    const from = s.side;
+                    const code = madeCode(ops[0].key);
+                    const now = moves.find((m) => m.from === from && m.code === code)?.to ?? '';
+                    return (
+                      <label className="block px-4 pb-3 space-y-1">
+                        <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.moveTo.label')}</span>
+                        <select
+                          className="aurora-input w-full h-9 py-0 text-[13px]"
+                          value={now}
+                          disabled={busy}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const was = moves;
+                            setMoves([...moves.filter((m) => !(m.from === from && m.code === code)), ...(v ? [{ from, code, to: v }] : [])]);
+                            const op = (result.setups.findIndex((x) => x.side === v) + 1) * 10;
+                            addChange({ label: v ? t('camAi.changes.moved', { tool: ops[0].tool, op }) : t('camAi.changes.movedBack', { tool: ops[0].tool }), undo: () => setMoves(was) });
+                          }}
+                        >
+                          <option value="">{t('camAi.moveTo.here', { op: (sel.i + 1) * 10 })}</option>
+                          {result.setups.map((x, j) => (j === sel.i ? null : <option key={x.side} value={x.side}>{t('camAi.moveTo.op', { op: (j + 1) * 10, side: x.side })}</option>))}
+                        </select>
+                        <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.moveTo.hint')}</span>
+                      </label>
+                    );
+                  })()}
                   <p className="px-4 pb-4 text-xs text-[var(--text-secondary)]">{t('camAi.everywhere')}</p>
                 </>
               );

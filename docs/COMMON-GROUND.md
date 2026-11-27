@@ -2,7 +2,7 @@
 
 **Project:** CNC Process Pro
 **Created:** 2026-11-25T17:00:00Z
-**Last Updated:** 2026-11-27T17:15:00Z
+**Last Updated:** 2026-11-27T17:40:00Z
 
 ---
 
@@ -294,6 +294,24 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-27
 - **Context:** Hole drilling
 
+### A038: A tool's work in another clamping
+
+- **Type:** stated
+- **Assumption:** The operator can move a tool's work from one clamping to another (OP10 to OP20 or any other); CAM AI makes it there in that clamping's own order. Done for drills first: the drill's holes (and their spot drilling) go to the clamping asked when it reaches the same holes from its side, else a note says so and they stay. Milling tools wait for the shape recognition (each tool's shapes known), so that a moved mill takes exactly its shapes.
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Tool list, planner (CamInput.moves)
+
+---
+
+### A039: A quarter turn about Z
+
+- **Type:** stated
+- **Assumption:** Each clamping can be turned +90 or -90 about the machine's Z in its settings (the same side up, turned in the vise), as about X and Y.
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Clamping settings
+
 ---
 
 ## WORKING
@@ -411,3 +429,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A036 and A037 from the owner (hole drills and pecks, after an engineer's program for two Ø1 holes); drilling stays before the milling; Q021 from A036. The plastics/aluminium split also answers Q015 in part (the plastics want full retracts).
 - 2026-11-27: Q022 answered by the owner: "allow 0.1 like the engineers" (A036: down to 0.1 mm smaller).
 - 2026-11-27: Q021 answered and Q022 changed by the owner: bigger drills up to 0.12 mm as the engineers (for now), smaller ones up to 0.05 mm (A036).
+- 2026-11-27: A038 and A039 from the owner (moving a tool's work to another clamping; a quarter turn about Z). The simulation now draws the POM nest as a block on its parallels (it read the nest's walls as spacer plates and ran the parallels up to the part).

@@ -54,6 +54,9 @@ export interface CamInput {
   sideStock?: number;
   /** Clamping 1's gap from the outline cut (0.5 mm under the part) down to the jaw tops (CAM AI settings, 1 to 1.5 mm; 1 when not given). */
   jawGap?: number;
+  /** A drill's holes made in another clamping (you): the clamping's side up it was made in, the drill's code, the side up of
+   * the clamping to drill them in. Left where that clamping reaches the hole (the same hole from its side), else refused (moveRefused). */
+  moves?: { from: string; code: string; to: string }[];
   /** Template tool codes the operator does not have, and the ones picked in their place. */
   exclude?: string[];
   prefer?: string[];
@@ -1547,6 +1550,13 @@ export function finerRapids(code: string, brand?: string, speeds?: MachineSpeeds
  * operations' lines moved or taken deeper (opEdit.ts), the vise check of their clampings done again with the new cuts,
  * the program posted and checked again whole (later cuts and holders depend on what an edited one removed).
  */
+/** A hole the same from any side: its axis, its middle on the model (0.05 mm) and its radius (0.025 mm). R: the side's turn. */
+function holeKey(R: Mat3, h: { c: P2; r: number }): string {
+  const c = apply(transpose(R), [h.c[0], h.c[1], 0]);
+  const axis = apply(transpose(R), [0, 0, 1]).findIndex((v) => v !== 0);
+  return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
+}
+
 /** The operator's turn of clamping k (CamInput.frames), when it is one of the 24 turns of the part. */
 function frameAt(input: CamInput, k: number): Mat3 | undefined {
   const f = k >= 0 ? input.frames?.[k] : undefined;
@@ -2017,6 +2027,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
   // Holes drilled so far, with how much of their far end is still narrow (0: done).
   const drilled = new Map<string, number>();
+  // Holes a clamping left to the one asked (CamInput.moves): that one drills them whatever else would leave them.
+  const movedIn = new Set<string>();
   const setups: CamSetup[] = [];
   let prevR: Mat3 | null = null;
   // The shop's template tools for this material, plus the machine's special ones (machine's first).
@@ -2353,10 +2365,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
 
     // 2. Holes from this side: drilled when the inventory has the drill, else milled with the rest.
     const holes = f.holes.map((h) => ({ ...h, top: h.top - top, bottom: h.bottom - top }));
-    const keyOf = (h: Hole) => {
-      const c = apply(transpose(R), [h.c[0], h.c[1], 0]);
-      const axis = apply(transpose(R), [0, 0, 1]).findIndex((v) => v !== 0);
-      return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
+    const keyOf = (h: Hole) => holeKey(R, h);
+    // You: a drill's holes made in another clamping (moves), when that clamping reaches the same hole from its side.
+    const moveOf = (code: string, k: string) => {
+      const m = input.moves?.find((x) => x.from === side.name && x.code === code && x.to !== side.name);
+      if (!m) return null;
+      const ti = SIDES.findIndex((x) => x.name === m.to);
+      return { to: m.to, ok: ti >= 0 && chosen.includes(ti) && feats[ti].holes.some((g) => holeKey(feats[ti].R, g) === k) };
     };
     const drills = usable(tools, ['SB']);
     // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: never drilled small
@@ -2402,7 +2417,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     for (const hole of holes) {
       let h = hole;
       const k = keyOf(h);
-      if (drilled.get(k) === undefined && counterbored(h)) {
+      if (drilled.get(k) === undefined && counterbored(h) && !movedIn.has(k)) {
         keepHoles.push(h);
         otherSide.add(h);
         continue;
@@ -2464,6 +2479,14 @@ function planFor(input: CamInput, vertical: number): CamResult {
         const note = { key: 'temporaryTool' as const, setup: setups.length + 1, d: Math.round(h.r * 200) / 100, used: stand.diameter };
         if (!notes.some((n) => n.key === note.key && n.setup === note.setup && n.d === note.d)) notes.push(note);
       }
+      const move = d ? moveOf(d.code, k) : null;
+      if (move?.ok) {
+        // Kept here (solid, no mill into it): the clamping asked drills it.
+        movedIn.add(k);
+        keepHoles.push(h);
+        continue;
+      }
+      if (move && !notes.some((n) => n.key === 'moveRefused' && n.side === move.to && n.d === d!.diameter)) notes.push({ key: 'moveRefused', setup: setups.length + 1, side: move.to, d: d!.diameter });
       if (d) {
         // Through the part and past the stock's bottom: between the parallels it comes out at full size; over
         // one its point goes 0.95 mm in (the shop allows 1: CALE_TOUCH); in the nest it stops over the floor.
