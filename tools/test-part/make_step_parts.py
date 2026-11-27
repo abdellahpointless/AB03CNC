@@ -13,7 +13,8 @@ foot-under-body     30 x 24 x 18. Body 30 x 24 x 10 on a foot 16 x 12 x 8 (centr
                     axis through the body's Y+ face (centred in X). Foot down, its walls are under the body (the
                     owner's 5-clamping / nest case); foot up, the next clamping can only grip the foot.
 side-tab            52 x 30 x 8. Plate 40 x 30 x 8; a tab 2.5 thick (Z 2.75..5.25, mid-height), 12 out of the X+ face,
-                    10 wide (Y 10..20). Neither face clamping reaches all of it; a jaw grip under it holds a 2.75 band.
+                    10 wide (Y 10..20). Face up or down, its top and underside are cut in two clampings; on end
+                    (X+ or X- up) it points up out of the vise or down into it.
 t-stem              36 x 36 x 31. Flange 36 x 36 x 6; a square stem 8 x 8 standing 25 tall in its middle; 4 x Ø4.5
                     through the flange 5 mm in from the corners. Flange down, the stem is all there is to grip.
 angled-and-fillets  40 x 30 x 20. Block with R3 vertical edges; its top slopes down 30° from horizontal over the last
