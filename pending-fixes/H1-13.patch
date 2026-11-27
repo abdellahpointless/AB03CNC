@@ -1,0 +1,140 @@
+From b0f408f29770649c56d5d1ee20bc5f3071cdd9de Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:49:53 +0000
+Subject: [PATCH] CAM AI: a later clamping's hold the program refused is asked
+ no more, so its Parallels list shows the hold used, not the refused one with
+ a made-up height; a step not made yet is listed without a guessed height; the
+ step note in plainer words (finding H1-13)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 12 ++++++++++--
+ src/i18n/locales/en/cam.ts |  3 ++-
+ src/i18n/locales/tr/cam.ts |  3 ++-
+ src/lib/cam/clamp.ts       |  5 +++++
+ tests/camClamp.test.ts     | 15 ++++++++++++++-
+ 5 files changed, 33 insertions(+), 5 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..4701626 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -29,7 +29,7 @@ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
+ import CamOpened from './CamOpened';
+ import CamToolDb, { loadToolDb, type Stored as StoredToolDb } from './CamToolDb';
+ import { FRENCH as SHAPE_FR, type Shape } from '../lib/cam/shapes';
+-import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
++import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, refusedHold, stepCale, TOP_MIN, underStock, whyNot } from '../lib/cam/clamp';
+ import type { CutEdit } from '../lib/cam/tools';
+ import type { OpEdit } from '../lib/cam/opEdit';
+ import { useAuth } from '../contexts/AuthContext';
+@@ -534,6 +534,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+           return {};
+         });
+       setAccepted(false);
++      // A later clamping's hold the program refused (its note says so) is asked no more: its panel shows the hold used,
++      // the 3D view no longer previews it, and the next make does not ask it again.
++      setLater((l) => {
++        const kept = Object.fromEntries(Object.entries(l).filter(([k, h]) => !m.result.notes.some((n) => n.setup === Number(k) + 1 && refusedHold(n, h))));
++        return Object.keys(kept).length === Object.keys(l).length ? l : kept;
++      });
+       // A part record for the learning records (Admin > Data). Best effort; only programs that
+       // passed every check (a failed run would teach the wrong thing).
+       if (m.lesson && passed(m.result)) void api('/toolpath/lessons', { body: { kind: 'part', fileName, start: m.result.match, match: m.result.match, data: m.lesson }, timeoutMs: 120_000 }).catch(() => {});
+@@ -2272,7 +2278,9 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
+     spacers.quarter !== madeTurn.quarter;
+   const all = steps.some((h) => sameHold(h, now)) ? steps : [now, ...steps];
+   const nowKey = holdKey(all.find((h) => sameHold(h, now))!);
+-  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(made.steps.find((x) => x.depth === h.step)?.cale ?? made.cale, 0) }) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
++  // A step the program made does not know (typed, not made yet): its parallels are not known either, never guessed.
++  const stepParallels = (h: { step: number }) => made.steps.find((x) => x.depth === h.step)?.cale ?? (made.step !== undefined && Math.abs(made.step - h.step) < 0.05 ? made.cale : undefined);
++  const said = (h: Hold) => ('jaw' in h ? t('camAi.hold.jaw', { depth: fmt(h.jaw, 1) }) : 'step' in h ? (stepParallels(h) === undefined ? t('camAi.hold.stepOnly', { depth: fmt(h.step, 1) }) : t('camAi.hold.step', { depth: fmt(h.step, 1), cale: fmt(stepParallels(h)!, 0) })) : h.cale === 0 ? t('camAi.hold.table') : t('camAi.hold.mm', { mm: fmt(h.cale, 0) }));
+   const pickHold = (key: string) => {
+     const h = all.find((x) => holdKey(x) === key)!;
+     onAsk(sameHold(h, mine) && made.own === undefined ? null : h, spacers);
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..94f0600 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -501,6 +501,7 @@ const cam = {
+       parallels: 'Parallels',
+       table: 'None: on the table',
+       mm: '{{mm}} mm',
++      stepOnly: 'By the step {{depth}} mm under Z0 (its parallels once made again)',
+       jaw: 'On the jaw tops by a face {{depth}} mm down',
+       stopX: 'Spacer at the stop (X-)',
+       spacerY: 'Spacer in the moving jaw (Y-)',
+@@ -654,7 +655,7 @@ const cam = {
+       floorHit: 'Clamping {{setup}}: a cut comes within 0.5 mm of the table the part or its parallels stand on, which the simulation does not have: locked',
+       orderLocked: 'Clamping {{setup}}: T{{used}} now runs before T{{d}}, which it was made to follow (its cuts are for what T{{d}} leaves): no check covers that order, so it stays locked. Move it back after T{{d}}',
+       jawRefused: 'Clamping {{setup}}: the part has no face {{cale}} mm under its top to rest on the jaw tops by (wider than what the jaws grip below it): CAM AI held it its own way',
+-      stepRefused: 'Clamping {{setup}}: the part has no step {{cale}} mm under Z0 the parallels can stand under beside its narrower body (with that body 5 mm over the vise floor): CAM AI held it its own way',
++      stepRefused: 'Clamping {{setup}}: the part has no step {{cale}} mm under Z0 for the parallels to stand under (a step beside a narrower body that hangs 5 mm over the vise floor): CAM AI held it another way, as its clamping now says',
+       stepHold: 'Clamping {{setup}}: on the step {{cale}} mm under Z0 the jaws would not hold the part at full feed: CAM AI held it on its bottom',
+     },
+     view: 'Open in the toolpath viewer',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..85765dc 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -504,6 +504,7 @@ const cam: Translation<typeof en> = {
+       parallels: 'Paraleller',
+       table: 'Yok: tablada',
+       mm: '{{mm}} mm',
++      stepOnly: 'Z0’ın {{depth}} mm altındaki basamaktan (paralelleri yeniden yapılınca)',
+       jaw: 'Çene üstlerinde, {{depth}} mm aşağıdaki bir yüzeyle',
+       stopX: 'Dayamada ara parça (X-)',
+       spacerY: 'Hareketli çenede ara parça (Y-)',
+@@ -657,7 +658,7 @@ const cam: Translation<typeof en> = {
+       floorHit: '{{setup}}. bağlama: bir kesim, parçanın veya paralellerinin durduğu tablaya 0,5 mm’den fazla yaklaşıyor (simülasyonda tabla yok): kilitli',
+       orderLocked: '{{setup}}. bağlama: T{{used}} artık T{{d}} takımından önce çalışıyor, oysa onun ardından gelmek üzere yapıldı (kesimleri T{{d}} takımının bıraktığına göre): bu sırayı hiçbir kontrol doğrulamıyor, kilitli kalır. T{{d}} takımının arkasına geri taşıyın',
+       jawRefused: '{{setup}}. bağlama: parçanın üstünden {{cale}} mm aşağıda çene üstlerine oturacak bir yüzü yok (çenelerin altta tuttuğundan geniş): CAM AI kendi yoluyla tuttu',
+-      stepRefused: '{{setup}}. bağlama: parçanın Z0’ın {{cale}} mm altında, dar gövdesinin yanında paralellerin altına girebileceği bir basamağı yok (o gövde mengene tabanından 5 mm yukarıda): CAM AI kendi yoluyla tuttu',
++      stepRefused: '{{setup}}. bağlama: parçanın Z0’ın {{cale}} mm altında, paralellerin altına girebileceği bir basamağı yok (mengene tabanından 5 mm yukarıda duran dar bir gövdenin yanında bir basamak): CAM AI onu başka bir şekilde tuttu, bağlaması şimdi bunu söylüyor',
+       stepHold: '{{setup}}. bağlama: Z0’ın {{cale}} mm altındaki basamakta çeneler parçayı tam ilerlemede tutamazdı: CAM AI onu tabanından tuttu',
+     },
+     view: 'Takım yolu görüntüleyicisinde aç',
+diff --git a/src/lib/cam/clamp.ts b/src/lib/cam/clamp.ts
+index 619ac79..7a92601 100644
+--- a/src/lib/cam/clamp.ts
++++ b/src/lib/cam/clamp.ts
+@@ -3,6 +3,11 @@
+  * the parallels the jaws can hold it on, and the ones the planner picks. One source, so the page shows what is planned.
+  */
+ import { CALE_HEIGHTS } from '../cales';
++import type { CamNote } from './tools';
++
++/** A later clamping's hold asked (parallels, a jaw-top face, a step) that the program made refused: its note, for that value. */
++export const refusedHold = (n: CamNote, h: { cale: number } | { jaw: number } | { step: number }) =>
++  'step' in h ? (n.key === 'stepRefused' || n.key === 'stepHold') && Math.abs((n.cale ?? NaN) - h.step) < 0.05 : 'jaw' in h ? n.key === 'jawRefused' && n.cale === h.jaw : n.key === 'clampRefused' && n.cale === h.cale;
+ 
+ /** The vise's jaws over its bed (mm): the grip is JAW - parallels. */
+ export const JAW = 45;
+diff --git a/tests/camClamp.test.ts b/tests/camClamp.test.ts
+index e34034e..c972492 100644
+--- a/tests/camClamp.test.ts
++++ b/tests/camClamp.test.ts
+@@ -1,5 +1,18 @@
+ import { describe, expect, it } from 'vitest';
+-import { allowedCales, blankTop, jawMove, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
++import { allowedCales, blankTop, jawMove, refusedHold, stepCale, underStock, whyNot } from '../src/lib/cam/clamp';
++
++describe('a later clamping\'s hold the program made refused (its note says so)', () => {
++  it('matches the note of its kind for the value asked, a step within 0.05 mm', () => {
++    expect(refusedHold({ key: 'stepRefused', setup: 2, cale: 7 }, { step: 7 })).toBe(true);
++    expect(refusedHold({ key: 'stepHold', setup: 2, cale: 4.5 }, { step: 4.52 })).toBe(true);
++    expect(refusedHold({ key: 'jawRefused', setup: 2, cale: 6 }, { jaw: 6 })).toBe(true);
++    expect(refusedHold({ key: 'clampRefused', setup: 2, cale: 30 }, { cale: 30 })).toBe(true);
++    // Another value asked since (not made yet), or a note of another kind: not refused.
++    expect(refusedHold({ key: 'stepRefused', setup: 2, cale: 7 }, { step: 6 })).toBe(false);
++    expect(refusedHold({ key: 'clampRefused', setup: 2, cale: 30 }, { step: 30 })).toBe(false);
++    expect(refusedHold({ key: 'sideEmpty', setup: 2 }, { cale: 30 })).toBe(false);
++  });
++});
+ 
+ describe('the clamping editor\'s moves (you, Beta 2)', () => {
+   const cales = [42, 41, 40, 38, 36];
+-- 
+2.43.0
+

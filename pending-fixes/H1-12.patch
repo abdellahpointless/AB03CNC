@@ -1,0 +1,74 @@
+From 8af90109f46792777303748088b60eb8c51390d3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:56:57 +0000
+Subject: [PATCH] CAM AI: a step thickness typed out of range says what is
+ accepted under the field instead of doing nothing (finding H1-12)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 8 ++++++--
+ src/i18n/locales/en/cam.ts | 1 +
+ src/i18n/locales/tr/cam.ts | 1 +
+ 3 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..afbf423 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -2259,6 +2259,7 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
+   const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : made.step !== undefined ? { step: made.step } : { cale: made.cale };
+   // The thickness where the parallels touch, typed (you: as the engineers write it).
+   const [thick, setThick] = useState(asked && 'step' in asked ? String(asked.step) : '');
++  const [thickBad, setThickBad] = useState(false);
+   const now = asked ?? mine;
+   // A choice the program made does not have yet (made again, it shows as made; a side with nothing to cut is said apart).
+   const spacerOf = (at: string) => Number(made.notes.join(' ').match(new RegExp(`(\\d+) MM ZWISCHENLAGE IN ${at.replace('+', '\\+')}`))?.[1] ?? 0);
+@@ -2300,15 +2301,18 @@ function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, r
+               e.preventDefault();
+               const v = Number(thick.replace(',', '.'));
+               const near = made.steps.find((x) => Math.abs(x.depth - v) < 0.05);
+-              if (Number.isFinite(v) && v > 0 && v <= 200) onAsk({ step: near ? near.depth : Math.round(v * 100) / 100 }, spacers);
++              const okV = Number.isFinite(v) && v > 0 && v <= 200;
++              setThickBad(!okV);
++              if (okV) onAsk({ step: near ? near.depth : Math.round(v * 100) / 100 }, spacers);
+             }}
+           >
+             <label className="flex-1 min-w-0 text-xs text-[var(--text-secondary)]">
+               {t('camAi.hold.typeStep')}
+-              <input type="text" inputMode="decimal" value={thick} onChange={(e) => setThick(e.target.value)} className="aurora-input mt-1 w-full h-9 px-2 text-[13px] tabular-nums" aria-describedby={`step${n}-hint`} />
++              <input type="text" inputMode="decimal" value={thick} onChange={(e) => { setThick(e.target.value); setThickBad(false); }} className="aurora-input mt-1 w-full h-9 px-2 text-[13px] tabular-nums" aria-invalid={thickBad || undefined} aria-describedby={`step${n}-hint`} />
+             </label>
+             <button type="submit" className="btn-secondary text-xs min-h-9 px-3" disabled={!thick.trim()}>{t('camAi.hold.useStep')}</button>
+           </form>
++          {thickBad && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.hold.stepBad')}</p>}
+           <p id={`step${n}-hint`} className="text-xs text-[var(--text-secondary)]">{t('camAi.hold.stepHint')}</p>
+           <Seg legend={t('camAi.hold.stopX')} value={spacers.stop ?? 0} options={([0, 15, 50] as const).map((v) => ({ v, label: v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.clamp1.stopNone') }))} onChange={(v) => setX({ ...spacers, stop: v || undefined })} />
+           <Seg legend={t('camAi.hold.spacerY')} value={spacers.y ?? 'auto'} options={Y_SPACERS.map((v) => ({ v, label: v === 'auto' ? t('camAi.hold.auto') : v ? t('camAi.clamp1.stopMm', { mm: v }) : t('camAi.hold.none') }))} onChange={(v) => setX({ ...spacers, y: v === 'auto' ? undefined : v })} />
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..3e7b636 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -489,6 +489,7 @@ const cam = {
+       step: 'By the step {{depth}} mm under Z0, on {{cale}} mm parallels',
+       typeStep: 'Or type the thickness where the parallels touch the part (mm under Z0)',
+       useStep: 'Rest it there',
++      stepBad: 'Type a thickness over 0 and at most 200 mm (under Z0).',
+       stepHint: 'As the engineers write it ("35 MM UNTERLAGE IN EP 8 MM"): the part sits on the parallels by its face that deep, its narrower body hanging between them.',
+       flip: 'Turned over from the clamping before',
+       about: 'About {{axis}}',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..f4e9516 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -492,6 +492,7 @@ const cam: Translation<typeof en> = {
+       step: 'Z0’ın {{depth}} mm altındaki basamaktan, {{cale}} mm paraleller üstünde',
+       typeStep: 'Veya paralellerin parçaya değdiği kalınlığı yazın (Z0’ın altında mm)',
+       useStep: 'Oraya oturt',
++      stepBad: '0’dan büyük, en fazla 200 mm bir kalınlık girin (Z0’ın altında).',
+       stepHint: 'Mühendislerin yazdığı gibi ("35 MM UNTERLAGE IN EP 8 MM"): parça o derinlikteki yüzüyle paralellere oturur, dar gövdesi aralarında sarkar.',
+       flip: 'Önceki bağlamadan çevrilişi',
+       about: '{{axis}} ekseninde',
+-- 
+2.43.0
+

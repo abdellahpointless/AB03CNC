@@ -1,0 +1,29 @@
+From 11685e03ce7960283df88cdcc73cef2fb1a13ed8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:54:33 +0000
+Subject: [PATCH] CAM AI: typed cutting values list one change a tool, never
+ the same line twice, so one Undo undoes what one line says (finding H1-10)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..883c39f 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1285,7 +1285,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                     onEdit={(v) => {
+                       const code = sel.code;
+                       setDraft((d) => ({ ...d, [code]: { ...d[code], ...v } }));
+-                      if (!shownChanges.some((c) => c.cuts === code))
++                      // One line a tool: its entry stays listed (hidden while the values are as made) however often the values pass back.
++                      if (!changes.some((c) => c.cuts === code))
+                         addChange({
+                           label: t('camAi.changes.cuts', { tool: ops[0].tool }),
+                           cuts: code,
+-- 
+2.43.0
+

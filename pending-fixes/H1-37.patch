@@ -1,0 +1,28 @@
+From d2cfcf82b43746cb616b9fae4eb383f01a9cdf6f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:54:33 +0000
+Subject: [PATCH] CAM AI: no "+-6 X" stock summary while the blank is smaller
+ than the part (its error says why) (finding H1-37)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 72c0bf8..9172581 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1420,7 +1420,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                     ))}
+                   </dl>
+                 )}
+-                {excess && !margins && <p className="text-[var(--text-secondary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
++                {excess && excessOk && !margins && <p className="text-[var(--text-secondary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                 {whiteFields()}
+                 {finishFields()}
+               </>
+-- 
+2.43.0
+

@@ -1,0 +1,264 @@
+From e3e35b87f54f048ce7dd35252b85e28de3771316 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:37:20 +0000
+Subject: [PATCH] CAM AI: a move or depth typed out of range is refused in the
+ editor with a message; an edit the worker refuses keeps the program checked
+ and is dropped, never carried into the next make (finding H1-1)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx       | 33 +++++++++++++++++++++++++++++++++
+ src/components/CamAiResult.tsx |  7 +++++--
+ src/i18n/locales/en/cam.ts     |  2 ++
+ src/i18n/locales/tr/cam.ts     |  2 ++
+ src/lib/cam/opEdit.ts          |  8 ++++++++
+ src/lib/cam/program.ts         |  7 ++-----
+ tests/opEdit.test.ts           | 13 ++++++++++++-
+ 7 files changed, 64 insertions(+), 8 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..cb523a3 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -150,6 +150,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const [checking, setChecking] = useState(false);
+   const [accepted, setAccepted] = useState(false);
+   const [editsDropped, setEditsDropped] = useState(false);
++  // A change by hand the worker refused: the program shown stays, without it (never thrown away, nor carried on).
++  const [editRefused, setEditRefused] = useState(false);
++  // The edits the program shown was checked with, and those sent to be checked since (oldest first, each with the last
++  // change listed when it was sent): what a refused one goes back to.
++  const checkedEdits = useRef<{ edits: Record<string, OpEdit>; order: Record<string, string[]> }>({ edits: {}, order: {} });
++  const sentEdits = useRef<{ edits: Record<string, OpEdit>; order: Record<string, string[]>; id: number }[]>([]);
+   // The operation an edit was applied to, to keep it picked when the edited program comes back.
+   const following = useRef<string | null>(null);
+   // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
+@@ -341,6 +347,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     orderRef.current = {};
+     editsRef.current = {};
+     setEditsDropped(false);
++    setEditRefused(false);
+     carry.current = null;
+     plain.current = null;
+     setPrep(null);
+@@ -415,6 +422,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     const swapsNow = Object.fromEntries(Object.entries(swapsAll).filter(([, x]) => !x.code || shelf.some((c) => c.code === x.code)));
+     const swapsLost = Object.keys(swapsNow).length < Object.keys(swapsAll).length;
+     const w = newWorker();
++    // Edits sent to the worker just replaced are never answered: none counts as refused.
++    sentEdits.current = [];
++    setChecking(false);
+     const speeds = speedsFor(machine.brand);
+     const request: CamRequest = {
+       model,
+@@ -470,6 +480,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       if (m.type === 'live') return setLive((l) => liveStep(l, m.e));
+       // Changes by hand, checked again on the plan the worker kept.
+       if (m.type === 'edited') {
++        const sent = sentEdits.current.shift();
++        if (sent) checkedEdits.current = { edits: sent.edits, order: sent.order };
+         setChecking(false);
+         // The operation just changed stays picked, under its new tool if its tool was changed (its key does not change).
+         const key = following.current;
+@@ -479,6 +491,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+         return setRun({ state: 'done', result: m.result });
+       }
+       if (m.type === 'error') {
++        const refused = sentEdits.current.shift();
++        if (refused) {
++          // A change by hand refused (out of range, a tool gone): back to the edits the program shown was checked with;
++          // that program and the plan the worker keeps stay, and the refused change is neither listed nor made again.
++          const back = checkedEdits.current;
++          setOpEdits(back.edits);
++          editsRef.current = back.edits;
++          setOpOrder(back.order);
++          orderRef.current = back.order;
++          following.current = null;
++          setChanges((l) => l.filter((c) => !c.now || c.id <= refused.id));
++          setChecking(false);
++          setEditRefused(true);
++          return;
++        }
+         w.terminate();
+         worker.current = null;
+         setChecking(false);
+@@ -487,6 +514,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
+       setRun({ state: 'done', result: m.result });
+       plain.current = m.result;
++      checkedEdits.current = { edits: {}, order: {} };
++      sentEdits.current = [];
++      setEditRefused(false);
+       setMadeTurns(turnsAsked.current);
+       // The tools changed by hand, on every operation of the new plan that still uses the old tool in that clamping.
+       const swapped: Record<string, OpEdit> = {};
+@@ -918,9 +948,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     editsRef.current = next;
+     orderRef.current = order;
+     setEditsDropped(false);
++    setEditRefused(false);
+     setAccepted(false);
+     setChecking(true);
+     following.current = key;
++    sentEdits.current.push({ edits: next, order, id: changeId.current });
+     worker.current?.postMessage({ type: 'edit', edits: next, order, toolDb: toolDbRef.current.db });
+   };
+   // The browser's setups: the two picked ones before a program, the program's after.
+@@ -1355,6 +1387,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+               </section>
+             )}
+             {editsDropped && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.opEdit.dropped')}</p>}
++            {editRefused && <p className="text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.refused')}</p>}
+             {prep && chosen && sel.kind === 'stock' && (
+               <>
+                 <button type="button" role="switch" aria-checked={autoStock} onClick={() => choose(() => setAutoStock(!autoStock))} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 1c12720..fa69e6b 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -1,6 +1,6 @@
+ import { useState, type ReactNode } from 'react';
+ import type { CutEdit } from '../lib/cam/tools';
+-import type { OpEdit } from '../lib/cam/opEdit';
++import { editInRange, type OpEdit } from '../lib/cam/opEdit';
+ import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
+ import { useTranslation } from 'react-i18next';
+ import { fmtNumber as fmt } from '../i18n/format';
+@@ -592,6 +592,8 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
+   // `d`, `l`: the operation's tool now (already the one changed by hand, if so: kept unless undone).
+   const newTool = toolOk && (!!was?.tool || tool.d !== d || tool.l !== l);
+   const none = Object.values(nums).every((x) => x === 0) && !newTool;
++  // Refused here as the planner would refuse it (a refused edit never reaches the program checked).
++  const movesOk = editInRange(nums);
+   const field = (k: keyof typeof v) => (
+     <label key={k} className="space-y-0.5 min-w-0">
+       <span className="text-xs text-[var(--text-secondary)]">{t(`camAi.opEdit.${k}`)}</span>
+@@ -602,9 +604,10 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
+     <div className="w-full px-2 pb-2 space-y-1.5">
+       <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
+       <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
++      {!movesOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badMove')}</p>}
+       {!toolOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
+       <div className="flex flex-wrap gap-1.5">
+-        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
++        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk || !movesOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
+         {was && <button type="button" className="btn-secondary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(null)}>{t('camAi.opEdit.undo')}</button>}
+       </div>
+       <p className="text-xs text-[var(--text-secondary)]">{t('camAi.opEdit.hint')}</p>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..edb250b 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -260,6 +260,7 @@ const cam = {
+       dz: 'Move Z',
+       d: 'Tool Ø (mm)',
+       l: 'Length (mm)',
++      badMove: 'Move X, Y and Z by at most 200 mm, and Deeper by at most 50 mm, either way.',
+       badTool: 'A tool needs a Ø of 0 to 200 mm and a length of 0 to 400 mm.',
+       handTool: 'A tool changed by hand is in no machine: send the program to the remapper to choose a machine tool for it.',
+       badNumber: 'T{{t}} is not a number a Haas takes (1 to 200): send the program to the remapper to give it a machine tool.',
+@@ -272,6 +273,7 @@ const cam = {
+       acceptedText: 'Changed by hand, accepted as it is: nothing hits the machine or the vise.',
+       acceptedHold_one: 'In {{count}} clamping the vise holds it off where that clamping\'s zero assumes: check the zero at the machine.',
+       acceptedHold_other: 'In {{count}} clampings the vise holds it off where their zero assumes: check the zeros at the machine.',
++      refused: 'That change by hand was refused: the program shown is still the one checked, without it.',
+       dropped: 'Made again: changes by hand to operations the new program no longer has are gone.',
+     },
+     clamp1: {
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..dff8856 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -263,6 +263,7 @@ const cam: Translation<typeof en> = {
+       dz: 'Z kaydır',
+       d: 'Takım Ø (mm)',
+       l: 'Boy (mm)',
++      badMove: 'X, Y ve Z en çok 200 mm, Daha derin en çok 50 mm değiştirilebilir (iki yönde de).',
+       badTool: 'Takımın Ø’ı 0–200 mm, boyu 0–400 mm olmalı.',
+       handTool: 'Elle değiştirilen takım hiçbir makinede yok: ona bir makine takımı seçmek için programı remapper’a gönderin.',
+       badNumber: 'T{{t}} bir Haas’ın aldığı numara değil (1 ile 200 arası): ona bir makine takımı vermek için programı remapper’a gönderin.',
+@@ -275,6 +276,7 @@ const cam: Translation<typeof en> = {
+       acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: makineye ya da mengeneye hiçbir şey çarpmıyor.',
+       acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı makinede kontrol edin.',
+       acceptedHold_other: '{{count}} bağlamada mengene parçayı sıfırlarının varsaydığı yerden farklı tutuyor: sıfırları makinede kontrol edin.',
++      refused: 'Bu elle değişiklik reddedildi: gösterilen program hâlâ kontrol edilmiş olan, değişiklik olmadan.',
+       dropped: 'Yeniden yapıldı: yeni programda artık olmayan işlemlerdeki elle değişiklikler kalktı.',
+     },
+     clamp1: {
+diff --git a/src/lib/cam/opEdit.ts b/src/lib/cam/opEdit.ts
+index bb2d4b6..8b4a611 100644
+--- a/src/lib/cam/opEdit.ts
++++ b/src/lib/cam/opEdit.ts
+@@ -17,6 +17,14 @@ export interface OpEdit {
+   off?: true;
+ }
+ 
++/** Only sizes a hand would type (moves up to 200 mm, deeper up to 50 mm, either way; a tool up to Ø200 and 400 mm long):
++ * the editor refuses the rest, the planner never takes them (editProgram). */
++export const editInRange = (e: OpEdit) =>
++  [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) &&
++  (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) &&
++  (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400)) &&
++  (e.off === undefined || e.off === true);
++
+ /** Spindle (S) times k and feeds (F) times kf (k < 1: slower, for a bigger Ø at the same surface speed and the same feed a turn). */
+ export function scaleSpeeds(lines: string[], k: number, kf = k): string[] {
+   if (k === 1 && kf === 1) return lines;
+diff --git a/src/lib/cam/program.ts b/src/lib/cam/program.ts
+index 1acab67..41d6abf 100644
+--- a/src/lib/cam/program.ts
++++ b/src/lib/cam/program.ts
+@@ -21,7 +21,7 @@ import { NEST, nestFor, type Nest } from './nest';
+ import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
+ import { PROGRAM_MARK } from '../programMark';
+ import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, GRIP_MIN, JAW, JAW_DEPTH, TOP_MIN, underStock } from './clamp';
+-import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
++import { editInRange, editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
+ 
+ /*
+  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
+@@ -1615,10 +1615,7 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
+     return x;
+   };
+   // Only sizes a hand would type: anything else is refused, never planned.
+-  for (const e of Object.values(edits)) {
+-    const ok = [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) && (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400)) && (e.off === undefined || e.off === true);
+-    if (!ok) throw new Error('An edit by hand out of range.');
+-  }
++  if (!Object.values(edits).every(editInRange)) throw new Error('An edit by hand out of range.');
+   // An edited cut that reaches the vise floor is noted and locks the program (checked, below).
+   const orderNotes: CamNote[] = [];
+   const setups = r.setups.map((s, si) => {
+diff --git a/tests/opEdit.test.ts b/tests/opEdit.test.ts
+index 98545d9..bc2babf 100644
+--- a/tests/opEdit.test.ts
++++ b/tests/opEdit.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { editOpLines, keepAbove, scaleSpeeds } from '../src/lib/cam/opEdit';
++import { editInRange, editOpLines, keepAbove, scaleSpeeds } from '../src/lib/cam/opEdit';
+ 
+ describe('no cut within 0.5 mm of the vise floor (the part on the table, you)', () => {
+   it('raises only the Z words under the floor, on moves and drill cycles, never a tool change, a machine position or a comment', () => {
+@@ -11,6 +11,17 @@ describe('no cut within 0.5 mm of the vise floor (the part on the table, you)',
+   });
+ });
+ 
++describe('the sizes a hand may type (the editor refuses the rest, the planner never takes them)', () => {
++  it('moves up to 200 mm and deeper up to 50 mm either way; more, or not a number, is out of range', () => {
++    expect(editInRange({ dx: 200, dy: -200, dz: 0, deeper: -50 })).toBe(true);
++    expect(editInRange({ deeper: 300 })).toBe(false);
++    expect(editInRange({ dx: 5000 })).toBe(false);
++    expect(editInRange({ dz: Number.NaN })).toBe(false);
++    expect(editInRange({ tool: { d: 8, l: 500 } })).toBe(false);
++    expect(editInRange({ off: true })).toBe(true);
++  });
++});
++
+ describe('an operation moved or taken deeper by hand (you, Beta 2: item 10)', () => {
+   const pocket = ['G00 G90 X10. Y5. S3000 M03', 'G00 Z2.', 'G01 Z-4. F300.', 'G01 X20. Y5. F600.', 'G01 Z-6. F300.', 'G01 X10. Y5.', 'G00 Z2.'];
+   it('shifts every point by X, Y, Z, and nothing else (speeds, feeds, the spindle line’s S and M)', () => {
+-- 
+2.43.0
+

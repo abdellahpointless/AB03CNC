@@ -1,0 +1,103 @@
+From 32adfde8c1d451aa606692fbe694a99ef5d14317 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:02:02 +0000
+Subject: [PATCH] CAM AI: the simulation's camera light sits a little off the
+ view axis and its studio is tilted, so the Top and Front views are no longer
+ washed out by a white glare (finding H2-13)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamSim.tsx     | 2 +-
+ src/components/Toolpath3D.tsx | 7 +++++--
+ src/lib/lights.ts             | 8 ++++++--
+ 3 files changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..2dd2387 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -262,7 +262,7 @@ export default function CamSim({
+     <div ref={shell} className="absolute inset-0 flex flex-col">
+       <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
+         <Suspense fallback={null}>
+-            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} diffPieces={pieces} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
++            <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} diffPieces={pieces} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways offAxisLight showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+         </Suspense>
+ 
+         {/* One floating toolbar. */}
+diff --git a/src/components/Toolpath3D.tsx b/src/components/Toolpath3D.tsx
+index 21a25b8..2214ec6 100644
+--- a/src/components/Toolpath3D.tsx
++++ b/src/components/Toolpath3D.tsx
+@@ -120,6 +120,8 @@ interface Props {
+   onPickTool?: (tool: number) => void;
+   /** Every change of setup turns the part (playing or not, forward or back), not only playing on into the next one. */
+   turnAlways?: boolean;
++  /** The camera's light off the view axis (lights.ts): no white glare on the faces seen square from the top or the front. */
++  offAxisLight?: boolean;
+ }
+ 
+ export type ModelView = 'part' | 'model' | 'both';
+@@ -559,7 +561,7 @@ interface Api {
+ /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
+ const MAX_PIXELS = 1_800_000;
+ 
+-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, diffPieces, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
++export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, diffPieces, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false, offAxisLight = false }: Props) {
+   const modelViewRef = useRef(modelView);
+   modelViewRef.current = modelView;
+   const diffsRef = useRef(diffs);
+@@ -619,7 +621,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
+     const scene = new THREE.Scene();
+     const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
+     // Lit from every side and from the viewer: no face turns black, whichever way it is turned.
+-    const lights = addLights(scene, renderer, camera);
++    const lights = addLights(scene, renderer, camera, offAxisLight);
+     const edges = makeOutline(renderer);
+     let dirty = true;
+     const invalidate = () => {
+@@ -800,6 +802,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
+     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
+     const L = LOOKS[look];
+     const material = partMaterial(look, input.part, program.white, a.scene.environment);
++    material.envMapRotation.copy(a.scene.environmentRotation);
+     const RAWC = new THREE.Color(L.raw);
+     const CUTC = new THREE.Color(L.cut);
+     const chunks = new Map<number, THREE.Mesh>();
+diff --git a/src/lib/lights.ts b/src/lib/lights.ts
+index ed5e0bb..61f2edf 100644
+--- a/src/lib/lights.ts
++++ b/src/lib/lights.ts
+@@ -9,14 +9,18 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
+  *  - a light carried by the camera lights whatever faces the viewer, from any angle,
+  *  - a key light from above-front keeps the shapes readable (tops brighter than walls).
+  * Returns the key light (it casts the shadows) and a clean-up function.
++ * offAxis: the camera's light a little above-left of where it looks, so a face square to the view (seen from the top
++ * or the front) does not mirror it straight back as one white glare; and the studio tilted, so a top face seen from
++ * straight above does not mirror its ceiling light (the part's material takes scene.environmentRotation).
+  */
+-export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, camera: THREE.Camera): { key: THREE.DirectionalLight; dispose: () => void } {
++export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, camera: THREE.Camera, offAxis = false): { key: THREE.DirectionalLight; dispose: () => void } {
+   const pmrem = new THREE.PMREMGenerator(renderer);
+   const room = new RoomEnvironment();
+   const env = pmrem.fromScene(room, 0.04).texture;
+   room.dispose();
+   scene.environment = env;
+   scene.environmentIntensity = 0.3;
++  if (offAxis) scene.environmentRotation.set(-0.6, 0, 0);
+ 
+   scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x2a3346, 0.3));
+   const key = new THREE.DirectionalLight(0xffffff, 0.9);
+@@ -31,7 +35,7 @@ export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, cam
+ 
+   // Head light: points where the camera looks.
+   const head = new THREE.DirectionalLight(0xffffff, 0.6);
+-  head.position.set(0, 0, 0);
++  head.position.set(offAxis ? -0.3 : 0, offAxis ? 0.4 : 0, 0);
+   head.target.position.set(0, 0, -1);
+   camera.add(head, head.target);
+   if (!camera.parent) scene.add(camera);
+-- 
+2.43.0
+

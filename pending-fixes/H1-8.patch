@@ -1,0 +1,59 @@
+From 77c043cf3a36a557a1edc7d0bae9351e8d0e4a2b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:45:02 +0000
+Subject: [PATCH] =?UTF-8?q?CAM=20AI:=20Swap=20tool=20with=20no=20picks=20o?=
+ =?UTF-8?q?f=20its=20own=20starts=20on=20'Choose=20a=20tool=E2=80=A6'=20in?=
+ =?UTF-8?q?stead=20of=20showing=20a=20tool=20that=20is=20not=20chosen=20(f?=
+ =?UTF-8?q?inding=20H1-8)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAiResult.tsx | 2 ++
+ src/i18n/locales/en/cam.ts     | 1 +
+ src/i18n/locales/tr/cam.ts     | 1 +
+ 3 files changed, 4 insertions(+)
+
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 1c12720..6af5c13 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -473,6 +473,8 @@ export function ToolCard({
+             <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.standIn')}</span>
+             {/* Never wider than the panel: a long tool name is cut in the box, whole in the open list. */}
+             <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] truncate cursor-pointer" value={pick} onChange={(e) => setPick(e.target.value)}>
++              {/* No pick of CAM AI's: nothing chosen until the operator chooses (the box never shows a tool not picked). */}
++              {!pick && <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.swapPick.choose')}</option>}
+               {options.length > 0 && (
+                 <optgroup label={t('camAi.swapPick.picks')}>
+                   {options.map((o) => (
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..843e91f 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -463,6 +463,7 @@ const cam = {
+       picks: 'CAM AI’s picks (same kind)',
+       machine: 'In the machine',
+       db: 'Tool database',
++      choose: 'Choose a tool…',
+       typed: 'Another size…',
+       d: 'Ø (mm)',
+       l: 'Length (mm)',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..81abf16 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -466,6 +466,7 @@ const cam: Translation<typeof en> = {
+       picks: 'CAM AI’ın seçtikleri (aynı tür)',
+       machine: 'Makinede',
+       db: 'Takım veritabanı',
++      choose: 'Bir takım seçin…',
+       typed: 'Başka bir ölçü…',
+       d: 'Ø (mm)',
+       l: 'Uzunluk (mm)',
+-- 
+2.43.0
+

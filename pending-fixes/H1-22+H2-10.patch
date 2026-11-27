@@ -1,0 +1,98 @@
+From 8801689f2047aa8c34fd2d3105cddfe62124a8e9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:39:08 +0000
+Subject: [PATCH] CAM AI: one stock size everywhere, the header to 0.1 mm and
+ the Program panel in the vise's axes (findings H1-22, H2-10)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx       | 2 +-
+ src/components/CamAiResult.tsx | 5 ++++-
+ src/lib/cam/layouts.ts         | 2 ++
+ tests/camLayouts.test.ts       | 8 +++++++-
+ 4 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 171a844..2e9590b 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1551,7 +1551,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+         {chosen && excess && (
+           <button type="button" onClick={() => setSel({ kind: 'stock' })} title={t('camAi.ws.stockTitle')} className="no-glass h-7 shrink-0 whitespace-nowrap hidden lg:inline-flex items-center gap-1.5 px-2 rounded-[6px] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] tabular-nums hover:text-[var(--text-primary)]">
+             <Box size={14} stroke={1.6} aria-hidden />
+-            {[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 0)).join('×')}
++            {[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join('×')}
+           </button>
+         )}
+         <Popover.Root>
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 5cbab98..9b366f1 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -11,6 +11,7 @@ import type { CamSummary } from '../lib/cam/cam.worker';
+ import type { Purpose } from '../lib/cam/program';
+ import type { PhysicsIssue } from '../lib/cam/physics';
+ import { GOUGE_MM3 } from '../lib/cam/limits';
++import { toViseAxes } from '../lib/cam/layouts';
+ import ToolSize from './ToolSize';
+ 
+ export type Setup = CamSummary['setups'][number];
+@@ -127,6 +128,7 @@ export function ProgramPanel({
+   const { ok, text } = useVerdict(result, changed);
+   // Tools the program uses that are not in the machine yet, once each.
+   const toLoad = [...new Map(result.setups.flatMap((s) => s.ops).filter((o) => !o.inMachine).map((o) => [o.code, o] as const)).values()];
++  const viseSize = (v: number[]) => (result.setups[0] ? toViseAxes(result.setups[0].R, v) : v);
+   return (
+     <div className="space-y-4">
+       <p className={`flex items-start gap-2 text-xs font-medium ${ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`}>
+@@ -166,7 +168,8 @@ export function ProgramPanel({
+         </div>
+       )}
+       <p className="text-xs text-[var(--text-secondary)]">
+-        {t('camAi.sizes', { size: result.size.map((v) => fmt(v, 1)).join(' × '), raw: result.raw.map((v) => fmt(v, 1)).join(' × ') })}
++        {/* As clamping 1's vise holds them, like the Stock panel and the header (the result's are the model's axes). */}
++        {t('camAi.sizes', { size: viseSize(result.size).map((v) => fmt(v, 1)).join(' × '), raw: viseSize(result.raw).map((v) => fmt(v, 1)).join(' × ') })}
+       </p>
+       {toLoad.length > 0 && (
+         <div className="space-y-1.5">
+diff --git a/src/lib/cam/layouts.ts b/src/lib/cam/layouts.ts
+index 2bf2e10..3432b28 100644
+--- a/src/lib/cam/layouts.ts
++++ b/src/lib/cam/layouts.ts
+@@ -80,6 +80,8 @@ export function layouts(tris: ArrayLike<number>): Layout[] {
+ 
+ /** Excess given in the vise's X, Y, Z, back to the model's axes (for CamInput.raw). */
+ export const toModelAxes = (R: Mat3, v: Vec): Vec => [0, 1, 2].map((k) => v[[0, 1, 2].find((j) => R[j * 3 + k] !== 0)!]) as Vec;
++/** A size along the model's axes as the vise holds it (R: model -> clamping), as the Stock panel and the G-code give it. */
++export const toViseAxes = (R: readonly number[], v: readonly number[]): Vec => [0, 1, 2].map((j) => [0, 1, 2].reduce((a, k) => a + Math.abs(R[j * 3 + k]) * v[k], 0)) as Vec;
+ /** Stock on each side of clamping 1 (lo: its X-, Y-, Z-; hi: X+, Y+, Z+) as the model's sides (R: model -> clamping 1). */
+ export const toModelSides = (R: Mat3, lo: Vec, hi: Vec): { lo: Vec; hi: Vec } => {
+   const j = [0, 1, 2].map((k) => [0, 1, 2].find((i) => R[i * 3 + k] !== 0)!);
+diff --git a/tests/camLayouts.test.ts b/tests/camLayouts.test.ts
+index e2e476b..0352127 100644
+--- a/tests/camLayouts.test.ts
++++ b/tests/camLayouts.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { layouts, toModelAxes, toModelSides } from '../src/lib/cam/layouts';
++import { layouts, toModelAxes, toModelSides, toViseAxes } from '../src/lib/cam/layouts';
+ import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
+ import { allowedCales, blankSides, blankTop, firstPick } from '../src/lib/cam/clamp';
+ import { sizeFits } from '../src/lib/modelCompare';
+@@ -39,6 +39,12 @@ describe('how the part lies in the vise', () => {
+     expect(toModelAxes(turned.R, [1, 2, 3])).toEqual([2, 1, 3]);
+   });
+ 
++  it('gives a size along the model axes as the vise holds it (finding H1-22: the Program panel as the Stock panel)', () => {
++    const turned = layouts(plate).find((l) => l.side === 'Z+' && l.spin)!;
++    expect(toViseAxes(turned.R, [28, 36, 15.5])).toEqual([36, 28, 15.5]);
++    expect(toViseAxes(turned.R, toModelAxes(turned.R, [40, 32, 22.5]))).toEqual([40, 32, 22.5]);
++  });
++
+   it('the planner holds a block by its long faces (the engineers: 21 of 24 clampings)', () => {
+     const block = heightPart(Array.from({ length: 40 }, () => Array.from({ length: 22 }, () => 15)));
+     const r = camProgram({ tris: block, material: 'ALU', tools: [], brand: 'HAAS', raw: [26, 44, 19.5] });
+-- 
+2.43.0
+

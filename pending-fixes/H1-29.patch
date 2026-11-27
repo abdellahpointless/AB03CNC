@@ -1,0 +1,85 @@
+From 6919a4b700f1fe0df987cc9db6f347c3e243ad30 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:49:07 +0000
+Subject: [PATCH] CAM AI: while making, a setup shows its side and count only
+ once known, the left panel says it is making, and the progress card is opaque
+ over the 3D labels (finding H1-29)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 16 +++++++++-------
+ src/i18n/locales/en/cam.ts |  2 ++
+ src/i18n/locales/tr/cam.ts |  2 ++
+ 3 files changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 3c23535..cba975f 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1198,7 +1198,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+             )}
+           </ul>
+           <div className="flex-1" />
+-          <p className="px-4 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]" role="status">{next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}</p>
++          <p className="px-4 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]" role="status">{run.state === 'busy' ? t('camAi.ws.checking') : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}</p>
+         </>
+       ) : (
+         <div className="p-4 space-y-3">
+@@ -1850,7 +1850,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+           )}
+           {pickNote && <p role="alert" className="absolute top-14 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/95 border border-[#f5b942]/50 text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
+           {run.state === 'busy' && (
+-            <div className="absolute left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)]">
++            <div className="absolute z-10 left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md)] bg-[var(--bg-panel)] shadow-lg">
+               <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
+             </div>
+           )}
+@@ -2362,11 +2362,13 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
+   const rows: Row[] = [
+     { key: 'features', text: t('camAi.live.features'), state: has('features') ? 'done' : 'now' },
+     { key: 'stock', text: t('camAi.live.stock', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) }), state: has('stock') ? 'done' : has('features') ? 'now' : 'next' },
+-    ...Array.from({ length: setups }, (_, k): Row => ({
+-      key: `setup${k}`,
+-      text: t('camAi.live.setup', { n: k + 1, op: (k + 1) * 10, side: live.sides[k] ?? '…', count: live.paths.filter((p) => p.setup === k).length }),
+-      state: has('check') || k < live.setup ? 'done' : k === live.setup ? 'now' : 'next',
+-    })),
++    ...Array.from({ length: setups }, (_, k): Row => {
++      const state = has('check') || k < live.setup ? 'done' : k === live.setup ? 'now' : 'next';
++      const [n, op, side, count] = [k + 1, (k + 1) * 10, live.sides[k], live.paths.filter((p) => p.setup === k).length];
++      // Its side and count once known: never "· … · 0 operations" while it waits or starts.
++      const text = !side ? t('camAi.live.setupNext', { n, op }) : count || state === 'done' ? t('camAi.live.setup', { n, op, side, count }) : t('camAi.live.setupSide', { n, op, side });
++      return { key: `setup${k}`, text, state };
++    }),
+     { key: 'check', text: t('camAi.live.check'), state: has('post') ? 'done' : has('check') ? 'now' : 'next' },
+     { key: 'post', text: t('camAi.live.post'), state: done ? 'done' : live.stages.includes('post') ? 'now' : 'next' },
+   ];
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 89b1369..3d22074 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -344,6 +344,8 @@ const cam = {
+       stock: 'Raw block (+{{x}} X, +{{y}} Y, +{{z}} Z mm)',
+       setup_one: 'Setup {{n}} (OP{{op}}) · {{side}} · {{count}} operation',
+       setup_other: 'Setup {{n}} (OP{{op}}) · {{side}} · {{count}} operations',
++      setupSide: 'Setup {{n}} (OP{{op}}) · {{side}}',
++      setupNext: 'Setup {{n}} (OP{{op}})',
+       check: 'Holder collisions and tool stick-out check',
+       post: 'Writing the program (G-code)',
+       elapsed: 'Elapsed {{time}}',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index bb8543d..74d6c3b 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -347,6 +347,8 @@ const cam: Translation<typeof en> = {
+       stock: 'Ham blok (+{{x}} X, +{{y}} Y, +{{z}} Z mm)',
+       setup_one: 'Bağlama {{n}} (OP{{op}}) · {{side}} · {{count}} işlem',
+       setup_other: 'Bağlama {{n}} (OP{{op}}) · {{side}} · {{count}} işlem',
++      setupSide: 'Bağlama {{n}} (OP{{op}}) · {{side}}',
++      setupNext: 'Bağlama {{n}} (OP{{op}})',
+       check: 'Tutucu çarpışması ve takım boyu kontrolü',
+       post: 'Program yazılıyor (G kodu)',
+       elapsed: 'Geçen süre {{time}}',
+-- 
+2.43.0
+

@@ -1,0 +1,121 @@
+From 965bf49f0feaf944210143b068a72b34540def14 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:59:37 +0000
+Subject: [PATCH] CAM AI: a tool that comes in more than once in a clamping
+ says so in its row, with its places among the tool changes (finding H1-40)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx       |  4 ++++
+ src/components/CamAiResult.tsx | 12 ++++++++++++
+ src/i18n/locales/en/cam.ts     |  3 +++
+ src/i18n/locales/tr/cam.ts     |  3 +++
+ tests/camToolRuns.test.ts      | 18 ++++++++++++++++++
+ 5 files changed, 40 insertions(+)
+ create mode 100644 tests/camToolRuns.test.ts
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..cffd350 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -33,6 +33,7 @@ import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove,
+ import type { CutEdit } from '../lib/cam/tools';
+ import type { OpEdit } from '../lib/cam/opEdit';
+ import { useAuth } from '../contexts/AuthContext';
++import { changesAt } from './CamAiResult';
+ 
+ const CamPartView = lazy(() => import('./CamPartView'));
+ const CamTurnGhost = lazy(() => import('./CamTurnGhost'));
+@@ -963,6 +964,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     return `T${toolNo} · ${t(`camAi.tools.${ops[0].type}`, { defaultValue: ops[0].type })} — ${[...new Set(ops.map((o) => t(`camAi.purpose.${o.purpose}`)))].join(', ')}`;
+   };
+   const opNow = sel.kind === 'setup' || sel.kind === 'tool' ? sel.i : opTab;
++  // One row per tool: a tool that comes in more than once (an outline, then the roughing after the drills) says where.
++  const comesIn = changesAt(inOrder(result?.setups[opNow]?.side ?? '', result?.setups[opNow]?.ops ?? [], opOrder).map((o) => o.code));
+   // What the checks say, row by row (the status chip's popover).
+   const checks = result
+     ? [
+@@ -1076,6 +1079,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                       <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
+                       <span className="block text-xs text-[var(--text-secondary)] tabular-nums truncate">
+                         Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}
++                        {(comesIn.get(o.code)?.length ?? 0) > 1 && <span title={t('camAi.ws.runs', { count: comesIn.get(o.code)!.length, at: comesIn.get(o.code)!.join(', ') })}> · {t('camAi.ws.runsShort', { count: comesIn.get(o.code)!.length, at: comesIn.get(o.code)!.join(', ') })}</span>}
+                         {!o.inMachine && <span className="text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
+                       </span>
+                     </span>
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 1c12720..7fab9d3 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -611,3 +611,15 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
+     </div>
+   );
+ }
++
++/** Where each tool comes in, in a clamping's operations as they run (their tools' codes): its tool changes, 1 the first. */
++export function changesAt(codes: string[]): Map<string, number[]> {
++  const at = new Map<string, number[]>();
++  let n = 0;
++  codes.forEach((c, k) => {
++    if (k && codes[k - 1] === c) return;
++    n++;
++    at.set(c, [...(at.get(c) ?? []), n]);
++  });
++  return at;
++}
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..3df5a81 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -49,6 +49,9 @@ const cam = {
+       rowUp: 'Move T{{tool}} earlier',
+       rowDown: 'Move T{{tool}} later',
+       dragHint: 'Drag a tool to change the order (or Alt + ↑ / ↓)',
++      runs_one: 'comes in {{count}} time: tool change {{at}}',
++      runs_other: 'comes in {{count}} times: tool changes {{at}}',
++      runsShort: '{{count}}× ({{at}})',
+       deleteTitle: 'Delete T{{tool}} from clamping {{n}}?',
+       deleteBody: 'Its toolpath and its tool change come out of this clamping; the rest of the program stays as made and is checked again. What it would have cut stays on the part, and the check shows it. Make again then lets CAM AI plan without it.',
+       deleteConfirm: 'Delete',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..f363031 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -52,6 +52,9 @@ const cam: Translation<typeof en> = {
+       rowUp: 'T{{tool}} öne al',
+       rowDown: 'T{{tool}} sona al',
+       dragHint: 'Sırayı değiştirmek için bir takımı sürükleyin (veya Alt + ↑ / ↓)',
++      runs_one: '{{count}} kez girer: {{at}}. takım değişimi',
++      runs_other: '{{count}} kez girer: {{at}}. takım değişimleri',
++      runsShort: '{{count}}× ({{at}})',
+       deleteTitle: 'T{{tool}}, {{n}}. bağlamadan silinsin mi?',
+       deleteBody: 'Takım yolu ve takım değişimi bu bağlamadan çıkar; programın geri kalanı yapıldığı gibi kalır ve yeniden kontrol edilir. Keseceği malzeme parçada kalır ve kontrol bunu gösterir. Sonra Yeniden yap ile CAM AI onsuz planlar.',
+       deleteConfirm: 'Sil',
+diff --git a/tests/camToolRuns.test.ts b/tests/camToolRuns.test.ts
+new file mode 100644
+index 0000000..d534b82
+--- /dev/null
++++ b/tests/camToolRuns.test.ts
+@@ -0,0 +1,18 @@
++import { describe, expect, it } from 'vitest';
++import { changesAt } from '../src/components/CamAiResult';
++
++// The tool list has one row per tool: a mill that comes in twice (its outline, then the roughing after the drills)
++// says so, with its places in the clamping's tool changes (finding H1-40).
++describe("a clamping's tool changes", () => {
++  it('gives each tool every place it comes in', () => {
++    const at = changesAt(['FM93', 'SF20', 'SF20', 'ZB', 'BO', 'SF20', 'BO6']);
++    expect(at.get('SF20')).toEqual([2, 5]);
++    expect(at.get('FM93')).toEqual([1]);
++    expect(at.get('BO6')).toEqual([6]);
++  });
++
++  it('counts operations of one tool in a row as one tool change', () => {
++    expect(changesAt(['SF8', 'SF8', 'SF8']).get('SF8')).toEqual([1]);
++    expect(changesAt([]).size).toBe(0);
++  });
++});
+-- 
+2.43.0
+

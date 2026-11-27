@@ -1,0 +1,34 @@
+From a7cbbc7abc32e4784b7ded265eaa9c3bddcd0165 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:48:52 +0000
+Subject: [PATCH] CAM AI: a measurement is put away when the simulation shows
+ another clamping, instead of staying drawn over it (finding H2-3)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamSim.tsx | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..ae953cb 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -256,6 +256,14 @@ export default function CamSim({
+   const seg = (on: boolean) => `no-glass h-7 px-2.5 rounded-[6px] text-[13px] ${on ? 'bg-[rgba(var(--ov),0.12)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`;
+   const cameraName = view3d ? t(`camAi.sim.camera.${view3d.kind}`) : t('camAi.sim.camera.iso');
+   const setupNow = sel?.index ?? 0;
++  // Measuring when another clamping is shown: put away, its value with it (its vise planes were the last clamping's,
++  // and its picks stayed drawn there, a review); Measure measures the new one.
++  const measuredIn = useRef(setupNow);
++  useEffect(() => {
++    if (measure.on && measuredIn.current !== setupNow) onMeasureToggle();
++    measuredIn.current = setupNow;
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [setupNow]);
+   const atSeconds = Math.min(elapsed, totalSeconds);
+ 
+   return (
+-- 
+2.43.0
+

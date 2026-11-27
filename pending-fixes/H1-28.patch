@@ -1,0 +1,64 @@
+From 188ef92321e85763e3bc141887871567917b9749 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:46:38 +0000
+Subject: [PATCH] CAM AI: operation editor fields two to a row, each label on
+ one line with its unit (finding H1-28)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAiResult.tsx | 2 +-
+ src/i18n/locales/en/cam.ts     | 6 +++---
+ src/i18n/locales/tr/cam.ts     | 6 +++---
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index b18d740..9a46078 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -613,7 +613,7 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
+   );
+   return (
+     <div className="w-full px-2 pb-2 space-y-1.5">
+-      <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
++      <div className="grid grid-cols-2 gap-1.5">{(['dx', 'dy', 'dz', 'deeper'] as const).map(field)}</div>
+       <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
+       {!toolOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
+       <div className="flex flex-wrap gap-1.5">
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index f90d254..89b1369 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -256,9 +256,9 @@ const cam = {
+     legend: { hover: 'Face under the pointer', top: 'Top of a setup', stock: 'Raw block', finish: 'Walls to finish' },
+     opEdit: {
+       deeper: 'Deeper (mm)',
+-      dx: 'Move X',
+-      dy: 'Move Y',
+-      dz: 'Move Z',
++      dx: 'Move X (mm)',
++      dy: 'Move Y (mm)',
++      dz: 'Move Z (mm)',
+       d: 'Tool Ø (mm)',
+       l: 'Length (mm)',
+       badTool: 'A tool needs a Ø of 0 to 200 mm and a length of 0 to 400 mm.',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 728ff3e..bb8543d 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -259,9 +259,9 @@ const cam: Translation<typeof en> = {
+     legend: { hover: 'İmlecin altındaki yüz', top: 'Bağlamanın üst yüzü', stock: 'Ham blok', finish: 'Son paso duvarları' },
+     opEdit: {
+       deeper: 'Daha derin (mm)',
+-      dx: 'X kaydır',
+-      dy: 'Y kaydır',
+-      dz: 'Z kaydır',
++      dx: 'X kaydır (mm)',
++      dy: 'Y kaydır (mm)',
++      dz: 'Z kaydır (mm)',
+       d: 'Takım Ø (mm)',
+       l: 'Boy (mm)',
+       badTool: 'Takımın Ø’ı 0–200 mm, boyu 0–400 mm olmalı.',
+-- 
+2.43.0
+

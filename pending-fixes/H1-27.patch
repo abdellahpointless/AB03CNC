@@ -1,0 +1,71 @@
+From 1cdceade26cdab52ff22ac8eaccb0cc4d4f3f55d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:00:27 +0000
+Subject: [PATCH] CAM AI: in an opened program, a move over 200 mm (or deeper
+ over 50) turns Apply off and says the limit (finding H1-27)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamOpened.tsx | 9 +++++----
+ src/i18n/locales/en/cam.ts   | 1 +
+ src/i18n/locales/tr/cam.ts   | 1 +
+ 3 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/CamOpened.tsx b/src/components/CamOpened.tsx
+index 75ed96a..de2f41f 100644
+--- a/src/components/CamOpened.tsx
++++ b/src/components/CamOpened.tsx
+@@ -86,10 +86,10 @@ export default function CamOpened({
+     setOp(info[k].setup);
+     setFocus({ setup: info[k].setup, tool: runs[k].tool ?? undefined, key: Date.now() });
+   };
++  // Only sizes a hand would type: out of range, Apply is off and says the limit.
++  const inRange = [edit.dx, edit.dy, edit.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (edit.deeper === undefined || (Number.isFinite(edit.deeper) && Math.abs(edit.deeper) <= 50));
+   const apply = () => {
+-    if (!run || pick === null) return;
+-    const ok = [edit.dx, edit.dy, edit.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (edit.deeper === undefined || (Number.isFinite(edit.deeper) && Math.abs(edit.deeper) <= 50));
+-    if (!ok) return;
++    if (!run || pick === null || !inRange) return;
+     setHistory((h) => [...h, editRun(code, run, edit)]);
+     setEdit({});
+   };
+@@ -215,9 +215,10 @@ export default function CamOpened({
+                 {field('deeper')}
+               </div>
+               <div className="px-4 flex gap-2">
+-                <button type="button" className="btn-primary h-9 px-3 text-[13px] flex-1" onClick={apply} disabled={!Object.values(edit).some((v) => v)}>{t('camAi.opEdit.apply')}</button>
++                <button type="button" className="btn-primary h-9 px-3 text-[13px] flex-1" onClick={apply} disabled={!inRange || !Object.values(edit).some((v) => v)}>{t('camAi.opEdit.apply')}</button>
+                 <button type="button" className="btn-secondary h-9 px-3 text-[13px]" onClick={() => setHistory((h) => h.slice(0, -1))} disabled={!changes}>{t('camAi.opEdit.undo')}</button>
+               </div>
++              {!inRange && <p className="px-4 pt-3 text-xs text-[var(--orange-text)]" role="alert">{t('camAi.open.badMove')}</p>}
+               <p className="px-4 pt-3 text-xs text-[var(--text-secondary)]">{t('camAi.open.hint')}</p>
+             </>
+           ) : (
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..3189956 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -213,6 +213,7 @@ const cam = {
+       lines: 'Lines {{from}}–{{to}}',
+       hint: 'Moves and depths apply to this tool’s run only; its tool change, length offset and comments stay as they are. The whole program is simulated and checked again.',
+       pick: 'Pick a tool on the left to move it or take it deeper.',
++      badMove: 'Move X, Y and Z by at most 200 mm, and Deeper by at most 50 mm, either way.',
+       noModel: 'To compare it with the part’s 3D model, choose the model in New program first, then open the program.',
+       read: 'This file is not a program CAM AI can read.',
+     },
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..d9595bb 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -216,6 +216,7 @@ const cam: Translation<typeof en> = {
+       lines: 'Satır {{from}}–{{to}}',
+       hint: 'Kaydırma ve derinlik yalnızca bu takımın işlemine uygulanır; takım değişimi, boy ofseti ve yorumlar olduğu gibi kalır. Programın tamamı yeniden simüle edilir ve kontrol edilir.',
+       pick: 'Kaydırmak veya derinleştirmek için soldan bir takım seçin.',
++      badMove: 'X, Y ve Z en çok 200 mm, Daha derin en çok 50 mm değiştirilebilir (iki yönde de).',
+       noModel: 'Parçanın 3B modeliyle karşılaştırmak için önce Yeni program’da modeli seçin, sonra programı açın.',
+       read: 'Bu dosya CAM AI’ın okuyabileceği bir program değil.',
+     },
+-- 
+2.43.0
+

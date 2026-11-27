@@ -1,0 +1,81 @@
+From 3b84a1f9d62abd13dd87e299097b6c8926e99b17 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:50:37 +0000
+Subject: [PATCH] =?UTF-8?q?CAM=20AI:=20tool=20database=20search=20takes=20?=
+ =?UTF-8?q?a=20=C3=98=20as=20the=20list=20writes=20it=20(=C3=988,=20=C3=B8?=
+ =?UTF-8?q?8,=20D8)=20(finding=20H1-30)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamToolDb.tsx | 4 ++--
+ src/lib/cam/toolDb.ts        | 3 +++
+ tests/camToolDb.test.ts      | 7 ++++++-
+ 3 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/CamToolDb.tsx b/src/components/CamToolDb.tsx
+index 60a633f..c4db140 100644
+--- a/src/components/CamToolDb.tsx
++++ b/src/components/CamToolDb.tsx
+@@ -6,7 +6,7 @@ import '../i18n/camLocales';
+ import { fmtNumber as fmt } from '../i18n/format';
+ import { api } from '../lib/api';
+ import { LIBRARY } from '../lib/cam/tools';
+-import { ADDABLE, cleanDbTool, codeOf, FAMILIES, KINDS_OF, type DbCut, type DbTool, type ToolDb } from '../lib/cam/toolDb';
++import { ADDABLE, cleanDbTool, codeOf, FAMILIES, KINDS_OF, searchNeedle, type DbCut, type DbTool, type ToolDb } from '../lib/cam/toolDb';
+ import type { Family, TemplateKind, TemplateTool } from '../lib/cam/templates';
+ 
+ /*
+@@ -104,7 +104,7 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
+       .map(([c, r]) => ({ code: c, type: r.added!.type, d: r.added!.d, length: r.added!.length, template: null, db: r }));
+     return [...base, ...added];
+   }, [fam, own]);
+-  const needle = q.trim().toUpperCase().replace(',', '.');
++  const needle = searchNeedle(q);
+   const shown = rows.filter((r) => !needle || r.code.includes(needle) || fmt(r.d, 2).replace(',', '.') === needle || String(r.d) === needle);
+   const groups = TYPES.map((type) => [type, shown.filter((r) => r.type === type).sort((a, b) => a.d - b.d || a.length - b.length)] as const).filter(([, rs]) => rs.length);
+   const row = rows.find((r) => r.code === sel) ?? null;
+diff --git a/src/lib/cam/toolDb.ts b/src/lib/cam/toolDb.ts
+index cb4cb2b..2f16187 100644
+--- a/src/lib/cam/toolDb.ts
++++ b/src/lib/cam/toolDb.ts
+@@ -48,6 +48,9 @@ const CODE = /^[A-Z]{2,3}_\d{2,3}\.\d{2}_\d{3}_[A-Z0-9.]{1,5}_(ALHS|KS|FH)$/;
+ export const codeOf = (type: string, d: number, length: number, fam: Family) =>
+   `${type}_${d.toFixed(2).padStart(5, '0')}_${String(Math.round(length)).padStart(3, '0')}_${ADDABLE[type] ?? '000'}_${SUFFIX[fam]}`;
+ 
++/** The tool database's search as typed: a Ø as the list writes it ("Ø8", "ø8", "D8") is the 8; codes as they are. */
++export const searchNeedle = (q: string) => q.trim().toUpperCase().replace(/^(Ø|D(?=\d))\s*/, '').replace(',', '.');
++
+ const inRange = (v: unknown, [lo, hi]: [number, number]): v is number => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+ 
+ /** A stored tool as the planner may take it (unknown fields dropped), or null: anything unknown or out of range. */
+diff --git a/tests/camToolDb.test.ts b/tests/camToolDb.test.ts
+index 4a7bf41..ee64863 100644
+--- a/tests/camToolDb.test.ts
++++ b/tests/camToolDb.test.ts
+@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
+ import { alternatives, catalog, cutData, LIBRARY } from '../src/lib/cam/tools';
+ import { camProgram } from '../src/lib/cam/program';
+ import { heightPart } from './heightPart';
+-import { cleanDbTool, codeOf, type ToolDb } from '../src/lib/cam/toolDb';
++import { cleanDbTool, codeOf, searchNeedle, type ToolDb } from '../src/lib/cam/toolDb';
+ 
+ // The shop's tool database (item 20): templates removed or given their own cutting data, tools added.
+ const mill = LIBRARY.ALU.find((t) => t.type === 'SF' && t.d === 8 && t.length === 40)!;
+ const limits = { maxRpm: 8000, maxFeed: 10000 };
+ 
+ describe("CAM AI's tool database as the shop changed it", () => {
++  it('searches a Ø as the list writes it, and codes as typed (finding H1-30)', () => {
++    for (const q of ['8', 'Ø8', 'ø8', 'D8', ' Ø 8 ', 'd8']) expect(searchNeedle(q)).toBe('8');
++    expect(searchNeedle('ø2,5')).toBe('2.5');
++    expect(searchNeedle('sf_08')).toBe('SF_08');
++  });
+   it('changes nothing while empty', () => {
+     expect(catalog('ALU', [], { toolDb: {} })).toEqual(catalog('ALU', []));
+     expect(catalog('POM', [], { toolDb: { ALU: {} } })).toEqual(catalog('POM', []));
+-- 
+2.43.0
+

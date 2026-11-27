@@ -1,0 +1,120 @@
+From 05d96fea1a954d475a2abe7593aec67d1471c920 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:40:38 +0000
+Subject: [PATCH] =?UTF-8?q?CAM=20AI:=20a=20clamping's=20chip,=20list=20hea?=
+ =?UTF-8?q?der=20and=20timeline=20tick=20name=20every=20turn=20its=20note?=
+ =?UTF-8?q?=20writes=20("180=C2=B0=20X=20+=2090=C2=B0=20Z"),=20not=20only?=
+ =?UTF-8?q?=20the=20first;=20a=20tick=20past=20the=20middle=20of=20the=20t?=
+ =?UTF-8?q?imeline=20reads=20leftward,=20clear=20of=20the=20clock=20(findi?=
+ =?UTF-8?q?ng=20H2-2)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx       |  7 ++++---
+ src/components/CamAiResult.tsx |  2 ++
+ src/components/CamSim.tsx      |  5 ++++-
+ tests/turnLabel.test.ts        | 26 ++++++++++++++++++++++++++
+ 4 files changed, 36 insertions(+), 4 deletions(-)
+ create mode 100644 tests/turnLabel.test.ts
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..1df2d08 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -22,7 +22,7 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
+ import type { MeasureMode } from '../lib/measure';
+ import type { Measurement } from '../lib/measure3d';
+ import { IDENTITY, type Mat3 } from '../lib/orient';
+-import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
++import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict, writtenTurns } from './CamAiResult';
+ import type { ClampAct, FacePick } from './CamPartView';
+ import CamStockBox, { STOCK_SIDES } from './CamStockBox';
+ import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
+@@ -937,9 +937,10 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const stepName = (i: number) => {
+     const s = result?.setups[i];
+     if (!s) return { n: i + 1, turn: setupNodes.find((x) => x.i === i)?.side ?? '', rest: '' };
+-    const turn = s.notes.join(' ').match(/(\d+)\s*GRAD\s*UM\s*([XYZ])/);
++    // Every turn the note writes (a flip, then a quarter turn for a step: "180° X + 90° Z").
++    const turn = writtenTurns(s.notes.join(' ')).join(' + ');
+     const rest = s.notes.some((x) => /POM-NEST/.test(x)) ? t('camAi.sim.nest') : s.notes.some((x) => /SUR L'ETAU/.test(x)) ? t('camAi.sim.onJaw') : s.cale === 0 ? t('camAi.sim.onTable') : fmt(s.cale, 0);
+-    return { n: i + 1, turn: i === 0 ? t('camAi.ws.vise') : turn ? `${turn[1]}° ${turn[2]}` : s.side, rest };
++    return { n: i + 1, turn: i === 0 ? t('camAi.ws.vise') : turn || s.side, rest };
+   };
+   const parallelsText = (i: number) => {
+     const s = result?.setups[i];
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 1c12720..4638a4b 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -38,6 +38,8 @@ const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8
+ 
+ /** 164 s -> "2:44". */
+ export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
++/** The turns a clamping's note writes from the one before (fixTurns' turnPhrase), each as "180° X", in the note's order. */
++export const writtenTurns = (note: string) => [...note.matchAll(/(\d+)\s*GRAD\s*UM\s*([XYZ])/g)].map((m) => `${m[1]}° ${m[2]}`);
+ 
+ export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
+ 
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..b643799 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -194,6 +194,9 @@ export default function CamSim({
+   }, [path]);
+   // The track is the moves' own time (tool changes are not segments of it).
+   const totalSeconds = Math.max(1e-6, runs.reduce((a, r) => a + r.seconds, 0));
++  // Where a clamping starts on the track (%): past the middle its name reads leftward from there (one near the end ran
++  // into the clock).
++  const tickAt = (s: SetupInfo) => ((s.moves && s.moves[0] > 0 ? timeline[s.moves[0] - 1] : 0) / totalSeconds) * 100;
+   const playOn = () => {
+     soloEnd.current = null;
+     setHeat(false);
+@@ -384,7 +387,7 @@ export default function CamSim({
+           <span className="absolute top-0 w-0.5 h-[26px] rounded bg-white shadow-[0_0_0_2px_rgba(10,15,28,0.7)] pointer-events-none" style={{ left: `${(atSeconds / totalSeconds) * 100}%` }} aria-hidden />
+           {setups.map((s) =>
+             s.moves ? (
+-              <span key={s.index} className="absolute top-6 flex items-center gap-1 text-xs text-[var(--text-secondary)] whitespace-nowrap" style={{ left: `${((s.moves[0] > 0 ? timeline[s.moves[0] - 1] : 0) / totalSeconds) * 100}%` }}>
++              <span key={s.index} className={`absolute top-6 flex items-center gap-1 text-xs text-[var(--text-secondary)] whitespace-nowrap ${tickAt(s) > 50 ? 'flex-row-reverse' : ''}`} style={tickAt(s) > 50 ? { right: `${100 - tickAt(s)}%` } : { left: `${tickAt(s)}%` }}>
+                 <span className="w-px h-2.5 bg-[var(--text-secondary)]" aria-hidden />
+                 {stepLabel(s.index)}
+               </span>
+diff --git a/tests/turnLabel.test.ts b/tests/turnLabel.test.ts
+new file mode 100644
+index 0000000..3aa58e6
+--- /dev/null
++++ b/tests/turnLabel.test.ts
+@@ -0,0 +1,26 @@
++import { describe, expect, it } from 'vitest';
++import { writtenTurns } from '../src/components/CamAiResult';
++import { turnPhrase } from '../src/lib/fixTurns';
++import { ALL, IDENTITY, mul, rotation as turn } from '../src/lib/orient';
++
++// A clamping's chip and timeline tick name its turns from the clamping before as the note writes them: every one,
++// in the note's order (they do not commute). A quarter turn for a step comes after the flip (finding H2-2).
++describe('the turns a note writes, as the labels say them', () => {
++  it('names both turns of a flip and a quarter turn, in order', () => {
++    expect(writtenTurns(`${turnPhrase(mul(turn('Z', 90), turn('X', 180)))}/28 IN X UND 36 IN Y/Z+ IN 5MM`)).toEqual(['180° X', '90° Z']);
++    expect(writtenTurns('TEIL 180 GRAD UM X DREHEN / TEIL 90 GRAD UM Z DREHEN / X+ WIRD Y+/28 IN X UND 36 IN Y')).toEqual(['180° X', '90° Z']);
++  });
++
++  it('names one turn as one, none as none', () => {
++    expect(writtenTurns(turnPhrase(turn('Y', 180)))).toEqual(['180° Y']);
++    expect(writtenTurns(turnPhrase(IDENTITY))).toEqual([]);
++    expect(writtenTurns('TEIL MIT 40 IN X UND 32 IN Y EINSPANNEN')).toEqual([]);
++  });
++
++  it('reads every turn the program can write', () => {
++    for (const m of ALL) {
++      const said = writtenTurns(turnPhrase(m));
++      expect(said.length, m.join()).toBe(m.join() === IDENTITY.join() ? 0 : turnPhrase(m).split('GRAD').length - 1);
++    }
++  });
++});
+-- 
+2.43.0
+

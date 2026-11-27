@@ -1,0 +1,101 @@
+From 27c303347fdc55704d403522c49a60833185fa53 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:51:46 +0000
+Subject: [PATCH] CAM AI: a part type or side stock changed on a program made
+ is listed as a change waiting for Make again (Download and Send wait), with
+ Undo (finding H1-15)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 27 +++++++++++++++++++++------
+ src/i18n/locales/en/cam.ts |  2 ++
+ src/i18n/locales/tr/cam.ts |  2 ++
+ 3 files changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..2f5e98d 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -200,7 +200,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
+   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
+   // now: in the program shown already (checked again); the others wait for Make again.
+-  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true };
++  // sideStock: the side stock the program shown was made with (one change for it, however many keys are typed).
++  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true; sideStock?: number };
+   const [changes, setChanges] = useState<Change[]>([]);
+   const changeId = useRef(0);
+   // The later clampings' turns the program shown was made with (the panel's "until it is made again").
+@@ -556,15 +557,29 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
+     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
+   };
+-  const saveSideStock = (v: number) => {
+-    const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
+-    setSideStock(ok);
++  const storeSideStock = (v: number) => {
++    setSideStock(v);
+     try {
+-      localStorage.setItem(SIDE_STOCK_KEY, String(ok));
++      localStorage.setItem(SIDE_STOCK_KEY, String(v));
+     } catch {
+       /* a convenience: the default works without it */
+     }
+   };
++  // The part type and the side stock are what the program is made for: changed on a program made, listed until it is
++  // made again (Download and Send wait), Undo back to what it was made with.
++  const saveSideStock = (v: number) => {
++    const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
++    if (result && ok !== sideStock && !changes.some((c) => c.sideStock !== undefined)) {
++      const was = sideStock;
++      addChange({ label: t('camAi.changes.sideStock', { mm: fmt(was, 2) }), sideStock: was, undo: () => storeSideStock(was) });
++    }
++    storeSideStock(ok);
++  };
++  const choosePartType = (v: PartType) => {
++    const was = partType;
++    setPartType(v);
++    if (result && v !== was) addChange({ label: t('camAi.changes.partType', { type: t(`camAi.part.types.${v}`) }), undo: () => setPartType(was) });
++  };
+ 
+   // A face clicked on the model: the top of the setup being chosen.
+   const pickFace = (side: string, face: string) => {
+@@ -1968,7 +1983,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       <div className="space-y-3">
+         <label className="block space-y-1">
+           <span className="section-label block">{t('camAi.part.type')}</span>
+-          <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => setPartType(e.target.value as PartType)} disabled={busy}>
++          <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => choosePartType(e.target.value as PartType)} disabled={busy}>
+             <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.part.choose')}</option>
+             {PART_TYPES.map((p) => (
+               <option key={p} value={p} className="bg-[var(--bg-panel)]">{t(`camAi.part.types.${p}`)}</option>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..3560d79 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -535,6 +535,8 @@ const cam = {
+       yAuto: 'Clamping {{n}}: CAM AI decides the moving jaw’s spacer',
+       side: 'Clamping {{n}}: {{side}} up',
+       own: 'Clamping {{n}}: back to CAM AI’s hold',
++      partType: 'Part type: {{type}}',
++      sideStock: 'Side stock changed (it was {{mm}} mm)',
+       cuts: 'T{{tool}}: cutting values typed',
+       removed: 'Removed: {{what}}',
+       back: 'T{{tool}}: back to CAM AI’s tool',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..fdc446c 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -538,6 +538,8 @@ const cam: Translation<typeof en> = {
+       yAuto: '{{n}}. bağlama: hareketli çenenin ara parçasını CAM AI seçer',
+       side: '{{n}}. bağlama: {{side}} yukarıda',
+       own: '{{n}}. bağlama: CAM AI’ın bağlamasına dönüldü',
++      partType: 'Parça tipi: {{type}}',
++      sideStock: 'Yan pay değişti (önceden {{mm}} mm)',
+       cuts: 'T{{tool}}: kesme değerleri girildi',
+       removed: 'Çıkarıldı: {{what}}',
+       back: 'T{{tool}}: CAM AI’ın takımına dönüldü',
+-- 
+2.43.0
+

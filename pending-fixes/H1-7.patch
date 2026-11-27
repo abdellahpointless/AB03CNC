@@ -1,0 +1,49 @@
+From 5a40d6ba6d2bf2843515d3f03ed1a21cb9061010 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:57:19 +0000
+Subject: [PATCH] CAM AI: in the light theme the 3D view's toolbar and chips
+ keep the dark theme's ink, so '3/4', 'Part' and the icons read on it (finding
+ H1-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamSim.tsx | 2 +-
+ src/index.css             | 8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..5597e2e 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -260,7 +260,7 @@ export default function CamSim({
+ 
+   return (
+     <div ref={shell} className="absolute inset-0 flex flex-col">
+-      <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
++      <div className="ink-dark relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
+         <Suspense fallback={null}>
+             <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} diffPieces={pieces} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
+         </Suspense>
+diff --git a/src/index.css b/src/index.css
+index ab7bc46..290c8a0 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -900,6 +900,14 @@ html.light .always-dark .aurora-input { background: var(--bg-input); border-colo
+ html.light .always-dark .badge-positive { background: rgba(22, 163, 74, 0.18); border-color: rgba(22, 163, 74, 0.3); color: #1fb257; }
+ html.light .always-dark .badge-danger { background: rgba(255, 102, 121, 0.15); border-color: rgba(255, 102, 121, 0.3); color: #ff6679; }
+ html.light .always-dark .badge-warning { background: rgba(224, 138, 77, 0.18); border-color: rgba(224, 138, 77, 0.3); color: #e08a4d; }
++/* What floats over a 3D view, which stays dark in either mode: the dark mode's ink (light ink was lost on it). */
++html.light .ink-dark {
++  --text-primary: #f5f7fa;
++  --text-secondary: #9aa4b6;
++  --text-tertiary: #848ea0;
++  --border-subtle: rgba(255, 255, 255, 0.07);
++  --ov: 255, 255, 255;
++}
+ 
+ html.light .skeleton-shimmer { background: rgba(15, 23, 42, 0.05); }
+ html.light .skeleton-shimmer::after {
+-- 
+2.43.0
+

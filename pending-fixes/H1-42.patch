@@ -1,0 +1,109 @@
+From 706924188aeccac5547cbd20213dcad6f9cb861e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:41:08 +0000
+Subject: [PATCH] =?UTF-8?q?CAM=20AI:=20the=20header=20chip=20and=20Downloa?=
+ =?UTF-8?q?d=20say=20"Checking=E2=80=A6"=20until=20the=20last=20change=20b?=
+ =?UTF-8?q?y=20hand=20is=20checked=20(finding=20H1-42)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Two quick changes (or Undos) are counted, so the first answer no longer shows its stale result as checked.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..eb0a770 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -148,6 +148,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   // Operations changed by hand on the program made (by key), one being checked, the part accepted as it then is.
+   const [opEdits, setOpEdits] = useState<Record<string, OpEdit>>({});
+   const [checking, setChecking] = useState(false);
++  // Edits sent to the worker and not answered yet: checking until the last one is (two quick Undos send two).
++  const pendingEdits = useRef(0);
+   const [accepted, setAccepted] = useState(false);
+   const [editsDropped, setEditsDropped] = useState(false);
+   // The operation an edit was applied to, to keep it picked when the edited program comes back.
+@@ -316,11 +318,16 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+ 
+   const newWorker = () => {
+     worker.current?.terminate();
++    // A worker replaced or failed answers no edit sent to it: nothing is being checked any more.
++    pendingEdits.current = 0;
++    setChecking(false);
+     const w = new Worker(new URL('../lib/cam/cam.worker.ts', import.meta.url), { type: 'module' });
+     worker.current = w;
+     w.onerror = () => {
+       w.terminate();
+       worker.current = null;
++      pendingEdits.current = 0;
++      setChecking(false);
+       setRun({ state: 'error', error: 'failed' });
+     };
+     return w;
+@@ -470,7 +477,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       if (m.type === 'live') return setLive((l) => liveStep(l, m.e));
+       // Changes by hand, checked again on the plan the worker kept.
+       if (m.type === 'edited') {
+-        setChecking(false);
++        pendingEdits.current = Math.max(0, pendingEdits.current - 1);
++        setChecking(pendingEdits.current > 0);
+         // The operation just changed stays picked, under its new tool if its tool was changed (its key does not change).
+         const key = following.current;
+         following.current = null;
+@@ -481,6 +489,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       if (m.type === 'error') {
+         w.terminate();
+         worker.current = null;
++        pendingEdits.current = 0;
+         setChecking(false);
+         return setRun({ state: 'error', error: m.error });
+       }
+@@ -919,6 +928,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     orderRef.current = order;
+     setEditsDropped(false);
+     setAccepted(false);
++    pendingEdits.current++;
+     setChecking(true);
+     following.current = key;
+     worker.current?.postMessage({ type: 'edit', edits: next, order, toolDb: toolDbRef.current.db });
+@@ -1555,17 +1565,17 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+         )}
+         <Popover.Root>
+           <Popover.Trigger asChild>
+-            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : ok ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
+-              {run.state === 'busy' ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : ok ? <CheckCircle2 size={14} stroke={2} aria-hidden /> : <AlertTriangle size={14} stroke={2} aria-hidden />}
+-              {run.state === 'busy' ? t('camAi.ws.checking') : !result ? t('camAi.ws.notMade') : ok ? t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) }) : t('camAi.ws.issues', { count: issues })}
++            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' || checking ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : ok ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
++              {run.state === 'busy' || checking ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : ok ? <CheckCircle2 size={14} stroke={2} aria-hidden /> : <AlertTriangle size={14} stroke={2} aria-hidden />}
++              {run.state === 'busy' ? t('camAi.ws.checking') : checking ? t('camAi.opEdit.checking') : !result ? t('camAi.ws.notMade') : ok ? t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) }) : t('camAi.ws.issues', { count: issues })}
+             </button>
+           </Popover.Trigger>
+           <Popover.Portal>
+             <Popover.Content align="start" sideOffset={6} className="cam-pop z-[1000] w-[22rem] p-2">
+               <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
+-                {verdict ? verdict.text : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
++                {checking ? t('camAi.opEdit.checking') : verdict ? verdict.text : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
+               </p>
+-              {checks.length > 0 && (
++              {checks.length > 0 && !checking && (
+                 <ul aria-label={t('camAi.ws.checksTitle')}>
+                   {checks.map((c) => (
+                     <li key={c.label} className="flex items-center gap-2 h-8 px-2 border-t border-[var(--border-subtle)] text-[13px]">
+@@ -1596,7 +1606,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+             <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
+           </button>
+         )}
+-        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool || badNumber !== undefined} title={handTool ? t('camAi.opEdit.handTool') : badNumber !== undefined ? t('camAi.opEdit.badNumber', { t: badNumber }) : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
++        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool || badNumber !== undefined} title={checking ? t('camAi.opEdit.checking') : handTool ? t('camAi.opEdit.handTool') : badNumber !== undefined ? t('camAi.opEdit.badNumber', { t: badNumber }) : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
+           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
+         </button>
+         {result ? (
+-- 
+2.43.0
+

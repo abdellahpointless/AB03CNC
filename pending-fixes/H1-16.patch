@@ -1,0 +1,82 @@
+From 7315a899e4b8e47c5f495884d3e2ea021dfba0f9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:59:14 +0000
+Subject: [PATCH] CAM AI: the side stock field keeps what is typed and keeps
+ only 0 to 0.5 mm, saying so for anything else, instead of turning 5 into 0.5
+ or an empty field into 0 (finding H1-16)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 21 ++++++++++++++++++++-
+ src/i18n/locales/en/cam.ts |  1 +
+ src/i18n/locales/tr/cam.ts |  1 +
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..7afb226 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -249,6 +249,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER'>('FH');
+   const [family, setFamily] = useState<Family>('ALU');
+   const [sideStock, setSideStock] = useState(readSideStock);
++  // The side stock as typed (null: as kept): only 0 to 0.5 mm is kept, anything else is said, never changed under the caret.
++  const [sideText, setSideText] = useState<string | null>(null);
++  const sideTextOk = sideText === null || (sideText.trim() !== '' && Number(sideText) >= 0 && Number(sideText) <= 0.5);
+   const [swap, setSwap] = useState<{ exclude: string[]; prefer: string[] }>({ exclude: [], prefer: [] });
+   const [run, setRun] = useState<Run>({ state: 'idle' });
+   // The simulation open, and how it opens: playing, on the weak spots or in the NX view.
+@@ -1660,8 +1663,24 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                 <span className="flex items-center gap-2 text-[13px] font-medium"><Settings2 size={16} stroke={1.6} aria-hidden /> {t('camAi.settings')}</span>
+                 <label className="block space-y-1">
+                   <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.sideStock')}</span>
+-                  <input className="aurora-input w-full h-8 py-0 text-[13px]" type="number" min={0} max={0.5} step={0.01} inputMode="decimal" value={sideStock} onChange={(e) => saveSideStock(Number(e.target.value))} />
++                  <input
++                    className="aurora-input w-full h-8 py-0 text-[13px]"
++                    type="number"
++                    min={0}
++                    max={0.5}
++                    step={0.01}
++                    inputMode="decimal"
++                    value={sideText ?? sideStock}
++                    aria-invalid={!sideTextOk || undefined}
++                    onChange={(e) => {
++                      const v = e.target.value;
++                      setSideText(v);
++                      if (v.trim() !== '' && Number(v) >= 0 && Number(v) <= 0.5) saveSideStock(Number(v));
++                    }}
++                    onBlur={() => setSideText(null)}
++                  />
+                 </label>
++                {!sideTextOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.sideStockBad', { mm: fmt(sideStock, 2) })}</p>}
+                 <p className="text-xs text-[var(--text-secondary)]">{t('camAi.sideStockHint')}</p>
+                 <Popover.Close asChild>
+                   <button type="button" className={`${menuItem} -mx-2.5 w-[calc(100%+1.25rem)]`} onClick={() => setDbOpen(true)}>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..ec6e896 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -455,6 +455,7 @@ const cam = {
+     },
+     settings: 'Settings',
+     sideStock: 'Side stock (mm)',
++    sideStockBad: 'Only 0 to 0.5 mm: the side stock stays {{mm}} mm.',
+     sideStockHint: 'Left on every wall on purpose, 0 to 0.5 mm. The templates’ own stock is not used.',
+     toolsToLoad: 'Tools to load into {{name}}',
+     notHave: 'I don’t have it',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..64ef246 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -458,6 +458,7 @@ const cam: Translation<typeof en> = {
+     settings: 'Ayarlar',
+     making: 'Program yapılıyor ve simüle ediliyor…',
+     sideStock: 'Yan pay (mm)',
++    sideStockBad: 'Yalnızca 0 ile 0,5 mm arası: yan pay {{mm}} mm olarak kalır.',
+     sideStockHint: 'Her duvarda bilerek bırakılır, 0 ile 0,5 mm arası. Şablonların kendi payı kullanılmaz.',
+     toolsToLoad: '{{name}} makinesine takılacak takımlar',
+     notHave: 'Bende yok',
+-- 
+2.43.0
+

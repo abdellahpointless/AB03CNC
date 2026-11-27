@@ -1,0 +1,67 @@
+From 6c16f4a8a6024676af8de5ba258a38f2b85b94c0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:51:45 +0000
+Subject: [PATCH] CAM AI: "Play" on one line beside the tool's icon buttons,
+ the four turn buttons sized to read "+90 X" on one line (finding H1-32)
+
+.btn-secondary is unlayered CSS, so the buttons' px-1 and text-xs never applied.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 4 ++--
+ src/i18n/locales/en/cam.ts | 2 +-
+ src/i18n/locales/tr/cam.ts | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index cba975f..1f17157 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1091,7 +1091,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                   {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}
+                   {on && (
+                     <div role="group" aria-label={label} className="flex gap-1 px-1 pt-1 pb-1.5">
+-                      <button type="button" className={rowAct} onClick={() => setSimFocus({ setup: opNow, tool: o.tool, key: Date.now(), play: true })} disabled={busy}>
++                      <button type="button" className={`${rowAct} whitespace-nowrap`} onClick={() => setSimFocus({ setup: opNow, tool: o.tool, key: Date.now(), play: true })} disabled={busy}>
+                         <PlayerPlay size={14} stroke={1.8} aria-hidden />
+                         {t('camAi.ws.rowPlay')}
+                       </button>
+@@ -2245,7 +2245,7 @@ function TurnPanel({ n, made, turned, tris, used, onPress, onOwn }: { n: number;
+       </Suspense>
+       <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={t('camAi.turn.title')}>
+         {['X+', 'Y+', 'X-', 'Y-'].map((p) => (
+-          <button key={p} type="button" className="btn-secondary min-h-11 px-1 text-xs font-mono" onClick={() => onPress(p)} aria-label={t('camAi.turn.press', { axis: p[0], deg: deg(p) })} title={t('camAi.turn.press', { axis: p[0], deg: deg(p) })}>
++          <button key={p} type="button" className="btn-secondary min-h-11 !px-1 !text-xs font-mono whitespace-nowrap" onClick={() => onPress(p)} aria-label={t('camAi.turn.press', { axis: p[0], deg: deg(p) })} title={t('camAi.turn.press', { axis: p[0], deg: deg(p) })}>
+             {deg(p).replace('°', '')} {p[0]}
+           </button>
+         ))}
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 3d22074..ac82a6a 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -40,7 +40,7 @@ const cam = {
+       nxView: 'NX view (every path over the finished part)',
+       tools: 'Tools',
+       hideTools: 'Hide the tool list',
+-      rowPlay: 'Play this tool',
++      rowPlay: 'Play',
+       rowSettings: 'Settings',
+       opSettings: 'OP{{op}} settings: parallels and how the part lies',
+       rowRestore: 'Restore {{tool}}',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 74d6c3b..a15f5d7 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -43,7 +43,7 @@ const cam: Translation<typeof en> = {
+       nxView: 'NX görünümü (bitmiş parça üzerinde tüm yollar)',
+       tools: 'Takımlar',
+       hideTools: 'Takım listesini gizle',
+-      rowPlay: 'Bu takımı oynat',
++      rowPlay: 'Oynat',
+       rowSettings: 'Ayarlar',
+       opSettings: 'OP{{op}} ayarları: paraleller ve parçanın duruşu',
+       rowRestore: '{{tool}} geri al',
+-- 
+2.43.0
+

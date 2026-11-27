@@ -1,0 +1,28 @@
+From 9d1c6091eef2439f759d6191fd9bfa491bfbdee0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:56:47 +0000
+Subject: [PATCH] CAM AI: the camera menu says 3/4 again when the view is
+ framed again for another clamping or by Fit (finding H2-5)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamSim.tsx | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..868e17d 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -228,6 +228,8 @@ export default function CamSim({
+     }
+   };
+ 
++  // Framed again (another clamping or program, Fit): the 3D view is back at 3/4, and so is the camera menu's name.
++  useEffect(() => setView3d(null), [path, range[0], range[1], fitKey]);
+   // Hidden under the clamping 1 editor: paused (a review: it played on unseen).
+   useEffect(() => {
+     if (hidden) setPlaying(false);
+-- 
+2.43.0
+

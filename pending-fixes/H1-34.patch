@@ -1,0 +1,125 @@
+From 0d2b0125a310fe146ecd4f9181a2b6487dd96c8e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:51:49 +0000
+Subject: [PATCH] CAM AI: the progress card keeps the finished pass on screen
+ when a try is dropped, stays under 100 % until the program is there, and says
+ when it tries another way (finding H1-34)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   |  2 ++
+ src/i18n/locales/en/cam.ts |  1 +
+ src/i18n/locales/tr/cam.ts |  1 +
+ src/lib/cam/live.ts        | 20 +++++++++++---------
+ tests/camLive.test.ts      | 20 ++++++++++++++++++++
+ 5 files changed, 35 insertions(+), 9 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..02c984d 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -2375,6 +2375,8 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
+       <div className="h-1 rounded-full bg-[rgba(var(--ov),0.08)] overflow-hidden" aria-hidden>
+         <div className="h-full bg-[var(--accent-primary)] transition-[width] duration-500" style={{ width: `${Math.max(4, share)}%` }} />
+       </div>
++      {/* Planned again another way (the blank centred, a POM nest, ...): said, so it does not look stuck. */}
++      {!done && live.tries > 1 && <p className="text-xs text-[var(--blue-text)]">{t('camAi.live.again', { n: live.tries })}</p>}
+       <ol className="space-y-2">
+         {rows.map((r) => (
+           <li key={r.key} className={`flex items-start gap-2 text-xs ${r.state === 'next' ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..90559c4 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -341,6 +341,7 @@ const cam = {
+       check: 'Holder collisions and tool stick-out check',
+       post: 'Writing the program (G-code)',
+       elapsed: 'Elapsed {{time}}',
++      again: 'Trying another way to make it (try {{n}}), so it takes longer',
+       state: { done: 'Done', now: 'Working', next: 'Queued' },
+       rough: 'Roughing',
+       finish: 'Finishing',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..02f255f 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -344,6 +344,7 @@ const cam: Translation<typeof en> = {
+       check: 'Tutucu çarpışması ve takım boyu kontrolü',
+       post: 'Program yazılıyor (G kodu)',
+       elapsed: 'Geçen süre {{time}}',
++      again: 'Başka bir yol deneniyor ({{n}}. deneme), bu yüzden daha uzun sürer',
+       state: { done: 'Bitti', now: 'Çalışıyor', next: 'Sırada' },
+       rough: 'Kaba işleme',
+       finish: 'Finiş',
+diff --git a/src/lib/cam/live.ts b/src/lib/cam/live.ts
+index 00de622..593448e 100644
+--- a/src/lib/cam/live.ts
++++ b/src/lib/cam/live.ts
+@@ -5,10 +5,11 @@ import type { LiveEvent } from './program';
+ /**
+  * The pass shown: its steps, setups and paths. `pct` only grows. When the planner starts over (another
+  * axis, the blank centred, a POM nest), that pass runs hidden in `next` while the one before stays on
+- * screen; it is shown once it has finished, with the paths of the last pass.
++ * screen; it is shown once it has finished (checked), with the paths of the last pass; one dropped
++ * after it began never is. tries: the passes begun.
+  */
+-export type Live = { stages: string[]; setup: number; of: number; sides: string[]; paths: (LivePath & { setup: number })[]; pct: number; base: number; next: Live | null };
+-export const NO_LIVE: Live = { stages: [], setup: -1, of: 0, sides: [], paths: [], pct: 0, base: 0, next: null };
++export type Live = { stages: string[]; setup: number; of: number; sides: string[]; paths: (LivePath & { setup: number })[]; pct: number; base: number; next: Live | null; tries: number };
++export const NO_LIVE: Live = { stages: [], setup: -1, of: 0, sides: [], paths: [], pct: 0, base: 0, next: null, tries: 0 };
+ 
+ /** One pass's own step, not counting a hidden one. */
+ function step(l: Live, e: LiveEvent): Live {
+@@ -24,12 +25,13 @@ const share = (l: Live) => Math.min(1, l.stages.length / (4 + Math.max(l.of, 1))
+ 
+ export function liveStep(l: Live, e: LiveEvent): Live {
+   // The first pass starts as new; once one is on screen, every new pass runs hidden behind it.
+-  if (e.kind === 'reset') return l.stages.length ? { ...l, base: l.pct, next: NO_LIVE } : { ...NO_LIVE, pct: l.pct, base: l.base };
++  if (e.kind === 'reset') return l.stages.length ? { ...l, base: l.pct, next: NO_LIVE, tries: l.tries + 1 } : { ...NO_LIVE, pct: l.pct, base: l.base, tries: l.tries + 1 };
+   const now = step(l.next ?? l, e);
+-  // Each pass fills 85 % of what is left: the bar never goes back and stays under 100 until the end.
+-  const pct = Math.max(l.pct, Math.round(l.base + (100 - l.base) * 0.85 * share(now)));
+-  if (!l.next) return { ...now, pct, base: l.base, next: null };
+-  // A hidden pass that has finished is shown, with its paths.
+-  if (e.kind === 'stage' && e.stage === 'post') return { ...now, pct, base: l.base, next: null };
++  // Each pass fills 85 % of what is left: the bar never goes back and stays under 100 until the end (rounded, it
++  // reached 100 on the third pass and sat there while more ran).
++  const pct = Math.min(99, Math.max(l.pct, Math.round(l.base + (100 - l.base) * 0.85 * share(now))));
++  if (!l.next) return { ...now, pct, base: l.base, next: null, tries: l.tries };
++  // A hidden pass that has finished is shown, with its paths; one dropped after it began (no check) is not.
++  if (e.kind === 'stage' && e.stage === 'post') return now.stages.includes('check') ? { ...now, pct, base: l.base, next: null, tries: l.tries } : { ...l, pct, next: null };
+   return { ...l, pct, next: now };
+ }
+diff --git a/tests/camLive.test.ts b/tests/camLive.test.ts
+index 12e3695..dca3f38 100644
+--- a/tests/camLive.test.ts
++++ b/tests/camLive.test.ts
+@@ -47,4 +47,24 @@ describe('CAM AI progress', () => {
+     expect(l.paths.map((p) => p.key)).toEqual(['a']);
+     expect(l.stages).toContain('post');
+   });
++
++  // Finding H1-34: after a turn by hand the planner tried the blank centred (dropped at its first setup), then two POM
++  // nests and their programs, minutes at "100 %" with the dropped try shown as "Setup 1 · 0 operations · Working".
++  it('never shows a try dropped after it began, keeps the finished pass on screen', () => {
++    const dropped: LiveEvent[] = [{ kind: 'reset' }, { kind: 'stage', stage: 'features' }, { kind: 'stage', stage: 'stock' }, { kind: 'stage', stage: 'setup', setup: 0, of: 4, side: 'Y+' }, { kind: 'stage', stage: 'post' }];
++    let l: Live = NO_LIVE;
++    for (const e of [...pass('a'), ...dropped]) l = liveStep(l, e);
++    expect(l.paths.map((p) => p.key)).toEqual(['a']);
++    expect(l.stages).toContain('check');
++    expect(l.next).toBeNull();
++  });
++
++  it('stays under 100 over many tries and counts them', () => {
++    let l: Live = NO_LIVE;
++    for (let k = 0; k < 6; k++) for (const e of pass(String(k))) {
++      l = liveStep(l, e);
++      expect(l.pct).toBeLessThan(100);
++    }
++    expect(l.tries).toBe(6);
++  });
+ });
+-- 
+2.43.0
+

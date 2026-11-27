@@ -1,0 +1,145 @@
+From aace5081c4991b410b0bdb72666e617ed6a53d96 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:47:14 +0000
+Subject: [PATCH] CAM AI: the OP tabs, clamping chips and inspector follow the
+ simulation when it plays or is moved by hand into another clamping; a tool
+ picked in another clamping is let go (finding H2-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx  | 17 +++++++++++++++++
+ src/components/CamSim.tsx | 25 +++++++++++++++++++++----
+ 2 files changed, 38 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..965baac 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -636,9 +636,25 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const [measuring, setMeasuring] = useState(false);
+   // A tool picked in a made program: the simulation at its first move in that clamping (a new pick asks again).
+   const focusSeq = useRef(0);
++  // The simulation played or moved by hand into another clamping: its tab and chip follow, a tool picked in another
++  // clamping is let go (the inspector showed it while another one was simulated). Kept with the program it was on: a
++  // program made again (the simulation started anew) is still sent to it.
++  const followed = useRef<{ sel: Sel; run: Run } | null>(null);
++  const selNow = useRef(sel);
++  selNow.current = sel;
++  const followSim = (i: number) => {
++    setOpTab(i);
++    const s = selNow.current;
++    if ((s.kind !== 'setup' && s.kind !== 'tool') || s.i === i) return;
++    const next: Sel = { kind: 'setup', i };
++    followed.current = { sel: next, run };
++    setSel(next);
++  };
+   // Or a later clamping picked: the part as the clampings before left it, the finished part over it (you, Beta 2).
+   const focusTool = useMemo(() => {
+     if (run.state !== 'done') return null;
++    // Picked by the simulation itself (played or moved there): it is there already.
++    if (followed.current?.sel === sel && followed.current.run === run) return null;
+     // Clamping 1 too (its parallels editor opens only from its settings now).
+     if (sel.kind === 'setup' && run.result.setups[sel.i]) return { setup: sel.i, key: ++focusSeq.current };
+     if (sel.kind !== 'tool') return null;
+@@ -1750,6 +1766,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                       const op = result.setups[i]?.ops.find((o) => o.tool === tool);
+                       if (op) setSel({ kind: 'tool', i, code: op.code });
+                     }}
++                    onSetup={followSim}
+                     selected={sel.kind === 'tool' ? { setup: sel.i, tool: result.setups[sel.i]?.ops.find((o) => o.code === sel.code)?.tool ?? -1 } : null}
+                     runLabel={runLabel}
+                     stepLabel={(i) => { const st = stepName(i); return `OP${(i + 1) * 10} · ${st.turn}${st.rest ? ` · ${st.rest}` : ''}`; }}
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..36f6189 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -56,6 +56,7 @@ export default function CamSim({
+   onMeasureToggle,
+   onModel,
+   onPickTool,
++  onSetup,
+   previews = {},
+   pieces,
+ }: {
+@@ -85,12 +86,16 @@ export default function CamSim({
+   onModel?: (s: ModelState) => void;
+   /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
+   onPickTool?: (setup: number, tool: number) => void;
++  /** Played or moved by hand into another clamping: that one (the page's tabs follow it). */
++  onSetup?: (setup: number) => void;
+   /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
+   /** The holds asked for but not made yet, by clamping: drawn whenever that clamping is shown, whatever is picked (you). */
+   previews?: Record<number, { cale?: number; stop?: number; y?: number; yp?: number }>;
+ }) {
+   const hiddenRef = useRef(hidden);
+   hiddenRef.current = hidden;
++  const onSetupRef = useRef(onSetup);
++  onSetupRef.current = onSetup;
+   const { t } = useTranslation('cam');
+   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
+   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
+@@ -199,13 +204,19 @@ export default function CamSim({
+     setHeat(false);
+     setPlaying((p) => !p);
+   };
++  // Moved there by hand: the page told which clamping that is (a focus the page asked for is not told back).
++  const tell = (n: number) => onSetupRef.current?.(path.moves[Math.min(total, Math.max(1, n)) - 1]?.setup ?? 0);
++  const moveTo = (n: number) => {
++    seek(n);
++    tell(n);
++  };
+   const goRun = (dir: 1 | -1) => {
+     soloEnd.current = null;
+     setPlaying(false);
+     const at = Math.max(0, step - 1);
+     const k = runs.findIndex((r) => at >= r.from && at <= r.to);
+     const r = runs[Math.min(runs.length - 1, Math.max(0, k + dir))];
+-    if (r) seek(r.from + 1);
++    if (r) moveTo(r.from + 1);
+   };
+   // A click on the track: that instant.
+   const onTrack = (e: React.MouseEvent<HTMLDivElement>) => {
+@@ -216,7 +227,7 @@ export default function CamSim({
+     soloEnd.current = null;
+     setPlaying(false);
+     setHeat(false);
+-    seek(k + 1);
++    moveTo(k + 1);
+   };
+   const weak = () => {
+     const on = !heat;
+@@ -242,8 +253,8 @@ export default function CamSim({
+       if (e.key === ' ' && el?.tagName !== 'BUTTON') {
+         e.preventDefault();
+         playOn();
+-      } else if (e.key === 'ArrowRight') seek(Math.min(total, Math.floor(clock.current) + 1));
+-      else if (e.key === 'ArrowLeft') seek(Math.max(0, Math.ceil(clock.current) - 1));
++      } else if (e.key === 'ArrowRight') moveTo(Math.min(total, Math.floor(clock.current) + 1));
++      else if (e.key === 'ArrowLeft') moveTo(Math.max(0, Math.ceil(clock.current) - 1));
+       else if (e.key === 'f' || e.key === 'F') setFitKey((k) => k + 1);
+     };
+     window.addEventListener('keydown', onKey);
+@@ -257,6 +268,11 @@ export default function CamSim({
+   const cameraName = view3d ? t(`camAi.sim.camera.${view3d.kind}`) : t('camAi.sim.camera.iso');
+   const setupNow = sel?.index ?? 0;
+   const atSeconds = Math.min(elapsed, totalSeconds);
++  // Played on into another clamping (or turned for it): the page told.
++  useEffect(() => {
++    if (playing && !hiddenRef.current) onSetupRef.current?.(setupNow);
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [setupNow]);
+ 
+   return (
+     <div ref={shell} className="absolute inset-0 flex flex-col">
+@@ -401,6 +417,7 @@ export default function CamSim({
+               const n = Number(e.target.value);
+               clock.current = n;
+               setStep(n);
++              tell(n);
+             }}
+             aria-label={t('camAi.sim.position')}
+           />
+-- 
+2.43.0
+

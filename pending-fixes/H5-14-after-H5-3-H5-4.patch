@@ -1,0 +1,867 @@
+From 5d94013c32b6097352abc8317fdfdbd962d1da83 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:22:39 +0000
+Subject: [PATCH] i18n: sentence case for the remapper, tool, history and part
+ screens in both languages (finding H5-14)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/history.ts  |  52 ++++++++--------
+ src/i18n/locales/en/parts.ts    |  38 ++++++------
+ src/i18n/locales/en/remapper.ts | 104 ++++++++++++++++----------------
+ src/i18n/locales/en/tools.ts    |  18 +++---
+ src/i18n/locales/tr/history.ts  |  58 +++++++++---------
+ src/i18n/locales/tr/remapper.ts |  42 ++++++-------
+ src/i18n/locales/tr/tools.ts    |  12 ++--
+ 7 files changed, 162 insertions(+), 162 deletions(-)
+
+diff --git a/src/i18n/locales/en/history.ts b/src/i18n/locales/en/history.ts
+index ccbec88..5b1ee5f 100644
+--- a/src/i18n/locales/en/history.ts
++++ b/src/i18n/locales/en/history.ts
+@@ -28,7 +28,7 @@ const history = {
+ 
+   /** Program History screen (HistoryView). */
+   view: {
+-    title: 'Program History & Operator Activity',
++    title: 'Program history & operator activity',
+     subtitle: 'Global traceability of all processed G-code files, machine assignments, and tool modifications.',
+     exportCsv: 'Export CSV',
+     exportCsvTitle: 'Export complete traceability report to Excel CSV',
+@@ -50,23 +50,23 @@ const history = {
+     emptyTitle: 'No history records yet',
+     emptyText: 'Exported files from any operator workstation will appear here in real-time.',
+     noMatchTitle: 'No records match your filters',
+-    noMatchText: 'Try clearing your search query or selecting "All Operators".',
++    noMatchText: 'Try clearing your search query or selecting "All" in the operator filter.',
+     clickToCollapse: 'Click to collapse record',
+     clickToExpand: 'Click to expand record details',
+     exported: 'Exported:',
+     toolCount_one: '{{count}} tool',
+     toolCount_other: '{{count}} tools',
+-    viewCode: 'View Code',
++    viewCode: 'View code',
+     viewCodeTitle: 'Inspect remapped G-Code directly in browser',
+     downloadTitle: 'Download remapped G-Code file',
+-    toolModifications: 'Tool Modifications',
++    toolModifications: 'Tool modifications',
+     toolsMapped_one: '{{count}} tool mapped',
+     toolsMapped_other: '{{count}} tools mapped',
+-    autoSelection: 'Auto Selection',
+-    manualOverride: 'Manual Override',
+-    originalRequest: 'Original Request',
++    autoSelection: 'Auto selection',
++    manualOverride: 'Manual override',
++    originalRequest: 'Original request',
+     unknownContext: 'Unknown context',
+-    chosenTool: 'Chosen Tool',
++    chosenTool: 'Chosen tool',
+     noToolsModified: 'No tools were modified.',
+     page: 'Page',
+     recordsTotal: '({{total}} records total)',
+@@ -99,7 +99,7 @@ const history = {
+ 
+   /** Recent Generated Codes screen (RecentCodes). */
+   recent: {
+-    title: 'Recent Generated Codes',
++    title: 'Recent generated codes',
+     subtitle: 'Search and re-export programs that have been processed on any PC.',
+     searchPlaceholder: 'Search by filename or tool number (e.g. T2, program.nc)...',
+     loading: 'Loading recent codes...',
+@@ -107,7 +107,7 @@ const history = {
+     emptyText: 'Try searching by tool number or program name',
+     source: 'Src:',
+     more: '+{{count}} more',
+-    exportAgainTitle: 'Export File Again',
++    exportAgainTitle: 'Export file again',
+     errors: {
+       loadFailed: 'Could not load recent codes',
+     },
+@@ -126,23 +126,23 @@ const history = {
+     roleFallback: 'Operator',
+     tooltip: {
+       codesExtracted: 'Programs:',
+-      timeSaved: 'Time Saved:',
+-      teamShare: 'Team Share:',
++      timeSaved: 'Time saved:',
++      teamShare: 'Team share:',
+     },
+     distribution: {
+-      title: 'Tool Selection Distribution',
++      title: 'Tool selection distribution',
+       live: 'Live data',
+-      preview: 'Benchmark Preview',
++      preview: 'Benchmark preview',
+       subtitle: 'Ratio of tools automatically matched by the app versus modified manually by operators.',
+-      totalEvaluated: 'Total Evaluated:',
+-      sampleTotal: 'Sample Total:',
+-      appSelected: 'App Selected',
+-      manualPercent: '{{percent}}% Manual',
+-      legendApp: 'App Selected ({{percent}}%)',
++      totalEvaluated: 'Total evaluated:',
++      sampleTotal: 'Sample total:',
++      appSelected: 'App selected',
++      manualPercent: '{{percent}}% manual',
++      legendApp: 'App selected ({{percent}}%)',
+       legendManual: 'Manual ({{percent}}%)',
+-      byAppTitle: 'Selected by the App',
++      byAppTitle: 'Selected by the app',
+       byAppText: 'Matched directly from machine toolbox',
+-      manualTitle: 'Changed Manually',
++      manualTitle: 'Changed manually',
+       manualText: 'Resolved or overridden by machinist',
+       previewNote:
+         'This is an example. Once programs are remapped and downloaded in the Tool Remapper, this chart shows your real tool choices.',
+@@ -150,18 +150,18 @@ const history = {
+     },
+     byUser: {
+       title: 'Programs by user',
+-      adminOnly: 'Admin Only',
++      adminOnly: 'Admin only',
+       subtitle: 'Programs downloaded and time saved by each person.',
+       people: 'Choose who is shown',
+       peopleTitle: 'Shown in the statistics',
+       peopleHelp: 'Untick test accounts or people who do not work on the machines. They are left out of this chart, the totals and the preventive reports; nothing is deleted.',
+-      settings: 'Calculation Settings',
++      settings: 'Calculation settings',
+       settingsTitle: 'Configure time saved calculation baseline',
+       formulaTitle: 'How time saved is counted',
+       current: 'Now: {{minutes}} min saved per program',
+       formulaText:
+         'Standard manual code modifications take <b>5 to 6 minutes</b> on average (e.g. 5.5 min). CNC Process Pro completes the remapping in <b>30s to 1 min</b> (e.g. 45s). Each downloaded program adds this time to the total.',
+-      presets: 'Baseline Presets:',
++      presets: 'Baseline presets:',
+       emptyTitle: 'No programs downloaded yet',
+       emptyText:
+         'When anyone (machinist or admin) presses "Download program" in the Tool Remapper, their count and time saved appear here.',
+@@ -173,7 +173,7 @@ const history = {
+       p330: '5m 30s (6.0m manual - 30s app)',
+     },
+     leaderboard: {
+-      title: 'Operator Productivity Breakdown',
++      title: 'Operator productivity breakdown',
+       share: 'Share of programs',
+       extractions: 'Programs',
+       timeWon: 'Time saved',
+@@ -197,7 +197,7 @@ const history = {
+     widgetTitle: 'Time saved with CNC Process Pro',
+     widgetText: 'Every program saves <b>~{{perCode}}</b> compared to the typical 5–6 min manual process.',
+     codesExtracted: 'Programs downloaded',
+-    contributingUsers: 'Contributing Users',
++    contributingUsers: 'Contributing users',
+     users_one: '{{count}} user',
+     users_other: '{{count}} users',
+   },
+diff --git a/src/i18n/locales/en/parts.ts b/src/i18n/locales/en/parts.ts
+index 43b1e53..a8af473 100644
+--- a/src/i18n/locales/en/parts.ts
++++ b/src/i18n/locales/en/parts.ts
+@@ -25,20 +25,20 @@ const parts = {
+     nothingToExport: 'Nothing approved yet to export',
+   },
+   form: {
+-    title: 'New Production Entry',
++    title: 'New production entry',
+     month: 'Month: {{month}}',
+-    sapNumber: 'SAP Number',
++    sapNumber: 'SAP number',
+     sapPlaceholder: 'e.g. 10245-A, P98302_REV2',
+     sapHint: 'Letters, numbers, hyphens, underscores and dots (max 40 chars)',
+     quantity: 'Quantity',
+     quantityHint: 'Must be between 1 and 9999',
+-    kind: 'Production Kind',
++    kind: 'Production kind',
+     producedPart: 'Produced part',
+     modification: 'Modification',
+     kindValue: 'Value: {{value}}',
+-    calculatedValue: 'Calculated Value:',
+-    submit: 'Submit Part Entry',
+-    submitting: 'Submitting Entry...',
++    calculatedValue: 'Calculated value:',
++    submit: 'Submit part entry',
++    submitting: 'Submitting entry...',
+     submitted: 'Entry submitted',
+     submitFailed: 'Submission failed. Please try again.',
+     invalidSap: 'Invalid SAP number',
+@@ -48,16 +48,16 @@ const parts = {
+   },
+   counter: {
+     title: "This Month's Counter",
+-    totalValue: 'Total Approved Value',
++    totalValue: 'Total approved value',
+     partsProduced: 'Parts approved:',
+     resetNote: 'Counter automatically resets to 0 at the start of each calendar month. Previous months remain archived below.',
+   },
+   archive: {
+-    title: 'Monthly Production Archive',
++    title: 'Monthly production archive',
+     monthsTracked_one: '{{count}} month tracked',
+     monthsTracked_other: '{{count}} months tracked',
+     empty: 'No approved entries found for your account yet. Submitted parts will appear here once verified.',
+-    currentMonth: 'Current Month',
++    currentMonth: 'Current month',
+     parts: 'Parts:',
+     value: 'Value:',
+     loading: 'Loading month records...',
+@@ -66,18 +66,18 @@ const parts = {
+     loadFailed: 'Failed to load monthly summary',
+     refreshFailed: 'Failed to refresh monthly summary',
+     columns: {
+-      dateTime: 'Date & Time',
+-      sapNumber: 'SAP Number',
++      dateTime: 'Date & time',
++      sapNumber: 'SAP number',
+       type: 'Type',
+       quantity: 'Quantity',
+-      unitValue: 'Unit Value',
+-      lineValue: 'Line Value',
++      unitValue: 'Unit value',
++      lineValue: 'Line value',
+     },
+   },
+ 
+   /* ---------- Part review (admin screen) ---------- */
+   review: {
+-    title: 'Part Review',
++    title: 'Part review',
+     subtitle: 'Review, approve or reject manual production entries logged by operators',
+     period: 'Period',
+     from: 'From',
+@@ -89,21 +89,21 @@ const parts = {
+     exporting: 'Exporting...',
+     exportAll: 'Export Excel',
+     refreshTitle: 'Refresh pending entries',
+-    queueTitle: 'Pending Verification Queue',
++    queueTitle: 'Pending verification queue',
+     pageItems: 'Page {{page}} ({{items}} items)',
+     approveAllTitle: 'Approve all pending rows currently displayed on this page',
+-    approvingPage: 'Approving Page...',
+-    approveAll: 'Approve All On This Page',
++    approvingPage: 'Approving page...',
++    approveAll: 'Approve all on this page',
+     loading: 'Fetching pending production logs...',
+     emptyTitle: 'All entries verified!',
+     emptyText: 'There are no pending submissions awaiting review on this page.',
+     columns: {
+       operator: 'Operator',
+-      sapNumber: 'SAP Number',
++      sapNumber: 'SAP number',
+       qty: 'Qty',
+       kind: 'Kind',
+       value: 'Value',
+-      submittedDate: 'Submitted Date',
++      submittedDate: 'Submitted date',
+       action: 'Action',
+     },
+     approve: 'Approve',
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index fcafe6c..87988f0 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -2,7 +2,7 @@
+ const remapper = {
+   /** Control bar above the editors. */
+   controls: {
+-    targetMachine: 'Target Machine',
++    targetMachine: 'Target machine',
+     toolsLoaded: '{{count}} Tools Loaded',
+     noMachines: 'No machines yet',
+     noMachinesHint: 'No machines yet - an admin adds them in Admin',
+@@ -10,15 +10,15 @@ const remapper = {
+     machineOption_other: '{{name}} ({{count}} tools)',
+     openInventoryTitle: 'Open {{machine}} Tool Inventory',
+     inventory: 'Tool Inventory',
+-    analyze: 'Analyze & Remap',
++    analyze: 'Analyze & remap',
+     analyzeTitle: 'Analyze G-Code and remap tools to the selected machine',
+     modify: 'Change tool choices',
+     modifyTitle: 'Check and change which tool the app picked for each tool change',
+-    modifyTitleDisabled: 'Press Analyze & Remap first',
++    modifyTitleDisabled: 'Press "Analyze & remap" first',
+     material: 'MAT:',
+     tip: 'Analyzes comments to map tools accurately.',
+-    sourceCode: 'Source Code',
+-    processedCode: 'Processed Code',
++    sourceCode: 'Source code',
++    processedCode: 'Processed code',
+   },
+   /** Floating toast after "Download program". */
+   toast: {
+@@ -34,9 +34,9 @@ const remapper = {
+     fanucOffsetsAdded:
+       "Attention: some tools of this FANUC program had no G43 line. 'H#513 D#513' was added after their tool change, but without G43 the length offset is not switched on: check those tools before running the program.",
+     haasForFanuc:
+-      'This program is still in HAAS format (HAAS safety line or G43 without M254). Press "HAAS → FANUC" first, then "Analyze & Remap".',
++      'This program is still in HAAS format (HAAS safety line or G43 without M254). Press "HAAS → FANUC" first, then "Analyze & remap".',
+     fanucForHaas:
+-      'This program is in FANUC format (H#513, M254 or M95). Press "FANUC → HAAS" first, then "Analyze & Remap".',
++      'This program is in FANUC format (H#513, M254 or M95). Press "FANUC → HAAS" first, then "Analyze & remap".',
+     machineLocked: '{{machine}} is locked: programs for DMG machines are not made in the app for now.',
+     needsAir:
+       'This part is FH (pressed wood): it must stay dry, never in lubricant. {{machine}} runs lubricant: choose an air machine (HAAS-2 or HAAS-4).',
+@@ -52,102 +52,102 @@ const remapper = {
+     diameterColon: 'Diameter:',
+     lengthColon: 'Length:',
+     context: 'Context:',
+-    goBack: 'Go Back',
++    goBack: 'Go back',
+   },
+   /** Tool picker under each card (existing tool or create a new one). */
+   selector: {
+-    selectExisting: '-- Select Existing Tool --',
++    selectExisting: '-- Select existing tool --',
+     or: 'OR',
+-    createNew: 'Create New Tool',
++    createNew: 'Create new tool',
+   },
+   /** Inline "create new tool" form. */
+   addTool: {
+-    titlePrefix: 'Create New Tool in',
++    titlePrefix: 'Create new tool in',
+     titleSuffix: '',
+     hint: 'Enter tool name and specifications',
+-    name: 'Tool Name / Description*',
++    name: 'Tool name / description*',
+     namePlaceholder: 'e.g. Foret D4, Fraise ébauche D16, ST_10.00_050...',
+-    pocket: 'Physical Slot / Pocket*',
+-    selectPocket: '-- Select Slot --',
++    pocket: 'Physical slot / pocket*',
++    selectPocket: '-- Select slot --',
+     slotEmpty: 'Slot {{slot}} (Empty)',
+     slotReplace: 'Slot {{slot}} (Replace {{tool}} D{{diameter}})',
+-    number: 'Tool No. (Macros)*',
++    number: 'Tool no. (macros)*',
+     numberPlaceholder: 'e.g. 161600',
+     diameter: 'Diameter (mm)',
+     diameterPlaceholder: 'e.g. 10.0',
+     length: 'Length (mm)',
+     lengthPlaceholder: 'e.g. 50.0',
+-    saveAndUse: 'Save & Use',
++    saveAndUse: 'Save & use',
+     defaultDescription: 'New Tool for {{tool}} (Dia: {{diameter}}, L: {{length}})',
+     errors: {
+       selectPocket: 'Please select a physical slot (pocket).',
+-      enterNumber: 'Please enter the Tool No. (Macros).',
++      enterNumber: 'Please enter the tool no. (macros).',
+       maxSlot: '{{name}} maximum slot is {{max}}!',
+       slotUsed: 'Slot {{slot}} is already used in this new configuration.',
+     },
+   },
+   /** Tool resolution modal. */
+   modal: {
+-    title: 'Tool Resolution Needed',
++    title: 'Tool resolution needed',
+     subtitle: 'Match program tools against {{machine}} slots',
+-    missing: '{{count}} Missing',
+-    reviewApprox: 'Review Approximates',
++    missing: '{{count}} missing',
++    reviewApprox: 'Review approximates',
+     stillMissing_one: '{{count}} tool still missing',
+     stillMissing_other: '{{count}} tools still missing',
+-    apply: 'Apply & Generate Code',
++    apply: 'Apply & generate code',
+   },
+   skipped: {
+-    label: 'Skipped Operation (Deleted Section)',
+-    undo: 'Undo / Change',
++    label: 'Skipped operation (deleted section)',
++    undo: 'Undo / change',
+   },
+   /** HAAS taraud (tap) exception card. */
+   taraud: {
+-    badge: 'Exception: Taraud',
+-    rule: '{{machine}} Rule',
+-    title: 'Taraud Exception Required',
++    badge: 'Exception: taraud',
++    rule: '{{machine}} rule',
++    title: 'Taraud exception required',
+     explain:
+       'For HAAS machines, taraud operations cannot be automatically mapped. You must either choose the taraud installed in the machine (if one is available) or delete the entire code section using this taraud all the way to the next tool change.',
+-    option1: 'Option 1: Machine Taraud',
++    option1: 'Option 1: machine taraud',
+     useOnly: 'Use the only taraud installed on this machine:',
+     selectFrom: 'Select from installed tarauds on this machine:',
+     none: 'No taraud is installed on {{machine}}.',
+-    choose: 'Choose Taraud T{{number}} (D{{diameter}} L{{length}})',
++    choose: 'Choose taraud T{{number}} (D{{diameter}} L{{length}})',
+     fallbackName: 'Taraud',
+     noneHint: 'Machine has no taraud. Use Option 2 to delete this section or create a tool below.',
+-    option2: 'Option 2: Delete Code Section',
++    option2: 'Option 2: delete code section',
+     option2Text: 'Delete the whole code section using this taraud, all the way until the next tool change.',
+-    deleteSection: 'Delete Section (Till Next Tool Change)',
++    deleteSection: 'Delete section (till next tool change)',
+     orSelect: 'Or select another tool from toolbox / create new...',
+   },
+   unsupported: {
+-    title: 'Unsupported Taraud Tool',
++    title: 'Unsupported taraud tool',
+     text: 'The machine cannot execute this operation because the tool diameter is not 6mm. Would you like to remove this operation from the code?',
+-    confirm: 'Confirm Removal',
++    confirm: 'Confirm removal',
+     orSelect: 'Or select a different tool...',
+   },
+   crash: {
+-    title: 'Tool Too Short (Crash Risk)',
++    title: 'Tool too short (crash risk)',
+     text: 'The selected tool (T{{number}} {{category}}) has a length of <b>{{length}}mm</b> but the program reaches a deep Z of <z>Z-{{depth}}</z>.',
+     changeLonger: 'Change to a longer tool...',
+   },
+   resolved: {
+-    taraud: 'Taraud Resolved',
+-    manual: 'Manually Resolved',
+-    perfect: 'Perfect Match',
+-    deleteInstead: 'Delete Section Instead',
++    taraud: 'Taraud resolved',
++    manual: 'Manually resolved',
++    perfect: 'Perfect match',
++    deleteInstead: 'Delete section instead',
+     deleteInsteadTitle: 'Delete entire code section using this taraud until next tool change',
+   },
+   approx: {
+-    title: 'Approximate Match Used',
++    title: 'Approximate match used',
+     required: 'Required',
+-    reqMin: 'Req Min: {{value}}mm',
++    reqMin: 'Req min: {{value}}mm',
+     assigned: 'Assigned',
+-    assignedTool: 'Assigned Tool',
+-    reqMinDepth: 'Required Min Depth',
+-    chosenLength: 'Chosen Tool Length',
++    assignedTool: 'Assigned tool',
++    reqMinDepth: 'Required min depth',
++    chosenLength: 'Chosen tool length',
+     safe: '{{length}}mm (Safe)',
+-    requestedLength: 'Requested Length',
+-    changeTool: 'Change Tool...',
++    requestedLength: 'Requested length',
++    changeTool: 'Change tool...',
+   },
+   missing: {
+     title: 'Missing Tool L{{line}}',
+@@ -156,24 +156,24 @@ const remapper = {
+   /** "Some tools are too short" confirmation. */
+   crashModal: {
+     title: 'CRITICAL WARNING',
+-    subtitle: 'Short Z Length Detected',
++    subtitle: 'Short Z length detected',
+     text: 'Some tools appear to have a Z length shorter than the deepest Z requested in their operation. <b>This might cause a physical collision or crash!</b>',
+     question: 'Have you physically verified that these tools are long enough or that it is safe to proceed?',
+     proceed: "I'm Sure, Proceed",
+   },
+   /** New tools that will be written to the inventory. */
+   checklist: {
+-    title: 'Review Tool Changes',
++    title: 'Review tool changes',
+     subtitle: 'These tools will be saved to the database.',
+     noDescription: 'No description',
+     saving: 'Saving to inventory...',
+-    approve: 'Approve & Install',
++    approve: 'Approve & install',
+   },
+   special: {
+-    title: 'Special Tools Checklist',
++    title: 'Special tools checklist',
+     subtitle: 'Please confirm you have these critical tools set up correctly.',
+     verify: 'Verify diameter and physical condition.',
+-    confirm: 'Confirm Checked Tools',
++    confirm: 'Confirm checked tools',
+   },
+   /** Last warning before the program is generated. */
+   confirm: {
+@@ -182,8 +182,8 @@ const remapper = {
+     important: 'Important:',
+     warning:
+       'Please ensure that you load the correct tools into the machine physically as generated in the new code. Running an incorrect tool can lead to machine crash or part destruction.',
+-    back: 'Go Back & Modify',
+-    generate: 'Confirm & Generate',
++    back: 'Go back & modify',
++    generate: 'Confirm & generate',
+   },
+   /** Source / processed code editors (CodeEditorPair). */
+   editor: {
+@@ -216,7 +216,7 @@ const remapper = {
+     stale: 'The program or machine changed after this code was generated.',
+     reanalyze: 'Re-analyze',
+     emptyTitle: 'No remapped code generated yet',
+-    emptyText: 'Click "Analyze & Remap" above to resolve tools against the target machine toolbox.',
++    emptyText: 'Click "Analyze & remap" above to resolve tools against the target machine toolbox.',
+     g53Placed: 'Table to operator: automatically placed {{count}} G53 Y0 (part flip / end of program)',
+   },
+   /** Summary after switching the program between FANUC and HAAS. */
+diff --git a/src/i18n/locales/en/tools.ts b/src/i18n/locales/en/tools.ts
+index 34d7786..25bd1a6 100644
+--- a/src/i18n/locales/en/tools.ts
++++ b/src/i18n/locales/en/tools.ts
+@@ -8,10 +8,10 @@ const tools = {
+     noMachines: 'No machines yet',
+     importExcel: 'Import Excel',
+     importExcelHint: 'Import machines and tools from an Excel file',
+-    addTool: 'Add Tool',
++    addTool: 'Add tool',
+   },
+   list: {
+-    slots: '{{machine}} Slots',
++    slots: '{{machine}} slots',
+     toolCount_one: '{{count}} tool',
+     toolCount_other: '{{count}} tools',
+     offline: 'Offline - showing the last saved copy (read only)',
+@@ -23,22 +23,22 @@ const tools = {
+     len: 'LEN',
+     modified: 'MODIFIED',
+     emptyTitle: 'No tools configured for {{machine}}',
+-    emptyHint: 'Click "Add Tool" above to populate the tool magazine.',
++    emptyHint: 'Click "Add tool" above to populate the tool magazine.',
+   },
+   form: {
+-    addTitle: 'Add New Tool to {{machine}}',
+-    description: 'Tool Name / Description*',
++    addTitle: 'Add new tool to {{machine}}',
++    description: 'Tool name / description*',
+     descriptionPlaceholder: 'e.g. Foret D4, Fraise ébauche D16, ST_10.00_050...',
+-    number: 'Tool No. (Macros)*',
++    number: 'Tool no. (macros)*',
+     numberPlaceholder: 'e.g. 10',
+-    pocket: 'Position / Slot (Optional)',
++    pocket: 'Position / slot (optional)',
+     pocketPlaceholder: 'Physical pocket',
+     category: 'Category',
+     diameter: 'Diameter (mm)',
+     length: 'Length (mm)',
+     materials: 'Materials supported (optional)',
+-    saveTool: 'Save Tool',
+-    saveUpdates: 'Save Updates',
++    saveTool: 'Save tool',
++    saveUpdates: 'Save updates',
+   },
+   errors: {
+     maxSlots: '{{machine}} has a maximum of {{max}} tool slots!',
+diff --git a/src/i18n/locales/tr/history.ts b/src/i18n/locales/tr/history.ts
+index 60cb1c8..e2a4b65 100644
+--- a/src/i18n/locales/tr/history.ts
++++ b/src/i18n/locales/tr/history.ts
+@@ -28,7 +28,7 @@ const history: Translation<typeof en> = {
+   },
+ 
+   view: {
+-    title: 'Program Geçmişi ve Operatör Etkinliği',
++    title: 'Program geçmişi ve operatör etkinliği',
+     subtitle: 'İşlenen tüm G-kodu dosyalarının, tezgah atamalarının ve takım değişikliklerinin genel izlenebilirliği.',
+     exportCsv: 'CSV dışa aktar',
+     exportCsvTitle: 'Tam izlenebilirlik raporunu Excel CSV olarak dışa aktarın',
+@@ -56,17 +56,17 @@ const history: Translation<typeof en> = {
+     exported: 'Dışa aktarılan:',
+     toolCount_one: '{{count}} takım',
+     toolCount_other: '{{count}} takım',
+-    viewCode: 'Kodu Gör',
++    viewCode: 'Kodu gör',
+     viewCodeTitle: 'Eşleştirilmiş G-kodunu doğrudan tarayıcıda inceleyin',
+     downloadTitle: 'Eşleştirilmiş G-kodu dosyasını indirin',
+-    toolModifications: 'Takım Değişiklikleri',
++    toolModifications: 'Takım değişiklikleri',
+     toolsMapped_one: '{{count}} takım eşleştirildi',
+     toolsMapped_other: '{{count}} takım eşleştirildi',
+-    autoSelection: 'Otomatik Seçim',
+-    manualOverride: 'Manuel Seçim',
+-    originalRequest: 'Programdaki İstek',
++    autoSelection: 'Otomatik seçim',
++    manualOverride: 'Manuel seçim',
++    originalRequest: 'Programdaki istek',
+     unknownContext: 'Bağlam bilinmiyor',
+-    chosenTool: 'Seçilen Takım',
++    chosenTool: 'Seçilen takım',
+     noToolsModified: 'Hiçbir takım değiştirilmedi.',
+     page: 'Sayfa',
+     recordsTotal: '(toplam {{total}} kayıt)',
+@@ -98,7 +98,7 @@ const history: Translation<typeof en> = {
+   },
+ 
+   recent: {
+-    title: 'Son Oluşturulan Kodlar',
++    title: 'Son oluşturulan kodlar',
+     subtitle: 'Herhangi bir bilgisayarda işlenmiş programları arayın ve yeniden dışa aktarın.',
+     searchPlaceholder: 'Dosya adı veya takım numarasına göre arayın (örn. T2, program.nc)...',
+     loading: 'Son kodlar yükleniyor...',
+@@ -124,23 +124,23 @@ const history: Translation<typeof en> = {
+     roleFallback: 'Operatör',
+     tooltip: {
+       codesExtracted: 'Program:',
+-      timeSaved: 'Kazanılan Süre:',
+-      teamShare: 'Ekip Payı:',
++      timeSaved: 'Kazanılan süre:',
++      teamShare: 'Ekip payı:',
+     },
+     distribution: {
+-      title: 'Takım Seçim Dağılımı',
+-      live: 'Canlı Veri',
+-      preview: 'Örnek Önizleme',
++      title: 'Takım seçim dağılımı',
++      live: 'Canlı veri',
++      preview: 'Örnek önizleme',
+       subtitle: 'Uygulamanın otomatik eşleştirdiği takımların, operatörlerin elle değiştirdiği takımlara oranı.',
+-      totalEvaluated: 'Değerlendirilen Toplam:',
+-      sampleTotal: 'Örnek Toplam:',
+-      appSelected: 'Uygulama Seçimi',
+-      manualPercent: '%{{percent}} Manuel',
+-      legendApp: 'Uygulama Seçimi (%{{percent}})',
++      totalEvaluated: 'Değerlendirilen toplam:',
++      sampleTotal: 'Örnek toplam:',
++      appSelected: 'Uygulama seçimi',
++      manualPercent: '%{{percent}} manuel',
++      legendApp: 'Uygulama seçimi (%{{percent}})',
+       legendManual: 'Manuel (%{{percent}})',
+-      byAppTitle: 'Uygulama Tarafından Seçildi',
++      byAppTitle: 'Uygulama tarafından seçildi',
+       byAppText: 'Doğrudan tezgahın takım listesinden eşleştirildi',
+-      manualTitle: 'Elle Değiştirildi',
++      manualTitle: 'Elle değiştirildi',
+       manualText: 'Operatör tarafından çözüldü veya değiştirildi',
+       previewNote:
+         'Bu bir örnektir. Takım Eşleştirici’de programlar eşleştirilip indirildikçe bu grafik gerçek takım seçimlerinizi gösterir.',
+@@ -148,18 +148,18 @@ const history: Translation<typeof en> = {
+     },
+     byUser: {
+       title: 'Kullanıcıya göre programlar',
+-      adminOnly: 'Yalnızca Yönetici',
++      adminOnly: 'Yalnızca yönetici',
+       subtitle: 'Her kişinin indirdiği programlar ve kazandırdığı süre.',
+       people: 'Kimlerin görüneceğini seç',
+       peopleTitle: 'İstatistiklerde görünenler',
+       peopleHelp: 'Test hesaplarının veya tezgahlarda çalışmayan kişilerin işaretini kaldırın. Bu grafikten, toplamlardan ve bakım raporlarından çıkarılırlar; hiçbir şey silinmez.',
+-      settings: 'Hesaplama Ayarları',
++      settings: 'Hesaplama ayarları',
+       settingsTitle: 'Kazanılan süre hesaplamasının temel değerini ayarlayın',
+       formulaTitle: 'Kazanılan süre nasıl hesaplanır',
+       current: 'Şu an: program başına {{minutes}} dk kazanç',
+       formulaText:
+         'Kodu elle düzenlemek ortalama <b>5 ila 6 dakika</b> sürer (örn. 5,5 dk). CNC Process Pro takım eşleştirmeyi <b>30 sn ile 1 dk</b> arasında tamamlar (örn. 45 sn). İndirilen her program bu süreyi toplama ekler.',
+-      presets: 'Hazır Değerler:',
++      presets: 'Hazır değerler:',
+       emptyTitle: 'Henüz indirilen program yok',
+       emptyText:
+         'Herhangi biri (operatör veya yönetici) Takım Eşleştirici’de "Programı indir" düğmesine bastığında, sayısı ve kazandırdığı süre burada görünür.',
+@@ -171,10 +171,10 @@ const history: Translation<typeof en> = {
+       p330: '5 dk 30 sn (6,0 dk manuel - 30 sn uygulama)',
+     },
+     leaderboard: {
+-      title: 'Operatör Verimlilik Dağılımı',
++      title: 'Operatör verimlilik dağılımı',
+       share: 'Program payı',
+       extractions: 'Program',
+-      timeWon: 'Kazanılan Süre',
++      timeWon: 'Kazanılan süre',
+     },
+     errors: {
+       saveFailed: 'Ayar kaydedilemedi',
+@@ -186,15 +186,15 @@ const history: Translation<typeof en> = {
+     won: 'Kazanılan süre',
+     codes_one: '{{count}} kod',
+     codes_other: '{{count}} kod',
+-    calculatorTitle: 'Kazanılan Süre Hesabı',
++    calculatorTitle: 'Kazanılan süre hesabı',
+     calculatorText: 'Kodu elle düzenlemek <b>~5-6 dk</b> sürer. CNC Process Pro ile yalnızca <b>~30 sn–1 dk</b> sürer.',
+     totalExtractions: 'Program:',
+     avgSaved: 'Program başına kazanç:',
+-    totalSaved: 'Toplam Kazanılan Süre:',
+-    widgetTitle: 'CNC Process Pro ile Kazanılan Süre',
++    totalSaved: 'Toplam kazanılan süre:',
++    widgetTitle: 'CNC Process Pro ile kazanılan süre',
+     widgetText: 'Her program, elle yapılan tipik 5–6 dakikalık işleme göre <b>~{{perCode}}</b> kazandırır.',
+     codesExtracted: 'İndirilen program',
+-    contributingUsers: 'Katkıda Bulunan Kullanıcı',
++    contributingUsers: 'Katkıda bulunan kullanıcı',
+     users_one: '{{count}} kullanıcı',
+     users_other: '{{count}} kullanıcı',
+   },
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index bbfddf0..85fb19f 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -4,7 +4,7 @@ import type en from '../en/remapper';
+ /* Türkçe metinler: remapper (Takım Eşleştirici ekranı, kaynak / işlenmiş kod editörleri). */
+ const remapper: Translation<typeof en> = {
+   controls: {
+-    targetMachine: 'Hedef Tezgah',
++    targetMachine: 'Hedef tezgah',
+     toolsLoaded: '{{count}} takım yüklü',
+     noMachines: 'Henüz tezgah yok',
+     noMachinesHint: 'Henüz tezgah yok - yönetici, Yönetici → Tezgahlar bölümünden ekler',
+@@ -12,15 +12,15 @@ const remapper: Translation<typeof en> = {
+     machineOption_other: '{{name}} ({{count}} takım)',
+     openInventoryTitle: '{{machine}} takım listesini aç',
+     inventory: 'Takım Listesi',
+-    analyze: 'Analiz Et ve Eşleştir',
++    analyze: 'Analiz et ve eşleştir',
+     analyzeTitle: 'G-kodunu analiz et ve takımları seçili tezgaha eşleştir',
+     modify: 'Takım seçimlerini değiştir',
+     modifyTitle: 'Uygulamanın her takım değişimi için seçtiği takımı kontrol et ve değiştir',
+-    modifyTitleDisabled: 'Önce Analiz Et ve Eşleştir düğmesine basın',
++    modifyTitleDisabled: 'Önce "Analiz et ve eşleştir" düğmesine basın',
+     material: 'Malzeme:',
+     tip: 'Takımları doğru eşleştirmek için program açıklamalarını analiz eder.',
+-    sourceCode: 'Kaynak Kod',
+-    processedCode: 'İşlenmiş Kod',
++    sourceCode: 'Kaynak kod',
++    processedCode: 'İşlenmiş kod',
+   },
+   toast: {
+     title: 'Program indirildi',
+@@ -52,12 +52,12 @@ const remapper: Translation<typeof en> = {
+     diameterColon: 'Çap:',
+     lengthColon: 'Uzunluk:',
+     context: 'Bağlam:',
+-    goBack: 'Geri Dön',
++    goBack: 'Geri dön',
+   },
+   selector: {
+     selectExisting: '-- Mevcut takımı seçin --',
+     or: 'VEYA',
+-    createNew: 'Yeni Takım Oluştur',
++    createNew: 'Yeni takım oluştur',
+   },
+   addTool: {
+     titlePrefix: '',
+@@ -75,7 +75,7 @@ const remapper: Translation<typeof en> = {
+     diameterPlaceholder: 'örn. 10',
+     length: 'Uzunluk (mm)',
+     lengthPlaceholder: 'örn. 50',
+-    saveAndUse: 'Kaydet ve Kullan',
++    saveAndUse: 'Kaydet ve kullan',
+     defaultDescription: '{{tool}} için yeni takım (Çap: {{diameter}}, Uzunluk: {{length}})',
+     errors: {
+       selectPocket: 'Lütfen bir magazin cebi seçin.',
+@@ -91,14 +91,14 @@ const remapper: Translation<typeof en> = {
+     reviewApprox: 'Yaklaşık eşleşmeleri kontrol edin',
+     stillMissing_one: '{{count}} takım hâlâ eksik',
+     stillMissing_other: '{{count}} takım hâlâ eksik',
+-    apply: 'Uygula ve Kodu Oluştur',
++    apply: 'Uygula ve kodu oluştur',
+   },
+   skipped: {
+     label: 'Atlanan işlem (bölüm silindi)',
+-    undo: 'Geri al / Değiştir',
++    undo: 'Geri al / değiştir',
+   },
+   taraud: {
+-    badge: 'İstisna: Kılavuz',
++    badge: 'İstisna: kılavuz',
+     rule: '{{machine}} kuralı',
+     title: 'Kılavuz istisnası gerekli',
+     explain:
+@@ -112,13 +112,13 @@ const remapper: Translation<typeof en> = {
+     noneHint: 'Tezgahta kılavuz yok. Bu bölümü silmek için Seçenek 2’yi kullanın veya aşağıdan yeni bir takım oluşturun.',
+     option2: 'Seçenek 2: Kod bölümünü sil',
+     option2Text: 'Bu kılavuzu kullanan kod bölümünün tamamını bir sonraki takım değişimine kadar silin.',
+-    deleteSection: 'Bölümü Sil (Sonraki Takım Değişimine Kadar)',
++    deleteSection: 'Bölümü sil (sonraki takım değişimine kadar)',
+     orSelect: 'Veya takım listesinden başka bir takım seçin / yeni oluşturun...',
+   },
+   unsupported: {
+     title: 'Desteklenmeyen kılavuz',
+     text: 'Takım çapı 6 mm olmadığı için tezgah bu işlemi yapamaz. Bu işlemi koddan kaldırmak ister misiniz?',
+-    confirm: 'Kaldırmayı Onayla',
++    confirm: 'Kaldırmayı onayla',
+     orSelect: 'Veya farklı bir takım seçin...',
+   },
+   crash: {
+@@ -130,7 +130,7 @@ const remapper: Translation<typeof en> = {
+     taraud: 'Kılavuz eşleştirildi',
+     manual: 'Elle eşleştirildi',
+     perfect: 'Tam eşleşme',
+-    deleteInstead: 'Bunun Yerine Bölümü Sil',
++    deleteInstead: 'Bunun yerine bölümü sil',
+     deleteInsteadTitle: 'Bu kılavuzu kullanan kod bölümünün tamamını bir sonraki takım değişimine kadar sil',
+   },
+   approx: {
+@@ -154,20 +154,20 @@ const remapper: Translation<typeof en> = {
+     subtitle: 'Kısa Z boyu tespit edildi',
+     text: 'Bazı takımların Z boyu, işlemlerinde istenen en derin Z değerinden kısa görünüyor. <b>Bu, fiziksel bir çarpışmaya veya kazaya yol açabilir!</b>',
+     question: 'Bu takımların yeterince uzun olduğunu veya devam etmenin güvenli olduğunu tezgah başında kontrol ettiniz mi?',
+-    proceed: 'Eminim, Devam Et',
++    proceed: 'Eminim, devam et',
+   },
+   checklist: {
+     title: 'Takım değişikliklerini kontrol edin',
+     subtitle: 'Bu takımlar takım listesine kaydedilecek.',
+     noDescription: 'Açıklama yok',
+     saving: 'Takım listesine kaydediliyor...',
+-    approve: 'Onayla ve Yükle',
++    approve: 'Onayla ve yükle',
+   },
+   special: {
+     title: 'Özel takımlar kontrol listesi',
+     subtitle: 'Lütfen bu kritik takımların doğru şekilde hazırlandığını onaylayın.',
+     verify: 'Çapı ve fiziksel durumu kontrol edin.',
+-    confirm: 'İşaretli Takımları Onayla',
++    confirm: 'İşaretli takımları onayla',
+   },
+   confirm: {
+     title: 'Kod oluşturmadan önce uyarı',
+@@ -175,8 +175,8 @@ const remapper: Translation<typeof en> = {
+     important: 'Önemli:',
+     warning:
+       'Lütfen yeni kodda belirtilen doğru takımları tezgaha fiziksel olarak taktığınızdan emin olun. Yanlış takımla çalışmak tezgahın çarpmasına veya parçanın zarar görmesine yol açabilir.',
+-    back: 'Geri Dön ve Düzenle',
+-    generate: 'Onayla ve Oluştur',
++    back: 'Geri dön ve düzenle',
++    generate: 'Onayla ve oluştur',
+   },
+   editor: {
+     fanucToHaasTitle: 'Kaynak kodu FANUC formatından HAAS formatına dönüştür',
+@@ -206,9 +206,9 @@ const remapper: Translation<typeof en> = {
+     caleWarning_other: 'Dikkat: bir takımın kalelere girdiği {{count}} nokta var. Çalıştırmadan önce o kaleleri daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
+     extractTitle: 'Eşleştirilmiş G-kodu dosyasını indir',
+     stale: 'Bu kod oluşturulduktan sonra program veya tezgah değişti.',
+-    reanalyze: 'Yeniden Analiz Et',
++    reanalyze: 'Yeniden analiz et',
+     emptyTitle: 'Henüz eşleştirilmiş kod oluşturulmadı',
+-    emptyText: 'Takımları hedef tezgahın takım listesiyle eşleştirmek için yukarıdaki "Analiz Et ve Eşleştir" düğmesine tıklayın.',
++    emptyText: 'Takımları hedef tezgahın takım listesiyle eşleştirmek için yukarıdaki "Analiz et ve eşleştir" düğmesine tıklayın.',
+     g53Placed: 'Tabla operatöre: {{count}} adet G53 Y0 otomatik eklendi (parça çevirme / program sonu)',
+   },
+   convert: {
+diff --git a/src/i18n/locales/tr/tools.ts b/src/i18n/locales/tr/tools.ts
+index 000a0e2..52938bb 100644
+--- a/src/i18n/locales/tr/tools.ts
++++ b/src/i18n/locales/tr/tools.ts
+@@ -10,7 +10,7 @@ const tools: Translation<typeof en> = {
+     noMachines: 'Henüz tezgah yok',
+     importExcel: 'Excel içe aktar',
+     importExcelHint: 'Tezgahları ve takımları bir Excel dosyasından içe aktarın',
+-    addTool: 'Takım Ekle',
++    addTool: 'Takım ekle',
+   },
+   list: {
+     slots: '{{machine}} cepleri',
+@@ -25,13 +25,13 @@ const tools: Translation<typeof en> = {
+     len: 'BOY',
+     modified: 'DEĞİŞTİ',
+     emptyTitle: '{{machine}} için tanımlı takım yok',
+-    emptyHint: 'Magazini doldurmak için yukarıdaki "Takım Ekle" düğmesine tıklayın.',
++    emptyHint: 'Magazini doldurmak için yukarıdaki "Takım ekle" düğmesine tıklayın.',
+   },
+   form: {
+     addTitle: '{{machine}} için yeni takım ekle',
+-    description: 'Takım Adı / Açıklama*',
++    description: 'Takım adı / açıklama*',
+     descriptionPlaceholder: 'örn. Matkap D4, Kaba parmak freze D16, ST_10.00_050...',
+-    number: 'Takım No. (Makro)*',
++    number: 'Takım no. (makro)*',
+     numberPlaceholder: 'örn. 10',
+     pocket: 'Cep (isteğe bağlı)',
+     pocketPlaceholder: 'Fiziksel cep',
+@@ -39,8 +39,8 @@ const tools: Translation<typeof en> = {
+     diameter: 'Çap (mm)',
+     length: 'Uzunluk (mm)',
+     materials: 'Uygun malzemeler (isteğe bağlı)',
+-    saveTool: 'Takımı Kaydet',
+-    saveUpdates: 'Değişiklikleri Kaydet',
++    saveTool: 'Takımı kaydet',
++    saveUpdates: 'Değişiklikleri kaydet',
+   },
+   errors: {
+     maxSlots: '{{machine}} en fazla {{max}} takım cebine sahip!',
+-- 
+2.43.0
+

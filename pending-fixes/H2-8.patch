@@ -1,0 +1,31 @@
+From 9e6e4561cce193352c783db873708c98fbd9ba30 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:05:43 +0000
+Subject: [PATCH] CAM AI: the part view opens far enough to show the whole raw
+ block and its size labels (it was closer than the part's own sphere needs)
+ (finding H2-8)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamPartView.tsx | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/CamPartView.tsx b/src/components/CamPartView.tsx
+index 08e63d2..0fd99ad 100644
+--- a/src/components/CamPartView.tsx
++++ b/src/components/CamPartView.tsx
+@@ -386,7 +386,9 @@ export default function CamPartView({
+     controls.pickables = () => [part];
+     controls.center = () => new THREE.Vector3();
+ 
+-    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 1.55);
++    // The part, its raw block and the block's size labels all in view: the part's sphere needs 1.67 × its diagonal at 35°.
++    // shortcut: a fixed distance for a view about as wide as tall or wider; fit to the aspect if portrait views appear.
++    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 2.1);
+     camera.near = size / 100;
+     camera.far = size * 50;
+     camera.updateProjectionMatrix();
+-- 
+2.43.0
+

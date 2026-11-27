@@ -1,0 +1,56 @@
+From d48d96e81b1777e5eab94639d5ed8aad91fb8efc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:01:40 +0000
+Subject: [PATCH] CAM AI: once a part type is chosen the Part panel just says
+ no name was found, in grey, no longer asking to choose the type (finding
+ H1-19)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 3 ++-
+ src/i18n/locales/en/cam.ts | 1 +
+ src/i18n/locales/tr/cam.ts | 1 +
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..eb477eb 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1334,7 +1334,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                     {prep.sap && <div><dt className="inline text-[var(--text-secondary)]">{t('camAi.part.sap')}: </dt><dd className="inline font-mono text-[var(--text-primary)]">{prep.sap}</dd></div>}
+                   </dl>
+                 ) : (
+-                  <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
++                  // The type chosen: only the fact stays, neutral (a step no longer missing).
++                  partType ? <p className="text-[var(--text-secondary)]">{t('camAi.part.noName')}</p> : <p className="text-[var(--orange-text)]">{t('camAi.part.noTitle')}</p>
+                 )}
+                 {partFields()}
+                 {shapesList()}
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..16a1795 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -412,6 +412,7 @@ const cam = {
+       title: 'Name on the drawing',
+       sap: 'SAP number',
+       noTitle: 'No name found in the file: choose the part type.',
++      noName: 'No name found in the file.',
+       type: 'Part type',
+       choose: 'Choose…',
+       typeHint: 'It decides where precision matters. Change it if the name does not fit the part.',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..27d8461 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -414,6 +414,7 @@ const cam: Translation<typeof en> = {
+       title: 'Çizimdeki adı',
+       sap: 'SAP numarası',
+       noTitle: 'Dosyada ad bulunamadı: parça tipini seçin.',
++      noName: 'Dosyada ad bulunamadı.',
+       type: 'Parça tipi',
+       choose: 'Seçin…',
+       typeHint: 'Hassasiyetin nerede önemli olduğunu belirler. Ad parçaya uymuyorsa değiştirin.',
+-- 
+2.43.0
+

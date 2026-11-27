@@ -1,0 +1,28 @@
+From f5caa264d83b74922b9529c3d1f01fa4dc61bf71 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:51:59 +0000
+Subject: [PATCH] CAM AI: an opened program's tool rows show the whole tool
+ description on hover (finding H1-33)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamOpened.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/CamOpened.tsx b/src/components/CamOpened.tsx
+index 9cc2099..c59bd6c 100644
+--- a/src/components/CamOpened.tsx
++++ b/src/components/CamOpened.tsx
+@@ -167,7 +167,7 @@ export default function CamOpened({
+                       {`T${r.tool}`.length > 5 ? `T${r.tool}`.slice(0, 4) + '…' : `T${r.tool}`}
+                     </span>
+                     <span className="flex-1 min-w-0">
+-                      <span className="block truncate font-medium">{info[k].label || t('camAi.open.noLabel')}</span>
++                      <span className="block truncate font-medium" title={info[k].label || undefined}>{info[k].label || t('camAi.open.noLabel')}</span>
+                       {info[k].d && <span className="block text-xs text-[var(--text-secondary)] tabular-nums">Ø{fmt(info[k].d!, 2)}</span>}
+                     </span>
+                     <span className="text-xs text-[var(--text-secondary)] tabular-nums">{clock(info[k].seconds)}</span>
+-- 
+2.43.0
+

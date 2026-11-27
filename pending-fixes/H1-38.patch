@@ -1,0 +1,77 @@
+From 2058b4f4faec179222b770c7fce67b3747014801 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:55:54 +0000
+Subject: [PATCH] CAM AI: once a program is made, the walls to finish and the
+ white face say why they cannot be picked again (finding H1-38)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 2 ++
+ src/i18n/locales/en/cam.ts | 2 ++
+ src/i18n/locales/tr/cam.ts | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 9172581..cf4ce43 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1959,6 +1959,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+             </button>
+           )}
+         </div>
++        {result && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.white.made')}</p>}
+       </section>
+     );
+   }
+@@ -1979,6 +1980,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+             </button>
+           )}
+         </div>
++        {result && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.finish.made')}</p>}
+       </section>
+     );
+   }
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 4800599..e0dbcdc 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -241,6 +241,7 @@ const cam = {
+       cancel: 'Cancel',
+       clear: 'Clear',
+       hint: 'Click the plate’s white face. Drag to turn the view.',
++      made: 'Fixed for the program made: start a New program (⋯ menu) to pick another white face.',
+     },
+     finish: {
+       title: 'Walls to finish',
+@@ -252,6 +253,7 @@ const cam = {
+       done: 'Done picking',
+       clear: 'Clear',
+       hint: 'Click a wall to finish it, click it again to take it off. Drag to turn the view.',
++      made: 'Fixed for the program made: start a New program (⋯ menu) to pick other walls.',
+     },
+     legend: { hover: 'Face under the pointer', top: 'Top of a setup', stock: 'Raw block', finish: 'Walls to finish' },
+     opEdit: {
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 8ad9c9c..6bcd8d5 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -244,6 +244,7 @@ const cam: Translation<typeof en> = {
+       cancel: 'Vazgeç',
+       clear: 'Temizle',
+       hint: 'Plakanın beyaz yüzüne tıklayın. Görünümü çevirmek için sürükleyin.',
++      made: 'Yapılan program için sabit: başka bir beyaz yüz seçmek için Yeni program başlatın (⋯ menüsü).',
+     },
+     finish: {
+       title: 'Son paso yapılacak duvarlar',
+@@ -255,6 +256,7 @@ const cam: Translation<typeof en> = {
+       done: 'Seçim bitti',
+       clear: 'Temizle',
+       hint: 'Son paso için bir duvara tıklayın, kaldırmak için yeniden tıklayın. Görünümü çevirmek için sürükleyin.',
++      made: 'Yapılan program için sabit: başka duvarlar seçmek için Yeni program başlatın (⋯ menüsü).',
+     },
+     legend: { hover: 'İmlecin altındaki yüz', top: 'Bağlamanın üst yüzü', stock: 'Ham blok', finish: 'Son paso duvarları' },
+     opEdit: {
+-- 
+2.43.0
+

@@ -1,0 +1,81 @@
+From c6847cfcc9605d64da8e4d4dabc4d21b682f9575 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:53:36 +0000
+Subject: [PATCH] CAM AI: a model that cannot be read is said in the New
+ program dialog itself, in a full sentence; a small file's size in kB, not '0
+ MB' (finding H1-17)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 8 ++++++--
+ src/i18n/locales/en/cam.ts | 7 +++++++
+ src/i18n/locales/tr/cam.ts | 7 +++++++
+ 3 files changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..5ca8f79 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1512,7 +1512,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+ 
+             {run.state === 'error' && (
+               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
+-                {run.error === 'failed' ? t('camAi.failed') : run.error === 'thinBlank' ? t('camAi.stock.thinRefused') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`remapper:toolpath.model.errors.${run.error}`)}
++                {run.error === 'failed' ? t('camAi.failed') : run.error === 'thinBlank' ? t('camAi.stock.thinRefused') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`camAi.modelErrors.${run.error}`)}
+               </p>
+             )}
+         </div>
+@@ -2068,8 +2068,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+             >
+               <Upload size={18} className="text-[var(--blue-text)]" />
+               <span className="font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : model ? model.name : t('camAi.drop')}</span>
+-              <span className="text-[var(--text-secondary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
++              <span className="text-[var(--text-secondary)]">{model ? `${model.bytes.length < 1048576 ? `${fmt(model.bytes.length / 1024, 0)} kB` : `${fmt(model.bytes.length / 1048576, 1)} MB`} · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
+             </button>
++            {/* A file that is not a model: said here, where it was chosen (the inspector is behind the dialog). */}
++            {run.state === 'error' && run.error !== 'failed' && run.error !== 'thinBlank' && run.error !== 'toolDb' && (
++              <p className="badge-danger text-xs py-1.5 px-3" role="alert">{t(`camAi.modelErrors.${run.error}`)}</p>
++            )}
+             {prep && (
+               // The part in 3D beside its choices (item 16): turned with the mouse, as it was read.
+               <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..9cb1f0c 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -396,6 +396,13 @@ const cam = {
+     trying: 'Trying layout {{n}} of {{of}} and simulating it…',
+     slow: 'Big parts take a few minutes',
+     failed: 'CAM AI could not program this part. Check the model, or download the learning records for the team.',
++    modelErrors: {
++      tooBig: 'This file is too big: a 3D model can be 50 MB at most.',
++      noModel: 'This PDF has no 3D model in it: choose the part’s 3D PDF, its STEP file or an STL.',
++      compressed: 'This PDF’s 3D model is stored in a way the app cannot read yet: use the part’s STEP file or an STL.',
++      unreadable: 'This file cannot be read as a 3D PDF, a STEP file or an STL: choose the part’s 3D model.',
++      notPart: 'This model is not this part: its size is not the part’s.',
++    },
+     result: 'Result',
+     proven: 'Simulated and checked: the part comes out like the model, and no tool or holder hits the jaws or the part.',
+     notProven: 'The simulated part is not close enough to the model (99 % needed). Look at it in the toolpath viewer.',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..ce9f3c3 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -398,6 +398,13 @@ const cam: Translation<typeof en> = {
+     trying: '{{of}} yerleşimden {{n}}. deneniyor ve simüle ediliyor…',
+     slow: 'Büyük parçalar birkaç dakika sürer',
+     failed: 'CAM AI bu parçayı programlayamadı. Modeli kontrol edin veya ekip için öğrenme kayıtlarını indirin.',
++    modelErrors: {
++      tooBig: 'Bu dosya çok büyük: bir 3D model en fazla 50 MB olabilir.',
++      noModel: 'Bu PDF’de 3D model yok: parçanın 3D PDF’ini, STEP dosyasını veya bir STL seçin.',
++      compressed: 'Bu PDF’deki 3D model, uygulamanın henüz okuyamadığı bir biçimde saklanmış: parçanın STEP dosyasını veya bir STL kullanın.',
++      unreadable: 'Bu dosya 3D PDF, STEP veya STL olarak okunamıyor: parçanın 3D modelini seçin.',
++      notPart: 'Bu model bu parça değil: boyutu parçanınkiyle aynı değil.',
++    },
+     result: 'Sonuç',
+     proven: 'Simüle edildi ve kontrol edildi: parça modeldeki gibi çıkıyor, hiçbir takım veya tutucu mengene çenelerine ya da parçaya çarpmıyor.',
+     notProven: 'Simüle edilen parça modele yeterince yakın değil (%99 gerekli). Takım yolu görüntüleyicisinde inceleyin.',
+-- 
+2.43.0
+

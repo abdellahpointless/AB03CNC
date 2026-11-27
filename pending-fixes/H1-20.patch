@@ -1,0 +1,28 @@
+From 55bc3340b5ef32c9cb7c841695e3d053fc479783 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:02:07 +0000
+Subject: [PATCH] CAM AI: a STEP model's program is named without .step / .stp,
+ as for PDF and STL ('part.nc', not 'part.stp.nc') (finding H1-20)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..0978922 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -256,7 +256,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const fileRef = useRef<HTMLInputElement>(null);
+   const machine = toolMachines.find((m) => m.id === machineId) ?? toolMachines[0];
+   const tools = machine ? toolbox[machine.id] ?? [] : [];
+-  const name = model ? model.name.replace(/\.(pdf|stl)$/i, '') : '';
++  const name = model ? model.name.replace(/\.(pdf|stl|step|stp)$/i, '') : '';
+   const fileName = `${name || 'PROGRAMM'}.nc`;
+   // The material the templates are taken for (inox waits for the operator's yes to MS).
+   const templatesFor: CamMaterial | null = material === 'INOX' ? null : material === 'OTHER' ? family : material;
+-- 
+2.43.0
+

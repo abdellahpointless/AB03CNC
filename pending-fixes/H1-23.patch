@@ -1,0 +1,42 @@
+From 67dbb753f5cc4425cd59955132f5ba82d77f6c91 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:43:46 +0000
+Subject: [PATCH] CAM AI: the Program panel's hint under the tools to load
+ points to Swap tool, where a tool is picked (finding H1-23)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/cam.ts | 2 +-
+ src/i18n/locales/tr/cam.ts | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 3dc12e5..20b67bd 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -552,7 +552,7 @@ const cam = {
+       edited: 'An operation changed by hand',
+     },
+     noStandIn: 'No stand-in in the templates: add this tool to the machine.',
+-    swapHint: 'CAM AI makes the program again with the tool you pick.',
++    swapHint: 'To use a machine tool instead, pick the tool in the tool list and choose Swap tool (or right-click it).',
+     rightClickSwap: 'Right-click to change the tool',
+     toolName: '{{name}} · Ø {{d}} mm · length {{l}} mm',
+     tools: {
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98db1c9..71788ed 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -555,7 +555,7 @@ const cam: Translation<typeof en> = {
+       edited: 'Bir işlem elle değiştirildi',
+     },
+     noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı makineye ekleyin.',
+-    swapHint: 'CAM AI seçtiğiniz takımla programı yeniden yapar.',
++    swapHint: 'Yerine makinedeki bir takımı kullanmak için takım listesinde takımı seçip Takımı değiştir’e basın (veya takıma sağ tıklayın).',
+     rightClickSwap: 'Takımı değiştirmek için sağ tıklayın',
+     toolName: '{{name}} · Ø {{d}} mm · boy {{l}} mm',
+     tools: {
+-- 
+2.43.0
+

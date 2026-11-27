@@ -1,0 +1,93 @@
+From 959f3e3f84fd9557e4e3055beb6fdd25b4129edd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 01:00:44 +0000
+Subject: [PATCH] CAM AI: the simulation's clock and the tool list's times say
+ which one counts the tool changes (finding H2-9)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 4 ++--
+ src/components/CamSim.tsx  | 2 +-
+ src/i18n/locales/en/cam.ts | 2 ++
+ src/i18n/locales/tr/cam.ts | 2 ++
+ 4 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..19f5318 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -1024,7 +1024,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+           {result.setups[opNow] && (
+             <p className="px-4 pb-2 flex justify-between gap-2 text-xs text-[var(--text-secondary)] tabular-nums">
+               <span className="truncate">{stepName(opNow).turn} · {parallelsText(opNow)}</span>
+-              <span>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
++              <span title={t('camAi.ws.timeHelp')}>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
+             </p>
+           )}
+           <ul aria-label={t('camAi.ws.tools')} className="px-2 space-y-0.5">
+@@ -1080,7 +1080,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+                       </span>
+                     </span>
+                     {(changed.includes(o.code) || o.unsafe) && <AlertTriangle size={14} className="shrink-0 text-[var(--orange-text)]" aria-label={t('camAi.changedBadge')} />}
+-                    <span className="text-xs text-[var(--text-secondary)] tabular-nums">{fmtTime(secs)}</span>
++                    <span className="text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.ws.timeHelp')}>{fmtTime(secs)}</span>
+                   </button>
+                   {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}
+                   {on && (
+diff --git a/src/components/CamSim.tsx b/src/components/CamSim.tsx
+index aeec75c..c64004d 100644
+--- a/src/components/CamSim.tsx
++++ b/src/components/CamSim.tsx
+@@ -405,7 +405,7 @@ export default function CamSim({
+             aria-label={t('camAi.sim.position')}
+           />
+         </div>
+-        <span className="font-mono text-xs text-[var(--text-secondary)] tabular-nums">{clockText(atSeconds)} / {clockText(totalSeconds)}</span>
++        <span className="font-mono text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.sim.clockHelp')}>{clockText(atSeconds)} / {clockText(totalSeconds)}</span>
+         <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+           {t('camAi.sim.speed')}
+           <select className="aurora-input h-8 py-0 px-2 text-[13px]" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..d2f4c9f 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -34,6 +34,7 @@ const cam = {
+       notMade: 'Not made yet',
+       checksTitle: 'Every check',
+       timeChip: '≈{{min}} min · {{n}} tool changes',
++      timeHelp: 'With the tool changes (the simulation’s clock counts the moves only)',
+       more: 'More',
+       againKey: 'Make it again',
+       simulateStart: 'Simulate from the start',
+@@ -113,6 +114,7 @@ const cam = {
+       play: 'Play',
+       pause: 'Pause',
+       position: 'Where in the program',
++      clockHelp: 'The moves’ own time, without the tool changes (the tool list and the header count them in)',
+       speed: 'Speed',
+       parallels: '{{mm}} mm parallels',
+       onTable: 'On the table',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..b0af845 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -37,6 +37,7 @@ const cam: Translation<typeof en> = {
+       notMade: 'Henüz hazırlanmadı',
+       checksTitle: 'Tüm kontroller',
+       timeChip: '≈{{min}} dk · {{n}} takım değişimi',
++      timeHelp: 'Takım değişimleri dahil (simülasyon saati yalnızca hareketleri sayar)',
+       more: 'Daha fazla',
+       againKey: 'Yeniden hazırla',
+       simulateStart: 'Baştan simüle et',
+@@ -116,6 +117,7 @@ const cam: Translation<typeof en> = {
+       play: 'Oynat',
+       pause: 'Duraklat',
+       position: 'Programdaki yer',
++      clockHelp: 'Yalnızca hareketlerin süresi, takım değişimleri hariç (takım listesi ve başlık bunları da sayar)',
+       speed: 'Hız',
+       parallels: '{{mm}} mm paralel',
+       onTable: 'Tablada',
+-- 
+2.43.0
+

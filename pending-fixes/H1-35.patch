@@ -1,0 +1,43 @@
+From b50457a15021628ee38704e651019b37fa2f1651 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:52:36 +0000
+Subject: [PATCH] CAM AI: the top plate's part type is short enough to read
+ whole in its select; the white face is explained where it is picked (finding
+ H1-35)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/cam.ts | 2 +-
+ src/i18n/locales/tr/cam.ts | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index ac82a6a..4800599 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -425,7 +425,7 @@ const cam = {
+       choose: 'Choose…',
+       typeHint: 'It decides where precision matters. Change it if the name does not fit the part.',
+       types: {
+-        topPlate: 'Top plate (contour on the white RAFI face)',
++        topPlate: 'Top plate (white face)',
+         sealCage: 'Seal cage (thin walls)',
+         pinPlate: 'Pin plate (pressed pins)',
+         contourInsert: 'Contour insert',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index a15f5d7..8ad9c9c 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -427,7 +427,7 @@ const cam: Translation<typeof en> = {
+       choose: 'Seçin…',
+       typeHint: 'Hassasiyetin nerede önemli olduğunu belirler. Ad parçaya uymuyorsa değiştirin.',
+       types: {
+-        topPlate: 'Üst plaka (beyaz RAFI yüzündeki kontur)',
++        topPlate: 'Üst plaka (beyaz yüz)',
+         sealCage: 'Conta kafesi (ince duvarlar)',
+         pinPlate: 'Pim plakası (çakılan pimler)',
+         contourInsert: 'Kontur insörtü',
+-- 
+2.43.0
+

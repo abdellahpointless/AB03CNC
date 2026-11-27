@@ -1,0 +1,140 @@
+From 63fc55a815f198171b060ba168725ffcd9b88a4a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:40:25 +0000
+Subject: [PATCH] CAM AI: leaving it (back, or Send to the remapper) with a
+ program made or being made asks first, saying nothing of it is kept (finding
+ H1-2)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx   | 46 +++++++++++++++++++++++++++++++++++---
+ src/i18n/locales/en/cam.ts |  4 ++++
+ src/i18n/locales/tr/cam.ts |  4 ++++
+ 3 files changed, 51 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 5ce0d57..48f5d08 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -549,6 +549,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   const generateRef = useRef(generate);
+   generateRef.current = generate;
+   const result = run.state === 'done' ? run.result : null;
++  // Leaving CAM AI (back, or Send to the remapper) keeps nothing of it: with a program made or being made, asked first.
++  const [leaveAsk, setLeaveAsk] = useState<{ go: () => void; send: boolean } | null>(null);
++  const leave = (go: () => void, send = false) => (result || busy ? setLeaveAsk({ go, send }) : go());
+   // The machine's own program, as Send and Process in the remapper give it (forMachine).
+   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
+   const download = () => {
+@@ -1521,7 +1524,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+   );
+ 
+   if (opened)
+-    return <CamOpened name={opened.name} code={opened.code} model={model} machine={machine} onSend={onSend} onExit={onExit} onClose={() => setOpened(null)} />;
++    return (
++      <>
++        <CamOpened name={opened.name} code={opened.code} model={model} machine={machine} onSend={(...a) => leave(() => onSend(...a), true)} onExit={() => leave(onExit)} onClose={() => setOpened(null)} />
++        {leaveDialog()}
++      </>
++    );
+ 
+   return (
+     <div className="cam-ws h-full w-full flex flex-col bg-[var(--bg-page)] text-[13px] text-[var(--text-primary)]">
+@@ -1530,7 +1538,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+ 
+       {/* One bar: back to the app, the file, its stock and checks, its time, Download and Send. */}
+       <header className="h-12 shrink-0 flex items-center gap-2 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+-        <button type="button" onClick={onExit} title={t('camAi.ws.backTitle')} aria-label={t('camAi.ws.backTitle')} className="no-glass h-8 flex items-center gap-2 pl-1.5 pr-2.5 rounded-[8px] hover:bg-[rgba(var(--ov),0.08)]">
++        <button type="button" onClick={() => leave(onExit)} title={t('camAi.ws.backTitle')} aria-label={t('camAi.ws.backTitle')} className="no-glass h-8 flex items-center gap-2 pl-1.5 pr-2.5 rounded-[8px] hover:bg-[rgba(var(--ov),0.08)]">
+           <ArrowLeft size={16} stroke={1.8} className="text-[var(--text-secondary)]" aria-hidden />
+           <span className="w-6 h-6 rounded-[6px] bg-gradient-to-br from-[var(--blue-500)] to-violet-700 grid place-items-center text-white font-mono font-bold text-xs" aria-hidden>//</span>
+           <span className="text-[13px] font-semibold text-[var(--text-primary)] whitespace-nowrap hidden xl:inline">{t('camAi.ws.back')}</span>
+@@ -1600,7 +1608,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
+         </button>
+         {result ? (
+-          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
++          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && leave(() => onSend(result.code, fileName, machine.id), true)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
+             <Send size={16} stroke={1.8} aria-hidden /> {t('camAi.send')}
+           </button>
+         ) : run.state === 'busy' ? (
+@@ -1880,6 +1888,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+ 
+       {newProgramDialog()}
+       {dropDialog()}
++      {leaveDialog()}
+       <CamToolDb
+         open={dbOpen}
+         onOpenChange={setDbOpen}
+@@ -2018,6 +2027,37 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+     );
+   }
+ 
++  /** Leaving with a program made or being made: asked first (nothing of it is kept). */
++  function leaveDialog() {
++    return (
++      <Dialog.Root open={!!leaveAsk} onOpenChange={(o) => !o && setLeaveAsk(null)}>
++        <Dialog.Portal>
++          <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
++          <Dialog.Content className="glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26rem] max-w-[calc(100vw-2rem)] p-5 space-y-4">
++            <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{t('camAi.ws.leaveTitle')}</Dialog.Title>
++            <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.ws.leaveBody')}</Dialog.Description>
++            <div className="flex justify-end gap-2">
++              <Dialog.Close asChild>
++                <button type="button" className="btn-secondary text-xs min-h-11 px-4">{t('camAi.ws.leaveStay')}</button>
++              </Dialog.Close>
++              <button
++                type="button"
++                className="btn-primary text-xs min-h-11 px-4"
++                onClick={() => {
++                  const go = leaveAsk?.go;
++                  setLeaveAsk(null);
++                  go?.();
++                }}
++              >
++                {leaveAsk?.send ? t('camAi.send') : t('camAi.ws.leaveConfirm')}
++              </button>
++            </div>
++          </Dialog.Content>
++        </Dialog.Portal>
++      </Dialog.Root>
++    );
++  }
++
+   /** Deleting a tool from a clamping: asked first (its path and tool change go, the program is made again). */
+   function dropDialog() {
+     return (
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..4c354dc 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -49,6 +49,10 @@ const cam = {
+       rowUp: 'Move T{{tool}} earlier',
+       rowDown: 'Move T{{tool}} later',
+       dragHint: 'Drag a tool to change the order (or Alt + ↑ / ↓)',
++      leaveTitle: 'Leave CAM AI?',
++      leaveBody: 'CAM AI keeps nothing when you leave it: the model, the clampings, the program and every change by hand are gone. To change the program later (a tool, a clamping), it must be made again from the model. Download it first if you want to keep it.',
++      leaveStay: 'Stay',
++      leaveConfirm: 'Leave',
+       deleteTitle: 'Delete T{{tool}} from clamping {{n}}?',
+       deleteBody: 'Its toolpath and its tool change come out of this clamping; the rest of the program stays as made and is checked again. What it would have cut stays on the part, and the check shows it. Make again then lets CAM AI plan without it.',
+       deleteConfirm: 'Delete',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..0ea1095 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -52,6 +52,10 @@ const cam: Translation<typeof en> = {
+       rowUp: 'T{{tool}} öne al',
+       rowDown: 'T{{tool}} sona al',
+       dragHint: 'Sırayı değiştirmek için bir takımı sürükleyin (veya Alt + ↑ / ↓)',
++      leaveTitle: 'CAM AI’dan çıkılsın mı?',
++      leaveBody: 'CAM AI’dan çıkınca hiçbir şey saklanmaz: model, bağlamalar, program ve elle yapılan her değişiklik gider. Programı sonra değiştirmek için (bir takım, bir bağlama) modelden yeniden hazırlanması gerekir. Saklamak isterseniz önce indirin.',
++      leaveStay: 'Kal',
++      leaveConfirm: 'Çık',
+       deleteTitle: 'T{{tool}}, {{n}}. bağlamadan silinsin mi?',
+       deleteBody: 'Takım yolu ve takım değişimi bu bağlamadan çıkar; programın geri kalanı yapıldığı gibi kalır ve yeniden kontrol edilir. Keseceği malzeme parçada kalır ve kontrol bunu gösterir. Sonra Yeniden yap ile CAM AI onsuz planlar.',
+       deleteConfirm: 'Sil',
+-- 
+2.43.0
+

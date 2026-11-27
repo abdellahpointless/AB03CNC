@@ -1,0 +1,86 @@
+From 3ac412e056abbfe973150874ee243893273ad378 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:47:01 +0000
+Subject: [PATCH] CAM AI: a cutting-value field emptied stays empty with CAM
+ AI's value as placeholder, so typing replaces it instead of giving 655000
+ (finding H1-9)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAiResult.tsx | 16 ++++++++++++++--
+ tests/camInspector.test.ts     | 10 ++++++++++
+ 2 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/CamAiResult.tsx b/src/components/CamAiResult.tsx
+index 1c12720..bfc4737 100644
+--- a/src/components/CamAiResult.tsx
++++ b/src/components/CamAiResult.tsx
+@@ -37,6 +37,12 @@ const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a85
+ const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8 ? '#f59e0b' : '#ef4444');
+ 
+ /** 164 s -> "2:44". */
++/**
++ * What a cutting-value field shows: the text typed while it is still the value kept (empty: CAM AI's, the placeholder),
++ * else the value kept (typed, or put back by Undo), else CAM AI's own.
++ */
++export const cutText = (typed: string | undefined, kept: number | undefined, made: number) => (typed !== undefined && (typed === '' ? kept === undefined : Number(typed) === kept) ? typed : String(kept ?? made));
++
+ export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+ 
+ export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
+@@ -342,6 +348,8 @@ export function ToolCard({
+   const [asking, setAsking] = useState(ask);
+   const [pick, setPick] = useState(options[0]?.code ?? '');
+   const [typed, setTyped] = useState<{ d: string; l: string }>({ d: '', l: '' });
++  // The cutting values as typed (an emptied field stays empty, never back to CAM AI's value under the caret).
++  const [typedCut, setTypedCut] = useState<Partial<Record<'s' | 'f' | 'ae' | 'ap', string>>>({});
+   const op = ops[0];
+   // The tool picked to swap in, and what differs from the one it replaces (warned, never refused).
+   const TYPED = '__typed';
+@@ -370,8 +378,12 @@ export function ToolCard({
+         step={step}
+         inputMode="decimal"
+         disabled={busy}
+-        value={draft[k] ?? op[k]}
+-        onChange={(e) => onEdit({ [k]: e.target.value === '' ? undefined : Number(e.target.value) })}
++        value={cutText(typedCut[k], draft[k], op[k])}
++        placeholder={String(op[k])}
++        onChange={(e) => {
++          setTypedCut((x) => ({ ...x, [k]: e.target.value }));
++          onEdit({ [k]: e.target.value === '' ? undefined : Number(e.target.value) });
++        }}
+       />
+     </label>
+   );
+diff --git a/tests/camInspector.test.ts b/tests/camInspector.test.ts
+index ed66e36..77e6a6d 100644
+--- a/tests/camInspector.test.ts
++++ b/tests/camInspector.test.ts
+@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
+ import { camProgram, opSegments, type LiveEvent } from '../src/lib/cam/program';
+ import { cutData, LIBRARY, type CamTool } from '../src/lib/cam/tools';
+ import { heightPart, wallsOf } from './heightPart';
++import { cutText } from '../src/components/CamAiResult';
+ 
+ // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
+ const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
+@@ -18,6 +19,15 @@ describe("the operator's cutting values", () => {
+   const tool = (edit?: CamTool['edit']): CamTool => ({ id: mill.code, number: 1, category: 'fraise', description: '', diameter: mill.d, length: mill.length, code: mill.code, type: mill.type, template: mill, inMachine: true, edit });
+   const limits = { maxRpm: 8000, maxFeed: 10000 };
+ 
++  it('a field emptied stays empty (CAM AI’s value its placeholder), typing replaces it; Undo puts the value kept back', () => {
++    expect(cutText(undefined, undefined, 6500)).toBe('6500');
++    expect(cutText('', undefined, 6500)).toBe('');
++    expect(cutText('5000', 5000, 6500)).toBe('5000');
++    expect(cutText('8.', 8, 800)).toBe('8.');
++    // Undone from the changes card: the value typed went with it.
++    expect(cutText('900', undefined, 800)).toBe('800');
++  });
++
+   it('taken as typed, the spindle never over the machine top', () => {
+     const c = cutData(tool({ s: 20000, f: 900, ae: 2, ap: 1 }), 'contour', 'ALU', limits);
+     expect(c).toMatchObject({ s: 8000, f: 900, ae: 2, ap: 1, unsafe: false });
+-- 
+2.43.0
+
