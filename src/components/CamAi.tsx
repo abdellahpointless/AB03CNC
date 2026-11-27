@@ -2574,6 +2574,8 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
       <div className="h-1 rounded-full bg-[rgba(var(--ov),0.08)] overflow-hidden" aria-hidden>
         <div className="h-full bg-[var(--accent-primary)] transition-[width] duration-500" style={{ width: `${Math.max(4, share)}%` }} />
       </div>
+      {/* Planned again another way (the blank centred, a POM nest, ...): said, so it does not look stuck. */}
+      {!done && live.tries > 1 && <p className="text-xs text-[var(--blue-text)]">{t('camAi.live.again', { n: live.tries })}</p>}
       <ol className="space-y-2">
         {rows.map((r) => (
           <li key={r.key} className={`flex items-start gap-2 text-xs ${r.state === 'next' ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>

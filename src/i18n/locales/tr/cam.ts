@@ -348,6 +348,7 @@ const cam: Translation<typeof en> = {
       check: 'Tutucu çarpışması ve takım boyu kontrolü',
       post: 'Program yazılıyor (G kodu)',
       elapsed: 'Geçen süre {{time}}',
+      again: 'Başka bir yol deneniyor ({{n}}. deneme), bu yüzden daha uzun sürer',
       state: { done: 'Bitti', now: 'Çalışıyor', next: 'Sırada' },
       rough: 'Kaba işleme',
       finish: 'Finiş',

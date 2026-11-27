@@ -47,4 +47,24 @@ describe('CAM AI progress', () => {
     expect(l.paths.map((p) => p.key)).toEqual(['a']);
     expect(l.stages).toContain('post');
   });
+
+  // Finding H1-34: after a turn by hand the planner tried the blank centred (dropped at its first setup), then two POM
+  // nests and their programs, minutes at "100 %" with the dropped try shown as "Setup 1 · 0 operations · Working".
+  it('never shows a try dropped after it began, keeps the finished pass on screen', () => {
+    const dropped: LiveEvent[] = [{ kind: 'reset' }, { kind: 'stage', stage: 'features' }, { kind: 'stage', stage: 'stock' }, { kind: 'stage', stage: 'setup', setup: 0, of: 4, side: 'Y+' }, { kind: 'stage', stage: 'post' }];
+    let l: Live = NO_LIVE;
+    for (const e of [...pass('a'), ...dropped]) l = liveStep(l, e);
+    expect(l.paths.map((p) => p.key)).toEqual(['a']);
+    expect(l.stages).toContain('check');
+    expect(l.next).toBeNull();
+  });
+
+  it('stays under 100 over many tries and counts them', () => {
+    let l: Live = NO_LIVE;
+    for (let k = 0; k < 6; k++) for (const e of pass(String(k))) {
+      l = liveStep(l, e);
+      expect(l.pct).toBeLessThan(100);
+    }
+    expect(l.tries).toBe(6);
+  });
 });

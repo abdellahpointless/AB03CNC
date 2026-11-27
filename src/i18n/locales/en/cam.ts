@@ -345,6 +345,7 @@ const cam = {
       check: 'Holder collisions and tool stick-out check',
       post: 'Writing the program (G-code)',
       elapsed: 'Elapsed {{time}}',
+      again: 'Trying another way to make it (try {{n}}), so it takes longer',
       state: { done: 'Done', now: 'Working', next: 'Queued' },
       rough: 'Roughing',
       finish: 'Finishing',
