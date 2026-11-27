@@ -376,6 +376,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
     { key: 'preventive', label: t('features.preventive'), hint: t('features.preventiveHint') },
     { key: 'shiftChecks', label: t('features.shiftChecks'), hint: t('features.shiftChecksHint') },
     { key: 'toolpath', label: t('features.toolpath'), hint: t('features.toolpathHint') },
+    { key: 'toolCatalog', label: t('features.toolCatalog'), hint: t('features.toolCatalogHint') },
     // CAM AI: for Morocco's admins only (owner's rule), so its switch is shown for Morocco only.
     ...(country.id === 'ma' ? [{ key: 'camAi' as const, ...CAM_SWITCH[i18n.language === 'tr' ? 'tr' : 'en'] }] : []),
   ];

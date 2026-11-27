@@ -3,7 +3,7 @@ import type { AuthedUser } from './context';
 
 /*
  * Optional parts of a country's app (part tracking, preventive actions, shift checks, toolpath viewer,
- * CAM AI). The defaults are in src/regions.ts (CAM AI's here only: the public page must not name it);
+ * tool database, CAM AI). The defaults are in src/regions.ts (CAM AI's here only: the public page must not name it);
  * a master admin can switch them on or off per country from the dashboard.
  * The choice is stored in the country's own database (settings key "features"). Switching a
  * feature off hides it and closes its API; its data stays in the database.
@@ -14,7 +14,7 @@ export type StoredFeatures = Omit<RegionFeatures, 'lab'> & { camAi: boolean };
 /** The countries whose admins may use CAM AI (owner's rule), with its default there. */
 const CAM_AI: Partial<Record<RegionId, boolean>> = { ma: true };
 
-export const FEATURE_KEYS: (keyof StoredFeatures)[] = ['partTracking', 'preventive', 'shiftChecks', 'toolpath', 'camAi'];
+export const FEATURE_KEYS: (keyof StoredFeatures)[] = ['partTracking', 'preventive', 'shiftChecks', 'toolpath', 'toolCatalog', 'camAi'];
 
 /** CAM AI only for the admins of a country it is for, where its switch is on (and the master dashboard). */
 export function camAllowed(region: RegionId | undefined, user: Pick<AuthedUser, 'role'>, f: StoredFeatures): boolean {

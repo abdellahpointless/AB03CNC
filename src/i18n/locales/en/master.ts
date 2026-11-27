@@ -52,6 +52,8 @@ const master = {
     shiftChecksHint: 'With preventive actions: own checks per person, cales box every shift, lock, cales stock',
     toolpath: 'Toolpath viewer',
     toolpathHint: '3D simulation of programs in the remapper; when off, the button shows a padlock',
+    toolCatalog: 'Tool database',
+    toolCatalogHint: 'Only admins change it; everyone else adds a tool to a machine from it, never typed by hand',
   },
   compare: {
     title: 'Comparison',

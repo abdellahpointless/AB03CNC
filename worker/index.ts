@@ -44,6 +44,7 @@ import {
   handleMasterOverview,
 } from './routes/master';
 import { handleAckTool, handleBatchTools, handleDeleteTool, handleGetTools, handlePutTool } from './routes/tools';
+import { handleGetCatalog, handleSaveCatalog } from './routes/catalog';
 import {
   handleClearHistory,
   handleCreateHistory,
@@ -145,6 +146,9 @@ route('PUT', '/settings/hidden-users', 'admin', handleSetHiddenUsers);
 
 // Tool inventory (shared by all operators, like before)
 route('GET', '/tools', 'user', handleGetTools);
+// The tool database (where the country has one: featuresOfApiPath)
+route('GET', '/tools/catalog', 'user', handleGetCatalog);
+route('PUT', '/tools/catalog', 'admin', handleSaveCatalog);
 route('POST', '/tools/:machine/batch', 'user', handleBatchTools);
 route('POST', '/tools/:machine/:id/ack', 'user', handleAckTool);
 route('PUT', '/tools/:machine/:id', 'user', handlePutTool);

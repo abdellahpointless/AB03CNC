@@ -55,6 +55,8 @@ const master: Translation<typeof en> = {
     shiftChecksHint: 'Önleyici bakım ile: kişiye özel kontroller, her vardiya paralel kutusu, kilit, paralel stoku',
     toolpath: 'Takım yolu görüntüleyici',
     toolpathHint: 'Takım eşleştiricide programların 3B simülasyonu; kapalıyken düğmede kilit görünür',
+    toolCatalog: 'Takım veritabanı',
+    toolCatalogHint: 'Yalnızca yöneticiler değiştirir; diğer herkes tezgaha takımı buradan ekler, elle yazmaz',
   },
   compare: {
     title: 'Karşılaştırma',

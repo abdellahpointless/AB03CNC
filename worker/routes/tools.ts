@@ -1,7 +1,10 @@
 import { HttpError, json, num, optNum, readJson, str } from '../http';
 import { bumpStmt, type Ctx, type Env } from '../context';
 import { MATERIALS, TOOL_CATEGORIES, type Tool } from '../../src/types';
-import { requireMachine } from './fleet';
+import { requireMachine, type MachineRow } from './fleet';
+import { readFeatures } from '../features';
+import { loadCatalog } from './catalog';
+import { toolFromCatalog } from '../../src/lib/toolCatalog';
 export const MAX_TOOLS_PER_MACHINE = 400;
 import { defaultToolbox } from '../../src/lib/defaultTools';
 
@@ -170,10 +173,42 @@ async function nextSortOrder(env: Env, machine: string, id: string): Promise<num
   return row?.o ?? 0;
 }
 
+/**
+ * Where the country has a tool database (A034), anyone but an admin adds or changes a tool only by picking it there:
+ * the tool is the database's entry (its code sent as `code`) in the slot asked for, a new one within the machine's
+ * slots. Returns null where tools may be typed (admins, or no tool database).
+ */
+async function catalogPicker(ctx: Ctx, m: MachineRow): Promise<((raw: any, id?: string) => Promise<Tool>) | null> {
+  const region = ctx.env.REGION;
+  if (ctx.user!.role === 'ADMIN' || !region || region === 'master' || !(await readFeatures(ctx.env.DB, region)).toolCatalog) return null;
+  const catalog = new Map((await loadCatalog(ctx.env)).tools.map((t) => [t.code, t]));
+  return async (raw, idOverride) => {
+    if (!raw || typeof raw !== 'object') throw new HttpError(400, 'Tool body required');
+    const code = typeof raw.code === 'string' ? raw.code.trim().toUpperCase() : '';
+    if (!code) throw new HttpError(403, 'Pick the tool from the tool database');
+    const entry = catalog.get(code);
+    if (!entry) throw new HttpError(400, 'That tool is not in the tool database');
+    const id = str(idOverride ?? raw.id, 'Tool id', { min: 1, max: 64 });
+    const tool = toolFromCatalog(entry, num(raw.number, 'Tool number', { min: 1, max: 999_999_999, integer: true }), id);
+    const pocket = optNum(raw.pocket, 'Pocket', { min: 1, max: 9999, integer: true });
+    if (pocket !== null) tool.pocket = pocket;
+    const slot = tool.pocket ?? tool.number;
+    if (m.pockets && slot > m.pockets) {
+      // A tool already there keeps its place (the shop's older tools may sit past the slots it has now).
+      const had = await ctx.env.DB.prepare('SELECT number, pocket FROM tools WHERE machine = ? AND id = ?').bind(m.id, id).first<{ number: number; pocket: number | null }>();
+      if ((had?.pocket ?? had?.number) !== slot) throw new HttpError(400, `Slot ${slot} is past the last slot of this machine (${m.pockets})`);
+    }
+    return tool;
+  };
+}
+
 // PUT /api/tools/:machine/:id  (create or update one tool)
 export async function handlePutTool(ctx: Ctx): Promise<Response> {
-  const machine = await validateMachine(ctx.env, ctx.params.machine);
-  const tool = parseTool(await readJson(ctx.request, 50_000), ctx.params.id);
+  const m = await requireMachine(ctx.env, ctx.params.machine, { forTools: true });
+  const machine = m.id;
+  const body = await readJson(ctx.request, 50_000);
+  const pick = await catalogPicker(ctx, m);
+  const tool = pick ? await pick(body, ctx.params.id) : parseTool(body, ctx.params.id);
 
   const conflict = await ctx.env.DB.prepare(
     `SELECT id FROM tools WHERE machine = ? AND number = ? AND id != ? AND category != 'empty' LIMIT 1`,
@@ -196,12 +231,14 @@ export async function handlePutTool(ctx: Ctx): Promise<Response> {
 
 // POST /api/tools/:machine/batch  { tools: Tool[] }  (tools approved from the remapper)
 export async function handleBatchTools(ctx: Ctx): Promise<Response> {
-  const machine = await validateMachine(ctx.env, ctx.params.machine);
+  const m = await requireMachine(ctx.env, ctx.params.machine, { forTools: true });
+  const machine = m.id;
   const body = await readJson<{ tools?: unknown[] }>(ctx.request, 200_000);
   if (!Array.isArray(body.tools) || body.tools.length === 0 || body.tools.length > 100) {
     throw new HttpError(400, 'tools must be a non-empty array (max 100)');
   }
-  const tools = body.tools.map((t) => parseTool(t));
+  const pick = await catalogPicker(ctx, m);
+  const tools = pick ? await Promise.all(body.tools.map((t) => pick(t))) : body.tools.map((t) => parseTool(t));
   const stmts: D1PreparedStatement[] = [];
   // One query for every existing row of this machine (instead of one query per tool).
   const { results: rows } = await ctx.env.DB.prepare('SELECT id, number, sort_order FROM tools WHERE machine = ?')

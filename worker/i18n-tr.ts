@@ -219,6 +219,12 @@ registerTurkish(
     // ---- routes/users.ts, analytics.ts, cales.ts ----
     'toolpathBeta must be true or false, on its own': 'toolpathBeta tek başına ve true veya false olarak gönderilmelidir.',
     'Invalid list of users': 'Geçersiz kullanıcı listesi.',
+
+    // ---- routes/catalog.ts, tools.ts (the tool database) ----
+    'The tool database has an entry that is not valid': 'Takım veritabanında geçerli olmayan bir kayıt var.',
+    'The tool database is empty': 'Takım veritabanı boş.',
+    'Pick the tool from the tool database': 'Takımı takım veritabanından seçin.',
+    'That tool is not in the tool database': 'Bu takım takım veritabanında yok.',
     'present must be 0, 1 or 2': 'present 0, 1 veya 2 olmalıdır.',
 
     // ---- routes/lessons.ts, lab.ts (toolpath learning records, tool data) ----
@@ -260,6 +266,7 @@ registerTurkish(
     [/^A machine can hold at most (\d+) tools$/, (n) => `Bir tezgahta en fazla ${n} takım olabilir.`],
     [/^Unknown category "(.*)"$/, (c) => `Bilinmeyen kategori: "${c}".`],
     [/^T-number (.+) is already used by another tool!$/, (n) => `T numarası ${n} zaten başka bir takımda kullanılıyor!`],
+    [/^Slot (\d+) is past the last slot of this machine \((\d+)\)$/, (n, max) => `${n}. cep bu tezgahın son cebinden (${max}) sonra geliyor.`],
 
     // ---- http.ts: generic validators (keep these last) ----
     [/^(.+) must be a string$/, (f) => `${field(f)} metin olmalıdır.`],

@@ -24,7 +24,7 @@ const PHRASES: Record<string, string> = {
   'toolpath beta off': 'toolpathBetaOff',
 };
 /** The switches a country's admins know about; any other is left out of their log. */
-const FEATURES = ['partTracking', 'preventive', 'shiftChecks', 'toolpath'];
+const FEATURES = ['partTracking', 'preventive', 'shiftChecks', 'toolpath', 'toolCatalog'];
 /** The API area of an admin change (/api/<area>/...). */
 const AREAS = ['fleet', 'machines', 'tools', 'parts', 'history', 'settings', 'admin', 'toolpath', 'alerts'];
 

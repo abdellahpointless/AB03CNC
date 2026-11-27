@@ -53,6 +53,11 @@ export interface RegionFeatures {
   shiftChecks: boolean;
   /** The 3D toolpath viewer in the remapper (locked, with a padlock, where it is off). */
   toolpath: boolean;
+  /**
+   * The tool database: the shop's tools, changed by admins only; everyone else adds a tool to a machine from it
+   * (Add new tool, the remapper's Add tool), never typed by hand (A032-A034).
+   */
+  toolCatalog: boolean;
   /** Set by the server for the people who may use the private part of the app (never stored, never a default). */
   lab?: boolean;
 }
@@ -70,7 +75,7 @@ export const REGIONS: RegionInfo[] = [
     publicSetup: true,
     totpIssuer: 'CNC Process Pro',
     timeZone: 'Africa/Casablanca',
-    features: { partTracking: true, preventive: true, shiftChecks: true, toolpath: true },
+    features: { partTracking: true, preventive: true, shiftChecks: true, toolpath: true, toolCatalog: false },
     gcodeComments: 'fr',
   },
   {
@@ -85,7 +90,7 @@ export const REGIONS: RegionInfo[] = [
     totpIssuer: 'CNC Process Pro TR',
     timeZone: 'Europe/Istanbul',
     // Türkiye uses the G-code remapper and what comes with it (tool inventory, history).
-    features: { partTracking: false, preventive: false, shiftChecks: false, toolpath: false },
+    features: { partTracking: false, preventive: false, shiftChecks: false, toolpath: false, toolCatalog: true },
     gcodeComments: 'en',
   },
 ];
@@ -110,6 +115,7 @@ export function featuresOfApiPath(path: string): Exclude<keyof RegionFeatures, '
   if (/^\/parts(\/|$)/.test(path) || /^\/admin\/import\/parts(\/|$)/.test(path)) return ['partTracking'];
   if (/^\/machines\/(required|cales)(\/|$)/.test(path) || /^\/machines\/[^/]+\/(cales\/|checks\/[^/]+\/missed$)/.test(path)) return ['preventive', 'shiftChecks'];
   if (/^\/machines(\/|$)/.test(path)) return ['preventive'];
+  if (/^\/tools\/catalog\/?$/.test(path)) return ['toolCatalog'];
   return [];
 }
 

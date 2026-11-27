@@ -277,6 +277,7 @@ const app: Translation<typeof en> = {
         preventive: 'Önleyici bakım',
         shiftChecks: 'Vardiya kontrolleri ve paralel kutusu',
         toolpath: 'Takım yolu görüntüleyici',
+        toolCatalog: 'Takım veritabanı',
       },
       area: {
         fleet: 'Tezgahlar',

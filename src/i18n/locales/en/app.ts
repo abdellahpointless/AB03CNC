@@ -285,6 +285,7 @@ const app = {
         preventive: 'Preventive actions',
         shiftChecks: 'Shift checks & cales box',
         toolpath: 'Toolpath viewer',
+        toolCatalog: 'Tool database',
       },
       /** Where an admin change was made. */
       area: {
