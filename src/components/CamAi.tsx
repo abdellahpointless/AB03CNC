@@ -800,6 +800,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [measureMode, setMeasureMode] = useState<MeasureMode>('faces');
   const [measured, setMeasured] = useState<Measurement>(null);
   const [dialog, setDialog] = useState(false);
+  // What opened New program, focused again when it closes (no Dialog.Trigger: Radix would leave focus on the page).
+  const dialogOpener = useRef<HTMLElement | null>(null);
+  const openDialog = (from = document.activeElement as HTMLElement | null) => {
+    dialogOpener.current = from;
+    setDialog(true);
+  };
   // The shop's tool database (item 20): loaded once, fresh again each time its dialog opens.
   const [toolDb, setToolDb] = useState<StoredToolDb>({ db: {}, by: {} });
   // The tool database as it is now, for changes by hand made after the program (a tool added since).
@@ -1331,7 +1337,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       ) : (
         <div className="p-4 space-y-3">
           <p className="text-[13px] text-[var(--text-secondary)]">{t('camAi.ws.empty')}</p>
-          <button type="button" className="btn-primary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => setDialog(true)} disabled={busy}>
+          <button type="button" className="btn-primary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => openDialog()} disabled={busy}>
             <FilePlus2 size={16} /> {t('camAi.ws.new')}
           </button>
           <button type="button" className="btn-secondary text-[13px] h-9 px-4 inline-flex items-center gap-2" onClick={() => programRef.current?.click()} disabled={busy}>
@@ -1771,7 +1777,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <Popover.Portal>
             <Popover.Content align="end" sideOffset={6} className="cam-pop z-[1000] w-72 p-1">
               <Popover.Close asChild>
-                <button type="button" className={menuItem} onClick={() => setDialog(true)} disabled={busy}>
+                <button type="button" className={menuItem} onClick={() => openDialog(document.querySelector<HTMLElement>('[aria-haspopup="dialog"][aria-expanded="true"]'))} disabled={busy}>
                   <FilePlus2 size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.new')}
                 </button>
               </Popover.Close>
@@ -2256,7 +2262,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       <Dialog.Root open={dialog} onOpenChange={setDialog}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
-          <Dialog.Content className={`glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${prep ? 'w-[52rem]' : 'w-[30rem]'} max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-5 space-y-4`}>
+          <Dialog.Content
+            className={`glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${prep ? 'w-[52rem]' : 'w-[30rem]'} max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto p-5 space-y-4`}
+            onCloseAutoFocus={(e) => {
+              if (!dialogOpener.current?.isConnected) return;
+              e.preventDefault();
+              dialogOpener.current.focus();
+            }}
+          >
             <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{t('camAi.ws.newTitle')}</Dialog.Title>
             <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.intro')}</Dialog.Description>
             <button
