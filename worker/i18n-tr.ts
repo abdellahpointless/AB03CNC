@@ -49,6 +49,18 @@ const FIELD: Record<string, string> = {
   Length: 'Uzunluk',
   // parts
   'SAP number': 'SAP numarası',
+  // alerts (safety override)
+  Machine: 'Tezgah',
+  Program: 'Program',
+  // toolpath learning records and lessons export
+  fileName: 'Dosya adı',
+  start: 'Başlangıç benzerliği',
+  match: 'Eşleşme oranı',
+  key: 'Kayıt anahtarı',
+  rel: 'Dönüş',
+  n: 'Adet',
+  from: 'Başlangıç tarihi',
+  to: 'Bitiş tarihi',
 };
 
 const field = (name: string): string => FIELD[name] ?? name;
@@ -202,6 +214,23 @@ registerTurkish(
     'status must be APPROVED or REJECTED': 'Durum APPROVED (onaylandı) veya REJECTED (reddedildi) olmalıdır.',
     'ids must be a list of entry ids (max 200)': 'Kayıt kimlikleri bir liste olarak gönderilmelidir (en fazla 200).',
     'Month filter must look like YYYY-MM': 'Ay filtresi YYYY-AA biçiminde olmalıdır (ör. 2026-10).',
+    'Invalid date range': 'Geçersiz tarih aralığı.',
+
+    // ---- routes/users.ts, analytics.ts, cales.ts ----
+    'toolpathBeta must be true or false, on its own': 'toolpathBeta tek başına ve true veya false olarak gönderilmelidir.',
+    'Invalid list of users': 'Geçersiz kullanıcı listesi.',
+    'present must be 0, 1 or 2': 'present 0, 1 veya 2 olmalıdır.',
+
+    // ---- routes/lessons.ts, lab.ts (toolpath learning records, tool data) ----
+    'The toolpath is not switched on for you.': 'Takım yolu sizin için açık değil.',
+    'kind must be turns or part': "kind 'turns' veya 'part' olmalıdır.",
+    'data must be an object': 'data bir nesne olmalıdır.',
+    'The record is too big.': 'Kayıt çok büyük.',
+    'Daily limit of learning records reached.': 'Günlük öğrenme kaydı sınırına ulaşıldı.',
+    'entries must be a list': 'Kayıtlar bir liste olarak gönderilmelidir.',
+    'rel must be a turn': 'rel bir dönüş olmalıdır.',
+    'Invalid tool': 'Geçersiz takım.',
+    'The tool database is full.': 'Takım veritabanı dolu.',
   },
   [
     // ---- security.ts: password length ----
