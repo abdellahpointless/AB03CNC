@@ -26,7 +26,8 @@ function feeds(lines: string[]): [number, number, number][][] {
   for (const l of lines) {
     const v = (a: string, was: number) => Number(l.match(new RegExp(`${a}(-?[\\d.]+)`))?.[1] ?? was);
     const q: [number, number, number] = [v('X', p[0]), v('Y', p[1]), v('Z', p[2])];
-    if (/^G0?1\b/.test(l)) out.push([p, q]);
+    // Arcs are feeds too (a circle a level is one G02/G03 now): start to end.
+    if (/^G0?[123]\b/.test(l)) out.push([p, q]);
     p = q;
   }
   return out;
