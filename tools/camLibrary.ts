@@ -140,7 +140,8 @@ function fine(code: string, voxels: number) {
     if (m.kind === 'rapid') {
       rapids++;
       rapidMm3 += took[i] * vox;
-    } else if (m.kind === 'feed' && /FRAESEN|SCHLICHT/.test(m.op ?? '') && Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-4 && b[2] < a[2]) {
+    } else if (m.kind === 'feed' && /FRAESEN|SCHLICHT/.test(m.op ?? '') && m.points.every((p) => Math.hypot(p[0] - a[0], p[1] - a[1]) < 1e-4) && b[2] < a[2]) {
+      // Straight down only: a helix turn ends over where it started but ramps all the way round.
       const r = (m.dia ?? 0) / 2;
       if (r > 0 && took[i] * vox > 0.25 * Math.PI * r * r * (a[2] - b[2])) plunges++;
     }
