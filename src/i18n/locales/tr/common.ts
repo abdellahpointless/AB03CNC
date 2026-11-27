@@ -44,6 +44,7 @@ const common: Translation<typeof en> = {
     'fraise boule': 'Küresel uçlu freze',
     'fraise T': 'T kanal frezesi',
     'fraise rayon': 'Köşe radyüslü freze',
+    alesoir: 'Rayba',
     empty: 'Boş cep',
   },
   categoryMeaning: {
@@ -58,6 +59,7 @@ const common: Translation<typeof en> = {
     'fraise boule': '3B yüzey işleme',
     'fraise T': 'T kanal açma',
     'fraise rayon': 'Köşe radyüsü işleme',
+    alesoir: 'Hassas delik (raybalama)',
     empty: 'Boş cep (takım yok)',
   },
   brand: {

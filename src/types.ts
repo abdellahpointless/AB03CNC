@@ -1,10 +1,10 @@
 /** A machine id of the current country (each country has its own machines, see /api/fleet). */
 export type MachineId = string;
 
-export type ToolCategory = 'foret' | 'fraise ebauche' | 'pointeur' | 'fraise' | 'chanfrein' | 'tourteau' | 'fraise finition' | 'taraud' | 'fraise boule' | 'fraise T' | 'fraise rayon' | 'empty';
+export type ToolCategory = 'foret' | 'fraise ebauche' | 'pointeur' | 'fraise' | 'chanfrein' | 'tourteau' | 'fraise finition' | 'taraud' | 'fraise boule' | 'fraise T' | 'fraise rayon' | 'alesoir' | 'empty';
 
 export const TOOL_CATEGORIES: ToolCategory[] = [
-  'foret', 'fraise ebauche', 'pointeur', 'fraise', 'chanfrein', 'tourteau', 'fraise finition', 'taraud', 'fraise boule', 'fraise T', 'fraise rayon', 'empty'
+  'foret', 'fraise ebauche', 'pointeur', 'fraise', 'chanfrein', 'tourteau', 'fraise finition', 'taraud', 'fraise boule', 'fraise T', 'fraise rayon', 'alesoir', 'empty'
 ];
 
 export type Material = 'POM' | 'FH' | 'RESOPAL' | 'ALU' | 'EPOXYDE' | 'PC GF';

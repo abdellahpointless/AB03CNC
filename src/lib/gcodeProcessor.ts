@@ -1,5 +1,6 @@
 import { Tool, ToolCategory, ToolChangeBlock, MATERIALS, Material } from '../types';
 import { hasProgramMark } from './programMark';
+import { PREFIX_TO_CATEGORY } from './toolCatalog';
 
 export function detectMaterial(input: string): Material | undefined {
   if (typeof input !== 'string') return undefined;
@@ -206,18 +207,6 @@ export function isToolChangeLine(line: string): boolean {
   return /(?<![A-Z])M0*6(?![0-9.])/i.test(codeOnly(line));
 }
 
-const PREFIX_TO_CATEGORY: Record<string, ToolCategory> = {
-  ST: 'chanfrein',
-  SB: 'foret',
-  ZB: 'pointeur',
-  GB: 'taraud',
-  SF: 'fraise finition',
-  SFH: 'fraise ebauche',
-  KF: 'fraise boule',
-  MK: 'tourteau',
-  TF: 'fraise T',
-  UDM: 'fraise rayon'
-};
 
 function getMaterialPriority(t: Tool, detectedMaterial: Material | undefined): number {
   if (!detectedMaterial) return 1; // If no material detected, everything is equal

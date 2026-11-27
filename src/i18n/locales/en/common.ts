@@ -42,6 +42,7 @@ const common = {
     'fraise boule': 'fraise boule',
     'fraise T': 'fraise T',
     'fraise rayon': 'fraise rayon',
+    alesoir: 'alesoir',
     empty: 'empty',
   },
   /** What each category is, in plain words. */
@@ -57,6 +58,7 @@ const common = {
     'fraise boule': 'Ball-nose end mill',
     'fraise T': 'T-slot cutter',
     'fraise rayon': 'Corner-radius end mill',
+    alesoir: 'Reamer',
     empty: 'Empty slot (no tool)',
   },
   brand: {
