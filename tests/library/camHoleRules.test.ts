@@ -1,7 +1,7 @@
 /**
  * The owner's hole rules (2026-11-27) on reference parts: each planned as before (`holes: { legacy: true }`) and as now,
  * both simulated (src/lib/cam/holeSim.ts: Haas cycles, Setting 22, trapezoidal time), every hole of the old program found
- * in the new one at the same centre and bottom, never starting in the material, the check no worse. With HOLE_REPORT=<file>
+ * in the new one at the same centre and bottom, never starting in the material, no slower, the check no worse. With HOLE_REPORT=<file>
  * the table (lines, time, holes) is written there. Programs by id. Skipped without CNC_LIBRARY=<folder>.
  */
 import { writeFileSync } from 'node:fs';
@@ -14,7 +14,7 @@ const rows: Record<string, unknown>[] = [];
 
 describe.skipIf(!LIB)('reference library: holes as the owner asked, against the old way', () => {
   for (const [id, material] of PARTS)
-    it(`${id}: every hole where it was, as deep, never starting in the material, no more lines than the safe starts add`, { timeout: 30 * 60_000 }, async () => {
+    it(`${id}: every hole where it was, as deep, never starting in the material, no slower`, { timeout: 30 * 60_000 }, async () => {
       const [before, after] = [await plan(id, material, { holes: { legacy: true } }), await plan(id, material)];
       const [a, b] = [simulate(before.code), simulate(after.code)];
       const problems = compareHoles(a, b);
@@ -35,8 +35,8 @@ describe.skipIf(!LIB)('reference library: holes as the owner asked, against the 
       if (process.env.HOLE_CODE) for (const [k, r] of [['before', before], ['after', after]] as const) writeFileSync(`${process.env.HOLE_CODE}/${id}.${k}.nc`, r.code);
       expect(problems).toEqual([]);
       expect(cycles(b).length).toBe(cycles(a).length);
-      // One more line a tool (the safe-start line the owner asked for); the rest only fewer.
-      expect(b.lines).toBeLessThanOrEqual(a.lines + (after.code.match(/ M0?6(?!\d)/g) ?? []).length);
+      // Lines are reported, not held: the safe start adds one a tool and a G99 group's end two; the time is held.
+      expect(b.seconds).toBeLessThanOrEqual(a.seconds * 1.01);
       expect(after.check.collisions).toBeLessThanOrEqual(before.check.collisions);
       expect(after.check.rapids ?? 0).toBeLessThanOrEqual(before.check.rapids ?? 0);
       expect(after.check.match).toBeGreaterThanOrEqual(before.check.match - 0.002);

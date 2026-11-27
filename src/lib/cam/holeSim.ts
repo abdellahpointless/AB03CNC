@@ -153,15 +153,15 @@ export function simulate(code: string, opts: Partial<SimOpts> = {}): SimResult {
     }
     go(motion === 0 ? 'rapid' : 'feed', to, i);
   });
-  // Holes milled: within one operation, a run of feeds that goes down overall while staying within the tool's radius
-  // of one centre (a plunge, a helix, circles a level).
+  // Holes milled: within one operation, a run of feeds that goes down overall while staying within the tool's Ø of
+  // where it started (a plunge, a helix, circles a level: a ring smaller than the tool spans up to its Ø).
   for (let k = 0; k < moves.length; k++) {
     const m = moves[k];
     if (m.kind !== 'feed' || m.to[2] >= m.from[2] - 1e-9) continue;
     const opD = holes.find((h) => h.op === m.op)?.d ?? diaOf(code, m.op);
     let j = k;
     const pts: V3[] = [m.from, m.to];
-    while (j + 1 < moves.length && moves[j + 1].kind === 'feed' && moves[j + 1].op === m.op && Math.hypot(moves[j + 1].to[0] - m.from[0], moves[j + 1].to[1] - m.from[1]) <= Math.max(opD / 2, 0.5)) pts.push(moves[++j].to);
+    while (j + 1 < moves.length && moves[j + 1].kind === 'feed' && moves[j + 1].op === m.op && Math.hypot(moves[j + 1].to[0] - m.from[0], moves[j + 1].to[1] - m.from[1]) <= Math.max(opD, 0.5)) pts.push(moves[++j].to);
     const zs = pts.map((p) => p[2]);
     if (Math.min(...zs) > m.from[2] - 0.5 || j === k) continue;
     // Its centre: the middle of the box its points span (a full turn round, or one point for a plunge).
