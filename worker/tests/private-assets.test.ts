@@ -145,6 +145,8 @@ describe('the app code is only for signed-in sessions', () => {
     const env = { DB: HUB, COUNTRIES: { tr: TR }, REGION: 'master' } as unknown as Env;
     const res = await handleSetCountryFeatures({ env, request, url, params: { region: 'tr' }, user: { id: 'm-1', username: 'boss', role: 'ADMIN' } } as Ctx);
     expect(((await res.json()) as { features: { camAi: boolean } }).features.camAi).toBe(true);
+    // Türkiye's admins read their security log: the switch is not written there.
+    expect((await TR.prepare("SELECT detail FROM audit_log WHERE action = 'features_changed'").all()).results).toEqual([]);
     expect(await get('/app/p/real-x.js', 'tr-admin')).toBe(403);
     expect(await get('/app/p/real-x.js', 'tr-cam')).toBe(403);
     expect(await get('/app/toolpath/real-x.js', 'tr-cam')).toBe(403);

@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 import { waveItem } from '../lib/motion';
 import { useT } from '../i18n';
 import { fmtDateTime } from '../i18n/format';
+import { auditDetail } from '../lib/auditText';
 import { useAskPassword } from './ChangePasswordModal';
 
 interface AccountRow {
@@ -47,6 +48,7 @@ const ACTION_LABELS = {
   admin_action: 'adminAction',
   admin_denied: 'adminDenied',
   setup: 'setup',
+  features_changed: 'featuresChanged',
 } as const;
 type ActionLabel = (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS];
 const ALERT_ACTIONS = new Set(['login_failed', 'mfa_failed', 'password_check_failed', 'admin_denied']);
@@ -109,7 +111,7 @@ function SecurityLog() {
                       <td className="p-2.5 font-semibold text-[var(--text-primary)]">{e.username ?? '-'}</td>
                       <td className={`p-2.5 ${ALERT_ACTIONS.has(e.action) ? 'text-[var(--rose-500)]' : 'text-[var(--text-primary)]'}`}>
                         {actionLabel(e.action)}
-                        {e.detail && <span className="text-[var(--text-tertiary)]"> &middot; {e.detail}</span>}
+                        {auditDetail(e.action, e.detail) && <span className="text-[var(--text-tertiary)]"> &middot; {auditDetail(e.action, e.detail)}</span>}
                       </td>
                       <td className="p-2.5 font-mono text-xs text-[var(--text-tertiary)]">{e.ip ?? '-'}</td>
                     </tr>

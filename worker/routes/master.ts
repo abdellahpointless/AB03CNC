@@ -254,7 +254,9 @@ export async function handleSetCountryFeatures(ctx: Ctx): Promise<Response> {
     await dropOverviewCache(ctx.env);
     const summary = `${regionById(region)!.name}: ${changes.join(', ')}`;
     await auditCtx(ctx, 'master_features', summary);
-    await audit({ ...ctx.env, DB: db }, ctx.request, 'features_changed', { id: null, username: `master:${ctx.user!.username}` }, changes.join(', '));
+    // The country's own log (its admins read it) never names CAM AI: only the master's log does.
+    const shown = changes.filter((c) => !c.startsWith('camAi '));
+    if (shown.length) await audit({ ...ctx.env, DB: db }, ctx.request, 'features_changed', { id: null, username: `master:${ctx.user!.username}` }, shown.join(', '));
   }
   return json({ ok: true, features });
 }
