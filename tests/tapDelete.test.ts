@@ -72,3 +72,25 @@ describe('delete the tap section', () => {
     expect(out.trim().endsWith('M30\n%')).toBe(true);
   });
 });
+
+describe('FANUC M6 taps: T27 only for the standard thread, and only the machine\'s own T27', () => {
+  const t27: Tool = { id: 't27', number: 27, category: 'taraud', description: 'Taraud M6', diameter: 6, length: 45 };
+  const prog = (comment: string, cycle: string) => `%\nO1\nN10 T240100 M6\nN11 M01 (${comment})\nN12 G00 G43 Z50. H#513 D#513 M254\nN13 M29 S300\nN14 ${cycle}\nN15 G80\nN16 M30\n%`;
+  const fine = prog('GEWINDEBOHRER M6X0.75 / GB_06.00_040_075_FH', 'G98 G84 Z-8. R2. F225');
+  const coarse = prog('TARAUD M6 / GB_06.00_045_000_ALHS', 'G98 G84 Z-8. R2. F300');
+  const tool = (src: string, tools: Tool[]) => analyzeGCode(src, tools, 'FANUC-1').blocks[0].matchedTool?.number ?? null;
+
+  it('takes T27 for an M6x1 tap when the machine has it', () => {
+    expect(tool(coarse, [...defaultToolbox['FANUC-1']!, t27])).toBe(27);
+    // No feed in the cycle: the tool code's "000" is the standard thread.
+    expect(tool(prog('TARAUD M6 / GB_06.00_045_000_ALHS', 'G98 G84 Z-8. R2.'), [t27])).toBe(27);
+  });
+
+  it('never takes T27 for a fine thread, never invents it, never takes a T27 that is not that tap', () => {
+    expect(tool(fine, [t27])).toBeNull();
+    expect(tool(prog('GEWINDEBOHRER M6X0.75 / GB_06.00_040_075_FH', 'G98 G84 Z-8. R2.'), [t27])).toBeNull();
+    expect(tool(coarse, defaultToolbox['FANUC-1']!)).toBeNull();
+    expect(tool(coarse, [{ ...t27, category: 'fraise' }])).toBeNull();
+    expect(analyzeGCode(fine, [t27], 'FANUC-1').success).toBe(false);
+  });
+});

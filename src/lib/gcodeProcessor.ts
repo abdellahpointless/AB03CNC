@@ -617,12 +617,11 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
         }
 
         if (isDiam6) {
-          let t27 = tools.find((x: Tool) => x.number === 27);
-          if (!t27) {
-             t27 = { id: `auto-27`, number: 27, category: 'taraud', diameter: 6, length: 50, description: `Auto-assigned T27` };
-          }
-          block.matchedTool = t27;
-          block.matchType = 'exact';
+          // T27 is the standard M6 tap (1 mm pitch): only the machine's own Ø6 tap T27, never invented,
+          // and not for a fine thread (M6x0.75). Otherwise the dialog asks.
+          const t27 = tools.find((x: Tool) => x.number === 27 && x.category === 'taraud' && Math.abs(x.diameter - 6) < 0.01);
+          block.matchedTool = t27 && m6TapPitch(lines, block.lineIndex, blocks[i + 1]?.lineIndex ?? lines.length, block.contextStr) === 1 ? t27 : null;
+          block.matchType = block.matchedTool ? 'exact' : undefined;
         } else {
           block.pendingSkipConfirmation = true;
           block.matchedTool = null;
@@ -672,6 +671,25 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
     lines,
     detectedMaterial
   };
+}
+
+/**
+ * An M6 tap's pitch in mm: feed over speed of its G84 cycle (mm/min over rpm, the S of that line or the
+ * last one before it), else the pitch field of its tool code ("GB_06.00_040_075": 0.75; "000": the
+ * standard thread, 1 mm). NaN when neither says.
+ */
+function m6TapPitch(lines: string[], from: number, to: number, context: string): number {
+  let s = NaN;
+  for (let j = from; j < to; j++) {
+    const c = codeOnly(lines[j]);
+    s = Number(c.match(/(?<![A-Z])S\s*(\d+\.?\d*)/i)?.[1] ?? s);
+    if (!/(?<![A-Z])G84(?![0-9])/i.test(c)) continue;
+    const f = Number(c.match(/(?<![A-Z])F\s*(\d*\.?\d+)/i)?.[1]);
+    if (f > 0 && s > 0) return Math.round((f / s) * 1000) / 1000;
+    break;
+  }
+  const field = context.match(/GB_\d+\.\d+_\d+_(\d{3})/i)?.[1];
+  return field === undefined ? NaN : field === '000' ? 1 : Number(field) / 100;
 }
 
 export function generateRemappedCode(lines: string[], blocks: ToolChangeBlock[], resolutions: Record<string, Tool>, machineId?: string): { finalCode: string, addedFanucOffsets: boolean } {
