@@ -36,7 +36,8 @@ export function historyToCsv(records: HistoryRecord[], machineLabel: (id: string
   const { sep, num } = csvDialect(i18n.language);
   const rows = [headers.join(sep)];
   for (const record of records) {
-    const base = [record.date, record.user || t('history:shared.unknownUser'), (record.machine && machineLabel(record.machine)) || '-', record.originalFileName, record.exportedFileName];
+    // The time in the app's format; record.date is the text of the PC that made the record (old records have only that).
+    const base = [record.timestamp ? fmtDateTime(record.timestamp) : record.date, record.user || t('history:shared.unknownUser'), (record.machine && machineLabel(record.machine)) || '-', record.originalFileName, record.exportedFileName];
     if (!record.changes.length) {
       rows.push([...base, '-', '-', '-', '-', '-', '-', '-', '-', '-'].map(csvCell).join(sep));
       continue;
