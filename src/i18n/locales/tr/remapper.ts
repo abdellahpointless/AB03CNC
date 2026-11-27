@@ -28,6 +28,7 @@ const remapper: Translation<typeof en> = {
     close: 'Bildirimi kapat',
   },
   alerts: {
+    nothingToRemap: 'Bu programda eşleştirilecek kod yok: boş ya da yalnızca yorumlardan oluşuyor.',
     resolveMissing: 'Kodu oluşturmadan önce lütfen tüm eksik takımları eşleştirin.',
     installFailed:
       'Yeni takımlar {{machine}} takım listesine kaydedilemedi:\n{{error}}\n\nBağlantıyı kontrol edin ve "Onayla ve Yükle" düğmesine tekrar basın.',

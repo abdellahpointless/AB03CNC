@@ -27,6 +27,7 @@ const remapper = {
     close: 'Close notification',
   },
   alerts: {
+    nothingToRemap: 'This program has no code to remap: it is empty or only comments.',
     resolveMissing: 'Please resolve all missing tools before generating code.',
     installFailed:
       'The new tools could not be saved to the {{machine}} inventory:\n{{error}}\n\nCheck the connection and press "Approve & Install" again.',

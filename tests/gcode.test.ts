@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, isWholeProgram, replaceInCode } from '../src/lib/gcodeProcessor';
+import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, hasCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, isWholeProgram, replaceInCode } from '../src/lib/gcodeProcessor';
 import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
 import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
 import { defaultToolbox } from '../src/lib/defaultTools';
@@ -251,6 +251,10 @@ describe('helpers', () => {
   });
   it('replaceInCode leaves comments untouched', () => {
     expect(replaceInCode('N10 (T9) T5 M6', /T\d+/, 'T1')).toBe('N10 (T9) T1 M6');
+  });
+  it('hasCode: an empty or comment-only program has nothing to remap', () => {
+    for (const empty of ['', '\n\n', '%\nO1000\n(ONLY COMMENTS)\nN10 (M6 T1)\n%', '%O1000 (NAME)\r\n%\r\n']) expect(hasCode(empty), JSON.stringify(empty)).toBe(false);
+    for (const code of ['G0 X1.', '%\nO1000\nN10 T1 M6\n%', 'N5 M30', '/N8 M00']) expect(hasCode(code), code).toBe(true);
   });
 });
 

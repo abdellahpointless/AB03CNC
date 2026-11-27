@@ -1126,6 +1126,9 @@ export function addG49AfterM6(lines: string[]): string[] {
 /** A whole program, with its own O line (program number), not a few lines of one. */
 export const isWholeProgram = (text: string) => /^\s*%?\s*O\d/im.test(text);
 
+/** The text has code for the machine: a word outside the (comments), "%", the O number and the N numbers. */
+export const hasCode = (text: string) => text.split('\n').some((l) => codeOnly(l).trim().replace(/^%?\s*(?:O\d+)?\s*\/?\s*(?:N\d+)?/i, '').trim() !== '');
+
 /** A program written in the FANUC dialect (H#513, M254 or the "G94 M95" safety line), code only. */
 export function isFanucDialect(code: string): boolean {
   return code.split('\n').some((l) => /(?<![A-Z])H#513|(?<![A-Z0-9])M254(?![0-9])|G94\s+M95(?![0-9])/i.test(codeOnly(l)));

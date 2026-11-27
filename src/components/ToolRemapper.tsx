@@ -4,7 +4,7 @@ import { MachineId, ToolChangeBlock, Tool, TOOL_CATEGORIES, ToolCategory, Histor
 import { coolingOf, engineMachineId, isLockedMachine, maxPocketsFor } from '../regions';
 import { currentRegion } from '../lib/instance';
 import CodeEditorPair from './CodeEditorPair';
-import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, coolantNeed, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
+import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, coolantNeed, hasCode, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
 import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
 import { checkProgram, FANUC_MEMORY_KB } from '../lib/safetyCheck';
 import { api } from '../lib/api';
@@ -203,6 +203,11 @@ N190 M30`;
 
   const handleProcess = () => {
     let currentSource = sourceCode;
+    // An empty or comment-only program: nothing to remap, download or count as saved time.
+    if (!hasCode(currentSource)) {
+      alert(t('alerts.nothingToRemap'));
+      return;
+    }
     // DMG machines are not programmed in the app for now (shop decision).
     if (machine && isLockedMachine(machine)) {
       alert(t('alerts.machineLocked', { machine: machineLabel }));
