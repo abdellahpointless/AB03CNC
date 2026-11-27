@@ -1365,7 +1365,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     onEdit={(v) => {
                       const code = sel.code;
                       setDraft((d) => ({ ...d, [code]: { ...d[code], ...v } }));
-                      if (!shownChanges.some((c) => c.cuts === code))
+                      // One line a tool: its entry stays listed (hidden while the values are as made) however often the values pass back.
+                      if (!changes.some((c) => c.cuts === code))
                         addChange({
                           label: t('camAi.changes.cuts', { tool: ops[0].tool }),
                           cuts: code,
