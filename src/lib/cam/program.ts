@@ -1177,14 +1177,7 @@ function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, 
   const x0 = e.lo[0] - spacerX;
   const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap, x0 + VISE.width + VISE.gap + len] as [number, number]] : [])];
   const along = (r: Region, y0: number, y1: number, len: number) => spans(len).reduce((t, [a, b]) => t + area(intersection(r, rect(a, y0, b, y1))) / (y1 - y0), 0);
-  // Each jaw's contact over the band's height (the face's area against it over that height), not its outline: a face a
-  // cut broke into teeth (a counterbore through its edge: you, 2026-11-27) is held by the teeth only.
-  const top = bottom + grip - (onJaw ? gap : 0);
-  const dz = Math.max(0.25, 2 * left.above);
-  const zs: number[] = [];
-  for (let z = bottom + dz / 2; z < top; z += dz) zs.push(z);
-  const held = (y0: number, y1: number) => (zs.length ? zs.reduce((t, z) => t + along(left.at(z, z), y0, y1, VISE.width), 0) / zs.length : along(band, y0, y1, VISE.width));
-  const jaws = Math.min(held(e.lo[1], e.lo[1] + strip), held(e.hi[1] - strip, e.hi[1]));
+  const jaws = Math.min(along(band, e.lo[1], e.lo[1] + strip, VISE.width), along(band, e.hi[1] - strip, e.hi[1], VISE.width));
   const width = e.hi[1] - e.lo[1];
   const w = Math.min(6, width / 6);
   const floor = left.at(bottom, bottom + strip);
