@@ -7,8 +7,9 @@ const preventive = {
     myMachinesTitle: 'You can only update the machines you look after',
     myMachines: 'You look after {{names}}',
     withProblem: '{{count}} with a problem',
-    checksToDo_one: '{{count}} check to do',
-    checksToDo_other: '{{count}} checks to do',
+    // These chips count machines (each also filters the floor), not checks.
+    checksToDo_one: '{{count}} machine with checks to do',
+    checksToDo_other: '{{count}} machines with checks to do',
     allGood: '{{count}} all good',
     stopped: '{{count}} stopped',
     board: 'TV board',
