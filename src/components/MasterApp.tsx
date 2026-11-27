@@ -600,7 +600,7 @@ function MachineHealth({ countries }: { countries: ActiveCountry[] }) {
               </p>
             ) : (
               <ul className="space-y-1.5">
-                {attention.slice(0, 6).map((m) => (
+                {attention.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-3 text-xs p-2 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.03)]">
                     <span className="font-semibold text-[var(--text-primary)]">{m.name}</span>
                     <span className="flex items-center gap-2">
