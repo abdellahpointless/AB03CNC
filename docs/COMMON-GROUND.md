@@ -221,7 +221,7 @@ High confidence assumptions. Treat as premises.
 ### A030: Holes and tool starts for the VF-4
 
 - **Type:** stated
-- **Assumption:** Holes: R 0.5 mm over where the material over the hole starts; G81 up to 1 x D deep, G73 up to 3 x D in short-chip materials (ALU, MS, FH, EPO, RESOPAL), G83 deeper or in the plastics; Q from the shop's data; the holes of one tool in nearest-neighbour order; G98, G99 only where the stock proves the way between two holes at R clear; a note per hole saying the choice and why. A hole a little wider than its mill: arcs (a helix one G02/G03 a turn, one circle a level). Every tool starts G00 G17 G21 G40 G80 G90, then its first point with S and M03, then G43 H and the coolant; T and H within 1-200 (a tool the machine lacks takes a free number; Download refuses anything else). `holes: { legacy: true }` writes the old output.
+- **Assumption:** Holes: R 0.5 mm over where the material over the hole starts (under the faced top, plus half a layer of the grid that knows what earlier clampings left); G81 up to 1 x D deep, G73 up to 3 x D in short-chip materials (ALU, MS, FH, EPO, RESOPAL), G83 deeper or in the plastics; Q from the shop's data; the holes of one tool in nearest-neighbour order; G98, G99 only where the stock proves the way between two holes at R clear; a note per hole saying the choice and why. A hole a little wider than its mill: arcs (a helix one G02/G03 a turn, one circle a level). Every tool starts G00 G17 G21 G40 G80 G90, then its first point with S and M03, then G43 H and the coolant; T and H within 1-200 (a tool the machine lacks takes a free number; on a Haas, Download refuses anything else; a FANUC keeps its own pointeur numbers). `holes: { legacy: true }` writes the old output.
 - **Source:** Owner, 2026-11-27 (the hole rules from another review, "implement it in its logic"); which materials count as short-chip is CAM AI's reading
 - **Validated:** 2026-11-27
 - **Context:** Planner (drilling, milling), post, Download
@@ -350,3 +350,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
   the step (holes and rounded ends leave gaps). Q010 and Q013: yes (A028 stated). Q011: read rightly. Q012: no more
   locks for now. A029 and A030 new; A020's rhythm kept.
 - 2026-11-27: open questions Q014-Q020 from the hole rules, the library run and the night's bug hunt.
+- 2026-11-27: A030 refined after review: R under the faced top adds half a grid layer; the 1-200 Download lock is for Haas machines only.
