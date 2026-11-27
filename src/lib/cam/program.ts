@@ -66,6 +66,8 @@ export interface CamInput {
   /** Sides held in the POM nest (set by camProgram when nothing else holds them), or none ever (the nest's own program). */
   nestSides?: string[];
   noNest?: boolean;
+  /** No other first side planned to suggest when a clamping holds badly (camProgram's own tries). */
+  noSuggest?: boolean;
   /** The side up in setup 2, when the operator picked it on the model (else CAM AI's choice). */
   second?: string;
   /** The designer's sides for clampings 3 and on, in order (item 8): each taken after the first two, a side already
@@ -1808,12 +1810,38 @@ export const gougeOf = (c: CamCheck) => Math.round(c.pieces.reduce((t, p) => t +
  * collision, held safely) that takes the least time kept. `progress` after each try.
  */
 export function camProgram(input: CamInput, progress: (done: number, of: number) => void = () => {}): CamResult & { check: CamCheck } {
+  const r = planOnce(input, progress);
+  // You (2026-11-27): a clamping with no good way of holding the part (only the POM nest, or the vise does not hold it) with
+  // the operator's side up first is an error, and the first side that holds every clamping in the vise is suggested
+  // (the opposite one tried first): planned fresh with that side up (none of this layout's own choices), no nest.
+  const weak = r.setups.findIndex((s) => !!s.nest || !s.physics.ok);
+  if (!input.orient || input.noSuggest || weak < 0) return r;
+  const up = SIDES.find((x) => x.name === input.orient!.side)!;
+  const flip = SIDES.find((x) => x.d.every((v, k) => v === -up.d[k]))!.name;
+  for (const side of [flip, ...SIDES.map((x) => x.name).filter((x) => x !== flip && x !== up.name)]) {
+    let alt: CamResult & { check: CamCheck };
+    try {
+      alt = planOnce({ ...input, orient: { side, spin: false }, noNest: true, noSuggest: true, live: undefined, second: undefined, sides: undefined, clamps: undefined, jawRests: undefined, steps: undefined, stops: undefined, spacersY: undefined, spacersYp: undefined, turns: undefined, frames: undefined, moves: undefined, skip: undefined, finish: undefined, reserve: undefined }, () => {});
+    } catch {
+      continue;
+    }
+    if (goodPlan(alt)) return { ...r, notes: [...r.notes, { key: 'holdOther', setup: weak + 1, side }] };
+  }
+  return r;
+}
+
+/** Right: like the model, nothing hit, and the vise holds the part safely in every setup. */
+function goodPlan(r: CamResult & { check: CamCheck }): boolean {
+  return r.check.match >= 0.99 && r.check.collisions === 0 && r.check.misplaced === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
+}
+
+function planOnce(input: CamInput, progress: (done: number, of: number) => void): CamResult & { check: CamCheck } {
   const b = bounds(input.tris);
   // The operator's layout is planned alone; else each side as the height, thinnest first.
   const order = input.orient ? [SIDES.find((s) => s.name === input.orient!.side)!.d.findIndex((v) => v !== 0)] : [0, 1, 2].sort((p, q) => b.max[p] - b.min[p] - (b.max[q] - b.min[q]));
   let best: (CamResult & { check: CamCheck }) | null = null;
   // Right: like the model, nothing hit, and the vise holds the part safely in every setup.
-  const good = (r: CamResult & { check: CamCheck }) => r.check.match >= 0.99 && r.check.collisions === 0 && r.check.misplaced === 0 && gougeOf(r.check) < GOUGE_MM3 && r.setups.every((x) => x.physics.ok);
+  const good = goodPlan;
   let bestAxis = order[0];
   const at = (r: CamResult & { check: CamCheck }) => ({ minutes: r.check.minutes, clampings: r.setups.length });
   let bestInput = input;

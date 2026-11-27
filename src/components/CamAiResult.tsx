@@ -23,7 +23,7 @@ export { GOUGE_MM3 };
 // The designer's parallels or jaw rest not used as asked (clampRefused, clampAsk, jawRefused): not the program they asked
 // for. A cut within 0.5 mm of the vise floor (floorHit): the simulation has none.
 /** Nothing in the machine's or the vise's way: never relaxed. */
-export const safeButHold = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe || o.orderLocked !== undefined)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked');
+export const safeButHold = (r: CamSummary) => r.collisions === 0 && r.cales === 0 && r.setups.every((s) => s.physics.ok && !s.ops.some((o) => o.unsafe || o.orderLocked !== undefined)) && !r.notes.some((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit' || n.key === 'orderLocked' || n.key === 'holdOther');
 export const safe = (r: CamSummary) => safeButHold(r) && !r.misplaced;
 /** The part as the model: may be accepted as it is after changes by hand (`accepted`, an explicit tick). */
 export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < GOUGE_MM3;
@@ -79,13 +79,17 @@ export function useVerdict(result: CamSummary, changed: number, accepted = false
   const orderNote = result.notes.find((n) => n.key === 'orderLocked');
   // The designer's parallels not used as asked: why it stays locked.
   const clampNote = result.notes.find((n) => n.key === 'clampRefused' || n.key === 'clampAsk' || n.key === 'jawRefused' || n.key === 'floorHit');
+  // You: no good way of holding a clamping with this side up first; another side holds them all (camProgram).
+  const holdNote = result.notes.find((n) => n.key === 'holdOther');
   const text = ok
     ? accepted && (!alike(result) || result.misplaced)
       ? [t('camAi.opEdit.acceptedText'), result.misplaced ? t('camAi.opEdit.acceptedHold', { count: result.misplaced }) : ''].filter(Boolean).join(' ')
       : t('camAi.proven')
     : changed
       ? t('camAi.recalcFirst')
-      : orderNote
+      : holdNote
+        ? t('camAi.note.holdOther', { setup: holdNote.setup, side: holdNote.side })
+        : orderNote
         ? t('camAi.note.orderLocked', { setup: orderNote.setup, used: orderNote.used, d: orderNote.d })
         : unsafe
         ? t('camAi.unsafe')

@@ -39,4 +39,12 @@ describe('a later clamping', () => {
     expect(r.check.collisions).toBe(0);
     expect(r.check.misplaced).toBe(0);
   }, 300_000);
+
+  it('says there is no good way of holding it with this side up first, and which side up first holds every clamping in the vise', async () => {
+    // Fin up first: turned over, the 40 x 30 base up, the 2 mm fin under it 4 mm from the faces held, too near for the
+    // parallels: only the POM nest holds it. Fin down first, both clampings are held in the vise.
+    const r = await plan('fin', 'Z+', [44, 34, 36.5]);
+    expect(r.setups[1].nest).toBeDefined();
+    expect(r.notes).toContainEqual({ key: 'holdOther', setup: 2, side: 'Z-' });
+  }, 600_000);
 });

@@ -873,6 +873,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // The owner's rule: T and H a Haas takes (1-200), else no file (the remapper gives the tool a machine number).
   const badNumber = result ? badToolNumber(result, machine?.brand) : undefined;
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
+  // The first side CAM AI suggests when a clamping holds badly with this one (camProgram: holdOther), as one of the ways it can lie.
+  const holdOther = result?.notes.find((n) => n.key === 'holdOther');
+  const holdAt = holdOther && prep ? [...prep.layouts.keys()].sort((a, b) => Number(prep.layouts[a].spin) - Number(prep.layouts[b].spin)).find((i) => prep.layouts[i].side === holdOther.side) ?? -1 : -1;
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).
   const next = !prep ? 'model' : !partType ? 'partType' : !locked1 ? 'setup1' : !locked2 ? 'setup2' : !raw || under1 === 'tooThin' || topThin ? 'stock' : !machine || !tools.length || wrongCooling ? 'machine' : !templatesFor ? 'material' : refused1 ? 'clamp' : null;
@@ -1794,6 +1797,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : !issues && pendingMake ? 'text-[var(--blue-text)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
                 {checking ? t('camAi.opEdit.checking') : verdict ? (!issues && pendingMake ? t('camAi.makeFirst') : verdict.text) : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
               </p>
+              {/* You: another side up first holds every clamping in the vise: one click lays the part so (then Make). */}
+              {holdOther && holdAt >= 0 && !busy && (
+                <button type="button" onClick={() => chooseLayout(holdAt)} className="no-glass mx-2 mb-2 h-8 px-2.5 rounded-[6px] border border-[var(--blue-500)]/40 text-[13px] font-medium text-[var(--blue-text)] hover:bg-[rgba(var(--ov),0.08)]">
+                  {t('camAi.holdOtherUse', { side: holdOther.side })}
+                </button>
+              )}
               {checks.length > 0 && !checking && (
                 <ul aria-label={t('camAi.ws.checksTitle')}>
                   {checks.map((c) => (
