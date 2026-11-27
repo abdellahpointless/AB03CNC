@@ -82,6 +82,19 @@ describe('code generation', () => {
     expect(code).toContain('N18 G53 Y0\nN19 M30');
   });
 
+  it('a remapped program remapped again keeps only the new notes (the old ones named the old tool)', () => {
+    const src = 'O1\nN10 T1 M6\nN11 (SB_04.00_045_000_ALHS)\nN12 G00 G43 H1 Z50. M08\nN13 G81 Z-12. F100.\nN14 M30';
+    const first = remap(src, haas2, 'HAAS-2').code;
+    expect(first).toMatch(/\((?:AUTO|APPROX)-REMAP: /);
+    const drill: Tool = { id: 'd', number: 9, category: 'foret', description: 'Foret', diameter: 4, length: 45 };
+    const second = remap(first, [drill], 'HAAS-4').code;
+    const tLine = second.split('\n').find((l) => /M6/.test(l))!;
+    const g43 = second.split('\n').find((l) => /G43/.test(l))!;
+    expect(tLine).toBe('N10 T9 M6 (AUTO-REMAP: T9 foret)');
+    expect(g43).toBe('N12 G00 G43 H9 Z50. M83 (AI-MOD: OFFSET H9)');
+    expect(parseToolpath(second, { rapid: 30_000, toolChange: 2 }).tools[0].label).toMatch(/^foret · /);
+  });
+
   it('adds FANUC offsets without damaging comments', () => {
     const src = '%\nO1\nT06 M6 (SB_04.00_050_000_VAHS)\nG43 H06 Z50 M08 (DRILL CYCLE)\nG01 Z-10\nM30\n%';
     const { code } = remap(src, fanuc1, 'FANUC-1');

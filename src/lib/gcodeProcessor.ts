@@ -222,7 +222,8 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): 
   // Windows (CRLF) files: one line ending, or every note the remapper appends lands after a \r.
   const safeInput = (typeof input === 'string' ? input : String(input || '')).replace(/\r\n?/g, '\n');
   const detectedMaterial = detectMaterial(safeInput);
-  const lines = safeInput.split('\n');
+  // A program remapped before: its old notes name the old tools (and would steer the matching); the new ones replace them.
+  const lines = safeInput.split('\n').map((l) => l.replace(/\s*\((?:(?:AUTO|APPROX|MANUAL)-REMAP|AI-MOD):[^)]*\)/gi, ''));
   const blocks: ToolChangeBlock[] = [];
   const processedIndices = new Set<number>();
   
