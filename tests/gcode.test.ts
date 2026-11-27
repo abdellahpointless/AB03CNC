@@ -60,6 +60,14 @@ describe('analysis', () => {
     expect(blocks[0].matchedTool?.category).toBe('foret');
     expect(blocks[0].matchedTool?.diameter).toBe(4);
   });
+
+  it('reads Windows (CRLF) programs: the remap notes stay on their line, one line ending in the output', () => {
+    const src = ['%', 'O1', 'N10 T1 M6', 'N11 (SB_04.00_045_000_ALHS)', 'N12 G00 G43 H1 Z50. M08', 'N13 G81 Z-12. F100.', 'N14 M30', '%'].join('\r\n');
+    const { code } = remap(src, haas2, 'HAAS-2');
+    expect(code).not.toMatch(/\r/);
+    expect(code).toMatch(/^N10 T\d+ M6 \(AUTO-REMAP: T\d+ foret\)$/m);
+    expect(code).toMatch(/^N12 G00 G43 H\d+ Z50\. M83 \(AI-MOD: OFFSET H\d+\)$/m);
+  });
 });
 
 describe('code generation', () => {

@@ -211,7 +211,8 @@ function getMaterialPriority(t: Tool, detectedMaterial: Material | undefined): n
 }
 
 export function analyzeGCode(input: string, tools: Tool[], machineId?: string): { success: boolean; blocks: ToolChangeBlock[]; lines: string[]; detectedMaterial?: Material } {
-  const safeInput = typeof input === 'string' ? input : String(input || '');
+  // Windows (CRLF) files: one line ending, or every note the remapper appends lands after a \r.
+  const safeInput = (typeof input === 'string' ? input : String(input || '')).replace(/\r\n?/g, '\n');
   const detectedMaterial = detectMaterial(safeInput);
   const lines = safeInput.split('\n');
   const blocks: ToolChangeBlock[] = [];

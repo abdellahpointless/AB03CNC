@@ -428,7 +428,7 @@ export default function CodeEditorPair({
     reader.onload = (e) => {
       const text = e.target?.result;
       if (typeof text === 'string') {
-        const fileLines = text.split('\n');
+        const fileLines = text.replace(/\r\n?/g, '\n').split('\n');
         const { lines: processedLines, addedCount } = applyG53BeforeG52(fileLines);
         setSourceCode(processedLines.join('\n'));
         // A new program: its 3D model button lights up (the one given before was for another program).
