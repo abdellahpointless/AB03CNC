@@ -42,7 +42,7 @@ const cam: Translation<typeof en> = {
       nxView: 'NX görünümü (bitmiş parça üzerinde tüm yollar)',
       tools: 'Takımlar',
       hideTools: 'Takım listesini gizle',
-      rowPlay: 'Bu takımı oynat',
+      rowPlay: 'Oynat',
       rowSettings: 'Ayarlar',
       opSettings: 'OP{{op}} ayarları: paraleller ve parçanın duruşu',
       rowRestore: '{{tool}} geri al',

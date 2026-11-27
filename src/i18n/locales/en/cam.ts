@@ -39,7 +39,7 @@ const cam = {
       nxView: 'NX view (every path over the finished part)',
       tools: 'Tools',
       hideTools: 'Hide the tool list',
-      rowPlay: 'Play this tool',
+      rowPlay: 'Play',
       rowSettings: 'Settings',
       opSettings: 'OP{{op}} settings: parallels and how the part lies',
       rowRestore: 'Restore {{tool}}',

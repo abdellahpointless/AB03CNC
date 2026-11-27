@@ -1219,7 +1219,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                   {/* The picked tool's own actions: play it alone, its settings, delete it (asked first). */}
                   {on && (
                     <div role="group" aria-label={label} className="flex gap-1 px-1 pt-1 pb-1.5">
-                      <button type="button" className={rowAct} onClick={() => setSimFocus({ setup: opNow, tool: o.tool, key: Date.now(), play: true })} disabled={busy}>
+                      <button type="button" className={`${rowAct} whitespace-nowrap`} onClick={() => setSimFocus({ setup: opNow, tool: o.tool, key: Date.now(), play: true })} disabled={busy}>
                         <PlayerPlay size={14} stroke={1.8} aria-hidden />
                         {t('camAi.ws.rowPlay')}
                       </button>
@@ -2437,7 +2437,7 @@ function TurnPanel({ n, made, turned, tris, used, onPress, onOwn }: { n: number;
       </Suspense>
       <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={t('camAi.turn.title')}>
         {['X+', 'Y+', 'X-', 'Y-'].map((p) => (
-          <button key={p} type="button" className="btn-secondary min-h-11 px-1 text-xs font-mono" onClick={() => onPress(p)} aria-label={t('camAi.turn.press', { axis: p[0], deg: deg(p) })} title={t('camAi.turn.press', { axis: p[0], deg: deg(p) })}>
+          <button key={p} type="button" className="btn-secondary min-h-11 !px-1 !text-xs font-mono whitespace-nowrap" onClick={() => onPress(p)} aria-label={t('camAi.turn.press', { axis: p[0], deg: deg(p) })} title={t('camAi.turn.press', { axis: p[0], deg: deg(p) })}>
             {deg(p).replace('°', '')} {p[0]}
           </button>
         ))}
