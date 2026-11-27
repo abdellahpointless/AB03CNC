@@ -454,6 +454,7 @@ const cam: Translation<typeof en> = {
       picks: 'CAM AI’ın seçtikleri (aynı tür)',
       machine: 'Tezgahta',
       db: 'Takım veritabanı',
+      choose: 'Bir takım seçin…',
       typed: 'Başka bir ölçü…',
       d: 'Ø (mm)',
       l: 'Uzunluk (mm)',

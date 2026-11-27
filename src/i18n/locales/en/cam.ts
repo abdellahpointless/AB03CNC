@@ -451,6 +451,7 @@ const cam = {
       picks: 'CAM AI’s picks (same kind)',
       machine: 'In the machine',
       db: 'Tool database',
+      choose: 'Choose a tool…',
       typed: 'Another size…',
       d: 'Ø (mm)',
       l: 'Length (mm)',

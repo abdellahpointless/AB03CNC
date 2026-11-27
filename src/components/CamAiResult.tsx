@@ -475,6 +475,8 @@ export function ToolCard({
             <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.standIn')}</span>
             {/* Never wider than the panel: a long tool name is cut in the box, whole in the open list. */}
             <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] truncate cursor-pointer" value={pick} onChange={(e) => setPick(e.target.value)}>
+              {/* No pick of CAM AI's: nothing chosen until the operator chooses (the box never shows a tool not picked). */}
+              {!pick && <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.swapPick.choose')}</option>}
               {options.length > 0 && (
                 <optgroup label={t('camAi.swapPick.picks')}>
                   {options.map((o) => (
