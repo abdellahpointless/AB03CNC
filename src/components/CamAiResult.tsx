@@ -11,6 +11,7 @@ import type { CamSummary } from '../lib/cam/cam.worker';
 import type { Purpose } from '../lib/cam/program';
 import type { PhysicsIssue } from '../lib/cam/physics';
 import { GOUGE_MM3 } from '../lib/cam/limits';
+import { toViseAxes } from '../lib/cam/layouts';
 import ToolSize from './ToolSize';
 
 export type Setup = CamSummary['setups'][number];
@@ -137,6 +138,7 @@ export function ProgramPanel({
   const { ok, text } = useVerdict(result, changed);
   // Tools the program uses that are not in the machine yet, once each.
   const toLoad = [...new Map(result.setups.flatMap((s) => s.ops).filter((o) => !o.inMachine).map((o) => [o.code, o] as const)).values()];
+  const viseSize = (v: number[]) => (result.setups[0] ? toViseAxes(result.setups[0].R, v) : v);
   return (
     <div className="space-y-4">
       <p className={`flex items-start gap-2 text-xs font-medium ${ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`}>
@@ -176,7 +178,8 @@ export function ProgramPanel({
         </div>
       )}
       <p className="text-xs text-[var(--text-secondary)]">
-        {t('camAi.sizes', { size: result.size.map((v) => fmt(v, 1)).join(' × '), raw: result.raw.map((v) => fmt(v, 1)).join(' × ') })}
+        {/* As clamping 1's vise holds them, like the Stock panel and the header (the result's are the model's axes). */}
+        {t('camAi.sizes', { size: viseSize(result.size).map((v) => fmt(v, 1)).join(' × '), raw: viseSize(result.raw).map((v) => fmt(v, 1)).join(' × ') })}
       </p>
       {toLoad.length > 0 && (
         <div className="space-y-1.5">

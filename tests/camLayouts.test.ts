@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layouts, toModelAxes, toModelSides } from '../src/lib/cam/layouts';
+import { layouts, toModelAxes, toModelSides, toViseAxes } from '../src/lib/cam/layouts';
 import { camProgram, cheaper, checkProgram } from '../src/lib/cam/program';
 import { allowedCales, blankSides, blankTop, firstPick } from '../src/lib/cam/clamp';
 import { sizeFits } from '../src/lib/modelCompare';
@@ -37,6 +37,12 @@ describe('how the part lies in the vise', () => {
     const turned = layouts(plate).find((l) => l.side === 'Z+' && l.spin)!;
     // Turned a quarter: the vise X is the model Y.
     expect(toModelAxes(turned.R, [1, 2, 3])).toEqual([2, 1, 3]);
+  });
+
+  it('gives a size along the model axes as the vise holds it (finding H1-22: the Program panel as the Stock panel)', () => {
+    const turned = layouts(plate).find((l) => l.side === 'Z+' && l.spin)!;
+    expect(toViseAxes(turned.R, [28, 36, 15.5])).toEqual([36, 28, 15.5]);
+    expect(toViseAxes(turned.R, toModelAxes(turned.R, [40, 32, 22.5]))).toEqual([40, 32, 22.5]);
   });
 
   it('the planner holds a block by its long faces (the engineers: 21 of 24 clampings)', () => {

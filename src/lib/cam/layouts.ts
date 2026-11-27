@@ -80,6 +80,8 @@ export function layouts(tris: ArrayLike<number>): Layout[] {
 
 /** Excess given in the vise's X, Y, Z, back to the model's axes (for CamInput.raw). */
 export const toModelAxes = (R: Mat3, v: Vec): Vec => [0, 1, 2].map((k) => v[[0, 1, 2].find((j) => R[j * 3 + k] !== 0)!]) as Vec;
+/** A size along the model's axes as the vise holds it (R: model -> clamping), as the Stock panel and the G-code give it. */
+export const toViseAxes = (R: readonly number[], v: readonly number[]): Vec => [0, 1, 2].map((j) => [0, 1, 2].reduce((a, k) => a + Math.abs(R[j * 3 + k]) * v[k], 0)) as Vec;
 /** Stock on each side of clamping 1 (lo: its X-, Y-, Z-; hi: X+, Y+, Z+) as the model's sides (R: model -> clamping 1). */
 export const toModelSides = (R: Mat3, lo: Vec, hi: Vec): { lo: Vec; hi: Vec } => {
   const j = [0, 1, 2].map((k) => [0, 1, 2].find((i) => R[i * 3 + k] !== 0)!);

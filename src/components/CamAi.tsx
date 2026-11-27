@@ -1692,7 +1692,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         {chosen && excess && (
           <button type="button" onClick={() => setSel({ kind: 'stock' })} title={t('camAi.ws.stockTitle')} className="no-glass h-7 shrink-0 whitespace-nowrap hidden lg:inline-flex items-center gap-1.5 px-2 rounded-[6px] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] tabular-nums hover:text-[var(--text-primary)]">
             <Box size={14} stroke={1.6} aria-hidden />
-            {[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 0)).join('×')}
+            {[0, 1, 2].map((k) => fmt(chosen.size[k] + excess[k], 1)).join('×')}
           </button>
         )}
         <Popover.Root>
