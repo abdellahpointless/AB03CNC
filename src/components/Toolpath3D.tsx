@@ -121,6 +121,8 @@ interface Props {
   onPickTool?: (tool: number) => void;
   /** Every change of setup turns the part (playing or not, forward or back), not only playing on into the next one. */
   turnAlways?: boolean;
+  /** The camera's light off the view axis (lights.ts): no white glare on the faces seen square from the top or the front. */
+  offAxisLight?: boolean;
 }
 
 export type ModelView = 'part' | 'model' | 'both';
@@ -558,7 +560,7 @@ interface Api {
 /** Most pixels one frame draws: what the earlier, smaller window drew on a 1080p screen (about 980 x 800 at 1.5x). */
 const MAX_PIXELS = 1_800_000;
 
-export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, diffPieces, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false }: Props) {
+export default function Toolpath3D({ path, program, setup, range, clock, colorOf, fitKey, onSolid, isolate = false, heat = false, playing = false, measure = false, mode = 'faces', onMeasure, jump = null, look = 'plain', outline = false, section = null, view = null, focus = null, seeThrough = false, details = false, behind, model = null, modelView = 'part', diffs = false, diffColors, diffPieces, onModel, pathsOnly = false, showAll = false, onPickTool, hull = false, turnAlways = false, offAxisLight = false }: Props) {
   const modelViewRef = useRef(modelView);
   modelViewRef.current = modelView;
   const diffsRef = useRef(diffs);
@@ -618,7 +620,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 5000);
     // Lit from every side and from the viewer: no face turns black, whichever way it is turned.
-    const lights = addLights(scene, renderer, camera);
+    const lights = addLights(scene, renderer, camera, offAxisLight);
     const edges = makeOutline(renderer);
     let dirty = true;
     const invalidate = () => {
@@ -799,6 +801,7 @@ export default function Toolpath3D({ path, program, setup, range, clock, colorOf
     const worker = new Worker(new URL('../lib/stockSim.worker.ts', import.meta.url), { type: 'module' });
     const L = LOOKS[look];
     const material = partMaterial(look, input.part, program.white, a.scene.environment);
+    material.envMapRotation.copy(a.scene.environmentRotation);
     const RAWC = new THREE.Color(L.raw);
     const CUTC = new THREE.Color(L.cut);
     const chunks = new Map<number, THREE.Mesh>();

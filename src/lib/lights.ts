@@ -9,14 +9,18 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
  *  - a light carried by the camera lights whatever faces the viewer, from any angle,
  *  - a key light from above-front keeps the shapes readable (tops brighter than walls).
  * Returns the key light (it casts the shadows) and a clean-up function.
+ * offAxis: the camera's light a little above-left of where it looks, so a face square to the view (seen from the top
+ * or the front) does not mirror it straight back as one white glare; and the studio tilted, so a top face seen from
+ * straight above does not mirror its ceiling light (the part's material takes scene.environmentRotation).
  */
-export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, camera: THREE.Camera): { key: THREE.DirectionalLight; dispose: () => void } {
+export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, camera: THREE.Camera, offAxis = false): { key: THREE.DirectionalLight; dispose: () => void } {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
   const env = pmrem.fromScene(room, 0.04).texture;
   room.dispose();
   scene.environment = env;
   scene.environmentIntensity = 0.3;
+  if (offAxis) scene.environmentRotation.set(-0.6, 0, 0);
 
   scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x2a3346, 0.3));
   const key = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -31,7 +35,7 @@ export function addLights(scene: THREE.Scene, renderer: THREE.WebGLRenderer, cam
 
   // Head light: points where the camera looks.
   const head = new THREE.DirectionalLight(0xffffff, 0.6);
-  head.position.set(0, 0, 0);
+  head.position.set(offAxis ? -0.3 : 0, offAxis ? 0.4 : 0, 0);
   head.target.position.set(0, 0, -1);
   camera.add(head, head.target);
   if (!camera.parent) scene.add(camera);
