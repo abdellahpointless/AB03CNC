@@ -279,7 +279,8 @@ export default function PartWithoutScan() {
               </span>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* noValidate: the app checks the quantity itself, in the page's language (the browser's tooltip came first, in its own). */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* SAP Number */}
               <div>
                 <label htmlFor={sapInputId} className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
@@ -289,7 +290,10 @@ export default function PartWithoutScan() {
                   id={sapInputId}
                   type="text"
                   value={sapNumber}
-                  onChange={e => setSapNumber(e.target.value.toUpperCase())}
+                  onChange={e => {
+                    setSapNumber(e.target.value.toUpperCase());
+                    setSubmitError(null); // an error about the old value no longer applies
+                  }}
                   placeholder={t('form.sapPlaceholder')}
                   maxLength={40}
                   disabled={isSubmitting}
@@ -317,6 +321,7 @@ export default function PartWithoutScan() {
                     onChange={e => {
                       const v = e.target.value;
                       setQty(v === '' ? '' : parseInt(v, 10));
+                      setSubmitError(null);
                     }}
                     disabled={isSubmitting}
                     className="aurora-input w-full font-mono text-xs sm:text-sm"
