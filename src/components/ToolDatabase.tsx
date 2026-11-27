@@ -218,7 +218,7 @@ export default function ToolDatabase({
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="w-48">
             <select 
               aria-label={t('common:a11y.machine')}
@@ -242,7 +242,7 @@ export default function ToolDatabase({
           {user?.role === 'ADMIN' && connection !== 'offline' && (
             <button
               onClick={() => setShowImport(true)}
-              className="btn-secondary text-xs py-2 px-4 whitespace-nowrap"
+              className="btn-secondary text-xs py-2 px-4 whitespace-nowrap shrink-0"
               title={t('header.importExcelHint')}
             >
               <FileSpreadsheet size={15} className="text-[var(--green-500)]" />
@@ -253,7 +253,7 @@ export default function ToolDatabase({
           {!isAdding && machine && (
             <button
               onClick={openAdd}
-              className="btn-primary text-xs py-2 px-4 whitespace-nowrap"
+              className="btn-primary text-xs py-2 px-4 whitespace-nowrap shrink-0"
             >
               <Plus size={15} />
               <span>{t('header.addTool')}</span>
