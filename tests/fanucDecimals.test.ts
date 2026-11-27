@@ -67,8 +67,15 @@ describe('FANUC programs keep every decimal point', () => {
     expect(out).toMatch(/G00 G43 Z50\. H#513 D#513 M254/);
   });
 
-  it('adds a dot to whole-number X/Y/Z only, never to other words or a value that has one', () => {
-    expect(addCoordinateDots(['N10 G01 X10 Y-5 Z0 F300 S8000 Q2 R2 (Z5 IN COMMENT)'])).toEqual(['N10 G01 X10. Y-5. Z0. F300 S8000 Q2 R2 (Z5 IN COMMENT)']);
+  it('adds a dot to whole-number dimension words only, never to other words or a value that has one', () => {
+    expect(addCoordinateDots(['N10 G01 X10 Y-5 Z0 F300 S8000 (Z5 IN COMMENT)'])).toEqual(['N10 G01 X10. Y-5. Z0. F300 S8000 (Z5 IN COMMENT)']);
+    // A FANUC reads R2 as 0.002 mm too: the R plane and peck of a cycle, arc centres and radii, rotary axes.
+    expect(addCoordinateDots(['G98 G83 Z-10 R2 Q3 F100', 'G02 X20 Y10 I5 J0 F300', 'G03 X0 Y0 R5', 'G18 G02 X1 Z2 I0 K-3', 'G01 A90 B-45 C180'])).toEqual(['G98 G83 Z-10. R2. Q3. F100', 'G02 X20. Y10. I5. J0. F300', 'G03 X0. Y0. R5.', 'G18 G02 X1. Z2. I0. K-3.', 'G01 A90. B-45. C180.']);
+    // Mode and call lines (AI contour G05.1 Q1, G10, G65, M98) keep their words but X/Y/Z; D/H/P/L too.
+    const kept = ['G65 P9010 R2 Q3 A1', 'M98 P1000 L2', 'G05.1 Q1 R10', 'G05.1 Q0', 'G08 P1', 'G10 L11 P1 R5', 'G41 D7 G43 H7', 'G04 P500', 'IF [#1 EQ 5] GOTO 10'];
+    expect(addCoordinateDots(kept)).toEqual(kept);
+    // A call's X/Y/Z as before; a cycle's repeat count (K) stays.
+    expect(addCoordinateDots(['G65 P9010 X10 R2', 'G98 G81 Z-2 R1 K2'])).toEqual(['G65 P9010 X10. R2', 'G98 G81 Z-2. R1. K2']);
     expect(addCoordinateDots(['G01 X1.5 Y.5 Z-.25 X#5 Z[#1+2]'])).toEqual(['G01 X1.5 Y.5 Z-.25 X#5 Z[#1+2]']);
     const once = addCoordinateDots(['G00 X10 Y20 Z30']);
     expect(addCoordinateDots(once)).toEqual(once);

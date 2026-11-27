@@ -119,8 +119,8 @@ export function fhPecks(lines: string[]): string[] {
 }
 
 /**
- * Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
- * number goes over N9999 (the shop's FANUC post repeats N9999 after it).
+ * Every FANUC machine (FANUC-2 included): whole-number dimension words (X/Y/Z, A/B/C, I/J/K, R, a cycle's Q) get
+ * their decimal point, and no N number goes over N9999 (the shop's FANUC post repeats N9999 after it).
  */
 export function fanucNumbers(lines: string[]): string[] {
   const labels = jumpsToLabels(lines); // a jump needs its label: no cap then
@@ -153,18 +153,26 @@ export function replaceInCode(line: string, pattern: RegExp, replacement: string
   return out + doReplace(line.slice(last));
 }
 
+const DOTS_XYZ = /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi;
+const DOTS_CYCLE = /(?<![A-Z_#\]])([XYZABCIJRQ])(\s*[-+]?\d+)(?![\d.])/gi;
+const DOTS = /(?<![A-Z_#\]])([XYZABCIJKR])(\s*[-+]?\d+)(?![\d.])/gi;
+
 /**
- * FANUC reads a coordinate written without a decimal point in thousandths of a mm (Z-5 is
- * -0.005 mm), so every X, Y and Z that is a whole number gets its dot (Z-5 -> Z-5.). Values that
- * already have a dot, other words (F, S, Q, R...), macro values (X#1) and comments are never
+ * FANUC reads a dimension written without a decimal point in thousandths of a mm (Z-5 is -0.005 mm,
+ * R2 0.002 mm), so every whole-number X, Y, Z, A/B/C, I/J/K, R (arc, cycle plane, G68 angle) and the
+ * Q peck of a canned cycle get their dot (Z-5 -> Z-5.). Values that already have a dot, other words
+ * (F, S, D, H, P...), a cycle's K (its repeat count), a Q outside a cycle, the words of lines that set
+ * modes or call (G05.1 Q1 R10, G08, G10, G65, M98: X/Y/Z only), macro values (X#1) and comments are never
  * touched, and no dot is ever removed. A machine-coordinate move to 0 stays as the shop writes it
  * ("G0 G53 G49 Z0 G94 M95", "G53 Y0"): 0 is 0 in any unit. Running it again changes nothing.
  */
 export function addCoordinateDots(lines: string[]): string[] {
   return lines.map((l) => {
     if (l === '__REMOVE_ME__') return l;
-    const machine = /(?<![A-Z_])G53(?![0-9])/i.test(codeOnly(l));
-    return replaceInCode(l, /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi, (w: string, a: string, n: string) => (machine && Number(n) === 0 ? w : `${a}${n}.`));
+    const code = codeOnly(l);
+    const machine = /(?<![A-Z_])G53(?![0-9])/i.test(code);
+    const words = /(?<![A-Z])(?:G0*[58]|G10|G6[56]|M9[78])(?![0-9])/i.test(code) ? DOTS_XYZ : /(?<![A-Z])G(?:7[346]|8[1-9])(?![0-9])/i.test(code) ? DOTS_CYCLE : DOTS;
+    return replaceInCode(l, words, (w: string, a: string, n: string) => (machine && Number(n) === 0 ? w : `${a}${n}.`));
   });
 }
 

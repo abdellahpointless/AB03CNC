@@ -15,7 +15,7 @@
  * 6. HAAS-only M89 removed. M98 P7999 deleted: the shop's machines have no O7999 (shop rule); the
  *    table comes out with G53 Y0 before each part flip and at the end instead.
  * 7. N1, N2, N3... on every line but % and O; from N9999 on, N9999 (the FANUC files do the same).
- * 8. Whole-number X/Y/Z get a dot (FANUC reads X10 as 0.010 mm), a G53 move to 0 stays bare
+ * 8. Whole-number X/Y/Z, A/B/C, I/J/K and R, a cycle's Q get a dot (FANUC reads X10 as 0.010 mm), a G53 move to 0 stays bare
  *    ("Z0", as the FANUC files); whole-number feeds lose theirs (F3000. -> F3000, as the FANUC files),
  *    except in a program with G95 (feed per revolution).
  * Every rule reads the code only, never the text of a (comment).
