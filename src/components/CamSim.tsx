@@ -38,8 +38,20 @@ const Toolpath3D = lazy(() => import('./Toolpath3D'));
 export const COLORS = ['#5B8CF5', '#F0954F', '#3FB97A', '#C77DFF', '#F2C94C', '#4FD1C5', '#F472B6', '#A3E635'];
 const clockText = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-/** play with a tool: that tool's run in that clamping played alone (it stops at the run's end). */
+/** play with a tool: that tool's runs in that clamping played alone, one after the other (it stops at the last one's end). */
 export type SimFocus = { setup: number; tool?: number; key: number; play?: boolean };
+
+/** A tool's runs in one clamping, in program order: [its first move, the move after its last] of each. */
+export function toolRuns(moves: { setup: number; tool: number | null }[], setup: number, tool: number | null): [number, number][] {
+  const out: [number, number][] = [];
+  moves.forEach((m, i) => {
+    if (m.setup !== setup || m.tool !== tool) return;
+    const last = out[out.length - 1];
+    if (last && last[1] === i) last[1] = i + 1;
+    else out.push([i, i + 1]);
+  });
+  return out;
+}
 
 export default function CamSim({
   code,
@@ -96,8 +108,9 @@ export default function CamSim({
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
   const setups = program.setups;
   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
-  // One tool's run played alone: the move playback stops before.
+  // One tool's run played alone: the move playback stops before; and that tool's later runs in the clamping, still to play.
   const soloEnd = useRef<number | null>(null);
+  const soloNext = useRef<[number, number][]>([]);
   const { total, clock, step, setStep, seek, turning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
   gate.current = { wait: () => false, mode3d: () => true, end: () => soloEnd.current };
   const [heat, setHeat] = useState(false);
@@ -164,13 +177,14 @@ export default function CamSim({
     }
     const k = path.moves.findIndex((m) => m.setup === focus.setup && (focus.tool === undefined || m.tool === focus.tool));
     if (k < 0) return;
-    // That tool alone: from its first move to the end of its run, then paused there.
+    // That tool alone: each of its runs in the clamping (a mill used twice: both), the other tools' moves between
+    // them skipped, then paused at the end of the last.
     if (focus.play) {
-      let e = k;
-      while (e + 1 < total && path.moves[e + 1].setup === focus.setup && path.moves[e + 1].tool === focus.tool) e++;
-      soloEnd.current = e + 1;
+      const [first, ...more] = toolRuns(path.moves, focus.setup, focus.tool ?? null);
+      soloEnd.current = first[1];
+      soloNext.current = more;
       setHeat(false);
-      seek(k);
+      seek(first[0]);
       setPlaying(true);
       return;
     }
@@ -179,6 +193,17 @@ export default function CamSim({
     seek(k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.key, path]);
+
+  // One tool played alone, stopped at the end of one of its runs (not paused by hand, which ends it): on to its next run.
+  useEffect(() => {
+    if (playing || soloEnd.current === null || step !== soloEnd.current) return;
+    const next = soloNext.current.shift();
+    if (!next) return;
+    soloEnd.current = next[1];
+    seek(next[0]);
+    setPlaying(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
 
   // Runs of one tool in one clamping: the timeline's segments, as long as each runs.
   const runs = useMemo(() => {
