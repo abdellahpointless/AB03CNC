@@ -60,6 +60,17 @@ describe('the way from hole to hole', () => {
   });
 });
 
+describe('where a cycle starts', () => {
+  it('is R 0.5 over the faced top, and half a grid layer more over a surface known only from the grid of what earlier clampings left', () => {
+    const drill = catalog('ALU', haasTools).find((t) => t.type === 'SB' && Math.abs(t.diameter - 3.3) < 1e-6)!;
+    const hole = (x: number, top: number) => ({ h: { c: [x, 0] as [number, number], r: 1.65, top, bottom: top - 5, through: false, closed: true }, tool: drill, z: top - 5 });
+    // A hole on the faced top (0) and one on a floor 10 mm down that an earlier clampings' grid (0.6 mm layers) shows.
+    const [op] = drilling([hole(0, 0), hole(10, -10)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, (h) => h.top, {}, undefined, (s) => (s >= 0 ? 0 : 0.3));
+    const rs = op.lines.filter((l) => /^G9[89] G(8[13]|73) /.test(l)).map((l) => Number(l.match(/ R(-?[\d.]+)/)![1]));
+    expect(rs).toEqual([0.5, -9.2]);
+  });
+});
+
 describe('tool numbers', () => {
   it('stay within 1-200 for every tool the machine does not have (a Haas takes H 1-200)', () => {
     for (const mat of ['ALU', 'POM', 'FH'] as const) for (const t of catalog(mat, haasTools)) expect(t.number, t.code).toBeGreaterThanOrEqual(1), expect(t.number, t.code).toBeLessThanOrEqual(200);

@@ -406,6 +406,8 @@ interface Left {
   skin: number;
   /** How far at() grows the grid's cells (mm): the outline stands that far out of the faces. */
   grow: number;
+  /** How far over the top at() shows the material may stand (mm): half a grid layer; 0 for the exact raw box. */
+  above: number;
 }
 
 /**
@@ -425,7 +427,7 @@ function boxLeft(R: Mat3, t: Vec, lo: Vec, hi: Vec): Left {
   const p = [apply(R, lo), apply(R, hi)];
   const box = { lo: [0, 1, 2].map((k) => Math.min(p[0][k], p[1][k]) + t[k]) as Vec, hi: [0, 1, 2].map((k) => Math.max(p[0][k], p[1][k]) + t[k]) as Vec };
   const r = rect(box.lo[0], box.lo[1], box.hi[0], box.hi[1]);
-  return { box, at: (lo, hi) => (hi > box.lo[2] - 0.001 && lo < box.hi[2] + 0.001 ? r : []), skin: 0, grow: 0 };
+  return { box, at: (lo, hi) => (hi > box.lo[2] - 0.001 && lo < box.hi[2] + 0.001 ? r : []), skin: 0, grow: 0, above: 0 };
 }
 
 /**
@@ -508,6 +510,8 @@ function remaining(input: CamInput, done: CamSetup[], size: Vec, raw: Vec, R: Ma
     box: { lo, hi },
     skin: Math.max(...g.step) * 1.6,
     grow: Math.max(g.step[ax], g.step[ay]) * 0.75,
+    // A layer is kept when its centre was not cut: the material can stand up to half a layer over the kept ones.
+    above: g.step[az] / 2,
     at: (zLo, zHi) => {
       // Every grid layer between the two heights (and the one each is in).
       const [a, b] = [layerOf(zLo), layerOf(zHi)].sort((p, q) => p - q);
@@ -600,9 +604,11 @@ export function nearestOrder<T extends { h: { c: P2 } }>(hs: T[]): T[] {
  * it (its way down to R is a rapid): R2 as the shop writes it (513 drill cycles) when `legacy`, else rMargin over it.
  * `clearAt(a, b, s, r)`: whether a tool of radius r goes from a to b with no material over height s on the way.
  */
-export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number, opts: HoleOpts = {}, clearAt?: (a: P2, b: P2, s: number, r: number) => boolean): CamOp[] {
+export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolean }[], spot: CamTool | undefined, mat: string, limits: Limits, clear: number, stockTop: number, surface: (h: Hole) => number, opts: HoleOpts = {}, clearAt?: (a: P2, b: P2, s: number, r: number) => boolean, unsure?: (s: number) => number): CamOp[] {
   const o = { ...HOLE_DEFAULTS, ...opts };
   const over = o.legacy ? 2 : o.rMargin;
+  // R: the margin over where the material starts, plus how far over the surface it may stand (a grid's half layer).
+  const rOf = (s: number) => s + over + (o.legacy ? 0 : (unsure?.(s) ?? 0));
   const ops: CamOp[] = [];
   // Holes already there (finished from this side) need no centre; nor do holes too deep down for
   // the centre drill's holder to stay above the stock's top (drilled without one). The shop spots
@@ -614,7 +620,7 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
     (o.legacy ? fresh : nearestOrder(fresh)).forEach(({ h }, i) => {
       const s = surface(h);
       const z = s - Math.min(h.r, spot.diameter / 2) * 0.8;
-      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + over)}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(s + over)} F${cut.fz}.`);
+      lines.push(i ? `X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(rOf(s))}` : `G98 G81 X${n3(h.c[0])} Y${n3(h.c[1])} Z${n3(z)} R${n3(rOf(s))} F${cut.fz}.`);
     });
     lines.push('G80');
     ops.push({ kind: 'centre', purpose: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
@@ -641,7 +647,7 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
       if (back === 'G98' && before === 'G99' && next) lines.push('G80', `G00 X${n3(r.h.c[0])} Y${n3(r.h.c[1])}`, `G00 Z${n3(clear)}`);
       before = back;
       const q = r.cycle === 'G81' ? '' : ` Q${n3(Math.min(cut.q, r.s - r.z))}`;
-      lines.push(`${back} ${r.cycle} X${n3(r.h.c[0])} Y${n3(r.h.c[1])} Z${n3(r.z)} R${n3(r.s + over)}${q} F${cut.fz}.`);
+      lines.push(`${back} ${r.cycle} X${n3(r.h.c[0])} Y${n3(r.h.c[1])} Z${n3(r.z)} R${n3(rOf(r.s))}${q} F${cut.fz}.`);
     });
     lines.push('G80');
     ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
@@ -2497,7 +2503,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       for (let i = 0; i <= n; i++) if (inside(m, [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n]) !== 0) return false;
       return true;
     };
-    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface, input.holes, clearAt));
+    // The faced top is where the facing cut; under it, what the earlier clampings left is known to a grid layer.
+    const unsure = (s: number) => (s >= faced - 1e-6 ? 0 : left.above);
+    if (toDrill.length) ops.push(...drilling(toDrill, usable(tools, ['ZB'])[0] ?? usable(tools, ['AB'])[0], mat, limits, plane, stockTop, surface, input.holes, clearAt, unsure));
     // The holes this clamping's drills make: not one whose drilling the operator removed (its op goes after planning).
     // Such a hole stays solid down through its bottom: no mill is sent under it (nothing drilled to reach it by).
     const drilledHere = toDrill.filter((d) => !input.skip?.some((k) => k.startsWith(`${side.name}|BOHREN_${mm(d.tool.diameter)}MM|${d.tool.code}|`)));
