@@ -391,6 +391,13 @@ const cam = {
     stop: 'Stop',
     reading: 'Reading the model…',
     failed: 'CAM AI could not program this part. Check the model, or download the learning records for the team.',
+    modelErrors: {
+      tooBig: 'This file is too big: a 3D model can be 50 MB at most.',
+      noModel: 'This PDF has no 3D model in it: choose the part’s 3D PDF, its STEP file or an STL.',
+      compressed: 'This PDF’s 3D model is stored in a way the app cannot read yet: use the part’s STEP file or an STL.',
+      unreadable: 'This file cannot be read as a 3D PDF, a STEP file or an STL: choose the part’s 3D model.',
+      notPart: 'This model is not this part: its size is not the part’s.',
+    },
     result: 'Result',
     proven: 'Simulated and checked: the part comes out like the model, and no tool or holder hits the jaws or the part.',
     notProven: 'The simulated part is not close enough to the model (99 % needed). Look at it in the toolpath viewer.',

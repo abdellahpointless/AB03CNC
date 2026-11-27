@@ -1621,7 +1621,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
             {run.state === 'error' && (
               <p className="badge-danger text-xs py-1.5 px-3" role="alert">
-                {run.error === 'failed' ? t('camAi.failed') : run.error === 'thinBlank' ? t('camAi.stock.thinRefused') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`remapper:toolpath.model.errors.${run.error}`)}
+                {run.error === 'failed' ? t('camAi.failed') : run.error === 'thinBlank' ? t('camAi.stock.thinRefused') : run.error === 'toolDb' ? t('camAi.db.loadFailed') : t(`camAi.modelErrors.${run.error}`)}
               </p>
             )}
         </div>
@@ -2230,8 +2230,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             >
               <Upload size={18} className="text-[var(--blue-text)]" />
               <span className="font-medium text-[var(--text-primary)]">{run.state === 'preparing' ? t('camAi.reading') : model ? model.name : t('camAi.drop')}</span>
-              <span className="text-[var(--text-secondary)]">{model ? `${fmt(model.bytes.length / 1048576, 1)} MB · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
+              <span className="text-[var(--text-secondary)]">{model ? `${model.bytes.length < 1048576 ? `${fmt(model.bytes.length / 1024, 0)} kB` : `${fmt(model.bytes.length / 1048576, 1)} MB`} · ${t('camAi.change')}` : t('camAi.dropHint')}</span>
             </button>
+            {/* A file that is not a model: said here, where it was chosen (the inspector is behind the dialog). */}
+            {run.state === 'error' && run.error !== 'failed' && run.error !== 'thinBlank' && run.error !== 'toolDb' && (
+              <p className="badge-danger text-xs py-1.5 px-3" role="alert">{t(`camAi.modelErrors.${run.error}`)}</p>
+            )}
             {prep && (
               // The part in 3D beside its choices (item 16): turned with the mouse, as it was read.
               <div className="grid gap-4 md:grid-cols-[1fr_18rem]">

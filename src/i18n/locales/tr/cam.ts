@@ -394,6 +394,13 @@ const cam: Translation<typeof en> = {
     stop: 'Durdur',
     reading: 'Model okunuyor…',
     failed: 'CAM AI bu parçayı programlayamadı. Modeli kontrol edin veya ekip için öğrenme kayıtlarını indirin.',
+    modelErrors: {
+      tooBig: 'Bu dosya çok büyük: bir 3D model en fazla 50 MB olabilir.',
+      noModel: 'Bu PDF’de 3D model yok: parçanın 3D PDF’ini, STEP dosyasını veya bir STL seçin.',
+      compressed: 'Bu PDF’deki 3D model, uygulamanın henüz okuyamadığı bir biçimde saklanmış: parçanın STEP dosyasını veya bir STL kullanın.',
+      unreadable: 'Bu dosya 3D PDF, STEP veya STL olarak okunamıyor: parçanın 3D modelini seçin.',
+      notPart: 'Bu model bu parça değil: boyutu parçanınkiyle aynı değil.',
+    },
     result: 'Sonuç',
     proven: 'Simüle edildi ve kontrol edildi: parça modeldeki gibi çıkıyor, hiçbir takım veya tutucu mengene çenelerine ya da parçaya çarpmıyor.',
     notProven: 'Simüle edilen parça modele yeterince yakın değil (%99 gerekli). Takım yolu görüntüleyicisinde inceleyin.',
