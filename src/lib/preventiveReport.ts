@@ -28,7 +28,8 @@ export function reportRows(data: MachinesReport, nameOf: (id: string) => string,
     at: e.at,
     machine: nameOf(e.machine_id),
     kind: e.action,
-    details: e.action === 'PROBLEM' ? [e.check_title, e.note].filter(Boolean).join(' · ') : e.check_title ?? e.note ?? '',
+    // A problem with the machine itself stores its text as both title and note: once.
+    details: e.action === 'PROBLEM' ? [...new Set([e.check_title, e.note].filter(Boolean))].join(' · ') : e.check_title ?? e.note ?? '',
     notDoneBy: e.action === 'MISSED' ? e.note ?? '' : '',
     by: e.username,
   }));
