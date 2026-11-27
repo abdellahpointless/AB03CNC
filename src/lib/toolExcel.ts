@@ -3,6 +3,7 @@ import { downloadBlob } from './download';
 import { MACHINE_BRANDS } from '../regions';
 import i18n from '../i18n';
 import { CATEGORY_HELP, categoryName, exampleRows, norm, parseToolRows, templateHeaders, type ImportMachine, type ParseResult } from './toolExcelParse';
+import { parseCsv } from './toolCatalog';
 
 /*
  * Excel side of the tool import: builds the downloadable template (with example rows, drop-down
@@ -145,4 +146,27 @@ export async function readToolWorkbook(file: File, machines: ImportMachine[]): P
     rows.push(cells);
   }
   return parseToolRows(rows, machines);
+}
+
+/** The rows of the tool database's list: a .csv, or an .xlsx's first sheet. */
+export async function readSheetRows(file: File): Promise<string[][] | 'tooLarge' | 'unreadable'> {
+  if (file.size > MAX_IMPORT_BYTES) return 'tooLarge';
+  if (/\.csv$/i.test(file.name)) return parseCsv(await file.text());
+  const ExcelJS = await import('exceljs');
+  const wb = new ExcelJS.Workbook();
+  try {
+    await wb.xlsx.load(await file.arrayBuffer());
+  } catch {
+    return 'unreadable';
+  }
+  const ws = wb.worksheets[0];
+  if (!ws) return 'unreadable';
+  const rows: string[][] = [];
+  for (let r = 1; r <= Math.min(ws.rowCount, 5000); r++) {
+    const row = ws.getRow(r);
+    const cells: string[] = [];
+    for (let c = 1; c <= Math.min(row.cellCount, 60); c++) cells.push(cellText(row.getCell(c).value));
+    rows.push(cells);
+  }
+  return rows;
 }

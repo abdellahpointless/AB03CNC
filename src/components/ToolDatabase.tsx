@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Tool, MachineId, TOOL_CATEGORIES, ToolCategory, MATERIALS, Material } from '../types';
-import { IconPlus as Plus, IconTrash as Trash2, IconCheck as Check, IconServer as Server, IconCircleDashed as CircleDashed, IconAlertCircle as AlertCircle, IconRefresh as RefreshCw, IconFileSpreadsheet as FileSpreadsheet, IconSearch as Search } from '@tabler/icons-react';
+import { IconPlus as Plus, IconTrash as Trash2, IconCheck as Check, IconServer as Server, IconCircleDashed as CircleDashed, IconAlertCircle as AlertCircle, IconRefresh as RefreshCw, IconFileSpreadsheet as FileSpreadsheet, IconSearch as Search, IconDatabase as Database } from '@tabler/icons-react';
 import { AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { ToolExcelImport } from './ToolExcelImport';
+import { ToolCatalogDialog, ToolCatalogPicker, useToolCatalog } from './ToolCatalog';
+import { nextSlot, toolFromCatalog, type CatalogTool } from '../lib/toolCatalog';
 import { useSync } from '../contexts/SyncContext';
 import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon, CenterDrillIcon, FaceMillIcon, TapIcon, EmptyIcon } from './ToolIcons';
 import { useT } from '../i18n';
@@ -19,8 +21,16 @@ export default function ToolDatabase({
   setSelectedMachine: propSetSelectedMachine
 }: ToolDatabaseProps) {
   const { t } = useT('tools');
-  const { toolbox, toolboxLoaded, connection, saveTool, deleteTool, acknowledgeTool, toolMachines } = useSync();
+  const { toolbox, toolboxLoaded, connection, saveTool, deleteTool, acknowledgeTool, toolMachines, features } = useSync();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  // Where the country has a tool database (A034), tools come from it; only admins may still type one by hand.
+  const catalogOn = !!features.toolCatalog;
+  const { catalog, setCatalog } = useToolCatalog(catalogOn);
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [byHand, setByHand] = useState(false);
+  const [picked, setPicked] = useState<CatalogTool | null>(null);
+  const [slot, setSlot] = useState('');
   // Category name in the page language (in English the id itself), and its upper-case form.
   const catName = (c: string) => t(`common:category.${c as ToolCategory}`, { defaultValue: c });
   const catUpper = (c: string) => catName(c).toLocaleUpperCase(locale());
@@ -80,12 +90,44 @@ export default function ToolDatabase({
 
   const generateId = () => crypto.randomUUID().slice(0, 13);
 
+  const freeSlot = nextSlot(toolsForMachine, machine?.pockets);
   const openAdd = () => {
     setIsAdding(true);
     setEditingId(null);
     setExpandedId(null);
     setErrorMsg(null);
+    setByHand(false);
+    setPicked(null);
+    setSlot(freeSlot === null ? '' : String(freeSlot));
     setToolForm({ number: '' as any, pocket: '' as any, category: 'foret', description: '', diameter: '' as any, length: '' as any });
+  };
+
+  // The tool picked in the tool database: into the slot typed (a new tool), or in place of the tool clicked.
+  const saveFromCatalog = async (into: Tool | null) => {
+    if (!picked || isSaving || !machine) return;
+    const n = into ? into.number : Number(slot);
+    if (!Number.isInteger(n) || n < 1) return;
+    if (!into && machine.pockets && n > machine.pockets) {
+      setErrorMsg(t('add.slotPast', { slot: n, machine: machine.name, max: machine.pockets }));
+      return;
+    }
+    if (toolsForMachine.some((x) => x.number === n && x.category !== 'empty' && x.id !== into?.id)) {
+      setErrorMsg(t('add.slotUsed', { slot: n }));
+      return;
+    }
+    const id = into?.id ?? toolsForMachine.find((x) => x.number === n)?.id ?? generateId();
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      await saveTool(selectedMachine, { ...toolFromCatalog(picked, n, id), pocket: into?.pocket, code: picked.code });
+      cancelForm();
+      setExpandedId(null);
+      setPicked(null);
+    } catch (err: any) {
+      setErrorMsg(err?.message || t('errors.saveFailed'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const cancelForm = () => {
@@ -179,6 +221,7 @@ export default function ToolDatabase({
       setIsAdding(true);
       setEditingId(tool.id);
       setErrorMsg(null);
+      setPicked(null);
       setToolForm({ ...tool });
     }
   };
@@ -194,6 +237,7 @@ export default function ToolDatabase({
       case 'tourteau': return <FaceMillIcon size={18} />;
       case 'fraise boule': return <BallNoseIcon size={18} />;
       case 'taraud': return <TapIcon size={18} />;
+      case 'alesoir': return <DrillIcon size={18} />;
       case 'empty': return <EmptyIcon size={18}  />;
       default: return <EndMillIcon size={18} />;
     }
@@ -201,7 +245,10 @@ export default function ToolDatabase({
 
   return (
     <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full pb-12">
-      <AnimatePresence>{showImport && <ToolExcelImport key="excel-import" onClose={() => setShowImport(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {showImport && <ToolExcelImport key="excel-import" onClose={() => setShowImport(false)} />}
+        {showCatalog && <ToolCatalogDialog key="tool-catalog" catalog={catalog} isAdmin={isAdmin} onClose={() => setShowCatalog(false)} onSaved={setCatalog} />}
+      </AnimatePresence>
       {/* Top Header Panel */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -238,6 +285,13 @@ export default function ToolDatabase({
               ))}
             </select>
           </div>
+
+          {catalogOn && (
+            <button onClick={() => setShowCatalog(true)} className="btn-secondary text-xs py-2 px-4 whitespace-nowrap shrink-0" title={t('catalog.openHint')}>
+              <Database size={15} className="text-[var(--blue-text)]" aria-hidden />
+              <span>{t('catalog.open')}</span>
+            </button>
+          )}
 
           {user?.role === 'ADMIN' && connection !== 'offline' && (
             <button
@@ -293,13 +347,71 @@ export default function ToolDatabase({
 
         {/* Content Area */}
         <div className="p-4 md:p-6 space-y-3 overflow-y-auto">
-          {/* Add New Tool Form Card */}
-          {isAdding && !editingId && (
+          {/* Add a tool from the tool database (A034): the next slot, then dropdowns that narrow each other */}
+          {isAdding && !editingId && catalogOn && !byHand && (
+            <div className="glass-panel p-5 mb-4 border border-[var(--blue-500)]/40 animate-in fade-in zoom-in-95 duration-200 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="section-label text-[var(--blue-text)]">{t('add.title', { machine: machineLabel })}</span>
+                {isAdmin && (
+                  <button type="button" onClick={() => setByHand(true)} className="text-xs underline text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-h-[36px]">
+                    {t('add.byHand')}
+                  </button>
+                )}
+              </div>
+              {!catalog ? (
+                <RefreshCw size={16} className="animate-spin text-[var(--text-tertiary)]" aria-hidden />
+              ) : !catalog.tools.length ? (
+                <p className="text-sm text-[var(--text-secondary)]">{isAdmin ? t('catalog.empty') : t('catalog.emptyUser')}</p>
+              ) : (
+                <>
+                  <label className="block w-44">
+                    <span className="section-label block mb-1">{t('add.slot')}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={machine?.pockets ?? undefined}
+                      value={slot}
+                      onChange={(e) => setSlot(e.target.value)}
+                      className="aurora-input w-full text-xs min-h-[40px]"
+                      aria-describedby="add-slot-hint"
+                    />
+                    <span id="add-slot-hint" className="block text-xs text-[var(--text-tertiary)] mt-1">
+                      {freeSlot === null ? t('add.full', { max: machine?.pockets, machine: machineLabel }) : t('add.slotHint')}
+                    </span>
+                  </label>
+                  <ToolCatalogPicker tools={catalog.tools} picked={picked} onPick={setPicked} />
+                </>
+              )}
+              {errorMsg && <div role="alert" className="badge-danger py-2 px-3 text-xs font-semibold">{errorMsg}</div>}
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={cancelForm} className="btn-secondary text-xs py-2 px-4">
+                  {t('common:actions.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveFromCatalog(null)}
+                  disabled={!picked || !slot || isSaving || connection === 'offline'}
+                  className="btn-primary text-xs py-2 px-5"
+                >
+                  {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                  <span>{picked ? t('add.addToSlot', { slot }) : t('add.pickFirst')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Add New Tool Form Card (typed by hand: where there is no tool database, or an admin) */}
+          {isAdding && !editingId && (!catalogOn || byHand) && (
             <div className="glass-panel p-5 mb-4 border border-[var(--blue-500)]/40 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <span className="section-label text-[var(--blue-text)]">
                   {t('form.addTitle', { machine: machineLabel })}
                 </span>
+                {catalogOn && (
+                  <button type="button" onClick={() => setByHand(false)} className="text-xs underline text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-h-[36px]">
+                    {t('add.fromDatabase')}
+                  </button>
+                )}
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-1 md:col-span-3">
@@ -498,8 +610,36 @@ export default function ToolDatabase({
                     )}
                   </div>
 
+                  {/* Where tools come from the tool database (not an admin): another tool from it for this slot, or delete */}
+                  {isExpanded && editingId === tool.id && catalogOn && !isAdmin && (
+                    <div className="p-4 bg-[var(--bg-input)] border-t border-[var(--border-subtle)] rounded-b-[var(--radius-md)] space-y-3">
+                      <span className="section-label block">{t('add.change', { slot: tool.number })}</span>
+                      {catalog?.tools.length ? (
+                        <ToolCatalogPicker tools={catalog.tools} picked={picked} onPick={setPicked} />
+                      ) : (
+                        <p className="text-xs text-[var(--text-secondary)]">{t('catalog.emptyUser')}</p>
+                      )}
+                      {errorMsg && <div role="alert" className="badge-danger py-2 px-3 text-xs font-semibold">{errorMsg}</div>}
+                      <div className="flex flex-wrap justify-between items-center gap-2 border-t border-[var(--border-subtle)] pt-3">
+                        <button type="button" onClick={(e) => handleDelete(tool.id, e)} disabled={isSaving || connection === 'offline'} className="btn-danger text-xs py-1.5 px-3">
+                          <Trash2 size={13} />
+                          <span>{t('common:actions.delete')}</span>
+                        </button>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => { cancelForm(); setExpandedId(null); }} className="btn-secondary text-xs py-1.5 px-3">
+                            {t('common:actions.cancel')}
+                          </button>
+                          <button type="button" onClick={() => void saveFromCatalog(tool)} disabled={!picked || isSaving || connection === 'offline'} className="btn-primary text-xs py-1.5 px-4">
+                            {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                            <span>{picked ? t('add.saveChange', { slot: tool.number }) : t('add.pickFirst')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Inline Edit Form when Expanded */}
-                  {isExpanded && editingId === tool.id && (
+                  {isExpanded && editingId === tool.id && (!catalogOn || isAdmin) && (
                     <div className="p-4 bg-[var(--bg-input)] border-t border-[var(--border-subtle)] rounded-b-[var(--radius-md)] animate-in fade-in duration-150">
                       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="col-span-1 md:col-span-3">

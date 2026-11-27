@@ -16,6 +16,8 @@ import { GlassSelect } from './GlassSelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { waveItem, EASE_OUT, EXIT_FAST, FADE, SPRING_MODAL, SPRING_POP, SPRING_TOAST, iosBackdrop, iosSurface } from '../lib/motion';
 import { useAuth } from '../contexts/AuthContext';
+import { ToolCatalogPicker, useToolCatalog } from './ToolCatalog';
+import { toolFromCatalog, type CatalogTool } from '../lib/toolCatalog';
 import { useSync } from '../contexts/SyncContext';
 import { submitExport } from '../lib/historyApi';
 import { downloadText } from '../lib/download';
@@ -75,8 +77,13 @@ export default function ToolRemapper({
 }: ToolRemapperProps) {
   const { t } = useT('remapper');
   const { t: tApp } = useT('app');
+  const { t: tTools } = useT('tools');
   const { user } = useAuth();
-  const { toolbox, installTools, analytics, toolMachines } = useSync();
+  const { toolbox, installTools, analytics, toolMachines, features } = useSync();
+  // Where the country has a tool database, a tool the program needs is picked there, not typed (A034); admins may type.
+  const fromCatalog = !!features.toolCatalog && user?.role !== 'ADMIN';
+  const { catalog } = useToolCatalog(fromCatalog);
+  const [inlinePick, setInlinePick] = useState<CatalogTool | null>(null);
   /** Display name of a tool category id (the id itself stays the data value). */
   const categoryName = (id: string | null | undefined): string => {
     if (!id) return '';
@@ -425,6 +432,7 @@ N190 M30`;
 
   const startInlineAdd = (block: ToolChangeBlock) => {
     setAddingForBlock(block.blockId);
+    setInlinePick(null);
     setNewToolForm({
       pocket: '',
       number: '',
@@ -474,15 +482,22 @@ N190 M30`;
        return;
     }
 
-    const newTool: Tool = {
-      id: existingTool ? existingTool.id : crypto.randomUUID().slice(0, 13),
-      number: finalNumber,
-      pocket: pocketNum,
-      category: newToolForm.category,
-      description: newToolForm.description,
-      diameter: parseFloat(newToolForm.diameter) || 0,
-      length: parseFloat(newToolForm.length) || 0
-    };
+    if (fromCatalog && !inlinePick) {
+      setAddError(tTools('add.pickFirst'));
+      return;
+    }
+    const id = existingTool ? existingTool.id : crypto.randomUUID().slice(0, 13);
+    const newTool: Tool = fromCatalog && inlinePick
+      ? { ...toolFromCatalog(inlinePick, finalNumber, id), pocket: pocketNum, code: inlinePick.code }
+      : {
+          id,
+          number: finalNumber,
+          pocket: pocketNum,
+          category: newToolForm.category,
+          description: newToolForm.description,
+          diameter: parseFloat(newToolForm.diameter) || 0,
+          length: parseFloat(newToolForm.length) || 0
+        };
 
     setPendingToolboxAdditions(prev => {
        const filtered = prev.filter(t => t.number !== finalNumber);
@@ -510,6 +525,7 @@ N190 M30`;
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+            {!fromCatalog && (
             <div className="col-span-1 sm:col-span-2 md:col-span-4">
               <label className="section-label block mb-1 text-[var(--accent-primary)] font-bold">
                 {t('addTool.name')}
@@ -519,9 +535,10 @@ N190 M30`;
                 value={newToolForm.description}
                 onChange={e => setNewToolForm({...newToolForm, description: e.target.value})}
                 placeholder={t('addTool.namePlaceholder')}
-                className="aurora-input w-full text-xs font-semibold" 
+                className="aurora-input w-full text-xs font-semibold"
               />
             </div>
+            )}
 
             <div>
               <label className="section-label block mb-1">{t('addTool.pocket')}</label>
@@ -556,6 +573,7 @@ N190 M30`;
               </div>
             )}
 
+            {!fromCatalog && (<>
             <div>
               <label className="section-label block mb-1">{t('fields.category')}</label>
               <select
@@ -595,7 +613,20 @@ N190 M30`;
                 placeholder={t('addTool.lengthPlaceholder')}
               />
             </div>
+            </>)}
           </div>
+
+          {fromCatalog && (catalog?.tools.length ? (
+            <ToolCatalogPicker
+              tools={catalog.tools}
+              picked={inlinePick}
+              onPick={setInlinePick}
+              // Narrowed to the program's Ø where the database has it.
+              initial={block.parsedDiameter && catalog.tools.some((x) => x.diameter === block.parsedDiameter) ? { diameter: String(block.parsedDiameter) } : undefined}
+            />
+          ) : (
+            <p className="text-xs text-[var(--text-secondary)]">{catalog ? tTools('catalog.emptyUser') : tTools('catalog.reading')}</p>
+          ))}
 
           {addError && (
             <div className="badge-danger w-full py-2 px-3 text-xs font-medium">

@@ -44,6 +44,8 @@ export interface Tool {
   length: number;
   changed?: boolean;
   materials?: Material[];
+  /** The tool database code it was picked by: sent with a save (the server takes the tool from it), not kept. */
+  code?: string;
 }
 
 export type MachineToolbox = Record<MachineId, Tool[] | undefined>;
