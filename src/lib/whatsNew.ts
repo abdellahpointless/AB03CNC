@@ -82,10 +82,10 @@ export const RELEASES: Release[] = [
       ],
     },
     tr: {
-      title: 'Takım yolu: STEP modeller, kaleler ve mengenede ölçüm',
+      title: 'Takım yolu: STEP modeller, paraleller ve mengenede ölçüm',
       items: [
         'Parçanın 3B modeli artık STEP dosyası (.step veya .stp) da olabilir. Program içe aktarıldıktan sonra model istemek yerine 3B model düğmesi yanar.',
-        'Kaleler değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
+        'Paraleller değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
         'Ölçüm parça mengenedeyken çalışır; ölçüm panelindeki "Yalnızca parça" onu mengeneden çıkarır.',
       ],
     },

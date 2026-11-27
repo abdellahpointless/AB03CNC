@@ -140,8 +140,8 @@ export const CAM_RELEASES: Release[] = [
       title: 'CAM AI: atölyenin bağladığı gibi bağlama, son paso seçtiğiniz yerde',
       items: [
         'Son paso yalnızca 3B modelde seçtiğiniz duvarlara yapılır (Son paso yapılacak duvarlar); diğer tüm duvarlar kaba işlemede ölçüsüne alınır. Sızdırmazlık kafesinin ince duvarlarına her zaman son paso yapılır.',
-        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa kalelerle tutar.',
-        'Takımlar bir kaleye en fazla 1 mm girebilir, hızlı harekette hiç giremez. Kaleler arasındaki boydan boya delikler tamamen delinir; bir kalenin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
+        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa paralellerle tutar.',
+        'Takımlar bir paralele en fazla 1 mm girebilir, hızlı harekette hiç giremez. Paraleller arasındaki boydan boya delikler tamamen delinir; bir paralelin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
       ],
     },
   },
@@ -180,7 +180,7 @@ export const CAM_RELEASES: Release[] = [
     tr: {
       title: 'CAM AI: 3B modelden yazılan program (beta)',
       items: [
-        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, kaleler ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
+        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, paraleller ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
         'Devir, ilerleme ve paso derinlikleri atölyenin kendi programlarından öğrenilir. Bir yönetici her tezgahın sınırlarını Yönetim › Tezgahlar’dan belirleyebilir.',
         'Her program simüle edilir ve modelle karşılaştırılır. İndirme ve Takım eşleştiriciye gönderme, ancak parça modele %99 benzediğinde ve çarpışma olmadığında açılır. Tezgahta eksik olan takımlar listelenir.',
         'CAM AI’nin yaptığı her program ve takım yolu görüntüleyicisinde modeliyle karşılaştırılan her program öğrenme kayıtlarına (Yönetim › Yedek ve veri) eklenir; böylece CAM AI atölyenin parçalarını öğrenir.',
