@@ -544,7 +544,7 @@ export default function AdminExtractionAnalytics() {
                   : 0;
 
                 return (
-                  <div key={item.username} className="py-3 flex items-center justify-between gap-4">
+                  <div key={item.username} className="py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                     <div className="flex items-center gap-3 min-w-[140px]">
                       <div className="w-7 h-7 rounded-[var(--radius-sm)] bg-[var(--bg-input)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xs text-[var(--text-secondary)]">
                         #{idx + 1}
@@ -576,8 +576,8 @@ export default function AdminExtractionAnalytics() {
                       </div>
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-6 text-right">
+                    {/* Stats (under the name on a phone, rather than cut at the card's edge) */}
+                    <div className="flex items-center gap-6 text-right ml-auto">
                       <div>
                         <span className="text-xs text-[var(--text-tertiary)] block">{t('analytics.leaderboard.extractions')}</span>
                         <span className="font-bold text-xs text-[var(--text-primary)] font-mono">
