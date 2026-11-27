@@ -151,7 +151,7 @@ const remapper = {
     changeTool: 'Change Tool...',
   },
   missing: {
-    title: 'Missing Tool L{{line}}',
+    title: 'Missing tool, line {{line}}',
     reqMin: 'Req: {{value}}mm min',
   },
   /** "Some tools are too short" confirmation. */

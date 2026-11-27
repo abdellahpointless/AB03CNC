@@ -147,7 +147,7 @@ const remapper: Translation<typeof en> = {
     changeTool: 'Takımı değiştir...',
   },
   missing: {
-    title: 'Eksik takım L{{line}}',
+    title: 'Eksik takım, satır {{line}}',
     reqMin: 'Gerekli: en az {{value}}mm',
   },
   crashModal: {

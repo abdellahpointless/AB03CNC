@@ -903,7 +903,7 @@ N190 M30`;
                              <Trash2 size={18}/>
                            </div>
                            <div className="flex flex-col min-w-0">
-                             <span className="font-mono text-sm line-through text-slate-400 dark:text-slate-500 truncate">L{block.lineIndex+1}: {block.originalLine}</span>
+                             <span className="font-mono text-sm line-through text-slate-400 dark:text-slate-500 truncate">{t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}</span>
                              {block.contextStr && (
                                <span className="font-mono text-xs text-slate-400 dark:text-slate-500 truncate mt-1">{t('fields.context')} {shownComment(block.contextStr)}</span>
                              )}
@@ -963,7 +963,7 @@ N190 M30`;
 
                           <div className="text-sm font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-purple-100 dark:border-purple-900/30">
                             <div className="font-semibold text-purple-900 dark:text-purple-200">
-                              L{block.lineIndex+1}: {block.originalLine}
+                              {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
                             </div>
                             {block.contextStr && (
                               <div className="text-xs text-slate-500 mt-1.5 border-t border-slate-200 dark:border-slate-800 pt-1.5 break-all">
@@ -1079,7 +1079,7 @@ N190 M30`;
                                {t('unsupported.title')}
                              </h3>
                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-orange-100 dark:border-orange-900/30">
-                               L{block.lineIndex+1}: {block.originalLine}
+                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
                                 <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-orange-200 dark:border-orange-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                               </div>
                               <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -1131,7 +1131,7 @@ N190 M30`;
                                {t('crash.title')}
                              </h3>
                              <div className="font-mono text-sm bg-rose-50 dark:bg-rose-950/30 px-3 py-2 rounded-lg border border-rose-100 dark:border-rose-900/40 text-slate-700 dark:text-slate-300">
-                               L{block.lineIndex+1}: {block.originalLine}
+                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-rose-200 dark:border-rose-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                              </div>
                              <p className="text-sm text-rose-700 dark:text-rose-300 font-medium">
@@ -1165,7 +1165,7 @@ N190 M30`;
                              <CheckCircle size={18}/>
                            </div>
                            <div className="flex flex-col min-w-0">
-                             <span className="font-mono text-sm dark:text-slate-300 truncate">L{block.lineIndex+1}: {block.originalLine}</span>
+                             <span className="font-mono text-sm dark:text-slate-300 truncate">{t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}</span>
                              {block.contextStr && (
                                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate mt-1">{t('fields.context')} {shownComment(block.contextStr)}</span>
                              )}
@@ -1238,7 +1238,7 @@ N190 M30`;
                                {t('approx.title')}
                              </h3>
                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/30">
-                               L{block.lineIndex+1}: {block.originalLine}
+                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
                                 <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-amber-200 dark:border-amber-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
                               </div>
                               <div className="mt-4 grid grid-cols-2 gap-3 text-xs w-full sm:w-auto">
