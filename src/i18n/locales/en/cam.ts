@@ -249,6 +249,7 @@ const cam = {
       cancel: 'Cancel',
       clear: 'Clear',
       hint: 'Click the plate’s white face. Drag to turn the view.',
+      made: 'Fixed for the program made: start a New program (⋯ menu) to pick another white face.',
     },
     finish: {
       title: 'Walls to finish',
@@ -260,6 +261,7 @@ const cam = {
       done: 'Done picking',
       clear: 'Clear',
       hint: 'Click a wall to finish it, click it again to take it off. Drag to turn the view.',
+      made: 'Fixed for the program made: start a New program (⋯ menu) to pick other walls.',
     },
     legend: { hover: 'Face under the pointer', top: 'Top of a setup', stock: 'Raw block', finish: 'Walls to finish' },
     opEdit: {

@@ -2114,6 +2114,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </button>
           )}
         </div>
+        {result && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.white.made')}</p>}
       </section>
     );
   }
@@ -2134,6 +2135,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </button>
           )}
         </div>
+        {result && <p className="text-xs text-[var(--text-secondary)]">{t('camAi.finish.made')}</p>}
       </section>
     );
   }

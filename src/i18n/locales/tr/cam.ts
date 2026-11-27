@@ -252,6 +252,7 @@ const cam: Translation<typeof en> = {
       cancel: 'Vazgeç',
       clear: 'Temizle',
       hint: 'Plakanın beyaz yüzüne tıklayın. Görünümü çevirmek için sürükleyin.',
+      made: 'Yapılan program için sabit: başka bir beyaz yüz seçmek için Yeni program başlatın (⋯ menüsü).',
     },
     finish: {
       title: 'Son paso yapılacak duvarlar',
@@ -263,6 +264,7 @@ const cam: Translation<typeof en> = {
       done: 'Seçim bitti',
       clear: 'Temizle',
       hint: 'Son paso için bir duvara tıklayın, kaldırmak için yeniden tıklayın. Görünümü çevirmek için sürükleyin.',
+      made: 'Yapılan program için sabit: başka duvarlar seçmek için Yeni program başlatın (⋯ menüsü).',
     },
     legend: { hover: 'İmlecin altındaki yüz', top: 'Bağlamanın üst yüzü', stock: 'Ham blok', finish: 'Son paso duvarları' },
     opEdit: {
