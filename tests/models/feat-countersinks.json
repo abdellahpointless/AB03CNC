@@ -1,0 +1,80 @@
+{
+ "size": [
+  40,
+  20,
+  12
+ ],
+ "features": [
+  {
+   "kind": "countersink",
+   "axis": "Z",
+   "at": [
+    10,
+    10
+   ],
+   "d": 10,
+   "angle": 100,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "countersink",
+   "axis": "Z",
+   "at": [
+    30,
+    10
+   ],
+   "d": 8,
+   "angle": 60,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    10,
+    10
+   ],
+   "d": 5,
+   "depth": 9.902,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    30,
+    10
+   ],
+   "d": 4,
+   "depth": 8.536,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    20,
+    10
+   ],
+   "d": 6,
+   "depth": 8,
+   "through": false,
+   "from": [
+    "Z+"
+   ],
+   "point": 118
+  }
+ ]
+}

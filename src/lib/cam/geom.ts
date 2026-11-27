@@ -42,6 +42,19 @@ export function offset(r: Region, d: number): Region {
 }
 
 export const area = (r: Region) => r.reduce((t, loop) => t + ClipperLib.Clipper.Area(toPaths([loop])[0]), 0) / (SCALE * SCALE);
+
+/** A region's separate pieces, each its outline with the holes in it (the smallest outline round each hole). */
+export function components(r: Region): Region[] {
+  const a = r.map((loop) => ClipperLib.Clipper.Area(toPaths([loop])[0]));
+  const outers = r.map((loop, i) => ({ loop, a: a[i] })).filter((x) => x.a > 0);
+  const out: Region[] = outers.map((o) => [o.loop]);
+  r.forEach((loop, i) => {
+    if (a[i] >= 0) return;
+    const by = outers.map((o, k) => ({ o, k })).filter(({ o }) => inside([o.loop], loop[0]) !== 0).sort((p, q) => p.o.a - q.o.a)[0];
+    if (by) out[by.k].push(loop);
+  });
+  return out;
+}
 export const rect = (x0: number, y0: number, x1: number, y1: number): Region => [[[x0, y0], [x1, y0], [x1, y1], [x0, y1]]];
 /** Inside a region (holes counted): 1 inside, 0 outside, -1 on an edge. */
 export function inside(r: Region, [x, y]: P2): number {

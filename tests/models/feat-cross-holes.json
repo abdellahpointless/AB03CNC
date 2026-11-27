@@ -1,0 +1,53 @@
+{
+ "size": [
+  30,
+  30,
+  30
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "X",
+   "at": [
+    15,
+    15
+   ],
+   "d": 8,
+   "depth": 30,
+   "through": true,
+   "from": [
+    "X+",
+    "X-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Y",
+   "at": [
+    15,
+    15
+   ],
+   "d": 6,
+   "depth": 30,
+   "through": true,
+   "from": [
+    "Y+",
+    "Y-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    15,
+    15
+   ],
+   "d": 5,
+   "depth": 22,
+   "through": false,
+   "from": [
+    "Z+"
+   ]
+  }
+ ]
+}

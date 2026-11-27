@@ -1,0 +1,40 @@
+{
+ "size": [
+  50,
+  40,
+  20
+ ],
+ "features": [
+  {
+   "kind": "pocket",
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    10,
+    10,
+    12,
+    40,
+    30,
+    20
+   ],
+   "depth": 8,
+   "corner": 3
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    25,
+    20
+   ],
+   "d": 6,
+   "depth": 12,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  }
+ ]
+}

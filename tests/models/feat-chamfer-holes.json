@@ -1,0 +1,65 @@
+{
+ "size": [
+  40,
+  30,
+  15
+ ],
+ "features": [
+  {
+   "kind": "chamfer",
+   "from": [
+    "X+",
+    "X-",
+    "Y+",
+    "Y-",
+    "Z+"
+   ],
+   "size": 1,
+   "angle": 45,
+   "count": 4
+  },
+  {
+   "kind": "countersink",
+   "axis": "Z",
+   "at": [
+    20,
+    15
+   ],
+   "d": 10,
+   "angle": 90,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    20,
+    15
+   ],
+   "d": 8,
+   "depth": 14.0,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    3.5,
+    15
+   ],
+   "d": 6,
+   "depth": 15,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  }
+ ]
+}

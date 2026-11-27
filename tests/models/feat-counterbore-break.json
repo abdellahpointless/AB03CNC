@@ -1,0 +1,38 @@
+{
+ "size": [
+  30,
+  20,
+  15
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    15,
+    4
+   ],
+   "d": 5.5,
+   "depth": 10,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "counterbore",
+   "axis": "Z",
+   "at": [
+    15,
+    4
+   ],
+   "d": 10,
+   "depth": 5,
+   "from": [
+    "Z+"
+   ],
+   "open": true
+  }
+ ]
+}
