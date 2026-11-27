@@ -30,6 +30,7 @@ interface CheckRow {
   sort: number;
   created_at: number;
   stops: number;
+  stopped_at: number | null;
 }
 
 /** "The machine is stopped by this problem": optional, true or false. */
@@ -213,6 +214,8 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
   const db = ctx.env.DB;
   let note: string | null = null;
   let event = body.action as string;
+  // Stopped since: kept while it stays stopped, now when it starts to stop, none while it runs.
+  const stoppedAt = (on: boolean) => (on ? (check.stops && check.status === 'PROBLEM' ? (check.stopped_at ?? now) : now) : null);
   const stmts: D1PreparedStatement[] = [];
   const after: D1PreparedStatement[] = [];
   const stops = stopsFlag(body.stops);
@@ -239,8 +242,8 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
       note = str(body.note, 'Problem description', { min: 3, max: 300 });
       stmts.push(
         db
-          .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ? WHERE id = ?")
-          .bind(note, now, user, stops ? 1 : 0, check.id),
+          .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ?, stopped_at = ? WHERE id = ?")
+          .bind(note, now, user, stops ? 1 : 0, stoppedAt(stops), check.id),
         ...completion('PROBLEM'),
       );
       if (stops) after.push(eventStmt(ctx, machine, check, 'MACHINE_DOWN', note));
@@ -251,14 +254,14 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
       if (!!check.stops === stops) return json({ ok: true });
       note = check.kind === 'ISSUE' ? check.note : check.note || check.title;
       event = stops ? 'MACHINE_DOWN' : 'MACHINE_UP';
-      stmts.push(db.prepare('UPDATE machine_checks SET stops = ? WHERE id = ?').bind(stops ? 1 : 0, check.id));
+      stmts.push(db.prepare('UPDATE machine_checks SET stops = ?, stopped_at = ? WHERE id = ?').bind(stops ? 1 : 0, stoppedAt(stops), check.id));
       break;
     case 'RESOLVE':
       note = optStr(body.note, 'Note', 300);
       stmts.push(
         check.kind === 'ISSUE'
           ? db.prepare('DELETE FROM machine_checks WHERE id = ?').bind(check.id)
-          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ?, stops = 0 WHERE id = ?").bind(now, user, check.id),
+          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ?, stops = 0, stopped_at = NULL WHERE id = ?").bind(now, user, check.id),
       );
       break;
     default:
@@ -287,9 +290,9 @@ export async function handleReportIssue(ctx: Ctx): Promise<Response> {
   const now = Date.now();
   await ctx.env.DB.batch([
     ctx.env.DB.prepare(
-      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops)
-       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, ?)`,
-    ).bind(id, machine, note, note, now, ctx.user!.username, now, stops ? 1 : 0),
+      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops, stopped_at)
+       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, ?, ?)`,
+    ).bind(id, machine, note, note, now, ctx.user!.username, now, stops ? 1 : 0, stops ? now : null),
     eventStmt(ctx, machine, { id, title: note }, 'PROBLEM', note),
     ...(stops ? [eventStmt(ctx, machine, { id, title: note }, 'MACHINE_DOWN', note)] : []),
     bumpStmt(ctx.env, 'machines'),

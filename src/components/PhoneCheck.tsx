@@ -14,6 +14,7 @@ import {
   machineSummary,
   reportIssue,
   setStops,
+  stoppedSince,
   timeAgo,
   toFleet,
   type MachineCheck,
@@ -274,7 +275,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
                     <div className="text-base font-semibold text-[var(--text-primary)] break-words">{p.kind === 'ISSUE' ? p.note : p.title}</div>
                     {p.kind === 'CHECK' && p.note && <div className="text-sm text-[var(--rose-500)] break-words">{p.note}</div>}
                     <div className="text-xs text-[var(--text-tertiary)] mt-1">{t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}</div>
-                    {!!p.stops && <div className="phone-stop-badge">{t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}</div>}
+                    {!!p.stops && <div className="phone-stop-badge">{t('stop.since', { time: fmtDuration((now - stoppedSince(p, now)) / 1000) })}</div>}
                   </div>
                 </div>
                 {!locked && (

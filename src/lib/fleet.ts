@@ -55,6 +55,8 @@ export interface MachineCheck {
   created_at: number;
   /** 1: this open problem stops the machine (breakdown). Missing before the server knew it. */
   stops?: number;
+  /** When it was marked as stopping the machine. Missing before the server knew it. */
+  stopped_at?: number | null;
 }
 
 export interface MachineEvent {
@@ -139,6 +141,9 @@ export type MachineState = 'problem' | 'due' | 'ok';
 /** An open problem that stops the machine (breakdown). */
 export const stopsMachine = (c: MachineCheck) => c.status === 'PROBLEM' && !!c.stops;
 
+/** Since when that problem stops the machine (not when it was reported, which can be earlier). */
+export const stoppedSince = (c: MachineCheck, now = Date.now()) => c.stopped_at ?? c.status_at ?? now;
+
 export function machineSummary(checks: MachineCheck[], now = Date.now()) {
   const problems = checks.filter((c) => c.status === 'PROBLEM');
   const due = checks.filter((c) => c.status !== 'PROBLEM' && isDue(c, now));
@@ -152,7 +157,7 @@ export function machineSummary(checks: MachineCheck[], now = Date.now()) {
     /** The machine is stopped by at least one open problem. */
     down: stopping.length > 0,
     /** Since when it is stopped (the oldest of those problems). */
-    downSince: stopping.length ? Math.min(...stopping.map((c) => c.status_at ?? now)) : null,
+    downSince: stopping.length ? Math.min(...stopping.map((c) => stoppedSince(c, now))) : null,
   };
 }
 

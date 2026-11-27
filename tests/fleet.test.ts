@@ -71,6 +71,8 @@ describe('stopped machines and QR links', () => {
     expect(s.downSince).toBe(now - 3_600_000);
     expect(s.problems).toHaveLength(2);
     expect(machineSummary([checks[1]], now).down).toBe(false);
+    // Reported an hour ago, marked as stopping the machine a minute ago: stopped for a minute.
+    expect(machineSummary([{ ...checks[0], stopped_at: now - 60_000 }], now).downSince).toBe(now - 60_000);
   });
 
   it('reads the machine of a scanned QR code and builds the code address', async () => {

@@ -31,6 +31,7 @@ import {
   reportMissed,
   setOwners,
   setStops,
+  stoppedSince,
   timeAgo,
   updateCheck,
 } from '../lib/fleet';
@@ -738,7 +739,7 @@ function MachineSheet({
   const stopBadge = (p: MachineCheck) =>
     p.stops ? (
       <span className="badge-danger text-xs py-0.5 px-2 mt-1 inline-flex">
-        <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}
+        <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - stoppedSince(p, now)) / 1000) })}
       </span>
     ) : null;
 

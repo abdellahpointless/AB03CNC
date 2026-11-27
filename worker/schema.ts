@@ -414,6 +414,11 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    // When an open problem was marked as stopping its machine ("stopped for" on the sheet and the TV board).
+    version: 18,
+    statements: ['ALTER TABLE machine_checks ADD COLUMN stopped_at INTEGER', 'UPDATE machine_checks SET stopped_at = status_at WHERE stops = 1'],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
