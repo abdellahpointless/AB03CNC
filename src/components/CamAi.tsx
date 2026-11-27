@@ -1799,7 +1799,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <div className="relative flex-1 min-h-0">
             {/* Every change since the program was made, and the one way to make it again with them (the owner). */}
             {result && shownChanges.length > 0 && (
-              <section aria-labelledby="cam-changes" className="absolute z-20 right-3 bottom-[124px] w-[min(320px,calc(100%-1.5rem))] rounded-[12px] border border-[var(--blue-500)]/40 bg-[#0E1526]/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.45)] p-3 space-y-2">
+              <section aria-labelledby="cam-changes" className="absolute z-20 right-3 bottom-[124px] w-[min(320px,calc(100%-1.5rem))] rounded-[12px] border border-[var(--blue-500)]/40 bg-[var(--bg-panel)]/95 backdrop-blur shadow-[0_8px_24px_rgba(0,0,0,0.45)] p-3 space-y-2">
                 <h3 id="cam-changes" className="text-[13px] font-semibold text-[var(--text-primary)]">{t('camAi.changes.title', { count: shownChanges.length })}</h3>
                 <ol className="max-h-40 overflow-y-auto list-decimal pl-5 space-y-1 text-xs text-[var(--text-secondary)]" aria-live="polite">
                   {shownChanges.map((c) => (
