@@ -4,7 +4,7 @@ import type en from '../en/remapper';
 /* Türkçe metinler: remapper (Takım Eşleştirici ekranı, kaynak / işlenmiş kod editörleri). */
 const remapper: Translation<typeof en> = {
   controls: {
-    targetMachine: 'Hedef Tezgah',
+    targetMachine: 'Hedef tezgah',
     toolsLoaded: '{{count}} takım yüklü',
     noMachines: 'Henüz tezgah yok',
     noMachinesHint: 'Henüz tezgah yok - yönetici, Yönetici → Tezgahlar bölümünden ekler',
@@ -12,15 +12,15 @@ const remapper: Translation<typeof en> = {
     machineOption_other: '{{name}} ({{count}} takım)',
     openInventoryTitle: '{{machine}} takım listesini aç',
     inventory: 'Takım Listesi',
-    analyze: 'Analiz Et ve Eşleştir',
+    analyze: 'Analiz et ve eşleştir',
     analyzeTitle: 'G-kodunu analiz et ve takımları seçili tezgaha eşleştir',
     modify: 'Takım seçimlerini değiştir',
     modifyTitle: 'Uygulamanın her takım değişimi için seçtiği takımı kontrol et ve değiştir',
-    modifyTitleDisabled: 'Önce Analiz Et ve Eşleştir düğmesine basın',
+    modifyTitleDisabled: 'Önce "Analiz et ve eşleştir" düğmesine basın',
     material: 'Malzeme:',
     tip: 'Takımları doğru eşleştirmek için program açıklamalarını analiz eder.',
-    sourceCode: 'Kaynak Kod',
-    processedCode: 'İşlenmiş Kod',
+    sourceCode: 'Kaynak kod',
+    processedCode: 'İşlenmiş kod',
   },
   toast: {
     title: 'Program indirildi',
@@ -53,12 +53,12 @@ const remapper: Translation<typeof en> = {
     diameterColon: 'Çap:',
     lengthColon: 'Uzunluk:',
     context: 'Bağlam:',
-    goBack: 'Geri Dön',
+    goBack: 'Geri dön',
   },
   selector: {
     selectExisting: '-- Mevcut takımı seçin --',
     or: 'VEYA',
-    createNew: 'Yeni Takım Oluştur',
+    createNew: 'Yeni takım oluştur',
   },
   addTool: {
     titlePrefix: '',
@@ -76,7 +76,7 @@ const remapper: Translation<typeof en> = {
     diameterPlaceholder: 'örn. 10',
     length: 'Uzunluk (mm)',
     lengthPlaceholder: 'örn. 50',
-    saveAndUse: 'Kaydet ve Kullan',
+    saveAndUse: 'Kaydet ve kullan',
     defaultDescription: '{{tool}} için yeni takım (Çap: {{diameter}}, Uzunluk: {{length}})',
     errors: {
       selectPocket: 'Lütfen bir magazin cebi seçin.',
@@ -92,14 +92,14 @@ const remapper: Translation<typeof en> = {
     reviewApprox: 'Yaklaşık eşleşmeleri kontrol edin',
     stillMissing_one: '{{count}} takım hâlâ eksik',
     stillMissing_other: '{{count}} takım hâlâ eksik',
-    apply: 'Uygula ve Kodu Oluştur',
+    apply: 'Uygula ve kodu oluştur',
   },
   skipped: {
     label: 'Atlanan işlem (bölüm silindi)',
-    undo: 'Geri al / Değiştir',
+    undo: 'Geri al / değiştir',
   },
   taraud: {
-    badge: 'İstisna: Kılavuz',
+    badge: 'İstisna: kılavuz',
     rule: '{{machine}} kuralı',
     title: 'Kılavuz istisnası gerekli',
     explain:
@@ -113,13 +113,13 @@ const remapper: Translation<typeof en> = {
     noneHint: 'Tezgahta kılavuz yok. Bu bölümü silmek için Seçenek 2’yi kullanın veya aşağıdan yeni bir takım oluşturun.',
     option2: 'Seçenek 2: Kod bölümünü sil',
     option2Text: 'Bu kılavuzu kullanan kod bölümünün tamamını bir sonraki takım değişimine kadar silin.',
-    deleteSection: 'Bölümü Sil (Sonraki Takım Değişimine Kadar)',
+    deleteSection: 'Bölümü sil (sonraki takım değişimine kadar)',
     orSelect: 'Veya takım listesinden başka bir takım seçin / yeni oluşturun...',
   },
   unsupported: {
     title: 'Desteklenmeyen kılavuz',
     text: 'Takım çapı 6 mm olmadığı için tezgah bu işlemi yapamaz. Bu işlemi koddan kaldırmak ister misiniz?',
-    confirm: 'Kaldırmayı Onayla',
+    confirm: 'Kaldırmayı onayla',
     orSelect: 'Veya farklı bir takım seçin...',
   },
   crash: {
@@ -131,7 +131,7 @@ const remapper: Translation<typeof en> = {
     taraud: 'Kılavuz eşleştirildi',
     manual: 'Elle eşleştirildi',
     perfect: 'Tam eşleşme',
-    deleteInstead: 'Bunun Yerine Bölümü Sil',
+    deleteInstead: 'Bunun yerine bölümü sil',
     deleteInsteadTitle: 'Bu kılavuzu kullanan kod bölümünün tamamını bir sonraki takım değişimine kadar sil',
   },
   approx: {
@@ -155,20 +155,20 @@ const remapper: Translation<typeof en> = {
     subtitle: 'Kısa Z boyu tespit edildi',
     text: 'Bazı takımların Z boyu, işlemlerinde istenen en derin Z değerinden kısa görünüyor. <b>Bu, fiziksel bir çarpışmaya veya kazaya yol açabilir!</b>',
     question: 'Bu takımların yeterince uzun olduğunu veya devam etmenin güvenli olduğunu tezgah başında kontrol ettiniz mi?',
-    proceed: 'Eminim, Devam Et',
+    proceed: 'Eminim, devam et',
   },
   checklist: {
     title: 'Takım değişikliklerini kontrol edin',
     subtitle: 'Bu takımlar takım listesine kaydedilecek.',
     noDescription: 'Açıklama yok',
     saving: 'Takım listesine kaydediliyor...',
-    approve: 'Onayla ve Yükle',
+    approve: 'Onayla ve yükle',
   },
   special: {
     title: 'Özel takımlar kontrol listesi',
     subtitle: 'Lütfen bu kritik takımların doğru şekilde hazırlandığını onaylayın.',
     verify: 'Çapı ve fiziksel durumu kontrol edin.',
-    confirm: 'İşaretli Takımları Onayla',
+    confirm: 'İşaretli takımları onayla',
   },
   confirm: {
     title: 'Kod oluşturmadan önce uyarı',
@@ -176,8 +176,8 @@ const remapper: Translation<typeof en> = {
     important: 'Önemli:',
     warning:
       'Lütfen yeni kodda belirtilen doğru takımları tezgaha fiziksel olarak taktığınızdan emin olun. Yanlış takımla çalışmak tezgahın çarpmasına veya parçanın zarar görmesine yol açabilir.',
-    back: 'Geri Dön ve Düzenle',
-    generate: 'Onayla ve Oluştur',
+    back: 'Geri dön ve düzenle',
+    generate: 'Onayla ve oluştur',
   },
   editor: {
     fanucToHaasTitle: 'Kaynak kodu FANUC formatından HAAS formatına dönüştür',
@@ -207,9 +207,9 @@ const remapper: Translation<typeof en> = {
     caleWarning_other: 'Dikkat: bir takımın paralellere girdiği {{count}} nokta var. Çalıştırmadan önce o paralelleri daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
     extractTitle: 'Eşleştirilmiş G-kodu dosyasını indir',
     stale: 'Bu kod oluşturulduktan sonra program veya tezgah değişti.',
-    reanalyze: 'Yeniden Analiz Et',
+    reanalyze: 'Yeniden analiz et',
     emptyTitle: 'Henüz eşleştirilmiş kod oluşturulmadı',
-    emptyText: 'Takımları hedef tezgahın takım listesiyle eşleştirmek için yukarıdaki "Analiz Et ve Eşleştir" düğmesine tıklayın.',
+    emptyText: 'Takımları hedef tezgahın takım listesiyle eşleştirmek için yukarıdaki "Analiz et ve eşleştir" düğmesine tıklayın.',
     g53Placed: 'Tabla operatöre: {{count}} adet G53 Y0 otomatik eklendi (parça çevirme / program sonu)',
   },
   convert: {
