@@ -246,12 +246,12 @@ function Stat({ icon, label, value, detail, tone }: { icon: React.ReactNode; lab
     <div className="p-3 rounded-[var(--radius-md)] bg-[rgba(var(--ov),0.03)] border border-[var(--border-subtle)] min-w-0">
       <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
         {icon}
-        <span className="truncate">{label}</span>
+        <span className="min-w-0">{label}</span>
       </div>
       <div className={`mt-1 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-[var(--rose-500)]' : tone === 'warning' ? 'text-[var(--orange-text)]' : 'text-[var(--text-primary)]'}`}>
         {value}
       </div>
-      {detail && <div className="text-xs text-[var(--text-tertiary)] truncate">{detail}</div>}
+      {detail && <div className="text-xs text-[var(--text-tertiary)]">{detail}</div>}
     </div>
   );
 }
@@ -389,7 +389,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
         <div key={it.key} className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-semibold text-[var(--text-primary)]">{it.label}</div>
-            <div className="text-xs text-[var(--text-tertiary)] truncate">{it.hint}</div>
+            <div className="text-xs text-[var(--text-tertiary)]">{it.hint}</div>
           </div>
           <button
             type="button"
