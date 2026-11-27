@@ -150,6 +150,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [checking, setChecking] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [editsDropped, setEditsDropped] = useState(false);
+  // A change by hand the worker refused: the program shown stays, without it (never thrown away, nor carried on).
+  const [editRefused, setEditRefused] = useState(false);
+  // The edits the program shown was checked with, and those sent to be checked since (oldest first, each with the last
+  // change listed when it was sent): what a refused one goes back to.
+  const checkedEdits = useRef<{ edits: Record<string, OpEdit>; order: Record<string, string[]> }>({ edits: {}, order: {} });
+  const sentEdits = useRef<{ edits: Record<string, OpEdit>; order: Record<string, string[]>; id: number }[]>([]);
   // The operation an edit was applied to, to keep it picked when the edited program comes back.
   const following = useRef<string | null>(null);
   // The spacer between the stop and the part in clamping 1 (the shop's 15 or 50 mm), 0 for none.
@@ -341,6 +347,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     orderRef.current = {};
     editsRef.current = {};
     setEditsDropped(false);
+    setEditRefused(false);
     carry.current = null;
     plain.current = null;
     setPrep(null);
@@ -415,6 +422,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     const swapsNow = Object.fromEntries(Object.entries(swapsAll).filter(([, x]) => !x.code || shelf.some((c) => c.code === x.code)));
     const swapsLost = Object.keys(swapsNow).length < Object.keys(swapsAll).length;
     const w = newWorker();
+    // Edits sent to the worker just replaced are never answered: none counts as refused.
+    sentEdits.current = [];
+    setChecking(false);
     const speeds = speedsFor(machine.brand);
     const request: CamRequest = {
       model,
@@ -470,6 +480,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       if (m.type === 'live') return setLive((l) => liveStep(l, m.e));
       // Changes by hand, checked again on the plan the worker kept.
       if (m.type === 'edited') {
+        const sent = sentEdits.current.shift();
+        if (sent) checkedEdits.current = { edits: sent.edits, order: sent.order };
         setChecking(false);
         // The operation just changed stays picked, under its new tool if its tool was changed (its key does not change).
         const key = following.current;
@@ -479,6 +491,21 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         return setRun({ state: 'done', result: m.result });
       }
       if (m.type === 'error') {
+        const refused = sentEdits.current.shift();
+        if (refused) {
+          // A change by hand refused (out of range, a tool gone): back to the edits the program shown was checked with;
+          // that program and the plan the worker keeps stay, and the refused change is neither listed nor made again.
+          const back = checkedEdits.current;
+          setOpEdits(back.edits);
+          editsRef.current = back.edits;
+          setOpOrder(back.order);
+          orderRef.current = back.order;
+          following.current = null;
+          setChanges((l) => l.filter((c) => !c.now || c.id <= refused.id));
+          setChecking(false);
+          setEditRefused(true);
+          return;
+        }
         w.terminate();
         worker.current = null;
         setChecking(false);
@@ -487,6 +514,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       // Made: the worker stays, holding the plan, for changes by hand (items 10 and 11); a new make drops the old ones.
       setRun({ state: 'done', result: m.result });
       plain.current = m.result;
+      checkedEdits.current = { edits: {}, order: {} };
+      sentEdits.current = [];
+      setEditRefused(false);
       setMadeTurns(turnsAsked.current);
       // The tools changed by hand, on every operation of the new plan that still uses the old tool in that clamping.
       const swapped: Record<string, OpEdit> = {};
@@ -918,9 +948,11 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     editsRef.current = next;
     orderRef.current = order;
     setEditsDropped(false);
+    setEditRefused(false);
     setAccepted(false);
     setChecking(true);
     following.current = key;
+    sentEdits.current.push({ edits: next, order, id: changeId.current });
     worker.current?.postMessage({ type: 'edit', edits: next, order, toolDb: toolDbRef.current.db });
   };
   // The browser's setups: the two picked ones before a program, the program's after.
@@ -1355,6 +1387,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               </section>
             )}
             {editsDropped && <p className="text-[var(--text-secondary)]" role="status">{t('camAi.opEdit.dropped')}</p>}
+            {editRefused && <p className="text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.refused')}</p>}
             {prep && chosen && sel.kind === 'stock' && (
               <>
                 <button type="button" role="switch" aria-checked={autoStock} onClick={() => choose(() => setAutoStock(!autoStock))} disabled={busy} className="no-glass flex items-center gap-2 text-xs text-[var(--text-primary)] min-h-11">

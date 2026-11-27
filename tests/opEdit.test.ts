@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editOpLines, keepAbove, scaleSpeeds } from '../src/lib/cam/opEdit';
+import { editInRange, editOpLines, keepAbove, scaleSpeeds } from '../src/lib/cam/opEdit';
 
 describe('no cut within 0.5 mm of the vise floor (the part on the table, you)', () => {
   it('raises only the Z words under the floor, on moves and drill cycles, never a tool change, a machine position or a comment', () => {
@@ -8,6 +8,17 @@ describe('no cut within 0.5 mm of the vise floor (the part on the table, you)', 
     // Nothing under it: the very same lines.
     const high = ['G1 Z-10.'];
     expect(keepAbove(high, -49.5)).toBe(high);
+  });
+});
+
+describe('the sizes a hand may type (the editor refuses the rest, the planner never takes them)', () => {
+  it('moves up to 200 mm and deeper up to 50 mm either way; more, or not a number, is out of range', () => {
+    expect(editInRange({ dx: 200, dy: -200, dz: 0, deeper: -50 })).toBe(true);
+    expect(editInRange({ deeper: 300 })).toBe(false);
+    expect(editInRange({ dx: 5000 })).toBe(false);
+    expect(editInRange({ dz: Number.NaN })).toBe(false);
+    expect(editInRange({ tool: { d: 8, l: 500 } })).toBe(false);
+    expect(editInRange({ off: true })).toBe(true);
   });
 });
 

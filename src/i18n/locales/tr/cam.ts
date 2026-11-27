@@ -258,6 +258,7 @@ const cam: Translation<typeof en> = {
       dz: 'Z kaydır',
       d: 'Takım Ø (mm)',
       l: 'Boy (mm)',
+      badMove: 'X, Y ve Z en çok 200 mm, Daha derin en çok 50 mm değiştirilebilir (iki yönde de).',
       badTool: 'Takımın Ø’ı 0–200 mm, boyu 0–400 mm olmalı.',
       handTool: 'Elle değiştirilen takım hiçbir tezgahta yok: ona bir tezgah takımı seçmek için programı Takım eşleştiriciye gönderin.',
       badNumber: 'T{{t}} bir Haas’ın aldığı numara değil (1 ile 200 arası): ona bir tezgah takımı vermek için programı Takım eşleştiriciye gönderin.',
@@ -271,6 +272,7 @@ const cam: Translation<typeof en> = {
       acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: tezgaha ya da mengeneye hiçbir şey çarpmıyor.',
       acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı tezgahta kontrol edin.',
       acceptedHold_other: '{{count}} bağlamada mengene parçayı sıfırlarının varsaydığı yerden farklı tutuyor: sıfırları tezgahta kontrol edin.',
+      refused: 'Bu elle değişiklik reddedildi: gösterilen program hâlâ kontrol edilmiş olan, değişiklik olmadan.',
       dropped: 'Yeniden yapıldı: yeni programda artık olmayan işlemlerdeki elle değişiklikler kalktı.',
     },
     clamp1: {

@@ -21,7 +21,7 @@ import { NEST, nestFor, type Nest } from './nest';
 import { checkNest, checkSetup, DEFLECTION, drillThrust, wallDeflection, materialData, millForce, PARALLEL_LENGTH, PEAK, SQUEEZE, type Contact, type OpLoad, type SetupCheck } from './physics';
 import { PROGRAM_MARK } from '../programMark';
 import { allowedCales, blankTop, caleFor, clearOf, firstPick, firstWant, GRIP_MIN, JAW, JAW_DEPTH, TOP_MIN, underStock } from './clamp';
-import { editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
+import { editInRange, editOpLines, keepAbove, scaleSpeeds, type OpEdit } from './opEdit';
 
 /*
  * CAM AI: a program for a part from its 3D model, for one machine and its tools.
@@ -1626,10 +1626,7 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     return x;
   };
   // Only sizes a hand would type: anything else is refused, never planned.
-  for (const e of Object.values(edits)) {
-    const ok = [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) && (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400)) && (e.off === undefined || e.off === true);
-    if (!ok) throw new Error('An edit by hand out of range.');
-  }
+  if (!Object.values(edits).every(editInRange)) throw new Error('An edit by hand out of range.');
   // An edited cut that reaches the vise floor is noted and locks the program (checked, below).
   const orderNotes: CamNote[] = [];
   const setups = r.setups.map((s, si) => {

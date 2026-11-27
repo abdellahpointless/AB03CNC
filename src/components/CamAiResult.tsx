@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { CutEdit } from '../lib/cam/tools';
-import type { OpEdit } from '../lib/cam/opEdit';
+import { editInRange, type OpEdit } from '../lib/cam/opEdit';
 import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { fmtNumber as fmt } from '../i18n/format';
@@ -594,6 +594,8 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
   // `d`, `l`: the operation's tool now (already the one changed by hand, if so: kept unless undone).
   const newTool = toolOk && (!!was?.tool || tool.d !== d || tool.l !== l);
   const none = Object.values(nums).every((x) => x === 0) && !newTool;
+  // Refused here as the planner would refuse it (a refused edit never reaches the program checked).
+  const movesOk = editInRange(nums);
   const field = (k: keyof typeof v) => (
     <label key={k} className="space-y-0.5 min-w-0">
       <span className="text-xs text-[var(--text-secondary)]">{t(`camAi.opEdit.${k}`)}</span>
@@ -604,9 +606,10 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
     <div className="w-full px-2 pb-2 space-y-1.5">
       <div className="grid grid-cols-4 gap-1.5">{(['deeper', 'dx', 'dy', 'dz'] as const).map(field)}</div>
       <div className="grid grid-cols-2 gap-1.5">{(['d', 'l'] as const).map(field)}</div>
+      {!movesOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badMove')}</p>}
       {!toolOk && <p className="text-xs text-[var(--orange-text)]" role="alert">{t('camAi.opEdit.badTool')}</p>}
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
+        <button type="button" className="btn-primary text-xs min-h-9 px-3" disabled={busy || !toolOk || !movesOk} onClick={() => onApply(none ? null : { ...nums, ...(newTool ? { tool } : {}) })}>{busy ? t('camAi.opEdit.checking') : t('camAi.opEdit.apply')}</button>
         {was && <button type="button" className="btn-secondary text-xs min-h-9 px-3" disabled={busy} onClick={() => onApply(null)}>{t('camAi.opEdit.undo')}</button>}
       </div>
       <p className="text-xs text-[var(--text-secondary)]">{t('camAi.opEdit.hint')}</p>

@@ -255,6 +255,7 @@ const cam = {
       dz: 'Move Z',
       d: 'Tool Ø (mm)',
       l: 'Length (mm)',
+      badMove: 'Move X, Y and Z by at most 200 mm, and Deeper by at most 50 mm, either way.',
       badTool: 'A tool needs a Ø of 0 to 200 mm and a length of 0 to 400 mm.',
       handTool: 'A tool changed by hand is in no machine: send the program to the remapper to choose a machine tool for it.',
       badNumber: 'T{{t}} is not a number a Haas takes (1 to 200): send the program to the remapper to give it a machine tool.',
@@ -268,6 +269,7 @@ const cam = {
       acceptedText: 'Changed by hand, accepted as it is: nothing hits the machine or the vise.',
       acceptedHold_one: 'In {{count}} clamping the vise holds it off where that clamping\'s zero assumes: check the zero at the machine.',
       acceptedHold_other: 'In {{count}} clampings the vise holds it off where their zero assumes: check the zeros at the machine.',
+      refused: 'That change by hand was refused: the program shown is still the one checked, without it.',
       dropped: 'Made again: changes by hand to operations the new program no longer has are gone.',
     },
     clamp1: {

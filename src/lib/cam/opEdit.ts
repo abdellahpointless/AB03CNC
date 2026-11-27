@@ -17,6 +17,14 @@ export interface OpEdit {
   off?: true;
 }
 
+/** Only sizes a hand would type (moves up to 200 mm, deeper up to 50 mm, either way; a tool up to Ø200 and 400 mm long):
+ * the editor refuses the rest, the planner never takes them (editProgram). */
+export const editInRange = (e: OpEdit) =>
+  [e.dx, e.dy, e.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) &&
+  (e.deeper === undefined || (Number.isFinite(e.deeper) && Math.abs(e.deeper) <= 50)) &&
+  (!e.tool || (e.tool.d > 0 && e.tool.d <= 200 && e.tool.l > 0 && e.tool.l <= 400)) &&
+  (e.off === undefined || e.off === true);
+
 /** Spindle (S) times k and feeds (F) times kf (k < 1: slower, for a bigger Ø at the same surface speed and the same feed a turn). */
 export function scaleSpeeds(lines: string[], k: number, kf = k): string[] {
   if (k === 1 && kf === 1) return lines;
