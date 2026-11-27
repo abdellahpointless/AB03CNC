@@ -579,6 +579,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const generateRef = useRef(generate);
   generateRef.current = generate;
   const result = run.state === 'done' ? run.result : null;
+  // Leaving CAM AI (back, or Send to the remapper) keeps nothing of it: with a program made or being made, asked first.
+  const [leaveAsk, setLeaveAsk] = useState<{ go: () => void; send: boolean } | null>(null);
+  const leave = (go: () => void, send = false) => (result || busy ? setLeaveAsk({ go, send }) : go());
   // The machine's own program, as Send and Process in the remapper give it (forMachine).
   const engineId = machine ? engineMachineId(currentRegion().id, machine) : '';
   const download = () => {
@@ -1554,7 +1557,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   );
 
   if (opened)
-    return <CamOpened name={opened.name} code={opened.code} model={model} machine={machine} onSend={onSend} onExit={onExit} onClose={() => setOpened(null)} />;
+    return (
+      <>
+        <CamOpened name={opened.name} code={opened.code} model={model} machine={machine} onSend={(...a) => leave(() => onSend(...a), true)} onExit={() => leave(onExit)} onClose={() => setOpened(null)} />
+        {leaveDialog()}
+      </>
+    );
 
   return (
     <div className="cam-ws h-full w-full flex flex-col bg-[var(--bg-page)] text-[13px] text-[var(--text-primary)]">
@@ -1563,7 +1571,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
       {/* One bar: back to the app, the file, its stock and checks, its time, Download and Send. */}
       <header className="h-12 shrink-0 flex items-center gap-2 px-2 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
-        <button type="button" onClick={onExit} title={t('camAi.ws.backTitle')} aria-label={t('camAi.ws.backTitle')} className="no-glass h-8 flex items-center gap-2 pl-1.5 pr-2.5 rounded-[8px] hover:bg-[rgba(var(--ov),0.08)]">
+        <button type="button" onClick={() => leave(onExit)} title={t('camAi.ws.backTitle')} aria-label={t('camAi.ws.backTitle')} className="no-glass h-8 flex items-center gap-2 pl-1.5 pr-2.5 rounded-[8px] hover:bg-[rgba(var(--ov),0.08)]">
           <ArrowLeft size={16} stroke={1.8} className="text-[var(--text-secondary)]" aria-hidden />
           <span className="w-6 h-6 rounded-[6px] bg-gradient-to-br from-[var(--blue-500)] to-violet-700 grid place-items-center text-white font-mono font-bold text-xs" aria-hidden>//</span>
           <span className="text-[13px] font-semibold text-[var(--text-primary)] whitespace-nowrap hidden xl:inline">{t('camAi.ws.back')}</span>
@@ -1633,7 +1641,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (
-          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && onSend(result.code, fileName, machine.id)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && leave(() => onSend(result.code, fileName, machine.id), true)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
             <Send size={16} stroke={1.8} aria-hidden /> {t('camAi.send')}
           </button>
         ) : run.state === 'busy' ? (
@@ -1913,6 +1921,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
       {newProgramDialog()}
       {dropDialog()}
+      {leaveDialog()}
       <CamToolDb
         open={dbOpen}
         onOpenChange={setDbOpen}
@@ -2048,6 +2057,37 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         )}
         <p className="text-xs text-[var(--text-secondary)]">{t('camAi.part.typeHint')}</p>
       </div>
+    );
+  }
+
+  /** Leaving with a program made or being made: asked first (nothing of it is kept). */
+  function leaveDialog() {
+    return (
+      <Dialog.Root open={!!leaveAsk} onOpenChange={(o) => !o && setLeaveAsk(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[1000] bg-black/45 backdrop-blur-[2px]" />
+          <Dialog.Content className="glass-modal fixed z-[1001] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[26rem] max-w-[calc(100vw-2rem)] p-5 space-y-4">
+            <Dialog.Title className="text-sm font-semibold text-[var(--text-primary)]">{t('camAi.ws.leaveTitle')}</Dialog.Title>
+            <Dialog.Description className="text-xs text-[var(--text-secondary)]">{t('camAi.ws.leaveBody')}</Dialog.Description>
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <button type="button" className="btn-secondary text-xs min-h-11 px-4">{t('camAi.ws.leaveStay')}</button>
+              </Dialog.Close>
+              <button
+                type="button"
+                className="btn-primary text-xs min-h-11 px-4"
+                onClick={() => {
+                  const go = leaveAsk?.go;
+                  setLeaveAsk(null);
+                  go?.();
+                }}
+              >
+                {leaveAsk?.send ? t('camAi.send') : t('camAi.ws.leaveConfirm')}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     );
   }
 
