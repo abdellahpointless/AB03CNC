@@ -1,0 +1,69 @@
+From b8ce6b532f10f7de8e8947a7c4385a6c17ab2a14 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:25:08 +0000
+Subject: [PATCH] Reports: problems per person count every problem they
+ reported, the same as the summary (finding H4-20)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/preventiveReport.ts | 11 +++++++----
+ tests/reportPeople.test.ts  | 25 +++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 4 deletions(-)
+ create mode 100644 tests/reportPeople.test.ts
+
+diff --git a/src/lib/preventiveReport.ts b/src/lib/preventiveReport.ts
+index 81eb22f..5bbfdb7 100644
+--- a/src/lib/preventiveReport.ts
++++ b/src/lib/preventiveReport.ts
+@@ -52,9 +52,12 @@ export function reportPeople(data: MachinesReport, rows: ReportRow[]): ReportPer
+     if (!map.has(k)) map.set(k, { username: u, done: 0, problems: 0, notDone: 0 });
+     return map.get(k)!;
+   };
+-  for (const p of data.people) Object.assign(get(p.username), { done: p.done, problems: p.problems });
+-  for (const r of rows)
+-    if (r.kind === 'MISSED')
+-      for (const u of r.notDoneBy.split(',').map((s) => s.trim()).filter(Boolean)) if (!data.hidden.includes(u.toLowerCase())) get(u).notDone++;
++  const shown = (u: string) => !data.hidden.includes(u.toLowerCase());
++  for (const p of data.people) get(p.username).done = p.done;
++  for (const r of rows) {
++    // Problems from the same rows as the summary and the list, so a problem reported with the machine's button counts too.
++    if (r.kind === 'PROBLEM' && shown(r.by)) get(r.by).problems++;
++    if (r.kind === 'MISSED') for (const u of r.notDoneBy.split(',').map((s) => s.trim()).filter(Boolean)) if (shown(u)) get(u).notDone++;
++  }
+   return [...map.values()].sort((a, b) => b.done - a.done || a.notDone - b.notDone);
+ }
+diff --git a/tests/reportPeople.test.ts b/tests/reportPeople.test.ts
+new file mode 100644
+index 0000000..b97bacd
+--- /dev/null
++++ b/tests/reportPeople.test.ts
+@@ -0,0 +1,25 @@
++import { describe, expect, it } from 'vitest';
++import { reportPeople, reportRows } from '../src/lib/preventiveReport';
++import type { MachinesReport } from '../src/lib/fleet';
++
++const ev = (action: 'PROBLEM' | 'MISSED', username: string, note: string | null = 'Leak') => ({ machine_id: 'HAAS-1', check_title: 'Leak', action, note, username, at: 1 });
++
++describe('report people', () => {
++  it('counts every problem a person reported, the same as the summary (also those reported with the machine button)', () => {
++    const data: MachinesReport = {
++      // Server people counts problems found while confirming a check only (none here).
++      events: [ev('PROBLEM', 'ali'), ev('PROBLEM', 'Ali'), ev('PROBLEM', 'test'), ev('MISSED', 'karim', 'ali')],
++      cales: [],
++      people: [{ username: 'karim', done: 4, problems: 0 }],
++      hidden: ['test'],
++      truncated: false,
++      machines: [],
++      taken: [],
++    };
++    const rows = reportRows(data, (id) => id, () => '');
++    expect(reportPeople(data, rows)).toEqual([
++      { username: 'karim', done: 4, problems: 0, notDone: 0 },
++      { username: 'ali', done: 0, problems: 2, notDone: 1 },
++    ]);
++  });
++});
+-- 
+2.43.0
+

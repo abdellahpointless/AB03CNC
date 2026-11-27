@@ -1,0 +1,101 @@
+From 85354026081c1dcb1b37edd06981f82006f6752d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:09:17 +0000
+Subject: [PATCH] Remapper: the resolution window writes 'Line 15', not 'L15',
+ which reads as a length (finding H5-10)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolRemapper.tsx | 12 ++++++------
+ src/i18n/locales/en/remapper.ts |  2 +-
+ src/i18n/locales/tr/remapper.ts |  2 +-
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/src/components/ToolRemapper.tsx b/src/components/ToolRemapper.tsx
+index 95934d0..bd2a209 100644
+--- a/src/components/ToolRemapper.tsx
++++ b/src/components/ToolRemapper.tsx
+@@ -898,7 +898,7 @@ N190 M30`;
+                              <Trash2 size={18}/>
+                            </div>
+                            <div className="flex flex-col min-w-0">
+-                             <span className="font-mono text-sm line-through text-slate-400 dark:text-slate-500 truncate">L{block.lineIndex+1}: {block.originalLine}</span>
++                             <span className="font-mono text-sm line-through text-slate-400 dark:text-slate-500 truncate">{t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}</span>
+                              {block.contextStr && (
+                                <span className="font-mono text-xs text-slate-400 dark:text-slate-500 truncate mt-1">{t('fields.context')} {shownComment(block.contextStr)}</span>
+                              )}
+@@ -958,7 +958,7 @@ N190 M30`;
+ 
+                           <div className="text-sm font-mono text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-purple-100 dark:border-purple-900/30">
+                             <div className="font-semibold text-purple-900 dark:text-purple-200">
+-                              L{block.lineIndex+1}: {block.originalLine}
++                              {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
+                             </div>
+                             {block.contextStr && (
+                               <div className="text-xs text-slate-500 mt-1.5 border-t border-slate-200 dark:border-slate-800 pt-1.5 break-all">
+@@ -1074,7 +1074,7 @@ N190 M30`;
+                                {t('unsupported.title')}
+                              </h3>
+                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-orange-100 dark:border-orange-900/30">
+-                               L{block.lineIndex+1}: {block.originalLine}
++                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
+                                 <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-orange-200 dark:border-orange-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                               </div>
+                               <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
+@@ -1126,7 +1126,7 @@ N190 M30`;
+                                {t('crash.title')}
+                              </h3>
+                              <div className="font-mono text-sm bg-rose-50 dark:bg-rose-950/30 px-3 py-2 rounded-lg border border-rose-100 dark:border-rose-900/40 text-slate-700 dark:text-slate-300">
+-                               L{block.lineIndex+1}: {block.originalLine}
++                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
+                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-rose-200 dark:border-rose-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                              </div>
+                              <p className="text-sm text-rose-700 dark:text-rose-300 font-medium">
+@@ -1160,7 +1160,7 @@ N190 M30`;
+                              <CheckCircle size={18}/>
+                            </div>
+                            <div className="flex flex-col min-w-0">
+-                             <span className="font-mono text-sm dark:text-slate-300 truncate">L{block.lineIndex+1}: {block.originalLine}</span>
++                             <span className="font-mono text-sm dark:text-slate-300 truncate">{t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}</span>
+                              {block.contextStr && (
+                                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate mt-1">{t('fields.context')} {shownComment(block.contextStr)}</span>
+                              )}
+@@ -1233,7 +1233,7 @@ N190 M30`;
+                                {t('approx.title')}
+                              </h3>
+                              <div className="text-sm font-mono text-slate-600 dark:text-slate-300 mt-2 bg-white/50 dark:bg-black/20 p-2 rounded border border-amber-100 dark:border-amber-900/30">
+-                               L{block.lineIndex+1}: {block.originalLine}
++                               {t('safety.line', { line: block.lineIndex + 1 })}: {block.originalLine}
+                                 <div className="text-xs text-slate-600 dark:text-slate-400 mt-2 border-t border-amber-200 dark:border-amber-900/40 pt-2 break-all">{t('fields.context')} {shownComment(block.contextStr)}</div>
+                               </div>
+                               <div className="mt-4 grid grid-cols-2 gap-3 text-xs w-full sm:w-auto">
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..8457fd6 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -148,7 +148,7 @@ const remapper = {
+     changeTool: 'Change Tool...',
+   },
+   missing: {
+-    title: 'Missing Tool L{{line}}',
++    title: 'Missing tool, line {{line}}',
+     reqMin: 'Req: {{value}}mm min',
+   },
+   /** "Some tools are too short" confirmation. */
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..c3b4bd0 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -144,7 +144,7 @@ const remapper: Translation<typeof en> = {
+     changeTool: 'Takımı değiştir...',
+   },
+   missing: {
+-    title: 'Eksik takım L{{line}}',
++    title: 'Eksik takım, satır {{line}}',
+     reqMin: 'Gerekli: en az {{value}}mm',
+   },
+   crashModal: {
+-- 
+2.43.0
+

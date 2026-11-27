@@ -1,0 +1,110 @@
+From cc141374f831641d81b8d5bdaab73418abc9ac04 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:02:46 +0000
+Subject: [PATCH] CAM AI: a pocket with straight walls and small rounded
+ corners is no hole (a wall must be round along its edges too); the check adds
+ up its cuts into the part (finding H6-2)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/cam/features.ts   |  8 +++++++-
+ src/lib/cam/program.ts    |  4 ++--
+ tests/camFeatures.test.ts | 12 ++++++++++++
+ tests/camSafety.test.ts   |  9 +++++++++
+ 4 files changed, 30 insertions(+), 3 deletions(-)
+
+diff --git a/src/lib/cam/features.ts b/src/lib/cam/features.ts
+index d20a664..e9d049d 100644
+--- a/src/lib/cam/features.ts
++++ b/src/lib/cam/features.ts
+@@ -134,11 +134,17 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
+     const r = Math.sqrt(Math.max(0, cx * cx + cy * cy - sol[2]));
+     if (!(r > 0.1)) continue;
+     let err = 0;
++    // Round along its edges too, not only at its corners: a square pocket's rounded corners lie near one circle, its
++    // straight walls (long chords of it) do not. A facet's middle bows 6 % of r in on the coarsest mesh of a hole this
++    // patch takes (9 sides); a straight wall between small rounded corners 18 % or more.
++    let bow = 0;
+     let concave = 0;
+     for (const t of list) {
+       for (let c = 0; c < 3; c++) {
+         const i = t * 9 + c * 3;
++        const j = t * 9 + ((c + 1) % 3) * 3;
+         err = Math.max(err, Math.abs(Math.hypot(P[i] - cx, P[i + 1] - cy) - r));
++        bow = Math.max(bow, r - Math.hypot((P[i] + P[j]) / 2 - cx, (P[i + 1] + P[j + 1]) / 2 - cy));
+       }
+       // A hole's walls face its axis (the material is outside).
+       const i = t * 9;
+@@ -146,7 +152,7 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
+       const my = (P[i + 1] + P[i + 4] + P[i + 7]) / 3 - cy;
+       concave += normals[t][0] * mx + normals[t][1] * my < 0 ? 1 : -1;
+     }
+-    if (err > Math.max(0.02, r * 0.03)) continue;
++    if (err > Math.max(0.02, r * 0.03) || bow > Math.max(0.02, r * 0.08)) continue;
+     out.push({ c: [cx, cy], r, lo, hi, concave: concave > 0, closed: widest < (50 * Math.PI) / 180, err });
+   }
+   return out;
+diff --git a/src/lib/cam/program.ts b/src/lib/cam/program.ts
+index 86aca43..2dace3d 100644
+--- a/src/lib/cam/program.ts
++++ b/src/lib/cam/program.ts
+@@ -1718,8 +1718,8 @@ function overParallels(code: string, speeds: MachineSpeeds): string {
+   return lines.join('\n');
+ }
+ 
+-/** The largest piece cut out of the part that the model keeps (mm³): an overcut. */
+-export const gougeOf = (c: CamCheck) => Math.round(Math.max(0, ...c.pieces.filter((p) => p.kind === 'cut').map((p) => p.mm3)));
++/** All the pieces cut out of the part that the model keeps, added up (mm³): an overcut (four small ones are one bad part). */
++export const gougeOf = (c: CamCheck) => Math.round(c.pieces.reduce((t, p) => t + (p.kind === 'cut' ? p.mm3 : 0), 0));
+ 
+ /**
+  * The program for a part: planned with each of its sides as the height in the vise (thinnest
+diff --git a/tests/camFeatures.test.ts b/tests/camFeatures.test.ts
+index efb6c16..1de98ab 100644
+--- a/tests/camFeatures.test.ts
++++ b/tests/camFeatures.test.ts
+@@ -5,6 +5,7 @@ import pinUrl from './models/O0999607.stl?inline';
+ import { readModel } from '../src/lib/model';
+ import { SIDES, sideFeatures } from '../src/lib/cam/features';
+ import { area, intersection, offset, slice, turnTris } from '../src/lib/cam/geom';
++import { pocketPart, roundedRect } from './heightPart';
+ 
+ const bytes = (url: string) => Uint8Array.from(atob(url.slice(url.indexOf(',') + 1)), (c) => c.charCodeAt(0));
+ const side = (n: string) => SIDES.find((s) => s.name === n)!;
+@@ -52,4 +53,15 @@ describe('features of a part from its 3D model', () => {
+     }
+     expect(checked).toBeGreaterThan(0);
+   });
++  it('a pocket with straight walls and small rounded corners is no hole (its corners lie near one circle, its walls not)', () => {
++    const holesIn = (outline: [number, number][]) => sideFeatures(pocketPart(30, 30, 10, outline, 4), side('Z+')).holes;
++    // 3.9 and 4.9 mm square with R0.5 corners: read as Ø5 and Ø6.4 holes and drilled before.
++    expect(holesIn(roundedRect([13.05, 13.05, 16.95, 16.95], 0.5))).toEqual([]);
++    expect(holesIn(roundedRect([12.55, 12.55, 17.45, 17.45], 0.5))).toEqual([]);
++    // 28 x 18 with R1.5 corners: a Ø31.74 'hole'.
++    expect(sideFeatures(pocketPart(40, 30, 12, roundedRect([6, 6, 34, 24], 1.5), 5), side('Z+')).holes).toEqual([]);
++    // A round one stays a hole, faceted as coarsely as the finder takes one (9 sides) or finely.
++    const round = (n: number) => Array.from({ length: n }, (_, k) => [15 + 2.5 * Math.cos((2 * Math.PI * k) / n), 15 + 2.5 * Math.sin((2 * Math.PI * k) / n)] as [number, number]);
++    for (const n of [9, 16, 48]) expect(holesIn(round(n)).map((h) => Math.round(h.r * 20) / 10)).toEqual([5]);
++  });
+ });
+diff --git a/tests/camSafety.test.ts b/tests/camSafety.test.ts
+index 11fd71f..ae13a61 100644
+--- a/tests/camSafety.test.ts
++++ b/tests/camSafety.test.ts
+@@ -227,3 +227,12 @@ describe('rapids the check is too coarse to see', () => {
+     expect(finerRapids(deep, 'HAAS')).toMatch(/G01 Z-1\. F/);
+   }, 300_000);
+ });
++
++describe('the overcut the check reports (gougeOf)', () => {
++  it('adds up every piece cut into the part: four of 3.7 mm³ are one bad part, never four under the 5 mm³ limit', () => {
++    const piece = (kind: 'cut' | 'left', mm3: number) => ({ kind, mm3, min: [0, 0, 0] as [number, number, number], max: [1, 1, 1] as [number, number, number], move: null });
++    const check = { pieces: [piece('cut', 3.7), piece('cut', 3.7), piece('left', 40), piece('cut', 3.7), piece('cut', 3.7)] } as Parameters<typeof gougeOf>[0];
++    expect(gougeOf(check)).toBe(15);
++    expect(gougeOf({ ...check, pieces: [piece('left', 40)] })).toBe(0);
++  });
++});
+-- 
+2.43.0
+

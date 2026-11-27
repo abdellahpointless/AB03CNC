@@ -1,0 +1,216 @@
+From b88279b070eca7cb8be7945bc6f706b0e55ec8c9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:59:41 +0000
+Subject: [PATCH] Remapper: T4 spot drill only on HAAS-1, T250550 only on the
+ FANUCs, and only the machine's own pointeur of that number, never invented;
+ the safety check flags H outside 1-200 (findings H3-2, H6-3)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CodeEditorPair.tsx |  3 ++-
+ src/i18n/locales/en/remapper.ts   |  1 +
+ src/i18n/locales/tr/remapper.ts   |  1 +
+ src/lib/gcodeProcessor.ts         | 20 +++++++-------------
+ src/lib/safetyCheck.ts            | 16 +++++++++++-----
+ tests/engineId.test.ts            | 23 +++++++++++++++++++++++
+ tests/safetyCheck.test.ts         | 10 ++++++++++
+ 7 files changed, 55 insertions(+), 19 deletions(-)
+
+diff --git a/src/components/CodeEditorPair.tsx b/src/components/CodeEditorPair.tsx
+index e7731e6..3325fea 100644
+--- a/src/components/CodeEditorPair.tsx
++++ b/src/components/CodeEditorPair.tsx
+@@ -116,6 +116,7 @@ interface CodeEditorPairProps {
+ const CHECK_SYMBOL: Record<SafetyCode, { icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>; code: string }> = {
+   noOffset: { icon: Ruler, code: 'G43' },
+   offsetMismatch: { icon: Ruler, code: 'H≠T' },
++  offsetRange: { icon: Ruler, code: 'H' },
+   spindleOff: { icon: RotateCw, code: 'M3' },
+   noFeed: { icon: Gauge, code: 'F' },
+   noWorkOffset: { icon: Crosshair, code: 'G54' },
+@@ -144,7 +145,7 @@ function SafetyPanel({
+ }) {
+   const { t } = useT('remapper');
+   const statusOf = (c: SafetyCode): { level: keyof typeof LEVEL_COLOR; line: number | null } => {
+-    const related = report.findings.filter((f) => f.code === c || (c === 'noOffset' && f.code === 'offsetMismatch'));
++    const related = report.findings.filter((f) => f.code === c || (c === 'noOffset' && (f.code === 'offsetMismatch' || f.code === 'offsetRange')));
+     const worst = related.find((f) => f.level === 'error') ?? related[0];
+     return { level: worst ? worst.level : 'ok', line: worst?.line ?? null };
+   };
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..fe9e3f1 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -263,6 +263,7 @@ const remapper = {
+     msg: {
+       noOffset: '{{t}} cuts with no length offset (G43) active',
+       offsetMismatch: 'G43 uses {{h}} but the tool in the spindle is {{t}}',
++      offsetRange: 'G43 uses {{h}}: tool offsets go from H1 to H200 (H0 applies no tool length)',
+       spindleOff: '{{t}} cuts with the spindle stopped (no M3/M4 after the tool change)',
+       noFeed: 'The first cutting move has no feed rate (F)',
+       noWorkOffset: 'The machine moves before a work offset (G54…) is selected',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..742ee8d 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -254,6 +254,7 @@ const remapper: Translation<typeof en> = {
+     msg: {
+       noOffset: '{{t}} boy ofseti (G43) olmadan kesiyor',
+       offsetMismatch: 'G43 {{h}} kullanıyor ama iş milindeki takım {{t}}',
++      offsetRange: 'G43 {{h}} kullanıyor: takım ofsetleri H1 ile H200 arasındadır (H0 takım boyu uygulamaz)',
+       spindleOff: '{{t}} iş mili dururken kesiyor (takım değişiminden sonra M3/M4 yok)',
+       noFeed: 'İlk kesme hareketinde ilerleme hızı (F) yok',
+       noWorkOffset: 'Tezgah, iş parçası sıfırı (G54…) seçilmeden hareket ediyor',
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..aae8713 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -574,22 +574,16 @@ export function analyzeGCode(input: string, tools: Tool[], machineId?: string):
+     }
+   }
+ 
+-  // Apply pointeur rule for other machines (FANUC or HAAS-1)
+-  const isFanuc = machineId?.includes('FANUC');
+-  const pointeurNumber = isFanuc ? 250550 : 4;
+-  for (let i = 0; i < blocks.length; i++) {
++  // The shop's spot drill number: T4 on HAAS-1, T250550 on the FANUCs. Only when the machine has that
++  // tool and it is a pointeur (never invented, never its end mill); every other machine, and these
++  // without it, pick their spot drill like any other tool (or the dialog asks).
++  const pointeurNumber = machineId === 'HAAS-1' ? 4 : machineId?.startsWith('FANUC') ? 250550 : null;
++  const shopPointeur = tools.find((x: Tool) => x.number === pointeurNumber && x.category === 'pointeur');
++  for (let i = 0; i < blocks.length && shopPointeur; i++) {
+     const block = blocks[i];
+-    // HAAS-2, HAAS-4, HAAS-5 have their own pointeur rules and should not force tool #4
+-    if (machineId && ['HAAS-2', 'HAAS-4', 'HAAS-5'].includes(machineId)) {
+-      continue;
+-    }
+     const isPointeur = block.parsedCategory === 'pointeur' || /pointeur|ZENTRIERBOHREN|CENTER\s*DRILL/i.test(block.contextStr) || (block.matchedTool && block.matchedTool.category === 'pointeur');
+     if (isPointeur) {
+-      let targetT = tools.find((x: Tool) => x.number === pointeurNumber);
+-      if (!targetT) {
+-         targetT = { id: `auto-${pointeurNumber}`, number: pointeurNumber, pocket: isFanuc ? 4 : undefined, category: 'pointeur', diameter: 0, length: 50, description: `Auto-assigned T${pointeurNumber}` };
+-      }
+-      block.matchedTool = targetT;
++      block.matchedTool = shopPointeur;
+       block.matchType = 'exact';
+     }
+   }
+diff --git a/src/lib/safetyCheck.ts b/src/lib/safetyCheck.ts
+index 14927b6..3059d56 100644
+--- a/src/lib/safetyCheck.ts
++++ b/src/lib/safetyCheck.ts
+@@ -14,6 +14,7 @@ export type SafetyLevel = 'error' | 'warning';
+ export type SafetyCode =
+   | 'noOffset' // cutting with no tool length offset (G43) active
+   | 'offsetMismatch' // HAAS: G43 H number is not the tool in the spindle
++  | 'offsetRange' // G43 H number outside 1-200 (H0: no tool length at all)
+   | 'spindleOff' // cutting with the spindle stopped
+   | 'noFeed' // first cutting move with no feed rate ever set
+   | 'noWorkOffset' // moving before any work offset (G54...) was selected
+@@ -30,16 +31,16 @@ export interface SafetyFinding {
+ }
+ 
+ /** The checks that ran, so the panel can list passed ones too. */
+-export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd', 'tooBig'];
++export const SAFETY_CHECKS: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[] = ['noOffset', 'spindleOff', 'noFeed', 'noWorkOffset', 'toolTooShort', 'noProgramEnd', 'tooBig'];
+ 
+ export interface SafetyReport {
+   findings: SafetyFinding[];
+   errors: number;
+   warnings: number;
+   /** Check codes that found nothing. */
+-  passed: Exclude<SafetyCode, 'offsetMismatch'>[];
++  passed: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[];
+   /** The checks that ran (the memory check only runs for a FANUC). */
+-  ran: Exclude<SafetyCode, 'offsetMismatch'>[];
++  ran: Exclude<SafetyCode, 'offsetMismatch' | 'offsetRange'>[];
+ }
+ 
+ export interface ToolDepthCheck {
+@@ -48,6 +49,9 @@ export interface ToolDepthCheck {
+   depth: number;
+ }
+ 
++/** Highest H offset number (the owner's rule for the HAAS controls: T and H 1-200). */
++const MAX_H = 200;
++
+ const CYCLES = new Set([73, 74, 76, 81, 82, 83, 84, 85, 86, 87, 88, 89]);
+ 
+ interface Words {
+@@ -138,7 +142,9 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?:
+     if (has(w.g, 43, 44)) {
+       offsetActive = true;
+       const h = w.get('H');
+-      if (!opts.fanuc && h !== undefined && !h.startsWith('#') && tool !== null && Number(h) !== Number(tool)) {
++      if (h !== undefined && !h.startsWith('#') && !(Number(h) >= 1 && Number(h) <= MAX_H)) {
++        add(Number(h) === 0 ? 'error' : 'warning', 'offsetRange', i, { h: `H${Number(h)}` });
++      } else if (!opts.fanuc && h !== undefined && !h.startsWith('#') && tool !== null && Number(h) !== Number(tool)) {
+         add('warning', 'offsetMismatch', i, { h: `H${Number(h)}`, t: `T${Number(tool)}` });
+       }
+     }
+@@ -185,7 +191,7 @@ export function checkProgram(code: string, opts: { fanuc: boolean; toolDepths?:
+ 
+   findings.sort((a, b) => (a.level === b.level ? (a.line ?? 1e9) - (b.line ?? 1e9) : a.level === 'error' ? -1 : 1));
+   const errors = findings.filter((f) => f.level === 'error').length;
+-  const found = new Set<SafetyCode>(findings.map((f) => (f.code === 'offsetMismatch' ? 'noOffset' : f.code)));
++  const found = new Set<SafetyCode>(findings.map((f) => (f.code === 'offsetMismatch' || f.code === 'offsetRange' ? 'noOffset' : f.code)));
+   const ran = SAFETY_CHECKS.filter((c) => c !== 'tooBig' || !!opts.memoryKb);
+   return { findings, errors, warnings: findings.length - errors, passed: ran.filter((c) => !found.has(c)), ran };
+ }
+diff --git a/tests/engineId.test.ts b/tests/engineId.test.ts
+index 3cb5f9d..d4d6835 100644
+--- a/tests/engineId.test.ts
++++ b/tests/engineId.test.ts
+@@ -56,6 +56,29 @@ describe('machine identity given to the G-code engine', () => {
+     expect(run(engineMachineId('tr', { id: 'HAAS-2', brand: 'HAAS' }), FANUC_TOOLS, program)).toMatch(/Z50\. M08/);
+   });
+ 
++  it('spot drills: T4 only on HAAS-1 and T250550 only on the FANUCs, and only the machine\'s own pointeur of that number', () => {
++    const program = ['%', 'O1000', 'N4 T38 M6', 'N5 (2,3MM ZENTRIERBOHRER/38MM LANG / ZB_02.30_038_000_ALHS)', 'N6 G00 G43 H38 Z50. M08', 'N7 G98 G81 Z-.92 R2. F300.', 'N8 G80', 'N9 M30', '%'].join('\n');
++    const mill4: Tool = { id: 'm', number: 4, category: 'fraise', description: 'Fraise', diameter: 4, length: 33 };
++    const spot7: Tool = { id: 's', number: 7, category: 'pointeur', description: 'Pointeur', diameter: 2.3, length: 38 };
++    const tool = (machineId: string, tools: Tool[]) => analyzeGCode(program, tools, machineId).blocks[0].matchedTool?.number ?? null;
++    // Another country's HAAS, or HAAS-3: their own spot drill, never their T4 end mill.
++    expect(tool(engineMachineId('tr', { id: 'VF4', brand: 'HAAS' }), [mill4, spot7])).toBe(7);
++    expect(run(engineMachineId('tr', { id: 'VF4', brand: 'HAAS' }), [mill4, spot7], program)).toMatch(/N4 T7 M6[\s\S]*G43 H7 Z50\./);
++    expect(tool('HAAS-3', [mill4, spot7])).toBe(7);
++    // HAAS-1: T4 when it is its pointeur; a T4 end mill is never taken for one.
++    expect(tool('HAAS-1', [{ ...mill4, category: 'pointeur' }, spot7])).toBe(4);
++    expect(tool('HAAS-1', [mill4, spot7])).toBe(7);
++    // FANUC-2 (HAAS code, H offsets) without a 250550: its own pointeur, H7, never H250550.
++    expect(run('FANUC-2', [spot7], program)).toMatch(/T7 M6[\s\S]*G43 H7 Z50\./);
++    expect(tool('FANUC-1', FANUC_TOOLS)).toBe(250550);
++    // No such tool in the machine: nothing invented, the dialog asks.
++    for (const id of ['HAAS-1', 'FANUC-2', engineMachineId('tr', { id: 'VF4', brand: 'HAAS' })]) {
++      const a = analyzeGCode(program, [mill4], id);
++      expect(a.blocks[0].matchedTool, id).toBeNull();
++      expect(a.success, id).toBe(false);
++    }
++  });
++
+   it('pocket limits match the old hard-coded values for Morocco', () => {
+     expect(maxPocketsFor({ brand: 'HAAS', pockets: 41 })).toBe(41); // HAAS-1
+     expect(maxPocketsFor({ brand: 'FANUC', pockets: null })).toBe(21);
+diff --git a/tests/safetyCheck.test.ts b/tests/safetyCheck.test.ts
+index b1aa42f..f37a852 100644
+--- a/tests/safetyCheck.test.ts
++++ b/tests/safetyCheck.test.ts
+@@ -62,4 +62,14 @@ describe('program safety check', () => {
+     expect(codes(checkProgram(big, { fanuc: true, memoryKb: 512 }))).toContain('warning:tooBig@');
+     expect(checkProgram(big, { fanuc: false }).ran).not.toContain('tooBig');
+   });
++
++  it('finds an H offset outside 1-200 (H0 has no length at all: red)', () => {
++    const big = haasOk.replace('T4 M6 (POINTEUR)', 'T250550 M6').replace('G43 H4 Z50. M8', 'G43 H250550 Z50. M8');
++    const r = checkProgram(big, { fanuc: false });
++    expect(codes(r)).toEqual(['warning:offsetRange@6']);
++    expect(r.findings[0].params).toMatchObject({ h: 'H250550' });
++    expect(r.passed).not.toContain('noOffset');
++    expect(codes(checkProgram(haasOk.replace('G43 H7 Z50.', 'G43 H0 Z50.'), { fanuc: false }))).toEqual(['error:offsetRange@13']);
++    expect(codes(checkProgram(haasOk.replace('G43 H7 Z50.', 'G43 H200 Z50.').replace('T7 M6', 'T200 M6'), { fanuc: false }))).toEqual([]);
++  });
+ });
+-- 
+2.43.0
+

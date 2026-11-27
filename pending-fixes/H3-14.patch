@@ -1,0 +1,56 @@
+From d9296617406adb5da9a79c2889aa796bf5831ade Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:10:29 +0000
+Subject: [PATCH] Remapper: air machines switch the air jet off (M84 on its own
+ line) after each M09 of the program (finding H3-14)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/gcodeProcessor.ts  |  5 ++++-
+ tests/machineRules.test.ts | 13 +++++++++++++
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..dc8ebad 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -42,7 +42,10 @@ export function coolantNeed(code: string): 'air' | 'lubricant' | null {
+  */
+ export function applyMachineCoolant(lines: string[], machineId: string): string[] {
+   if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
+-    return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
++    const air = lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
++    // The air jet goes off (M84, its own line) right after each M09 (the shop's own air programs have no M09).
++    const m84 = (l = '') => /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l));
++    return air.flatMap((l, i) => (/(?<![A-Z0-9.])M0?9(?![0-9.])/i.test(codeOnly(l)) && !m84(l) && !m84(air[i + 1]) ? [l, 'M84'] : [l]));
+   }
+   if (machineId !== 'HAAS-1' && machineId !== 'HAAS-5') return lines;
+   if (lines.some((l) => l !== '__REMOVE_ME__' && /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l)))) return lines;
+diff --git a/tests/machineRules.test.ts b/tests/machineRules.test.ts
+index 2eec4a3..6427472 100644
+--- a/tests/machineRules.test.ts
++++ b/tests/machineRules.test.ts
+@@ -57,6 +57,19 @@ describe('machine rules', () => {
+     expect(out('HAAS-4')).toMatch(/G43 H\d+ Z50\. M83/);
+     expect(out('HAAS-4')).not.toMatch(/M84/);
+   });
++
++  it('air machines switch the air jet off (M84, its own line) wherever the program switches the coolant off (M09)', () => {
++    const src = [header('BASE POM / 30X20X10'), 'N6 T3 M6', 'N7 G00 G43 H03 Z50. M08', 'N8 G01 X10. F300.', 'N9 M05', 'N10 M09 (M09 COOLANT OFF)', 'N11 T4 M6', 'N12 G0 G53 G49 Y0 Z0 M9', 'N13 M89', 'N14 M30', '%'].join('\n').split('\n');
++    for (const id of ['HAAS-2', 'HAAS-4']) {
++      const out = applyMachineCoolant(src, id);
++      expect(out.slice(out.indexOf('N10 M09 (M09 COOLANT OFF)'), out.indexOf('N11 T4 M6'))).toEqual(['N10 M09 (M09 COOLANT OFF)', 'M84']);
++      expect(out.slice(out.indexOf('N12 G0 G53 G49 Y0 Z0 M9'), out.indexOf('N13 M89'))).toEqual(['N12 G0 G53 G49 Y0 Z0 M9', 'M84']);
++      expect(out.filter((l) => l === 'M84')).toHaveLength(2);
++      expect(applyMachineCoolant(out, id)).toEqual(out);
++    }
++    // Lubricant machines: nothing added at the M09.
++    expect(applyMachineCoolant(src, 'HAAS-1').filter((l) => /M84/.test(l))).toEqual(['N4 G40 G17 G53 G49 G80 G90 M84']);
++  });
+ });
+ 
+ describe('CAM AI and Process ask the same of a material', () => {
+-- 
+2.43.0
+

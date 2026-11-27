@@ -1,0 +1,59 @@
+From e0e234e317c01c6ee048d3ea4dc6e3e074cae3b3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:17:27 +0000
+Subject: [PATCH] History: CSV dates in the app's format from the record's
+ time, not the PC's text (finding H5-12)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/HistoryView.tsx |  3 ++-
+ tests/historyCsv.test.ts       | 22 ++++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+ create mode 100644 tests/historyCsv.test.ts
+
+diff --git a/src/components/HistoryView.tsx b/src/components/HistoryView.tsx
+index 9fddd07..50d4583 100644
+--- a/src/components/HistoryView.tsx
++++ b/src/components/HistoryView.tsx
+@@ -36,7 +36,8 @@ export function historyToCsv(records: HistoryRecord[], machineLabel: (id: string
+   const { sep, num } = csvDialect(i18n.language);
+   const rows = [headers.join(sep)];
+   for (const record of records) {
+-    const base = [record.date, record.user || t('history:shared.unknownUser'), (record.machine && machineLabel(record.machine)) || '-', record.originalFileName, record.exportedFileName];
++    // The time in the app's format; record.date is the text of the PC that made the record (old records have only that).
++    const base = [record.timestamp ? fmtDateTime(record.timestamp) : record.date, record.user || t('history:shared.unknownUser'), (record.machine && machineLabel(record.machine)) || '-', record.originalFileName, record.exportedFileName];
+     if (!record.changes.length) {
+       rows.push([...base, '-', '-', '-', '-', '-', '-', '-', '-', '-'].map(csvCell).join(sep));
+       continue;
+diff --git a/tests/historyCsv.test.ts b/tests/historyCsv.test.ts
+new file mode 100644
+index 0000000..a840e00
+--- /dev/null
++++ b/tests/historyCsv.test.ts
+@@ -0,0 +1,22 @@
++import { describe, expect, it } from 'vitest';
++import { historyToCsv } from '../src/components/HistoryView';
++import { fmtDateTime } from '../src/i18n/format';
++import type { HistoryRecord } from '../src/types';
++
++// History CSV: the date in the app's format from the record's time, not the text of the PC that made it.
++const record = (over: Partial<HistoryRecord>): HistoryRecord =>
++  ({ id: 'r1', date: '11/26/2026, 11:05:54 PM', user: 'ali', machine: 'HAAS-1', originalFileName: 'P1.NC', exportedFileName: 'P1.NC', changes: [], ...over }) as HistoryRecord;
++
++describe('history CSV date', () => {
++  it('formats the record time like the screen', () => {
++    const ts = Date.UTC(2026, 10, 26, 22, 5, 54);
++    const row = historyToCsv([record({ timestamp: ts })]).split('\n')[1];
++    expect(row.startsWith(`"${fmtDateTime(ts)}",`)).toBe(true);
++    expect(row).not.toContain('PM');
++  });
++
++  it('keeps the stored text for an old record without a time', () => {
++    const row = historyToCsv([record({ timestamp: undefined })]).split('\n')[1];
++    expect(row.startsWith('"11/26/2026, 11:05:54 PM",')).toBe(true);
++  });
++});
+-- 
+2.43.0
+

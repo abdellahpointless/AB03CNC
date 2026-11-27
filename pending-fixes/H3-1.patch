@@ -1,0 +1,63 @@
+From 82c3ec8962d8694fee7e3b58dd66f3ef07ff24f2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:01:44 +0000
+Subject: [PATCH] Remapper: Windows (CRLF) programs are read with one line
+ ending, so the remap notes stay on their line (finding H3-1)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CodeEditorPair.tsx | 2 +-
+ src/lib/gcodeProcessor.ts         | 3 ++-
+ tests/gcode.test.ts               | 8 ++++++++
+ 3 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/CodeEditorPair.tsx b/src/components/CodeEditorPair.tsx
+index e7731e6..584926d 100644
+--- a/src/components/CodeEditorPair.tsx
++++ b/src/components/CodeEditorPair.tsx
+@@ -427,7 +427,7 @@ export default function CodeEditorPair({
+     reader.onload = (e) => {
+       const text = e.target?.result;
+       if (typeof text === 'string') {
+-        const fileLines = text.split('\n');
++        const fileLines = text.replace(/\r\n?/g, '\n').split('\n');
+         const { lines: processedLines, addedCount } = applyG53BeforeG52(fileLines);
+         setSourceCode(processedLines.join('\n'));
+         // A new program: its 3D model button lights up (the one given before was for another program).
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..028400e 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -211,7 +211,8 @@ function getMaterialPriority(t: Tool, detectedMaterial: Material | undefined): n
+ }
+ 
+ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): { success: boolean; blocks: ToolChangeBlock[]; lines: string[]; detectedMaterial?: Material } {
+-  const safeInput = typeof input === 'string' ? input : String(input || '');
++  // Windows (CRLF) files: one line ending, or every note the remapper appends lands after a \r.
++  const safeInput = (typeof input === 'string' ? input : String(input || '')).replace(/\r\n?/g, '\n');
+   const detectedMaterial = detectMaterial(safeInput);
+   const lines = safeInput.split('\n');
+   const blocks: ToolChangeBlock[] = [];
+diff --git a/tests/gcode.test.ts b/tests/gcode.test.ts
+index b110752..25419de 100644
+--- a/tests/gcode.test.ts
++++ b/tests/gcode.test.ts
+@@ -60,6 +60,14 @@ describe('analysis', () => {
+     expect(blocks[0].matchedTool?.category).toBe('foret');
+     expect(blocks[0].matchedTool?.diameter).toBe(4);
+   });
++
++  it('reads Windows (CRLF) programs: the remap notes stay on their line, one line ending in the output', () => {
++    const src = ['%', 'O1', 'N10 T1 M6', 'N11 (SB_04.00_045_000_ALHS)', 'N12 G00 G43 H1 Z50. M08', 'N13 G81 Z-12. F100.', 'N14 M30', '%'].join('\r\n');
++    const { code } = remap(src, haas2, 'HAAS-2');
++    expect(code).not.toMatch(/\r/);
++    expect(code).toMatch(/^N10 T\d+ M6 \(AUTO-REMAP: T\d+ foret\)$/m);
++    expect(code).toMatch(/^N12 G00 G43 H\d+ Z50\. M83 \(AI-MOD: OFFSET H\d+\)$/m);
++  });
+ });
+ 
+ describe('code generation', () => {
+-- 
+2.43.0
+

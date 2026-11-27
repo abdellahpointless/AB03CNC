@@ -1,0 +1,37 @@
+From b9ff5fd3f72f6bdce473475f1f55ad94f56463d0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:25:57 +0000
+Subject: [PATCH] Preventive: the cales and vise status lines wrap inside the
+ hover side panel instead of running past it (finding H4-4)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/index.css | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/index.css b/src/index.css
+index ab7bc46..8c3a270 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -1284,7 +1284,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3);
+   gap: 5px;
+   font-size: 12px;
+   color: var(--text-secondary);
+-  white-space: nowrap;
++  text-align: center; /* wraps in the 168 px side panel (Turkish is longer) */
+ }
+ .cales-dot {
+   display: inline-block;
+@@ -1372,7 +1372,7 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3);
+   .vise-thumb:hover img { transform: translateY(-3px) scale(1.04); }
+ }
+ .vise-thumb-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+-.vise-thumb-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
++.vise-thumb-status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+ .vise-thumb .cales-dot { background: #3ddc84; box-shadow: 0 0 8px rgba(61, 220, 132, 0.6); }
+ .vise-thumb.is-damaged { border-color: rgba(255, 77, 79, 0.5); }
+ .vise-thumb.is-damaged .cales-dot { background: #ff4d4f; box-shadow: 0 0 8px rgba(255, 77, 79, 0.55); }
+-- 
+2.43.0
+

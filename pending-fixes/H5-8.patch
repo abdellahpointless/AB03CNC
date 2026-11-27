@@ -1,0 +1,160 @@
+From c21f1b0867cc8d419f0e2ef7a695ea596155e1ee Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:04:56 +0000
+Subject: [PATCH] i18n: English says 'parallels' on the 3D screens and in CAM,
+ 'cales' only for the Cales box (finding H5-8)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/cam.ts      |  6 +++---
+ src/i18n/locales/en/remapper.ts | 24 ++++++++++++------------
+ src/lib/cam/news.ts             |  2 +-
+ src/lib/whatsNew.ts             |  2 +-
+ tests/enParallels.test.ts       | 13 +++++++++++++
+ 5 files changed, 30 insertions(+), 17 deletions(-)
+ create mode 100644 tests/enParallels.test.ts
+
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 5f63d1f..9f4e884 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -602,8 +602,8 @@ const cam = {
+       engraving: 'Engraving',
+     },
+     gouge: 'The program cuts into the part ({{mm3}} mm³ too much). Look at it in the toolpath viewer.',
+-    intoCale_one: '{{count}} spot where a tool still goes into a cale under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
+-    intoCale_other: '{{count}} spots where a tool still goes into a cale under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
++    intoCale_one: '{{count}} spot where a tool still goes into a parallel under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
++    intoCale_other: '{{count}} spots where a tool still goes into a parallel under the part (a hole drilled through over it). Download is blocked: lay the part another way.',
+     collisions_one: '{{count}} collision in the simulation. Look at it in the toolpath viewer.',
+     collisions_other: '{{count}} collisions in the simulation. Look at them in the toolpath viewer.',
+     intoStop_one: '{{count}} tool run into the X stop below the jaw tops in the simulation (the toolpath viewer does not mark it, and draws the stop by the simulated part, up to 0.5 mm from where the program puts it). Download is blocked.',
+@@ -657,7 +657,7 @@ const cam = {
+     view: 'Open in the toolpath viewer',
+     download: 'Download',
+     send: 'Send to the remapper',
+-    locked: 'Download and Send unlock once every check passes: like the model (99 %), no collision, no tool into a cale, nothing cut out of the part, and the vise holds it safely.',
++    locked: 'Download and Send unlock once every check passes: like the model (99 %), no collision, no tool into a parallel, nothing cut out of the part, and the vise holds it safely.',
+   },
+ };
+ export default cam;
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..8541b87 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -204,12 +204,12 @@ const remapper = {
+     collisionAdmin_one: '{{count}} collision: check it before running. As an admin you can still copy and download.',
+     collisionAdmin_other: '{{count}} collisions: check them before running. As an admin you can still copy and download.',
+     collisionOpen: 'See it in the toolpath',
+-    caleWarning_one: 'Careful: {{count}} spot where a tool goes into a cale. Move that cale to a better place before running (export still allowed).',
++    caleWarning_one: 'Careful: {{count}} spot where a tool goes into a parallel. Move that parallel to a better place before running (export still allowed).',
+     reject: {
+-      cale: 'Check line {{line}}: the program asks for a {{mm}} mm cale and the cales box has none. It may be a spacer, or the part resting on the jaw tops. Export is still allowed.',
++      cale: 'Check line {{line}}: the program asks for {{mm}} mm parallels and the cales box has none. It may be a spacer, or the part resting on the jaw tops. Export is still allowed.',
+       size: 'Check line {{line}}: the part should be {{want}} mm in {{axis}}; the part as cut is {{found}} mm there. Check the flip. Export is still allowed.',
+     },
+-    caleWarning_other: 'Careful: {{count}} spots where a tool goes into a cale. Move those cales to a better place before running (export still allowed).',
++    caleWarning_other: 'Careful: {{count}} spots where a tool goes into a parallel. Move those parallels to a better place before running (export still allowed).',
+     extractTitle: 'Download the remapped G-code file',
+     stale: 'The program or machine changed after this code was generated.',
+     reanalyze: 'Re-analyze',
+@@ -283,15 +283,15 @@ const remapper = {
+     viewKind: { top: 'Top', front: 'Front', iso: '3/4' },
+     material: { plain: '', alu: 'Aluminium', steel: 'Steel', brass: 'Brass (MS)', pom: 'POM', fh: 'FH (layered wood)', fhThin: 'FH (pressed wood)', pcgf: 'PC GF' },
+     openHitTitle: 'A collision: see where it happens in the toolpath',
+-    openCaleTitle: 'A tool goes into a cale: see where, and move the cale',
++    openCaleTitle: 'A tool goes into a parallel: see where, and move the parallel',
+     seeThrough: 'See-through clamp',
+-    seeThroughHelp: 'Make the vise, the clamp and the cales transparent to see the part through them',
++    seeThroughHelp: 'Make the vise, the clamp and the parallels transparent to see the part through them',
+     reject: {
+       title: 'Check this setup',
+-      cale: 'The program asks for a {{mm}} mm cale. The cales box has no {{mm}} mm pair: it may be a spacer, or the part resting on the jaw tops. Check before clamping.',
++      cale: 'The program asks for {{mm}} mm parallels. The cales box has no {{mm}} mm pair: it may be a spacer, or the part resting on the jaw tops. Check before clamping.',
+       size: 'The program clamps the part at {{want}} mm in {{axis}}, but the part as it is after the turn measures {{found}} mm there at the closest. The flip or the size written may be wrong.',
+       line: 'Setup {{n}}, line {{line}}',
+-      badgeCale: 'Rejected: {{mm}} mm cale not in the box',
++      badgeCale: 'Rejected: {{mm}} mm parallels not in the box',
+       badgeSize: 'Rejected: setup {{n}} is not {{want}} mm in {{axis}}',
+     },
+     conflict: {
+@@ -408,7 +408,7 @@ const remapper = {
+     jumping: 'Cutting the part up to here…',
+     measureHoleDepth: '{{depth}} mm deep',
+     measureNotParallel: 'These two do not face the same way: pick faces or holes that are parallel.',
+-    jumpTo: 'Go to setup {{n}}: the turn and the cales',
++    jumpTo: 'Go to setup {{n}}: the turn and the parallels',
+     measureMode: { faces: 'Faces', points: 'Points', diameter: 'Diameter', axes: 'Axes' },
+     measureHint: {
+       faces: 'Click two flat faces: the distance between them.',
+@@ -436,7 +436,7 @@ const remapper = {
+       sizeX: '{{x}} in X',
+       support: 'On {{mm}} mm parallels',
+       restDepth: 'Resting on the parallels {{mm}} mm below the top',
+-      onJaw: 'On the jaw tops, no cales: {{mm}} mm of the part above the jaws',
++      onJaw: 'On the jaw tops, no parallels: {{mm}} mm of the part above the jaws',
+       rotation: 'Turn the part {{deg}}° around {{axis}}',
+       back: 'Back side',
+       front: 'Front side',
+@@ -457,9 +457,9 @@ const remapper = {
+     jawHit: 'T{{t}} goes {{mm}} mm below the jaw top',
+     holderJawHit: 'T{{t}} holder goes {{mm}} mm below the jaw top',
+     holderPartHit: 'T{{t}} holder goes {{mm}} mm into the part',
+-    caleHit: 'T{{t}} goes {{mm}} mm into a cale: move it',
+-    caleHits_one: '{{count}} cale in the way',
+-    caleHits_other: '{{count}} cales in the way',
++    caleHit: 'T{{t}} goes {{mm}} mm into a parallel: move it',
++    caleHits_one: '{{count}} parallel in the way',
++    caleHits_other: '{{count}} parallels in the way',
+     spacerHit: 'T{{t}} cuts {{mm}} mm into the spacer (fine: it is there for that)',
+     spacerHits_one: '{{count}} cut into the spacer, as planned',
+     spacerHits_other: '{{count}} cuts into the spacer, as planned',
+diff --git a/src/lib/cam/news.ts b/src/lib/cam/news.ts
+index 383fb04..305069e 100644
+--- a/src/lib/cam/news.ts
++++ b/src/lib/cam/news.ts
+@@ -171,7 +171,7 @@ export const CAM_RELEASES: Release[] = [
+     en: {
+       title: 'CAM AI: the program written from the 3D model (beta)',
+       items: [
+-        'New CAM AI tab: give it the part’s 3D PDF or STL, pick the machine and the material, and it writes the program with that machine’s tools, including the setups, the cales and the M0 texts in the shop’s style.',
++        'New CAM AI tab: give it the part’s 3D PDF or STL, pick the machine and the material, and it writes the program with that machine’s tools, including the setups, the parallels and the M0 texts in the shop’s style.',
+         'Rpm, feeds and depths per pass are learned from the shop’s own programs. An admin can set each machine’s limits in Admin › Machines.',
+         'Every program is simulated and compared with the model. Download and Send to the remapper unlock only when the part comes out 99 % like the model with no collision. Tools missing from the machine are listed.',
+         'Every program CAM AI makes, and every program compared with its model in the toolpath viewer, goes into the learning records (Admin › Backup and data), so CAM AI can learn the shop’s parts.',
+diff --git a/src/lib/whatsNew.ts b/src/lib/whatsNew.ts
+index e7545ca..2ea94b1 100644
+--- a/src/lib/whatsNew.ts
++++ b/src/lib/whatsNew.ts
+@@ -143,7 +143,7 @@ export const RELEASES: Release[] = [
+     en: {
+       title: 'Toolpath viewer',
+       items: [
+-        'The Toolpath button in the remapper shows the program in 3D: every setup, the turns, the vise and the cales.',
++        'The Toolpath button in the remapper shows the program in 3D: every setup, the turns, the vise and the parallels.',
+         'The part is cut as the tools move. Play it, or jump to the end or to a setup change.',
+         'Weak spots: walls under 0.5 mm stand out in colour.',
+         'Measure the part: two faces, two points, a hole’s Ø, or the distance between two holes.',
+diff --git a/tests/enParallels.test.ts b/tests/enParallels.test.ts
+new file mode 100644
+index 0000000..bfd193f
+--- /dev/null
++++ b/tests/enParallels.test.ts
+@@ -0,0 +1,13 @@
++import { describe, expect, it } from 'vitest';
++import enRemapper from '../src/i18n/locales/en/remapper';
++import enCam from '../src/i18n/locales/en/cam';
++
++// The 3D screens and CAM say "parallels"; "cales" stays the name of the Cales box (explained once).
++const texts = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(texts) : []);
++
++describe('English word for the parallels', () => {
++  it('is "parallels" in the remapper and CAM texts', () => {
++    const all = [...texts(enRemapper), ...texts(enCam)].map((s) => s.replace(/\{\{cale\}\}|cales box|\(cales\)/gi, ''));
++    expect(all.filter((s) => /\bcales?\b/i.test(s))).toEqual([]);
++  });
++});
+-- 
+2.43.0
+

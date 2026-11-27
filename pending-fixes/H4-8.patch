@@ -1,0 +1,46 @@
+From 380e55bd5081a4af6ce00909dfb4137d7ba7d2f7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:29:35 +0000
+Subject: [PATCH] Tools: the header's machine list and buttons wrap on a phone;
+ Import Excel and Add Tool keep their whole label and icon (finding H4-8)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolDatabase.tsx | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/ToolDatabase.tsx b/src/components/ToolDatabase.tsx
+index 0c21fd7..7c81822 100644
+--- a/src/components/ToolDatabase.tsx
++++ b/src/components/ToolDatabase.tsx
+@@ -216,7 +216,7 @@ export default function ToolDatabase({
+           </p>
+         </div>
+         
+-        <div className="flex items-center gap-3">
++        <div className="flex flex-wrap items-center gap-3">
+           <div className="w-48">
+             <select 
+               aria-label={t('common:a11y.machine')}
+@@ -240,7 +240,7 @@ export default function ToolDatabase({
+           {user?.role === 'ADMIN' && connection !== 'offline' && (
+             <button
+               onClick={() => setShowImport(true)}
+-              className="btn-secondary text-xs py-2 px-4 whitespace-nowrap"
++              className="btn-secondary text-xs py-2 px-4 whitespace-nowrap shrink-0"
+               title={t('header.importExcelHint')}
+             >
+               <FileSpreadsheet size={15} className="text-[var(--green-500)]" />
+@@ -251,7 +251,7 @@ export default function ToolDatabase({
+           {!isAdding && machine && (
+             <button
+               onClick={openAdd}
+-              className="btn-primary text-xs py-2 px-4 whitespace-nowrap"
++              className="btn-primary text-xs py-2 px-4 whitespace-nowrap shrink-0"
+             >
+               <Plus size={15} />
+               <span>{t('header.addTool')}</span>
+-- 
+2.43.0
+

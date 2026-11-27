@@ -1,0 +1,53 @@
+From 0d15474da71d2662cc672fc4edfb611d845f0722 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:31:16 +0000
+Subject: [PATCH] i18n: Turkish '3B model' for the 3D model button and its PDF
+ messages (finding H4-11)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/tr/data.ts     | 2 +-
+ src/i18n/locales/tr/remapper.ts | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/i18n/locales/tr/data.ts b/src/i18n/locales/tr/data.ts
+index 1d19e35..4f38f9b 100644
+--- a/src/i18n/locales/tr/data.ts
++++ b/src/i18n/locales/tr/data.ts
+@@ -6,7 +6,7 @@ const data: Translation<typeof en> = {
+   lessons: {
+     title: 'Takım yolu öğrenme kayıtları',
+     description:
+-      'Takım yolunda bir program 3D modeliyle her kontrol edildiğinde uygulama modeli, programı, farkları ve her operasyonun nasıl işlendiğini saklar; dönüş aramasından sonra ayrıca M0 açıklamalarının ne dediğini ve parçayı doğru yapan dönüşleri. Uygulamayı ve dönüşlerin okunmasını geliştirmek için bir dönemin kayıtlarını indirip dosyayı gönderin.',
++      'Takım yolunda bir program 3B modeliyle her kontrol edildiğinde uygulama modeli, programı, farkları ve her operasyonun nasıl işlendiğini saklar; dönüş aramasından sonra ayrıca M0 açıklamalarının ne dediğini ve parçayı doğru yapan dönüşleri. Uygulamayı ve dönüşlerin okunmasını geliştirmek için bir dönemin kayıtlarını indirip dosyayı gönderin.',
+     from: 'Başlangıç',
+     to: 'Bitiş',
+     progress: '{{count}} kayıt okundu…',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..01bd4cb 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -347,7 +347,7 @@ const remapper: Translation<typeof en> = {
+       cutHelp: 'Modelde olan malzeme: yanlış yerde veya fazla derin bir kesim',
+       size: '{{x}} × {{y}} × {{z}} mm',
+       byLine: 'satır {{n}} · T{{t}}',
+-      add: '3D model',
++      add: '3B model',
+       addHelp: 'Parçanın 3D PDF, STEP veya STL dosyası: takım yolu programı gerçek parçayla karşılaştırır',
+       import: 'Model içe aktar',
+       importHelp: 'Parçanın 3D PDF, STEP veya STL dosyasını yükleyin: karşılaştırmak için simüle edilen parçanın üzerine yerleştirilir',
+@@ -360,8 +360,8 @@ const remapper: Translation<typeof en> = {
+       remove: 'Modeli kaldır',
+       errors: {
+         tooBig: 'dosya çok büyük (en fazla 50 MB)',
+-        noModel: 'bu PDF’de 3D model yok',
+-        compressed: 'bu PDF’deki 3D model uygulamanın henüz okuyamadığı bir biçimde: STL dosyasını kullanın',
++        noModel: 'bu PDF’de 3B model yok',
++        compressed: 'bu PDF’deki 3B model uygulamanın henüz okuyamadığı bir biçimde: STL dosyasını kullanın',
+         unreadable: 'bu dosya 3D PDF, STEP veya STL olarak okunamıyor',
+         notPart: 'bu model bu parça değil (boyutu simüle edilen parçanınkiyle aynı değil)',
+       },
+-- 
+2.43.0
+

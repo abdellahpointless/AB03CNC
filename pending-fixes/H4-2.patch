@@ -1,0 +1,57 @@
+From 9b7b2b0f63af6eb06b41f144f2afd62b1939344a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:21:58 +0000
+Subject: [PATCH] Style: dark color-scheme on html only, so light mode gets
+ light date fields and checkboxes (finding H4-2)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/index.css             |  3 ++-
+ tests/colorScheme.test.ts | 13 +++++++++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+ create mode 100644 tests/colorScheme.test.ts
+
+diff --git a/src/index.css b/src/index.css
+index ab7bc46..7c15d80 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -5,6 +5,8 @@
+ @custom-variant dark (&:where(.dark, .dark *));
+ 
+ :root {
++  /* On html only (body inherits it), so html.light gives native controls (date icons, checkboxes) light colours. */
++  color-scheme: dark;
+   /* Country series colours for charts (validated: CVD and contrast checks pass on both surfaces). */
+   --series-ma:      #3987e5;
+   --series-tr:      #d95926;
+@@ -120,7 +122,6 @@ html, body {
+   min-height: 100vh;
+   margin: 0;
+   padding: 0;
+-  color-scheme: dark;
+   overflow-x: hidden;
+ }
+ 
+diff --git a/tests/colorScheme.test.ts b/tests/colorScheme.test.ts
+new file mode 100644
+index 0000000..6922615
+--- /dev/null
++++ b/tests/colorScheme.test.ts
+@@ -0,0 +1,13 @@
++import { readFileSync } from 'node:fs';
++import { describe, expect, it } from 'vitest';
++
++// body inherits color-scheme from html; a dark one on body kept native controls dark in light mode.
++describe('colour scheme', () => {
++  it('is set on html only, so html.light reaches date fields and checkboxes', () => {
++    const css = readFileSync('src/index.css', 'utf8');
++    for (const rule of css.match(/(^|\})\s*[^{}]*\bbody\b[^{}]*\{[^}]*\}/g) ?? []) {
++      if (!/printing-qr/.test(rule)) expect(rule).not.toMatch(/color-scheme/);
++    }
++    expect(css).toMatch(/html\.light\s*\{[^}]*color-scheme:\s*light/);
++  });
++});
+-- 
+2.43.0
+

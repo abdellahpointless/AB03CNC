@@ -1,0 +1,46 @@
+From 859835493dca7a70d4238d0afd7db88c483bf6bb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:26:55 +0000
+Subject: [PATCH] Preventive: the problem form's Send and Cancel buttons keep
+ their whole word; they wrap under the field in the narrow column (finding
+ H4-5)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PreventiveActions.tsx | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/src/components/PreventiveActions.tsx b/src/components/PreventiveActions.tsx
+index 5cdf18e..0521b6d 100644
+--- a/src/components/PreventiveActions.tsx
++++ b/src/components/PreventiveActions.tsx
+@@ -697,20 +697,21 @@ function MachineSheet({
+       transition={{ duration: 0.22, ease: EASE_OUT }}
+       className="overflow-hidden"
+     >
+-      <div className="flex gap-2 pt-2">
++      {/* Wraps in the narrow column: the buttons go under the field rather than being cut. */}
++      <div className="flex flex-wrap gap-2 pt-2">
+         <input
+           autoFocus
+-          className="aurora-input flex-1 text-xs"
++          className="aurora-input flex-1 min-w-[10rem] text-xs"
+           placeholder={t('problem.placeholder')}
+           value={problemText}
+           maxLength={300}
+           onChange={(e) => setProblemText(e.target.value)}
+           onKeyDown={(e) => e.key === 'Enter' && sendProblem()}
+         />
+-        <button className="btn-danger text-xs py-1.5 px-3" disabled={!!busy} onClick={sendProblem}>
++        <button className="btn-danger text-xs py-1.5 px-3 shrink-0 whitespace-nowrap" disabled={!!busy} onClick={sendProblem}>
+           {t('problem.send')}
+         </button>
+-        <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setProblemFor(null)}>
++        <button className="btn-secondary text-xs py-1.5 px-3 shrink-0 whitespace-nowrap" onClick={() => setProblemFor(null)}>
+           {t('common:actions.cancel')}
+         </button>
+       </div>
+-- 
+2.43.0
+

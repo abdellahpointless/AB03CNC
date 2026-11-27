@@ -1,0 +1,195 @@
+From d50ed9f91e5177c0b900b79bc17b71683639eeb7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:49:24 +0000
+Subject: [PATCH] Search: Turkish capitals match their small letters in the
+ tool and history searches (finding H5-1)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolDatabase.tsx     |  6 +--
+ src/i18n/format.ts                  |  5 +++
+ tests/searchFold.test.ts            | 21 +++++++++++
+ worker/routes/history.ts            | 23 +++++++++---
+ worker/tests/history-search.test.ts | 57 +++++++++++++++++++++++++++++
+ 5 files changed, 104 insertions(+), 8 deletions(-)
+ create mode 100644 tests/searchFold.test.ts
+ create mode 100644 worker/tests/history-search.test.ts
+
+diff --git a/src/components/ToolDatabase.tsx b/src/components/ToolDatabase.tsx
+index 0c21fd7..72dcf48 100644
+--- a/src/components/ToolDatabase.tsx
++++ b/src/components/ToolDatabase.tsx
+@@ -7,7 +7,7 @@ import { ToolExcelImport } from './ToolExcelImport';
+ import { useSync } from '../contexts/SyncContext';
+ import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon, CenterDrillIcon, FaceMillIcon, TapIcon, EmptyIcon } from './ToolIcons';
+ import { useT } from '../i18n';
+-import { locale } from '../i18n/format';
++import { locale, searchFold } from '../i18n/format';
+ 
+ interface ToolDatabaseProps {
+   selectedMachine?: MachineId;
+@@ -69,10 +69,10 @@ export default function ToolDatabase({
+     });
+   }, [rawTools]);
+   const [query, setQuery] = useState('');
+-  const q = query.trim().toLowerCase();
++  const q = searchFold(query.trim());
+   const shown = q
+     ? toolsForMachine.filter((tool) =>
+-        [`t${tool.number}`, tool.description ?? '', tool.category, catName(tool.category), tool.diameter ? String(tool.diameter) : ''].some((s) => s.toLowerCase().includes(q)),
++        [`t${tool.number}`, tool.description ?? '', tool.category, catName(tool.category), tool.diameter ? String(tool.diameter) : ''].some((s) => searchFold(s).includes(q)),
+       )
+     : toolsForMachine;
+ 
+diff --git a/src/i18n/format.ts b/src/i18n/format.ts
+index 9cb3ca9..1f9fb67 100644
+--- a/src/i18n/format.ts
++++ b/src/i18n/format.ts
+@@ -10,6 +10,11 @@ export function locale(): string {
+   return i18n.language === 'tr' ? 'tr-TR' : 'en-GB';
+ }
+ 
++/** Text for a case-blind search, the same in both languages: KILAVUZ = kılavuz, FİNİŞ = finiş = FINIŞ. */
++export function searchFold(s: string): string {
++  return s.replace(/[İI]/g, 'i').toLowerCase().replace(/ı/g, 'i');
++}
++
+ export function fmtDate(ts: number | string | Date | null | undefined): string {
+   if (ts === null || ts === undefined || ts === '') return '-';
+   const d = new Date(ts);
+diff --git a/tests/searchFold.test.ts b/tests/searchFold.test.ts
+new file mode 100644
+index 0000000..6a4e85a
+--- /dev/null
++++ b/tests/searchFold.test.ts
+@@ -0,0 +1,21 @@
++import { describe, expect, it } from 'vitest';
++import { searchFold } from '../src/i18n/format';
++
++// The tool search: Turkish capitals find their small letters, whatever the page language.
++describe('searchFold', () => {
++  const finds = (text: string, query: string) => searchFold(text).includes(searchFold(query));
++
++  it('matches Turkish capitals and small letters', () => {
++    expect(finds('Kılavuz M6', 'KILAVUZ')).toBe(true);
++    expect(finds('Kılavuz M6', 'kılavuz')).toBe(true);
++    expect(finds('Parmak freze finiş', 'FİNİŞ')).toBe(true);
++    expect(finds('Parmak freze finiş', 'FINIŞ')).toBe(true);
++    expect(finds('ÇAPAK ALMA', 'çapak')).toBe(true);
++  });
++
++  it('still matches plain English text and misses what is not there', () => {
++    expect(finds('Drill 8.5', 'DRILL')).toBe(true);
++    expect(finds('T12', 't12')).toBe(true);
++    expect(finds('Kılavuz M6', 'freze')).toBe(false);
++  });
++});
+diff --git a/worker/routes/history.ts b/worker/routes/history.ts
+index a8f0557..2149d55 100644
+--- a/worker/routes/history.ts
++++ b/worker/routes/history.ts
+@@ -187,8 +187,18 @@ export async function handleCreateHistory(ctx: Ctx): Promise<Response> {
+   return json({ ok: true });
+ }
+ 
+-function escapeLike(s: string): string {
+-  return s.replace(/[\\%_]/g, (c) => '\\' + c);
++/**
++ * "Contains q, any case" as a GLOB pattern. SQLite's LIKE ignores case for ASCII letters only, so
++ * 'çapak' missed 'ÇAPAK'; here every letter is a class of its cases, and I, İ, ı, i are one letter.
++ */
++function anyCaseGlob(q: string): string {
++  const one = (c: string): string => {
++    if (/[iıİI]/.test(c)) return '[iıİI]';
++    const cases = [...new Set([c, c.toLowerCase(), c.toUpperCase()])].filter((v) => [...v].length === 1);
++    if (cases.length > 1) return `[${cases.join('')}]`;
++    return /[*?[]/.test(c) ? `[${c}]` : c;
++  };
++  return `*${[...q].map(one).join('')}*`;
+ }
+ 
+ // GET /api/history?limit=&offset=&user=&q=
+@@ -208,10 +218,13 @@ export async function handleListHistory(ctx: Ctx): Promise<Response> {
+     binds.push(user);
+   }
+   if (q) {
+-    const like = `%${escapeLike(q)}%`;
++    const glob = anyCaseGlob(q);
+     const cols = ['original_file_name', 'exported_file_name', 'username', 'machine', 'changes'];
+-    where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(' OR ')})`);
+-    binds.push(...cols.map(() => like));
++    // D1 refuses a LIKE or GLOB pattern over 50 bytes (about 11 letters here).
++    // shortcut: a longer query uses instr(lower()), which ignores case for ASCII letters only; enough for long file names.
++    const short = new TextEncoder().encode(glob).length <= 50;
++    where.push(`(${cols.map((c) => (short ? `${c} GLOB ?` : `instr(lower(${c}), ?) > 0`)).join(' OR ')})`);
++    binds.push(...cols.map(() => (short ? glob : q.replace(/[A-Z]/g, (c) => c.toLowerCase()))));
+   }
+   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+ 
+diff --git a/worker/tests/history-search.test.ts b/worker/tests/history-search.test.ts
+new file mode 100644
+index 0000000..3b3c86f
+--- /dev/null
++++ b/worker/tests/history-search.test.ts
+@@ -0,0 +1,57 @@
++import { afterAll, beforeAll, describe, expect, it } from 'vitest';
++import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
++import { ensureSchema } from '../schema';
++import type { AuthedUser, Ctx } from '../context';
++import { handleListHistory } from '../routes/history';
++
++// History search: SQLite's LIKE ignores case for ASCII letters only, so Turkish capitals missed.
++let mf: Miniflare;
++let DB: D1Database;
++const admin: AuthedUser = { id: 'u-admin', username: 'chef', role: 'ADMIN' };
++
++beforeAll(async () => {
++  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, compatibilityDate: '2026-01-01', script: 'export default { fetch: () => new Response() }', d1Databases: ['DB'] }));
++  DB = (await mf.getD1Database('DB')) as unknown as D1Database;
++  await ensureSchema(DB, 'tr');
++  const add = (id: string, username: string, machine: string, file: string) =>
++    DB.prepare(
++      `INSERT INTO history (id, created_at, date_label, username, machine, original_file_name, exported_file_name, changes)
++       VALUES (?, 1, '-', ?, ?, ?, ?, '[]')`,
++    ).bind(id, username, machine, file, file).run();
++  await add('a', 'Çapak', 'HAAS-1', 'P100.NC');
++  await add('b', 'KILAVUZ', 'DMG-İKİ', 'P200.NC');
++  await add('c', 'ali', 'HAAS-2', 'p_100%.nc');
++  await add('d', 'ali', 'HAAS-2', 'Program for the second vise.nc');
++}, 60_000);
++afterAll(() => mf?.dispose());
++
++const search = async (q: string) => {
++  const url = new URL(`https://cnc.test/api/history?q=${encodeURIComponent(q)}`);
++  const res = await handleListHistory({ env: { DB, REGION: 'tr' } as Ctx['env'], request: new Request(url), url, params: {}, user: admin });
++  return ((await res.json()) as { records: { id: string }[] }).records.map((r) => r.id).sort();
++};
++
++describe('history search', () => {
++  it('ignores case for Turkish letters too', async () => {
++    expect(await search('çapak')).toEqual(['a']);
++    expect(await search('ÇAPAK')).toEqual(['a']);
++    expect(await search('kılavuz')).toEqual(['b']);
++    expect(await search('dmg-iki')).toEqual(['b']);
++  });
++
++  it('keeps ASCII case-blind and treats * ? [ % _ as plain text', async () => {
++    expect(await search('haas')).toEqual(['a', 'c', 'd']);
++    expect(await search('P_100%')).toEqual(['c']);
++    expect(await search('*')).toEqual([]);
++    expect(await search('[a]')).toEqual([]);
++    expect(await search('p?00')).toEqual([]);
++  });
++
++  // D1 refuses LIKE and GLOB patterns over 50 bytes.
++  it('takes a long query', async () => {
++    expect(await search('PROGRAM FOR THE SECOND VISE')).toEqual(['d']);
++    expect(await search('P100.NC from the first shift')).toEqual([]);
++    expect(await search('x'.repeat(100))).toEqual([]);
++    expect(await search('abcdefghjklm')).toEqual([]); // a GLOB of exactly 50 bytes
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,114 @@
+From 9e8d2c798f2e8f668eaf21f29882e8fcb702f7ac Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:00:39 +0000
+Subject: [PATCH] Server: the missing Turkish field names and messages, with a
+ test that every country message has its Turkish (finding H5-6)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ worker/i18n-tr.ts                     | 29 ++++++++++++++++++
+ worker/tests/i18n-tr-coverage.test.ts | 44 +++++++++++++++++++++++++++
+ 2 files changed, 73 insertions(+)
+ create mode 100644 worker/tests/i18n-tr-coverage.test.ts
+
+diff --git a/worker/i18n-tr.ts b/worker/i18n-tr.ts
+index a94f5c1..da881c7 100644
+--- a/worker/i18n-tr.ts
++++ b/worker/i18n-tr.ts
+@@ -47,6 +47,18 @@ const FIELD: Record<string, string> = {
+   Length: 'Uzunluk',
+   // parts
+   'SAP number': 'SAP numarası',
++  // alerts (safety override)
++  Machine: 'Tezgah',
++  Program: 'Program',
++  // toolpath learning records and lessons export
++  fileName: 'Dosya adı',
++  start: 'Başlangıç benzerliği',
++  match: 'Eşleşme oranı',
++  key: 'Kayıt anahtarı',
++  rel: 'Dönüş',
++  n: 'Adet',
++  from: 'Başlangıç tarihi',
++  to: 'Bitiş tarihi',
+ };
+ 
+ const field = (name: string): string => FIELD[name] ?? name;
+@@ -186,6 +198,23 @@ registerTurkish(
+     'status must be APPROVED or REJECTED': 'Durum APPROVED (onaylandı) veya REJECTED (reddedildi) olmalıdır.',
+     'ids must be a list of entry ids (max 200)': 'Kayıt kimlikleri bir liste olarak gönderilmelidir (en fazla 200).',
+     'Month filter must look like YYYY-MM': 'Ay filtresi YYYY-AA biçiminde olmalıdır (ör. 2026-10).',
++    'Invalid date range': 'Geçersiz tarih aralığı.',
++
++    // ---- routes/users.ts, analytics.ts, cales.ts ----
++    'toolpathBeta must be true or false, on its own': 'toolpathBeta tek başına ve true veya false olarak gönderilmelidir.',
++    'Invalid list of users': 'Geçersiz kullanıcı listesi.',
++    'present must be 0, 1 or 2': 'present 0, 1 veya 2 olmalıdır.',
++
++    // ---- routes/lessons.ts, lab.ts (toolpath learning records, tool data) ----
++    'The toolpath is not switched on for you.': 'Takım yolu sizin için açık değil.',
++    'kind must be turns or part': "kind 'turns' veya 'part' olmalıdır.",
++    'data must be an object': 'data bir nesne olmalıdır.',
++    'The record is too big.': 'Kayıt çok büyük.',
++    'Daily limit of learning records reached.': 'Günlük öğrenme kaydı sınırına ulaşıldı.',
++    'entries must be a list': 'Kayıtlar bir liste olarak gönderilmelidir.',
++    'rel must be a turn': 'rel bir dönüş olmalıdır.',
++    'Invalid tool': 'Geçersiz takım.',
++    'The tool database is full.': 'Takım veritabanı dolu.',
+   },
+   [
+     // ---- security.ts: password length ----
+diff --git a/worker/tests/i18n-tr-coverage.test.ts b/worker/tests/i18n-tr-coverage.test.ts
+new file mode 100644
+index 0000000..58174c5
+--- /dev/null
++++ b/worker/tests/i18n-tr-coverage.test.ts
+@@ -0,0 +1,44 @@
++import { readdirSync, readFileSync, statSync } from 'node:fs';
++import { join } from 'node:path';
++import { describe, expect, it } from 'vitest';
++import '../i18n-tr';
++import { translateMessage } from '../i18n';
++
++// Every fixed message and field name a Turkish country user can get from the server has its Turkish.
++// The master hub's own routes (master.ts, alerts.ts) are left out: they answer the master dashboard.
++const ROOT = join(__dirname, '..');
++const SKIP = /(^|\/)(tests|routes\/master\.ts|routes\/alerts\.ts|i18n(-tr)?\.ts)/;
++const files: string[] = [];
++const walk = (dir: string) => {
++  for (const name of readdirSync(dir)) {
++    const p = join(dir, name);
++    const rel = p.slice(ROOT.length + 1);
++    if (SKIP.test(rel)) continue;
++    if (statSync(p).isDirectory()) walk(p);
++    else if (name.endsWith('.ts')) files.push(p);
++  }
++};
++walk(ROOT);
++const source = files.map((f) => readFileSync(f, 'utf8')).join('\n');
++const all = (re: RegExp) => [...new Set([...source.matchAll(re)].map((m) => m[1]))];
++
++const messages = [...all(/new HttpError\(\d+,\s*'([^'\\]+)'/g), ...all(/consumeQuota\([^;]*?'([^'\\]+)'\);/g)];
++const fields = [...all(/\b(?:str|num|optStr|optNum)\([^,()]+,\s*'([^']+)'/g), ...all(/\bintParam\([^,]+,\s*'([^']+)'/g)];
++// Names that are the same word in Turkish.
++const SAME = new Set(['Model', 'Program']);
++const tr = (msg: string) => translateMessage(msg, 'tr');
++
++describe('Turkish server dictionary covers the country messages', () => {
++  it('finds the messages to check', () => {
++    expect(messages.length).toBeGreaterThan(80);
++    expect(fields.length).toBeGreaterThan(30);
++  });
++
++  it('translates every fixed message', () => {
++    expect(messages.filter((m) => tr(m) === m)).toEqual([]);
++  });
++
++  it('translates every field name', () => {
++    expect(fields.filter((f) => !SAME.has(f) && tr(`${f} is required`) === `${f} zorunludur.`)).toEqual([]);
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,87 @@
+From a71fbb38aea7819e05358e2fccc5c9c6503a06c4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:32:32 +0000
+Subject: [PATCH] Master: percentages in the page language, '23%' in English
+ and '%23' in Turkish (new fmtPercent) (finding H4-14)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MasterApp.tsx |  6 +++---
+ src/i18n/format.ts           |  5 +++++
+ tests/fmtPercent.test.ts     | 16 ++++++++++++++++
+ 3 files changed, 24 insertions(+), 3 deletions(-)
+ create mode 100644 tests/fmtPercent.test.ts
+
+diff --git a/src/components/MasterApp.tsx b/src/components/MasterApp.tsx
+index 7619dc7..d4140bd 100644
+--- a/src/components/MasterApp.tsx
++++ b/src/components/MasterApp.tsx
+@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
+ import { useAuth } from '../contexts/AuthContext';
+ import { api, errorMessage } from '../lib/api';
+ import { setLanguage, useT } from '../i18n';
+-import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, timeAgo } from '../i18n/format';
++import { fmtDateTime, fmtDuration, fmtMonth, fmtNumber, fmtPercent, timeAgo } from '../i18n/format';
+ import { MASTER_PATH } from '../lib/instance';
+ import { regionById, type RegionFeatures, type RegionId } from '../regions';
+ 
+@@ -316,7 +316,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
+               <Stat
+                 icon={<Timer size={13} />}
+                 label={t('card.autoShare')}
+-                value={country.programs.appSelected + country.programs.manual ? `${fmtNumber((country.programs.appSelected / (country.programs.appSelected + country.programs.manual)) * 100, 0)} %` : '-'}
++                value={country.programs.appSelected + country.programs.manual ? fmtPercent(country.programs.appSelected / (country.programs.appSelected + country.programs.manual)) : '-'}
+                 detail={t('card.autoShareDetail')}
+               />
+             )}
+@@ -419,7 +419,7 @@ function FeatureSwitches({ country, onChanged }: { country: ActiveCountry; onCha
+ 
+ function ComparisonTable({ countries }: { countries: ActiveCountry[] }) {
+   const { t } = useT('master');
+-  const pct = (a: number, b: number) => (a + b ? `${fmtNumber((a / (a + b)) * 100, 0)} %` : '-');
++  const pct = (a: number, b: number) => (a + b ? fmtPercent(a / (a + b)) : '-');
+   const notUsed = t('compare.notUsed');
+   const ifUses = (feature: keyof CountryFeatures, value: (c: ActiveCountry) => string) => (c: ActiveCountry) => (uses(c, feature) ? value(c) : notUsed);
+   const rows: { label: string; value: (c: ActiveCountry) => string }[] = [
+diff --git a/src/i18n/format.ts b/src/i18n/format.ts
+index 9cb3ca9..0af0c03 100644
+--- a/src/i18n/format.ts
++++ b/src/i18n/format.ts
+@@ -33,6 +33,11 @@ export function fmtNumber(n: number | null | undefined, maxFractionDigits = 2):
+   return n.toLocaleString(locale(), { maximumFractionDigits: maxFractionDigits });
+ }
+ 
++/** 0.23 -> "23%" / "%23" (Turkish puts the sign first). */
++export function fmtPercent(fraction: number, maxFractionDigits = 0): string {
++  return Number.isFinite(fraction) ? fraction.toLocaleString(locale(), { style: 'percent', maximumFractionDigits: maxFractionDigits }) : '-';
++}
++
+ /** "2026-10" -> "October 2026" / "Ekim 2026" (or the short form "Oct 2026" / "Eki 2026"). */
+ export function fmtMonth(monthKey: string, short = false): string {
+   const m = /^(\d{4})-(\d{2})$/.exec(monthKey);
+diff --git a/tests/fmtPercent.test.ts b/tests/fmtPercent.test.ts
+new file mode 100644
+index 0000000..5644ee9
+--- /dev/null
++++ b/tests/fmtPercent.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from 'vitest';
++import i18n from '../src/i18n';
++import { fmtPercent } from '../src/i18n/format';
++
++describe('percent in the page language', () => {
++  it('writes 23% in English and %23 in Turkish', async () => {
++    expect(fmtPercent(0.234)).toBe('23%');
++    await i18n.changeLanguage('tr');
++    try {
++      expect(fmtPercent(0.234)).toBe('%23');
++      expect(fmtPercent(Number.NaN)).toBe('-');
++    } finally {
++      await i18n.changeLanguage('en');
++    }
++  });
++});
+-- 
+2.43.0
+

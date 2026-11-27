@@ -1,0 +1,29 @@
+From 6793f2789def695665a47a87a5deb01ebb098cab Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:37:43 +0000
+Subject: [PATCH] Header: the app subtitle shows from 1280 px only, instead of
+ being cut at 1024 px (finding H4-24)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/App.tsx | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/App.tsx b/src/App.tsx
+index 7843c16..a6e41ea 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -422,7 +422,8 @@ function Workspace() {
+                   <Flag country={currentRegion().id} className="w-6 h-4 rounded-[3px] block ring-1 ring-[var(--border-subtle)] group-hover:ring-[var(--blue-500)] transition" />
+                 </a>
+               </div>
+-              <span className="text-xs sm:text-[12px] text-[var(--text-secondary)] font-normal hidden sm:block truncate">
++              {/* From 1280 px only: narrower, it was cut ('…Tool Rema…') and took room from the controls. */}
++              <span className="text-xs sm:text-[12px] text-[var(--text-secondary)] font-normal hidden xl:block truncate">
+                 {t('header.subtitle')}
+               </span>
+             </div>
+-- 
+2.43.0
+

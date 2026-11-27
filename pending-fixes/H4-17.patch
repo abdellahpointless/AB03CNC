@@ -1,0 +1,276 @@
+From 6182bd438f9ba8d2b90612038a81ffd4fe379809 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:47:15 +0000
+Subject: [PATCH] Users: security log details in the page language (sign-in
+ method, roles, account changes, feature switches, the area of an admin change
+ instead of its API path); a country's log no longer names CAM AI's switch
+ (finding H4-17)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/UserManagement.tsx   |  4 +-
+ src/i18n/locales/en/app.ts          | 34 ++++++++++++++++
+ src/i18n/locales/tr/app.ts          | 32 +++++++++++++++
+ src/lib/auditText.ts                | 63 +++++++++++++++++++++++++++++
+ tests/auditText.test.ts             | 31 ++++++++++++++
+ worker/routes/master.ts             |  4 +-
+ worker/tests/private-assets.test.ts |  2 +
+ 7 files changed, 168 insertions(+), 2 deletions(-)
+ create mode 100644 src/lib/auditText.ts
+ create mode 100644 tests/auditText.test.ts
+
+diff --git a/src/components/UserManagement.tsx b/src/components/UserManagement.tsx
+index 80151b0..8b3620c 100644
+--- a/src/components/UserManagement.tsx
++++ b/src/components/UserManagement.tsx
+@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
+ import { waveItem } from '../lib/motion';
+ import { useT } from '../i18n';
+ import { fmtDateTime } from '../i18n/format';
++import { auditDetail } from '../lib/auditText';
+ import { useAskPassword } from './ChangePasswordModal';
+ 
+ interface AccountRow {
+@@ -47,6 +48,7 @@ const ACTION_LABELS = {
+   admin_action: 'adminAction',
+   admin_denied: 'adminDenied',
+   setup: 'setup',
++  features_changed: 'featuresChanged',
+ } as const;
+ type ActionLabel = (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS];
+ const ALERT_ACTIONS = new Set(['login_failed', 'mfa_failed', 'password_check_failed', 'admin_denied']);
+@@ -109,7 +111,7 @@ function SecurityLog() {
+                       <td className="p-2.5 font-semibold text-[var(--text-primary)]">{e.username ?? '-'}</td>
+                       <td className={`p-2.5 ${ALERT_ACTIONS.has(e.action) ? 'text-[var(--rose-500)]' : 'text-[var(--text-primary)]'}`}>
+                         {actionLabel(e.action)}
+-                        {e.detail && <span className="text-[var(--text-tertiary)]"> &middot; {e.detail}</span>}
++                        {auditDetail(e.action, e.detail) && <span className="text-[var(--text-tertiary)]"> &middot; {auditDetail(e.action, e.detail)}</span>}
+                       </td>
+                       <td className="p-2.5 font-mono text-xs text-[var(--text-tertiary)]">{e.ip ?? '-'}</td>
+                     </tr>
+diff --git a/src/i18n/locales/en/app.ts b/src/i18n/locales/en/app.ts
+index 799c5ef..c3fc213 100644
+--- a/src/i18n/locales/en/app.ts
++++ b/src/i18n/locales/en/app.ts
+@@ -265,6 +265,40 @@ const app = {
+         adminAction: 'Admin change',
+         adminDenied: 'Blocked admin request',
+         setup: 'First setup',
++        featuresChanged: 'Features changed by the master admin',
++      },
++      /** The recorded details of an entry (src/lib/auditText.ts). */
++      detail: {
++        password: 'with password',
++        totp: 'with a 2-step code',
++        recoveryCode: 'with a recovery code',
++        locked: 'account locked',
++        ipThrottled: 'too many tries from this network',
++        passwordReset: 'password reset',
++        mfaReset: '2-step sign-in reset',
++        toolpathBetaOn: 'toolpath beta on',
++        toolpathBetaOff: 'toolpath beta off',
++        role: 'role: {{role}}',
++        featureOn: '{{feature}} switched on',
++        featureOff: '{{feature}} switched off',
++      },
++      feature: {
++        partTracking: 'Part tracking & review',
++        preventive: 'Preventive actions',
++        shiftChecks: 'Shift checks & cales box',
++        toolpath: 'Toolpath viewer',
++      },
++      /** Where an admin change was made. */
++      area: {
++        fleet: 'Machines',
++        machines: 'Preventive actions',
++        tools: 'Tool inventory',
++        parts: 'Parts',
++        history: 'History',
++        settings: 'Settings',
++        admin: 'Backup and data',
++        toolpath: 'Toolpath',
++        alerts: 'Alerts',
+       },
+     },
+   },
+diff --git a/src/i18n/locales/tr/app.ts b/src/i18n/locales/tr/app.ts
+index 9911297..6a87fb8 100644
+--- a/src/i18n/locales/tr/app.ts
++++ b/src/i18n/locales/tr/app.ts
+@@ -258,6 +258,38 @@ const app: Translation<typeof en> = {
+         adminAction: 'Yönetici değişikliği',
+         adminDenied: 'Engellenen yönetici isteği',
+         setup: 'İlk kurulum',
++        featuresChanged: 'Ana yönetici özellikleri değiştirdi',
++      },
++      detail: {
++        password: 'şifre ile',
++        totp: 'doğrulama kodu ile',
++        recoveryCode: 'kurtarma kodu ile',
++        locked: 'hesap kilitlendi',
++        ipThrottled: 'bu ağdan çok fazla deneme',
++        passwordReset: 'şifre sıfırlandı',
++        mfaReset: 'iki adımlı doğrulama sıfırlandı',
++        toolpathBetaOn: 'takım yolu denemesi açıldı',
++        toolpathBetaOff: 'takım yolu denemesi kapatıldı',
++        role: 'rol: {{role}}',
++        featureOn: '{{feature}} açıldı',
++        featureOff: '{{feature}} kapatıldı',
++      },
++      feature: {
++        partTracking: 'Parça takibi ve onayı',
++        preventive: 'Önleyici bakım',
++        shiftChecks: 'Vardiya kontrolleri ve paralel kutusu',
++        toolpath: 'Takım yolu görüntüleyici',
++      },
++      area: {
++        fleet: 'Tezgahlar',
++        machines: 'Önleyici bakım',
++        tools: 'Takım Listesi',
++        parts: 'Parçalar',
++        history: 'Geçmiş',
++        settings: 'Ayarlar',
++        admin: 'Yedek ve veri',
++        toolpath: 'Takım yolu',
++        alerts: 'Uyarılar',
+       },
+     },
+   },
+diff --git a/src/lib/auditText.ts b/src/lib/auditText.ts
+new file mode 100644
+index 0000000..c367670
+--- /dev/null
++++ b/src/lib/auditText.ts
+@@ -0,0 +1,63 @@
++import i18n from '../i18n';
++
++/*
++ * A security log entry's detail in the page's language. The server records it in English
++ * ("password", "ali (MACHINIST)", "toolpath on", "POST /tr/api/parts/review"); anything not known
++ * here is shown as recorded.
++ */
++
++// Keys are built from the recorded text, so typed as one known key (as in toolExcelParse.ts).
++const t = (key: string, options?: Record<string, unknown>) => i18n.t(`app:users.log.${key}` as 'app:users.log.detail.role', options ?? {});
++const role = (r: string) => (i18n.exists(`common:role.${r}`) ? i18n.t(`common:role.${r}` as 'common:role.ADMIN') : r);
++
++/** Recorded phrase -> its key under users.log.detail. */
++const PHRASES: Record<string, string> = {
++  password: 'password',
++  totp: 'totp',
++  'recovery code': 'recoveryCode',
++  'account locked': 'locked',
++  locked: 'locked',
++  'IP throttled (unknown usernames)': 'ipThrottled',
++  'password reset': 'passwordReset',
++  'two-step sign-in reset': 'mfaReset',
++  'toolpath beta on': 'toolpathBetaOn',
++  'toolpath beta off': 'toolpathBetaOff',
++};
++/** The switches a country's admins know about; any other is left out of their log. */
++const FEATURES = ['partTracking', 'preventive', 'shiftChecks', 'toolpath'];
++/** The API area of an admin change (/api/<area>/...). */
++const AREAS = ['fleet', 'machines', 'tools', 'parts', 'history', 'settings', 'admin', 'toolpath', 'alerts'];
++
++function phrase(p: string): string {
++  const r = /^role -> (\w+)$/.exec(p);
++  if (r) return t('detail.role', { role: role(r[1]) });
++  return PHRASES[p] ? t(`detail.${PHRASES[p]}`) : p;
++}
++
++export function auditDetail(action: string, detail: string | null): string {
++  if (!detail) return '';
++  switch (action) {
++    case 'features_changed':
++      return detail
++        .split(', ')
++        .map((c) => /^(\w+) (on|off)$/.exec(c))
++        .filter((m): m is RegExpExecArray => !!m && FEATURES.includes(m[1]))
++        .map((m) => t(m[2] === 'on' ? 'detail.featureOn' : 'detail.featureOff', { feature: t(`feature.${m[1]}`) }))
++        .join(', ');
++    case 'user_created': {
++      const m = /^(.*) \((\w+)\)$/.exec(detail);
++      return m ? `${m[1]} (${role(m[2])})` : detail;
++    }
++    case 'user_updated': {
++      const i = detail.indexOf(': ');
++      return i < 0 ? detail : `${detail.slice(0, i)}: ${detail.slice(i + 2).split(', ').map(phrase).join(', ')}`;
++    }
++    case 'admin_action':
++    case 'admin_denied': {
++      const area = /\/api\/([a-z-]+)/.exec(detail)?.[1];
++      return area && AREAS.includes(area) ? t(`area.${area}`) : detail;
++    }
++    default:
++      return phrase(detail);
++  }
++}
+diff --git a/tests/auditText.test.ts b/tests/auditText.test.ts
+new file mode 100644
+index 0000000..170ba65
+--- /dev/null
++++ b/tests/auditText.test.ts
+@@ -0,0 +1,31 @@
++import { describe, expect, it } from 'vitest';
++import i18n from '../src/i18n';
++import { auditDetail } from '../src/lib/auditText';
++
++describe('security log details', () => {
++  it('are written in the page language, not as recorded codes and API paths', async () => {
++    await i18n.changeLanguage('tr');
++    try {
++      expect(auditDetail('login', 'password')).toBe('şifre ile');
++      expect(auditDetail('user_created', 'h4op (MACHINIST)')).toBe(`h4op (${i18n.t('common:role.MACHINIST')})`);
++      expect(auditDetail('user_updated', 'h4tmp: password reset')).toBe('h4tmp: şifre sıfırlandı');
++      expect(auditDetail('user_updated', 'ali: role -> ADMIN, two-step sign-in reset')).toBe(
++        `ali: rol: ${i18n.t('common:role.ADMIN')}, iki adımlı doğrulama sıfırlandı`,
++      );
++      expect(auditDetail('features_changed', 'toolpath on, preventive off')).toBe('Takım yolu görüntüleyici açıldı, Önleyici bakım kapatıldı');
++      expect(auditDetail('admin_action', 'POST /tr/api/parts/review')).toBe('Parçalar');
++      expect(auditDetail('admin_action', 'PUT /tr/api/machines/HAAS-1/owners')).toBe('Önleyici bakım');
++    } finally {
++      await i18n.changeLanguage('en');
++    }
++  });
++
++  it('leaves out a switch the country does not know, and shows anything unknown as recorded', () => {
++    expect(auditDetail('features_changed', 'newSwitch on, toolpath off')).toBe('Toolpath viewer switched off');
++    expect(auditDetail('features_changed', 'newSwitch on')).toBe('');
++    expect(auditDetail('admin_action', 'POST /ma/api/something-new')).toBe('POST /ma/api/something-new');
++    expect(auditDetail('login', 'totp')).toBe('with a 2-step code');
++    expect(auditDetail('user_deleted', 'karim')).toBe('karim');
++    expect(auditDetail('login', null)).toBe('');
++  });
++});
+diff --git a/worker/routes/master.ts b/worker/routes/master.ts
+index ad77c3e..4efbba9 100644
+--- a/worker/routes/master.ts
++++ b/worker/routes/master.ts
+@@ -254,7 +254,9 @@ export async function handleSetCountryFeatures(ctx: Ctx): Promise<Response> {
+     await dropOverviewCache(ctx.env);
+     const summary = `${regionById(region)!.name}: ${changes.join(', ')}`;
+     await auditCtx(ctx, 'master_features', summary);
+-    await audit({ ...ctx.env, DB: db }, ctx.request, 'features_changed', { id: null, username: `master:${ctx.user!.username}` }, changes.join(', '));
++    // The country's own log (its admins read it) never names CAM AI: only the master's log does.
++    const shown = changes.filter((c) => !c.startsWith('camAi '));
++    if (shown.length) await audit({ ...ctx.env, DB: db }, ctx.request, 'features_changed', { id: null, username: `master:${ctx.user!.username}` }, shown.join(', '));
+   }
+   return json({ ok: true, features });
+ }
+diff --git a/worker/tests/private-assets.test.ts b/worker/tests/private-assets.test.ts
+index 6e50f0c..aa5db92 100644
+--- a/worker/tests/private-assets.test.ts
++++ b/worker/tests/private-assets.test.ts
+@@ -145,6 +145,8 @@ describe('the app code is only for signed-in sessions', () => {
+     const env = { DB: HUB, COUNTRIES: { tr: TR }, REGION: 'master' } as unknown as Env;
+     const res = await handleSetCountryFeatures({ env, request, url, params: { region: 'tr' }, user: { id: 'm-1', username: 'boss', role: 'ADMIN' } } as Ctx);
+     expect(((await res.json()) as { features: { camAi: boolean } }).features.camAi).toBe(true);
++    // Türkiye's admins read their security log: the switch is not written there.
++    expect((await TR.prepare("SELECT detail FROM audit_log WHERE action = 'features_changed'").all()).results).toEqual([]);
+     expect(await get('/app/p/real-x.js', 'tr-admin')).toBe(403);
+     expect(await get('/app/p/real-x.js', 'tr-cam')).toBe(403);
+     expect(await get('/app/toolpath/real-x.js', 'tr-cam')).toBe(403);
+-- 
+2.43.0
+

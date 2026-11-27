@@ -1,0 +1,28 @@
+From c13713ae824068823ddd7d9bd3860d312aef978d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:56:19 +0000
+Subject: [PATCH] Remapper: the Toolpath button is as tall as Copy and Download
+ next to it (finding H3-10)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CodeEditorPair.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/CodeEditorPair.tsx b/src/components/CodeEditorPair.tsx
+index e7731e6..98b2785 100644
+--- a/src/components/CodeEditorPair.tsx
++++ b/src/components/CodeEditorPair.tsx
+@@ -739,7 +739,7 @@ export default function CodeEditorPair({
+                 disabled={toolpathOn && !outputCode && !sourceCode.trim()}
+                 aria-disabled={(countryOn && !toolpathOn) || undefined}
+                 aria-haspopup={countryOn ? undefined : 'dialog'}
+-                className={`btn-secondary text-xs py-1 px-2.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : caleShown ? '!border-[#f5b942] !text-[var(--orange-text)] !bg-[#f5b942]/10' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
++                className={`btn-secondary text-xs min-h-11 px-3.5 ${hitShown ? '!border-[#ff4d4d] !text-[#ff6b6b] !bg-[#ff4d4d]/10 shadow-[0_0_14px_rgba(255,77,77,0.35)]' : caleShown ? '!border-[#f5b942] !text-[var(--orange-text)] !bg-[#f5b942]/10' : ''} ${toolpathOn ? '' : countryOn ? 'opacity-60 cursor-not-allowed' : 'opacity-60'}`}
+                 title={hitShown ? t('toolpath.openHitTitle') : caleShown ? t('toolpath.openCaleTitle') : toolpathOn ? t('toolpath.openTitle') : t(countryOn ? 'toolpath.betaLocked' : 'toolpath.locked')}
+               >
+                 {hitShown || caleShown ? <ShieldAlert size={13} /> : toolpathOn ? <Route size={13} /> : <Lock size={13} />}
+-- 
+2.43.0
+

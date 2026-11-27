@@ -1,0 +1,48 @@
+From abf03128387391ce58c52c705758dc582ae5d9eb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:50:24 +0000
+Subject: [PATCH] =?UTF-8?q?Tools:=20=C3=98=20and=20length=20on=20the=20too?=
+ =?UTF-8?q?l=20cards=20use=20the=20page's=20decimal=20comma=20(finding=20H?=
+ =?UTF-8?q?5-2)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolDatabase.tsx | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/ToolDatabase.tsx b/src/components/ToolDatabase.tsx
+index 0c21fd7..7d0a0d6 100644
+--- a/src/components/ToolDatabase.tsx
++++ b/src/components/ToolDatabase.tsx
+@@ -24,6 +24,8 @@ export default function ToolDatabase({
+   // Category name in the page language (in English the id itself), and its upper-case form.
+   const catName = (c: string) => t(`common:category.${c as ToolCategory}`, { defaultValue: c });
+   const catUpper = (c: string) => catName(c).toLocaleUpperCase(locale());
++  // Ø and length with two decimals in the page's style: 2.90 / 2,90.
++  const mm2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+   const [showImport, setShowImport] = useState(false);
+   const [isSaving, setIsSaving] = useState(false);
+   const [internalSelectedMachine, setInternalSelectedMachine] = useState<MachineId>('HAAS-1');
+@@ -476,13 +478,13 @@ export default function ToolDatabase({
+                           <div className="flex items-center gap-2">
+                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.dia')}</span>
+                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
+-                              {tool.diameter ? tool.diameter.toFixed(2) : '-'} {t('common:units.mm')}
++                              {tool.diameter ? mm2(tool.diameter) : '-'} {t('common:units.mm')}
+                             </span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.len')}</span>
+                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
+-                              {tool.length ? tool.length.toFixed(2) : '-'} {t('common:units.mm')}
++                              {tool.length ? mm2(tool.length) : '-'} {t('common:units.mm')}
+                             </span>
+                           </div>
+                         </>
+-- 
+2.43.0
+

@@ -1,0 +1,200 @@
+From ac8b598e409683390608b8e84eb528dc618983ec Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:57:54 +0000
+Subject: [PATCH] Master: server messages in Turkish when the dashboard is in
+ Turkish, Telegram alerts texts translated (finding H5-5)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MasterApp.tsx         |  2 +-
+ src/i18n/locales/en/master.ts        |  1 +
+ src/i18n/locales/tr/master.ts        |  1 +
+ src/lib/api.ts                       |  2 ++
+ worker/i18n-tr.ts                    | 18 ++++++++++++++++-
+ worker/i18n.ts                       | 11 +++++++++-
+ worker/index.ts                      |  4 ++--
+ worker/tests/master-language.test.ts | 30 ++++++++++++++++++++++++++++
+ 8 files changed, 64 insertions(+), 5 deletions(-)
+ create mode 100644 worker/tests/master-language.test.ts
+
+diff --git a/src/components/MasterApp.tsx b/src/components/MasterApp.tsx
+index 7619dc7..0434f8a 100644
+--- a/src/components/MasterApp.tsx
++++ b/src/components/MasterApp.tsx
+@@ -279,7 +279,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
+         <span className={status === 'active' ? 'badge-positive' : status === 'notSetUp' ? 'badge-warning' : 'badge-neutral'}>{t(`status.${status}`)}</span>
+       </div>
+ 
+-      {!country.available && <p className="text-xs text-[var(--text-secondary)]">{country.error ?? t('card.notConnectedText')}</p>}
++      {!country.available && <p className="text-xs text-[var(--text-secondary)]">{country.error ? t('card.readError') : t('card.notConnectedText')}</p>}
+       {country.available && !active && (
+         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+           <p className="text-xs text-[var(--text-secondary)]">{t('card.notSetUpText')}</p>
+diff --git a/src/i18n/locales/en/master.ts b/src/i18n/locales/en/master.ts
+index 1a715e7..981d095 100644
+--- a/src/i18n/locales/en/master.ts
++++ b/src/i18n/locales/en/master.ts
+@@ -30,6 +30,7 @@ const master = {
+     noActivity: 'No program yet',
+     notSetUpText: 'This country has no account yet. Create its first admin to start.',
+     notConnectedText: 'This country has no database connected yet.',
++    readError: 'This country could not be read right now.',
+     createFirstAdmin: 'Create the first admin',
+     programs30: 'Programs, last 30 days',
+     gcodeOnly: 'G-code remapper only',
+diff --git a/src/i18n/locales/tr/master.ts b/src/i18n/locales/tr/master.ts
+index 778dc88..6973735 100644
+--- a/src/i18n/locales/tr/master.ts
++++ b/src/i18n/locales/tr/master.ts
+@@ -33,6 +33,7 @@ const master: Translation<typeof en> = {
+     noActivity: 'Henüz program yok',
+     notSetUpText: 'Bu ülkede henüz hesap yok. Başlamak için ilk yöneticiyi oluşturun.',
+     notConnectedText: 'Bu ülkeye henüz bir veritabanı bağlanmadı.',
++    readError: 'Bu ülkenin verileri şu anda okunamıyor.',
+     createFirstAdmin: 'İlk yöneticiyi oluştur',
+     programs30: 'Programlar, son 30 gün',
+     gcodeOnly: 'Yalnızca G-kod düzenleyici',
+diff --git a/src/lib/api.ts b/src/lib/api.ts
+index 9c0919f..dba18f6 100644
+--- a/src/lib/api.ts
++++ b/src/lib/api.ts
+@@ -39,6 +39,8 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
+       credentials: 'same-origin',
+       headers: {
+         Accept: 'application/json',
++        // The master hub answers in the language its dashboard shows (a country always uses its own).
++        'X-CNC-Lang': i18n.language === 'tr' ? 'tr' : 'en',
+         ...(method !== 'GET' ? { 'X-CNC-Client': '1' } : {}),
+         ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+       },
+diff --git a/worker/i18n-tr.ts b/worker/i18n-tr.ts
+index a94f5c1..ec62a28 100644
+--- a/worker/i18n-tr.ts
++++ b/worker/i18n-tr.ts
+@@ -15,6 +15,8 @@ const FIELD: Record<string, string> = {
+   'Current password': 'Mevcut şifre',
+   Challenge: 'Doğrulama oturumu',
+   Code: 'Kod',
++  // master hub (Telegram invitations)
++  Name: 'Ad',
+   // history
+   id: 'Kayıt kimliği',
+   machine: 'Tezgah',
+@@ -111,7 +113,7 @@ registerTurkish(
+     'At least one admin account must remain': 'En az bir yönetici hesabı kalmalıdır.',
+     'You cannot delete your own account': 'Kendi hesabınızı silemezsiniz.',
+ 
+-    // ---- routes/master.ts (mostly master hub, which answers in English; kept for completeness) ----
++    // ---- routes/master.ts (master hub: in Turkish when its dashboard is in Turkish) ----
+     'This country is not connected yet.': 'Bu ülke henüz bağlanmadı.',
+     'Unknown country': 'Bilinmeyen ülke.',
+     'This username is already used by a master account.':
+@@ -119,6 +121,20 @@ registerTurkish(
+     'A master account already exists. Ask a master admin to add more.':
+       'Zaten bir ana yönetici hesabı var. Yeni hesap eklemek için bir ana yöneticiye başvurun.',
+     'This country could not be read right now.': 'Bu ülkenin verileri şu anda okunamıyor.',
++    'At least one master account must remain': 'En az bir ana yönetici hesabı kalmalıdır.',
++    'Invalid value': 'Geçersiz değer.',
++
++    // ---- routes/alerts.ts, alerts.ts (Telegram alerts, master dashboard) ----
++    'Telegram is not set up yet': 'Telegram henüz kurulmadı.',
++    'Telegram is not set up': 'Telegram kurulmadı.',
++    'Telegram could not be reached. Check the bot token.': "Telegram'a ulaşılamadı. Bot anahtarını (token) kontrol edin.",
++    'Telegram could not be reached': "Telegram'a ulaşılamadı.",
++    'Invalid person': 'Geçersiz kişi.',
++    'This link belongs to another account': 'Bu bağlantı başka bir hesaba ait.',
++    'This link has expired. Create a new one.': 'Bu bağlantının süresi doldu. Yeni bir bağlantı oluşturun.',
++    'Telegram is not linked': 'Telegram bağlı değil.',
++    'Invalid Telegram username': 'Geçersiz Telegram kullanıcı adı.',
++    'Add your Telegram username first': 'Önce Telegram kullanıcı adınızı ekleyin.',
+ 
+     // ---- routes/admin.ts (backup restore / import) ----
+     'users must be an array (max 3 per request)': 'Kullanıcılar bir liste olarak gönderilmelidir (istek başına en fazla 3).',
+diff --git a/worker/i18n.ts b/worker/i18n.ts
+index e081fe6..de1db13 100644
+--- a/worker/i18n.ts
++++ b/worker/i18n.ts
+@@ -1,4 +1,4 @@
+-import type { Language } from '../src/regions';
++import { regionById, type Language, type RegionId } from '../src/regions';
+ 
+ /*
+  * Server messages are written in English. For a country whose language is not English, the
+@@ -12,6 +12,15 @@ type Pattern = [RegExp, (...groups: string[]) => string];
+ const TR_EXACT: Record<string, string> = {};
+ const TR_PATTERNS: Pattern[] = [];
+ 
++/**
++ * The language of a response's messages: the country's own. The master dashboard can be read in
++ * either language, so the app says which one it shows (X-CNC-Lang); it only picks the words.
++ */
++export function messageLanguage(instance: RegionId | 'master', request: Request): Language | undefined {
++  if (instance === 'master') return request.headers.get('X-CNC-Lang') === 'tr' ? 'tr' : 'en';
++  return regionById(instance)?.language;
++}
++
+ export function translateMessage(message: string, language: Language | undefined): string {
+   if (!language || language === 'en' || !message) return message;
+   if (language === 'tr') {
+diff --git a/worker/index.ts b/worker/index.ts
+index 5f0bb4a..4db386a 100644
+--- a/worker/index.ts
++++ b/worker/index.ts
+@@ -15,7 +15,7 @@ import {
+   handleSetup,
+ } from './auth';
+ import { audit } from './security';
+-import { translateMessage } from './i18n';
++import { messageLanguage, translateMessage } from './i18n';
+ import './i18n-tr';
+ import { readFeatures } from './features';
+ import { handlePrivateAsset, isPrivateAssetPath } from './assets';
+@@ -372,7 +372,7 @@ async function handleApi(request: Request, rawEnv: Env, url: URL, instance: Regi
+ }
+ 
+ async function respond(request: Request, env: Env, url: URL, instance: RegionId | 'master', rest: string, exec?: ExecutionContext): Promise<Response> {
+-  const language = instance === 'master' ? 'en' : regionById(instance)?.language;
++  const language = messageLanguage(instance, request);
+   try {
+     return await handleApi(request, env, url, instance, rest, exec);
+   } catch (err) {
+diff --git a/worker/tests/master-language.test.ts b/worker/tests/master-language.test.ts
+new file mode 100644
+index 0000000..5e4a622
+--- /dev/null
++++ b/worker/tests/master-language.test.ts
+@@ -0,0 +1,30 @@
++import { describe, expect, it } from 'vitest';
++import '../i18n-tr';
++import { messageLanguage, translateMessage } from '../i18n';
++
++// The master dashboard in Turkish gets its server messages in Turkish; a country keeps its own language.
++const req = (lang?: string) => new Request('https://cnc.test/master/api/alerts', { headers: lang ? { 'X-CNC-Lang': lang } : {} });
++
++describe('master message language', () => {
++  it('follows the dashboard on the master hub, English by default', () => {
++    expect(messageLanguage('master', req('tr'))).toBe('tr');
++    expect(messageLanguage('master', req('en'))).toBe('en');
++    expect(messageLanguage('master', req())).toBe('en');
++    expect(messageLanguage('master', req('de'))).toBe('en');
++  });
++
++  it('keeps each country in its own language, whatever the header says', () => {
++    expect(messageLanguage('tr', req('en'))).toBe('tr');
++    expect(messageLanguage('ma', req('tr'))).toBe('en');
++  });
++
++  it('has Turkish for the master-only messages', () => {
++    const tr = (m: string) => translateMessage(m, messageLanguage('master', req('tr')));
++    expect(tr('Not signed in')).toBe('Oturumunuz açık değil. Lütfen giriş yapın.');
++    expect(tr('Telegram is not set up yet')).toBe('Telegram henüz kurulmadı.');
++    expect(tr('This link has expired. Create a new one.')).toBe('Bu bağlantının süresi doldu. Yeni bir bağlantı oluşturun.');
++    expect(tr('Add your Telegram username first')).toBe('Önce Telegram kullanıcı adınızı ekleyin.');
++    expect(tr('At least one master account must remain')).toBe('En az bir ana yönetici hesabı kalmalıdır.');
++    expect(tr('Name is required')).toBe('Ad zorunludur.');
++  });
++});
+-- 
+2.43.0
+

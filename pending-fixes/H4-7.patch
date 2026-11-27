@@ -1,0 +1,39 @@
+From e57e6543e6e98758173746c96318b994626e87bc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:29:04 +0000
+Subject: [PATCH] Admin: productivity rows wrap on a phone, so 'Time saved' and
+ its value are no longer cut at the card's edge (finding H4-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/AdminExtractionAnalytics.tsx | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/AdminExtractionAnalytics.tsx b/src/components/AdminExtractionAnalytics.tsx
+index 9cd4f9b..5002978 100644
+--- a/src/components/AdminExtractionAnalytics.tsx
++++ b/src/components/AdminExtractionAnalytics.tsx
+@@ -544,7 +544,7 @@ export default function AdminExtractionAnalytics() {
+                   : 0;
+ 
+                 return (
+-                  <div key={item.username} className="py-3 flex items-center justify-between gap-4">
++                  <div key={item.username} className="py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                     <div className="flex items-center gap-3 min-w-[140px]">
+                       <div className="w-7 h-7 rounded-[var(--radius-sm)] bg-[var(--bg-input)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xs text-[var(--text-secondary)]">
+                         #{idx + 1}
+@@ -576,8 +576,8 @@ export default function AdminExtractionAnalytics() {
+                       </div>
+                     </div>
+ 
+-                    {/* Stats */}
+-                    <div className="flex items-center gap-6 text-right">
++                    {/* Stats (under the name on a phone, rather than cut at the card's edge) */}
++                    <div className="flex items-center gap-6 text-right ml-auto">
+                       <div>
+                         <span className="text-xs text-[var(--text-tertiary)] block">{t('analytics.leaderboard.extractions')}</span>
+                         <span className="font-bold text-xs text-[var(--text-primary)] font-mono">
+-- 
+2.43.0
+

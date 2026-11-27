@@ -1,0 +1,45 @@
+From 246d0e18137974047ec6ce1c555e308527b18a85 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:39:26 +0000
+Subject: [PATCH] Tools: diameter and length in the page's number format,
+ '10,50 mm' in Turkish (finding H4-26)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolDatabase.tsx | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/ToolDatabase.tsx b/src/components/ToolDatabase.tsx
+index 0c21fd7..98a9fe5 100644
+--- a/src/components/ToolDatabase.tsx
++++ b/src/components/ToolDatabase.tsx
+@@ -9,6 +9,9 @@ import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon,
+ import { useT } from '../i18n';
+ import { locale } from '../i18n/format';
+ 
++/** 10.5 -> "10.50" / "10,50": two decimals, in the page's language (never for G-code). */
++const mm2 = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
++
+ interface ToolDatabaseProps {
+   selectedMachine?: MachineId;
+   setSelectedMachine?: (val: MachineId) => void;
+@@ -476,13 +479,13 @@ export default function ToolDatabase({
+                           <div className="flex items-center gap-2">
+                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.dia')}</span>
+                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
+-                              {tool.diameter ? tool.diameter.toFixed(2) : '-'} {t('common:units.mm')}
++                              {tool.diameter ? mm2(tool.diameter) : '-'} {t('common:units.mm')}
+                             </span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-[var(--text-tertiary)] font-bold text-xs tracking-wider">{t('list.len')}</span>
+                             <span className="text-[var(--text-primary)] font-bold tabular-nums">
+-                              {tool.length ? tool.length.toFixed(2) : '-'} {t('common:units.mm')}
++                              {tool.length ? mm2(tool.length) : '-'} {t('common:units.mm')}
+                             </span>
+                           </div>
+                         </>
+-- 
+2.43.0
+

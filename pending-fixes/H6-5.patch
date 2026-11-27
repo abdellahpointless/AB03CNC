@@ -1,0 +1,52 @@
+From 2af89af5169a09b3f79e4773532586bf9cb2ed7e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:25:52 +0000
+Subject: [PATCH] Toolpath: the shop's FANUC offset words (H#513 D#513) and
+ table out (M98 P7999) are no longer flagged as codes not simulated (finding
+ H6-5)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/toolpath.ts    | 5 +++--
+ tests/toolpath.test.ts | 8 ++++++++
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/toolpath.ts b/src/lib/toolpath.ts
+index c9a4c5b..aadd96c 100644
+--- a/src/lib/toolpath.ts
++++ b/src/lib/toolpath.ts
+@@ -252,8 +252,9 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
+     if (commentOnly) return;
+     const { g, m, v, raw: codeText } = readWords(line);
+     const has = (list: number[], ...c: number[]) => list.some((x) => c.includes(x));
+-    if (has(m, 97, 98, 99)) flag('subprogram', i);
+-    if (/#|\bIF\b|\bWHILE\b|\bGOTO/.test(codeText) || has(g, 65, 66)) flag('macro', i);
++    // The shop's FANUC offsets of the tool in the spindle (H#513 D#513) and its table out (M98 P7999): nothing the view misses.
++    if (has(m, 97, 98, 99) && !/(?<![A-Z])M98\s*P7999(?![0-9])/.test(codeText)) flag('subprogram', i);
++    if (/#|\bIF\b|\bWHILE\b|\bGOTO/.test(codeText.replace(/(?<![A-Z])[HD]#513(?![0-9])/g, '')) || has(g, 65, 66)) flag('macro', i);
+     if (g.some((c) => c >= 54.1 && c <= 59 && c !== 54) || has(g, 110, 154)) flag('offset', i);
+     if (has(g, 68, 51, 51.1)) flag('transform', i);
+     if (has(g, 12, 13, 150)) flag('cycle', i);
+diff --git a/tests/toolpath.test.ts b/tests/toolpath.test.ts
+index f037fde..695fecd 100644
+--- a/tests/toolpath.test.ts
++++ b/tests/toolpath.test.ts
+@@ -140,6 +140,14 @@ describe('arcs and codes the shop machines read differently', () => {
+     expect(tp.unsupported.find((u) => u.kind === 'subprogram')).toEqual({ kind: 'subprogram', line: 2, count: 2 });
+     expect(parseToolpath('T1 M6\nG54 G0 X0 Y0 Z0\nG1 X5', S).unsupported).toEqual([]);
+   });
++
++  it("does not flag the shop's FANUC offset words (H#513 D#513) or its table out (M98 P7999)", () => {
++    const fanuc = ['T250550 M6', 'G90 G0 G54 X10. Y20. S3000 M3', 'G00 G43 Z50. H#513 D#513 M254 M08', 'G81 Z-2. R2. F100', 'G80', 'M98 P7999', 'M30'];
++    expect(parseToolpath(fanuc.join('\n'), S).unsupported).toEqual([]);
++    // Other macro variables and subprogram calls still are.
++    const other = parseToolpath([...fanuc, 'G0 X#101', 'M98 P79990'].join('\n'), S).unsupported;
++    expect(other.map((u) => [u.kind, u.count])).toEqual([['macro', 1], ['subprogram', 1]]);
++  });
+ });
+ 
+ describe('tool length at each tool change', () => {
+-- 
+2.43.0
+

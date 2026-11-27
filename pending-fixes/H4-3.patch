@@ -1,0 +1,54 @@
+From 091bf8842da2715be6bb5870651bbfc7427e0d3d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:23:27 +0000
+Subject: [PATCH] =?UTF-8?q?Reports:=20a=20problem=20with=20the=20machine?=
+ =?UTF-8?q?=20itself=20is=20written=20once,=20not=20'text=20=C2=B7=20text'?=
+ =?UTF-8?q?=20(finding=20H4-3)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/preventiveReport.ts    |  3 ++-
+ tests/preventiveReport.test.ts | 13 +++++++++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+ create mode 100644 tests/preventiveReport.test.ts
+
+diff --git a/src/lib/preventiveReport.ts b/src/lib/preventiveReport.ts
+index 81eb22f..edc5ceb 100644
+--- a/src/lib/preventiveReport.ts
++++ b/src/lib/preventiveReport.ts
+@@ -28,7 +28,8 @@ export function reportRows(data: MachinesReport, nameOf: (id: string) => string,
+     at: e.at,
+     machine: nameOf(e.machine_id),
+     kind: e.action,
+-    details: e.action === 'PROBLEM' ? [e.check_title, e.note].filter(Boolean).join(' · ') : e.check_title ?? e.note ?? '',
++    // A problem with the machine itself stores its text as both title and note: once.
++    details: e.action === 'PROBLEM' ? [...new Set([e.check_title, e.note].filter(Boolean))].join(' · ') : e.check_title ?? e.note ?? '',
+     notDoneBy: e.action === 'MISSED' ? e.note ?? '' : '',
+     by: e.username,
+   }));
+diff --git a/tests/preventiveReport.test.ts b/tests/preventiveReport.test.ts
+new file mode 100644
+index 0000000..039fce8
+--- /dev/null
++++ b/tests/preventiveReport.test.ts
+@@ -0,0 +1,13 @@
++import { describe, expect, it } from 'vitest';
++import { reportRows } from '../src/lib/preventiveReport';
++import type { MachinesReport } from '../src/lib/fleet';
++
++const report = (events: MachinesReport['events']): MachinesReport => ({ events, cales: [], people: [], hidden: [], truncated: false, machines: [], taken: [] });
++const ev = (check_title: string | null, note: string | null) => ({ machine_id: 'HAAS-1', check_title, action: 'PROBLEM' as const, note, username: 'ali', at: 1 });
++
++describe('report rows', () => {
++  it('writes a problem text once when title and note are the same (a problem with the machine itself)', () => {
++    const rows = reportRows(report([ev('Spindle noise', 'Spindle noise'), ev('Coolant', 'Level low'), ev('Coolant', null)]), (id) => id, () => '');
++    expect(rows.map((r) => r.details)).toEqual(['Spindle noise', 'Coolant · Level low', 'Coolant']);
++  });
++});
+-- 
+2.43.0
+

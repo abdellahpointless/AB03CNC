@@ -1,0 +1,52 @@
+From 569d460c994561c05557840051d9b8c5cfb9d47b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:09:42 +0000
+Subject: [PATCH] Admin: backup log box no longer crashes the app in current
+ Chrome (the effect returned scrollIntoView's Promise as its cleanup) (finding
+ H4-16)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/DataManagement.tsx |  2 +-
+ tests/effectCleanup.test.ts       | 15 +++++++++++++++
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+ create mode 100644 tests/effectCleanup.test.ts
+
+diff --git a/src/components/DataManagement.tsx b/src/components/DataManagement.tsx
+index 1892df4..151bc58 100644
+--- a/src/components/DataManagement.tsx
++++ b/src/components/DataManagement.tsx
+@@ -16,7 +16,7 @@ interface LogLine {
+ 
+ function LogView({ lines }: { lines: LogLine[] }) {
+   const endRef = useRef<HTMLDivElement>(null);
+-  React.useEffect(() => endRef.current?.scrollIntoView({ block: 'nearest' }), [lines.length]);
++  React.useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest' }); }, [lines.length]);
+   if (!lines.length) return null;
+   const color: Record<LogKind, string> = {
+     info: 'text-[var(--text-secondary)]',
+diff --git a/tests/effectCleanup.test.ts b/tests/effectCleanup.test.ts
+new file mode 100644
+index 0000000..8ad46fb
+--- /dev/null
++++ b/tests/effectCleanup.test.ts
+@@ -0,0 +1,15 @@
++import { readdirSync, readFileSync } from 'node:fs';
++import { join } from 'node:path';
++import { describe, expect, it } from 'vitest';
++
++// An effect written as an expression returns its value as the cleanup. Current Chrome's scroll calls return a
++// Promise, which React then calls as a function and the whole app unmounts.
++describe('effects', () => {
++  it('never return a scroll call as their cleanup', () => {
++    const files = readdirSync('src', { recursive: true, encoding: 'utf8' }).filter((f) => /\.tsx?$/.test(f));
++    const bad = files.flatMap((f) =>
++      (readFileSync(join('src', f), 'utf8').match(/use(Layout)?Effect\(\(\) => [^{][^\n]*\.scroll(IntoView|To|By)?\(/g) ?? []).map((m) => `${f}: ${m}`),
++    );
++    expect(bad).toEqual([]);
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,31 @@
+From b20666126a708c915f46baf08195637f6c77ed39 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:27:44 +0000
+Subject: [PATCH] Admin: machine names stay on one line beside their picture,
+ so they no longer print over Brand / Model on phones (the table scrolls)
+ (finding H4-6)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MachineManager.tsx | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/MachineManager.tsx b/src/components/MachineManager.tsx
+index 6d6490e..881c144 100644
+--- a/src/components/MachineManager.tsx
++++ b/src/components/MachineManager.tsx
+@@ -263,8 +263,8 @@ export default function MachineManager() {
+                 <tr key={m.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[rgba(var(--ov),0.02)]">
+                   <td className="p-3">
+                     <div className="flex items-center gap-3">
+-                      <img src={m.image || '/machines/generic.svg'} alt="" className="w-12 h-9 object-contain rounded-[var(--radius-sm)] bg-white/80" loading="lazy" />
+-                      <span className="font-semibold text-[var(--text-primary)]">{m.name}</span>
++                      <img src={m.image || '/machines/generic.svg'} alt="" className="w-12 h-9 shrink-0 object-contain rounded-[var(--radius-sm)] bg-white/80" loading="lazy" />
++                      <span className="font-semibold text-[var(--text-primary)] whitespace-nowrap">{m.name}</span>
+                     </div>
+                   </td>
+                   <td className="p-3 text-[var(--text-secondary)]">{machineSubtitle(m) || '-'}</td>
+-- 
+2.43.0
+

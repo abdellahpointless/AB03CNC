@@ -1,0 +1,141 @@
+From fa38a7ee9125ad3eaffe6bfaaeba135c10cbc461 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:21:14 +0000
+Subject: [PATCH] Style: -webkit-backdrop-filter before backdrop-filter, so the
+ minifier keeps the blur Chrome reads (dark pop-ups were see-through) (finding
+ H4-9)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/index.css          | 20 ++++++++++----------
+ tests/modalCss.test.ts | 13 +++++++++++++
+ 2 files changed, 23 insertions(+), 10 deletions(-)
+
+diff --git a/src/index.css b/src/index.css
+index ab7bc46..e686ba5 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -149,8 +149,8 @@ body {
+ /* Section 3: Liquid Glass Layer */
+ .glass-panel {
+   background: rgba(15, 20, 30, 0.55);
+-  backdrop-filter: blur(20px) saturate(160%);
+   -webkit-backdrop-filter: blur(20px) saturate(160%);
++  backdrop-filter: blur(20px) saturate(160%);
+   border: 1px solid rgba(255, 255, 255, 0.12);
+   border-top: 1px solid rgba(255, 255, 255, 0.22);
+   box-shadow:
+@@ -187,14 +187,14 @@ body {
+ /* Modal Backdrops & Overlays */
+ .modal-backdrop {
+   background: rgba(0, 0, 0, 0.5);
+-  backdrop-filter: blur(8px);
+   -webkit-backdrop-filter: blur(8px);
++  backdrop-filter: blur(8px);
+ }
+ 
+ .glass-modal {
+   background: rgba(15, 20, 30, 0.75);
+-  backdrop-filter: blur(24px) saturate(160%);
+   -webkit-backdrop-filter: blur(24px) saturate(160%);
++  backdrop-filter: blur(24px) saturate(160%);
+   border: 1px solid rgba(255, 255, 255, 0.14);
+   border-top: 1px solid rgba(255, 255, 255, 0.28);
+   box-shadow:
+@@ -452,8 +452,8 @@ button > * {
+ .btn-secondary {
+   border-radius: var(--radius-md);
+   background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+-  backdrop-filter: blur(12px);
+   -webkit-backdrop-filter: blur(12px);
++  backdrop-filter: blur(12px);
+   border: 1px solid rgba(255, 255, 255, 0.14);
+   border-top: 1px solid rgba(255, 255, 255, 0.28);
+   border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+@@ -532,8 +532,8 @@ button > * {
+   height: 34px;
+   border-radius: 999px;
+   background: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 100%);
+-  backdrop-filter: blur(12px);
+   -webkit-backdrop-filter: blur(12px);
++  backdrop-filter: blur(12px);
+   color: var(--text-secondary);
+   display: inline-flex;
+   align-items: center;
+@@ -1078,8 +1078,8 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.3);
+   pointer-events: none;
+   /* Solid, so the machine card underneath never shows through the text */
+   background: var(--bg-panel) !important;
+-  backdrop-filter: none !important;
+   -webkit-backdrop-filter: none !important;
++  backdrop-filter: none !important;
+   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--ov), 0.08) !important;
+ }
+ 
+@@ -1591,8 +1591,8 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
+   z-index: 20;
+   padding-top: env(safe-area-inset-top);
+   background: rgba(var(--surface), 0.9);
+-  backdrop-filter: blur(16px) saturate(150%);
+   -webkit-backdrop-filter: blur(16px) saturate(150%);
++  backdrop-filter: blur(16px) saturate(150%);
+   border-bottom: 1px solid var(--border-subtle);
+ }
+ .phone-head.is-down {
+@@ -2346,14 +2346,14 @@ html.light .cales-state.s-damaged { color: #8a5a00; }
+    --------------------------------------------------------------------------- */
+ @media (prefers-reduced-transparency: reduce) {
+   .modal-backdrop {
+-    backdrop-filter: none;
+     -webkit-backdrop-filter: none;
++    backdrop-filter: none;
+     background: rgba(0, 0, 0, 0.62);
+   }
+   .glass-modal,
+   html.light .glass-modal {
+-    backdrop-filter: none;
+     -webkit-backdrop-filter: none;
++    backdrop-filter: none;
+     background: var(--bg-panel);
+   }
+ }
+@@ -2614,7 +2614,7 @@ html:not(.light) .badge-positive { color: #1fb257; }
+ .reveal-in > * { animation: reveal-in 320ms var(--ease-out) both; }
+ .reveal-in > *:nth-child(2) { animation-delay: 40ms; } .reveal-in > *:nth-child(3) { animation-delay: 80ms; } .reveal-in > *:nth-child(4) { animation-delay: 120ms; }
+ @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 16px) scale(0.98); } to { opacity: 1; transform: translate(-50%, 0); } }
+-.toast-bottom { backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); position: fixed; left: 50%; bottom: 24px; z-index: 100000; width: max-content; max-width: min(640px, calc(100vw - 32px)); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); animation: toast-in 280ms var(--ease-out) both; }
++.toast-bottom { -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); position: fixed; left: 50%; bottom: 24px; z-index: 100000; width: max-content; max-width: min(640px, calc(100vw - 32px)); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); animation: toast-in 280ms var(--ease-out) both; }
+ @media (prefers-reduced-motion: reduce) { .glass-select-content, .reveal-in, .reveal-in > *, .toast-bottom { animation-duration: 1ms !important; animation-delay: 0ms !important; } }
+ 
+ /* Toolpath viewer: the View menu lists its switches as rows */
+diff --git a/tests/modalCss.test.ts b/tests/modalCss.test.ts
+index b75eabe..55c030b 100644
+--- a/tests/modalCss.test.ts
++++ b/tests/modalCss.test.ts
+@@ -1,5 +1,6 @@
+ import { readFileSync } from 'node:fs';
+ import { describe, expect, it } from 'vitest';
++import { transform } from 'lightningcss';
+ 
+ // A dialog taller than the screen must scroll to its buttons: the glass modal's own clipping is layered,
+ // so a dialog's overflow-y-auto (a Tailwind utility, also layered but later) wins over it.
+@@ -11,3 +12,15 @@ describe('glass modal', () => {
+     expect(css).toMatch(/@layer components\s*\{\s*\.glass-modal\s*\{[^}]*overflow:\s*hidden/);
+   });
+ });
++
++// The build's minifier (lightningcss, run by Tailwind) keeps only the last of two backdrop-filter lines.
++// With -webkit- last, Chrome got no blur and the page behind showed through the dark pop-ups.
++describe('glass blur', () => {
++  it('keeps the unprefixed backdrop-filter after minifying', () => {
++    const targets = { safari: (16 << 16) | (4 << 8), ios_saf: (16 << 16) | (4 << 8), firefox: 128 << 16, chrome: 111 << 16 }; // Tailwind's
++    const out = transform({ filename: 'index.css', code: readFileSync('src/index.css'), minify: true, errorRecovery: true, targets }).code.toString();
++    const rules = out.match(/[^{}]*\{[^{}]*-webkit-backdrop-filter[^{}]*\}/g) ?? [];
++    expect(rules.length).toBeGreaterThan(5);
++    for (const r of rules) expect(r).toMatch(/[;{]backdrop-filter:/);
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,346 @@
+From de345f2e544f0692f4371697f830de3240bedd66 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:07:27 +0000
+Subject: [PATCH] =?UTF-8?q?i18n:=20one=20Turkish=20word=20per=20thing:=20t?=
+ =?UTF-8?q?ezgah,=20=C5=9Fifre,=20Tak=C4=B1m=20e=C5=9Fle=C5=9Ftirici,=203B?=
+ =?UTF-8?q?,=20rady=C3=BCsl=C3=BC=20(finding=20H5-9)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/tr/cam.ts      | 44 ++++++++++++++++-----------------
+ src/i18n/locales/tr/data.ts     |  2 +-
+ src/i18n/locales/tr/master.ts   |  2 +-
+ src/i18n/locales/tr/remapper.ts | 18 +++++++-------
+ src/lib/cam/news.ts             |  4 +--
+ src/lib/whatsNew.ts             | 10 ++++----
+ tests/trGlossary.test.ts        | 17 +++++++++++++
+ 7 files changed, 57 insertions(+), 40 deletions(-)
+ create mode 100644 tests/trGlossary.test.ts
+
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..f806d99 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -87,7 +87,7 @@ const cam: Translation<typeof en> = {
+         setup1: 'Sıradaki: bağlama 1’in üst yüzünü seçip onaylayın.',
+         setup2: 'Sıradaki: bağlama 2’nin üst yüzünü seçip onaylayın.',
+         stock: 'Sıradaki: ham ölçülerini kontrol edin.',
+-        machine: 'Sıradaki: envanterinde takım olan bir makine seçin (Parça).',
++        machine: 'Sıradaki: envanterinde takım olan bir tezgah seçin (Parça).',
+         material: 'Sıradaki: malzeme şablonlarını seçin (Parça).',
+         clamp: 'Sıradaki: bağlama 1’in paralelleri parçayı tutamaz: başka seçin (Bağlama 1).',
+       },
+@@ -146,7 +146,7 @@ const cam: Translation<typeof en> = {
+       search: 'Ø veya kod ara',
+       add: 'Takım ekle',
+       addTitle: 'Yeni takım',
+-      addHint: 'Eklenen takım, makinede aynı tür, Ø ve boyda bir takım yoksa, makinede olmayan her takım gibi takılacak takımdır.',
++      addHint: 'Eklenen takım, tezgahta aynı tür, Ø ve boyda bir takım yoksa, tezgahta olmayan her takım gibi takılacak takımdır.',
+       loadFailed: 'Takım veritabanı yüklenemedi, bu yüzden program yapılmadı (atölyenin değişikliklerini içermezdi). Bağlantıyı kontrol edip yeniden deneyin.',
+       typeLabel: 'Tür',
+       d: 'Ø (mm)',
+@@ -175,7 +175,7 @@ const cam: Translation<typeof en> = {
+       removedHint: 'CAM AI bu takımı kullanmaz. Yeniden kullanmak için geri koyun.',
+       blankTemplate: 'Boş alanlar şablonun değerini korur (gri).',
+       blankLearned: 'Boş alanlar, atölyenin programlarındaki bu tür takım değerlerini alır.',
+-      checked: 'Kaydedilen değerler, tek bir program için yazılan değerler gibi her program yapıldığında denetlenir: makinenin sınırlarını asla aşmaz ve takımın kaldıramayacağı bir kesme İndir ve Gönder’i kilitler.',
++      checked: 'Kaydedilen değerler, tek bir program için yazılan değerler gibi her program yapıldığında denetlenir: tezgahın sınırlarını asla aşmaz ve takımın kaldıramayacağı bir kesme İndir ve Gönder’i kilitler.',
+       save: 'Kaydet',
+       saving: 'Kaydediliyor…',
+       remove: 'CAM AI’dan çıkar',
+@@ -264,17 +264,17 @@ const cam: Translation<typeof en> = {
+       d: 'Takım Ø (mm)',
+       l: 'Boy (mm)',
+       badTool: 'Takımın Ø’ı 0–200 mm, boyu 0–400 mm olmalı.',
+-      handTool: 'Elle değiştirilen takım hiçbir makinede yok: ona bir makine takımı seçmek için programı remapper’a gönderin.',
+-      badNumber: 'T{{t}} bir Haas’ın aldığı numara değil (1 ile 200 arası): ona bir makine takımı vermek için programı remapper’a gönderin.',
++      handTool: 'Elle değiştirilen takım hiçbir tezgahta yok: ona bir tezgah takımı seçmek için programı Takım eşleştiriciye gönderin.',
++      badNumber: 'T{{t}} bir Haas’ın aldığı numara değil (1 ile 200 arası): ona bir tezgah takımı vermek için programı Takım eşleştiriciye gönderin.',
+       apply: 'Uygula ve kontrol et',
+       checking: 'Kontrol ediliyor…',
+       undo: 'Geri al',
+       hint: 'Daha derin: yalnızca en derin gittiği yerde. Programın tamamı yeniden kontrol edilir; mengeneye, tutucuya veya dayamaya çarpacak her şey kilidi korur.',
+       changed: 'Elle değiştirildi: {{count}} işlem. Parça modelden farklı (%{{pct}} benzer, {{mm3}} mm³ parçadan kesiliyor).',
+       accept: 'Bu parçayı olduğu gibi kabul ediyorum',
+-      acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: makineye ya da mengeneye hiçbir şey çarpmıyor.',
+-      acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı makinede kontrol edin.',
+-      acceptedHold_other: '{{count}} bağlamada mengene parçayı sıfırlarının varsaydığı yerden farklı tutuyor: sıfırları makinede kontrol edin.',
++      acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: tezgaha ya da mengeneye hiçbir şey çarpmıyor.',
++      acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı tezgahta kontrol edin.',
++      acceptedHold_other: '{{count}} bağlamada mengene parçayı sıfırlarının varsaydığı yerden farklı tutuyor: sıfırları tezgahta kontrol edin.',
+       dropped: 'Yeniden yapıldı: yeni programda artık olmayan işlemlerdeki elle değişiklikler kalktı.',
+     },
+     clamp1: {
+@@ -352,18 +352,18 @@ const cam: Translation<typeof en> = {
+     toolCount_one: '{{count}} takım',
+     toolCount_other: '{{count}} takım',
+     setupIssue: 'Bu bağlamada dikkat edilmesi gereken bir şey var',
+-    inMachine: 'Makinede',
+-    notInMachine: 'makinede yok',
+-    notInMachineLong: 'Bu makinede yok: CAM AI takım veritabanından aldı',
+-    notInMachineHand: 'Bu makinede yok: elle yazılmış bir takım (remapper ona bir makine takımı verir)',
++    inMachine: 'Tezgahta',
++    notInMachine: 'tezgahta yok',
++    notInMachineLong: 'Bu tezgahta yok: CAM AI takım veritabanından aldı',
++    notInMachineHand: 'Bu tezgahta yok: elle yazılmış bir takım (Takım eşleştirici ona bir tezgah takımı verir)',
+     makeFirst: 'Değişiklikler Yeniden oluştur’u bekliyor: programla birlikte indirmek için yeniden oluşturun',
+     toLoad: 'Takılacak',
+     changedBadge: 'Değişti: yeniden oluşturun',
+     downTo: 'Z{{z}} mm’ye kadar',
+-    cut: { rpm: 'Devir (dev/dk)', feed: 'İlerleme (mm/dk)', ae: 'Yan paso ae (mm)', ap: 'Derinlik ap (mm)', coolant: 'Soğutma', coolantMachine: 'makineye göre, her takımda aynı' },
++    cut: { rpm: 'Devir (dev/dk)', feed: 'İlerleme (mm/dk)', ae: 'Yan paso ae (mm)', ap: 'Derinlik ap (mm)', coolant: 'Soğutma', coolantMachine: 'tezgaha göre, her takımda aynı' },
+     coolant: { flood: 'Sıvı (M08)', air: 'Hava (M83)', off: 'Kapalı' },
+     unsafe: 'Bu değerler takımın kaldırabileceğinden fazla (eğilir veya kırılır). Düşürün: İndir ve Gönder kilitli kalır.',
+-    everywhere: 'Değişiklikler bu takımın kullanıldığı her yerde geçerlidir. Devir hiçbir zaman makinenin en yüksek devrini aşmaz.',
++    everywhere: 'Değişiklikler bu takımın kullanıldığı her yerde geçerlidir. Devir hiçbir zaman tezgahın en yüksek devrini aşmaz.',
+     swapTool: 'Takımı değiştir',
+     cancel: 'Vazgeç',
+     recalcFirst: 'Program değiştirildi: çıkmadan önce kontrol için yeniden oluşturun.',
+@@ -408,7 +408,7 @@ const cam: Translation<typeof en> = {
+       part: '2 · Parça',
+       layout: '3 · Bağlamalar: her birinin üst yüzü',
+       raw: '4 · Ham ayarları',
+-      machine: '5 · Makine ve malzeme',
++      machine: '5 · Tezgah ve malzeme',
+     },
+     part: {
+       title: 'Çizimdeki adı',
+@@ -459,12 +459,12 @@ const cam: Translation<typeof en> = {
+     making: 'Program yapılıyor ve simüle ediliyor…',
+     sideStock: 'Yan pay (mm)',
+     sideStockHint: 'Her duvarda bilerek bırakılır, 0 ile 0,5 mm arası. Şablonların kendi payı kullanılmaz.',
+-    toolsToLoad: '{{name}} makinesine takılacak takımlar',
++    toolsToLoad: '{{name}} tezgahına takılacak takımlar',
+     notHave: 'Bende yok',
+     standIn: 'Yerine bunu kullan',
+     swapPick: {
+       picks: 'CAM AI’ın seçtikleri (aynı tür)',
+-      machine: 'Makinede',
++      machine: 'Tezgahta',
+       db: 'Takım veritabanı',
+       typed: 'Başka bir ölçü…',
+       d: 'Ø (mm)',
+@@ -479,13 +479,13 @@ const cam: Translation<typeof en> = {
+     turn: {
+       title: 'Parçanın duruşu',
+       ghost: 'Döndürülmüş modeliniz, {{side}} yukarıda (yeşil), yapıldığı hâlinin üstünde (gri çizgiler)',
+-      press: 'Parçayı makinenin {{axis}} ekseni etrafında {{deg}} döndür',
++      press: 'Parçayı tezgahın {{axis}} ekseni etrafında {{deg}} döndür',
+       up: '{{side}} yukarıda',
+       by: 'sizin döndürmeniz: {{turns}}',
+       none: 'eski hâline döndü',
+       pending: 'yeniden yapılınca uygulanır',
+       taken: '{{side}} daha önceki bir bağlamada zaten yukarıda: CAM AI bunu böyle yapamaz, kendi yolunu kullanır',
+-      hint: 'Her basış parçayı makinenin X veya Y ekseni etrafında 90° döndürür; basışlar toplanır (iki kez +90 X: X etrafında 180°). Yeniden yap, onu bu duruşta planlar.',
++      hint: 'Her basış parçayı tezgahın X veya Y ekseni etrafında 90° döndürür; basışlar toplanır (iki kez +90 X: X etrafında 180°). Yeniden yap, onu bu duruşta planlar.',
+       own: 'CAM AI’nin yoluna dön',
+     },
+     hold: {
+@@ -548,7 +548,7 @@ const cam: Translation<typeof en> = {
+       moved: 'T{{tool}}, {{n}}. bağlamada yer değiştirdi',
+       edited: 'Bir işlem elle değiştirildi',
+     },
+-    noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı makineye ekleyin.',
++    noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı tezgaha ekleyin.',
+     swapHint: 'CAM AI seçtiğiniz takımla programı yeniden yapar.',
+     rightClickSwap: 'Takımı değiştirmek için sağ tıklayın',
+     toolName: '{{name}} · Ø {{d}} mm · boy {{l}} mm',
+@@ -564,7 +564,7 @@ const cam: Translation<typeof en> = {
+       MK: 'Tarama frezesi',
+       KF: 'Küresel freze',
+       TF: 'T kanal frezesi',
+-      UDM: 'Radyus frezesi',
++      UDM: 'Radyüs frezesi',
+     },
+     clamp: 'Yaklaşık {{kn}} kN ile sıkın ({{level}})',
+     clampLevel: { light: 'hafif', normal: 'normal', firm: 'sıkı' },
+@@ -653,7 +653,7 @@ const cam: Translation<typeof en> = {
+       spacerRefused: '{{setup}}. bağlama: {{side}} tarafında {{cale}} mm ara parça yok (atölyede 15, 20 ve 50 mm var; POM yuvasında yok): onsuz yapıldı',
+       stopRefused: '{{setup}}. bağlama: dayamada {{cale}} mm ara parça yok (atölyede 15 ve 50 mm var; POM yuvasında yok): parça dayamaya dayalı',
+       sideEmpty: '{{side}} yukarıdayken kesilecek bir şey kalmadı: onun için bağlama yapılmadı, tarafı CAM AI seçti',
+-      temporaryTool: '{{setup}}. bağlama: makinede ve takım veritabanında yeterince uzun Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',
++      temporaryTool: '{{setup}}. bağlama: tezgahta ve takım veritabanında yeterince uzun Ø{{d}} matkap yok: şimdilik Ø{{used}} ile delindi (geçici, delik o kadar küçük). Doğru matkabı takıp yeniden yapın',
+       floorHit: '{{setup}}. bağlama: bir kesim, parçanın veya paralellerinin durduğu tablaya 0,5 mm’den fazla yaklaşıyor (simülasyonda tabla yok): kilitli',
+       orderLocked: '{{setup}}. bağlama: T{{used}} artık T{{d}} takımından önce çalışıyor, oysa onun ardından gelmek üzere yapıldı (kesimleri T{{d}} takımının bıraktığına göre): bu sırayı hiçbir kontrol doğrulamıyor, kilitli kalır. T{{d}} takımının arkasına geri taşıyın',
+       jawRefused: '{{setup}}. bağlama: parçanın üstünden {{cale}} mm aşağıda çene üstlerine oturacak bir yüzü yok (çenelerin altta tuttuğundan geniş): CAM AI kendi yoluyla tuttu',
+diff --git a/src/i18n/locales/tr/data.ts b/src/i18n/locales/tr/data.ts
+index 1d19e35..4f38f9b 100644
+--- a/src/i18n/locales/tr/data.ts
++++ b/src/i18n/locales/tr/data.ts
+@@ -6,7 +6,7 @@ const data: Translation<typeof en> = {
+   lessons: {
+     title: 'Takım yolu öğrenme kayıtları',
+     description:
+-      'Takım yolunda bir program 3D modeliyle her kontrol edildiğinde uygulama modeli, programı, farkları ve her operasyonun nasıl işlendiğini saklar; dönüş aramasından sonra ayrıca M0 açıklamalarının ne dediğini ve parçayı doğru yapan dönüşleri. Uygulamayı ve dönüşlerin okunmasını geliştirmek için bir dönemin kayıtlarını indirip dosyayı gönderin.',
++      'Takım yolunda bir program 3B modeliyle her kontrol edildiğinde uygulama modeli, programı, farkları ve her operasyonun nasıl işlendiğini saklar; dönüş aramasından sonra ayrıca M0 açıklamalarının ne dediğini ve parçayı doğru yapan dönüşleri. Uygulamayı ve dönüşlerin okunmasını geliştirmek için bir dönemin kayıtlarını indirip dosyayı gönderin.',
+     from: 'Başlangıç',
+     to: 'Bitiş',
+     progress: '{{count}} kayıt okundu…',
+diff --git a/src/i18n/locales/tr/master.ts b/src/i18n/locales/tr/master.ts
+index 778dc88..5798dcd 100644
+--- a/src/i18n/locales/tr/master.ts
++++ b/src/i18n/locales/tr/master.ts
+@@ -49,7 +49,7 @@ const master: Translation<typeof en> = {
+     shiftChecks: 'Vardiya kontrolleri ve paralel kutusu',
+     shiftChecksHint: 'Önleyici bakım ile: kişiye özel kontroller, her vardiya paralel kutusu, kilit, paralel stoku',
+     toolpath: 'Takım yolu görüntüleyici',
+-    toolpathHint: 'Eşleyicide programların 3B simülasyonu; kapalıyken düğmede kilit görünür',
++    toolpathHint: 'Takım eşleştiricide programların 3B simülasyonu; kapalıyken düğmede kilit görünür',
+   },
+   compare: {
+     title: 'Karşılaştırma',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..ef27d8b 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -287,7 +287,7 @@ const remapper: Translation<typeof en> = {
+     },
+     conflict: {
+       title: 'Bu çevirme yazıldığı gibi yapılamaz',
+-      body: 'Aynı satırda yazan dönüş ile konum birbirini tutmuyor. Takım yolu bunun yerine RAFI’yi (veya yazan yüzü) izliyor; bu bir tahmin, çevirmeyi makinede kontrol edin.',
++      body: 'Aynı satırda yazan dönüş ile konum birbirini tutmuyor. Takım yolu bunun yerine RAFI’yi (veya yazan yüzü) izliyor; bu bir tahmin, çevirmeyi tezgahta kontrol edin.',
+       line: 'Bağlama {{n}}, satır {{line}}',
+       inspect: 'Yine de incele',
+       caution: '{{n}}. bağlamanın çevirmesi belirsiz: kontrol edin',
+@@ -295,7 +295,7 @@ const remapper: Translation<typeof en> = {
+     soon: {
+       badge: 'Yakında',
+       title: 'Takım yolu görüntüleyici yakında geliyor',
+-      text: 'Ülkenizde henüz kullanılamıyor. Her programın parçayı, makineye gitmeden önce bağlama bağlama 3B olarak işlediğini gösterir: ölçüler, ince duvarlar ve takım ya da tutucu çarpışmaları dahil.',
++      text: 'Ülkenizde henüz kullanılamıyor. Her programın parçayı, tezgaha gitmeden önce bağlama bağlama 3B olarak işlediğini gösterir: ölçüler, ince duvarlar ve takım ya da tutucu çarpışmaları dahil.',
+     },
+     title: 'Takım yolu',
+     open: 'Takım yolu',
+@@ -347,10 +347,10 @@ const remapper: Translation<typeof en> = {
+       cutHelp: 'Modelde olan malzeme: yanlış yerde veya fazla derin bir kesim',
+       size: '{{x}} × {{y}} × {{z}} mm',
+       byLine: 'satır {{n}} · T{{t}}',
+-      add: '3D model',
+-      addHelp: 'Parçanın 3D PDF, STEP veya STL dosyası: takım yolu programı gerçek parçayla karşılaştırır',
++      add: '3B model',
++      addHelp: 'Parçanın 3B PDF, STEP veya STL dosyası: takım yolu programı gerçek parçayla karşılaştırır',
+       import: 'Model içe aktar',
+-      importHelp: 'Parçanın 3D PDF, STEP veya STL dosyasını yükleyin: karşılaştırmak için simüle edilen parçanın üzerine yerleştirilir',
++      importHelp: 'Parçanın 3B PDF, STEP veya STL dosyasını yükleyin: karşılaştırmak için simüle edilen parçanın üzerine yerleştirilir',
+       view: 'Göster',
+       part: 'Parça',
+       model: 'Model',
+@@ -360,9 +360,9 @@ const remapper: Translation<typeof en> = {
+       remove: 'Modeli kaldır',
+       errors: {
+         tooBig: 'dosya çok büyük (en fazla 50 MB)',
+-        noModel: 'bu PDF’de 3D model yok',
+-        compressed: 'bu PDF’deki 3D model uygulamanın henüz okuyamadığı bir biçimde: STL dosyasını kullanın',
+-        unreadable: 'bu dosya 3D PDF, STEP veya STL olarak okunamıyor',
++        noModel: 'bu PDF’de 3B model yok',
++        compressed: 'bu PDF’deki 3B model uygulamanın henüz okuyamadığı bir biçimde: STL dosyasını kullanın',
++        unreadable: 'bu dosya 3B PDF, STEP veya STL olarak okunamıyor',
+         notPart: 'bu model bu parça değil (boyutu simüle edilen parçanınkiyle aynı değil)',
+       },
+     },
+@@ -391,7 +391,7 @@ const remapper: Translation<typeof en> = {
+       title_other: '{{count}} kod simüle edilmedi',
+       subprogram: '{{line}}. satırdan itibaren alt program çağrıları (M98/M97/M99), {{count}}×: çağrılan program çizilmez',
+       macro: '{{line}}. satırdan itibaren makro değişkenleri veya mantık (#, G65, IF, WHILE), {{count}}×',
+-      offset: '{{line}}. satırdan itibaren G54 dışındaki iş sıfırları: değerleri programda değil, makinededir',
++      offset: '{{line}}. satırdan itibaren G54 dışındaki iş sıfırları: değerleri programda değil, tezgahtadır',
+       transform: '{{line}}. satırdan itibaren döndürme, ölçekleme veya aynalama (G68/G51)',
+       cycle: '{{line}}. satırdan itibaren Haas cep veya daire çevrimleri (G12/G13/G150), {{count}}×',
+     },
+diff --git a/src/lib/cam/news.ts b/src/lib/cam/news.ts
+index 383fb04..256dec9 100644
+--- a/src/lib/cam/news.ts
++++ b/src/lib/cam/news.ts
+@@ -45,7 +45,7 @@ export const CAM_RELEASES: Release[] = [
+       title: 'CAM AI: kendine ait bir çalışma alanı',
+       items: [
+         'CAM AI uygulamanın başlığı ve sekmeleri olmadan tam ekran açılır; sol üstteki ok CNC Process Pro’ya döner.',
+-        'Üstte tek çubuk: dosya, hamı, kontrolleri (hepsi için tıklayın), süresi, İndir ve remapper’a Gönder; gerisi ⋯ altında.',
++        'Üstte tek çubuk: dosya, hamı, kontrolleri (hepsi için tıklayın), süresi, İndir ve Takım eşleştiriciye Gönder; gerisi ⋯ altında.',
+         'Bağlamaya göre takımlar (OP10, OP20…), her biri bir satır; seçilen takımın değerleri ve işlemleri sağda. [ ve ] iki paneli katlar.',
+         'Kendi simülasyonu: görünümün üstünde tek araç çubuğu, köşelerinde paraleller ve çene kontrolü, her takım için renkli bir parçası olan zaman çizelgesi (F görünümü sığdırır, Boşluk oynatır).',
+       ],
+@@ -70,7 +70,7 @@ export const CAM_RELEASES: Release[] = [
+       items: [
+         'Yapılmış bir programda bir takıma tıklamak, CAM AI’ın kendi simülasyonunu o takımda, kartının yanında gösterir.',
+         'Bir işlem elle kaydırılabilir (X, Y, Z) veya daha derine alınabilir: programın tamamı yeniden kontrol edilir. Mengeneye, bir paralele, bir tutucuya veya mengene tabanına çarpacak her şey kilidi korur; modelden küçük bir fark "Bu parçayı olduğu gibi kabul ediyorum" işaretiyle kabul edilebilir.',
+-        'Bir takım elle değiştirilebilir (Ø ve boy): yolu kalır, devirleri yeni Ø’ye göre ayarlanır ve ilerlemesi asla daha hızlı olmaz. Böyle bir takım hiçbir makinede yoktur, bu yüzden İndir kilitli kalır: ona bir makine takımı seçmek için programı remapper’a gönderin.',
++        'Bir takım elle değiştirilebilir (Ø ve boy): yolu kalır, devirleri yeni Ø’ye göre ayarlanır ve ilerlemesi asla daha hızlı olmaz. Böyle bir takım hiçbir tezgahta yoktur, bu yüzden İndir kilitli kalır: ona bir tezgah takımı seçmek için programı Takım eşleştiriciye gönderin.',
+         '1. bağlamada dayamaya 15 mm veya 50 mm ara parça konabilir; parçayı sağa iter.',
+         'Sonraki bir bağlama gerçekte durduğu gibi görünür: önceki bağlamaların bıraktığı ham, üzerinde bitmiş parça, paralellerinin yanında.',
+       ],
+diff --git a/src/lib/whatsNew.ts b/src/lib/whatsNew.ts
+index e7545ca..521404b 100644
+--- a/src/lib/whatsNew.ts
++++ b/src/lib/whatsNew.ts
+@@ -29,11 +29,11 @@ export const RELEASES: Release[] = [
+       ],
+     },
+     tr: {
+-      title: 'Atölyenin gerçek mengenesi ve köşe radyuslu takımlar 3B görünümde',
++      title: 'Atölyenin gerçek mengenesi ve köşe radyüslü takımlar 3B görünümde',
+       items: [
+         '3B görünüm atölyenin Haas mengenesini üreticisinin modelinden çizer: çeneler 125 mm uzunluğunda ve 45 mm yüksekliğinde, hareketli çene ve mil operatöre doğru.',
+         'Parça, çenelerin sol ucundaki bir dayamaya (X = 0) itilir. Takımlar o dayamadan itibaren çenelerin 125 mm’si boyunca denetlenir.',
+-        'Köşe radyuslu parmak frezeler (SF_10.00_040_R02 gibi bir kod ya da adında TORUS / ECKENRADIUS ve radyus) yuvarlatılmış alt kenarlarıyla çizilir ve keser.',
++        'Köşe radyüslü parmak frezeler (SF_10.00_040_R02 gibi bir kod ya da adında TORUS / ECKENRADIUS ve radyüs) yuvarlatılmış alt kenarlarıyla çizilir ve keser.',
+       ],
+     },
+   },
+@@ -65,7 +65,7 @@ export const RELEASES: Release[] = [
+       items: [
+         'Uygulamanın tamamında yeni, tutarlı bir simge seti.',
+         'Takım eşleştirici: program içe aktarıldıktan sonra bant çıkmaz; kodun üstündeki FANUC/HAAS düğmeleri dönüştürür.',
+-        'Zayıf parola hatırlatması bir kez gösterilir; uzun pencereler (Excel takım içe aktarma) düğmelerine kadar kaydırılabilir.',
++        'Zayıf şifre hatırlatması bir kez gösterilir; uzun pencereler (Excel takım içe aktarma) düğmelerine kadar kaydırılabilir.',
+       ],
+     },
+   },
+@@ -153,7 +153,7 @@ export const RELEASES: Release[] = [
+     tr: {
+       title: 'Takım yolu görüntüleyici',
+       items: [
+-        'Eşleyicideki Takım yolu düğmesi programı 3B gösterir: her bağlama, çevirmeler, mengene ve paraleller.',
++        'Takım eşleştiricideki Takım yolu düğmesi programı 3B gösterir: her bağlama, çevirmeler, mengene ve paraleller.',
+         'Parça, takımlar ilerledikçe işlenir. Oynatın ya da sona veya bir bağlama değişimine atlayın.',
+         'Zayıf noktalar: 0,5 mm altındaki duvarlar renkle öne çıkar.',
+         'Parçayı ölçün: iki yüzey, iki nokta, bir deliğin çapı veya iki delik arası mesafe.',
+@@ -191,7 +191,7 @@ export const RELEASES: Release[] = [
+     },
+     tr: {
+       title: 'Paralel stoku ve mengene kontrolü',
+-      items: ['Tüm makineler için ölçü başına tek paralel stoku ve her makinenin aldıkları.', 'Sipariş edilecek paraleller (4 yedekten az) ve siparişin PDF’i.', 'Her makinede mengene kontrolü.'],
++      items: ['Tüm tezgahlar için ölçü başına tek paralel stoku ve her tezgahın aldıkları.', 'Sipariş edilecek paraleller (4 yedekten az) ve siparişin PDF’i.', 'Her tezgahta mengene kontrolü.'],
+     },
+   },
+   {
+diff --git a/tests/trGlossary.test.ts b/tests/trGlossary.test.ts
+new file mode 100644
+index 0000000..3029a58
+--- /dev/null
++++ b/tests/trGlossary.test.ts
+@@ -0,0 +1,17 @@
++import { describe, expect, it } from 'vitest';
++import { resources } from '../src/i18n/resources';
++import trCam from '../src/i18n/locales/tr/cam';
++import { RELEASES } from '../src/lib/whatsNew';
++import { CAM_RELEASES } from '../src/lib/cam/news';
++
++// One Turkish word per thing: tezgah, şifre, Takım eşleştirici, 3B, radyüslü.
++const texts = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(texts) : []);
++const OTHER_WORDS = /(^|[^\p{L}])(makine|parola|eşleyici|remapper|radyus)|3D(?!-MODELL)/iu;
++
++describe('Turkish glossary', () => {
++  it('uses the agreed word for each thing', () => {
++    const all = [...texts(resources.tr), ...texts(trCam), ...[...RELEASES, ...CAM_RELEASES].flatMap((r) => texts(r.tr))];
++    expect(all.length).toBeGreaterThan(1000);
++    expect(all.filter((s) => OTHER_WORDS.test(s))).toEqual([]);
++  });
++});
+-- 
+2.43.0
+

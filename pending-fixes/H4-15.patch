@@ -1,0 +1,28 @@
+From f257f088dcaa99f248a79f277302eba6b580d5b2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:33:08 +0000
+Subject: [PATCH] Master: the monthly table lists the newest month first, so
+ the current month is not hidden below its scroll box (finding H4-15)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MasterApp.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/MasterApp.tsx b/src/components/MasterApp.tsx
+index 7619dc7..ce679e6 100644
+--- a/src/components/MasterApp.tsx
++++ b/src/components/MasterApp.tsx
+@@ -532,7 +532,7 @@ function MonthlyChart({ countries, kind }: { countries: ActiveCountry[]; kind: '
+               </tr>
+             </thead>
+             <tbody>
+-              {rows.map((r) => (
++              {[...rows].reverse().map((r) => ( // newest month first: the current one is not below the fold
+                 <tr key={r.month as string} className="border-b border-[var(--border-subtle)] last:border-0">
+                   <td className="p-2 text-[var(--text-secondary)]">{fmtMonth(r.month as string)}</td>
+                   {countries.map((c) => (
+-- 
+2.43.0
+

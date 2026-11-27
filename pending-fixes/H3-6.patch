@@ -1,0 +1,76 @@
+From 1344889c0e67a9376264de4e6622493d765a55a9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:53:37 +0000
+Subject: [PATCH] Toolpath: the clock rounds before splitting minutes and
+ seconds, so it shows 1:00, never 0:60 (finding H3-6)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolpathViewer.tsx |  4 +---
+ src/i18n/format.ts                |  6 ++++++
+ tests/clock.test.ts               | 13 +++++++++++++
+ 3 files changed, 20 insertions(+), 3 deletions(-)
+ create mode 100644 tests/clock.test.ts
+
+diff --git a/src/components/ToolpathViewer.tsx b/src/components/ToolpathViewer.tsx
+index 5d34392..4b90b49 100644
+--- a/src/components/ToolpathViewer.tsx
++++ b/src/components/ToolpathViewer.tsx
+@@ -19,7 +19,7 @@ import { TARGET } from '../lib/fixTurns';
+ import type { MeasureMode } from '../lib/measure';
+ import { iosBackdrop, iosSurface } from '../lib/motion';
+ import { useT } from '../i18n';
+-import { fmtDuration, fmtNumber, locale } from '../i18n/format';
++import { fmtClock, fmtDuration, fmtNumber, locale } from '../i18n/format';
+ 
+ const Toolpath3D = lazy(() => import('./Toolpath3D'));
+ const mm = (v: number) => fmtNumber(Math.round(v * 10) / 10, 1);
+@@ -61,8 +61,6 @@ function fitView(minA: number, maxA: number, minB: number, maxB: number): View {
+ /** Measurements: always two decimals, as on a drawing. */
+ const fmt2 = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ 
+-const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+-
+ /** Full-screen toolpath preview: top and side views, one colour per tool, play through the program. */
+ /** holderHits: holders found going into the part (the remapper's collision check, for this code); focusHit: open at the first collision. */
+ export default function ToolpathViewer({
+diff --git a/src/i18n/format.ts b/src/i18n/format.ts
+index 9cb3ca9..d604c75 100644
+--- a/src/i18n/format.ts
++++ b/src/i18n/format.ts
+@@ -55,6 +55,12 @@ export function timeAgo(ts: number | null | undefined, now = Date.now()): string
+   return d === 1 ? t('common:time.yesterday') : t('common:time.daysAgo', { count: d });
+ }
+ 
++/** A clock in seconds as "4:05" (minutes:seconds); rounded first, so 59.6 s is "1:00", never "0:60". */
++export function fmtClock(seconds: number): string {
++  const r = Math.round(seconds);
++  return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
++}
++
+ /** A duration in seconds as "2 h 15 min" / "2 sa 15 dk". */
+ export function fmtDuration(seconds: number): string {
+   const t = i18n.t.bind(i18n);
+diff --git a/tests/clock.test.ts b/tests/clock.test.ts
+new file mode 100644
+index 0000000..a7e16af
+--- /dev/null
++++ b/tests/clock.test.ts
+@@ -0,0 +1,13 @@
++import { describe, expect, it } from 'vitest';
++import { fmtClock } from '../src/i18n/format';
++
++describe('fmtClock', () => {
++  it('rounds the whole time before splitting it, so it never shows :60', () => {
++    expect(fmtClock(0)).toBe('0:00');
++    expect(fmtClock(59.6)).toBe('1:00');
++    expect(fmtClock(239.5)).toBe('4:00');
++    expect(fmtClock(479.7)).toBe('8:00');
++    expect(fmtClock(65.4)).toBe('1:05');
++    expect(fmtClock(6258)).toBe('104:18');
++  });
++});
+-- 
+2.43.0
+

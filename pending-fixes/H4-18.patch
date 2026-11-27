@@ -1,0 +1,34 @@
+From dbd7acbaab4900725feef0e834e14243b3537d20 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:33:24 +0000
+Subject: [PATCH] Parts: the review pager's note goes on its own line on a
+ phone, and the pager stays inside the card (finding H4-18)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PartReview.tsx | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/PartReview.tsx b/src/components/PartReview.tsx
+index 0f94877..e867023 100644
+--- a/src/components/PartReview.tsx
++++ b/src/components/PartReview.tsx
+@@ -339,12 +339,12 @@ export default function PartReview() {
+         )}
+ 
+         {/* Pagination Footer */}
+-        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-xs">
++        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--border-subtle)] pt-4 text-xs">
+           <span className="text-[var(--text-tertiary)]">
+             {t('review.footer')}
+           </span>
+ 
+-          <div className="flex items-center gap-2">
++          <div className="flex items-center gap-2 ml-auto">
+             <button
+               onClick={() => setPage(p => Math.max(0, p - 1))}
+               disabled={page === 0 || isLoading}
+-- 
+2.43.0
+

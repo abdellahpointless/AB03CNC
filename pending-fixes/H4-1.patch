@@ -1,0 +1,149 @@
+From cc1803e2ca307aa19dcde5e767af83ee7dbf4945 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:12:42 +0000
+Subject: [PATCH] Reports: From and To can no longer be the same day; a failed
+ load shows no numbers under the error; 'Invalid date range' in Turkish
+ (finding H4-1)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PartProduction.tsx    |  1 +
+ src/components/PeriodPicker.tsx      |  6 +++---
+ src/components/PreventiveReports.tsx |  7 ++++++-
+ src/lib/partsApi.ts                  | 13 +++++++++++++
+ tests/payPeriod.test.ts              | 10 +++++++++-
+ worker/i18n-tr.ts                    |  1 +
+ worker/tests/i18n-tr.test.ts         |  1 +
+ 7 files changed, 34 insertions(+), 5 deletions(-)
+
+diff --git a/src/components/PartProduction.tsx b/src/components/PartProduction.tsx
+index 4e665f9..fd0fae0 100644
+--- a/src/components/PartProduction.tsx
++++ b/src/components/PartProduction.tsx
+@@ -34,6 +34,7 @@ export default function PartProduction({ period }: { period: PartsPeriod }) {
+         setRows(res.rows);
+         setError(null);
+       } else {
++        setRows([]);
+         setError(res.error);
+       }
+       setLoading(false);
+diff --git a/src/components/PeriodPicker.tsx b/src/components/PeriodPicker.tsx
+index 3c8ab5e..c84e19d 100644
+--- a/src/components/PeriodPicker.tsx
++++ b/src/components/PeriodPicker.tsx
+@@ -1,5 +1,5 @@
+ import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight } from '@tabler/icons-react';
+-import { shiftPeriod, type PartsPeriod } from '../lib/partsApi';
++import { addDays, setPeriodEnd, shiftPeriod, type PartsPeriod } from '../lib/partsApi';
+ import { useT } from '../i18n';
+ 
+ /** From - To days (the end day not counted), with arrows that move the period by a month. */
+@@ -12,11 +12,11 @@ export default function PeriodPicker({ value, onChange }: { value: PartsPeriod;
+       </button>
+       <label className="flex items-center gap-1.5">
+         <span className="text-[var(--text-secondary)]">{t('review.from')}</span>
+-        <input type="date" className="aurora-input text-xs py-1.5 px-2" value={value.from} max={value.to} onChange={(e) => e.target.value && onChange({ ...value, from: e.target.value })} />
++        <input type="date" className="aurora-input text-xs py-1.5 px-2" value={value.from} max={addDays(value.to, -1)} onChange={(e) => e.target.value && onChange(setPeriodEnd(value, 'from', e.target.value))} />
+       </label>
+       <label className="flex items-center gap-1.5">
+         <span className="text-[var(--text-secondary)]">{t('review.to')}</span>
+-        <input type="date" className="aurora-input text-xs py-1.5 px-2" value={value.to} min={value.from} title={t('review.toHint')} onChange={(e) => e.target.value && onChange({ ...value, to: e.target.value })} />
++        <input type="date" className="aurora-input text-xs py-1.5 px-2" value={value.to} min={addDays(value.from, 1)} title={t('review.toHint')} onChange={(e) => e.target.value && onChange(setPeriodEnd(value, 'to', e.target.value))} />
+       </label>
+       <button type="button" className="btn-icon" onClick={() => onChange(shiftPeriod(value, 1))} aria-label={t('review.nextPeriod')} title={t('review.nextPeriod')}>
+         <ChevronRight size={15} />
+diff --git a/src/components/PreventiveReports.tsx b/src/components/PreventiveReports.tsx
+index 98f306f..7c5223e 100644
+--- a/src/components/PreventiveReports.tsx
++++ b/src/components/PreventiveReports.tsx
+@@ -56,7 +56,12 @@ export default function PreventiveReports() {
+         setData(r);
+         setError('');
+       },
+-      (e) => alive && setError(errorMessage(e)),
++      (e) => {
++        if (!alive) return;
++        // No numbers from an earlier period under the error (they would read as this period's).
++        setData(null);
++        setError(errorMessage(e));
++      },
+     );
+     return () => {
+       alive = false;
+diff --git a/src/lib/partsApi.ts b/src/lib/partsApi.ts
+index 5813af3..a502373 100644
+--- a/src/lib/partsApi.ts
++++ b/src/lib/partsApi.ts
+@@ -114,6 +114,19 @@ export function shiftPeriod(p: PartsPeriod, by: number): PartsPeriod {
+   return { from: move(p.from), to: move(p.to) };
+ }
+ 
++/** The day `by` days after `s` (YYYY-MM-DD). */
++export function addDays(s: string, by: number): string {
++  const [y, m, d] = s.split('-').map(Number);
++  return ymd(new Date(y, m - 1, d + by));
++}
++
++/** The period with one end set to `day`; the other end moves when they would meet (the end day is not counted, so From = To is empty). */
++export function setPeriodEnd(p: PartsPeriod, end: 'from' | 'to', day: string): PartsPeriod {
++  const next = { ...p, [end]: day };
++  if (next.from < next.to) return next;
++  return end === 'from' ? { from: day, to: addDays(day, 1) } : { from: addDays(day, -1), to: day };
++}
++
+ /** The period as times (ms) on this PC's calendar, the end excluded. */
+ export const periodMs = (p: PartsPeriod) => ({ from: dayMs(p.from), to: dayMs(p.to) });
+ const periodQs = (p: PartsPeriod) => `from=${dayMs(p.from)}&to=${dayMs(p.to)}`;
+diff --git a/tests/payPeriod.test.ts b/tests/payPeriod.test.ts
+index 9e3f201..341970e 100644
+--- a/tests/payPeriod.test.ts
++++ b/tests/payPeriod.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { payPeriod, shiftPeriod } from '../src/lib/partsApi';
++import { payPeriod, setPeriodEnd, shiftPeriod } from '../src/lib/partsApi';
+ 
+ describe('26th to 26th period', () => {
+   it('starts on the 26th of this month from the 26th on, else on the 26th of last month', () => {
+@@ -15,4 +15,12 @@ describe('26th to 26th period', () => {
+     expect(shiftPeriod({ from: '2026-12-26', to: '2027-01-26' }, 1)).toEqual({ from: '2027-01-26', to: '2027-02-26' });
+     expect(shiftPeriod({ from: '2026-01-26', to: '2026-02-26' }, -1)).toEqual({ from: '2025-12-26', to: '2026-01-26' });
+   });
++  it('never lets From reach To (the end day is not counted, so the same day is an empty period)', () => {
++    const p = { from: '2026-10-26', to: '2026-11-26' };
++    expect(setPeriodEnd(p, 'from', '2026-11-01')).toEqual({ from: '2026-11-01', to: '2026-11-26' });
++    expect(setPeriodEnd(p, 'from', '2026-11-26')).toEqual({ from: '2026-11-26', to: '2026-11-27' });
++    expect(setPeriodEnd(p, 'from', '2026-12-31')).toEqual({ from: '2026-12-31', to: '2027-01-01' });
++    expect(setPeriodEnd(p, 'to', '2026-10-26')).toEqual({ from: '2026-10-25', to: '2026-10-26' });
++    expect(setPeriodEnd(p, 'to', '2026-03-01')).toEqual({ from: '2026-02-28', to: '2026-03-01' });
++  });
+ });
+diff --git a/worker/i18n-tr.ts b/worker/i18n-tr.ts
+index a94f5c1..ed00bf6 100644
+--- a/worker/i18n-tr.ts
++++ b/worker/i18n-tr.ts
+@@ -183,6 +183,7 @@ registerTurkish(
+     'Quantity must be between 1 and 9999.': 'Adet 1 ile 9999 arasında olmalıdır.',
+     'Kind must be PRODUCED or MODIFICATION': 'Tür PRODUCED (üretim) veya MODIFICATION (modifikasyon) olmalıdır.',
+     'Invalid month': 'Geçersiz ay.',
++    'Invalid date range': 'Geçersiz tarih aralığı.',
+     'status must be APPROVED or REJECTED': 'Durum APPROVED (onaylandı) veya REJECTED (reddedildi) olmalıdır.',
+     'ids must be a list of entry ids (max 200)': 'Kayıt kimlikleri bir liste olarak gönderilmelidir (en fazla 200).',
+     'Month filter must look like YYYY-MM': 'Ay filtresi YYYY-AA biçiminde olmalıdır (ör. 2026-10).',
+diff --git a/worker/tests/i18n-tr.test.ts b/worker/tests/i18n-tr.test.ts
+index ae61791..f83c3f7 100644
+--- a/worker/tests/i18n-tr.test.ts
++++ b/worker/tests/i18n-tr.test.ts
+@@ -13,6 +13,7 @@ describe('Turkish server messages', () => {
+     expect(tr('Two-step sign-in is already on.')).toBe('İki adımlı doğrulama zaten açık.');
+     expect(tr('Unknown machine')).toBe('Bilinmeyen tezgah.');
+     expect(tr('Out of stock')).toBe('Stokta yok.');
++    expect(tr('Invalid date range')).toBe('Geçersiz tarih aralığı.');
+   });
+ 
+   it('translates messages with a number or a name, keeping the value', () => {
+-- 
+2.43.0
+

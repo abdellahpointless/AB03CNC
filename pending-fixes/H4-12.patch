@@ -1,0 +1,28 @@
+From 0adf0ea50985e6d3d410c40488d33c255c05decd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:16:11 +0000
+Subject: [PATCH] Master: Machine health lists every machine that needs
+ attention, not only the first six (finding H4-12)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MasterApp.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/MasterApp.tsx b/src/components/MasterApp.tsx
+index 7619dc7..31bfaf3 100644
+--- a/src/components/MasterApp.tsx
++++ b/src/components/MasterApp.tsx
+@@ -600,7 +600,7 @@ function MachineHealth({ countries }: { countries: ActiveCountry[] }) {
+               </p>
+             ) : (
+               <ul className="space-y-1.5">
+-                {attention.slice(0, 6).map((m) => (
++                {attention.map((m) => (
+                   <li key={m.id} className="flex items-center justify-between gap-3 text-xs p-2 rounded-[var(--radius-sm)] bg-[rgba(var(--ov),0.03)]">
+                     <span className="font-semibold text-[var(--text-primary)]">{m.name}</span>
+                     <span className="flex items-center gap-2">
+-- 
+2.43.0
+

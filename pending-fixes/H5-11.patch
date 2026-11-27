@@ -1,0 +1,486 @@
+From 48018090ccdacc1621188a4f6cbebe2839c6c9ed Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:24:55 +0000
+Subject: [PATCH] i18n: remove 38 translation keys nothing uses, in both
+ languages (finding H5-11)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/app.ts        |  2 --
+ src/i18n/locales/en/cam.ts        | 23 -----------------------
+ src/i18n/locales/en/common.ts     |  5 -----
+ src/i18n/locales/en/preventive.ts |  4 ----
+ src/i18n/locales/en/remapper.ts   |  4 ----
+ src/i18n/locales/tr/app.ts        |  2 --
+ src/i18n/locales/tr/cam.ts        | 23 -----------------------
+ src/i18n/locales/tr/common.ts     |  5 -----
+ src/i18n/locales/tr/preventive.ts |  4 ----
+ src/i18n/locales/tr/remapper.ts   |  4 ----
+ 10 files changed, 76 deletions(-)
+
+diff --git a/src/i18n/locales/en/app.ts b/src/i18n/locales/en/app.ts
+index 799c5ef..31be787 100644
+--- a/src/i18n/locales/en/app.ts
++++ b/src/i18n/locales/en/app.ts
+@@ -6,7 +6,6 @@ const app = {
+   header: {
+     subtitle: 'Industrial G-Code Dialect & Tool Remapper',
+     syncTitle: 'CNC Process Pro - Click to sync now',
+-    securityTitle: 'Account security (password, two-step sign-in)',
+     syncNow: 'Sync now',
+     signOut: 'Sign out',
+   },
+@@ -107,7 +106,6 @@ const app = {
+       system: 'follow windows setting',
+     },
+     title: '{{current}} (click for {{next}})',
+-    aria: 'Colour mode: {{mode}}',
+   },
+ 
+   /** Error texts used when the server sends no message of its own. */
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 5f63d1f..fbcfacc 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -10,14 +10,11 @@ const cam = {
+       new: 'New program',
+       newTitle: 'New program',
+       create: 'Create',
+-      simulate: 'Simulate',
+-      browser: 'Browser',
+       viewport: '3D view',
+       empty: 'Start with a new program: choose the part’s 3D model.',
+       needs: 'Needs your input',
+       stock: 'Stock',
+       setups: 'Setups',
+-      output: 'Output',
+       partProps: 'Part',
+       toolProps: 'Tool',
+       top: 'Top face (Z0)',
+@@ -216,7 +213,6 @@ const cam = {
+       noModel: 'To compare it with the part’s 3D model, choose the model in New program first, then open the program.',
+       read: 'This file is not a program CAM AI can read.',
+     },
+-    setupSteps: 'Setups, one after the other',
+     setupStep: 'Setup {{n}} · OP{{op}}',
+     stepState: { locked: 'locked until the setup before is confirmed', done: 'confirmed', now: 'being chosen' },
+     restByAi: 'Any further setup: CAM AI',
+@@ -226,7 +222,6 @@ const cam = {
+       noFit: 'With that face up the part does not fit the vise. Pick another face.',
+       same: 'That is already the top of setup 1. Pick another face for setup 2.',
+     },
+-    setupsReady: 'Both setups are confirmed. CAM AI plans any further setup and checks every one.',
+     proposed: 'CAM AI’s proposal',
+     confirmSetup: 'Confirm setup {{n}}',
+     changeSetup: 'Change setup {{n}}',
+@@ -300,11 +295,9 @@ const cam = {
+       intoPart: 'The jaws hold {{mm}} mm of the part’s own sides: the outside under them is cut from other clampings (more clampings and time), and stock can stay where those cuts meet; a program that leaves any stays locked.',
+       later: 'Next time it is made: on {{cale}} mm parallels.',
+       laterTable: 'Next time it is made: on the table, no parallels.',
+-      laterJaw: 'Next time it is made: on the jaw tops, by its face {{depth}} mm under the top.',
+       onTable: 'On the table (no parallels): the jaws grip 45 mm of it.',
+       onJaw: 'On the jaw tops, by its face {{depth}} mm under the top: the jaws grip {{grip}} mm of what hangs below it.',
+       onStep: 'On {{cale}} mm parallels by the step {{depth}} mm under Z0, its narrower body hanging between them; the jaws grip {{grip}} mm of it',
+-      laterNone: 'Next time it is made: no parallels.',
+       laterStop: 'Next time it is made: a {{mm}} mm spacer at the stop.',
+       laterStopNone: 'Next time it is made: no spacer at the stop.',
+       laterHint: 'This clamping holds what the ones before it left: choose its parallels here, then Make it again. A change to an earlier clamping clears this choice.',
+@@ -364,7 +357,6 @@ const cam = {
+     showOnlyThis: 'Show only this operation’s path',
+     removeOp: 'Remove {{name}}',
+     keepOp: 'Keep {{name}}',
+-    toolTime: 'This tool: {{time}} (min:s, with its tool change)',
+     deepest: 'down to Z{{z}} mm',
+     setupTime: 'Setup time {{time}}',
+     overcut: 'Overcut',
+@@ -382,16 +374,11 @@ const cam = {
+     machine: 'Machine and its tools',
+     material: 'Material',
+     raw: 'Raw size (mm)',
+-    rawAxis: 'Raw size along {{axis}} (mm)',
+-    rawHint: 'Along the model’s X, Y and Z. Leave empty for the model plus the allowance learned from the shop’s programs.',
+     noTools: '{{name}} has no tools in its inventory.',
+     generate: 'Make the program',
+     again: 'Make it again',
+     stop: 'Stop',
+     reading: 'Reading the model…',
+-    making: 'Making the program and simulating it…',
+-    trying: 'Trying layout {{n}} of {{of}} and simulating it…',
+-    slow: 'Big parts take a few minutes',
+     failed: 'CAM AI could not program this part. Check the model, or download the learning records for the team.',
+     result: 'Result',
+     proven: 'Simulated and checked: the part comes out like the model, and no tool or holder hits the jaws or the part.',
+@@ -401,7 +388,6 @@ const cam = {
+     step: {
+       model: '1 · The part’s 3D model',
+       part: '2 · The part',
+-      layout: '3 · Setups: the top face of each',
+       raw: '4 · Stock settings',
+       machine: '5 · Machine and material',
+     },
+@@ -423,7 +409,6 @@ const cam = {
+     },
+     layout: {
+       others: 'Other ways to lay it (CAM AI’s list, best first)',
+-      suggested: 'Suggested',
+       up: 'Side {{side}} up',
+       turned: 'turned a quarter',
+       size: '{{x}} × {{y}} × {{z}} mm in the vise',
+@@ -431,14 +416,10 @@ const cam = {
+       setups_other: 'about {{count}} setups',
+       twoVises: 'needs both vises',
+       noFit: 'does not fit the vise',
+-      hint: 'X runs along the jaws, Y between them. Pick another way if the part sits better like that.',
+     },
+     rawStep: {
+       same: 'Same size as the part (already cut to size)',
+-      bigger: 'Bigger: what was left on it, total per axis',
+-      excess: 'Excess along {{axis}} (mm)',
+       result: 'Raw part {{size}} mm, the part centred in it',
+-      required: 'Choose one to go on.',
+     },
+     inox: 'Inox (stainless)',
+     otherMaterial: 'Other material…',
+@@ -488,11 +469,8 @@ const cam = {
+       useStep: 'Rest it there',
+       stepHint: 'As the engineers write it ("35 MM UNTERLAGE IN EP 8 MM"): the part sits on the parallels by its face that deep, its narrower body hanging between them.',
+       flip: 'Turned over from the clamping before',
+-      about: 'About {{axis}}',
+       quarter: 'Then turned in the vise',
+-      turnHint: 'How the operator turns the part from the clamping before. CAM AI plans the clamping that way and checks it when made again; the turn is written in its note.',
+       side: 'Side up',
+-      camChoice: 'CAM AI’s',
+       adjust: 'Adjust this clamping',
+       close: 'Done',
+       parallels: 'Parallels',
+@@ -654,7 +632,6 @@ const cam = {
+       stepRefused: 'Clamping {{setup}}: the part has no step {{cale}} mm under Z0 the parallels can stand under beside its narrower body (with that body 5 mm over the vise floor): CAM AI held it its own way',
+       stepHold: 'Clamping {{setup}}: on the step {{cale}} mm under Z0 the jaws would not hold the part at full feed: CAM AI held it on its bottom',
+     },
+-    view: 'Open in the toolpath viewer',
+     download: 'Download',
+     send: 'Send to the remapper',
+     locked: 'Download and Send unlock once every check passes: like the model (99 %), no collision, no tool into a cale, nothing cut out of the part, and the vise holds it safely.',
+diff --git a/src/i18n/locales/en/common.ts b/src/i18n/locales/en/common.ts
+index e88e82f..7d10aad 100644
+--- a/src/i18n/locales/en/common.ts
++++ b/src/i18n/locales/en/common.ts
+@@ -1,6 +1,5 @@
+ /* Words used all over the app. English (Morocco). */
+ const common = {
+-  appName: 'CNC Process Pro',
+   actions: {
+     save: 'Save',
+     cancel: 'Cancel',
+@@ -16,12 +15,9 @@ const common = {
+     export: 'Export',
+     import: 'Import',
+     download: 'Download',
+-    upload: 'Upload',
+     yes: 'Yes',
+     no: 'No',
+     retry: 'Try again',
+-    continue: 'Continue',
+-    signIn: 'Sign in',
+     signOut: 'Sign out',
+     later: 'Later',
+     dismiss: 'Dismiss',
+@@ -121,7 +117,6 @@ const common = {
+     roleOf: 'Role of {{user}}',
+     category: 'Category',
+     pocket: 'Pocket',
+-    days: 'Number of days',
+     notices: 'Notices',
+   },
+ };
+diff --git a/src/i18n/locales/en/preventive.ts b/src/i18n/locales/en/preventive.ts
+index ba4c3b1..b837bdf 100644
+--- a/src/i18n/locales/en/preventive.ts
++++ b/src/i18n/locales/en/preventive.ts
+@@ -101,7 +101,6 @@ const preventive = {
+     checks: 'Checks',
+     progress: '{{done}} of {{total}} done',
+     toDo: 'To do',
+-    alreadyDone: 'Done',
+     allDone: 'All checks are done. Thank you!',
+     noChecks: 'This machine has no checks yet.',
+     done: 'Done',
+@@ -202,7 +201,6 @@ const preventive = {
+     toOrder: 'Cales to order',
+     toOrderHelp: 'Every size with fewer than {{min}} cales in the general stock, and how many bring it back to {{min}}.',
+     nothingToOrder: 'Nothing to order: the general stock has at least {{min}} cales of every size.',
+-    pdf: 'Export PDF',
+     pdfTitle: 'Cales to order',
+     pdfFile: 'cales-order',
+     popupBlocked: 'The browser blocked the new window. Allow pop-ups for this site, then try again.',
+@@ -222,7 +220,6 @@ const preventive = {
+     reject: 'Reject',
+     outOfStock: 'Out of stock',
+     foundAgain: 'Found again',
+-    grid: 'Spare cales on hand',
+     views: 'Cales tables',
+     onMachine: 'On machine',
+     securityStock: 'Security stock',
+@@ -273,7 +270,6 @@ const preventive = {
+     nDamaged_one: '{{count}} pair damaged',
+     nDamaged_other: '{{count}} pairs damaged',
+     checked: 'checked this shift',
+-    pairs: '{{count}} pairs, 2 of each height',
+     pair: '{{h}} mm pair',
+     heights: 'Pairs by height',
+     foundAll: 'I found all the cales',
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..8819a1a 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -239,11 +239,7 @@ const remapper = {
+   safety: {
+     title: 'Safety check',
+     allClear: 'All {{count}} checks passed',
+-    errorsCount: '{{count}} to fix',
+-    warningsCount: '{{count}} to look at',
+-    passedCount: '{{count}} checks passed',
+     line: 'Line {{line}}',
+-    lineN: 'Line {{line}} · {{n}}',
+     program: 'Whole program',
+     show: 'Show details',
+     hide: 'Hide details',
+diff --git a/src/i18n/locales/tr/app.ts b/src/i18n/locales/tr/app.ts
+index 9911297..b07f826 100644
+--- a/src/i18n/locales/tr/app.ts
++++ b/src/i18n/locales/tr/app.ts
+@@ -9,7 +9,6 @@ const app: Translation<typeof en> = {
+   header: {
+     subtitle: 'Endüstriyel G-kodu Uyarlama ve Takım Eşleştirici',
+     syncTitle: 'CNC Process Pro - Şimdi eşitlemek için tıklayın',
+-    securityTitle: 'Hesap güvenliği (şifre, iki adımlı doğrulama)',
+     syncNow: 'Şimdi eşitle',
+     signOut: 'Çıkış yap',
+   },
+@@ -103,7 +102,6 @@ const app: Translation<typeof en> = {
+       system: 'Windows ayarı',
+     },
+     title: '{{current}} (tıklayın: {{next}})',
+-    aria: 'Renk modu: {{mode}}',
+   },
+ 
+   auth: {
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index c106a06..a547f27 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -13,14 +13,11 @@ const cam: Translation<typeof en> = {
+       new: 'Yeni program',
+       newTitle: 'Yeni program',
+       create: 'Oluştur',
+-      simulate: 'Simülasyon',
+-      browser: 'Gezgin',
+       viewport: '3B görünüm',
+       empty: 'Yeni bir programla başlayın: parçanın 3B modelini seçin.',
+       needs: 'Girişiniz gerekiyor',
+       stock: 'Ham',
+       setups: 'Bağlamalar',
+-      output: 'Çıktı',
+       partProps: 'Parça',
+       toolProps: 'Takım',
+       top: 'Üst yüz (Z0)',
+@@ -219,7 +216,6 @@ const cam: Translation<typeof en> = {
+       noModel: 'Parçanın 3B modeliyle karşılaştırmak için önce Yeni program’da modeli seçin, sonra programı açın.',
+       read: 'Bu dosya CAM AI’ın okuyabileceği bir program değil.',
+     },
+-    setupSteps: 'Bağlamalar, sırayla',
+     setupStep: 'Bağlama {{n}} · OP{{op}}',
+     stepState: { locked: 'önceki bağlama onaylanana kadar kilitli', done: 'onaylandı', now: 'seçiliyor' },
+     restByAi: 'Sonraki bağlamalar: CAM AI',
+@@ -229,7 +225,6 @@ const cam: Translation<typeof en> = {
+       noFit: 'Bu yüz üstteyken parça mengeneye sığmıyor. Başka bir yüz seçin.',
+       same: 'Bu zaten bağlama 1’in üst yüzü. Bağlama 2 için başka bir yüz seçin.',
+     },
+-    setupsReady: 'İki bağlama da onaylandı. CAM AI sonraki bağlamaları planlar ve hepsini kontrol eder.',
+     proposed: 'CAM AI önerisi',
+     confirmSetup: 'Bağlama {{n}}’i onayla',
+     changeSetup: 'Bağlama {{n}}’i değiştir',
+@@ -303,11 +298,9 @@ const cam: Translation<typeof en> = {
+       intoPart: 'Çeneler parçanın kendi yanlarından {{mm}} mm tutar: altlarındaki dış kısım başka bağlamalardan kesilir (daha çok bağlama ve süre), bu kesimlerin buluştuğu yerde ham kalabilir; ham bırakan program kilitli kalır.',
+       later: 'Bir sonraki hazırlamada: {{cale}} mm paralel.',
+       laterTable: 'Bir sonraki hazırlamada: tablada, paralelsiz.',
+-      laterJaw: 'Bir sonraki hazırlamada: çene üstlerinde, üstünden {{depth}} mm aşağıdaki yüzüyle.',
+       onTable: 'Tablada (paralelsiz): çeneler 45 mm’sini tutar.',
+       onJaw: 'Çene üstlerinde, üstünden {{depth}} mm aşağıdaki yüzüyle: çeneler altında sarkan kısmın {{grip}} mm’sini tutar.',
+       onStep: '{{cale}} mm paraleller üstünde, Z0’ın {{depth}} mm altındaki basamaktan; dar gövdesi aralarında sarkıyor; çeneler {{grip}} mm tutuyor',
+-      laterNone: 'Bir sonraki hazırlamada: paralelsiz.',
+       laterStop: 'Bir sonraki hazırlamada: dayamada {{mm}} mm ara parça.',
+       laterStopNone: 'Bir sonraki hazırlamada: dayamada ara parça yok.',
+       laterHint: 'Bu bağlama öncekilerin bıraktığını tutar: paralellerini burada seçin, sonra yeniden hazırlayın. Önceki bir bağlamadaki değişiklik bu seçimi siler.',
+@@ -367,7 +360,6 @@ const cam: Translation<typeof en> = {
+     showOnlyThis: 'Yalnızca bu işlemin yolunu göster',
+     removeOp: '{{name}} işlemini kaldır',
+     keepOp: '{{name}} işlemini geri al',
+-    toolTime: 'Bu takım: {{time}} (dk:sn, takım değişimiyle)',
+     deepest: 'Z{{z}} mm’ye kadar',
+     setupTime: 'Bağlama süresi {{time}}',
+     overcut: 'Fazla kesim',
+@@ -385,15 +377,11 @@ const cam: Translation<typeof en> = {
+     machine: 'Tezgah ve takımları',
+     material: 'Malzeme',
+     raw: 'Ham ölçü (mm)',
+-    rawAxis: '{{axis}} yönünde ham ölçü (mm)',
+-    rawHint: 'Modelin X, Y ve Z yönlerinde. Boş bırakılırsa: model artı atölye programlarından öğrenilen işleme payı.',
+     noTools: '{{name}} tezgahının envanterinde takım yok.',
+     generate: 'Programı oluştur',
+     again: 'Yeniden oluştur',
+     stop: 'Durdur',
+     reading: 'Model okunuyor…',
+-    trying: '{{of}} yerleşimden {{n}}. deneniyor ve simüle ediliyor…',
+-    slow: 'Büyük parçalar birkaç dakika sürer',
+     failed: 'CAM AI bu parçayı programlayamadı. Modeli kontrol edin veya ekip için öğrenme kayıtlarını indirin.',
+     result: 'Sonuç',
+     proven: 'Simüle edildi ve kontrol edildi: parça modeldeki gibi çıkıyor, hiçbir takım veya tutucu mengene çenelerine ya da parçaya çarpmıyor.',
+@@ -403,7 +391,6 @@ const cam: Translation<typeof en> = {
+     step: {
+       model: '1 · Parçanın 3B modeli',
+       part: '2 · Parça',
+-      layout: '3 · Bağlamalar: her birinin üst yüzü',
+       raw: '4 · Ham ayarları',
+       machine: '5 · Makine ve malzeme',
+     },
+@@ -425,7 +412,6 @@ const cam: Translation<typeof en> = {
+     },
+     layout: {
+       others: 'Diğer yerleşimler (CAM AI listesi, en iyisi önce)',
+-      suggested: 'Önerilen',
+       up: '{{side}} yüzü yukarıda',
+       turned: 'çeyrek tur döndürülmüş',
+       size: 'Mengenede {{x}} × {{y}} × {{z}} mm',
+@@ -433,14 +419,10 @@ const cam: Translation<typeof en> = {
+       setups_other: 'yaklaşık {{count}} bağlama',
+       twoVises: 'iki mengene gerekir',
+       noFit: 'mengeneye sığmaz',
+-      hint: 'X çeneler boyunca, Y çeneler arasındadır. Parça başka türlü daha iyi oturuyorsa onu seçin.',
+     },
+     rawStep: {
+       same: 'Parçayla aynı boyutta (zaten ölçüsünde kesilmiş)',
+-      bigger: 'Daha büyük: üzerinde bırakılan pay, eksen başına toplam',
+-      excess: '{{axis}} boyunca pay (mm)',
+       result: 'Ham parça {{size}} mm, parça ortasında',
+-      required: 'Devam etmek için birini seçin.',
+     },
+     inox: 'Inox (paslanmaz)',
+     otherMaterial: 'Başka malzeme…',
+@@ -453,7 +435,6 @@ const cam: Translation<typeof en> = {
+       FH: 'FH (FH, EPO, RESOPAL)',
+     },
+     settings: 'Ayarlar',
+-    making: 'Program yapılıyor ve simüle ediliyor…',
+     sideStock: 'Yan pay (mm)',
+     sideStockHint: 'Her duvarda bilerek bırakılır, 0 ile 0,5 mm arası. Şablonların kendi payı kullanılmaz.',
+     toolsToLoad: '{{name}} makinesine takılacak takımlar',
+@@ -491,11 +472,8 @@ const cam: Translation<typeof en> = {
+       useStep: 'Oraya oturt',
+       stepHint: 'Mühendislerin yazdığı gibi ("35 MM UNTERLAGE IN EP 8 MM"): parça o derinlikteki yüzüyle paralellere oturur, dar gövdesi aralarında sarkar.',
+       flip: 'Önceki bağlamadan çevrilişi',
+-      about: '{{axis}} ekseninde',
+       quarter: 'Sonra mengenede döndürme',
+-      turnHint: 'Operatörün parçayı önceki bağlamadan nasıl çevirdiği. CAM AI bağlamayı böyle planlar ve yeniden yapınca kontrol eder; çevirme notuna yazılır.',
+       side: 'Üstteki yüz',
+-      camChoice: 'CAM AI’ın',
+       adjust: 'Bu bağlamayı ayarla',
+       close: 'Tamam',
+       parallels: 'Paraleller',
+@@ -657,7 +635,6 @@ const cam: Translation<typeof en> = {
+       stepRefused: '{{setup}}. bağlama: parçanın Z0’ın {{cale}} mm altında, dar gövdesinin yanında paralellerin altına girebileceği bir basamağı yok (o gövde mengene tabanından 5 mm yukarıda): CAM AI kendi yoluyla tuttu',
+       stepHold: '{{setup}}. bağlama: Z0’ın {{cale}} mm altındaki basamakta çeneler parçayı tam ilerlemede tutamazdı: CAM AI onu tabanından tuttu',
+     },
+-    view: 'Takım yolu görüntüleyicisinde aç',
+     download: 'İndir',
+     send: 'Takım eşleştiriciye gönder',
+     locked: 'İndirme ve Gönderme tüm kontroller geçince açılır: modele benzer (%99), çarpışma yok, kalelere takım girmiyor, parçadan fazla kesilmiyor ve mengene parçayı güvenle tutuyor.',
+diff --git a/src/i18n/locales/tr/common.ts b/src/i18n/locales/tr/common.ts
+index 8bdb0b1..2f8d226 100644
+--- a/src/i18n/locales/tr/common.ts
++++ b/src/i18n/locales/tr/common.ts
+@@ -3,7 +3,6 @@ import type en from '../en/common';
+ 
+ /* Uygulama genelinde kullanılan kelimeler. Türkçe (Türkiye). */
+ const common: Translation<typeof en> = {
+-  appName: 'CNC Process Pro',
+   actions: {
+     save: 'Kaydet',
+     cancel: 'İptal',
+@@ -19,12 +18,9 @@ const common: Translation<typeof en> = {
+     export: 'Dışa aktar',
+     import: 'İçe aktar',
+     download: 'İndir',
+-    upload: 'Yükle',
+     yes: 'Evet',
+     no: 'Hayır',
+     retry: 'Tekrar deneyin',
+-    continue: 'Devam',
+-    signIn: 'Giriş yap',
+     signOut: 'Çıkış yap',
+     later: 'Daha sonra',
+     dismiss: 'Kapat',
+@@ -121,7 +117,6 @@ const common: Translation<typeof en> = {
+     roleOf: '{{user}} kullanıcısının rolü',
+     category: 'Kategori',
+     pocket: 'Cep',
+-    days: 'Gün sayısı',
+     notices: 'Bildirimler',
+   },
+ };
+diff --git a/src/i18n/locales/tr/preventive.ts b/src/i18n/locales/tr/preventive.ts
+index ca6d41e..7aa268c 100644
+--- a/src/i18n/locales/tr/preventive.ts
++++ b/src/i18n/locales/tr/preventive.ts
+@@ -102,7 +102,6 @@ const preventive: Translation<typeof en> = {
+     checks: 'Kontroller',
+     progress: '{{total}} kontrolden {{done}} tanesi yapıldı',
+     toDo: 'Yapılacaklar',
+-    alreadyDone: 'Yapılanlar',
+     allDone: 'Tüm kontroller yapıldı. Teşekkürler!',
+     noChecks: 'Bu tezgahın henüz kontrolü yok.',
+     done: 'Yapıldı',
+@@ -202,7 +201,6 @@ const preventive: Translation<typeof en> = {
+     toOrder: 'Sipariş edilecek paraleller',
+     toOrderHelp: 'Genel stokta {{min}} adetten az olan her ölçü, ve {{min}} adede tamamlamak için gereken miktar.',
+     nothingToOrder: 'Sipariş gerekmiyor: genel stokta her ölçüden en az {{min}} paralel var.',
+-    pdf: "PDF'e aktar",
+     pdfTitle: 'Sipariş edilecek paraleller',
+     pdfFile: 'paralel-siparisi',
+     popupBlocked: 'Tarayıcı yeni pencereyi engelledi. Bu site için açılır pencerelere izin verip tekrar deneyin.',
+@@ -222,7 +220,6 @@ const preventive: Translation<typeof en> = {
+     reject: 'Reddet',
+     outOfStock: 'Stokta yok',
+     foundAgain: 'Yeniden bulundu',
+-    grid: 'Eldeki yedek paraleller',
+     views: 'Paralel tabloları',
+     onMachine: 'Tezgahta',
+     securityStock: 'Emniyet stoku',
+@@ -273,7 +270,6 @@ const preventive: Translation<typeof en> = {
+     nDamaged_one: '{{count}} çift hasarlı',
+     nDamaged_other: '{{count}} çift hasarlı',
+     checked: 'bu vardiyada kontrol edildi',
+-    pairs: '{{count}} çift, her ölçüden 2 adet',
+     pair: '{{h}} mm çifti',
+     heights: 'Ölçüye göre çiftler',
+     foundAll: 'Tüm paralelleri buldum',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..c789937 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -230,11 +230,7 @@ const remapper: Translation<typeof en> = {
+   safety: {
+     title: 'Güvenlik kontrolü',
+     allClear: '{{count}} kontrolün tümü geçti',
+-    errorsCount: '{{count}} düzeltilecek',
+-    warningsCount: '{{count}} kontrol edilecek',
+-    passedCount: '{{count}} kontrol geçti',
+     line: 'Satır {{line}}',
+-    lineN: 'Satır {{line}} · {{n}}',
+     program: 'Programın tamamı',
+     show: 'Ayrıntıları göster',
+     hide: 'Ayrıntıları gizle',
+-- 
+2.43.0
+

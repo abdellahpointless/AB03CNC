@@ -1,0 +1,28 @@
+From 0c45170f4b870b9cf9cc943893d6c4ba377d1356 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:36:04 +0000
+Subject: [PATCH] Headers: Permissions-Policy without bluetooth, which Chrome
+ does not know and warned about on every page load (finding H4-22)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ public/_headers | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/public/_headers b/public/_headers
+index d22d3b0..5f82212 100644
+--- a/public/_headers
++++ b/public/_headers
+@@ -7,7 +7,7 @@
+   Cross-Origin-Opener-Policy: same-origin
+   Cross-Origin-Resource-Policy: same-origin
+   X-Permitted-Cross-Domain-Policies: none
+-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), interest-cohort=()
++  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), interest-cohort=()
+   X-Robots-Tag: noindex, nofollow
+ 
+ /assets/*
+-- 
+2.43.0
+

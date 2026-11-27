@@ -1,0 +1,67 @@
+From 2a79cb277d6ff4e9107970da50e1515eda41ee2c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:05:36 +0000
+Subject: [PATCH] Remapper: a program made for an air machine gets its coolant
+ back on HAAS-1, HAAS-5, FANUC-1 and FANUC-2 (M83 becomes M08) (finding H3-3)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/gcodeProcessor.ts  |  9 +++++++--
+ tests/machineRules.test.ts | 15 +++++++++++++++
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..fae9429 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -37,13 +37,18 @@ export function coolantNeed(code: string): 'air' | 'lubricant' | null {
+ /**
+  * The air jet code each machine always uses (shop rule): air machines (HAAS-2, HAAS-4) turn the
+  * auto air jet on (M83) wherever the program turns the coolant on (M08); the HAAS lubricant
+- * machines (HAAS-1, HAAS-5) switch it off with M84 on the safety line. FANUC: nothing yet, their
+- * programs use M84 only on tapping lines. Never inside a (comment); running it again changes nothing.
++ * machines (HAAS-1, HAAS-5) switch it off with M84 on the safety line. Every lubricant machine (HAAS-1,
++ * HAAS-5, FANUC-1, FANUC-2) turns an M83 of a program once made for an air machine back into M08.
++ * FANUC: no M84 added, their programs use M84 only on tapping lines. Never inside a (comment); running
++ * it again changes nothing.
+  */
+ export function applyMachineCoolant(lines: string[], machineId: string): string[] {
+   if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
+     return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+   }
++  if (['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2'].includes(machineId)) {
++    lines = lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M83(?![0-9.])/gi, 'M08')));
++  }
+   if (machineId !== 'HAAS-1' && machineId !== 'HAAS-5') return lines;
+   if (lines.some((l) => l !== '__REMOVE_ME__' && /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l)))) return lines;
+   const safety = lines.findIndex((l) => {
+diff --git a/tests/machineRules.test.ts b/tests/machineRules.test.ts
+index 2eec4a3..0f915de 100644
+--- a/tests/machineRules.test.ts
++++ b/tests/machineRules.test.ts
+@@ -47,6 +47,21 @@ describe('machine rules', () => {
+     expect(applyMachineCoolant(h1, 'HAAS-5')).toEqual(h1);
+   });
+ 
++  it('a program made for an air machine gets its coolant back on a lubricant machine (M83 -> M08, code only)', () => {
++    const air = [header('BASE POM / 30X20X10'), 'N6 T3 M6', 'N7 (M83 AIR)', 'N8 G00 G43 H03 Z50. M83', 'N9 M83', 'N10 M830 M183', 'N11 M30', '%'].join('\n').split('\n');
++    for (const id of ['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2']) {
++      const out = applyMachineCoolant(air, id);
++      expect(out, id).toContain('N8 G00 G43 H03 Z50. M08');
++      expect(out, id).toContain('N9 M08');
++      expect(out, id).toContain('N7 (M83 AIR)');
++      expect(out, id).toContain('N10 M830 M183');
++      expect(applyMachineCoolant(out, id), id).toEqual(out);
++    }
++    // HAAS-1 and HAAS-5 still switch the air jet off on the safety line.
++    expect(applyMachineCoolant(air, 'HAAS-1')).toContain('N4 G40 G17 G53 G49 G80 G90 M84');
++    expect(applyMachineCoolant(air, 'HAAS-2')).toEqual(air);
++  });
++
+   it('the remapper writes them', () => {
+     const src = [header('BASE ALU / 30X20X10'), 'N6 T6 M6', 'N7 (SB_04.00_045_000_ALHS)', 'N8 G00 G43 H06 Z50. M08', 'N9 G01 Z-5. F300.', 'N10 M30', '%'].join('\n');
+     const out = (machine: string) => {
+-- 
+2.43.0
+

@@ -1,0 +1,55 @@
+From 8eaa8b36948f6625533a608ad188d31af02e215b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:17:30 +0000
+Subject: [PATCH] Remapper: a program remapped again keeps only the new
+ AUTO/APPROX/MANUAL-REMAP and AI-MOD notes, not the old ones naming the old
+ tools (finding H3-4)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/gcodeProcessor.ts |  3 ++-
+ tests/gcode.test.ts       | 13 +++++++++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..ccb38fd 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -213,7 +213,8 @@ function getMaterialPriority(t: Tool, detectedMaterial: Material | undefined): n
+ export function analyzeGCode(input: string, tools: Tool[], machineId?: string): { success: boolean; blocks: ToolChangeBlock[]; lines: string[]; detectedMaterial?: Material } {
+   const safeInput = typeof input === 'string' ? input : String(input || '');
+   const detectedMaterial = detectMaterial(safeInput);
+-  const lines = safeInput.split('\n');
++  // A program remapped before: its old notes name the old tools (and would steer the matching); the new ones replace them.
++  const lines = safeInput.split('\n').map((l) => l.replace(/\s*\((?:(?:AUTO|APPROX|MANUAL)-REMAP|AI-MOD):[^)]*\)/gi, ''));
+   const blocks: ToolChangeBlock[] = [];
+   const processedIndices = new Set<number>();
+   
+diff --git a/tests/gcode.test.ts b/tests/gcode.test.ts
+index b110752..bc5eda9 100644
+--- a/tests/gcode.test.ts
++++ b/tests/gcode.test.ts
+@@ -74,6 +74,19 @@ describe('code generation', () => {
+     expect(code).toContain('N18 G53 Y0\nN19 M30');
+   });
+ 
++  it('a remapped program remapped again keeps only the new notes (the old ones named the old tool)', () => {
++    const src = 'O1\nN10 T1 M6\nN11 (SB_04.00_045_000_ALHS)\nN12 G00 G43 H1 Z50. M08\nN13 G81 Z-12. F100.\nN14 M30';
++    const first = remap(src, haas2, 'HAAS-2').code;
++    expect(first).toMatch(/\((?:AUTO|APPROX)-REMAP: /);
++    const drill: Tool = { id: 'd', number: 9, category: 'foret', description: 'Foret', diameter: 4, length: 45 };
++    const second = remap(first, [drill], 'HAAS-4').code;
++    const tLine = second.split('\n').find((l) => /M6/.test(l))!;
++    const g43 = second.split('\n').find((l) => /G43/.test(l))!;
++    expect(tLine).toBe('N10 T9 M6 (AUTO-REMAP: T9 foret)');
++    expect(g43).toBe('N12 G00 G43 H9 Z50. M83 (AI-MOD: OFFSET H9)');
++    expect(parseToolpath(second, { rapid: 30_000, toolChange: 2 }).tools[0].label).toMatch(/^foret · /);
++  });
++
+   it('adds FANUC offsets without damaging comments', () => {
+     const src = '%\nO1\nT06 M6 (SB_04.00_050_000_VAHS)\nG43 H06 Z50 M08 (DRILL CYCLE)\nG01 Z-10\nM30\n%';
+     const { code } = remap(src, fanuc1, 'FANUC-1');
+-- 
+2.43.0
+

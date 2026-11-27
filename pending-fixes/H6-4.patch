@@ -1,0 +1,100 @@
+From ef689f36dd9f2bd7170a8d6bf87611a63b667439 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:24:13 +0000
+Subject: [PATCH] Remapper: FANUC programs get the decimal point on
+ whole-number R, I/J/K, A/B/C and a cycle's Q too, not only X/Y/Z; a cycle's K
+ and mode or call lines stay (finding H6-4)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/lib/gcodeProcessor.ts       | 22 +++++++++++++++-------
+ src/lib/haasToFanucConverter.ts |  2 +-
+ tests/fanucDecimals.test.ts     | 11 +++++++++--
+ 3 files changed, 25 insertions(+), 10 deletions(-)
+
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..74e57c6 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -111,8 +111,8 @@ export function fhPecks(lines: string[]): string[] {
+ }
+ 
+ /**
+- * Every FANUC machine (FANUC-2 included): whole-number X/Y/Z get their decimal point, and no N
+- * number goes over N9999 (the shop's FANUC post repeats N9999 after it).
++ * Every FANUC machine (FANUC-2 included): whole-number dimension words (X/Y/Z, A/B/C, I/J/K, R, a cycle's Q) get
++ * their decimal point, and no N number goes over N9999 (the shop's FANUC post repeats N9999 after it).
+  */
+ export function fanucNumbers(lines: string[]): string[] {
+   const labels = jumpsToLabels(lines); // a jump needs its label: no cap then
+@@ -145,18 +145,26 @@ export function replaceInCode(line: string, pattern: RegExp, replacement: string
+   return out + doReplace(line.slice(last));
+ }
+ 
++const DOTS_XYZ = /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi;
++const DOTS_CYCLE = /(?<![A-Z_#\]])([XYZABCIJRQ])(\s*[-+]?\d+)(?![\d.])/gi;
++const DOTS = /(?<![A-Z_#\]])([XYZABCIJKR])(\s*[-+]?\d+)(?![\d.])/gi;
++
+ /**
+- * FANUC reads a coordinate written without a decimal point in thousandths of a mm (Z-5 is
+- * -0.005 mm), so every X, Y and Z that is a whole number gets its dot (Z-5 -> Z-5.). Values that
+- * already have a dot, other words (F, S, Q, R...), macro values (X#1) and comments are never
++ * FANUC reads a dimension written without a decimal point in thousandths of a mm (Z-5 is -0.005 mm,
++ * R2 0.002 mm), so every whole-number X, Y, Z, A/B/C, I/J/K, R (arc, cycle plane, G68 angle) and the
++ * Q peck of a canned cycle get their dot (Z-5 -> Z-5.). Values that already have a dot, other words
++ * (F, S, D, H, P...), a cycle's K (its repeat count), a Q outside a cycle, the words of lines that set
++ * modes or call (G05.1 Q1 R10, G08, G10, G65, M98: X/Y/Z only), macro values (X#1) and comments are never
+  * touched, and no dot is ever removed. A machine-coordinate move to 0 stays as the shop writes it
+  * ("G0 G53 G49 Z0 G94 M95", "G53 Y0"): 0 is 0 in any unit. Running it again changes nothing.
+  */
+ export function addCoordinateDots(lines: string[]): string[] {
+   return lines.map((l) => {
+     if (l === '__REMOVE_ME__') return l;
+-    const machine = /(?<![A-Z_])G53(?![0-9])/i.test(codeOnly(l));
+-    return replaceInCode(l, /(?<![A-Z_#\]])([XYZ])(\s*[-+]?\d+)(?![\d.])/gi, (w: string, a: string, n: string) => (machine && Number(n) === 0 ? w : `${a}${n}.`));
++    const code = codeOnly(l);
++    const machine = /(?<![A-Z_])G53(?![0-9])/i.test(code);
++    const words = /(?<![A-Z])(?:G0*[58]|G10|G6[56]|M9[78])(?![0-9])/i.test(code) ? DOTS_XYZ : /(?<![A-Z])G(?:7[346]|8[1-9])(?![0-9])/i.test(code) ? DOTS_CYCLE : DOTS;
++    return replaceInCode(l, words, (w: string, a: string, n: string) => (machine && Number(n) === 0 ? w : `${a}${n}.`));
+   });
+ }
+ 
+diff --git a/src/lib/haasToFanucConverter.ts b/src/lib/haasToFanucConverter.ts
+index 568db51..29edb55 100644
+--- a/src/lib/haasToFanucConverter.ts
++++ b/src/lib/haasToFanucConverter.ts
+@@ -15,7 +15,7 @@
+  * 6. HAAS-only M89 removed. M98 P7999 deleted: the shop's machines have no O7999 (shop rule); the
+  *    table comes out with G53 Y0 before each part flip and at the end instead.
+  * 7. N1, N2, N3... on every line but % and O; from N9999 on, N9999 (the FANUC files do the same).
+- * 8. Whole-number X/Y/Z get a dot (FANUC reads X10 as 0.010 mm), a G53 move to 0 stays bare
++ * 8. Whole-number X/Y/Z, A/B/C, I/J/K and R, a cycle's Q get a dot (FANUC reads X10 as 0.010 mm), a G53 move to 0 stays bare
+  *    ("Z0", as the FANUC files); whole-number feeds lose theirs (F3000. -> F3000, as the FANUC files),
+  *    except in a program with G95 (feed per revolution).
+  * Every rule reads the code only, never the text of a (comment).
+diff --git a/tests/fanucDecimals.test.ts b/tests/fanucDecimals.test.ts
+index 8ccca6f..32e3083 100644
+--- a/tests/fanucDecimals.test.ts
++++ b/tests/fanucDecimals.test.ts
+@@ -67,8 +67,15 @@ describe('FANUC programs keep every decimal point', () => {
+     expect(out).toMatch(/G00 G43 Z50\. H#513 D#513 M254/);
+   });
+ 
+-  it('adds a dot to whole-number X/Y/Z only, never to other words or a value that has one', () => {
+-    expect(addCoordinateDots(['N10 G01 X10 Y-5 Z0 F300 S8000 Q2 R2 (Z5 IN COMMENT)'])).toEqual(['N10 G01 X10. Y-5. Z0. F300 S8000 Q2 R2 (Z5 IN COMMENT)']);
++  it('adds a dot to whole-number dimension words only, never to other words or a value that has one', () => {
++    expect(addCoordinateDots(['N10 G01 X10 Y-5 Z0 F300 S8000 (Z5 IN COMMENT)'])).toEqual(['N10 G01 X10. Y-5. Z0. F300 S8000 (Z5 IN COMMENT)']);
++    // A FANUC reads R2 as 0.002 mm too: the R plane and peck of a cycle, arc centres and radii, rotary axes.
++    expect(addCoordinateDots(['G98 G83 Z-10 R2 Q3 F100', 'G02 X20 Y10 I5 J0 F300', 'G03 X0 Y0 R5', 'G18 G02 X1 Z2 I0 K-3', 'G01 A90 B-45 C180'])).toEqual(['G98 G83 Z-10. R2. Q3. F100', 'G02 X20. Y10. I5. J0. F300', 'G03 X0. Y0. R5.', 'G18 G02 X1. Z2. I0. K-3.', 'G01 A90. B-45. C180.']);
++    // Mode and call lines (AI contour G05.1 Q1, G10, G65, M98) keep their words but X/Y/Z; D/H/P/L too.
++    const kept = ['G65 P9010 R2 Q3 A1', 'M98 P1000 L2', 'G05.1 Q1 R10', 'G05.1 Q0', 'G08 P1', 'G10 L11 P1 R5', 'G41 D7 G43 H7', 'G04 P500', 'IF [#1 EQ 5] GOTO 10'];
++    expect(addCoordinateDots(kept)).toEqual(kept);
++    // A call's X/Y/Z as before; a cycle's repeat count (K) stays.
++    expect(addCoordinateDots(['G65 P9010 X10 R2', 'G98 G81 Z-2 R1 K2'])).toEqual(['G65 P9010 X10. R2', 'G98 G81 Z-2. R1. K2']);
+     expect(addCoordinateDots(['G01 X1.5 Y.5 Z-.25 X#5 Z[#1+2]'])).toEqual(['G01 X1.5 Y.5 Z-.25 X#5 Z[#1+2]']);
+     const once = addCoordinateDots(['G00 X10 Y20 Z30']);
+     expect(addCoordinateDots(once)).toEqual(once);
+-- 
+2.43.0
+

@@ -1,0 +1,104 @@
+From 77073ffabe1362c1f4ab816053ded6dbeb993a68 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:19:10 +0000
+Subject: [PATCH] Remapper: Analyze & Remap refuses an empty or comment-only
+ program, so nothing is generated, downloaded or counted (finding H3-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolRemapper.tsx | 7 ++++++-
+ src/i18n/locales/en/remapper.ts | 1 +
+ src/i18n/locales/tr/remapper.ts | 1 +
+ src/lib/gcodeProcessor.ts       | 3 +++
+ tests/gcode.test.ts             | 6 +++++-
+ 5 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/ToolRemapper.tsx b/src/components/ToolRemapper.tsx
+index 95934d0..89f1ce8 100644
+--- a/src/components/ToolRemapper.tsx
++++ b/src/components/ToolRemapper.tsx
+@@ -4,7 +4,7 @@ import { MachineId, ToolChangeBlock, Tool, TOOL_CATEGORIES, ToolCategory, Histor
+ import { coolingOf, engineMachineId, isLockedMachine, maxPocketsFor } from '../regions';
+ import { currentRegion } from '../lib/instance';
+ import CodeEditorPair from './CodeEditorPair';
+-import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, coolantNeed, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
++import { analyzeGCode, generateRemappedCode, applyG53BeforeG52, coolantNeed, hasCode, isFanucDialect, isHaasDialectForFanuc } from '../lib/gcodeProcessor';
+ import { translateCommentText, translateGcodeComments } from '../lib/gcodeTranslate';
+ import { checkProgram, FANUC_MEMORY_KB } from '../lib/safetyCheck';
+ import { api } from '../lib/api';
+@@ -203,6 +203,11 @@ N190 M30`;
+ 
+   const handleProcess = () => {
+     let currentSource = sourceCode;
++    // An empty or comment-only program: nothing to remap, download or count as saved time.
++    if (!hasCode(currentSource)) {
++      alert(t('alerts.nothingToRemap'));
++      return;
++    }
+     // DMG machines are not programmed in the app for now (shop decision).
+     if (machine && isLockedMachine(machine)) {
+       alert(t('alerts.machineLocked', { machine: machineLabel }));
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..e15c745 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -27,6 +27,7 @@ const remapper = {
+     close: 'Close notification',
+   },
+   alerts: {
++    nothingToRemap: 'This program has no code to remap: it is empty or only comments.',
+     resolveMissing: 'Please resolve all missing tools before generating code.',
+     installFailed:
+       'The new tools could not be saved to the {{machine}} inventory:\n{{error}}\n\nCheck the connection and press "Approve & Install" again.',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..d9f94c2 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -28,6 +28,7 @@ const remapper: Translation<typeof en> = {
+     close: 'Bildirimi kapat',
+   },
+   alerts: {
++    nothingToRemap: 'Bu programda eşleştirilecek kod yok: boş ya da yalnızca yorumlardan oluşuyor.',
+     resolveMissing: 'Kodu oluşturmadan önce lütfen tüm eksik takımları eşleştirin.',
+     installFailed:
+       'Yeni takımlar {{machine}} takım listesine kaydedilemedi:\n{{error}}\n\nBağlantıyı kontrol edin ve "Onayla ve Yükle" düğmesine tekrar basın.',
+diff --git a/src/lib/gcodeProcessor.ts b/src/lib/gcodeProcessor.ts
+index 0b667b3..26e3db7 100644
+--- a/src/lib/gcodeProcessor.ts
++++ b/src/lib/gcodeProcessor.ts
+@@ -1104,6 +1104,9 @@ export function addG49AfterM6(lines: string[]): string[] {
+ /** A whole program, with its own O line (program number), not a few lines of one. */
+ export const isWholeProgram = (text: string) => /^\s*%?\s*O\d/im.test(text);
+ 
++/** The text has code for the machine: a word outside the (comments), "%", the O number and the N numbers. */
++export const hasCode = (text: string) => text.split('\n').some((l) => codeOnly(l).trim().replace(/^%?\s*(?:O\d+)?\s*\/?\s*(?:N\d+)?/i, '').trim() !== '');
++
+ /** A program written in the FANUC dialect (H#513, M254 or the "G94 M95" safety line), code only. */
+ export function isFanucDialect(code: string): boolean {
+   return code.split('\n').some((l) => /(?<![A-Z])H#513|(?<![A-Z0-9])M254(?![0-9])|G94\s+M95(?![0-9])/i.test(codeOnly(l)));
+diff --git a/tests/gcode.test.ts b/tests/gcode.test.ts
+index b110752..7dd266c 100644
+--- a/tests/gcode.test.ts
++++ b/tests/gcode.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, isWholeProgram, replaceInCode } from '../src/lib/gcodeProcessor';
++import { addG49AfterM6, analyzeGCode, applyG53BeforeG52, codeOnly, generateRemappedCode, hasCode, isFanucDialect, isHaasDialectForFanuc, isToolChangeLine, isWholeProgram, replaceInCode } from '../src/lib/gcodeProcessor';
+ import { convertHaasToFanuc } from '../src/lib/haasToFanucConverter';
+ import { convertFanucToHaas } from '../src/lib/fanucToHaasConverter';
+ import { defaultToolbox } from '../src/lib/defaultTools';
+@@ -231,6 +231,10 @@ describe('helpers', () => {
+   it('replaceInCode leaves comments untouched', () => {
+     expect(replaceInCode('N10 (T9) T5 M6', /T\d+/, 'T1')).toBe('N10 (T9) T1 M6');
+   });
++  it('hasCode: an empty or comment-only program has nothing to remap', () => {
++    for (const empty of ['', '\n\n', '%\nO1000\n(ONLY COMMENTS)\nN10 (M6 T1)\n%', '%O1000 (NAME)\r\n%\r\n']) expect(hasCode(empty), JSON.stringify(empty)).toBe(false);
++    for (const code of ['G0 X1.', '%\nO1000\nN10 T1 M6\n%', 'N5 M30', '/N8 M00']) expect(hasCode(code), code).toBe(true);
++  });
+ });
+ 
+ describe('HAAS -> FANUC switch (audit fixes)', () => {
+-- 
+2.43.0
+

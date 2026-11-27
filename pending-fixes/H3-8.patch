@@ -1,0 +1,100 @@
+From 6571105f7b94dc4234d2a2f4a75d3a5cac82fac2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:20:43 +0000
+Subject: [PATCH] Remapper: FANUC -> HAAS says how many G43 lines got a FANUC
+ tool number as H outside 1-200, which Analyze & Remap must set (finding H3-8)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CodeEditorPair.tsx | 1 +
+ src/i18n/locales/en/remapper.ts   | 1 +
+ src/i18n/locales/tr/remapper.ts   | 1 +
+ src/lib/fanucToHaasConverter.ts   | 5 +++++
+ tests/gcode.test.ts               | 4 ++++
+ 5 files changed, 12 insertions(+)
+
+diff --git a/src/components/CodeEditorPair.tsx b/src/components/CodeEditorPair.tsx
+index e7731e6..0c2f211 100644
+--- a/src/components/CodeEditorPair.tsx
++++ b/src/components/CodeEditorPair.tsx
+@@ -483,6 +483,7 @@ export default function CodeEditorPair({
+     if (result.stats.m98LinesDeleted > 0) details.push(t('convert.m98ToTableOut', { count: result.stats.m98LinesDeleted }));
+     if (result.stats.g43Converted > 0) details.push(t('convert.g43Converted', { count: result.stats.g43Converted }));
+     if (result.stats.g53Y0Added > 0) details.push(t('convert.g53Added', { count: result.stats.g53Y0Added }));
++    if (result.stats.hOverRange > 0) details.push(t('convert.hOverRange', { count: result.stats.hOverRange }));
+ 
+     const summaryText = details.length > 0
+       ? t('convert.toHaas', { details: details.join(', ') })
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..ae0d3fe 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -225,6 +225,7 @@ const remapper = {
+     m98ToTableOut: '{{count}} M98 P7999 -> table out (G53 Y0 / end line)',
+     g43Converted: '{{count}} G43 converted',
+     g53Added: '{{count}} G53 Y0 added (part flip / end of program)',
++    hOverRange: '{{count}} G43 with the FANUC tool number as H (outside H1-H200): Analyze & Remap sets each tool\'s own',
+     toHaas: 'Switched to HAAS: {{details}}',
+     toHaasPlain: 'Switched code to HAAS dialect',
+     securityLines: 'Security lines -> G0 G53 G49 Z0 G94 M95',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..6f7aa64 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -216,6 +216,7 @@ const remapper: Translation<typeof en> = {
+     m98ToTableOut: '{{count}} M98 P7999 -> tablayı dışarı alma (G53 Y0 / son satır)',
+     g43Converted: '{{count}} G43 dönüştürüldü',
+     g53Added: '{{count}} G53 Y0 eklendi (parça çevirme / program sonu)',
++    hOverRange: '{{count}} G43 satırında H, FANUC takım numarası (H1-H200 dışında): "Analiz Et ve Eşleştir" her takımın kendi numarasını yazar',
+     toHaas: 'HAAS’a dönüştürüldü: {{details}}',
+     toHaasPlain: 'Kod HAAS formatına dönüştürüldü',
+     securityLines: 'Güvenlik satırları -> G0 G53 G49 Z0 G94 M95',
+diff --git a/src/lib/fanucToHaasConverter.ts b/src/lib/fanucToHaasConverter.ts
+index e5f508a..ef204a9 100644
+--- a/src/lib/fanucToHaasConverter.ts
++++ b/src/lib/fanucToHaasConverter.ts
+@@ -30,6 +30,8 @@ export interface FanucToHaasResult {
+     feedRatesFixed: number;
+     trailingZFixed: number;
+     g53Y0Added: number;
++    /** G43 lines whose H (the FANUC tool number) is outside 1-200: the remap sets the machine's own. */
++    hOverRange: number;
+     totalLines: number;
+   };
+ }
+@@ -57,6 +59,7 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string =
+     feedRatesFixed: 0,
+     trailingZFixed: 0,
+     g53Y0Added: 0,
++    hOverRange: 0,
+     totalLines: 0,
+   };
+ 
+@@ -128,6 +131,8 @@ export function convertFanucToHaas(fanucCode: string, defaultFilename: string =
+       }
+     }
+ 
++    // An H the HAAS control cannot take stays (it alarms, where a valid wrong one would run): the remap sets it.
++    if (/(?<![A-Z])G0*43(?![0-9.]).*H#513/i.test(codeOnly(line)) && !(Number(lastToolNumber) >= 1 && Number(lastToolNumber) <= 200)) stats.hOverRange++;
+     // A feed approach ("G01 G43 Z5. H#513 D#513 M254 F500"): the block stays whole and only the
+     // offset words change (split, the G00 G43 line would turn it and the moves after it into
+     // rapids); its feed and Z get their dots below.
+diff --git a/tests/gcode.test.ts b/tests/gcode.test.ts
+index b110752..0167bc3 100644
+--- a/tests/gcode.test.ts
++++ b/tests/gcode.test.ts
+@@ -343,6 +343,10 @@ describe('FANUC -> HAAS fixes', () => {
+     const i = out.findIndex((l) => l.includes('G43 H230850 Z30.'));
+     expect(out[i - 1]).toMatch(/^N\d+ G0 G90 G54 X0 Y0 S8000 M3$/);
+   });
++  it('counts the G43 lines whose H (the FANUC tool number) is outside 1-200: Analyze & Remap must set them', () => {
++    expect(convertFanucToHaas(src, 'x.nc').stats.hOverRange).toBe(2);
++    expect(convertFanucToHaas('O1\nT6 M6\nG43 H#513 D#513 M254 Z50.\nM30', 'x.nc').stats.hOverRange).toBe(0);
++  });
+   it('turns a numbered FANUC safety line into the HAAS one instead of deleting it', () => {
+     expect(out[2]).toMatch(/G40 G17 G53 G49 G80 G90$/);
+   });
+-- 
+2.43.0
+

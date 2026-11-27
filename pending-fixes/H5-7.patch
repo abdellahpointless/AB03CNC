@@ -1,0 +1,180 @@
+From 3e435059a8d6efd48958692f6c278b7d0a42bbd7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:02:54 +0000
+Subject: [PATCH] i18n: Turkish says 'paralel' for the parallels everywhere,
+ never 'kale' (finding H5-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/tr/cam.ts      | 10 +++++-----
+ src/i18n/locales/tr/remapper.ts | 22 +++++++++++-----------
+ src/lib/cam/news.ts             |  6 +++---
+ src/lib/whatsNew.ts             |  4 ++--
+ tests/trParallels.test.ts       | 16 ++++++++++++++++
+ 5 files changed, 37 insertions(+), 21 deletions(-)
+ create mode 100644 tests/trParallels.test.ts
+
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index c106a06..2130004 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -605,8 +605,8 @@ const cam: Translation<typeof en> = {
+       engraving: 'Kazıma',
+     },
+     gouge: 'Program parçanın içine kesiyor ({{mm3}} mm³ fazla). Takım yolu görüntüleyicisinde inceleyin.',
+-    intoCale_one: 'Bir takımın hâlâ parçanın altındaki kaleye girdiği {{count}} nokta var (üstünde baştan başa delinen bir delik). İndirme engellendi: parçayı başka şekilde yerleştirin.',
+-    intoCale_other: 'Bir takımın hâlâ parçanın altındaki kalelere girdiği {{count}} nokta var (üstlerinde baştan başa delinen delikler). İndirme engellendi: parçayı başka şekilde yerleştirin.',
++    intoCale_one: 'Bir takımın hâlâ parçanın altındaki paralele girdiği {{count}} nokta var (üstünde baştan başa delinen bir delik). İndirme engellendi: parçayı başka şekilde yerleştirin.',
++    intoCale_other: 'Bir takımın hâlâ parçanın altındaki paralellere girdiği {{count}} nokta var (üstlerinde baştan başa delinen delikler). İndirme engellendi: parçayı başka şekilde yerleştirin.',
+     collisions_one: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
+     collisions_other: 'Simülasyonda {{count}} çarpışma var. Takım yolu görüntüleyicisinde inceleyin.',
+     intoStop_one: 'Simülasyonda {{count}} takım hareketi çene üstlerinin altında X dayamasına giriyor (takım yolu görüntüleyicisi bunu işaretlemez ve dayamayı simüle edilen parçaya göre, programın koyduğu yerden 0,5 mm’ye kadar farklı çizer). İndirme engellendi.',
+@@ -641,8 +641,8 @@ const cam: Translation<typeof en> = {
+       notSimulated: '{{side}} yüzü: önceki bağlamalar simüle edilemedi',
+       surface: '{{side}} yüzü: {{mm2}} mm² 3B yüzey basamaklı kaldı (küresel freze ile son işleme daha sonra gelecek)',
+       jawWall: '{{side}} yüzü: mengenenin tuttuğu yüze açılan cebin önünde, çene üstlerinin 0,5 mm üstüne kadar 0,1 mm’den ince bir duvar kalıyor ({{mm3}} mm³; oraya takım giremez): elle alınacak',
+-      holeShort_one: '{{count}} boydan boya delik bir kalenin veya nest tabanının üstünde bitiyor, bu yüzden altta tam çapında çıkmıyor: elle delip geçirin',
+-      holeShort_other: '{{count}} boydan boya delik bir kalenin veya nest tabanının üstünde bitiyor, bu yüzden altta tam çaplarında çıkmıyor: elle delip geçirin',
++      holeShort_one: '{{count}} boydan boya delik bir paralelin veya yuva tabanının üstünde bitiyor, bu yüzden altta tam çapında çıkmıyor: elle delip geçirin',
++      holeShort_other: '{{count}} boydan boya delik bir paralelin veya yuva tabanının üstünde bitiyor, bu yüzden altta tam çaplarında çıkmıyor: elle delip geçirin',
+       clampRefused: '{{setup}}. bağlama: {{cale}} mm paralel parçayı burada tutamaz (çeneler 3 mm’den az, parçanın tamamını ya da üstünü tutar; 0 mm: tablada, 45 mm tutar): CAM AI kendi seçimini kullandı',
+       clampAsk: '{{setup}}. bağlama: paralelsiz (parça çene basamağında) atölyenin parçanın neye oturduğu cevabını bekliyor: CAM AI kendi paralelini kullandı',
+       clampSeam: '{{setup}}. bağlama: {{cale}} mm paralelde dış kesim parçanın altına 0,5 mm’den yakın biter, sonraki bağlamanın kesimiyle buluştuğu yerde küçük bir basamak kalabilir',
+@@ -660,7 +660,7 @@ const cam: Translation<typeof en> = {
+     view: 'Takım yolu görüntüleyicisinde aç',
+     download: 'İndir',
+     send: 'Takım eşleştiriciye gönder',
+-    locked: 'İndirme ve Gönderme tüm kontroller geçince açılır: modele benzer (%99), çarpışma yok, kalelere takım girmiyor, parçadan fazla kesilmiyor ve mengene parçayı güvenle tutuyor.',
++    locked: 'İndirme ve Gönderme tüm kontroller geçince açılır: modele benzer (%99), çarpışma yok, paralellere takım girmiyor, parçadan fazla kesilmiyor ve mengene parçayı güvenle tutuyor.',
+   },
+ };
+ export default cam;
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..fb565c1 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -196,12 +196,12 @@ const remapper: Translation<typeof en> = {
+     collisionAdmin_one: '{{count}} çarpışma: çalıştırmadan önce kontrol edin. Yönetici olarak yine de kopyalayıp indirebilirsiniz.',
+     collisionAdmin_other: '{{count}} çarpışma: çalıştırmadan önce kontrol edin. Yönetici olarak yine de kopyalayıp indirebilirsiniz.',
+     collisionOpen: 'Takım yolunda gör',
+-    caleWarning_one: 'Dikkat: bir takımın bir kaleye girdiği {{count}} nokta var. Çalıştırmadan önce o kaleyi daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
++    caleWarning_one: 'Dikkat: bir takımın bir paralele girdiği {{count}} nokta var. Çalıştırmadan önce o paraleli daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
+     reject: {
+-      cale: '{{line}}. satırı kontrol edin: program {{mm}} mm kale istiyor ve kale kutusunda yok. Bir ara parça olabilir ya da parça çene üstlerine oturuyor olabilir. Dışa aktarma yine de mümkün.',
++      cale: '{{line}}. satırı kontrol edin: program {{mm}} mm paralel istiyor ve paralel kutusunda yok. Bir ara parça olabilir ya da parça çene üstlerine oturuyor olabilir. Dışa aktarma yine de mümkün.',
+       size: '{{line}}. satırı kontrol edin: parça {{axis}} yönünde {{want}} mm olmalı; işlenmiş parça orada {{found}} mm. Çevirmeyi kontrol edin. Dışa aktarma yine de mümkün.',
+     },
+-    caleWarning_other: 'Dikkat: bir takımın kalelere girdiği {{count}} nokta var. Çalıştırmadan önce o kaleleri daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
++    caleWarning_other: 'Dikkat: bir takımın paralellere girdiği {{count}} nokta var. Çalıştırmadan önce o paralelleri daha iyi bir yere taşıyın (dışa aktarma yine de mümkün).',
+     extractTitle: 'Eşleştirilmiş G-kodu dosyasını indir',
+     stale: 'Bu kod oluşturulduktan sonra program veya tezgah değişti.',
+     reanalyze: 'Yeniden Analiz Et',
+@@ -274,15 +274,15 @@ const remapper: Translation<typeof en> = {
+     viewKind: { top: 'Üst', front: 'Ön', iso: '3/4' },
+     material: { plain: '', alu: 'Alüminyum', steel: 'Çelik', brass: 'Pirinç (MS)', pom: 'POM', fh: 'FH (katmanlı ahşap)', fhThin: 'FH (preslenmiş ahşap)', pcgf: 'PC GF' },
+     openHitTitle: 'Bir çarpışma: takım yolunda nerede olduğunu görün',
+-    openCaleTitle: 'Bir takım bir kaleye giriyor: nerede olduğunu görün ve kaleyi taşıyın',
++    openCaleTitle: 'Bir takım bir paralele giriyor: nerede olduğunu görün ve paraleli taşıyın',
+     seeThrough: 'Saydam bağlama',
+-    seeThroughHelp: 'Parçayı içinden görmek için mengeneyi, bağlamayı ve kaleleri saydam yap',
++    seeThroughHelp: 'Parçayı içinden görmek için mengeneyi, bağlamayı ve paralelleri saydam yap',
+     reject: {
+       title: 'Bu bağlamayı kontrol edin',
+-      cale: 'Program {{mm}} mm kale istiyor. Kale kutusunda {{mm}} mm çift yok: bir ara parça olabilir ya da parça çene üstlerine oturuyor olabilir. Bağlamadan önce kontrol edin.',
++      cale: 'Program {{mm}} mm paralel istiyor. Paralel kutusunda {{mm}} mm çift yok: bir ara parça olabilir ya da parça çene üstlerine oturuyor olabilir. Bağlamadan önce kontrol edin.',
+       size: 'Program parçayı {{axis}} yönünde {{want}} mm’den bağlıyor, ama çevirmeden sonraki parça orada en yakın {{found}} mm ölçülüyor. Çevirme ya da yazılan ölçü yanlış olabilir.',
+       line: 'Bağlama {{n}}, satır {{line}}',
+-      badgeCale: 'Reddedildi: {{mm}} mm kale kutuda yok',
++      badgeCale: 'Reddedildi: {{mm}} mm paralel kutuda yok',
+       badgeSize: 'Reddedildi: {{n}}. bağlama {{axis}} yönünde {{want}} mm değil',
+     },
+     conflict: {
+@@ -427,7 +427,7 @@ const remapper: Translation<typeof en> = {
+       sizeX: 'X’te {{x}}',
+       support: '{{mm}} mm paralel üzerinde',
+       restDepth: 'Üst yüzeyin {{mm}} mm altından paralellere oturuyor',
+-      onJaw: 'Çene üstlerinde, kalesiz: parçanın {{mm}} mm’si çenelerin üstünde',
++      onJaw: 'Çene üstlerinde, paralelsiz: parçanın {{mm}} mm’si çenelerin üstünde',
+       rotation: 'Parçayı {{axis}} etrafında {{deg}}° çevir',
+       back: 'Arka yüz',
+       front: 'Ön yüz',
+@@ -448,9 +448,9 @@ const remapper: Translation<typeof en> = {
+     jawHit: 'T{{t}} çene üstünün {{mm}} mm altına iniyor',
+     holderJawHit: 'T{{t}} tutucusu çene üstünün {{mm}} mm altına iniyor',
+     holderPartHit: 'T{{t}} tutucusu parçanın {{mm}} mm içine giriyor',
+-    caleHit: 'T{{t}} bir kalenin {{mm}} mm içine giriyor: kaleyi taşıyın',
+-    caleHits_one: '{{count}} kale yolda',
+-    caleHits_other: '{{count}} kale yolda',
++    caleHit: 'T{{t}} bir paralelin {{mm}} mm içine giriyor: paraleli taşıyın',
++    caleHits_one: '{{count}} paralel yolda',
++    caleHits_other: '{{count}} paralel yolda',
+     spacerHit: 'T{{t}} ara parçaya {{mm}} mm giriyor (sorun değil: bunun için orada)',
+     spacerHits_one: 'Ara parçaya {{count}} kesim, planlandığı gibi',
+     spacerHits_other: 'Ara parçaya {{count}} kesim, planlandığı gibi',
+diff --git a/src/lib/cam/news.ts b/src/lib/cam/news.ts
+index 383fb04..15a9bcf 100644
+--- a/src/lib/cam/news.ts
++++ b/src/lib/cam/news.ts
+@@ -140,8 +140,8 @@ export const CAM_RELEASES: Release[] = [
+       title: 'CAM AI: atölyenin bağladığı gibi bağlama, son paso seçtiğiniz yerde',
+       items: [
+         'Son paso yalnızca 3B modelde seçtiğiniz duvarlara yapılır (Son paso yapılacak duvarlar); diğer tüm duvarlar kaba işlemede ölçüsüne alınır. Sızdırmazlık kafesinin ince duvarlarına her zaman son paso yapılır.',
+-        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa kalelerle tutar.',
+-        'Takımlar bir kaleye en fazla 1 mm girebilir, hızlı harekette hiç giremez. Kaleler arasındaki boydan boya delikler tamamen delinir; bir kalenin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
++        'Mengene parçayı uzun yüzlerinden tutar; sonraki bağlamalar kendi kesimlerinin izin verdiği kadar derin, daha kısa paralellerle tutar.',
++        'Takımlar bir paralele en fazla 1 mm girebilir, hızlı harekette hiç giremez. Paraleller arasındaki boydan boya delikler tamamen delinir; bir paralelin üstünde kalıp diğer taraftan bitirilemeyen delik size listelenir.',
+       ],
+     },
+   },
+@@ -180,7 +180,7 @@ export const CAM_RELEASES: Release[] = [
+     tr: {
+       title: 'CAM AI: 3B modelden yazılan program (beta)',
+       items: [
+-        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, kaleler ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
++        'Yeni CAM AI sekmesi: parçanın 3B PDF veya STL dosyasını verin, tezgahı ve malzemeyi seçin; program o tezgahın takımlarıyla, bağlamalar, paraleller ve atölye tarzındaki M0 metinleriyle birlikte yazılır.',
+         'Devir, ilerleme ve paso derinlikleri atölyenin kendi programlarından öğrenilir. Bir yönetici her tezgahın sınırlarını Yönetim › Tezgahlar’dan belirleyebilir.',
+         'Her program simüle edilir ve modelle karşılaştırılır. İndirme ve Takım eşleştiriciye gönderme, ancak parça modele %99 benzediğinde ve çarpışma olmadığında açılır. Tezgahta eksik olan takımlar listelenir.',
+         'CAM AI’nin yaptığı her program ve takım yolu görüntüleyicisinde modeliyle karşılaştırılan her program öğrenme kayıtlarına (Yönetim › Yedek ve veri) eklenir; böylece CAM AI atölyenin parçalarını öğrenir.',
+diff --git a/src/lib/whatsNew.ts b/src/lib/whatsNew.ts
+index e7545ca..e995fa5 100644
+--- a/src/lib/whatsNew.ts
++++ b/src/lib/whatsNew.ts
+@@ -82,10 +82,10 @@ export const RELEASES: Release[] = [
+       ],
+     },
+     tr: {
+-      title: 'Takım yolu: STEP modeller, kaleler ve mengenede ölçüm',
++      title: 'Takım yolu: STEP modeller, paraleller ve mengenede ölçüm',
+       items: [
+         'Parçanın 3B modeli artık STEP dosyası (.step veya .stp) da olabilir. Program içe aktarıldıktan sonra model istemek yerine 3B model düğmesi yanar.',
+-        'Kaleler değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
++        'Paraleller değişirken eskiler mengene boyunca kayarak çıkar, yenileri kayarak girer; etiket daha büyük.',
+         'Ölçüm parça mengenedeyken çalışır; ölçüm panelindeki "Yalnızca parça" onu mengeneden çıkarır.',
+       ],
+     },
+diff --git a/tests/trParallels.test.ts b/tests/trParallels.test.ts
+new file mode 100644
+index 0000000..cf199bd
+--- /dev/null
++++ b/tests/trParallels.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from 'vitest';
++import { resources } from '../src/i18n/resources';
++import trCam from '../src/i18n/locales/tr/cam';
++import { RELEASES } from '../src/lib/whatsNew';
++import { CAM_RELEASES } from '../src/lib/cam/news';
++
++// Turkish calls the parallels "paralel"; "kale" (the French "cale") means castle in Turkish.
++const texts = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(texts) : []);
++
++describe('Turkish word for the parallels', () => {
++  it('is never "kale"', () => {
++    const all = [...texts(resources.tr), ...texts(trCam), ...[...RELEASES, ...CAM_RELEASES].flatMap((r) => texts(r.tr))];
++    expect(all.length).toBeGreaterThan(1000);
++    expect(all.filter((s) => /(^|[^\p{L}])kale(?!m)/iu.test(s))).toEqual([]);
++  });
++});
+-- 
+2.43.0
+

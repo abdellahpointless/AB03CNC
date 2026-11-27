@@ -1,0 +1,90 @@
+From d9cedd429475cdd5da5e42fe08246cdac59e8565 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:04:51 +0000
+Subject: [PATCH] CAM AI: a program's O number is its model name's when that
+ starts with one (HAAS short form), else O0001 as before (finding H6-7)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/CamAi.tsx       |  4 +++-
+ src/lib/cam/export.ts          | 11 ++++++++++-
+ tests/camProgramNumber.test.ts | 22 ++++++++++++++++++++++
+ 3 files changed, 35 insertions(+), 2 deletions(-)
+ create mode 100644 tests/camProgramNumber.test.ts
+
+diff --git a/src/components/CamAi.tsx b/src/components/CamAi.tsx
+index 36f4cef..a48eb02 100644
+--- a/src/components/CamAi.tsx
++++ b/src/components/CamAi.tsx
+@@ -12,7 +12,7 @@ import { MODEL_MAX_BYTES, type ModelError } from '../lib/modelLimits';
+ import { speedsFor } from '../lib/toolpath';
+ import { DEFAULT_LIMITS } from '../lib/cam/limits';
+ import { coolingOf, engineMachineId, isLockedMachine, materialNeed } from '../regions';
+-import { forMachine } from '../lib/cam/export';
++import { forMachine, programNumber } from '../lib/cam/export';
+ import { alternatives, CAM_MATERIALS, catalog, FAMILY, type CamMaterial } from '../lib/cam/tools';
+ import { PART_TYPES, type PartType } from '../lib/cam/partType';
+ import { renderViews } from '../lib/cam/thumbs';
+@@ -424,6 +424,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
+       // The machine's cooling on every tool (you: HAAS-2 and HAAS-4 air, the others coolant).
+       coolant: cooling === 'air' ? 'air' : 'flood',
+       name: name.slice(0, 40),
++      // Its O number (every program was O0001): the model name's, else O0001 as before.
++      number: programNumber(name),
+       author: user?.username,
+       raw,
+       margins,
+diff --git a/src/lib/cam/export.ts b/src/lib/cam/export.ts
+index c2aded5..d2aad90 100644
+--- a/src/lib/cam/export.ts
++++ b/src/lib/cam/export.ts
+@@ -8,7 +8,16 @@
+  * as that one); Download keeps CAM AI's tools and takes the material CAM AI cut.
+  */
+ import { addG49AfterM6, applyMachineCoolant, detectMaterial, fanuc2Limits, fanucNumbers, fhPecks, isAluOrBrass } from '../gcodeProcessor';
+-import { convertHaasToFanuc } from '../haasToFanucConverter';
++import { convertHaasToFanuc, haasProgramNumber } from '../haasToFanucConverter';
++
++/**
++ * The program's number from the model's name when it starts with one ("O1234567..." -> 1567, the shop's HAAS files'
++ * short form), else none (O0001). shortcut: other names all stay O0001, until the owner says where the number comes from.
++ */
++export function programNumber(name: string): number | undefined {
++  const digits = name.match(/^O(\d{4,8})(?!\d)/i)?.[1];
++  return Number(digits && haasProgramNumber(digits)) || undefined;
++}
+ 
+ /**
+  * `machineId`: the engine's id (regions.ts engineMachineId); `fileName`: the program's, for the FANUC O line;
+diff --git a/tests/camProgramNumber.test.ts b/tests/camProgramNumber.test.ts
+new file mode 100644
+index 0000000..28ef753
+--- /dev/null
++++ b/tests/camProgramNumber.test.ts
+@@ -0,0 +1,22 @@
++import { describe, expect, it } from 'vitest';
++import { forMachine, programNumber } from '../src/lib/cam/export';
++
++// Every CAM AI program was O0001: two sent to one machine carried the same number. The number now comes from the
++// model's name when it starts with a program number, in the HAAS files' short form (first digit and last three).
++describe("a CAM AI program's number", () => {
++  it("is the model name's program number, as the shop's HAAS files write it", () => {
++    expect(programNumber('O1234567')).toBe(1567);
++    expect(programNumber('o1234567_2 rev B')).toBe(1567);
++    expect(programNumber('O0123')).toBe(123);
++  });
++
++  it('is none (O0001 as before) for any other name', () => {
++    for (const name of ['', 'PLATE', 'O12', 'TOP O1234567', 'O123456789', 'O0000000']) expect(programNumber(name), name).toBeUndefined();
++  });
++
++  it('goes to a Robodrill as the long number of the file name (the converter, as for the shop’s own files)', () => {
++    const haas = ['%', 'O1567', 'N1 (TEIL)', 'N2 G00 G90 X0. Y0.', 'N3 M30', '%'].join('\n');
++    expect(forMachine(haas, 'FANUC-1', 'O1234567.nc').split('\n')).toContain('O1234567(NC)');
++    expect(forMachine(haas, 'HAAS-1', 'O1234567.nc').split('\n')[1]).toBe('O1567');
++  });
++});
+-- 
+2.43.0
+

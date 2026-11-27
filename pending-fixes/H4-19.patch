@@ -1,0 +1,69 @@
+From c2c03c3951b10d1aae4015d5856958e4c03d545a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:34:22 +0000
+Subject: [PATCH] Preventive: the header chip says '8 machines with checks to
+ do' (it counts machines), with a singular (finding H4-19)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/preventive.ts |  4 +++-
+ src/i18n/locales/tr/preventive.ts |  3 ++-
+ tests/preventiveChips.test.ts     | 16 ++++++++++++++++
+ 3 files changed, 21 insertions(+), 2 deletions(-)
+ create mode 100644 tests/preventiveChips.test.ts
+
+diff --git a/src/i18n/locales/en/preventive.ts b/src/i18n/locales/en/preventive.ts
+index ba4c3b1..e3a4f29 100644
+--- a/src/i18n/locales/en/preventive.ts
++++ b/src/i18n/locales/en/preventive.ts
+@@ -7,7 +7,9 @@ const preventive = {
+     myMachinesTitle: 'You can only update the machines you look after',
+     myMachines: 'You look after {{names}}',
+     withProblem: '{{count}} with a problem',
+-    checksToDo: '{{count}} checks to do',
++    // These chips count machines (each also filters the floor), not checks.
++    checksToDo_one: '{{count}} machine with checks to do',
++    checksToDo_other: '{{count}} machines with checks to do',
+     allGood: '{{count}} all good',
+     stopped: '{{count}} stopped',
+     board: 'TV board',
+diff --git a/src/i18n/locales/tr/preventive.ts b/src/i18n/locales/tr/preventive.ts
+index ca6d41e..c2db421 100644
+--- a/src/i18n/locales/tr/preventive.ts
++++ b/src/i18n/locales/tr/preventive.ts
+@@ -10,7 +10,8 @@ const preventive: Translation<typeof en> = {
+     myMachinesTitle: 'Yalnızca sorumlu olduğunuz tezgahları güncelleyebilirsiniz',
+     myMachines: 'Sorumluluğunuzda: {{names}}',
+     withProblem: '{{count}} arızalı',
+-    checksToDo: '{{count}} kontrol bekliyor',
++    checksToDo_one: '{{count}} tezgahta kontrol var',
++    checksToDo_other: '{{count}} tezgahta kontrol var',
+     allGood: '{{count}} sorunsuz',
+     stopped: '{{count}} duruyor',
+     board: 'TV ekranı',
+diff --git a/tests/preventiveChips.test.ts b/tests/preventiveChips.test.ts
+new file mode 100644
+index 0000000..a4647b5
+--- /dev/null
++++ b/tests/preventiveChips.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from 'vitest';
++import i18n from '../src/i18n';
++
++// The header chips count machines (each filters the floor); '8 checks to do' read as 8 checks next to cards with 11 each.
++describe('preventive header chip', () => {
++  it('says machines, with a singular', async () => {
++    expect(i18n.t('preventive:header.checksToDo', { count: 1 })).toBe('1 machine with checks to do');
++    expect(i18n.t('preventive:header.checksToDo', { count: 8 })).toBe('8 machines with checks to do');
++    await i18n.changeLanguage('tr');
++    try {
++      expect(i18n.t('preventive:header.checksToDo', { count: 2 })).toBe('2 tezgahta kontrol var');
++    } finally {
++      await i18n.changeLanguage('en');
++    }
++  });
++});
+-- 
+2.43.0
+

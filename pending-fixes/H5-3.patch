@@ -1,0 +1,64 @@
+From fa3072dda559e886a09307378c4af1fe81b81e86 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:51:22 +0000
+Subject: [PATCH] Remapper: '1 tool still missing' with singular and plural
+ forms (finding H5-3)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/i18n/locales/en/remapper.ts |  3 ++-
+ src/i18n/locales/tr/remapper.ts |  3 ++-
+ tests/remapperPlural.test.ts    | 12 ++++++++++++
+ 3 files changed, 16 insertions(+), 2 deletions(-)
+ create mode 100644 tests/remapperPlural.test.ts
+
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..cc51008 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -91,7 +91,8 @@ const remapper = {
+     subtitle: 'Match program tools against {{machine}} slots',
+     missing: '{{count}} Missing',
+     reviewApprox: 'Review Approximates',
+-    stillMissing: '{{count}} Tool(s) Still Missing',
++    stillMissing_one: '{{count}} tool still missing',
++    stillMissing_other: '{{count}} tools still missing',
+     apply: 'Apply & Generate Code',
+   },
+   skipped: {
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..10d8491 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -88,7 +88,8 @@ const remapper: Translation<typeof en> = {
+     subtitle: 'Programdaki takımları {{machine}} tezgahının cepleriyle eşleştirin',
+     missing: '{{count}} eksik',
+     reviewApprox: 'Yaklaşık eşleşmeleri kontrol edin',
+-    stillMissing: '{{count}} takım hâlâ eksik',
++    stillMissing_one: '{{count}} takım hâlâ eksik',
++    stillMissing_other: '{{count}} takım hâlâ eksik',
+     apply: 'Uygula ve Kodu Oluştur',
+   },
+   skipped: {
+diff --git a/tests/remapperPlural.test.ts b/tests/remapperPlural.test.ts
+new file mode 100644
+index 0000000..1713031
+--- /dev/null
++++ b/tests/remapperPlural.test.ts
+@@ -0,0 +1,12 @@
++import { describe, expect, it } from 'vitest';
++import i18n from '../src/i18n';
++
++// The tool resolution window's button: "1 tool still missing", not "1 Tool(s) Still Missing".
++describe('remapper: still missing', () => {
++  it('says tool or tools by the count', () => {
++    const t = i18n.getFixedT('en', 'remapper');
++    expect(t('modal.stillMissing', { count: 1 })).toBe('1 tool still missing');
++    expect(t('modal.stillMissing', { count: 2 })).toBe('2 tools still missing');
++    expect(i18n.getFixedT('tr', 'remapper')('modal.stillMissing', { count: 2 })).toBe('2 takım hâlâ eksik');
++  });
++});
+-- 
+2.43.0
+

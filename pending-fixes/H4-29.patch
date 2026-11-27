@@ -1,0 +1,50 @@
+From c35aaeacf803c12e6f984e47deaabc562745c533 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:41:50 +0000
+Subject: [PATCH] Parts: an entry error clears when the SAP number or quantity
+ is changed; the quantity is checked by the app in the page's language
+ (finding H4-29)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PartWithoutScan.tsx | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/components/PartWithoutScan.tsx b/src/components/PartWithoutScan.tsx
+index 690d6be..4e03f02 100644
+--- a/src/components/PartWithoutScan.tsx
++++ b/src/components/PartWithoutScan.tsx
+@@ -279,7 +279,8 @@ export default function PartWithoutScan() {
+               </span>
+             </div>
+ 
+-            <form onSubmit={handleSubmit} className="space-y-4">
++            {/* noValidate: the app checks the quantity itself, in the page's language (the browser's tooltip came first, in its own). */}
++            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+               {/* SAP Number */}
+               <div>
+                 <label htmlFor={sapInputId} className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+@@ -289,7 +290,10 @@ export default function PartWithoutScan() {
+                   id={sapInputId}
+                   type="text"
+                   value={sapNumber}
+-                  onChange={e => setSapNumber(e.target.value.toUpperCase())}
++                  onChange={e => {
++                    setSapNumber(e.target.value.toUpperCase());
++                    setSubmitError(null); // an error about the old value no longer applies
++                  }}
+                   placeholder={t('form.sapPlaceholder')}
+                   maxLength={40}
+                   disabled={isSubmitting}
+@@ -317,6 +321,7 @@ export default function PartWithoutScan() {
+                     onChange={e => {
+                       const v = e.target.value;
+                       setQty(v === '' ? '' : parseInt(v, 10));
++                      setSubmitError(null);
+                     }}
+                     disabled={isSubmitting}
+                     className="aurora-input w-full font-mono text-xs sm:text-sm"
+-- 
+2.43.0
+

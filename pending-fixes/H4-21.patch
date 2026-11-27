@@ -1,0 +1,63 @@
+From bd9136d4f693e5c56fc940d0ff04dc995eaaf0ab Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:35:41 +0000
+Subject: [PATCH] =?UTF-8?q?Parts:=20months=20written=20in=20words=20in=20t?=
+ =?UTF-8?q?he=20page=20language=20('November=202026',=20'Kas=C4=B1m=202026?=
+ =?UTF-8?q?'),=20not=20'2026-11'=20(finding=20H4-21)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PartWithoutScan.tsx | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/components/PartWithoutScan.tsx b/src/components/PartWithoutScan.tsx
+index 690d6be..52d0c17 100644
+--- a/src/components/PartWithoutScan.tsx
++++ b/src/components/PartWithoutScan.tsx
+@@ -13,7 +13,7 @@ import {
+ } from '../lib/partsApi';
+ import { exportUserPartEntriesExcel } from '../lib/partExportExcel';
+ import { useT } from '../i18n';
+-import { fmtDateTime, fmtNumber, locale } from '../i18n/format';
++import { fmtDateTime, fmtMonth, fmtNumber, locale } from '../i18n/format';
+ import { IconSquarePlus as PackagePlus, IconCalendar as Calendar, IconStack2 as Layers, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconDownload as Download, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconFileSpreadsheet as FileSpreadsheet } from '@tabler/icons-react';
+ 
+ /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
+@@ -275,7 +275,7 @@ export default function PartWithoutScan() {
+                 {t('form.title')}
+               </span>
+               <span className="text-xs font-mono text-[var(--text-tertiary)]">
+-                {t('form.month', { month: currentMonthKey })}
++                {t('form.month', { month: fmtMonth(currentMonthKey) })}
+               </span>
+             </div>
+ 
+@@ -422,8 +422,8 @@ export default function PartWithoutScan() {
+                 <Calendar size={14} className="text-[var(--green-500)]" />
+                 {t('counter.title')}
+               </span>
+-              <span className="badge-neutral text-xs font-mono">
+-                {currentMonthKey}
++              <span className="badge-neutral text-xs">
++                {fmtMonth(currentMonthKey)}
+               </span>
+             </div>
+ 
+@@ -498,8 +498,8 @@ export default function PartWithoutScan() {
+                   className="w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(var(--ov),0.02)] transition-colors cursor-pointer"
+                 >
+                   <div className="flex items-center gap-3 min-w-0">
+-                    <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
+-                      {row.month_key}
++                    <span className="text-sm font-bold text-[var(--text-primary)]">
++                      {fmtMonth(row.month_key)}
+                     </span>
+                     {row.month_key === currentMonthKey && (
+                       <span className="badge-positive text-xs py-0.5 px-2">
+-- 
+2.43.0
+

@@ -1,0 +1,332 @@
+From cf7ccf2fbdac92a111872cd6e948982cde0a3c76 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 23:54:53 +0000
+Subject: [PATCH] i18n: counted English texts have singular and plural forms,
+ no more '(s)' (finding H5-4)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/MasterApp.tsx      |  2 +-
+ src/i18n/locales/en/cam.ts        |  3 ++-
+ src/i18n/locales/en/data.ts       |  9 ++++++---
+ src/i18n/locales/en/history.ts    |  6 ++++--
+ src/i18n/locales/en/master.ts     | 12 ++++++++----
+ src/i18n/locales/en/preventive.ts |  3 ++-
+ src/i18n/locales/en/remapper.ts   |  3 ++-
+ src/i18n/locales/tr/cam.ts        |  3 ++-
+ src/i18n/locales/tr/data.ts       |  9 ++++++---
+ src/i18n/locales/tr/history.ts    |  6 ++++--
+ src/i18n/locales/tr/master.ts     | 12 ++++++++----
+ src/i18n/locales/tr/preventive.ts |  3 ++-
+ src/i18n/locales/tr/remapper.ts   |  3 ++-
+ src/lib/migration.ts              |  2 +-
+ tests/countPlurals.test.ts        | 32 +++++++++++++++++++++++++++++++
+ 15 files changed, 82 insertions(+), 26 deletions(-)
+ create mode 100644 tests/countPlurals.test.ts
+
+diff --git a/src/components/MasterApp.tsx b/src/components/MasterApp.tsx
+index 7619dc7..6c7cc22 100644
+--- a/src/components/MasterApp.tsx
++++ b/src/components/MasterApp.tsx
+@@ -332,7 +332,7 @@ function CountryCard({ country, index, onCreateAdmin, onChanged }: { country: Co
+           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
+             <span className="inline-flex items-center gap-1">
+               <ShieldCheck size={12} className={country.users.adminsWithMfa < country.users.admins ? 'text-[var(--orange-text)]' : 'text-[var(--green-500)]'} />
+-              {t('card.mfa', { count: country.users.adminsWithMfa, total: country.users.admins })}
++              {t('card.mfa', { count: country.users.admins, n: country.users.adminsWithMfa })}
+             </span>
+             <span className={country.security.failedSignIns7d > 20 ? 'text-[var(--orange-text)]' : ''}>{t('card.failed', { count: country.security.failedSignIns7d })}</span>
+             <span>{country.programs.lastAt ? t('card.lastActivity', { time: timeAgo(country.programs.lastAt) }) : t('card.noActivity')}</span>
+diff --git a/src/i18n/locales/en/cam.ts b/src/i18n/locales/en/cam.ts
+index 92d0942..e5ed840 100644
+--- a/src/i18n/locales/en/cam.ts
++++ b/src/i18n/locales/en/cam.ts
+@@ -267,7 +267,8 @@ const cam = {
+       checking: 'Checking…',
+       undo: 'Undo',
+       hint: 'Deeper: only where it goes deepest. The whole program is checked again; anything that would hit the vise, a holder or the stop keeps it locked.',
+-      changed: 'Changed by hand: {{count}} operation(s). The part differs from the model ({{pct}} % alike, {{mm3}} mm³ cut out of it).',
++      changed_one: 'Changed by hand: {{count}} operation. The part differs from the model ({{pct}} % alike, {{mm3}} mm³ cut out of it).',
++      changed_other: 'Changed by hand: {{count}} operations. The part differs from the model ({{pct}} % alike, {{mm3}} mm³ cut out of it).',
+       accept: 'I accept this part as it is',
+       acceptedText: 'Changed by hand, accepted as it is: nothing hits the machine or the vise.',
+       acceptedHold_one: 'In {{count}} clamping the vise holds it off where that clamping\'s zero assumes: check the zero at the machine.',
+diff --git a/src/i18n/locales/en/data.ts b/src/i18n/locales/en/data.ts
+index 0873791..e98b4a0 100644
+--- a/src/i18n/locales/en/data.ts
++++ b/src/i18n/locales/en/data.ts
+@@ -45,7 +45,8 @@ const data = {
+     /** The word the admin has to type to clear all history. */
+     deleteWord: 'DELETE',
+     noneOlder: 'No records older than {{days}} days.',
+-    removed: 'Archive downloaded, {{count}} record(s) removed.',
++    removed_one: 'Archive downloaded, {{count}} record removed.',
++    removed_other: 'Archive downloaded, {{count}} records removed.',
+   },
+   /** Progress lines shown to the admin during import / backup / restore (lib/migration). */
+   log: {
+@@ -62,8 +63,10 @@ const data = {
+     backupReady: 'Backup ready.',
+     toolsReplaced: 'Tool inventory replaced: {{count}} tools.',
+     toolsSkipped: 'Tool inventory in the file was skipped (tick "Replace tool inventory" to restore it).',
+-    importingHistory: 'Importing {{count}} history record(s)...',
+-    historyRestored: 'History: {{added}} new record(s) added, {{present}} already present.',
++    importingHistory_one: 'Importing {{count}} history record...',
++    importingHistory_other: 'Importing {{count}} history records...',
++    historyRestored_one: 'History: {{count}} new record added, {{present}} already present.',
++    historyRestored_other: 'History: {{count}} new records added, {{present}} already present.',
+     restoreFinished: 'Restore finished.',
+   },
+   errors: {
+diff --git a/src/i18n/locales/en/history.ts b/src/i18n/locales/en/history.ts
+index 4f8accc..ccbec88 100644
+--- a/src/i18n/locales/en/history.ts
++++ b/src/i18n/locales/en/history.ts
+@@ -60,7 +60,8 @@ const history = {
+     viewCodeTitle: 'Inspect remapped G-Code directly in browser',
+     downloadTitle: 'Download remapped G-Code file',
+     toolModifications: 'Tool Modifications',
+-    toolsMapped: '{{count}} tool(s) mapped',
++    toolsMapped_one: '{{count}} tool mapped',
++    toolsMapped_other: '{{count}} tools mapped',
+     autoSelection: 'Auto Selection',
+     manualOverride: 'Manual Override',
+     originalRequest: 'Original Request',
+@@ -91,7 +92,8 @@ const history = {
+     },
+     alerts: {
+       nothingToArchive: 'There are no records older than 30 days.',
+-      archiveDone: 'Archive downloaded. {{count}} record(s) older than 30 days were removed from the server.',
++      archiveDone_one: 'Archive downloaded. {{count}} record older than 30 days was removed from the server.',
++      archiveDone_other: 'Archive downloaded. {{count}} records older than 30 days were removed from the server.',
+     },
+   },
+ 
+diff --git a/src/i18n/locales/en/master.ts b/src/i18n/locales/en/master.ts
+index 1a715e7..615fa0e 100644
+--- a/src/i18n/locales/en/master.ts
++++ b/src/i18n/locales/en/master.ts
+@@ -19,13 +19,17 @@ const master = {
+     partsValue: 'value {{value}}',
+     pending: '{{count}} waiting for review',
+     problems: 'Machine problems',
+-    due: '{{count}} checks to do',
++    due_one: '{{count}} check to do',
++    due_other: '{{count}} checks to do',
+     machines: 'Machines',
+-    tools: '{{count}} tools in inventory',
++    tools_one: '{{count}} tool in inventory',
++    tools_other: '{{count}} tools in inventory',
+     people: 'People',
+     peopleDetail: 'Admins: {{admins}} · Machinists: {{machinists}}',
+-    mfa: '{{count}} of {{total}} admins use two-step sign-in',
+-    failed: '{{count}} failed sign-ins (7 days)',
++    mfa_one: '{{n}} of {{count}} admin uses two-step sign-in',
++    mfa_other: '{{n}} of {{count}} admins use two-step sign-in',
++    failed_one: '{{count}} failed sign-in (7 days)',
++    failed_other: '{{count}} failed sign-ins (7 days)',
+     lastActivity: 'Last program: {{time}}',
+     noActivity: 'No program yet',
+     notSetUpText: 'This country has no account yet. Create its first admin to start.',
+diff --git a/src/i18n/locales/en/preventive.ts b/src/i18n/locales/en/preventive.ts
+index ba4c3b1..f57fb7c 100644
+--- a/src/i18n/locales/en/preventive.ts
++++ b/src/i18n/locales/en/preventive.ts
+@@ -7,7 +7,8 @@ const preventive = {
+     myMachinesTitle: 'You can only update the machines you look after',
+     myMachines: 'You look after {{names}}',
+     withProblem: '{{count}} with a problem',
+-    checksToDo: '{{count}} checks to do',
++    checksToDo_one: '{{count}} check to do',
++    checksToDo_other: '{{count}} checks to do',
+     allGood: '{{count}} all good',
+     stopped: '{{count}} stopped',
+     board: 'TV board',
+diff --git a/src/i18n/locales/en/remapper.ts b/src/i18n/locales/en/remapper.ts
+index f972fad..061a2f1 100644
+--- a/src/i18n/locales/en/remapper.ts
++++ b/src/i18n/locales/en/remapper.ts
+@@ -6,7 +6,8 @@ const remapper = {
+     toolsLoaded: '{{count}} Tools Loaded',
+     noMachines: 'No machines yet',
+     noMachinesHint: 'No machines yet - an admin adds them in Admin',
+-    machineOption: '{{name}} ({{count}} tools)',
++    machineOption_one: '{{name}} ({{count}} tool)',
++    machineOption_other: '{{name}} ({{count}} tools)',
+     openInventoryTitle: 'Open {{machine}} Tool Inventory',
+     inventory: 'Tool Inventory',
+     analyze: 'Analyze & Remap',
+diff --git a/src/i18n/locales/tr/cam.ts b/src/i18n/locales/tr/cam.ts
+index 98eed3e..1defee0 100644
+--- a/src/i18n/locales/tr/cam.ts
++++ b/src/i18n/locales/tr/cam.ts
+@@ -270,7 +270,8 @@ const cam: Translation<typeof en> = {
+       checking: 'Kontrol ediliyor…',
+       undo: 'Geri al',
+       hint: 'Daha derin: yalnızca en derin gittiği yerde. Programın tamamı yeniden kontrol edilir; mengeneye, tutucuya veya dayamaya çarpacak her şey kilidi korur.',
+-      changed: 'Elle değiştirildi: {{count}} işlem. Parça modelden farklı (%{{pct}} benzer, {{mm3}} mm³ parçadan kesiliyor).',
++      changed_one: 'Elle değiştirildi: {{count}} işlem. Parça modelden farklı (%{{pct}} benzer, {{mm3}} mm³ parçadan kesiliyor).',
++      changed_other: 'Elle değiştirildi: {{count}} işlem. Parça modelden farklı (%{{pct}} benzer, {{mm3}} mm³ parçadan kesiliyor).',
+       accept: 'Bu parçayı olduğu gibi kabul ediyorum',
+       acceptedText: 'Elle değiştirildi, olduğu gibi kabul edildi: makineye ya da mengeneye hiçbir şey çarpmıyor.',
+       acceptedHold_one: '{{count}} bağlamada mengene parçayı o bağlamanın sıfırının varsaydığı yerden farklı tutuyor: sıfırı makinede kontrol edin.',
+diff --git a/src/i18n/locales/tr/data.ts b/src/i18n/locales/tr/data.ts
+index 1d19e35..c380f6f 100644
+--- a/src/i18n/locales/tr/data.ts
++++ b/src/i18n/locales/tr/data.ts
+@@ -45,7 +45,8 @@ const data: Translation<typeof en> = {
+     typeToConfirm: 'Onaylamak için {{word}} yazın',
+     deleteWord: 'SİL',
+     noneOlder: '{{days}} günden eski kayıt yok.',
+-    removed: 'Arşiv indirildi, {{count}} kayıt silindi.',
++    removed_one: 'Arşiv indirildi, {{count}} kayıt silindi.',
++    removed_other: 'Arşiv indirildi, {{count}} kayıt silindi.',
+   },
+   log: {
+     createdAccounts: 'Oluşturulan hesaplar: {{names}}',
+@@ -62,8 +63,10 @@ const data: Translation<typeof en> = {
+     toolsReplaced: 'Takım listesi değiştirildi: {{count}} takım.',
+     toolsSkipped:
+       'Dosyadaki takım listesi atlandı (geri yüklemek için "Takım listesini dosyadakiyle değiştir" seçeneğini işaretleyin).',
+-    importingHistory: '{{count}} geçmiş kaydı içe aktarılıyor...',
+-    historyRestored: 'Geçmiş: {{added}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
++    importingHistory_one: '{{count}} geçmiş kaydı içe aktarılıyor...',
++    importingHistory_other: '{{count}} geçmiş kaydı içe aktarılıyor...',
++    historyRestored_one: 'Geçmiş: {{count}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
++    historyRestored_other: 'Geçmiş: {{count}} yeni kayıt eklendi, {{present}} kayıt zaten mevcuttu.',
+     restoreFinished: 'Geri yükleme tamamlandı.',
+   },
+   errors: {
+diff --git a/src/i18n/locales/tr/history.ts b/src/i18n/locales/tr/history.ts
+index eb9fa26..60cb1c8 100644
+--- a/src/i18n/locales/tr/history.ts
++++ b/src/i18n/locales/tr/history.ts
+@@ -60,7 +60,8 @@ const history: Translation<typeof en> = {
+     viewCodeTitle: 'Eşleştirilmiş G-kodunu doğrudan tarayıcıda inceleyin',
+     downloadTitle: 'Eşleştirilmiş G-kodu dosyasını indirin',
+     toolModifications: 'Takım Değişiklikleri',
+-    toolsMapped: '{{count}} takım eşleştirildi',
++    toolsMapped_one: '{{count}} takım eşleştirildi',
++    toolsMapped_other: '{{count}} takım eşleştirildi',
+     autoSelection: 'Otomatik Seçim',
+     manualOverride: 'Manuel Seçim',
+     originalRequest: 'Programdaki İstek',
+@@ -91,7 +92,8 @@ const history: Translation<typeof en> = {
+     },
+     alerts: {
+       nothingToArchive: '30 günden eski kayıt yok.',
+-      archiveDone: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
++      archiveDone_one: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
++      archiveDone_other: 'Arşiv indirildi. 30 günden eski {{count}} kayıt sunucudan silindi.',
+     },
+   },
+ 
+diff --git a/src/i18n/locales/tr/master.ts b/src/i18n/locales/tr/master.ts
+index 778dc88..82153f7 100644
+--- a/src/i18n/locales/tr/master.ts
++++ b/src/i18n/locales/tr/master.ts
+@@ -22,13 +22,17 @@ const master: Translation<typeof en> = {
+     partsValue: 'değer {{value}}',
+     pending: '{{count}} onay bekliyor',
+     problems: 'Tezgah arızaları',
+-    due: '{{count}} kontrol yapılacak',
++    due_one: '{{count}} kontrol yapılacak',
++    due_other: '{{count}} kontrol yapılacak',
+     machines: 'Tezgahlar',
+-    tools: 'Listede {{count}} takım',
++    tools_one: 'Listede {{count}} takım',
++    tools_other: 'Listede {{count}} takım',
+     people: 'Kişiler',
+     peopleDetail: 'Yönetici: {{admins}} · Operatör: {{machinists}}',
+-    mfa: '{{total}} yöneticiden {{count}} tanesi iki adımlı doğrulama kullanıyor',
+-    failed: '{{count}} başarısız giriş (7 gün)',
++    mfa_one: '{{count}} yöneticiden {{n}} tanesi iki adımlı doğrulama kullanıyor',
++    mfa_other: '{{count}} yöneticiden {{n}} tanesi iki adımlı doğrulama kullanıyor',
++    failed_one: '{{count}} başarısız giriş (7 gün)',
++    failed_other: '{{count}} başarısız giriş (7 gün)',
+     lastActivity: 'Son program: {{time}}',
+     noActivity: 'Henüz program yok',
+     notSetUpText: 'Bu ülkede henüz hesap yok. Başlamak için ilk yöneticiyi oluşturun.',
+diff --git a/src/i18n/locales/tr/preventive.ts b/src/i18n/locales/tr/preventive.ts
+index ca6d41e..219ef1e 100644
+--- a/src/i18n/locales/tr/preventive.ts
++++ b/src/i18n/locales/tr/preventive.ts
+@@ -10,7 +10,8 @@ const preventive: Translation<typeof en> = {
+     myMachinesTitle: 'Yalnızca sorumlu olduğunuz tezgahları güncelleyebilirsiniz',
+     myMachines: 'Sorumluluğunuzda: {{names}}',
+     withProblem: '{{count}} arızalı',
+-    checksToDo: '{{count}} kontrol bekliyor',
++    checksToDo_one: '{{count}} kontrol bekliyor',
++    checksToDo_other: '{{count}} kontrol bekliyor',
+     allGood: '{{count}} sorunsuz',
+     stopped: '{{count}} duruyor',
+     board: 'TV ekranı',
+diff --git a/src/i18n/locales/tr/remapper.ts b/src/i18n/locales/tr/remapper.ts
+index 2538cc3..b0dc5cd 100644
+--- a/src/i18n/locales/tr/remapper.ts
++++ b/src/i18n/locales/tr/remapper.ts
+@@ -8,7 +8,8 @@ const remapper: Translation<typeof en> = {
+     toolsLoaded: '{{count}} takım yüklü',
+     noMachines: 'Henüz tezgah yok',
+     noMachinesHint: 'Henüz tezgah yok - yönetici, Yönetici → Tezgahlar bölümünden ekler',
+-    machineOption: '{{name}} ({{count}} takım)',
++    machineOption_one: '{{name}} ({{count}} takım)',
++    machineOption_other: '{{name}} ({{count}} takım)',
+     openInventoryTitle: '{{machine}} takım listesini aç',
+     inventory: 'Takım Listesi',
+     analyze: 'Analiz Et ve Eşleştir',
+diff --git a/src/lib/migration.ts b/src/lib/migration.ts
+index 8b88e77..bb3e054 100644
+--- a/src/lib/migration.ts
++++ b/src/lib/migration.ts
+@@ -171,7 +171,7 @@ export async function restoreBackup(data: any, opts: { replaceTools: boolean },
+     log(i18n.t('data:log.importingHistory', { count: history.length }));
+     summary.history = await importHistory(history, log, isNew ? data.programs : undefined);
+     if (isNew && data.programs) summary.programs = Object.keys(data.programs).length;
+-    log(i18n.t('data:log.historyRestored', { added: summary.history, present: history.length - summary.history }), 'ok');
++    log(i18n.t('data:log.historyRestored', { count: summary.history, present: history.length - summary.history }), 'ok');
+   }
+ 
+   if (isNew && Array.isArray(data.partEntries) && data.partEntries.length && currentFeatures().partTracking) {
+diff --git a/tests/countPlurals.test.ts b/tests/countPlurals.test.ts
+new file mode 100644
+index 0000000..ca3bcc2
+--- /dev/null
++++ b/tests/countPlurals.test.ts
+@@ -0,0 +1,32 @@
++import { describe, expect, it } from 'vitest';
++import i18n from '../src/i18n';
++import '../src/i18n/camLocales';
++
++// Counted English texts read right at 1: "1 tool mapped", not "1 tool(s) mapped" or "1 checks to do".
++describe('counted texts', () => {
++  const en = i18n.getFixedT('en') as unknown as (key: string, opts: object) => string;
++
++  it('use the singular at 1 and the plural otherwise', () => {
++    expect(en('history:view.toolsMapped', { count: 1 })).toBe('1 tool mapped');
++    expect(en('history:view.toolsMapped', { count: 12 })).toBe('12 tools mapped');
++    expect(en('history:view.alerts.archiveDone', { count: 1 })).toBe('Archive downloaded. 1 record older than 30 days was removed from the server.');
++    expect(en('data:retention.removed', { count: 1 })).toBe('Archive downloaded, 1 record removed.');
++    expect(en('data:log.importingHistory', { count: 1 })).toBe('Importing 1 history record...');
++    expect(en('data:log.historyRestored', { count: 1, present: 4 })).toBe('History: 1 new record added, 4 already present.');
++    expect(en('preventive:header.checksToDo', { count: 1 })).toBe('1 check to do');
++    expect(en('master:card.due', { count: 1 })).toBe('1 check to do');
++    expect(en('master:card.tools', { count: 1 })).toBe('1 tool in inventory');
++    expect(en('master:card.failed', { count: 1 })).toBe('1 failed sign-in (7 days)');
++    expect(en('master:card.mfa', { count: 1, n: 1 })).toBe('1 of 1 admin uses two-step sign-in');
++    expect(en('master:card.mfa', { count: 3, n: 2 })).toBe('2 of 3 admins use two-step sign-in');
++    expect(en('remapper:controls.machineOption', { name: 'HAAS-1', count: 1 })).toBe('HAAS-1 (1 tool)');
++    expect(en('cam:camAi.opEdit.changed', { count: 1, pct: 99, mm3: 0 })).toMatch(/^Changed by hand: 1 operation\. /);
++  });
++
++  it('keep the Turkish texts and their values', () => {
++    const tr = i18n.getFixedT('tr') as unknown as (key: string, opts: object) => string;
++    expect(tr('master:card.mfa', { count: 3, n: 2 })).toBe('3 yöneticiden 2 tanesi iki adımlı doğrulama kullanıyor');
++    expect(tr('data:log.historyRestored', { count: 2, present: 1 })).toBe('Geçmiş: 2 yeni kayıt eklendi, 1 kayıt zaten mevcuttu.');
++    expect(tr('history:view.toolsMapped', { count: 1 })).toBe('1 takım eşleştirildi');
++  });
++});
+-- 
+2.43.0
+

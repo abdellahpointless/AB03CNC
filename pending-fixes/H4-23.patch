@@ -1,0 +1,28 @@
+From 62513732560831cc7350dc9f2a0a81e5b39bf1a5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:29:10 +0000
+Subject: [PATCH] Admin: a 0 % share draws an empty track, not a short coloured
+ bar (finding H4-23)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/AdminExtractionAnalytics.tsx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/components/AdminExtractionAnalytics.tsx b/src/components/AdminExtractionAnalytics.tsx
+index 9cd4f9b..191e339 100644
+--- a/src/components/AdminExtractionAnalytics.tsx
++++ b/src/components/AdminExtractionAnalytics.tsx
+@@ -569,7 +569,7 @@ export default function AdminExtractionAnalytics() {
+                         <div
+                           className="h-full rounded-full transition-all duration-500"
+                           style={{
+-                            width: `${Math.max(percent, 4)}%`,
++                            width: `${percent > 0 ? Math.max(percent, 4) : 0}%`, // a sliver for a small share, nothing for none
+                             backgroundColor: BAR_COLORS[idx % BAR_COLORS.length]
+                           }}
+                         />
+-- 
+2.43.0
+

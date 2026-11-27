@@ -1,0 +1,186 @@
+From 0bf570e9682c68b7f84725f79c78d3ceae642548 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:20:59 +0000
+Subject: [PATCH] Toolpath: setup markers above the slider never sit on top of
+ each other (room from the slider's width and each label); one with no room on
+ either row joins the marker before it as "+n" (finding H3-12)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/ToolpathViewer.tsx | 43 ++++++++++++++-----------------
+ src/lib/usePlayback.ts            | 26 +++++++++++++++++++
+ tests/setupMarkers.test.ts        | 39 ++++++++++++++++++++++++++++
+ 3 files changed, 85 insertions(+), 23 deletions(-)
+ create mode 100644 tests/setupMarkers.test.ts
+
+diff --git a/src/components/ToolpathViewer.tsx b/src/components/ToolpathViewer.tsx
+index 5d34392..9013e5b 100644
+--- a/src/components/ToolpathViewer.tsx
++++ b/src/components/ToolpathViewer.tsx
+@@ -5,7 +5,7 @@ import { IconArrowBarToDown as ArrowDownToLine, IconPlayerPause as Pause, IconPl
+ import { Popover } from 'radix-ui';
+ import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
+ import { hitInstant, toolAt } from '../lib/playback';
+-import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
++import { setupMarkers, SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
+ import { partLook } from '../lib/partLook';
+ import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, viseSpans, type Collision, type SetupInfo } from '../lib/setups';
+ import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
+@@ -132,19 +132,18 @@ export default function ToolpathViewer({
+   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
+   const { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
+   // Setup markers above the slider: one that starts too close to the one before goes a row up.
+-  const markerRows = useMemo(() => {
+-    let last = -Infinity;
+-    let lastUp = true;
+-    return setups.slice(1).map((x) => {
+-      if (!x.moves) return false;
+-      const f = x.moves[0] / Math.max(1, path.moves.length);
+-      // shortcut: a marker is about 9 % of a desktop slider wide; measure the labels if they ever grow.
+-      const up = f - last < 0.09 && !lastUp;
+-      last = f;
+-      lastUp = up;
+-      return up;
+-    });
+-  }, [setups, path]);
++  // With no room on either row it joins the marker before it. How much room there is: the slider's width.
++  const track = useRef<HTMLDivElement>(null);
++  const [trackWidth, setTrackWidth] = useState(0);
++  useEffect(() => {
++    const el = track.current;
++    if (!el) return;
++    const ro = new ResizeObserver(() => setTrackWidth(el.clientWidth));
++    ro.observe(el);
++    return () => ro.disconnect();
++  }, [total]);
++  const markers = useMemo(() => setupMarkers(setups, path.moves.length, trackWidth), [setups, path, trackWidth]);
++  const twoRows = markers.some((m) => m.up);
+   const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : c.what === 'cale' ? 'toolpath.caleHit' : c.what === 'spacer' ? 'toolpath.spacerHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
+   // Setups whose written turn and position disagree: an error first, then a caution once inspected.
+   const conflicts = setups.filter((x) => x.conflict);
+@@ -1222,32 +1221,30 @@ export default function ToolpathViewer({
+             <button onClick={jumpEnd} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
+               <SkipForward size={14} />
+             </button>
+-            <div className={`order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative ${markerRows.some((r) => r) ? 'sm:pt-14' : 'sm:pt-7'}`}>
++            <div ref={track} className={`order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative ${twoRows ? 'sm:pt-14' : 'sm:pt-7'}`}>
+               {/* Where the part turns, with its new cales: a click goes there and plays the turn. */}
+               {multi &&
+-                setups.slice(1).map((s, i) => {
+-                  if (!s.moves) return null;
+-                  const f = s.moves[0] / total;
+-                  // A marker that would cover the one before it goes on the row above, with a longer tick.
+-                  const up = markerRows[i];
++                markers.map(({ setup: s, f, up, more }) => {
++                  // A marker on the row above has a longer tick; one that took in the setups right after it shows only "+n" for them.
+                   return (
+                     <button
+                       key={s.index}
+                       onClick={() => jumpFlip(s)}
+                       aria-label={t('toolpath.jumpTo', { n: s.index + 1 })}
+                       title={t('toolpath.jumpTo', { n: s.index + 1 })}
+-                      className={`no-glass hidden sm:inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:w-px after:bg-[var(--border-strong)] ${up || !markerRows.some((r) => r) ? 'top-0' : 'top-7'} ${up ? 'after:h-8' : 'after:h-1.5'}`}
++                      className={`no-glass hidden sm:inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:w-px after:bg-[var(--border-strong)] ${up || !twoRows ? 'top-0' : 'top-7'} ${up ? 'after:h-8' : 'after:h-1.5'}`}
+                       // The app's button style makes every button relative: placed here, over it.
+                       style={{ position: 'absolute', left: `calc(${f * 100}% + ${(0.5 - f) * 16}px)` }}
+                     >
+                       <span className="font-bold text-[var(--text-primary)]">{s.index + 1}</span>
+-                      {s.rotation && (
++                      {more > 0 && <span>+{more}</span>}
++                      {!more && s.rotation && (
+                         <span className="inline-flex items-center gap-0.5">
+                           <RotateCw size={10} aria-hidden="true" />
+                           {s.rotation.deg}° {s.rotation.axis}
+                         </span>
+                       )}
+-                      {s.support !== null && <span>▭{fmtNumber(s.support)}</span>}
++                      {!more && s.support !== null && <span>▭{fmtNumber(s.support)}</span>}
+                     </button>
+                   );
+                 })}
+diff --git a/src/lib/usePlayback.ts b/src/lib/usePlayback.ts
+index 9e6a7bb..3d22fba 100644
+--- a/src/lib/usePlayback.ts
++++ b/src/lib/usePlayback.ts
+@@ -14,6 +14,32 @@ export const SPEEDS = [5, 10, 50, 250];
+ /** end: the move playback stops before (one tool's run, played alone); none: the program's end. */
+ export type PlayGate = { wait: () => boolean; mode3d: () => boolean; end?: () => number | null };
+ 
++/**
++ * The setup markers above the slider (width: the slider's, in px), each where its setup starts (f: share of
++ * the moves). One that would touch the last marker on the slider row goes a row up; with both rows taken it
++ * joins the marker before it, which then shows "+n" for it (still reached from the tabs and the slider).
++ */
++export function setupMarkers(setups: SetupInfo[], moves: number, width: number): { setup: SetupInfo; f: number; up: boolean; more: number }[] {
++  const out: { setup: SetupInfo; f: number; up: boolean; more: number }[] = [];
++  // shortcut: half a label's width from its characters (11 px mono, an icon as one), room kept for "+9"; measure the labels if they change.
++  const half = (s: SetupInfo) => {
++    const label = `${s.index + 1}${s.rotation ? ` R${s.rotation.deg}° ${s.rotation.axis}` : ''}${s.support !== null ? ` R${s.support}` : ''}`;
++    return (18 + 7 * Math.max(label.length, `${s.index + 1} +9`.length)) / 2;
++  };
++  const right = [-Infinity, -Infinity];
++  for (const setup of setups.slice(1)) {
++    if (!setup.moves) continue;
++    const f = setup.moves[0] / Math.max(1, moves);
++    const row = [0, 1].find((r) => f * width - half(setup) >= right[r] + 4);
++    if (row === undefined) out[out.length - 1].more++;
++    else {
++      right[row] = f * width + half(setup);
++      out.push({ setup, f, up: row === 1, more: 0 });
++    }
++  }
++  return out;
++}
++
+ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRefObject<PlayGate>, initialSpeed = 2) {
+   const total = path.moves.length;
+   // Open at the start of the program: the raw part, before the first move.
+diff --git a/tests/setupMarkers.test.ts b/tests/setupMarkers.test.ts
+new file mode 100644
+index 0000000..c4c6393
+--- /dev/null
++++ b/tests/setupMarkers.test.ts
+@@ -0,0 +1,39 @@
++import { describe, expect, it } from 'vitest';
++import { setupMarkers } from '../src/lib/usePlayback';
++import type { SetupInfo } from '../src/lib/setups';
++
++/** Setups starting at these moves (the first setup has no marker); `turned`: each marker reads "n ⟳180° X ▭30". */
++const at = (starts: (number | null)[], turned = false) =>
++  [0, ...starts].map((m, index) => ({ index, moves: m === null ? null : [m, m + 1], rotation: turned ? { axis: 'X', deg: 180 } : null, support: turned ? 30 : null }) as SetupInfo);
++/** On a 1000 px slider over 1000 moves: one move is one px. */
++const shown = (starts: (number | null)[], turned = false, width = 1000) => setupMarkers(at(starts, turned), 1000, width).map((m) => [m.setup.index + 1, m.up, m.more]);
++
++describe('setupMarkers', () => {
++  it('keeps markers far apart on the slider row', () => {
++    expect(shown([200, 500, 800])).toEqual([[2, false, 0], [3, false, 0], [4, false, 0]]);
++  });
++  it('puts a marker close to the one before it a row up, and back down once the slider row is free', () => {
++    expect(shown([100, 140, 200])).toEqual([[2, false, 0], [3, true, 0], [4, false, 0]]);
++  });
++  it('joins a marker with no room on either row to the marker before it', () => {
++    expect(shown([100, 120, 140, 400])).toEqual([[2, false, 0], [3, true, 1], [5, false, 0]]);
++  });
++  it('makes room for the longer labels, more so on a narrow slider', () => {
++    expect(shown([100, 180, 260], true)).toEqual([[2, false, 0], [3, true, 0], [4, false, 0]]);
++    expect(shown([100, 180, 260], true, 500)).toEqual([[2, false, 0], [3, true, 1]]);
++  });
++  it('never puts two markers on top of each other, and loses no setup', () => {
++    const starts = [250, 270, 275, 290, 310, 400, 410, 440, 460, 470, 700, 720, 730, 750, 760];
++    const many = setupMarkers(at(starts), 1000, 1000);
++    // These labels ("7", "12 +3") are about 18 px plus 7 px a character, with room for " +9".
++    const w = (n: number) => 18 + 7 * (String(n).length + 3);
++    for (const up of [false, true]) {
++      const row = many.filter((m) => m.up === up);
++      expect(row.every((m, i) => i === 0 || (m.f - row[i - 1].f) * 1000 >= (w(m.setup.index + 1) + w(row[i - 1].setup.index + 1)) / 2)).toBe(true);
++    }
++    expect(many.reduce((n, m) => n + 1 + m.more, 0)).toBe(starts.length);
++  });
++  it('skips setups without moves', () => {
++    expect(shown([null, 500])).toEqual([[3, false, 0]]);
++  });
++});
+-- 
+2.43.0
+

@@ -1,0 +1,45 @@
+From 1a10dccf16863563b60044b8c4d8fadb934ed46d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:18:55 +0000
+Subject: [PATCH] Toolpath: the 3D parallels label uses the page's decimal
+ sign, 12.5 MM in English (finding H5-13)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/Toolpath3D.tsx | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/components/Toolpath3D.tsx b/src/components/Toolpath3D.tsx
+index 21a25b8..5152c80 100644
+--- a/src/components/Toolpath3D.tsx
++++ b/src/components/Toolpath3D.tsx
+@@ -13,6 +13,7 @@ import { addLights } from '../lib/lights';
+ import type { PartLook } from '../lib/partLook';
+ import type { Piece } from '../lib/modelCompare';
+ import type { ModelError } from '../lib/modelLimits';
++import { fmtNumber } from '../i18n/format';
+ 
+ /*
+  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
+@@ -233,7 +234,7 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
+   const runs: number[] = setup.jawTopZ !== null ? viseSpans(setup).map(([x0]) => x0) : [cb.min[0] - 2];
+   const length = PARALLEL_LENGTH;
+   const end = runs[runs.length - 1] + length;
+-  const text = `${fmtMm(setup.support ?? restZ - floorZ)} MM`;
++  const text = `${fmtNumber(setup.support ?? restZ - floorZ, 1)} MM`;
+   const g = buildParallels(runs, length, cales, floorZ, text);
+   // Their height as a tag over the right end, shown while they are changed.
+   const tag = label(`▭ ${text}`, '#FFD27A');
+@@ -250,8 +251,6 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
+ /** The measure's vise planes: hit by a click from either side, never drawn. */
+ const PLANE = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
+ 
+-const fmtMm = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
+-
+ /** A curved arrow around a turning axis (three.js frame) showing which way the part turns. */
+ function turnArrow(axis: THREE.Vector3, angle: number, radius: number, text: string): THREE.Group {
+   const g = new THREE.Group();
+-- 
+2.43.0
+

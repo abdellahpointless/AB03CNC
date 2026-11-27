@@ -1,0 +1,252 @@
+From c75b79ffd46acdaea223fca573b25c227b10a4ef Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:19:17 +0000
+Subject: [PATCH] Preventive: 'stopped for' counts from when the machine was
+ marked stopped, not from when the problem was reported (new stopped_at
+ column) (finding H4-28)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/components/PhoneCheck.tsx        |  3 +-
+ src/components/PreventiveActions.tsx |  3 +-
+ src/lib/fleet.ts                     |  7 +++-
+ tests/fleet.test.ts                  |  2 +
+ worker/routes/machines.ts            | 17 ++++----
+ worker/schema.ts                     |  5 +++
+ worker/tests/machine-stop.test.ts    | 58 ++++++++++++++++++++++++++++
+ 7 files changed, 85 insertions(+), 10 deletions(-)
+ create mode 100644 worker/tests/machine-stop.test.ts
+
+diff --git a/src/components/PhoneCheck.tsx b/src/components/PhoneCheck.tsx
+index 08630cf..4a9deaf 100644
+--- a/src/components/PhoneCheck.tsx
++++ b/src/components/PhoneCheck.tsx
+@@ -14,6 +14,7 @@ import {
+   machineSummary,
+   reportIssue,
+   setStops,
++  stoppedSince,
+   timeAgo,
+   toFleet,
+   type MachineCheck,
+@@ -274,7 +275,7 @@ export default function PhoneCheck({ machineId, onOpenApp }: { machineId: string
+                     <div className="text-base font-semibold text-[var(--text-primary)] break-words">{p.kind === 'ISSUE' ? p.note : p.title}</div>
+                     {p.kind === 'CHECK' && p.note && <div className="text-sm text-[var(--rose-500)] break-words">{p.note}</div>}
+                     <div className="text-xs text-[var(--text-tertiary)] mt-1">{t('problem.reportedBy', { user: p.status_by, time: timeAgo(p.status_at, now) })}</div>
+-                    {!!p.stops && <div className="phone-stop-badge">{t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}</div>}
++                    {!!p.stops && <div className="phone-stop-badge">{t('stop.since', { time: fmtDuration((now - stoppedSince(p, now)) / 1000) })}</div>}
+                   </div>
+                 </div>
+                 {!locked && (
+diff --git a/src/components/PreventiveActions.tsx b/src/components/PreventiveActions.tsx
+index 5cdf18e..dc13a9b 100644
+--- a/src/components/PreventiveActions.tsx
++++ b/src/components/PreventiveActions.tsx
+@@ -31,6 +31,7 @@ import {
+   reportMissed,
+   setOwners,
+   setStops,
++  stoppedSince,
+   timeAgo,
+   updateCheck,
+ } from '../lib/fleet';
+@@ -737,7 +738,7 @@ function MachineSheet({
+   const stopBadge = (p: MachineCheck) =>
+     p.stops ? (
+       <span className="badge-danger text-xs py-0.5 px-2 mt-1 inline-flex">
+-        <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - (p.status_at ?? now)) / 1000) })}
++        <OctagonX size={11} /> {t('stop.since', { time: fmtDuration((now - stoppedSince(p, now)) / 1000) })}
+       </span>
+     ) : null;
+ 
+diff --git a/src/lib/fleet.ts b/src/lib/fleet.ts
+index 62613b4..f0b263c 100644
+--- a/src/lib/fleet.ts
++++ b/src/lib/fleet.ts
+@@ -55,6 +55,8 @@ export interface MachineCheck {
+   created_at: number;
+   /** 1: this open problem stops the machine (breakdown). Missing before the server knew it. */
+   stops?: number;
++  /** When it was marked as stopping the machine. Missing before the server knew it. */
++  stopped_at?: number | null;
+ }
+ 
+ export interface MachineEvent {
+@@ -139,6 +141,9 @@ export type MachineState = 'problem' | 'due' | 'ok';
+ /** An open problem that stops the machine (breakdown). */
+ export const stopsMachine = (c: MachineCheck) => c.status === 'PROBLEM' && !!c.stops;
+ 
++/** Since when that problem stops the machine (not when it was reported, which can be earlier). */
++export const stoppedSince = (c: MachineCheck, now = Date.now()) => c.stopped_at ?? c.status_at ?? now;
++
+ export function machineSummary(checks: MachineCheck[], now = Date.now()) {
+   const problems = checks.filter((c) => c.status === 'PROBLEM');
+   const due = checks.filter((c) => c.status !== 'PROBLEM' && isDue(c, now));
+@@ -152,7 +157,7 @@ export function machineSummary(checks: MachineCheck[], now = Date.now()) {
+     /** The machine is stopped by at least one open problem. */
+     down: stopping.length > 0,
+     /** Since when it is stopped (the oldest of those problems). */
+-    downSince: stopping.length ? Math.min(...stopping.map((c) => c.status_at ?? now)) : null,
++    downSince: stopping.length ? Math.min(...stopping.map((c) => stoppedSince(c, now))) : null,
+   };
+ }
+ 
+diff --git a/tests/fleet.test.ts b/tests/fleet.test.ts
+index 2a9b6b4..f596bb7 100644
+--- a/tests/fleet.test.ts
++++ b/tests/fleet.test.ts
+@@ -71,6 +71,8 @@ describe('stopped machines and QR links', () => {
+     expect(s.downSince).toBe(now - 3_600_000);
+     expect(s.problems).toHaveLength(2);
+     expect(machineSummary([checks[1]], now).down).toBe(false);
++    // Reported an hour ago, marked as stopping the machine a minute ago: stopped for a minute.
++    expect(machineSummary([{ ...checks[0], stopped_at: now - 60_000 }], now).downSince).toBe(now - 60_000);
+   });
+ 
+   it('reads the machine of a scanned QR code and builds the code address', async () => {
+diff --git a/worker/routes/machines.ts b/worker/routes/machines.ts
+index 0dd2130..ee3f179 100644
+--- a/worker/routes/machines.ts
++++ b/worker/routes/machines.ts
+@@ -30,6 +30,7 @@ interface CheckRow {
+   sort: number;
+   created_at: number;
+   stops: number;
++  stopped_at: number | null;
+ }
+ 
+ /** "The machine is stopped by this problem": optional, true or false. */
+@@ -213,6 +214,8 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
+   const db = ctx.env.DB;
+   let note: string | null = null;
+   let event = body.action as string;
++  // Stopped since: kept while it stays stopped, now when it starts to stop, none while it runs.
++  const stoppedAt = (on: boolean) => (on ? (check.stops && check.status === 'PROBLEM' ? (check.stopped_at ?? now) : now) : null);
+   const stmts: D1PreparedStatement[] = [];
+   const after: D1PreparedStatement[] = [];
+   const stops = stopsFlag(body.stops);
+@@ -239,8 +242,8 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
+       note = str(body.note, 'Problem description', { min: 3, max: 300 });
+       stmts.push(
+         db
+-          .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ? WHERE id = ?")
+-          .bind(note, now, user, stops ? 1 : 0, check.id),
++          .prepare("UPDATE machine_checks SET status = 'PROBLEM', note = ?, status_at = ?, status_by = ?, stops = ?, stopped_at = ? WHERE id = ?")
++          .bind(note, now, user, stops ? 1 : 0, stoppedAt(stops), check.id),
+         ...completion('PROBLEM'),
+       );
+       if (stops) after.push(eventStmt(ctx, machine, check, 'MACHINE_DOWN', note));
+@@ -251,14 +254,14 @@ export async function handleCheckAction(ctx: Ctx): Promise<Response> {
+       if (!!check.stops === stops) return json({ ok: true });
+       note = check.kind === 'ISSUE' ? check.note : check.note || check.title;
+       event = stops ? 'MACHINE_DOWN' : 'MACHINE_UP';
+-      stmts.push(db.prepare('UPDATE machine_checks SET stops = ? WHERE id = ?').bind(stops ? 1 : 0, check.id));
++      stmts.push(db.prepare('UPDATE machine_checks SET stops = ?, stopped_at = ? WHERE id = ?').bind(stops ? 1 : 0, stoppedAt(stops), check.id));
+       break;
+     case 'RESOLVE':
+       note = optStr(body.note, 'Note', 300);
+       stmts.push(
+         check.kind === 'ISSUE'
+           ? db.prepare('DELETE FROM machine_checks WHERE id = ?').bind(check.id)
+-          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ?, stops = 0 WHERE id = ?").bind(now, user, check.id),
++          : db.prepare("UPDATE machine_checks SET status = 'OK', note = NULL, status_at = ?, status_by = ?, stops = 0, stopped_at = NULL WHERE id = ?").bind(now, user, check.id),
+       );
+       break;
+     default:
+@@ -287,9 +290,9 @@ export async function handleReportIssue(ctx: Ctx): Promise<Response> {
+   const now = Date.now();
+   await ctx.env.DB.batch([
+     ctx.env.DB.prepare(
+-      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops)
+-       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, ?)`,
+-    ).bind(id, machine, note, note, now, ctx.user!.username, now, stops ? 1 : 0),
++      `INSERT INTO machine_checks (id, machine_id, kind, title, frequency, status, note, status_at, status_by, sort, created_at, stops, stopped_at)
++       VALUES (?, ?, 'ISSUE', ?, NULL, 'PROBLEM', ?, ?, ?, 0, ?, ?, ?)`,
++    ).bind(id, machine, note, note, now, ctx.user!.username, now, stops ? 1 : 0, stops ? now : null),
+     eventStmt(ctx, machine, { id, title: note }, 'PROBLEM', note),
+     ...(stops ? [eventStmt(ctx, machine, { id, title: note }, 'MACHINE_DOWN', note)] : []),
+     bumpStmt(ctx.env, 'machines'),
+diff --git a/worker/schema.ts b/worker/schema.ts
+index c9702aa..72d2704 100644
+--- a/worker/schema.ts
++++ b/worker/schema.ts
+@@ -414,6 +414,11 @@ export const MIGRATIONS: { version: number; statements: string[] }[] = [
+       )`,
+     ],
+   },
++  {
++    // When an open problem was marked as stopping its machine ("stopped for" on the sheet and the TV board).
++    version: 18,
++    statements: ['ALTER TABLE machine_checks ADD COLUMN stopped_at INTEGER', 'UPDATE machine_checks SET stopped_at = status_at WHERE stops = 1'],
++  },
+ ];
+ 
+ export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
+diff --git a/worker/tests/machine-stop.test.ts b/worker/tests/machine-stop.test.ts
+new file mode 100644
+index 0000000..cadc476
+--- /dev/null
++++ b/worker/tests/machine-stop.test.ts
+@@ -0,0 +1,58 @@
++import { afterAll, beforeAll, describe, expect, it } from 'vitest';
++import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
++import { ensureSchema } from '../schema';
++import type { AuthedUser, Ctx } from '../context';
++import { handleCheckAction, handleReportIssue } from '../routes/machines';
++
++// "Stopped for" counts from when the machine was marked stopped, not from when the problem was reported.
++let mf: Miniflare;
++let DB: D1Database;
++const admin: AuthedUser = { id: 'u-admin', username: 'chef', role: 'ADMIN' };
++
++beforeAll(async () => {
++  mf = new Miniflare(convertV4MiniflareOptions({ modules: true, compatibilityDate: '2026-01-01', script: 'export default { fetch: () => new Response() }', d1Databases: ['DB'] }));
++  DB = (await mf.getD1Database('DB')) as unknown as D1Database;
++  await ensureSchema(DB, 'ma');
++}, 60_000);
++afterAll(() => mf?.dispose());
++
++async function call(handler: (c: Ctx) => Promise<Response>, params: Record<string, string>, body: unknown) {
++  const url = new URL('https://cnc.test/api/x');
++  const request = new Request(url, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
++  return (await handler({ env: { DB, REGION: 'ma' } as Ctx['env'], request, url, params, user: admin })).json() as Promise<{ id?: string }>;
++}
++const row = (id: string) => DB.prepare('SELECT status_at, stopped_at, stops FROM machine_checks WHERE id = ?').bind(id).first<{ status_at: number; stopped_at: number | null; stops: number }>();
++const stops = (id: string, on: boolean) => call(handleCheckAction, { machine: 'HAAS-1', id }, { action: 'STOPS', stops: on });
++
++describe('machine stopped since', () => {
++  it('is the report time for a problem that stops the machine from the start', async () => {
++    const { id } = await call(handleReportIssue, { machine: 'HAAS-1' }, { note: 'Spindle noise', stops: true });
++    const r = (await row(id!))!;
++    expect(r.stopped_at).toBe(r.status_at);
++  });
++
++  it('is the time it was marked stopped, and is cleared when it runs again', async () => {
++    const { id } = await call(handleReportIssue, { machine: 'HAAS-1' }, { note: 'Coolant leak' });
++    const reported = Date.now() - 40 * 60_000;
++    await DB.prepare('UPDATE machine_checks SET status_at = ? WHERE id = ?').bind(reported, id).run();
++    expect((await row(id!))!.stopped_at).toBeNull();
++
++    const before = Date.now();
++    await stops(id!, true);
++    let r = (await row(id!))!;
++    expect(r.stops).toBe(1);
++    expect(r.stopped_at).toBeGreaterThanOrEqual(before);
++    expect(r.status_at).toBe(reported); // "reported N min ago" keeps the report time
++
++    await stops(id!, false);
++    expect((await row(id!))!.stopped_at).toBeNull();
++
++    const again = Date.now();
++    await stops(id!, true);
++    r = (await row(id!))!;
++    expect(r.stopped_at).toBeGreaterThanOrEqual(again);
++
++    await call(handleCheckAction, { machine: 'HAAS-1', id: id! }, { action: 'RESOLVE' });
++    expect(await row(id!)).toBeNull(); // a machine-level problem is deleted when resolved
++  });
++});
+-- 
+2.43.0
+

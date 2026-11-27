@@ -1,0 +1,47 @@
+From 75921b28f94059b9fc4112643620da96d3848120 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 00:40:31 +0000
+Subject: [PATCH] Style: darker green, orange and red action buttons, so their
+ white text reads at 4.5 : 1 or better (finding H4-27)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01YVyxNm2Fwb8M6A8TiczcwA
+---
+ src/index.css | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/index.css b/src/index.css
+index ab7bc46..d092887 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -367,7 +367,8 @@ button > * {
+ 
+ .btn-success {
+   border-radius: var(--radius-md);
+-  background: linear-gradient(180deg, #22c55e 0%, var(--green-500) 50%, var(--green-600) 100%);
++  /* Tailwind green 700-900: white 14 px text keeps at least 4.5 : 1 under the glass highlight (both themes). */
++  background: linear-gradient(180deg, #15803d 0%, #166534 50%, #14532d 100%);
+   color: #fff;
+   font-weight: 600;
+   font-size: 14px;
+@@ -409,7 +410,7 @@ button > * {
+ 
+ .btn-warning {
+   border-radius: var(--radius-md);
+-  background: linear-gradient(180deg, #ea9a60 0%, var(--orange-500) 50%, var(--orange-600) 100%);
++  background: linear-gradient(180deg, #c2410c 0%, #9a3412 50%, #7c2d12 100%); /* orange 700-900, as .btn-success */
+   color: #fff;
+   font-weight: 600;
+   font-size: 14px;
+@@ -492,7 +493,7 @@ button > * {
+ 
+ .btn-danger {
+   border-radius: var(--radius-md);
+-  background: linear-gradient(180deg, #ff7f8f 0%, var(--rose-500) 55%, #e2445a 100%);
++  background: linear-gradient(180deg, #be123c 0%, #9f1239 55%, #881337 100%); /* rose 700-900, as .btn-success */
+   color: #fff;
+   font-weight: 600;
+   font-size: 14px;
+-- 
+2.43.0
+
