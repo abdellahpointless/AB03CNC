@@ -68,6 +68,7 @@ export default function CamSim({
   onMeasureToggle,
   onModel,
   onPickTool,
+  onSetup,
   previews = {},
   pieces,
 }: {
@@ -97,12 +98,16 @@ export default function CamSim({
   onModel?: (s: ModelState) => void;
   /** A tool's path clicked in the 3D view: that tool, in the clamping shown. */
   onPickTool?: (setup: number, tool: number) => void;
+  /** Played or moved by hand into another clamping: that one (the page's tabs follow it). */
+  onSetup?: (setup: number) => void;
   /** A clamping's parallels and spacers as asked (item 3), drawn there until the program is made again. */
   /** The holds asked for but not made yet, by clamping: drawn whenever that clamping is shown, whatever is picked (you). */
   previews?: Record<number, { cale?: number; stop?: number; y?: number; yp?: number }>;
 }) {
   const hiddenRef = useRef(hidden);
   hiddenRef.current = hidden;
+  const onSetupRef = useRef(onSetup);
+  onSetupRef.current = onSetup;
   const { t } = useTranslation('cam');
   const path = useMemo(() => parseToolpath(code, speedsFor(brand)), [code, brand]);
   const program = useMemo(() => analyseProgram(path, { jawHeight: DEFAULT_JAW_HEIGHT }), [path]);
@@ -227,13 +232,19 @@ export default function CamSim({
     setHeat(false);
     setPlaying((p) => !p);
   };
+  // Moved there by hand: the page told which clamping that is (a focus the page asked for is not told back).
+  const tell = (n: number) => onSetupRef.current?.(path.moves[Math.min(total, Math.max(1, n)) - 1]?.setup ?? 0);
+  const moveTo = (n: number) => {
+    seek(n);
+    tell(n);
+  };
   const goRun = (dir: 1 | -1) => {
     soloEnd.current = null;
     setPlaying(false);
     const at = Math.max(0, step - 1);
     const k = runs.findIndex((r) => at >= r.from && at <= r.to);
     const r = runs[Math.min(runs.length - 1, Math.max(0, k + dir))];
-    if (r) seek(r.from + 1);
+    if (r) moveTo(r.from + 1);
   };
   // A click on the track: that instant.
   const onTrack = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -244,7 +255,7 @@ export default function CamSim({
     soloEnd.current = null;
     setPlaying(false);
     setHeat(false);
-    seek(k + 1);
+    moveTo(k + 1);
   };
   const weak = () => {
     const on = !heat;
@@ -270,8 +281,8 @@ export default function CamSim({
       if (e.key === ' ' && el?.tagName !== 'BUTTON') {
         e.preventDefault();
         playOn();
-      } else if (e.key === 'ArrowRight') seek(Math.min(total, Math.floor(clock.current) + 1));
-      else if (e.key === 'ArrowLeft') seek(Math.max(0, Math.ceil(clock.current) - 1));
+      } else if (e.key === 'ArrowRight') moveTo(Math.min(total, Math.floor(clock.current) + 1));
+      else if (e.key === 'ArrowLeft') moveTo(Math.max(0, Math.ceil(clock.current) - 1));
       else if (e.key === 'f' || e.key === 'F') setFitKey((k) => k + 1);
     };
     window.addEventListener('keydown', onKey);
@@ -285,6 +296,11 @@ export default function CamSim({
   const cameraName = view3d ? t(`camAi.sim.camera.${view3d.kind}`) : t('camAi.sim.camera.iso');
   const setupNow = sel?.index ?? 0;
   const atSeconds = Math.min(elapsed, totalSeconds);
+  // Played on into another clamping (or turned for it): the page told.
+  useEffect(() => {
+    if (playing && !hiddenRef.current) onSetupRef.current?.(setupNow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupNow]);
 
   return (
     <div ref={shell} className="absolute inset-0 flex flex-col">
@@ -429,6 +445,7 @@ export default function CamSim({
               const n = Number(e.target.value);
               clock.current = n;
               setStep(n);
+              tell(n);
             }}
             aria-label={t('camAi.sim.position')}
           />

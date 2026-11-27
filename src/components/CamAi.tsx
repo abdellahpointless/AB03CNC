@@ -737,9 +737,25 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [measuring, setMeasuring] = useState(false);
   // A tool picked in a made program: the simulation at its first move in that clamping (a new pick asks again).
   const focusSeq = useRef(0);
+  // The simulation played or moved by hand into another clamping: its tab and chip follow, a tool picked in another
+  // clamping is let go (the inspector showed it while another one was simulated). Kept with the program it was on: a
+  // program made again (the simulation started anew) is still sent to it.
+  const followed = useRef<{ sel: Sel; run: Run } | null>(null);
+  const selNow = useRef(sel);
+  selNow.current = sel;
+  const followSim = (i: number) => {
+    setOpTab(i);
+    const s = selNow.current;
+    if ((s.kind !== 'setup' && s.kind !== 'tool') || s.i === i) return;
+    const next: Sel = { kind: 'setup', i };
+    followed.current = { sel: next, run };
+    setSel(next);
+  };
   // Or a later clamping picked: the part as the clampings before left it, the finished part over it (you, Beta 2).
   const focusTool = useMemo(() => {
     if (run.state !== 'done') return null;
+    // Picked by the simulation itself (played or moved there): it is there already.
+    if (followed.current?.sel === sel && followed.current.run === run) return null;
     // Clamping 1 too (its parallels editor opens only from its settings now).
     if (sel.kind === 'setup' && run.result.setups[sel.i]) return { setup: sel.i, key: ++focusSeq.current };
     if (sel.kind !== 'tool') return null;
@@ -1886,6 +1902,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       const op = result.setups[i]?.ops.find((o) => o.tool === tool);
                       if (op) setSel({ kind: 'tool', i, code: op.code });
                     }}
+                    onSetup={followSim}
                     selected={sel.kind === 'tool' ? { setup: sel.i, tool: result.setups[sel.i]?.ops.find((o) => o.code === sel.code)?.tool ?? -1 } : null}
                     runLabel={runLabel}
                     stepLabel={(i) => { const st = stepName(i); return `OP${(i + 1) * 10} · ${st.turn}${st.rest ? ` · ${st.rest}` : ''}`; }}
