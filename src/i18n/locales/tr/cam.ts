@@ -479,7 +479,7 @@ const cam: Translation<typeof en> = {
       own: 'CAM AI’nin yoluna dön',
     },
     hold: {
-      step: 'Z0’ın {{depth}} mm altındaki basamaktan, {{cale}} mm paraleller üstünde',
+      step: '{{cale}} mm · Z0’ın {{depth}} mm altındaki basamaktan',
       typeStep: 'Veya paralellerin parçaya değdiği kalınlığı yazın (Z0’ın altında mm)',
       useStep: 'Oraya oturt',
       stepBad: '0’dan büyük, en fazla 200 mm bir kalınlık girin (Z0’ın altında).',

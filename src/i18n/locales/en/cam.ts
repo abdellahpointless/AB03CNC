@@ -476,7 +476,7 @@ const cam = {
       own: 'Back to CAM AI’s way',
     },
     hold: {
-      step: 'By the step {{depth}} mm under Z0, on {{cale}} mm parallels',
+      step: '{{cale}} mm · by the step {{depth}} mm under Z0',
       typeStep: 'Or type the thickness where the parallels touch the part (mm under Z0)',
       useStep: 'Rest it there',
       stepBad: 'Type a thickness over 0 and at most 200 mm (under Z0).',

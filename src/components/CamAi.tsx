@@ -1110,7 +1110,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           </div>
           {result.setups[opNow] && (
             <p className="px-4 pb-2 flex justify-between gap-2 text-xs text-[var(--text-secondary)] tabular-nums">
-              <span className="truncate">{stepName(opNow).turn} · {parallelsText(opNow)}</span>
+              <span className="min-w-0">{stepName(opNow).turn} · {parallelsText(opNow)}</span>
               <span>{fmtTime(result.setups[opNow].ops.reduce((a, o) => a + o.seconds, 0))}</span>
             </p>
           )}
@@ -2263,7 +2263,7 @@ function ParallelsPick({ value, heights, label, onChange }: { value: string; hei
   return (
     <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
       {label}
-      <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] cursor-pointer" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="aurora-input w-full min-w-0 h-9 py-0 px-2 text-[13px] cursor-pointer" value={value} title={heights.find((h) => h.key === value)?.label} onChange={(e) => onChange(e.target.value)}>
         {heights.map((h) => (
           <option key={h.key} value={h.key} className="bg-[var(--bg-panel)]">{h.label}</option>
         ))}
@@ -2383,7 +2383,7 @@ function TurnPanel({ n, made, turned, tris, used, onPress, onOwn }: { n: number;
 function LaterClampPanel({ n, made, used, asked, spacers, madeTurn, emptySide, refusals, onAsk, openAt }: { n: number; /** Opened from its OP's settings button. */ openAt?: boolean; /** The turn the program shown was made with. */ madeTurn: Pick<LaterX, 'flip' | 'quarter'>; made: CamSummary['setups'][number]; /** The sides of the clampings before it. */ used: string[]; asked: Hold | undefined; /** The side asked had nothing left to cut (the program made says so). */ emptySide: boolean; /** What the program made refused of this clamping's choices. */ refusals: CamSummary['notes']; spacers: LaterX; onAsk: (v: Hold | null, x: LaterX) => void }) {
   const { t } = useTranslation('cam');
   const [open, setOpen] = useState(!!openAt || asked !== undefined || Object.keys(spacers).length > 0);
-  const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale })), ...made.steps.map((s) => ({ hold: { step: s.depth } as Hold, level: s.cale }))].sort((p, q) => q.level - p.level).map((x) => x.hold);
+  const steps: Hold[] = [...made.cales.map((c) => ({ hold: { cale: c } as Hold, level: c })), ...made.jaws.map((j) => ({ hold: { jaw: j.depth } as Hold, level: j.cale })), ...made.steps.map((s) => ({ hold: { step: s.depth } as Hold, level: s.cale }))].sort((p, q) => Number('jaw' in p.hold) - Number('jaw' in q.hold) || q.level - p.level).map((x) => x.hold);
   const mine: Hold = made.onJaw !== undefined ? { jaw: made.onJaw } : made.step !== undefined ? { step: made.step } : { cale: made.cale };
   // The thickness where the parallels touch, typed (you: as the engineers write it).
   const [thick, setThick] = useState(asked && 'step' in asked ? String(asked.step) : '');
