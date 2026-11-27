@@ -252,8 +252,9 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
     if (commentOnly) return;
     const { g, m, v, raw: codeText } = readWords(line);
     const has = (list: number[], ...c: number[]) => list.some((x) => c.includes(x));
-    if (has(m, 97, 98, 99)) flag('subprogram', i);
-    if (/#|\bIF\b|\bWHILE\b|\bGOTO/.test(codeText) || has(g, 65, 66)) flag('macro', i);
+    // The shop's FANUC offsets of the tool in the spindle (H#513 D#513) and its table out (M98 P7999): nothing the view misses.
+    if (has(m, 97, 98, 99) && !/(?<![A-Z])M98\s*P7999(?![0-9])/.test(codeText)) flag('subprogram', i);
+    if (/#|\bIF\b|\bWHILE\b|\bGOTO/.test(codeText.replace(/(?<![A-Z])[HD]#513(?![0-9])/g, '')) || has(g, 65, 66)) flag('macro', i);
     if (g.some((c) => c >= 54.1 && c <= 59 && c !== 54) || has(g, 110, 154)) flag('offset', i);
     if (has(g, 68, 51, 51.1)) flag('transform', i);
     if (has(g, 12, 13, 150)) flag('cycle', i);

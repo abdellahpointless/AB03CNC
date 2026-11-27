@@ -140,6 +140,14 @@ describe('arcs and codes the shop machines read differently', () => {
     expect(tp.unsupported.find((u) => u.kind === 'subprogram')).toEqual({ kind: 'subprogram', line: 2, count: 2 });
     expect(parseToolpath('T1 M6\nG54 G0 X0 Y0 Z0\nG1 X5', S).unsupported).toEqual([]);
   });
+
+  it("does not flag the shop's FANUC offset words (H#513 D#513) or its table out (M98 P7999)", () => {
+    const fanuc = ['T250550 M6', 'G90 G0 G54 X10. Y20. S3000 M3', 'G00 G43 Z50. H#513 D#513 M254 M08', 'G81 Z-2. R2. F100', 'G80', 'M98 P7999', 'M30'];
+    expect(parseToolpath(fanuc.join('\n'), S).unsupported).toEqual([]);
+    // Other macro variables and subprogram calls still are.
+    const other = parseToolpath([...fanuc, 'G0 X#101', 'M98 P79990'].join('\n'), S).unsupported;
+    expect(other.map((u) => [u.kind, u.count])).toEqual([['macro', 1], ['subprogram', 1]]);
+  });
 });
 
 describe('tool length at each tool change', () => {
