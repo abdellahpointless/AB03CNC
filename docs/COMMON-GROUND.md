@@ -2,7 +2,7 @@
 
 **Project:** CNC Process Pro
 **Created:** 2026-11-25T17:00:00Z
-**Last Updated:** 2026-11-27T13:50:00Z
+**Last Updated:** 2026-11-27T14:15:00Z
 
 ---
 
@@ -279,7 +279,7 @@ High confidence assumptions. Treat as premises.
 ### A036: The drill for a hole
 
 - **Type:** stated
-- **Assumption:** A hole is drilled with a drill of its own Ø (within 0.01 mm). Failing that, the nearest smaller drill down to 0.07 mm under it (a Ø2.93 for a Ø3), and that drill's tool says in yellow both sizes, the drill's and the drawing's; a bigger drill within 0.12 mm stays as the engineers drill (Ø3.2 holes with Ø3.3), also marked (Q021). Never a smaller drill and then a mill to bring the hole to size: a hole is milled only when no drill comes that close. Drilling stays first, before the milling (the order rule).
+- **Assumption:** A hole is drilled with a drill of its own Ø (within 0.015 mm: a drawn Ø2 can read Ø2.01 from the model's facets). Failing that, the nearest smaller drill down to 0.07 mm under it (a Ø2.93 for a Ø3), and that drill's tool says in yellow both sizes, the drill's and the drawing's; a bigger drill within 0.12 mm stays as the engineers drill (Ø3.2 holes with Ø3.3), also marked (Q021). Never a smaller drill and then a mill to bring the hole to size: a hole is milled only when no drill comes that close. Drilling stays first, before the milling (the order rule).
 - **Source:** Owner, 2026-11-27 (an answer on the hole order)
 - **Validated:** 2026-11-27
 - **Context:** Hole drilling
@@ -375,6 +375,12 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - **Type:** uncertain
 - **Question:** With no drill of the hole's Ø, CAM AI still takes one up to 0.12 mm bigger when no smaller one is within 0.07 mm, as the engineers do (Ø3.2 holes with Ø3.3, Ø2.05 with Ø2); its tool says so in yellow. Refuse bigger drills instead (the hole is then milled)?
 - **Source:** A036: the owner named only smaller drills
+
+### Q022: 0.1 mm smaller, as the engineers drill
+
+- **Type:** uncertain
+- **Question:** In 3 of the 24 reference parts the engineers drilled holes 0.1 mm under their Ø: Ø5.5 holes with Ø5.4 (two parts), a Ø3.6 hole with Ø3.5. With A036's 0.07 mm limit CAM AI now mills them (about 2 minutes more over the three). Keep 0.07, or allow 0.1 like the engineers?
+- **Source:** Library run s57 against s53 (the engineers' own drills)
 
 ---
 
