@@ -147,6 +147,8 @@ describe('a tool into a machine', () => {
     // An empty slot is free.
     expect(nextSlot([t(1), t(2, 'empty')], 41)).toBe(2);
     expect(nextSlot([t(3)], null)).toBe(4);
+    // A FANUC tool's T may be another number: its slot is its pocket.
+    expect(nextSlot([{ number: 250550, pocket: 1, category: 'foret' }], 21)).toBe(2);
   });
 
   it("takes the first free slot past the machine's last, and none when all are taken", () => {
@@ -154,7 +156,7 @@ describe('a tool into a machine', () => {
     expect(nextSlot([t(1), t(2)], 2)).toBeNull();
   });
 
-  it('becomes an inventory tool with the code as its name and the materials the inventory knows', () => {
+  it('becomes an inventory tool with the code as its name and its materials marked', () => {
     const { tools } = catalogFromRows(parseCsv(CSV));
     const sf = tools.find((x) => x.code === 'SF_07.00_037_000_ALHS')!;
     expect(toolFromCatalog(sf, 12, 'id1')).toEqual({
@@ -165,9 +167,10 @@ describe('a tool into a machine', () => {
       diameter: 7,
       length: 37,
       changed: true,
-      materials: ['ALU', 'PC GF', 'EPOXYDE'],
+      materials: ['ALU', 'MS', 'PC GF', 'EPOXYDE', 'PEEK'],
     });
-    expect(toolFromCatalog(tools.find((x) => x.code === 'SB_01.20_031_000_VAHS')!, 3, 'id2').materials).toBeUndefined();
+    // A stainless-only tool is marked so (the remapper then never takes it for a general one).
+    expect(toolFromCatalog(tools.find((x) => x.code === 'SB_01.20_031_000_VAHS')!, 3, 'id2').materials).toEqual(['INOX']);
   });
 });
 

@@ -2,11 +2,14 @@ import { Tool, ToolCategory, ToolChangeBlock, MATERIALS, Material } from '../typ
 import { hasProgramMark } from './programMark';
 import { PREFIX_TO_CATEGORY } from './toolCatalog';
 
+/** The materials read from a program's header (the tool database's PEEK, MS and INOX only mark tools). */
+const DETECTED: Material[] = MATERIALS.filter((m) => !['PEEK', 'MS', 'INOX'].includes(m));
+
 export function detectMaterial(input: string): Material | undefined {
   if (typeof input !== 'string') return undefined;
   const limit = Math.min(input.split('\n').length, 50);
   const headerLines = input.split('\n').slice(0, limit).join('\n').toUpperCase();
-  for (const m of MATERIALS) {
+  for (const m of DETECTED) {
     const regex = new RegExp(`\\b${m}\\b`, 'i');
     if (regex.test(headerLines)) {
       return m;

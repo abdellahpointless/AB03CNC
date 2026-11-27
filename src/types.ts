@@ -7,8 +7,9 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   'foret', 'fraise ebauche', 'pointeur', 'fraise', 'chanfrein', 'tourteau', 'fraise finition', 'taraud', 'fraise boule', 'fraise T', 'fraise rayon', 'alesoir', 'empty'
 ];
 
-export type Material = 'POM' | 'FH' | 'RESOPAL' | 'ALU' | 'EPOXYDE' | 'PC GF';
-export const MATERIALS: Material[] = ['POM', 'FH', 'RESOPAL', 'ALU', 'EPOXYDE', 'PC GF'];
+// PEEK, MS (brass) and INOX (stainless) mark tools of the tool database; the remapper does not look for them in programs.
+export type Material = 'POM' | 'FH' | 'RESOPAL' | 'ALU' | 'EPOXYDE' | 'PC GF' | 'PEEK' | 'MS' | 'INOX';
+export const MATERIALS: Material[] = ['POM', 'FH', 'RESOPAL', 'ALU', 'EPOXYDE', 'PC GF', 'PEEK', 'MS', 'INOX'];
 
 export interface ToolChangeBlock {
   blockId: string;

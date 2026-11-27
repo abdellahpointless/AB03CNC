@@ -75,7 +75,7 @@ describe('a machinist adds a tool only from the database (A034)', () => {
 
   it("saves the database's tool in the slot asked for, whatever else was sent", async () => {
     expect((await put(ali, 't1', { number: 1, code: 'sb_03.30_041_000_ks', category: 'fraise', diameter: 99, description: 'x' })).status).toBe(200);
-    expect(await toolRow('t1')).toEqual({ number: 1, category: 'foret', description: 'SB_03.30_041_000_KS', diameter: 3.3, length: 41, materials: '["POM"]' });
+    expect(await toolRow('t1')).toEqual({ number: 1, category: 'foret', description: 'SB_03.30_041_000_KS', diameter: 3.3, length: 41, materials: '["PEEK","POM"]' });
   });
 
   it("keeps a new tool within the machine's slots; a tool already past them keeps its place", async () => {

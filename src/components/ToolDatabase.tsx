@@ -5,7 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { ToolExcelImport } from './ToolExcelImport';
 import { ToolCatalogDialog, ToolCatalogPicker, useToolCatalog } from './ToolCatalog';
-import { nextSlot, toolFromCatalog, type CatalogTool } from '../lib/toolCatalog';
+import { nextSlot, slotOf, toolFromCatalog, type CatalogTool } from '../lib/toolCatalog';
 import { useSync } from '../contexts/SyncContext';
 import { DrillIcon, EndMillIcon, RoughingEndMillIcon, BallNoseIcon, ChamferIcon, CenterDrillIcon, FaceMillIcon, TapIcon, EmptyIcon } from './ToolIcons';
 import { useT } from '../i18n';
@@ -111,11 +111,11 @@ export default function ToolDatabase({
       setErrorMsg(t('add.slotPast', { slot: n, machine: machine.name, max: machine.pockets }));
       return;
     }
-    if (toolsForMachine.some((x) => x.number === n && x.category !== 'empty' && x.id !== into?.id)) {
+    if (toolsForMachine.some((x) => slotOf(x) === n && x.category !== 'empty' && x.id !== into?.id)) {
       setErrorMsg(t('add.slotUsed', { slot: n }));
       return;
     }
-    const id = into?.id ?? toolsForMachine.find((x) => x.number === n)?.id ?? generateId();
+    const id = into?.id ?? toolsForMachine.find((x) => slotOf(x) === n)?.id ?? generateId();
     setIsSaving(true);
     setErrorMsg(null);
     try {
@@ -613,7 +613,7 @@ export default function ToolDatabase({
                   {/* Where tools come from the tool database (not an admin): another tool from it for this slot, or delete */}
                   {isExpanded && editingId === tool.id && catalogOn && !isAdmin && (
                     <div className="p-4 bg-[var(--bg-input)] border-t border-[var(--border-subtle)] rounded-b-[var(--radius-md)] space-y-3">
-                      <span className="section-label block">{t('add.change', { slot: tool.number })}</span>
+                      <span className="section-label block">{t('add.change', { slot: slotOf(tool) })}</span>
                       {catalog?.tools.length ? (
                         <ToolCatalogPicker tools={catalog.tools} picked={picked} onPick={setPicked} />
                       ) : (
@@ -631,7 +631,7 @@ export default function ToolDatabase({
                           </button>
                           <button type="button" onClick={() => void saveFromCatalog(tool)} disabled={!picked || isSaving || connection === 'offline'} className="btn-primary text-xs py-1.5 px-4">
                             {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
-                            <span>{picked ? t('add.saveChange', { slot: tool.number }) : t('add.pickFirst')}</span>
+                            <span>{picked ? t('add.saveChange', { slot: slotOf(tool) }) : t('add.pickFirst')}</span>
                           </button>
                         </div>
                       </div>

@@ -65,7 +65,7 @@ export function ToolCatalogPicker({ tools, picked, onPick, initial }: { tools: C
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {FACETS.map((f) => {
           const options = facetOptions(tools, picks, f);
           if (!options.length && !picks[f]) return null;

@@ -62,7 +62,7 @@ const MENU_WORDS: Record<string, CatalogMaterial> = {
 };
 
 /** The inventory's own material marks (the remapper prefers a tool marked for the program's material). */
-const TOOL_MATERIAL: Partial<Record<CatalogMaterial, Material>> = { ALU: 'ALU', PCGF: 'PC GF', EPOXY: 'EPOXYDE', POM: 'POM', FH: 'FH', RESOPAL: 'RESOPAL' };
+const TOOL_MATERIAL: Record<CatalogMaterial, Material> = { ALU: 'ALU', BRASS: 'MS', PCGF: 'PC GF', EPOXY: 'EPOXYDE', PEEK: 'PEEK', POM: 'POM', FH: 'FH', RESOPAL: 'RESOPAL', INOX: 'INOX' };
 
 export interface CatalogTool {
   code: string;
@@ -86,7 +86,7 @@ export function readCode(code: string): { type: string; diameter: number; length
   if (!m) return null;
   const [, type, d, l, x, group] = m;
   const n = Number(/^\d/.test(x) ? x : x.slice(1));
-  // 000 nothing; a number a tap's pitch (GB_08.00_065_001: M8×1); R a radius, G an angle, T a width.
+  // 000 nothing; a number a tap's pitch (GB_07.00_061_001: M7×1); R a radius, G an angle, T a width.
   const extra = x === '000' ? '' : /^\d/.test(x) ? `P${n}` : x[0] === 'R' ? `R${n}` : x[0] === 'G' ? `${n}°` : `T${n}`;
   return { type, diameter: Number(d), length: Number(l), extra, angle: x[0] === 'G' ? n : null, group };
 }
@@ -303,10 +303,12 @@ export function facetOptions(tools: CatalogTool[], picks: Picks, f: Facet): { va
 
 /**
  * The slot a new tool goes to (A034): the one after the last tool, or 1; past the machine's slots, the first free
- * one; null when every slot is taken. Empty slots count as free.
+ * one; null when every slot is taken. A tool's slot is its pocket where it has one (a FANUC's T can be another
+ * number), else its T. Empty slots count as free.
  */
-export function nextSlot(tools: Pick<Tool, 'number' | 'category'>[], pockets: number | null | undefined): number | null {
-  const used = new Set(tools.filter((t) => t.category !== 'empty').map((t) => t.number));
+export const slotOf = (t: Pick<Tool, 'number' | 'pocket'>) => t.pocket ?? t.number;
+export function nextSlot(tools: Pick<Tool, 'number' | 'pocket' | 'category'>[], pockets: number | null | undefined): number | null {
+  const used = new Set(tools.filter((t) => t.category !== 'empty').map(slotOf));
   const next = Math.max(0, ...used) + 1;
   if (!pockets || next <= pockets) return next;
   for (let s = 1; s <= pockets; s++) if (!used.has(s)) return s;
@@ -315,7 +317,7 @@ export function nextSlot(tools: Pick<Tool, 'number' | 'category'>[], pockets: nu
 
 /** The inventory tool a database entry becomes in a slot. */
 export function toolFromCatalog(e: CatalogTool, slot: number, id: string): Tool {
-  const materials = e.materials.map((m) => TOOL_MATERIAL[m]).filter((m): m is Material => !!m);
+  const materials = e.materials.map((m) => TOOL_MATERIAL[m]);
   const tool: Tool = { id, number: slot, category: e.category, description: e.code, diameter: e.diameter, length: e.length, changed: true };
   if (materials.length) tool.materials = materials;
   return tool;
