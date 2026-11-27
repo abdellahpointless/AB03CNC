@@ -6,7 +6,7 @@ import '../i18n/camLocales';
 import { fmtNumber as fmt } from '../i18n/format';
 import { api } from '../lib/api';
 import { LIBRARY } from '../lib/cam/tools';
-import { ADDABLE, cleanDbTool, codeOf, FAMILIES, KINDS_OF, type DbCut, type DbTool, type ToolDb } from '../lib/cam/toolDb';
+import { ADDABLE, cleanDbTool, codeOf, FAMILIES, KINDS_OF, searchNeedle, type DbCut, type DbTool, type ToolDb } from '../lib/cam/toolDb';
 import type { Family, TemplateKind, TemplateTool } from '../lib/cam/templates';
 
 /*
@@ -104,7 +104,7 @@ export default function CamToolDb({ open, onOpenChange, stored, onSaved, family:
       .map(([c, r]) => ({ code: c, type: r.added!.type, d: r.added!.d, length: r.added!.length, template: null, db: r }));
     return [...base, ...added];
   }, [fam, own]);
-  const needle = q.trim().toUpperCase().replace(',', '.');
+  const needle = searchNeedle(q);
   const shown = rows.filter((r) => !needle || r.code.includes(needle) || fmt(r.d, 2).replace(',', '.') === needle || String(r.d) === needle);
   const groups = TYPES.map((type) => [type, shown.filter((r) => r.type === type).sort((a, b) => a.d - b.d || a.length - b.length)] as const).filter(([, rs]) => rs.length);
   const row = rows.find((r) => r.code === sel) ?? null;

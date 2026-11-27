@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { alternatives, catalog, cutData, LIBRARY } from '../src/lib/cam/tools';
 import { camProgram } from '../src/lib/cam/program';
 import { heightPart } from './heightPart';
-import { cleanDbTool, codeOf, type ToolDb } from '../src/lib/cam/toolDb';
+import { cleanDbTool, codeOf, searchNeedle, type ToolDb } from '../src/lib/cam/toolDb';
 
 // The shop's tool database (item 20): templates removed or given their own cutting data, tools added.
 const mill = LIBRARY.ALU.find((t) => t.type === 'SF' && t.d === 8 && t.length === 40)!;
 const limits = { maxRpm: 8000, maxFeed: 10000 };
 
 describe("CAM AI's tool database as the shop changed it", () => {
+  it('searches a Ø as the list writes it, and codes as typed (finding H1-30)', () => {
+    for (const q of ['8', 'Ø8', 'ø8', 'D8', ' Ø 8 ', 'd8']) expect(searchNeedle(q)).toBe('8');
+    expect(searchNeedle('ø2,5')).toBe('2.5');
+    expect(searchNeedle('sf_08')).toBe('SF_08');
+  });
   it('changes nothing while empty', () => {
     expect(catalog('ALU', [], { toolDb: {} })).toEqual(catalog('ALU', []));
     expect(catalog('POM', [], { toolDb: { ALU: {} } })).toEqual(catalog('POM', []));

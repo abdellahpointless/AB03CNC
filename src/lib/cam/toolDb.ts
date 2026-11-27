@@ -48,6 +48,9 @@ const CODE = /^[A-Z]{2,3}_\d{2,3}\.\d{2}_\d{3}_[A-Z0-9.]{1,5}_(ALHS|KS|FH)$/;
 export const codeOf = (type: string, d: number, length: number, fam: Family) =>
   `${type}_${d.toFixed(2).padStart(5, '0')}_${String(Math.round(length)).padStart(3, '0')}_${ADDABLE[type] ?? '000'}_${SUFFIX[fam]}`;
 
+/** The tool database's search as typed: a Ø as the list writes it ("Ø8", "ø8", "D8") is the 8; codes as they are. */
+export const searchNeedle = (q: string) => q.trim().toUpperCase().replace(/^(Ø|D(?=\d))\s*/, '').replace(',', '.');
+
 const inRange = (v: unknown, [lo, hi]: [number, number]): v is number => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
 
 /** A stored tool as the planner may take it (unknown fields dropped), or null: anything unknown or out of range. */
