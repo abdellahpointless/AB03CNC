@@ -313,7 +313,7 @@ export default function CamSim({
 
   return (
     <div ref={shell} className="absolute inset-0 flex flex-col">
-      <div className="relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
+      <div className="ink-dark relative flex-1 min-h-0 bg-[radial-gradient(ellipse_at_50%_40%,#16213A_0%,#0B1222_72%)]">
         <Suspense fallback={null}>
             <Toolpath3D path={path} program={program} setup={sel} range={range} clock={clock} colorOf={colorOf} fitKey={fitKey} onSolid={setSolid} heat={heat} pathsOnly={nx} playing={playing} measure={measure.on} mode={measure.mode} onMeasure={measure.onMeasure} jump={jump} look={look} section={section} view={view3d} seeThrough={false} details={false} behind={behind} model={model} modelView={model ? modelView : 'part'} diffs diffColors={DIFF_COLORS} diffPieces={pieces} onModel={(st) => { setModelState(st); onModel?.(st); }} hull={hull} turnAlways offAxisLight showAll={!selected} onPickTool={onPickTool && ((tl) => onPickTool(sel?.index ?? 0, tl))} />
         </Suspense>

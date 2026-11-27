@@ -902,6 +902,14 @@ html.light .always-dark .aurora-input { background: var(--bg-input); border-colo
 html.light .always-dark .badge-positive { background: rgba(22, 163, 74, 0.18); border-color: rgba(22, 163, 74, 0.3); color: #1fb257; }
 html.light .always-dark .badge-danger { background: rgba(255, 102, 121, 0.15); border-color: rgba(255, 102, 121, 0.3); color: #ff6679; }
 html.light .always-dark .badge-warning { background: rgba(224, 138, 77, 0.18); border-color: rgba(224, 138, 77, 0.3); color: #e08a4d; }
+/* What floats over a 3D view, which stays dark in either mode: the dark mode's ink (light ink was lost on it). */
+html.light .ink-dark {
+  --text-primary: #f5f7fa;
+  --text-secondary: #9aa4b6;
+  --text-tertiary: #848ea0;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --ov: 255, 255, 255;
+}
 
 html.light .skeleton-shimmer { background: rgba(15, 23, 42, 0.05); }
 html.light .skeleton-shimmer::after {
