@@ -584,8 +584,11 @@ const CHIP_FRIENDLY = new Set(['ALU', 'MS', 'FH', 'EPO', 'RESOPAL']);
 /** You (an engineer's program, 2026-11-27): the plastics peck 4 mm (4 x Ø at most); the others the engineers' own pecks. */
 const PLASTICS = new Set(['POM', 'PEEK', 'PCGF']);
 export const peckOf = (q: number, d: number, mat: string) => (PLASTICS.has(mat) ? Math.max(q, Math.min(4, 4 * d)) : q);
-/** You: a drill up to this much smaller than the hole drills it (a Ø2.93 for a Ø3), its tool marked; less and it is milled. */
-export const DRILL_UNDER = 0.07;
+/** You: a drill up to this much smaller than the hole drills it, as the engineers drill (Ø5.4 for Ø5.5, Ø3.5 for Ø3.6), its
+ * tool marked; smaller and the hole is milled. */
+export const DRILL_UNDER = 0.1;
+/** How far a hole's Ø read from the model's facets can be off (a drawn Ø2 reads Ø2.01): within it, the drill's own Ø. */
+export const HOLE_READ = 0.015;
 /** The cycle for a hole `deep` mm from where its material starts, by a drill of Ø `d`. */
 export function holeCycle(deep: number, d: number, mat: string, o: Required<HoleOpts> = HOLE_DEFAULTS): { cycle: 'G81' | 'G73' | 'G83'; why: string } {
   const xd = `${mm(Math.round((deep / d) * 10) / 10)} X D`;
@@ -640,9 +643,9 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
   for (const { h, tool, z, pin } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z, pin });
   for (const [tool, all] of byTool) {
     const cut = cutData(tool, 'drill', mat, limits);
-    // Holes not of the drill's own Ø (a pin plate's drills are chosen so), past 0.015 mm (a drawn Ø2 can read Ø2.01 from
-    // the model's facets): the Ø drawn and the drill's, once each.
-    const sizes = [...new Set(all.filter((x) => !x.pin && Math.abs(x.h.r * 2 - tool.diameter) > 0.015).map((x) => Math.round(x.h.r * 200) / 100))].map((d) => ({ d, used: tool.diameter }));
+    // Holes not of the drill's own Ø (a pin plate's drills are chosen so), past what the model's facets can be off
+    // (HOLE_READ): the Ø drawn and the drill's, once each.
+    const sizes = [...new Set(all.filter((x) => !x.pin && Math.abs(x.h.r * 2 - tool.diameter) > HOLE_READ).map((x) => Math.round(x.h.r * 200) / 100))].map((d) => ({ d, used: tool.diameter }));
     const hs = o.legacy ? all : nearestOrder(all);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     const rows = hs.map(({ h, z }) => {
@@ -2356,7 +2359,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
     };
     const drills = usable(tools, ['SB']);
-    // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: a Ø2.93 for a Ø3, never drilled small
+    // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: as the engineers, never drilled small
     // and milled to size), bigger by 0.12 at most (the shop: Ø3.2 holes with Ø3.3); its tool says so (sizes). Long
     // enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
     const stockTop = Math.max(sb.hi[2], 0);
@@ -2367,7 +2370,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const pin = pinOf(h);
       const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
       const D = h.r * 2;
-      return pinned ?? long.filter((x) => x.diameter >= D - DRILL_UNDER - 1e-6 && x.diameter <= D + 0.12).sort((p, q) => Math.abs(p.diameter - D) - Math.abs(q.diameter - D) || p.diameter - q.diameter)[0];
+      return pinned ?? long.filter((x) => x.diameter >= D - DRILL_UNDER - HOLE_READ && x.diameter <= D + 0.12).sort((p, q) => Math.abs(p.diameter - D) - Math.abs(q.diameter - D) || p.diameter - q.diameter)[0];
     };
     // done: down to where the hole is finished by the drill. A plain blind hole to the drill's tip (you, Beta 2: the
     // engineers leave the point at a flat bottom, Pb361ad9d, Pfae5765f); else to where its full Ø ends.
