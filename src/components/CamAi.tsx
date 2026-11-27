@@ -1733,7 +1733,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           </Popover.Portal>
         </Popover.Root>
         <span className="flex-1" />
-        {result && (
+        {/* Under 1400 px the Inspector button takes its place (the header would overflow). */}
+        {result && wide && (
           <span className="hidden xl:inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-2 text-xs text-[var(--text-secondary)] tabular-nums" title={t('camAi.ws.timeChip', { min: fmt(result.minutes, 0), n: result.toolChanges })}>
             <Clock size={15} stroke={1.6} aria-hidden />
             {t('camAi.ws.timeChip', { min: fmt(result.minutes, 0), n: result.toolChanges })}
@@ -1748,8 +1749,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (
-          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && leave(() => onSend(result.code, fileName, machine.id), true)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
-            <Send size={16} stroke={1.8} aria-hidden /> {t('camAi.send')}
+          <button type="button" className="btn-primary h-8 px-3.5 text-[13px] shrink-0 whitespace-nowrap inline-flex items-center gap-2" onClick={() => result && ok && !waiting && machine && leave(() => onSend(result.code, fileName, machine.id), true)} disabled={!ok || busy || checking || waiting} title={waiting ? t('camAi.makeFirst') : ok ? t('camAi.send') : t('camAi.locked')}>
+            {/* Its icon alone under 1100 px (the tools a drawer), so the ⋯ menu and the file name keep their room. */}
+            <Send size={16} stroke={1.8} aria-hidden /> <span className="sr-only min-[1100px]:not-sr-only">{t('camAi.send')}</span>
           </button>
         ) : run.state === 'busy' ? (
           <button type="button" className={barBtn} onClick={stop}>
@@ -1762,7 +1764,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         )}
         <Popover.Root>
           <Popover.Trigger asChild>
-            <button type="button" className="no-glass w-8 h-8 grid place-items-center rounded-[8px] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]" aria-label={t('camAi.ws.more')} title={t('camAi.ws.more')}>
+            <button type="button" className="no-glass w-8 h-8 shrink-0 grid place-items-center rounded-[8px] border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[rgba(var(--ov),0.08)]" aria-label={t('camAi.ws.more')} title={t('camAi.ws.more')}>
               <Dots size={18} stroke={1.8} aria-hidden />
             </button>
           </Popover.Trigger>
