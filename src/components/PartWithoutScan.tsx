@@ -13,7 +13,7 @@ import {
 } from '../lib/partsApi';
 import { exportUserPartEntriesExcel } from '../lib/partExportExcel';
 import { useT } from '../i18n';
-import { fmtDateTime, fmtNumber, locale } from '../i18n/format';
+import { fmtDateTime, fmtMonth, fmtNumber, locale } from '../i18n/format';
 import { IconSquarePlus as PackagePlus, IconCalendar as Calendar, IconStack2 as Layers, IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconDownload as Download, IconRefresh as RefreshCw, IconCircleCheck as CheckCircle2, IconAlertCircle as AlertCircle, IconFileSpreadsheet as FileSpreadsheet } from '@tabler/icons-react';
 
 /** Display only: a value with one decimal in the page's language (12.5 / 12,5). */
@@ -275,7 +275,7 @@ export default function PartWithoutScan() {
                 {t('form.title')}
               </span>
               <span className="text-xs font-mono text-[var(--text-tertiary)]">
-                {t('form.month', { month: currentMonthKey })}
+                {t('form.month', { month: fmtMonth(currentMonthKey) })}
               </span>
             </div>
 
@@ -422,8 +422,8 @@ export default function PartWithoutScan() {
                 <Calendar size={14} className="text-[var(--green-500)]" />
                 {t('counter.title')}
               </span>
-              <span className="badge-neutral text-xs font-mono">
-                {currentMonthKey}
+              <span className="badge-neutral text-xs">
+                {fmtMonth(currentMonthKey)}
               </span>
             </div>
 
@@ -498,8 +498,8 @@ export default function PartWithoutScan() {
                   className="w-full p-4 flex items-center justify-between text-left hover:bg-[rgba(var(--ov),0.02)] transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
-                      {row.month_key}
+                    <span className="text-sm font-bold text-[var(--text-primary)]">
+                      {fmtMonth(row.month_key)}
                     </span>
                     {row.month_key === currentMonthKey && (
                       <span className="badge-positive text-xs py-0.5 px-2">
