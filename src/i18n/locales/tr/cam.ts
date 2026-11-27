@@ -57,6 +57,7 @@ const cam: Translation<typeof en> = {
       deleteTitle: 'T{{tool}}, {{n}}. bağlamadan silinsin mi?',
       deleteBody: 'Takım yolu ve takım değişimi bu bağlamadan çıkar; programın geri kalanı yapıldığı gibi kalır ve yeniden kontrol edilir. Keseceği malzeme parçada kalır ve kontrol bunu gösterir. Sonra Yeniden yap ile CAM AI onsuz planlar.',
       deleteConfirm: 'Sil',
+      createNeeds: 'Oluşturmak için parça tipini seçin.',
       showTools: 'Takım listesini göster',
       inspector: 'Ayrıntılar',
       hideInspector: 'Ayrıntıları gizle',

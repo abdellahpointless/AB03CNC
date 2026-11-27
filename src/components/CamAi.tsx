@@ -253,7 +253,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const [ghostOn, setGhostOn] = useState<string | null>(null);
   const pendingSkips = [...new Set([...skip, ...skipDraft])].filter((k) => skip.includes(k) !== skipDraft.includes(k)).length;
   const [machineId, setMachineId] = useState(() => toolMachines[0]?.id ?? '');
-  const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER'>('FH');
+  // None until chosen (a default material warned against the default machine before anything was chosen).
+  const [material, setMaterial] = useState<CamMaterial | 'INOX' | 'OTHER' | ''>('');
   const [family, setFamily] = useState<Family>('ALU');
   const [sideStock, setSideStock] = useState(readSideStock);
   // The side stock as typed (null: as kept): only 0 to 0.5 mm is kept, anything else is said, never changed under the caret.
@@ -269,7 +270,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   const name = model ? model.name.replace(/\.(pdf|stl)$/i, '') : '';
   const fileName = `${name || 'PROGRAMM'}.nc`;
   // The material the templates are taken for (inox waits for the operator's yes to MS).
-  const templatesFor: CamMaterial | null = material === 'INOX' ? null : material === 'OTHER' ? family : material;
+  const templatesFor: CamMaterial | null = material === 'INOX' || material === '' ? null : material === 'OTHER' ? family : material;
   // Shop rule, for the material the program is made and labelled for (Process reads that label).
   const need = materialNeed(templatesFor);
   const cooling = machine ? coolingOf(engineMachineId(currentRegion().id, machine)) : null;
@@ -2105,6 +2106,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
               <option key={p} value={p} className="bg-[var(--bg-panel)]">{t(`camAi.part.types.${p}`)}</option>
             ))}
           </select>
+          <span className="block text-xs text-[var(--text-secondary)]">{t('camAi.part.typeHint')}</span>
         </label>
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.machine')}</span>
@@ -2114,13 +2116,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             ))}
           </select>
         </label>
-        {!tools.length && machine && <p className="text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</p>}
+        {!tools.length && machine && <p className="text-xs text-[var(--orange-text)]">{t('camAi.noTools', { name: machine.name })}</p>}
         {wrongCooling && machine && (
-          <p className="text-[var(--orange-text)]" role="alert">{t(need === 'air' ? 'remapper:alerts.needsAir' : 'remapper:alerts.needsLubricant', { machine: machine.name })}</p>
+          <p className="text-xs text-[var(--orange-text)]" role="alert">{t(need === 'air' ? 'remapper:alerts.needsAir' : 'remapper:alerts.needsLubricant', { machine: machine.name })}</p>
         )}
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.material')}</span>
           <select className="aurora-input w-full text-xs cursor-pointer" value={material} onChange={(e) => choose(() => setMaterial(e.target.value as CamMaterial | 'INOX' | 'OTHER'))} disabled={busy}>
+            <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.part.choose')}</option>
             {CAM_MATERIALS.map((m) => (
               <option key={m} value={m} className="bg-[var(--bg-panel)]">{m}</option>
             ))}
@@ -2130,7 +2133,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         </label>
         {material === 'INOX' && (
           <div className="space-y-2 rounded-[var(--radius-md)] border border-[#f5b942]/40 bg-[#f5b942]/8 p-2.5" role="alert">
-            <p className="text-[var(--text-primary)]">{t('camAi.inoxAsk')}</p>
+            <p className="text-xs text-[var(--text-primary)]">{t('camAi.inoxAsk')}</p>
             <button type="button" onClick={() => setMaterial('MS')} className="btn-primary text-xs min-h-9 px-3">{t('camAi.useMs')}</button>
           </div>
         )}
@@ -2144,7 +2147,6 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             </select>
           </label>
         )}
-        <p className="text-xs text-[var(--text-secondary)]">{t('camAi.part.typeHint')}</p>
       </div>
     );
   }
@@ -2250,7 +2252,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
+              {prep && !partType && <p className="mr-auto text-xs text-[var(--text-secondary)]">{t('camAi.ws.createNeeds')}</p>}
               <Dialog.Close asChild>
                 <button type="button" className="btn-secondary text-xs min-h-11 px-4">{t('camAi.cancel')}</button>
               </Dialog.Close>

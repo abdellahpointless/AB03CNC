@@ -54,6 +54,7 @@ const cam = {
       deleteTitle: 'Delete T{{tool}} from clamping {{n}}?',
       deleteBody: 'Its toolpath and its tool change come out of this clamping; the rest of the program stays as made and is checked again. What it would have cut stays on the part, and the check shows it. Make again then lets CAM AI plan without it.',
       deleteConfirm: 'Delete',
+      createNeeds: 'Choose the part type to create it.',
       showTools: 'Show the tool list',
       inspector: 'Inspector',
       hideInspector: 'Hide the inspector',
