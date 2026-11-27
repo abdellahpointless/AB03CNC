@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { passed, safe } from '../src/components/CamAiResult';
+import { badToolNumber, passed, safe } from '../src/components/CamAiResult';
 import type { CamSummary } from '../src/lib/cam/cam.worker';
 
 // You (2026-11-27): a tool changed by hand to another Ø may leave the part bigger, so the vise holds it off where a
@@ -19,5 +19,18 @@ describe('a part changed by hand, accepted as it is', () => {
   it('passes as before without changes', () => {
     expect(passed(base)).toBe(true);
     expect(passed({ ...base, match: 0.97 } as CamSummary)).toBe(false);
+  });
+});
+
+// The hole rules (2026-11-27) are the VF-4's: a Haas takes T and H 1-200 only, so Download refuses others there. A FANUC
+// keeps its own 6-digit tool numbers (the shop's pointeurs): never refused for them.
+describe('tool numbers a machine takes', () => {
+  const withTool = (n: number) => ({ ...base, setups: [{ physics: { ok: true }, ops: [{ unsafe: false, tool: 5 }, { unsafe: false, tool: n }] }] }) as unknown as CamSummary;
+  it('refuses a number outside 1-200 on a Haas, never on a FANUC', () => {
+    expect(badToolNumber(withTool(1000038), 'HAAS')).toBe(1000038);
+    expect(badToolNumber(withTool(0), 'HAAS')).toBe(0);
+    expect(badToolNumber(withTool(200), 'HAAS')).toBeUndefined();
+    expect(badToolNumber(withTool(250550), 'FANUC')).toBeUndefined();
+    expect(badToolNumber(withTool(250550), undefined)).toBeUndefined();
   });
 });

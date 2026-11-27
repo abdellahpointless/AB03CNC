@@ -22,7 +22,7 @@ import { liveStep, NO_LIVE, type Live } from '../lib/cam/live';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import { IDENTITY, type Mat3 } from '../lib/orient';
-import { alike, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
+import { alike, badToolNumber, fmtTime, passed, ProgramPanel, safe, safeButHold, SetupPanel, ToolCard, useToolName, useVerdict } from './CamAiResult';
 import type { ClampAct, FacePick } from './CamPartView';
 import CamStockBox, { STOCK_SIDES } from './CamStockBox';
 import CamSim, { COLORS as SIM_COLORS, type SimFocus } from './CamSim';
@@ -700,7 +700,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // A tool changed by hand has no machine number: only the remapper gives it one (Send), never Download.
   const handTool = !!result?.setups.some((s) => s.ops.some((o) => o.code.endsWith('_HAND')));
   // The owner's rule: T and H a Haas takes (1-200), else no file (the remapper gives the tool a machine number).
-  const badNumber = result?.setups.flatMap((s) => s.ops).find((o) => o.tool < 1 || o.tool > 200)?.tool;
+  const badNumber = result ? badToolNumber(result, machine?.brand) : undefined;
   const verdict = useVerdictOrNull(result, changed.length + pendingSkips, handEdited && accepted);
   const ok = !!verdict?.ok;
   // What still stands before the program can be made (the status bar says it).

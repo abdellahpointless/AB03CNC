@@ -31,6 +31,8 @@ export const alike = (r: CamSummary) => r.match >= 0.99 && r.sized && r.gouge < 
  * assumes (a tool of another Ø changed by hand: the operator knows why). Nothing that hits the machine is ever accepted.
  */
 export const passed = (r: CamSummary, accepted = false) => safeButHold(r) && (accepted || (!r.misplaced && alike(r)));
+/** A tool number the machine does not take: a Haas takes T and H 1-200 only (the hole rules); a FANUC keeps its own pointeurs. */
+export const badToolNumber = (r: CamSummary, brand: string | undefined) => (brand === 'HAAS' ? r.setups.flatMap((s) => s.ops).find((o) => o.tool < 1 || o.tool > 200)?.tool : undefined);
 
 const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a855f7', engraving: '#f59e0b' };
 /** Pressure on the jaws, by its share of what the material takes: calm, watch, high. */
