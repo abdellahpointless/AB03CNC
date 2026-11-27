@@ -71,6 +71,20 @@ describe('CAM AI falls back on the nest only when no way of holding passes', () 
     // The checker reads the nest (walls off the stop and the fixed jaw, its floor) and the part comes out right.
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
+    // The views (you: the part looked pushed far over the vise, a stray plate at the stop): the parallels as tall as
+    // written, under the nest's floor; the nest rebuilt round the part, its pocket from where the part sits.
+    const { analyseProgram, nestBlock, DEFAULT_JAW_HEIGHT } = await import('../src/lib/setups');
+    const { parseToolpath, speedsFor } = await import('../src/lib/toolpath');
+    const read = analyseProgram(parseToolpath(r.code, speedsFor('HAAS')), { jawHeight: DEFAULT_JAW_HEIGHT }).setups.filter((s) => s.nest);
+    expect(read.length).toBe(nested.length);
+    for (const s of read) {
+      const b = nestBlock(s)!;
+      expect(b.pocket.min[2]).toBeCloseTo(s.restZ!, 3);
+      expect(b.min[2]).toBeCloseTo(s.restZ! - 8, 3);
+      expect(b.min[2] - s.floorZ!).toBeCloseTo(s.support!, 3);
+      expect(s.cales?.length).toBeGreaterThan(0);
+      for (const c of s.cales!) expect(c.top).toBeCloseTo(b.min[2], 3);
+    }
     // The nest has its own program, right too.
     expect(r.nests?.length).toBe(nested.length);
     for (const n of r.nests!) {

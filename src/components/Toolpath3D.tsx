@@ -4,7 +4,7 @@ import { box, buildParallels, buildVise, JAW_TOPS, JAW_TRAVEL, PLANE_EPS, steel,
 import { PARALLEL_LENGTH } from '../lib/cam/physics';
 import { Orbit } from '../lib/orbit';
 import type { Toolpath, Vec } from '../lib/toolpath';
-import { CALE_MS, caleSlide, calesKey, parallelWidth, spacerAt, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
+import { CALE_MS, caleSlide, calesKey, nestBlock, parallelWidth, spacerAt, turnMs, viseSpans, type Face, type ProgramSetups, type SetupInfo } from '../lib/setups';
 import { buildInput, cornerRadius, cornerTip, DROP_TOP, dropRadius, FLIP_MS, holderOf, instant, isBall, SUB, tipSlope, type ChunkMesh, type Hole } from '../lib/stockSim';
 import { holeAt, holeAxis, holeOfMesh, type MeasureMode } from '../lib/measure';
 import { attachMeasure, disposeTree, ring, type Measurement } from '../lib/measure3d';
@@ -199,8 +199,19 @@ function buildClamp(setup: SetupInfo, s: { min: Vec; max: Vec }, floorZ: number)
   if (setup.jawTopZ !== null) {
     const cb = setup.clampBox ?? { min: [s.min[0], s.min[1]], max: [s.max[0], s.max[1]] };
     const spans = viseSpans(setup);
-    const vise = buildVise(cb, floorZ, setup.jawTopZ, spans, setup.grip, setup.spacers);
+    // A POM nest: the block itself, the part in its pocket, the block on the parallels (not its walls as spacer plates).
+    const nest = nestBlock(setup);
+    const vise = buildVise(cb, floorZ, setup.jawTopZ, spans, setup.grip, setup.spacers, !nest);
     group.add(vise.group);
+    if (nest) {
+      const [lo, hi, p] = [nest.min, nest.max, nest.pocket];
+      const pom = (a: Vec, b: Vec) => group.add(box(a, b, 0xf3efe2, 0.45, 0x8a8577));
+      pom(lo, [hi[0], hi[1], p.min[2]]);
+      pom([lo[0], lo[1], p.min[2]], [p.min[0], hi[1], hi[2]]);
+      pom([p.max[0], lo[1], p.min[2]], [hi[0], hi[1], hi[2]]);
+      pom([p.min[0], lo[1], p.min[2]], [p.max[0], p.min[1], hi[2]]);
+      pom([p.min[0], p.max[1], p.min[2]], [p.max[0], hi[1], hi[2]]);
+    }
     // The top of the jaws as a thin red line, for the jaw check.
     for (const [x0, x1] of spans) {
       const line = new THREE.LineSegments(

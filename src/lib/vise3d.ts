@@ -121,7 +121,7 @@ const FINISH: Record<VisePart, { color: number; metalness: number; roughness: nu
  * real faces (grip), the jaws from the stop's face (jawsFrom); the stop before them, that the part is pushed against. Its meshes come in once loaded
  * (loadVise): `ready` resolves when they are in.
  */
-export function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, spans: [number, number][], grip: SetupInfo['grip'], spacers: SetupInfo['spacers']) {
+export function buildVise(hold: { min: [number, number]; max: [number, number] }, floorZ: number, jawTop: number, spans: [number, number][], grip: SetupInfo['grip'], spacers: SetupInfo['spacers'], plates = true) {
   const g = new THREE.Group();
   const front = grip?.front ?? hold.min[1];
   const back = grip?.back ?? hold.max[1];
@@ -156,8 +156,10 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
   const ready = decoded ? (place(decoded), Promise.resolve()) : loadVise().then(place);
   const [x0] = spans[0];
   const x1 = spans[spans.length - 1][1];
-  // The spacer between the part and the jaw or the stop (the front one moves with its jaw).
-  const plates = spacers.map((sp) => {
+  // The spacer between the part and the jaw or the stop (the front one moves with its jaw). None drawn for a nest's walls
+  // (the nest is drawn whole; the jaws still stand its wall off the part).
+  const drawn = plates ? spacers : [];
+  const platesDrawn = drawn.map((sp) => {
     const plate =
       sp.side === 'Y-' ? steel([x0, cb.min[1], floorZ], [x1, front, jawTop], ALU)
       : sp.side === 'Y+' ? steel([x0, back, floorZ], [x1, cb.max[1], jawTop], ALU)
@@ -166,7 +168,7 @@ export function buildVise(hold: { min: [number, number]; max: [number, number] }
     return plate;
   });
   // Their edges turn green once a tool has cut into one (fine: that is what they are there for).
-  const spacerEdges = plates.length ? { lines: plates.map((p) => (p.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial), face: plates.map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial) } : null;
+  const spacerEdges = platesDrawn.length ? { lines: platesDrawn.map((p) => (p.children[1] as THREE.LineSegments).material as THREE.LineBasicMaterial), face: platesDrawn.map((p) => (p.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial) } : null;
   g.add(moving);
   // The stop: a steel plate in the far-left corner, against the back jaw, across the gap the part
   // sits in, level with the jaw tops. The part is slid left against it.

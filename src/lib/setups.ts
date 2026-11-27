@@ -742,6 +742,12 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid, exact = false): Setu
   if (!s.stock || !s.clampBox || !s.moves || s.restZ === null || s.floorZ === null || s.restZ - s.floorZ < 0.5) return null;
   const rest = s.restZ;
   const floor = s.floorZ;
+  // In the nest: the parallels under the nest's block, near its Y faces, as tall as written (the part on its floor above).
+  const block = nestBlock(s);
+  if (block) {
+    const wb = parallelWidth(block.max[1] - block.min[1]);
+    return [block.min[1] + 0.3, block.max[1] - 0.3 - wb].map((y0) => ({ y: [y0, y0 + wb] as [number, number], top: block.min[2] }));
+  }
   const written = exact && s.support && !s.nest ? floor + s.support : null;
   const cb = s.clampBox;
   const R = s.orient;
@@ -806,6 +812,19 @@ function placeCales(s: SetupInfo, input: SimInput, g: Grid, exact = false): Setu
     // CAM AI's own program: parallels exactly as tall as its note, on its G52 floor (never up to the part).
     return { y: [y0, y0 + w] as [number, number], top: written ?? (near ? Math.max(floor, z) : rest) };
   });
+}
+
+/**
+ * CAM AI's POM nest round the part of a "TEIL IN POM-NEST LEGEN" setup (the views draw it; the parallels stand under it):
+ * its floor under the part, its wall all round the pocket, the pocket as deep as CAM AI makes it (half the part, 6 to 30 mm).
+ */
+export function nestBlock(s: Pick<SetupInfo, 'nest' | 'clampBox' | 'stock' | 'restZ'>): { min: Vec; max: Vec; pocket: { min: Vec; max: Vec } } | null {
+  if (!s.nest || !s.clampBox || !s.stock || s.restZ === null) return null;
+  const cb = s.clampBox;
+  const h = s.stock.max[2] - s.stock.min[2];
+  const depth = Math.min(h - 1, 30, Math.max(6, Math.floor(h / 2) - 1));
+  const pocket = { min: [cb.min[0] - NEST_GAP, cb.min[1] - NEST_GAP, s.restZ] as Vec, max: [cb.max[0] + NEST_GAP, cb.max[1] + NEST_GAP, s.restZ + depth] as Vec };
+  return { min: [pocket.min[0] - NEST_WALL, pocket.min[1] - NEST_WALL, s.restZ - NEST_FLOOR], max: [pocket.max[0] + NEST_WALL, pocket.max[1] + NEST_WALL, pocket.max[2]], pocket };
 }
 
 // Each analysis's own stock grid, kept for what the views ask of it later (reachAt).
