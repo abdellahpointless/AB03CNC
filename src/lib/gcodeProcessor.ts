@@ -44,7 +44,10 @@ export function coolantNeed(code: string): 'air' | 'lubricant' | null {
  */
 export function applyMachineCoolant(lines: string[], machineId: string): string[] {
   if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
-    return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+    const air = lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+    // The air jet goes off (M84, its own line) right after each M09 (the shop's own air programs have no M09).
+    const m84 = (l = '') => /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l));
+    return air.flatMap((l, i) => (/(?<![A-Z0-9.])M0?9(?![0-9.])/i.test(codeOnly(l)) && !m84(l) && !m84(air[i + 1]) ? [l, 'M84'] : [l]));
   }
   if (['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2'].includes(machineId)) {
     lines = lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M83(?![0-9.])/gi, 'M08')));

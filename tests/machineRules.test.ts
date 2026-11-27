@@ -72,6 +72,19 @@ describe('machine rules', () => {
     expect(out('HAAS-4')).toMatch(/G43 H\d+ Z50\. M83/);
     expect(out('HAAS-4')).not.toMatch(/M84/);
   });
+
+  it('air machines switch the air jet off (M84, its own line) wherever the program switches the coolant off (M09)', () => {
+    const src = [header('BASE POM / 30X20X10'), 'N6 T3 M6', 'N7 G00 G43 H03 Z50. M08', 'N8 G01 X10. F300.', 'N9 M05', 'N10 M09 (M09 COOLANT OFF)', 'N11 T4 M6', 'N12 G0 G53 G49 Y0 Z0 M9', 'N13 M89', 'N14 M30', '%'].join('\n').split('\n');
+    for (const id of ['HAAS-2', 'HAAS-4']) {
+      const out = applyMachineCoolant(src, id);
+      expect(out.slice(out.indexOf('N10 M09 (M09 COOLANT OFF)'), out.indexOf('N11 T4 M6'))).toEqual(['N10 M09 (M09 COOLANT OFF)', 'M84']);
+      expect(out.slice(out.indexOf('N12 G0 G53 G49 Y0 Z0 M9'), out.indexOf('N13 M89'))).toEqual(['N12 G0 G53 G49 Y0 Z0 M9', 'M84']);
+      expect(out.filter((l) => l === 'M84')).toHaveLength(2);
+      expect(applyMachineCoolant(out, id)).toEqual(out);
+    }
+    // Lubricant machines: nothing added at the M09.
+    expect(applyMachineCoolant(src, 'HAAS-1').filter((l) => /M84/.test(l))).toEqual(['N4 G40 G17 G53 G49 G80 G90 M84']);
+  });
 });
 
 describe('CAM AI and Process ask the same of a material', () => {
