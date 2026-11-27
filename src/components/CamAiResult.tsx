@@ -481,6 +481,12 @@ export function ToolCard({
           <AlertTriangle size={14} className="shrink-0 mt-px" /> {t('camAi.orderLocked', { used: moved.tool, d: moved.orderLocked })}
         </p>
       )}
+      {/* You: a drill not of the hole's own Ø (the nearest the shop has) says both sizes, in yellow. */}
+      {[...new Map(ops.flatMap((o) => o.sizes ?? []).map((x) => [x.d, x])).values()].map((x) => (
+        <p key={x.d} className="mx-4 mt-2 flex items-start gap-1.5 text-xs text-[#facc15]" role="status">
+          <AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden /> {t('camAi.drillSize', { used: fmt(x.used, 2), d: fmt(x.d, 2) })}
+        </p>
+      ))}
       <div className="px-4 pt-4 pb-1 space-y-2">
       {swappedByHand && hits > 0 && onUse && (
         <div className="rounded-[8px] border border-[#ef4444]/40 bg-[#ef4444]/10 p-2.5 space-y-2" role="alert">

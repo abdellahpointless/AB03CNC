@@ -120,6 +120,8 @@ export interface CamSummary {
       unsafe: boolean;
       /** Moved before this tool (its T), which it was made to follow: locked until moved back. */
       orderLocked?: number;
+      /** A drill's holes not of its own Ø: the Ø drawn and the drill's (mm), said in yellow on its tool. */
+      sizes?: { d: number; used: number }[];
     }[];
     /** Where precision matters (setup frame): the contour, thin walls, engraving. */
     zones: Zone[];
@@ -291,6 +293,7 @@ function summaryOf(r: ReturnType<typeof camProgram>, input: Omit<CamRequest, 'mo
         sig: sigOf(o.lines),
         unsafe: !!o.cut.unsafe,
         orderLocked: o.orderLocked,
+        sizes: o.sizes,
       })),
     })),
   };

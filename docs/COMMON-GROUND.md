@@ -2,7 +2,7 @@
 
 **Project:** CNC Process Pro
 **Created:** 2026-11-25T17:00:00Z
-**Last Updated:** 2026-11-27T12:56:00Z
+**Last Updated:** 2026-11-27T13:50:00Z
 
 ---
 
@@ -276,6 +276,26 @@ High confidence assumptions. Treat as premises.
 
 ---
 
+### A036: The drill for a hole
+
+- **Type:** stated
+- **Assumption:** A hole is drilled with a drill of its own Ø (within 0.01 mm). Failing that, the nearest smaller drill down to 0.07 mm under it (a Ø2.93 for a Ø3), and that drill's tool says in yellow both sizes, the drill's and the drawing's; a bigger drill within 0.12 mm stays as the engineers drill (Ø3.2 holes with Ø3.3), also marked (Q021). Never a smaller drill and then a mill to bring the hole to size: a hole is milled only when no drill comes that close. Drilling stays first, before the milling (the order rule).
+- **Source:** Owner, 2026-11-27 (an answer on the hole order)
+- **Validated:** 2026-11-27
+- **Context:** Hole drilling
+
+---
+
+### A037: Peck depth in the plastics
+
+- **Type:** stated
+- **Assumption:** G83 pecks 4 mm in POM, PEEK and PC GF30, at most 4 x the drill's Ø (a Ø0.5 pecks 2), or the engineers' own peck where it is deeper. Aluminium, brass and the laminates (FH, EPO, RESOPAL) keep the engineers' pecks.
+- **Source:** Owner, 2026-11-27 (from an engineer's program: two Ø1 holes with Q4 in POM)
+- **Validated:** 2026-11-27
+- **Context:** Hole drilling
+
+---
+
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
@@ -350,6 +370,12 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - **Question:** The Turkish screens call the parallels kale in some places and paralel in others (H4-10, H5-7). Which word does the shop use?
 - **Source:** Night bug hunt
 
+### Q021: A slightly bigger drill
+
+- **Type:** uncertain
+- **Question:** With no drill of the hole's Ø, CAM AI still takes one up to 0.12 mm bigger when no smaller one is within 0.07 mm, as the engineers do (Ø3.2 holes with Ø3.3, Ø2.05 with Ø2); its tool says so in yellow. Refuse bigger drills instead (the hole is then milled)?
+- **Source:** A036: the owner named only smaller drills
+
 ---
 
 ## History
@@ -388,3 +414,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A032-A035 from the owner: Türkiye's tool database and machines.
 - 2026-11-27: A034 widened by the owner: the remapper's Add tool picks from the tool database as well.
 - 2026-11-27: from the owner: under clamping 1's outline cut (0.5 mm under the part, unchanged) the gap to the jaw tops is 1 mm, settable 1 to 1.5 mm (it was 0.5; A015), and the grip under it 5 mm wanted, 3 at the least with the yellow warning (A016). The top's 0.5 mm stays (A021). Under the part: 4.5 mm at the least, 6.5 wanted (1 mm gap).
+- 2026-11-27: A036 and A037 from the owner (hole drills and pecks, after an engineer's program for two Ø1 holes); drilling stays before the milling; Q021 from A036. The plastics/aluminium split also answers Q015 in part (the plastics want full retracts).

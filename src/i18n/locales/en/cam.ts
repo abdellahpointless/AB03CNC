@@ -470,6 +470,7 @@ const cam = {
       FH: 'FH (FH, EPO, RESOPAL)',
     },
     settings: 'Settings',
+    drillSize: 'Not the exact size: drilled Ø{{used}} where the drawing has Ø{{d}} (the nearest drill there is).',
     sideStock: 'Side stock (mm)',
     sideStockBad: 'Only 0 to 0.5 mm: the side stock stays {{mm}} mm.',
     sideStockHint: 'Left on every wall on purpose, 0 to 0.5 mm. The templates’ own stock is not used.',

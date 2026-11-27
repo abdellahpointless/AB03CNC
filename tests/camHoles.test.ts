@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { simulate } from '../src/lib/cam/holeSim';
 import { DEFAULT_LIMITS } from '../src/lib/cam/limits';
-import { camProgram, drilling, HOLE_DEFAULTS, holeCycle, microCircle, nearestOrder, SAFE_START, type CamInput } from '../src/lib/cam/program';
+import { camProgram, drilling, HOLE_DEFAULTS, holeCycle, microCircle, nearestOrder, opSegments, peckOf, SAFE_START, type CamInput } from '../src/lib/cam/program';
 import { shopStyle } from '../src/lib/cam/style';
-import { catalog } from '../src/lib/cam/tools';
+import { catalog, cutData } from '../src/lib/cam/tools';
 import { haasTools } from '../src/lib/defaultTools';
 import { plateWithHoles } from './heightPart';
 
@@ -127,4 +127,50 @@ describe('a program with holes', () => {
     expect(now.check.collisions).toBe(0);
     expect(now.check.rapids ?? 0).toBe(0);
   });
+});
+
+// You (2026-11-27, an engineer's program for two Ø1 holes): the plastics peck 4 mm; a hole gets the drill of its own Ø,
+// else the nearest smaller one down to 0.07 mm under it (its tool says both sizes, in yellow), never a smaller drill and
+// then a mill to size.
+describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
+  const drillOf = (mat: 'ALU' | 'POM', d: number) => catalog(mat, haasTools).find((t) => t.type === 'SB' && Math.abs(t.diameter - d) < 1e-6)!;
+  const qOf = (lines: string[]) => Number(lines.find((l) => /^G9[89] G83 /.test(l))!.match(/ Q(-?[\d.]+)/)![1]);
+  const deep = (tool: ReturnType<typeof drillOf>, d = tool.diameter, pin = false) => ({ h: { c: [0, 0] as [number, number], r: d / 2, top: 0, bottom: -12, through: false, closed: true }, tool, z: -12, pin });
+
+  it('pecks 4 mm in the plastics (4 x Ø at most), the engineers\' own pecks in aluminium', () => {
+    expect(peckOf(0.5, 1, 'POM')).toBe(4);
+    expect(peckOf(0.5, 0.5, 'PEEK')).toBe(2);
+    expect(peckOf(6, 6, 'POM')).toBe(6);
+    expect(peckOf(0.3, 1, 'ALU')).toBe(0.3);
+    expect(peckOf(0.7, 1.5, 'FH')).toBe(0.7);
+    const pom = drillOf('POM', 1);
+    expect(qOf(drilling([deep(pom)], undefined, 'POM', DEFAULT_LIMITS, 2, 0, () => 0)[0].lines)).toBe(4);
+    const alu = drillOf('ALU', 1);
+    expect(qOf(drilling([deep(alu)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].lines)).toBe(cutData(alu, 'drill', 'ALU').q);
+  });
+
+  it('says on a drill which holes are not its own Ø (a pin plate\'s drills excepted)', () => {
+    const d3 = drillOf('ALU', 3);
+    const [near] = drilling([deep(d3, 3.03), deep(d3, 3.004)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0);
+    expect(near.sizes).toEqual([{ d: 3.03, used: 3 }]);
+    expect(drilling([deep(d3)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toBeUndefined();
+    expect(drilling([deep(d3, 3.03, true)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toBeUndefined();
+  });
+
+  it('drills a Ø3.03 hole with the Ø3 and mills nothing in it after; a Ø6.5 hole (the Ø6.4 is 0.1 mm smaller) is milled', () => {
+    const r = camProgram({ tris: plateWithHoles(40, 30, 12, [{ c: [10, 15], d: 3.03 }, { c: [28, 15], d: 6.5 }]), material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, noNest: true });
+    const ops = r.setups[0].ops;
+    const d3 = ops.find((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3) < 1e-6)!;
+    expect(d3.sizes).toEqual([{ d: 3.03, used: 3 }]);
+    const at = d3.lines.find((l) => /^G9[89] G8[13] /.test(l))!;
+    const [hx, hy] = ['X', 'Y'].map((k) => Number(at.match(new RegExp(` ${k}(-?[\\d.]+)`))![1]));
+    // No mill's feed inside the hole (under the top) once it is drilled.
+    for (const o of ops.filter((x) => x.kind === 'pocket' || x.kind === 'finish')) {
+      const s = opSegments(o.lines);
+      for (let i = 0; i < s.length; i += 3) if (s[i + 2] < -0.05) expect(Math.hypot(s[i] - hx, s[i + 1] - hy), o.name).toBeGreaterThan(1.5 - o.tool.diameter / 2 - 1e-6);
+    }
+    expect(ops.some((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 6.4) < 1e-6)).toBe(false);
+    expect(r.check.match).toBeGreaterThanOrEqual(0.99);
+    expect(r.check.collisions).toBe(0);
+  }, 900_000);
 });

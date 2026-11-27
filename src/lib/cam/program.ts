@@ -193,6 +193,8 @@ export interface CamOp {
   lines: string[];
   /** Moved by the operator before this tool (its T), which it was made to follow (reorderOps): the program locks. */
   orderLocked?: number;
+  /** A drill's holes that are not its own Ø (you: said in yellow on its tool): the Ø drawn and the drill's (mm). */
+  sizes?: { d: number; used: number }[];
 }
 
 export interface CamSetup {
@@ -579,6 +581,11 @@ export interface HoleOpts {
 export const HOLE_DEFAULTS: Required<HoleOpts> = { legacy: false, rMargin: 0.5, g81: 1, g73: 3, g99: true };
 /** Short chips or dust (brass, aluminium, the laminates): chip-breaking pecks; the plastics' long chips want full retracts. */
 const CHIP_FRIENDLY = new Set(['ALU', 'MS', 'FH', 'EPO', 'RESOPAL']);
+/** You (an engineer's program, 2026-11-27): the plastics peck 4 mm (4 x Ø at most); the others the engineers' own pecks. */
+const PLASTICS = new Set(['POM', 'PEEK', 'PCGF']);
+export const peckOf = (q: number, d: number, mat: string) => (PLASTICS.has(mat) ? Math.max(q, Math.min(4, 4 * d)) : q);
+/** You: a drill up to this much smaller than the hole drills it (a Ø2.93 for a Ø3), its tool marked; less and it is milled. */
+export const DRILL_UNDER = 0.07;
 /** The cycle for a hole `deep` mm from where its material starts, by a drill of Ø `d`. */
 export function holeCycle(deep: number, d: number, mat: string, o: Required<HoleOpts> = HOLE_DEFAULTS): { cycle: 'G81' | 'G73' | 'G83'; why: string } {
   const xd = `${mm(Math.round((deep / d) * 10) / 10)} X D`;
@@ -629,10 +636,12 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
     lines.push('G80');
     ops.push({ kind: 'centre', purpose: 'centre', name: 'ZENTRIERBOHREN', tool: spot, cut, lines });
   }
-  const byTool = new Map<CamTool, { h: Hole; z: number }[]>();
-  for (const { h, tool, z } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z });
+  const byTool = new Map<CamTool, { h: Hole; z: number; pin?: boolean }[]>();
+  for (const { h, tool, z, pin } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z, pin });
   for (const [tool, all] of byTool) {
     const cut = cutData(tool, 'drill', mat, limits);
+    // Holes not of the drill's own Ø (a pin plate's drills are chosen so): the Ø drawn and the drill's, once each.
+    const sizes = [...new Set(all.filter((x) => !x.pin && Math.abs(x.h.r * 2 - tool.diameter) > 0.01).map((x) => Math.round(x.h.r * 200) / 100))].map((d) => ({ d, used: tool.diameter }));
     const hs = o.legacy ? all : nearestOrder(all);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     const rows = hs.map(({ h, z }) => {
@@ -650,11 +659,11 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
       // R (that way is proven), up, the cycle again from there, so the way on is at the start height however it is read.
       if (back === 'G98' && before === 'G99' && next) lines.push('G80', `G00 X${n3(r.h.c[0])} Y${n3(r.h.c[1])}`, `G00 Z${n3(clear)}`);
       before = back;
-      const q = r.cycle === 'G81' ? '' : ` Q${n3(Math.min(cut.q, r.s - r.z))}`;
+      const q = r.cycle === 'G81' ? '' : ` Q${n3(Math.min(peckOf(cut.q, tool.diameter, mat), r.s - r.z))}`;
       lines.push(`${back} ${r.cycle} X${n3(r.h.c[0])} Y${n3(r.h.c[1])} Z${n3(r.z)} R${n3(rOf(r.s))}${q} F${cut.fz}.`);
     });
     lines.push('G80');
-    ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines });
+    ops.push({ kind: 'drill', purpose: list.some((x) => x.tool === tool && x.pin) ? 'pinHoles' : 'drill', name: `BOHREN_${mm(tool.diameter)}MM`, tool, cut, lines, ...(sizes.length ? { sizes } : {}) });
   }
   return ops;
 }
@@ -2346,8 +2355,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
     };
     const drills = usable(tools, ['SB']);
-    // The drill of that Ø, else the nearest within 0.12 (as the shop does: Ø2.05 with Ø2, Ø3.2 with Ø3.3),
-    // long enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
+    // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: a Ø2.93 for a Ø3, never drilled small
+    // and milled to size), bigger by 0.12 at most (the shop: Ø3.2 holes with Ø3.3); its tool says so (sizes). Long
+    // enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
     const stockTop = Math.max(sb.hi[2], 0);
     const reachTo = (zEnd: number) => stockTop - zEnd + 2;
     const pinOf = (h: Hole) => (input.partType === 'pinPlate' ? PIN_DRILLS.find(([n]) => Math.abs(h.r * 2 - n) < 0.03)?.[1] : undefined);
@@ -2355,7 +2365,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
       const long = drills.filter((x) => x.length >= reachTo(zEnd));
       const pin = pinOf(h);
       const pinned = pin !== undefined ? long.find((x) => Math.abs(x.diameter - pin) < 0.005) : undefined;
-      return pinned ?? long.filter((x) => Math.abs(x.diameter - h.r * 2) <= 0.12).sort((p, q) => Math.abs(p.diameter - h.r * 2) - Math.abs(q.diameter - h.r * 2))[0];
+      const D = h.r * 2;
+      return pinned ?? long.filter((x) => x.diameter >= D - DRILL_UNDER - 1e-6 && x.diameter <= D + 0.12).sort((p, q) => Math.abs(p.diameter - D) - Math.abs(q.diameter - D) || p.diameter - q.diameter)[0];
     };
     // done: down to where the hole is finished by the drill. A plain blind hole to the drill's tip (you, Beta 2: the
     // engineers leave the point at a flat bottom, Pb361ad9d, Pfae5765f); else to where its full Ø ends.

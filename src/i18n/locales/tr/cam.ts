@@ -473,6 +473,7 @@ const cam: Translation<typeof en> = {
       FH: 'FH (FH, EPO, RESOPAL)',
     },
     settings: 'Ayarlar',
+    drillSize: 'Tam ölçü değil: çizimde Ø{{d}} olan delik Ø{{used}} ile delinir (eldeki en yakın matkap).',
     sideStock: 'Yan pay (mm)',
     sideStockBad: 'Yalnızca 0 ile 0,5 mm arası: yan pay {{mm}} mm olarak kalır.',
     sideStockHint: 'Her duvarda bilerek bırakılır, 0 ile 0,5 mm arası. Şablonların kendi payı kullanılmaz.',

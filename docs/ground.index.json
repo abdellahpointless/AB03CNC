@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T12:56:00Z",
+  "last_updated": "2026-11-27T13:50:00Z",
   "next_id": 36,
   "assumptions": [
     {
@@ -885,6 +885,66 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A036",
+      "title": "The drill for a hole",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A hole is drilled with a drill of its own Ø (within 0.01 mm). Failing that, the nearest smaller drill down to 0.07 mm under it (a Ø2.93 for a Ø3), and that drill's tool says in yellow both sizes, the drill's and the drawing's; a bigger drill within 0.12 mm stays as the engineers drill (Ø3.2 holes with Ø3.3), also marked (Q021). Never a smaller drill and then a mill to bring the hole to size: a hole is milled only when no drill comes that close. Drilling stays first, before the milling (the order rule).",
+      "source": "Owner, 2026-11-27 (an answer on the hole order)",
+      "validated": "2026-11-27",
+      "context": "Hole drilling",
+      "created": "2026-11-27T13:50:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T13:50:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "A037",
+      "title": "Peck depth in the plastics",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "G83 pecks 4 mm in POM, PEEK and PC GF30, at most 4 x the drill's Ø (a Ø0.5 pecks 2), or the engineers' own peck where it is deeper. Aluminium, brass and the laminates (FH, EPO, RESOPAL) keep the engineers' pecks.",
+      "source": "Owner, 2026-11-27 (from an engineer's program: two Ø1 holes with Q4 in POM)",
+      "validated": "2026-11-27",
+      "context": "Hole drilling",
+      "created": "2026-11-27T13:50:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T13:50:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner answered"
+        }
+      ]
+    },
+    {
+      "id": "Q021",
+      "title": "A slightly bigger drill",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "With no drill of the hole's Ø, CAM AI still takes one up to 0.12 mm bigger when no smaller one is within 0.07 mm, as the engineers do (Ø3.2 holes with Ø3.3, Ø2.05 with Ø2); its tool says so in yellow. Refuse bigger drills instead (the hole is then milled)?",
+      "source": "A036: the owner named only smaller drills",
+      "validated": "2026-11-27",
+      "context": "Hole drilling",
+      "created": "2026-11-27T13:50:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T13:50:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Raised by A036"
         }
       ]
     }
