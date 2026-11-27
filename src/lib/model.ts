@@ -1,6 +1,6 @@
 import { PrcError, readPdfModel } from './prc';
 import { MODEL_MAX_BYTES, MODEL_MAX_TRIS, type ModelError } from './modelLimits';
-import { isStep, readStep } from './step';
+import { isStep, readStep, readStepMesh } from './step';
 
 /** Triangles (9 numbers each, mm) of a binary or text STL. */
 export function readStl(buf: Uint8Array): Float32Array {
@@ -23,15 +23,23 @@ export function readModel(buf: Uint8Array): Promise<Float32Array> | Float32Array
 
 /** The model's triangles (mm), or why it cannot be used. */
 export async function readTris(bytes: Uint8Array): Promise<Float32Array | { error: ModelError }> {
+  const m = await readMesh(bytes);
+  return 'error' in m ? m : m.tris;
+}
+
+/** The model's triangles (mm) and, from a STEP file, the exact face each lies on (step.ts: stepMesh); or why it cannot be used. */
+export async function readMesh(bytes: Uint8Array): Promise<{ tris: Float32Array; faces?: Int32Array } | { error: ModelError }> {
   if (bytes.length > MODEL_MAX_BYTES) return { error: 'tooBig' };
   let tris: Float32Array;
+  let faces: Int32Array | undefined;
   try {
-    tris = await readModel(bytes);
+    if (isStep(bytes)) ({ tris, faces } = await readStepMesh(bytes));
+    else tris = await readModel(bytes);
   } catch (e) {
     if (!(e instanceof PrcError) && !(e instanceof RangeError)) throw e;
     return { error: /no 3D model/.test(e.message) ? 'noModel' : /compressed/.test(e.message) ? 'compressed' : 'unreadable' };
   }
   if (tris.length > MODEL_MAX_TRIS * 9) return { error: 'tooBig' };
   if (tris.length < 9 || tris.some((v) => !Number.isFinite(v))) return { error: 'unreadable' };
-  return tris;
+  return faces && faces.length === tris.length / 9 && faces.some((f) => f >= 0) ? { tris, faces } : { tris };
 }

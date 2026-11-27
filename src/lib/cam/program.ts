@@ -9,6 +9,7 @@ import { analyseProgram, jawsFrom, OVERHANG, parallelWidth, stopHits, VISE, vise
 import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, SPIN, upTurn, type Hole, type SideFeatures } from './features';
+import { exactFaces } from './faces';
 import { area, bounds, difference, inside, intersection, offset, rect, simplify, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
@@ -57,6 +58,8 @@ export interface CamInput {
   /** A drill's holes made in another clamping (you): the clamping's side up it was made in, the drill's code, the side up of
    * the clamping to drill them in. Left where that clamping reaches the hole (the same hole from its side), else refused (moveRefused). */
   moves?: { from: string; code: string; to: string }[];
+  /** A STEP model's exact face of each triangle of tris (-1: none; step.ts: stepMesh): its shapes fitted exactly (faces.ts). */
+  faces?: Int32Array;
   /** Template tool codes the operator does not have, and the ones picked in their place. */
   exclude?: string[];
   prefer?: string[];
@@ -1965,10 +1968,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
     return e[0] < e[1] - 0.5 && e[1] <= VISE.width + OVERHANG;
   };
   const spun = (si: number) => (first >= 0 && SIDES[si].d[thin] !== 0 ? !!input.orient?.spin : across(si));
-  const feats = SIDES.map((s, si) => sideFeatures(tris, s, spun(si)));
+  // A STEP model's exact faces (faces.ts): its holes taken from them, exact.
+  const exact = input.faces && input.faces.length === tris.length / 9 ? exactFaces(tris, input.faces) : undefined;
+  const featuresOf = (side: (typeof SIDES)[number], spin = false, turn?: Mat3) => sideFeatures(tris, side, spin, turn, exact);
+  const feats = SIDES.map((s, si) => featuresOf(s, spun(si)));
   // The operator's turn of clamping 1 (its side up the one asked, orient), used as given.
   const frame0 = frameAt(input, 0);
-  if (frame0 && first >= 0 && apply(frame0, SIDES[first].d)[2] === 1) feats[first] = sideFeatures(tris, SIDES[first], false, frame0);
+  if (frame0 && first >= 0 && apply(frame0, SIDES[first].d)[2] === 1) feats[first] = featuresOf(SIDES[first], false, frame0);
   input.live?.({ kind: 'stage', stage: 'features' });
   input.live?.({ kind: 'stage', stage: 'stock' });
   // The busiest face first (most floors and holes; you: the 0.5 mm method, after the turn only the face mill).
@@ -2008,7 +2014,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // Turned over about the machine's X, as the shop mostly does (docs/knowledge: X180 in 63 of 100
   // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
   const [s1, s2] = chosen;
-  if (SIDES[s2].d.every((v, k) => v === -SIDES[s1].d[k])) feats[s2] = sideFeatures(tris, SIDES[s2], false, mul([1, 0, 0, 0, -1, 0, 0, 0, -1], feats[s1].R));
+  if (SIDES[s2].d.every((v, k) => v === -SIDES[s1].d[k])) feats[s2] = featuresOf(SIDES[s2], false, mul([1, 0, 0, 0, -1, 0, 0, 0, -1], feats[s1].R));
   for (;;) {
     let best = -1;
     let gain = 0;
@@ -2074,7 +2080,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const framed = frame && apply(frame, SIDES[si].d)[2] === 1 ? frame : undefined;
     if (framed && !turnedAsked.has(si)) {
       turnedAsked.add(si);
-      feats[si] = sideFeatures(tris, SIDES[si], false, framed);
+      feats[si] = featuresOf(SIDES[si], false, framed);
     }
     if (!framed && prevR && setups.length >= 2 && !turnedAsked.has(si)) {
       const turns = (R: Mat3) => {
@@ -2082,7 +2088,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         return phrase ? phrase.match(/DREHEN/g)!.length : R.every((v, k) => Math.abs(v - prevR![k]) < 1e-9) ? 0 : 3;
       };
       const other = mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], feats[si].R);
-      if (turns(other) < turns(feats[si].R)) feats[si] = sideFeatures(tris, SIDES[si], false, other);
+      if (turns(other) < turns(feats[si].R)) feats[si] = featuresOf(SIDES[si], false, other);
     }
     if (!framed && turnAsked && prevR && !turnedAsked.has(si)) {
       turnedAsked.add(si);
@@ -2094,7 +2100,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
         R = turnAsked.flip === 'X' ? overX : mul([-1, 0, 0, 0, -1, 0, 0, 0, 1], overX);
       }
       for (let q = 0; q < (turnAsked.quarter ?? 0); q++) R = mul(SPIN, R);
-      feats[si] = sideFeatures(tris, SIDES[si], false, R);
+      feats[si] = featuresOf(SIDES[si], false, R);
     }
     // What this try changes, to undo when the vise asks for another grip and it is planned again.
     const was = { drilled: new Map(drilled), notes: notes.length };
@@ -2250,7 +2256,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (quarterForStep || (!step && stepAsked === undefined && !theirs && setups.length && !nested && onJaw === undefined && fixed === undefined && !stepless.has(si) && mayQuarter && ledges.some((d) => stepFit(left, sb, -d, 0)))) {
       quartered.add(si);
       turnedForStep.add(si);
-      feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));
+      feats[si] = featuresOf(side, false, mul(SPIN, feats[si].R));
       drilled.clear();
       was.drilled.forEach((v, k) => drilled.set(k, v));
       notes.length = was.notes;
@@ -2935,7 +2941,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     if (step && (physics.feed < 1 || !physics.ok)) {
       stepless.add(si);
       // Turned a quarter for the step only: back as it lay.
-      if (turnedForStep.has(si)) feats[si] = sideFeatures(tris, side, false, mul(transpose(SPIN), feats[si].R));
+      if (turnedForStep.has(si)) feats[si] = featuresOf(side, false, mul(transpose(SPIN), feats[si].R));
       drilled.clear();
       was.drilled.forEach((v, k) => drilled.set(k, v));
       notes.length = was.notes;
@@ -2976,7 +2982,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // preferred, but not over a clamping that holds), once; never against the operator's layout.
       if (!theirs && !turnAsked && !quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
         quartered.add(si);
-        feats[si] = sideFeatures(tris, side, false, mul(SPIN, feats[si].R));
+        feats[si] = featuresOf(side, false, mul(SPIN, feats[si].R));
         drilled.clear();
         was.drilled.forEach((v, k) => drilled.set(k, v));
         notes.length = was.notes;

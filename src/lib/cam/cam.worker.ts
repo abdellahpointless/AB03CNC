@@ -1,4 +1,4 @@
-import { readTris } from '../model';
+import { readMesh, readTris } from '../model';
 import type { ModelError } from '../modelLimits';
 import { parseToolpath, speedsFor } from '../toolpath';
 import { partLessonOf } from '../lessons';
@@ -156,14 +156,16 @@ self.onmessage = async (e: MessageEvent<CamRequest | PrepareRequest | EditReques
   }
   const { model, ...input } = e.data as CamRequest;
   try {
-    const tris = await readTris(model.bytes);
-    if ('error' in tris) return post({ type: 'error', error: tris.error });
+    // A STEP model's exact faces too (faces.ts): its holes are taken from them.
+    const mesh = await readMesh(model.bytes);
+    if ('error' in mesh) return post({ type: 'error', error: mesh.error });
+    const { tris, faces } = mesh;
     post({ type: 'progress', done: 0, of: 3 });
-    const r = camProgram({ ...input, tris, live: (ev) => post({ type: 'live', e: ev }) }, (done, of) => post({ type: 'progress', done, of }));
+    const r = camProgram({ ...input, tris, faces, live: (ev) => post({ type: 'live', e: ev }) }, (done, of) => post({ type: 'progress', done, of }));
     const tp = parseToolpath(r.code, input.speeds ?? speedsFor(input.brand));
     const lesson = await partLessonOf({ code: r.code, tp, model, match: r.check.match, pieces: r.check.pieces, brand: input.brand, source: 'cam' }).catch(() => null);
     // Kept for edits by hand (editProgram): the plan and what it was made from.
-    last = { input: { ...input, tris }, r };
+    last = { input: { ...input, tris, faces }, r };
     post({ type: 'done', lesson, result: summaryOf(r, input) });
   } catch (err) {
     console.error(err);

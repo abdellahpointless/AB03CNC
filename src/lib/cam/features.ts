@@ -2,6 +2,7 @@ import type { Vec } from '../toolpath';
 import { ALL, apply, mul, transpose, type Mat3 } from '../orient';
 import { area, bounds, difference, intersection, offset, slice, turnTris, union, type P2, type Region } from './geom';
 import { filled } from './clear';
+import { exactCylinders, type ExactFace } from './faces';
 
 /*
  * What CAM AI finds on a part's model, seen from each side it can be machined from (the tool comes
@@ -159,7 +160,7 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
 }
 
 /** The part seen from one side: everything a setup with that side up can machine. */
-export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false, turn?: Mat3): SideFeatures {
+export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false, turn?: Mat3, exact?: ExactFace[]): SideFeatures {
   const R = turn ?? (spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d));
   const P = turnTris(tris, R);
   const { min, max } = bounds(P);
@@ -196,7 +197,8 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
   const disk = (c: [number, number], r: number): P2[][] => [Array.from({ length: 32 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 16), c[1] + r * Math.sin((i * Math.PI) / 16)] as P2)];
   const open = (h: { c: [number, number]; r: number; hi: number }) =>
     [...above.filter((z) => z > h.hi + 0.06).map((z) => z - 0.01), ...(h.hi + 0.05 < max[2] ? [h.hi + 0.05] : [])].every((z) => area(intersection(cut(z), disk(h.c, h.r - 0.05))) < 0.01);
-  const holes: Hole[] = cylinders(P)
+  // A STEP model's holes from its exact cylinders (faces.ts), else fitted to the triangles.
+  const holes: Hole[] = (exact ? exactCylinders(exact, R) : cylinders(P))
     .filter((h) => h.concave && open(h))
     .map((h) => ({ c: h.c, r: h.r, top: h.hi, bottom: h.lo, through: h.lo <= min[2] + 0.01, closed: h.closed }));
   return {

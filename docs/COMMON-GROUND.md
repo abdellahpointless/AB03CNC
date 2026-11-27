@@ -314,6 +314,16 @@ High confidence assumptions. Treat as premises.
 
 ---
 
+### A040: Parts come as STEP files
+
+- **Type:** stated
+- **Assumption:** The users always give CAM AI the part as a STEP file, never a PDF (a PDF's 3D model is too coarse). CAM AI's shape reading builds on the STEP file's exact faces: each face a plane, a cylinder or a cone, with its axis, radius and angle (step 1 of the shape engine: holes taken from the exact cylinders, to the micron).
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Model upload, shape reading (src/lib/cam/faces.ts)
+
+---
+
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
@@ -430,3 +440,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: Q022 answered by the owner: "allow 0.1 like the engineers" (A036: down to 0.1 mm smaller).
 - 2026-11-27: Q021 answered and Q022 changed by the owner: bigger drills up to 0.12 mm as the engineers (for now), smaller ones up to 0.05 mm (A036).
 - 2026-11-27: A038 and A039 from the owner (moving a tool's work to another clamping; a quarter turn about Z). The simulation now draws the POM nest as a block on its parallels (it read the nest's walls as spacer plates and ran the parallels up to the part).
+- 2026-11-27: A040 from the owner (parts as STEP files, never PDF); step 1 of the shape engine (exact faces from the STEP file) built on it.

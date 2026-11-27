@@ -981,6 +981,26 @@
           "reason": "Owner asked"
         }
       ]
+    },
+    {
+      "id": "A040",
+      "title": "Parts come as STEP files",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The users always give CAM AI the part as a STEP file, never a PDF (a PDF's 3D model is too coarse). CAM AI's shape reading builds on the STEP file's exact faces: each face a plane, a cylinder or a cone, with its axis, radius and angle.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Model upload, shape reading (src/lib/cam/faces.ts)",
+      "created": "2026-11-27T19:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T19:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner said"
+        }
+      ]
     }
   ],
   "archived": [
