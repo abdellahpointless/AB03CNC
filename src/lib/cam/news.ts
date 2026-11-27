@@ -45,7 +45,7 @@ export const CAM_RELEASES: Release[] = [
       title: 'CAM AI: kendine ait bir çalışma alanı',
       items: [
         'CAM AI uygulamanın başlığı ve sekmeleri olmadan tam ekran açılır; sol üstteki ok CNC Process Pro’ya döner.',
-        'Üstte tek çubuk: dosya, hamı, kontrolleri (hepsi için tıklayın), süresi, İndir ve remapper’a Gönder; gerisi ⋯ altında.',
+        'Üstte tek çubuk: dosya, hamı, kontrolleri (hepsi için tıklayın), süresi, İndir ve Takım eşleştiriciye Gönder; gerisi ⋯ altında.',
         'Bağlamaya göre takımlar (OP10, OP20…), her biri bir satır; seçilen takımın değerleri ve işlemleri sağda. [ ve ] iki paneli katlar.',
         'Kendi simülasyonu: görünümün üstünde tek araç çubuğu, köşelerinde paraleller ve çene kontrolü, her takım için renkli bir parçası olan zaman çizelgesi (F görünümü sığdırır, Boşluk oynatır).',
       ],
@@ -70,7 +70,7 @@ export const CAM_RELEASES: Release[] = [
       items: [
         'Yapılmış bir programda bir takıma tıklamak, CAM AI’ın kendi simülasyonunu o takımda, kartının yanında gösterir.',
         'Bir işlem elle kaydırılabilir (X, Y, Z) veya daha derine alınabilir: programın tamamı yeniden kontrol edilir. Mengeneye, bir paralele, bir tutucuya veya mengene tabanına çarpacak her şey kilidi korur; modelden küçük bir fark "Bu parçayı olduğu gibi kabul ediyorum" işaretiyle kabul edilebilir.',
-        'Bir takım elle değiştirilebilir (Ø ve boy): yolu kalır, devirleri yeni Ø’ye göre ayarlanır ve ilerlemesi asla daha hızlı olmaz. Böyle bir takım hiçbir makinede yoktur, bu yüzden İndir kilitli kalır: ona bir makine takımı seçmek için programı remapper’a gönderin.',
+        'Bir takım elle değiştirilebilir (Ø ve boy): yolu kalır, devirleri yeni Ø’ye göre ayarlanır ve ilerlemesi asla daha hızlı olmaz. Böyle bir takım hiçbir tezgahta yoktur, bu yüzden İndir kilitli kalır: ona bir tezgah takımı seçmek için programı Takım eşleştiriciye gönderin.',
         '1. bağlamada dayamaya 15 mm veya 50 mm ara parça konabilir; parçayı sağa iter.',
         'Sonraki bir bağlama gerçekte durduğu gibi görünür: önceki bağlamaların bıraktığı ham, üzerinde bitmiş parça, paralellerinin yanında.',
       ],

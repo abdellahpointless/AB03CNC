@@ -29,11 +29,11 @@ export const RELEASES: Release[] = [
       ],
     },
     tr: {
-      title: 'Atölyenin gerçek mengenesi ve köşe radyuslu takımlar 3B görünümde',
+      title: 'Atölyenin gerçek mengenesi ve köşe radyüslü takımlar 3B görünümde',
       items: [
         '3B görünüm atölyenin Haas mengenesini üreticisinin modelinden çizer: çeneler 125 mm uzunluğunda ve 45 mm yüksekliğinde, hareketli çene ve mil operatöre doğru.',
         'Parça, çenelerin sol ucundaki bir dayamaya (X = 0) itilir. Takımlar o dayamadan itibaren çenelerin 125 mm’si boyunca denetlenir.',
-        'Köşe radyuslu parmak frezeler (SF_10.00_040_R02 gibi bir kod ya da adında TORUS / ECKENRADIUS ve radyus) yuvarlatılmış alt kenarlarıyla çizilir ve keser.',
+        'Köşe radyüslü parmak frezeler (SF_10.00_040_R02 gibi bir kod ya da adında TORUS / ECKENRADIUS ve radyüs) yuvarlatılmış alt kenarlarıyla çizilir ve keser.',
       ],
     },
   },
@@ -65,7 +65,7 @@ export const RELEASES: Release[] = [
       items: [
         'Uygulamanın tamamında yeni, tutarlı bir simge seti.',
         'Takım eşleştirici: program içe aktarıldıktan sonra bant çıkmaz; kodun üstündeki FANUC/HAAS düğmeleri dönüştürür.',
-        'Zayıf parola hatırlatması bir kez gösterilir; uzun pencereler (Excel takım içe aktarma) düğmelerine kadar kaydırılabilir.',
+        'Zayıf şifre hatırlatması bir kez gösterilir; uzun pencereler (Excel takım içe aktarma) düğmelerine kadar kaydırılabilir.',
       ],
     },
   },
@@ -153,7 +153,7 @@ export const RELEASES: Release[] = [
     tr: {
       title: 'Takım yolu görüntüleyici',
       items: [
-        'Eşleyicideki Takım yolu düğmesi programı 3B gösterir: her bağlama, çevirmeler, mengene ve paraleller.',
+        'Takım eşleştiricideki Takım yolu düğmesi programı 3B gösterir: her bağlama, çevirmeler, mengene ve paraleller.',
         'Parça, takımlar ilerledikçe işlenir. Oynatın ya da sona veya bir bağlama değişimine atlayın.',
         'Zayıf noktalar: 0,5 mm altındaki duvarlar renkle öne çıkar.',
         'Parçayı ölçün: iki yüzey, iki nokta, bir deliğin çapı veya iki delik arası mesafe.',
@@ -191,7 +191,7 @@ export const RELEASES: Release[] = [
     },
     tr: {
       title: 'Paralel stoku ve mengene kontrolü',
-      items: ['Tüm makineler için ölçü başına tek paralel stoku ve her makinenin aldıkları.', 'Sipariş edilecek paraleller (4 yedekten az) ve siparişin PDF’i.', 'Her makinede mengene kontrolü.'],
+      items: ['Tüm tezgahlar için ölçü başına tek paralel stoku ve her tezgahın aldıkları.', 'Sipariş edilecek paraleller (4 yedekten az) ve siparişin PDF’i.', 'Her tezgahta mengene kontrolü.'],
     },
   },
   {
