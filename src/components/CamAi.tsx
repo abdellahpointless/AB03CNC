@@ -206,7 +206,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // newest first (the owner). A change can carry what the next make takes from it: a shop tool preferred, operations
   // left out; a typed cutting value or an operation removed is shown only while it is still pending.
   // now: in the program shown already (checked again); the others wait for Make again.
-  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true };
+  // sideStock: the side stock the program shown was made with (one change for it, however many keys are typed).
+  type Change = { id: number; label: string; undo?: () => void; swap?: { exclude: string; prefer: string }; skip?: Record<string, string>; cuts?: string; removed?: string; now?: true; sideStock?: number };
   const [changes, setChanges] = useState<Change[]>([]);
   const changeId = useRef(0);
   // The later clampings' turns the program shown was made with (the panel's "until it is made again").
@@ -638,14 +639,28 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     // The material it was cut as (for OTHER the chosen family), as the program's header names it.
     downloadBlob(fileName, new Blob([forMachine(result.code, engineId, fileName, templatesFor ?? undefined)], { type: 'text/plain' }));
   };
-  const saveSideStock = (v: number) => {
-    const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
-    setSideStock(ok);
+  const storeSideStock = (v: number) => {
+    setSideStock(v);
     try {
-      localStorage.setItem(SIDE_STOCK_KEY, String(ok));
+      localStorage.setItem(SIDE_STOCK_KEY, String(v));
     } catch {
       /* a convenience: the default works without it */
     }
+  };
+  // The part type and the side stock are what the program is made for: changed on a program made, listed until it is
+  // made again (Download and Send wait), Undo back to what it was made with.
+  const saveSideStock = (v: number) => {
+    const ok = Number.isFinite(v) ? Math.min(0.5, Math.max(0, v)) : 0;
+    if (result && ok !== sideStock && !changes.some((c) => c.sideStock !== undefined)) {
+      const was = sideStock;
+      addChange({ label: t('camAi.changes.sideStock', { mm: fmt(was, 2) }), sideStock: was, undo: () => storeSideStock(was) });
+    }
+    storeSideStock(ok);
+  };
+  const choosePartType = (v: PartType) => {
+    const was = partType;
+    setPartType(v);
+    if (result && v !== was) addChange({ label: t('camAi.changes.partType', { type: t(`camAi.part.types.${v}`) }), undo: () => setPartType(was) });
   };
 
   // A face clicked on the model: the top of the setup being chosen.
@@ -2065,7 +2080,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       <div className="space-y-3">
         <label className="block space-y-1">
           <span className="section-label block">{t('camAi.part.type')}</span>
-          <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => setPartType(e.target.value as PartType)} disabled={busy}>
+          <select className="aurora-input w-full text-xs cursor-pointer" value={partType} onChange={(e) => choosePartType(e.target.value as PartType)} disabled={busy}>
             <option value="" disabled className="bg-[var(--bg-panel)]">{t('camAi.part.choose')}</option>
             {PART_TYPES.map((p) => (
               <option key={p} value={p} className="bg-[var(--bg-panel)]">{t(`camAi.part.types.${p}`)}</option>

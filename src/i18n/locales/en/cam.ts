@@ -524,6 +524,8 @@ const cam = {
       yAuto: 'Clamping {{n}}: CAM AI decides the moving jaw’s spacer',
       side: 'Clamping {{n}}: {{side}} up',
       own: 'Clamping {{n}}: back to CAM AI’s hold',
+      partType: 'Part type: {{type}}',
+      sideStock: 'Side stock changed (it was {{mm}} mm)',
       cuts: 'T{{tool}}: cutting values typed',
       removed: 'Removed: {{what}}',
       back: 'T{{tool}}: back to CAM AI’s tool',

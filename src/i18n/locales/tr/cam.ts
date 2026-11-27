@@ -527,6 +527,8 @@ const cam: Translation<typeof en> = {
       yAuto: '{{n}}. bağlama: hareketli çenenin ara parçasını CAM AI seçer',
       side: '{{n}}. bağlama: {{side}} yukarıda',
       own: '{{n}}. bağlama: CAM AI’ın bağlamasına dönüldü',
+      partType: 'Parça tipi: {{type}}',
+      sideStock: 'Yan pay değişti (önceden {{mm}} mm)',
       cuts: 'T{{tool}}: kesme değerleri girildi',
       removed: 'Çıkarıldı: {{what}}',
       back: 'T{{tool}}: CAM AI’ın takımına dönüldü',
