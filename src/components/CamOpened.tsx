@@ -170,7 +170,7 @@ export default function CamOpened({
                       {`T${r.tool}`.length > 5 ? `T${r.tool}`.slice(0, 4) + '…' : `T${r.tool}`}
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block truncate font-medium">{info[k].label || t('camAi.open.noLabel')}</span>
+                      <span className="block truncate font-medium" title={info[k].label || undefined}>{info[k].label || t('camAi.open.noLabel')}</span>
                       {info[k].d && <span className="block text-xs text-[var(--text-secondary)] tabular-nums">Ø{fmt(info[k].d!, 2)}</span>}
                     </span>
                     <span className="text-xs text-[var(--text-secondary)] tabular-nums">{clock(info[k].seconds)}</span>
