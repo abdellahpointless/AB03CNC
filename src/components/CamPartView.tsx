@@ -386,7 +386,9 @@ export default function CamPartView({
     controls.pickables = () => [part];
     controls.center = () => new THREE.Vector3();
 
-    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 1.55);
+    // The part, its raw block and the block's size labels all in view: the part's sphere needs 1.67 × its diagonal at 35°.
+    // shortcut: a fixed distance for a view about as wide as tall or wider; fit to the aspect if portrait views appear.
+    camera.position.set(0.9, 0.75, 1.1).normalize().multiplyScalar(size * 2.1);
     camera.near = size / 100;
     camera.far = size * 50;
     camera.updateProjectionMatrix();
