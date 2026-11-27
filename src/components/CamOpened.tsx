@@ -88,10 +88,10 @@ export default function CamOpened({
     setOp(info[k].setup);
     setFocus({ setup: info[k].setup, tool: runs[k].tool ?? undefined, key: Date.now() });
   };
+  // Only sizes a hand would type: out of range, Apply is off and says the limit.
+  const inRange = [edit.dx, edit.dy, edit.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (edit.deeper === undefined || (Number.isFinite(edit.deeper) && Math.abs(edit.deeper) <= 50));
   const apply = () => {
-    if (!run || pick === null) return;
-    const ok = [edit.dx, edit.dy, edit.dz].every((v) => v === undefined || (Number.isFinite(v) && Math.abs(v) <= 200)) && (edit.deeper === undefined || (Number.isFinite(edit.deeper) && Math.abs(edit.deeper) <= 50));
-    if (!ok) return;
+    if (!run || pick === null || !inRange) return;
     setHistory((h) => [...h, editRun(code, run, edit)]);
     setEdit({});
   };
@@ -217,9 +217,10 @@ export default function CamOpened({
                 {field('deeper')}
               </div>
               <div className="px-4 flex gap-2">
-                <button type="button" className="btn-primary h-9 px-3 text-[13px] flex-1" onClick={apply} disabled={!Object.values(edit).some((v) => v)}>{t('camAi.opEdit.apply')}</button>
+                <button type="button" className="btn-primary h-9 px-3 text-[13px] flex-1" onClick={apply} disabled={!inRange || !Object.values(edit).some((v) => v)}>{t('camAi.opEdit.apply')}</button>
                 <button type="button" className="btn-secondary h-9 px-3 text-[13px]" onClick={() => setHistory((h) => h.slice(0, -1))} disabled={!changes}>{t('camAi.opEdit.undo')}</button>
               </div>
+              {!inRange && <p className="px-4 pt-3 text-xs text-[var(--orange-text)]" role="alert">{t('camAi.open.badMove')}</p>}
               <p className="px-4 pt-3 text-xs text-[var(--text-secondary)]">{t('camAi.open.hint')}</p>
             </>
           ) : (

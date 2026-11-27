@@ -223,6 +223,7 @@ const cam = {
       lines: 'Lines {{from}}–{{to}}',
       hint: 'Moves and depths apply to this tool’s run only; its tool change, length offset and comments stay as they are. The whole program is simulated and checked again.',
       pick: 'Pick a tool on the left to move it or take it deeper.',
+      badMove: 'Move X, Y and Z by at most 200 mm, and Deeper by at most 50 mm, either way.',
       noModel: 'To compare it with the part’s 3D model, choose the model in New program first, then open the program.',
       read: 'This file is not a program CAM AI can read.',
     },

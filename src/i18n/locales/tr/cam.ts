@@ -226,6 +226,7 @@ const cam: Translation<typeof en> = {
       lines: 'Satır {{from}}–{{to}}',
       hint: 'Kaydırma ve derinlik yalnızca bu takımın işlemine uygulanır; takım değişimi, boy ofseti ve yorumlar olduğu gibi kalır. Programın tamamı yeniden simüle edilir ve kontrol edilir.',
       pick: 'Kaydırmak veya derinleştirmek için soldan bir takım seçin.',
+      badMove: 'X, Y ve Z en çok 200 mm, Daha derin en çok 50 mm değiştirilebilir (iki yönde de).',
       noModel: 'Parçanın 3B modeliyle karşılaştırmak için önce Yeni program’da modeli seçin, sonra programı açın.',
       read: 'Bu dosya CAM AI’ın okuyabileceği bir program değil.',
     },
