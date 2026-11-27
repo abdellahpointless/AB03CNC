@@ -47,6 +47,21 @@ describe('machine rules', () => {
     expect(applyMachineCoolant(h1, 'HAAS-5')).toEqual(h1);
   });
 
+  it('a program made for an air machine gets its coolant back on a lubricant machine (M83 -> M08, code only)', () => {
+    const air = [header('BASE POM / 30X20X10'), 'N6 T3 M6', 'N7 (M83 AIR)', 'N8 G00 G43 H03 Z50. M83', 'N9 M83', 'N10 M830 M183', 'N11 M30', '%'].join('\n').split('\n');
+    for (const id of ['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2']) {
+      const out = applyMachineCoolant(air, id);
+      expect(out, id).toContain('N8 G00 G43 H03 Z50. M08');
+      expect(out, id).toContain('N9 M08');
+      expect(out, id).toContain('N7 (M83 AIR)');
+      expect(out, id).toContain('N10 M830 M183');
+      expect(applyMachineCoolant(out, id), id).toEqual(out);
+    }
+    // HAAS-1 and HAAS-5 still switch the air jet off on the safety line.
+    expect(applyMachineCoolant(air, 'HAAS-1')).toContain('N4 G40 G17 G53 G49 G80 G90 M84');
+    expect(applyMachineCoolant(air, 'HAAS-2')).toEqual(air);
+  });
+
   it('the remapper writes them', () => {
     const src = [header('BASE ALU / 30X20X10'), 'N6 T6 M6', 'N7 (SB_04.00_045_000_ALHS)', 'N8 G00 G43 H06 Z50. M08', 'N9 G01 Z-5. F300.', 'N10 M30', '%'].join('\n');
     const out = (machine: string) => {

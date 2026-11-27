@@ -37,12 +37,17 @@ export function coolantNeed(code: string): 'air' | 'lubricant' | null {
 /**
  * The air jet code each machine always uses (shop rule): air machines (HAAS-2, HAAS-4) turn the
  * auto air jet on (M83) wherever the program turns the coolant on (M08); the HAAS lubricant
- * machines (HAAS-1, HAAS-5) switch it off with M84 on the safety line. FANUC: nothing yet, their
- * programs use M84 only on tapping lines. Never inside a (comment); running it again changes nothing.
+ * machines (HAAS-1, HAAS-5) switch it off with M84 on the safety line. Every lubricant machine (HAAS-1,
+ * HAAS-5, FANUC-1, FANUC-2) turns an M83 of a program once made for an air machine back into M08.
+ * FANUC: no M84 added, their programs use M84 only on tapping lines. Never inside a (comment); running
+ * it again changes nothing.
  */
 export function applyMachineCoolant(lines: string[], machineId: string): string[] {
   if (machineId === 'HAAS-2' || machineId === 'HAAS-4') {
     return lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M0?8(?![0-9.])/gi, 'M83')));
+  }
+  if (['HAAS-1', 'HAAS-5', 'FANUC-1', 'FANUC-2'].includes(machineId)) {
+    lines = lines.map((l) => (l === '__REMOVE_ME__' ? l : replaceInCode(l, /(?<![A-Z0-9.])M83(?![0-9.])/gi, 'M08')));
   }
   if (machineId !== 'HAAS-1' && machineId !== 'HAAS-5') return lines;
   if (lines.some((l) => l !== '__REMOVE_ME__' && /(?<![A-Z0-9])M84(?![0-9])/i.test(codeOnly(l)))) return lines;
