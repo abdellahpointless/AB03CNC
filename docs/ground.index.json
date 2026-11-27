@@ -2,7 +2,7 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-27T00:00:00Z",
+  "last_updated": "2026-11-27T01:00:00Z",
   "next_id": 32,
   "assumptions": [
     {
@@ -657,6 +657,126 @@
           "from_tier": null,
           "to_tier": "ESTABLISHED",
           "reason": "Owner's answer"
+        }
+      ]
+    },
+    {
+      "id": "Q014",
+      "title": "The tool start's order",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "The other agent's hole spec against the library's programs",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q015",
+      "title": "Short-chip materials",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "The hole spec (\"chip-friendly\" without a list)",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q016",
+      "title": "An end mill plunged for a counterbore",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Library research on counterbores (Q008)",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q017",
+      "title": "Air off on the air machines",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Night bug hunt, finding H3-14",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q018",
+      "title": "Program numbers",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Night bug hunt, finding H6-7",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
+        }
+      ]
+    },
+    {
+      "id": "Q019",
+      "title": "Kale or paralel in Turkish",
+      "type": "uncertain",
+      "tier": "OPEN",
+      "assumption": "See COMMON-GROUND.md",
+      "source": "Night bug hunt",
+      "validated": null,
+      "context": "Night of 2026-11-27",
+      "created": "2026-11-27T01:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T01:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "OPEN",
+          "reason": "Open question for the owner"
         }
       ]
     }

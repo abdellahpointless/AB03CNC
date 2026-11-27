@@ -274,6 +274,42 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 
 (none open from batch 10: Q008-Q013 answered on 2026-11-27, see the history)
 
+### Q014: The tool start's order
+
+- **Type:** uncertain
+- **Question:** The hole spec starts each tool with the safe modal line, then the first point with S and M03, then G43 H and the coolant; the engineers' programs put G43 H first. CAM AI follows the spec (before the length it moves only in X and Y). Keep the spec's order, or the engineers'?
+- **Source:** The other agent's hole spec against the library's programs
+
+### Q015: Short-chip materials
+
+- **Type:** uncertain
+- **Question:** G73 (chip-breaking pecks) is used up to 3 x D only in ALU, MS, FH, EPO and RESOPAL; every other material gets G83 from 1 x D. The list is CAM AI's reading, not the shop's. Which materials break their chips?
+- **Source:** The hole spec ("chip-friendly" without a list)
+
+### Q016: An end mill plunged for a counterbore
+
+- **Type:** uncertain
+- **Question:** The engineers' most common counterbore (112 of 260) is an end mill of the big Ø plunged in G83 with a dwell. CAM AI ramps end mills (the shop's rule) and goes round with a smaller one. Offer the plunge as an option?
+- **Source:** Library research on counterbores (Q008)
+
+### Q017: Air off on the air machines
+
+- **Type:** uncertain
+- **Question:** On HAAS-2 and HAAS-4 the remapper adds M83 (air) at every tool and nothing turns it off before the program ends (H3-14). Add M84 at the end?
+- **Source:** Night bug hunt, finding H3-14
+
+### Q018: Program numbers
+
+- **Type:** uncertain
+- **Question:** Every CAM AI program is O0001 (H6-7). The saved fix takes the number from the model's name when it is one; the same number as the shop's own program could overwrite it on the control. Where should the number come from?
+- **Source:** Night bug hunt, finding H6-7
+
+### Q019: Kale or paralel in Turkish
+
+- **Type:** uncertain
+- **Question:** The Turkish screens call the parallels kale in some places and paralel in others (H4-10, H5-7). Which word does the shop use?
+- **Source:** Night bug hunt
+
 ---
 
 ## History
@@ -306,3 +342,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
   drill first; 18 a drill alone. Q009: 5 mm parallels (A031); the 85 % is how much of each parallel's length must touch
   the step (holes and rounded ends leave gaps). Q010 and Q013: yes (A028 stated). Q011: read rightly. Q012: no more
   locks for now. A029 and A030 new; A020's rhythm kept.
+- 2026-11-27: open questions Q014-Q019 from the hole rules and the night's bug hunt.
