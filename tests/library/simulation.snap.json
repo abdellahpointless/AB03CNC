@@ -35,7 +35,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 4,
+   "cale": 3,
    "spacer": 17
   },
   "conflicts": 0,
@@ -56,7 +56,7 @@
   "setups": 3,
   "rejects": [],
   "collisions": {
-   "cale": 7
+   "cale": 5
   },
   "conflicts": 0,
   "match": 1,
@@ -98,7 +98,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 3
+   "cale": 1
   },
   "conflicts": 0,
   "match": 0.9989,
@@ -537,7 +537,7 @@
   "setups": 2,
   "rejects": [],
   "collisions": {
-   "cale": 5,
+   "cale": 3,
    "spacer": 18
   },
   "conflicts": 0,
@@ -598,9 +598,7 @@
   "result": "compared",
   "setups": 1,
   "rejects": [],
-  "collisions": {
-   "cale": 4
-  },
+  "collisions": {},
   "conflicts": 0,
   "match": 1,
   "pieces": 0
@@ -769,7 +767,7 @@
   "setups": 5,
   "rejects": [],
   "collisions": {
-   "cale": 2,
+   "cale": 1,
    "spacer": 20
   },
   "conflicts": 0,
@@ -818,9 +816,7 @@
   "result": "compared",
   "setups": 1,
   "rejects": [],
-  "collisions": {
-   "cale": 2
-  },
+  "collisions": {},
   "conflicts": 0,
   "match": 1,
   "pieces": 0

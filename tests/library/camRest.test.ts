@@ -14,8 +14,10 @@ describe.skipIf(!LIB)('reference library: a smaller end mill is not sent up for 
   it('Pcbf6262d: the end mills under Ø3 start under the band its Ø3 took', { timeout: 30 * 60_000 }, async () => {
     const r = await plan('Pcbf6262d', 'PCGF');
     const lines = r.setups.flatMap((s) => s.ops).filter((o) => o.kind === 'pocket' && o.tool.diameter < 3).flatMap((o) => o.lines);
-    expect(lines.length).toBeGreaterThan(0);
-    const highest = Math.max(...lines.flatMap((l) => (/^G01\b.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])));
+    // Since H6-8 (no straight plunges outside POM, FH and RESOPAL) the Ø4's closed rings at the top go to a Ø3 that
+    // ramps round them, from Z0: it takes what the Ø4 no longer does there (47 mm³ of the 48, measured on a fine grid),
+    // and no mill under Ø3 is needed. One that comes back must still start under the band the Ø3 took.
+    const highest = Math.max(-Infinity, ...lines.flatMap((l) => (/^G01\b.*Z/.test(l) ? [Number(l.match(/Z(-?[\d.]+)/)![1])] : [])));
     expect(highest).toBeLessThan(-9);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
