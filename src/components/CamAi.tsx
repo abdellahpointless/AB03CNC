@@ -149,6 +149,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
   // Operations changed by hand on the program made (by key), one being checked, the part accepted as it then is.
   const [opEdits, setOpEdits] = useState<Record<string, OpEdit>>({});
   const [checking, setChecking] = useState(false);
+  // Edits sent to the worker and not answered yet: checking until the last one is (two quick Undos send two).
+  const pendingEdits = useRef(0);
   const [accepted, setAccepted] = useState(false);
   const [editsDropped, setEditsDropped] = useState(false);
   // A change by hand the worker refused: the program shown stays, without it (never thrown away, nor carried on).
@@ -343,12 +345,17 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
 
   const newWorker = () => {
     worker.current?.terminate();
+    // A worker replaced or failed answers no edit sent to it: nothing is being checked any more.
+    pendingEdits.current = 0;
+    setChecking(false);
     const w = new Worker(new URL('../lib/cam/cam.worker.ts', import.meta.url), { type: 'module' });
     worker.current = w;
     w.onerror = () => {
       if (worker.current === w) endRemake();
       w.terminate();
       worker.current = null;
+      pendingEdits.current = 0;
+      setChecking(false);
       setRun({ state: 'error', error: 'failed' });
     };
     return w;
@@ -529,7 +536,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
       if (m.type === 'edited') {
         const sent = sentEdits.current.shift();
         if (sent) checkedEdits.current = { edits: sent.edits, order: sent.order };
-        setChecking(false);
+        pendingEdits.current = Math.max(0, pendingEdits.current - 1);
+        setChecking(pendingEdits.current > 0);
         // The operation just changed stays picked, under its new tool if its tool was changed (its key does not change).
         const key = following.current;
         following.current = null;
@@ -549,12 +557,14 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           orderRef.current = back.order;
           following.current = null;
           setChanges((l) => l.filter((c) => !c.now || c.id <= refused.id));
-          setChecking(false);
+          pendingEdits.current = Math.max(0, pendingEdits.current - 1);
+          setChecking(pendingEdits.current > 0);
           setEditRefused(true);
           return;
         }
         w.terminate();
         worker.current = null;
+        pendingEdits.current = 0;
         setChecking(false);
         endRemake();
         return setRun({ state: 'error', error: m.error });
@@ -1044,6 +1054,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     setEditsDropped(false);
     setEditRefused(false);
     setAccepted(false);
+    pendingEdits.current++;
     setChecking(true);
     following.current = key;
     sentEdits.current.push({ edits: next, order, id: changeId.current });
@@ -1710,17 +1721,17 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         )}
         <Popover.Root>
           <Popover.Trigger asChild>
-            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' || (result && !issues && pendingMake) ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : !issues ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
-              {run.state === 'busy' ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : issues ? <AlertTriangle size={14} stroke={2} aria-hidden /> : pendingMake ? <RefreshCw size={14} stroke={2} aria-hidden /> : <CheckCircle2 size={14} stroke={2} aria-hidden />}
-              {run.state === 'busy' ? t('camAi.ws.checking') : !result ? t('camAi.ws.notMade') : issues ? t('camAi.ws.issues', { count: issues }) : pendingMake ? t('camAi.ws.waiting') : t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) })}
+            <button type="button" className={`no-glass h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${run.state === 'busy' || checking || (result && !issues && pendingMake) ? 'border-[var(--blue-500)]/40 text-[var(--blue-text)]' : !result ? 'border-[var(--border-subtle)] text-[var(--text-secondary)]' : !issues ? 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]' : 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]'}`}>
+              {run.state === 'busy' || checking ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : !result ? null : issues ? <AlertTriangle size={14} stroke={2} aria-hidden /> : pendingMake ? <RefreshCw size={14} stroke={2} aria-hidden /> : <CheckCircle2 size={14} stroke={2} aria-hidden />}
+              {run.state === 'busy' ? t('camAi.ws.checking') : checking ? t('camAi.opEdit.checking') : !result ? t('camAi.ws.notMade') : issues ? t('camAi.ws.issues', { count: issues }) : pendingMake ? t('camAi.ws.waiting') : t('camAi.ws.checked', { pct: fmt(result.match * 100, 1) })}
             </button>
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content align="start" sideOffset={6} className="cam-pop z-[1000] w-[22rem] p-2">
               <p className={`px-2 pt-1 pb-2 text-[13px] font-semibold ${!result ? 'text-[var(--text-primary)]' : !issues && pendingMake ? 'text-[var(--blue-text)]' : ok ? 'text-[var(--green-text,#1fb257)]' : 'text-[var(--orange-text)]'}`} role="status">
-                {verdict ? (!issues && pendingMake ? t('camAi.makeFirst') : verdict.text) : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
+                {checking ? t('camAi.opEdit.checking') : verdict ? (!issues && pendingMake ? t('camAi.makeFirst') : verdict.text) : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}
               </p>
-              {checks.length > 0 && (
+              {checks.length > 0 && !checking && (
                 <ul aria-label={t('camAi.ws.checksTitle')}>
                   {checks.map((c) => (
                     <li key={c.label} className="flex items-center gap-2 h-8 px-2 border-t border-[var(--border-subtle)] text-[13px]">
@@ -1752,7 +1763,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             <SidebarRightExpand size={16} stroke={1.6} aria-hidden /> {t('camAi.ws.inspector')}
           </button>
         )}
-        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool || badNumber !== undefined} title={handTool ? t('camAi.opEdit.handTool') : badNumber !== undefined ? t('camAi.opEdit.badNumber', { t: badNumber }) : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
+        <button type="button" className={barBtn} onClick={download} disabled={!ok || busy || checking || waiting || handTool || badNumber !== undefined} title={checking ? t('camAi.opEdit.checking') : handTool ? t('camAi.opEdit.handTool') : badNumber !== undefined ? t('camAi.opEdit.badNumber', { t: badNumber }) : waiting ? t('camAi.makeFirst') : ok ? undefined : t('camAi.locked')}>
           <Download size={16} stroke={1.6} aria-hidden /> {t('camAi.download')}
         </button>
         {result ? (
