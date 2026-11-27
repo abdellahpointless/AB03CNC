@@ -569,7 +569,7 @@ export default function AdminExtractionAnalytics() {
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
-                            width: `${Math.max(percent, 4)}%`,
+                            width: `${percent > 0 ? Math.max(percent, 4) : 0}%`, // a sliver for a small share, nothing for none
                             backgroundColor: BAR_COLORS[idx % BAR_COLORS.length]
                           }}
                         />
