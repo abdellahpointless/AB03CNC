@@ -6,7 +6,6 @@ const app = {
   header: {
     subtitle: 'Industrial G-Code Dialect & Tool Remapper',
     syncTitle: 'CNC Process Pro - Click to sync now',
-    securityTitle: 'Account security (password, two-step sign-in)',
     syncNow: 'Sync now',
     signOut: 'Sign out',
   },
@@ -107,7 +106,6 @@ const app = {
       system: 'follow windows setting',
     },
     title: '{{current}} (click for {{next}})',
-    aria: 'Colour mode: {{mode}}',
   },
 
   /** Error texts used when the server sends no message of its own. */

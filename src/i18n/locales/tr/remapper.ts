@@ -234,11 +234,7 @@ const remapper: Translation<typeof en> = {
   safety: {
     title: 'Güvenlik kontrolü',
     allClear: '{{count}} kontrolün tümü geçti',
-    errorsCount: '{{count}} düzeltilecek',
-    warningsCount: '{{count}} kontrol edilecek',
-    passedCount: '{{count}} kontrol geçti',
     line: 'Satır {{line}}',
-    lineN: 'Satır {{line}} · {{n}}',
     program: 'Programın tamamı',
     show: 'Ayrıntıları göster',
     hide: 'Ayrıntıları gizle',

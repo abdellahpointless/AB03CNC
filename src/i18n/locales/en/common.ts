@@ -1,6 +1,5 @@
 /* Words used all over the app. English (Morocco). */
 const common = {
-  appName: 'CNC Process Pro',
   actions: {
     save: 'Save',
     cancel: 'Cancel',
@@ -16,12 +15,9 @@ const common = {
     export: 'Export',
     import: 'Import',
     download: 'Download',
-    upload: 'Upload',
     yes: 'Yes',
     no: 'No',
     retry: 'Try again',
-    continue: 'Continue',
-    signIn: 'Sign in',
     signOut: 'Sign out',
     later: 'Later',
     dismiss: 'Dismiss',
@@ -121,7 +117,6 @@ const common = {
     roleOf: 'Role of {{user}}',
     category: 'Category',
     pocket: 'Pocket',
-    days: 'Number of days',
     notices: 'Notices',
   },
 };

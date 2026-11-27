@@ -3,7 +3,6 @@ import type en from '../en/common';
 
 /* Uygulama genelinde kullanılan kelimeler. Türkçe (Türkiye). */
 const common: Translation<typeof en> = {
-  appName: 'CNC Process Pro',
   actions: {
     save: 'Kaydet',
     cancel: 'İptal',
@@ -19,12 +18,9 @@ const common: Translation<typeof en> = {
     export: 'Dışa aktar',
     import: 'İçe aktar',
     download: 'İndir',
-    upload: 'Yükle',
     yes: 'Evet',
     no: 'Hayır',
     retry: 'Tekrar deneyin',
-    continue: 'Devam',
-    signIn: 'Giriş yap',
     signOut: 'Çıkış yap',
     later: 'Daha sonra',
     dismiss: 'Kapat',
@@ -121,7 +117,6 @@ const common: Translation<typeof en> = {
     roleOf: '{{user}} kullanıcısının rolü',
     category: 'Kategori',
     pocket: 'Cep',
-    days: 'Gün sayısı',
     notices: 'Bildirimler',
   },
 };

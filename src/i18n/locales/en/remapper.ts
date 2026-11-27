@@ -243,11 +243,7 @@ const remapper = {
   safety: {
     title: 'Safety check',
     allClear: 'All {{count}} checks passed',
-    errorsCount: '{{count}} to fix',
-    warningsCount: '{{count}} to look at',
-    passedCount: '{{count}} checks passed',
     line: 'Line {{line}}',
-    lineN: 'Line {{line}} · {{n}}',
     program: 'Whole program',
     show: 'Show details',
     hide: 'Hide details',

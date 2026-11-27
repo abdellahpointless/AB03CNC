@@ -9,7 +9,6 @@ const app: Translation<typeof en> = {
   header: {
     subtitle: 'Endüstriyel G-kodu Uyarlama ve Takım Eşleştirici',
     syncTitle: 'CNC Process Pro - Şimdi eşitlemek için tıklayın',
-    securityTitle: 'Hesap güvenliği (şifre, iki adımlı doğrulama)',
     syncNow: 'Şimdi eşitle',
     signOut: 'Çıkış yap',
   },
@@ -103,7 +102,6 @@ const app: Translation<typeof en> = {
       system: 'Windows ayarı',
     },
     title: '{{current}} (tıklayın: {{next}})',
-    aria: 'Renk modu: {{mode}}',
   },
 
   auth: {
