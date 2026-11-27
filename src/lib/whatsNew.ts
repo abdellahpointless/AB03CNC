@@ -143,7 +143,7 @@ export const RELEASES: Release[] = [
     en: {
       title: 'Toolpath viewer',
       items: [
-        'The Toolpath button in the remapper shows the program in 3D: every setup, the turns, the vise and the cales.',
+        'The Toolpath button in the remapper shows the program in 3D: every setup, the turns, the vise and the parallels.',
         'The part is cut as the tools move. Play it, or jump to the end or to a setup change.',
         'Weak spots: walls under 0.5 mm stand out in colour.',
         'Measure the part: two faces, two points, a hole’s Ø, or the distance between two holes.',
