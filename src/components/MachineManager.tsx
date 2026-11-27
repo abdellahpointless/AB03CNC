@@ -263,8 +263,8 @@ export default function MachineManager() {
                 <tr key={m.id} className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[rgba(var(--ov),0.02)]">
                   <td className="p-3">
                     <div className="flex items-center gap-3">
-                      <img src={m.image || '/machines/generic.svg'} alt="" className="w-12 h-9 object-contain rounded-[var(--radius-sm)] bg-white/80" loading="lazy" />
-                      <span className="font-semibold text-[var(--text-primary)]">{m.name}</span>
+                      <img src={m.image || '/machines/generic.svg'} alt="" className="w-12 h-9 shrink-0 object-contain rounded-[var(--radius-sm)] bg-white/80" loading="lazy" />
+                      <span className="font-semibold text-[var(--text-primary)] whitespace-nowrap">{m.name}</span>
                     </div>
                   </td>
                   <td className="p-3 text-[var(--text-secondary)]">{machineSubtitle(m) || '-'}</td>
