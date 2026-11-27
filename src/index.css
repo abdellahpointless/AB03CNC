@@ -5,6 +5,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* On html only (body inherits it), so html.light gives native controls (date icons, checkboxes) light colours. */
+  color-scheme: dark;
   /* Country series colours for charts (validated: CVD and contrast checks pass on both surfaces). */
   --series-ma:      #3987e5;
   --series-tr:      #d95926;
@@ -120,7 +122,6 @@ html, body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  color-scheme: dark;
   overflow-x: hidden;
 }
 
