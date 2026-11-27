@@ -39,6 +39,12 @@ const ZONE_COLOR: Record<string, string> = { contour: '#3b82f6', thinWall: '#a85
 const pressureColor = (share: number) => (share < 0.5 ? '#22c55e' : share < 0.8 ? '#f59e0b' : '#ef4444');
 
 /** 164 s -> "2:44". */
+/**
+ * What a cutting-value field shows: the text typed while it is still the value kept (empty: CAM AI's, the placeholder),
+ * else the value kept (typed, or put back by Undo), else CAM AI's own.
+ */
+export const cutText = (typed: string | undefined, kept: number | undefined, made: number) => (typed !== undefined && (typed === '' ? kept === undefined : Number(typed) === kept) ? typed : String(kept ?? made));
+
 export const fmtTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
 
 export type ToolNamer = (o: { type: string; diameter: number; length: number }) => string;
@@ -344,6 +350,8 @@ export function ToolCard({
   const [asking, setAsking] = useState(ask);
   const [pick, setPick] = useState(options[0]?.code ?? '');
   const [typed, setTyped] = useState<{ d: string; l: string }>({ d: '', l: '' });
+  // The cutting values as typed (an emptied field stays empty, never back to CAM AI's value under the caret).
+  const [typedCut, setTypedCut] = useState<Partial<Record<'s' | 'f' | 'ae' | 'ap', string>>>({});
   const op = ops[0];
   // The tool picked to swap in, and what differs from the one it replaces (warned, never refused).
   const TYPED = '__typed';
@@ -372,8 +380,12 @@ export function ToolCard({
         step={step}
         inputMode="decimal"
         disabled={busy}
-        value={draft[k] ?? op[k]}
-        onChange={(e) => onEdit({ [k]: e.target.value === '' ? undefined : Number(e.target.value) })}
+        value={cutText(typedCut[k], draft[k], op[k])}
+        placeholder={String(op[k])}
+        onChange={(e) => {
+          setTypedCut((x) => ({ ...x, [k]: e.target.value }));
+          onEdit({ [k]: e.target.value === '' ? undefined : Number(e.target.value) });
+        }}
       />
     </label>
   );

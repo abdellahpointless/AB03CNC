@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { camProgram, opSegments, type LiveEvent } from '../src/lib/cam/program';
 import { cutData, LIBRARY, type CamTool } from '../src/lib/cam/tools';
 import { heightPart, wallsOf } from './heightPart';
+import { cutText } from '../src/components/CamAiResult';
 
 // A 40x30x12 plate with a 20x12 pocket 6 deep in its top.
 const plate = heightPart(Array.from({ length: 30 }, (_, j) => Array.from({ length: 40 }, (_, i) => (i >= 10 && i < 30 && j >= 9 && j < 21 ? 6 : 12))));
@@ -17,6 +18,15 @@ describe("the operator's cutting values", () => {
   const mill = LIBRARY.ALU.find((t) => t.type === 'SF' && t.d === 8 && t.length === 40)!;
   const tool = (edit?: CamTool['edit']): CamTool => ({ id: mill.code, number: 1, category: 'fraise', description: '', diameter: mill.d, length: mill.length, code: mill.code, type: mill.type, template: mill, inMachine: true, edit });
   const limits = { maxRpm: 8000, maxFeed: 10000 };
+
+  it('a field emptied stays empty (CAM AI’s value its placeholder), typing replaces it; Undo puts the value kept back', () => {
+    expect(cutText(undefined, undefined, 6500)).toBe('6500');
+    expect(cutText('', undefined, 6500)).toBe('');
+    expect(cutText('5000', 5000, 6500)).toBe('5000');
+    expect(cutText('8.', 8, 800)).toBe('8.');
+    // Undone from the changes card: the value typed went with it.
+    expect(cutText('900', undefined, 800)).toBe('800');
+  });
 
   it('taken as typed, the spindle never over the machine top', () => {
     const c = cutData(tool({ s: 20000, f: 900, ae: 2, ap: 1 }), 'contour', 'ALU', limits);
