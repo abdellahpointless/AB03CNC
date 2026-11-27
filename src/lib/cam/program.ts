@@ -2905,8 +2905,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     }
     if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
       // The designer's parallels stay: only lighter mills at their grip.
-      // Clamping 1 (the 0.5 mm method): never deeper than 1 mm under the part's bottom, where its outline is cut.
-      const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most && (setups.length > 0 || g <= waste - 1 + 1e-6));
+      // Clamping 1 (the 0.5 mm method): the jaw tops never less than the gap under its outline cut (0.5 under the part).
+      const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most && (setups.length > 0 || g <= waste - 0.5 - gap + 1e-6));
       const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
