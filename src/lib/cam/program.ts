@@ -640,8 +640,9 @@ export function drilling(list: { h: Hole; tool: CamTool; z: number; pin?: boolea
   for (const { h, tool, z, pin } of list) (byTool.get(tool) ?? byTool.set(tool, []).get(tool)!).push({ h, z, pin });
   for (const [tool, all] of byTool) {
     const cut = cutData(tool, 'drill', mat, limits);
-    // Holes not of the drill's own Ø (a pin plate's drills are chosen so): the Ø drawn and the drill's, once each.
-    const sizes = [...new Set(all.filter((x) => !x.pin && Math.abs(x.h.r * 2 - tool.diameter) > 0.01).map((x) => Math.round(x.h.r * 200) / 100))].map((d) => ({ d, used: tool.diameter }));
+    // Holes not of the drill's own Ø (a pin plate's drills are chosen so), past 0.015 mm (a drawn Ø2 can read Ø2.01 from
+    // the model's facets): the Ø drawn and the drill's, once each.
+    const sizes = [...new Set(all.filter((x) => !x.pin && Math.abs(x.h.r * 2 - tool.diameter) > 0.015).map((x) => Math.round(x.h.r * 200) / 100))].map((d) => ({ d, used: tool.diameter }));
     const hs = o.legacy ? all : nearestOrder(all);
     const lines = [`G00 G90 X${n3(hs[0].h.c[0])} Y${n3(hs[0].h.c[1])} S${cut.s} M03`, `G00 Z${n3(clear)}`];
     const rows = hs.map(({ h, z }) => {

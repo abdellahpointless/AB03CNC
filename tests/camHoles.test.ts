@@ -151,8 +151,10 @@ describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
 
   it('says on a drill which holes are not its own Ø (a pin plate\'s drills excepted)', () => {
     const d3 = drillOf('ALU', 3);
-    const [near] = drilling([deep(d3, 3.03), deep(d3, 3.004)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0);
+    // A Ø3.03 hole: said. One read Ø3.01 or Ø2.99 from the model's facets: its own drill.
+    const [near] = drilling([deep(d3, 3.03), deep(d3, 3.01), deep(d3, 2.99)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0);
     expect(near.sizes).toEqual([{ d: 3.03, used: 3 }]);
+    expect(drilling([deep(d3, 2.98)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toEqual([{ d: 2.98, used: 3 }]);
     expect(drilling([deep(d3)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toBeUndefined();
     expect(drilling([deep(d3, 3.03, true)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toBeUndefined();
   });
