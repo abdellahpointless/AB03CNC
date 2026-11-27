@@ -33,6 +33,7 @@ import { allowedCales, blankSides, clearOf, firstPick, GRIP_WANT, JAW, jawMove, 
 import type { CutEdit } from '../lib/cam/tools';
 import type { OpEdit } from '../lib/cam/opEdit';
 import { useAuth } from '../contexts/AuthContext';
+import { changesAt } from './CamAiResult';
 
 const CamPartView = lazy(() => import('./CamPartView'));
 const CamTurnGhost = lazy(() => import('./CamTurnGhost'));
@@ -1086,6 +1087,8 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     return `T${toolNo} · ${t(`camAi.tools.${ops[0].type}`, { defaultValue: ops[0].type })} — ${[...new Set(ops.map((o) => t(`camAi.purpose.${o.purpose}`)))].join(', ')}`;
   };
   const opNow = sel.kind === 'setup' || sel.kind === 'tool' ? sel.i : opTab;
+  // One row per tool: a tool that comes in more than once (an outline, then the roughing after the drills) says where.
+  const comesIn = changesAt(inOrder(result?.setups[opNow]?.side ?? '', result?.setups[opNow]?.ops ?? [], opOrder).map((o) => o.code));
   // What the checks say, row by row (the status chip's popover).
   const checks = result
     ? [
@@ -1204,7 +1207,9 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                       <span className="block text-[13px] font-medium text-[var(--text-primary)] truncate">{t(`camAi.tools.${o.type}`, { defaultValue: o.type })}</span>
                       {/* The size gives way first: "not in machine" stays whole (amber text on the light theme). */}
                       <span className="flex text-xs text-[var(--text-secondary)] tabular-nums">
-                        <span className="truncate">Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}</span>
+                        <span className="truncate">Ø{fmt(o.diameter, 2)} · L{fmt(o.length, 0)}
+                          {(comesIn.get(o.code)?.length ?? 0) > 1 && <span title={t('camAi.ws.runs', { count: comesIn.get(o.code)!.length, at: comesIn.get(o.code)!.join(', ') })}> · {t('camAi.ws.runsShort', { count: comesIn.get(o.code)!.length, at: comesIn.get(o.code)!.join(', ') })}</span>}
+                        </span>
                         {!o.inMachine && <span className="shrink-0 whitespace-pre text-[#854d0e] dark:text-[#facc15]" title={t(o.code.endsWith('_HAND') ? 'camAi.notInMachineHand' : 'camAi.notInMachineLong')}> · {t('camAi.notInMachine')}</span>}
                       </span>
                     </span>

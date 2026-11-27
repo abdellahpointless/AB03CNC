@@ -632,3 +632,15 @@ function OpEditor({ was, d, l, busy, onApply }: { was?: OpEdit; d: number; l: nu
     </div>
   );
 }
+
+/** Where each tool comes in, in a clamping's operations as they run (their tools' codes): its tool changes, 1 the first. */
+export function changesAt(codes: string[]): Map<string, number[]> {
+  const at = new Map<string, number[]>();
+  let n = 0;
+  codes.forEach((c, k) => {
+    if (k && codes[k - 1] === c) return;
+    n++;
+    at.set(c, [...(at.get(c) ?? []), n]);
+  });
+  return at;
+}
