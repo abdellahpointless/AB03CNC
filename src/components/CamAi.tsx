@@ -1551,7 +1551,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
                     ))}
                   </dl>
                 )}
-                {excess && !margins && <p className="text-[var(--text-secondary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
+                {excess && excessOk && !margins && <p className="text-[var(--text-secondary)]">{t('camAi.stock.added', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) })}</p>}
                 {whiteFields()}
                 {finishFields()}
               </>
