@@ -351,6 +351,8 @@ const cam = {
       stock: 'Raw block (+{{x}} X, +{{y}} Y, +{{z}} Z mm)',
       setup_one: 'Setup {{n}} (OP{{op}}) · {{side}} · {{count}} operation',
       setup_other: 'Setup {{n}} (OP{{op}}) · {{side}} · {{count}} operations',
+      setupSide: 'Setup {{n}} (OP{{op}}) · {{side}}',
+      setupNext: 'Setup {{n}} (OP{{op}})',
       check: 'Holder collisions and tool stick-out check',
       post: 'Writing the program (G-code)',
       elapsed: 'Elapsed {{time}}',

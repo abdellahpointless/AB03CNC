@@ -1326,7 +1326,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
             )}
           </ul>
           <div className="flex-1" />
-          <p className="px-4 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]" role="status">{next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}</p>
+          <p className="px-4 py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]" role="status">{run.state === 'busy' ? t('camAi.ws.checking') : next ? t(`camAi.ws.next.${next}`) : t('camAi.ws.ready')}</p>
         </>
       ) : (
         <div className="p-4 space-y-3">
@@ -2004,7 +2004,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
           )}
           {pickNote && <p role="alert" className="absolute top-14 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs bg-[var(--bg-panel)]/95 border border-[#f5b942]/50 text-[var(--orange-text)]">{t(`camAi.pickNote.${pickNote}`)}</p>}
           {run.state === 'busy' && (
-            <div className="absolute left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)]">
+            <div className="absolute z-10 left-3 bottom-3 w-[19rem] max-w-[calc(100%-1.5rem)] rounded-[var(--radius-md)] bg-[var(--bg-panel)] shadow-lg">
               <LiveConsole live={live} done={!!result} excess={excess ?? AUTO_EXCESS} />
             </div>
           )}
@@ -2560,11 +2560,13 @@ function LiveConsole({ live, done, excess }: { live: Live; done: boolean; excess
   const rows: Row[] = [
     { key: 'features', text: t('camAi.live.features'), state: has('features') ? 'done' : 'now' },
     { key: 'stock', text: t('camAi.live.stock', { x: fmt(excess[0], 1), y: fmt(excess[1], 1), z: fmt(excess[2], 1) }), state: has('stock') ? 'done' : has('features') ? 'now' : 'next' },
-    ...Array.from({ length: setups }, (_, k): Row => ({
-      key: `setup${k}`,
-      text: t('camAi.live.setup', { n: k + 1, op: (k + 1) * 10, side: live.sides[k] ?? '…', count: live.paths.filter((p) => p.setup === k).length }),
-      state: has('check') || k < live.setup ? 'done' : k === live.setup ? 'now' : 'next',
-    })),
+    ...Array.from({ length: setups }, (_, k): Row => {
+      const state = has('check') || k < live.setup ? 'done' : k === live.setup ? 'now' : 'next';
+      const [n, op, side, count] = [k + 1, (k + 1) * 10, live.sides[k], live.paths.filter((p) => p.setup === k).length];
+      // Its side and count once known: never "· … · 0 operations" while it waits or starts.
+      const text = !side ? t('camAi.live.setupNext', { n, op }) : count || state === 'done' ? t('camAi.live.setup', { n, op, side, count }) : t('camAi.live.setupSide', { n, op, side });
+      return { key: `setup${k}`, text, state };
+    }),
     { key: 'check', text: t('camAi.live.check'), state: has('post') ? 'done' : has('check') ? 'now' : 'next' },
     { key: 'post', text: t('camAi.live.post'), state: done ? 'done' : live.stages.includes('post') ? 'now' : 'next' },
   ];

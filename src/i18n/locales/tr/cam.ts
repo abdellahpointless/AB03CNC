@@ -354,6 +354,8 @@ const cam: Translation<typeof en> = {
       stock: 'Ham blok (+{{x}} X, +{{y}} Y, +{{z}} Z mm)',
       setup_one: 'Bağlama {{n}} (OP{{op}}) · {{side}} · {{count}} işlem',
       setup_other: 'Bağlama {{n}} (OP{{op}}) · {{side}} · {{count}} işlem',
+      setupSide: 'Bağlama {{n}} (OP{{op}}) · {{side}}',
+      setupNext: 'Bağlama {{n}} (OP{{op}})',
       check: 'Tutucu çarpışması ve takım boyu kontrolü',
       post: 'Program yazılıyor (G kodu)',
       elapsed: 'Geçen süre {{time}}',
