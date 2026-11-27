@@ -4,12 +4,20 @@
  * its sizes, the sides it is reached from and the faces it is made of; then a check that they explain all the material
  * between the part and its box (what they do not is named, never left silent).
  *
- * The rule when shapes meet (tools/test-part/make_feature_parts.py writes its test parts by it):
- *  - a shape is what its surfaces are: one hole however many pieces another shape cuts its wall into;
- *  - shapes at one depth that run into each other are one pocket, but a slot (two facing walls across the part) and a
- *    hole (a cylinder) stay themselves; a deeper shape starts at the floor of the shallower one it is cut from;
- *  - "from": the sides it can be reached from: a hole, the ends of its axis that open; a milled shape, the sides it is
- *    seen open from; "box": what it removes, in the model's frame; "depth": from where it starts down to its floor.
+ * The rule when shapes meet (tools/test-part/make_feature_parts.py writes its test parts and their keys by it):
+ *  - a shape is what its surfaces are: one hole however many pieces another shape cuts its wall into, and a hole
+ *    another one runs into is still a hole (more than half round), broken open ("open") if its wall never closes;
+ *  - shapes at one depth that run into each other are one pocket, but a slot (two facing walls across the part, or a
+ *    keyway open at one end) and a hole stay themselves; a deeper shape's room is its own from its floor up to the
+ *    top, and its depth runs from the top of the walls round it (a pocket inside another: from that one's floor);
+ *  - a shape seen from several sides is one shape; seen from one side as a part of others (the room in front of a fin
+ *    seen from its side, the top of a pocket seen through a step) it is theirs; the material standing up inside it,
+ *    or out of a wall flush with the top (a tab), is a boss;
+ *  - "from": a hole, the ends of its axis that open; a milled shape, every side a straight tool along that side's
+ *    axis cuts all of it from (its room a prism that way); an undercut (room no side reaches so, under the part next
+ *    to a milled shape), the sides of the shapes a side-cutting tool comes in through; an edge's chamfer, round or
+ *    fillet, the sides its faces look toward; "box": what it removes, in the model's frame; "depth": as above;
+ *  - nothing left over: what no shape explains is named (`unexplained`), never cleaned up.
  *
  * Read only: the planner does not use it yet (step 3).
  */
@@ -19,7 +27,7 @@ import { SIDES, upTurn } from './features';
 import { exactFaces, type ExactFace } from './faces';
 import { area, bounds, components, difference, inside, intersection, offset, rect, turnTris, union, type P2, type Region } from './geom';
 
-export type FeatureKind = 'hole' | 'counterbore' | 'countersink' | 'pocket' | 'slot' | 'step' | 'notch' | 'window' | 'outline' | 'boss' | 'chamfer' | 'round' | 'fillet' | 'slope' | 'surface';
+export type FeatureKind = 'hole' | 'counterbore' | 'countersink' | 'pocket' | 'slot' | 'step' | 'notch' | 'window' | 'outline' | 'boss' | 'undercut' | 'chamfer' | 'round' | 'fillet' | 'slope' | 'surface';
 
 export type Box6 = [number, number, number, number, number, number];
 
@@ -246,11 +254,12 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
   const features: Feature[] = [];
 
   // 1. Holes: the concave cylinders along an axis, one per surface; on one axis line, a stack (counterbores over a hole,
-  // countersinks and a drill point on it). A cylinder round less than 250° is no hole (a corner, a notch, a slot's end).
+  // countersinks and a drill point on it). A cylinder round 200° or less is no hole (a corner, a notch, a slot's end:
+  // 180°); a hole another one runs into keeps more than that.
   const { bores, cones } = boresOf(P, faces);
   const holeFaces = new Set<number>();
   const stacks: Bore[][] = [];
-  for (const b of bores.filter((x) => x.span >= 250)) {
+  for (const b of bores.filter((x) => x.span > 200)) {
     const s = stacks.find((st) => st[0].k === b.k && Math.hypot(st[0].c[0] - b.c[0], st[0].c[1] - b.c[1]) < 0.01);
     if (s) s.push(b);
     else stacks.push([b]);
@@ -508,6 +517,12 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       const best = (shares.get(fid) ?? []).filter((x) => groupOf.has(x.r)).sort(better)[0];
       if (best) best.r.faces.push(fid);
     }
+  // A face no shape holds half of (a wall two pockets share): every shape's that holds a tenth of it.
+  const taken = new Set(groups.flatMap((g) => g.recs.flatMap((r) => r.faces)));
+  for (const [fid, by] of shares) {
+    if (taken.has(fid)) continue;
+    for (const x of by) if (groupOf.has(x.r) && x.a >= 0.1 * byId.get(fid)!.area && !x.r.faces.includes(fid)) x.r.faces.push(fid);
+  }
   // From every side whose pieces' rooms hold all of it (a cell or two, or one in 200, aside: the grid's own).
   const seenFrom = SIDES.map((s) => {
     const m = new Uint8Array(grid.part.length);
@@ -515,15 +530,14 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     return [s.name, m] as const;
   });
   const cellsOf = new Map<Feature, Uint8Array>();
-  const DBG = (globalThis as { __recDebug?: (s: string) => void }).__recDebug;
-  if (DBG) for (const r of split) DBG(`${r.side} h=${r3(r.h)} thr=${r.through} into=${!!r.into} area=${r3(area(r.own))} ext=${JSON.stringify(extentOf(r.own))} faces=${r.faces} cells=${r.cells!.length} parent=${r.parent ? r3(r.parent.h) : '-'} grp=${groups.findIndex((g) => g.recs.includes(r))} gone=${gone.includes(r)}`);
   const rank: FeatureKind[] = ['pocket', 'slot', 'notch', 'step', 'window', 'outline'];
   for (const g of groups) {
     // Named from the side it has a floor on (a pocket before a slot before a step...).
-    const named = g.recs.map((r) => ({ r, kind: r.kind ?? kindOf(r) }));
-    const { r, kind: k0 } = named.filter((x) => !x.r.through && x.r.faces.length).sort((a, b) => rank.indexOf(a.kind) - rank.indexOf(b.kind))[0] ?? named.filter((x) => x.r.faces.length)[0] ?? named[0];
+    // On a tie, the side it has most floor on (a keyway is named from above, not from its end).
     const fs = [...new Set(g.recs.flatMap((x) => x.faces))].sort((a, b) => a - b);
     const gf = fs.map((id) => byId.get(id)!);
+    const named = g.recs.map((r) => ({ r, kind: nameOf(r, gf), floor: floorArea(r, byId) }));
+    const { r, kind: k0 } = named.filter((x) => !x.r.through && x.r.faces.length).sort((a, b) => rank.indexOf(a.kind) - rank.indexOf(b.kind) || b.floor - a.floor)[0] ?? named.filter((x) => x.r.faces.length)[0] ?? named[0];
     // Made only of an edge's faces (a chamfer's, a round's): that edge's shape (6), not a milled one.
     const narrowTilt = (f: ExactFace) => f.kind === 'plane' && axisOf(f.n) < 0 && narrow(P, f);
     if (gf.length && gf.every((f) => narrowTilt(f) || f.kind === 'cone' || (f.kind === 'cylinder' && !f.concave))) {
@@ -559,14 +573,7 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     const zs = gf.flatMap((f) => f.tris.flatMap((t) => [0, 1, 2].map((c) => T[t * 9 + c * 3 + 2])));
     const [z0, z1] = r.through ? (zs.length ? [Math.max(r.h, Math.min(...zs)), Math.min(r.top, Math.max(...zs))] : [r.h, r.top]) : [r.h, wallTop(r)];
     const corner = mineFaces.filter((f) => f.kind === 'cylinder' && f.concave && axisOf(apply(r.R, f.n)) === 2 && (f.span ?? 360) <= 181).map((f) => f.r!);
-    // A notch open at one end between two facing walls, as long as it is wide: a slot.
-    let width = kind === 'slot' ? (r.width ?? slotWidth(r, mineFaces)) : undefined;
-    if (kind === 'notch' && !r.through) {
-      const t = touches(r);
-      const along = t.xlo || t.xhi ? 0 : 1;
-      const w = slotWidth(r, mineFaces, 1 - along);
-      if (w !== undefined && e.hi[along] - e.lo[along] >= w - 0.01) [kind, width] = ['slot', w];
-    }
+    const width = kind === 'slot' ? (r.width ?? keyway(r, gf) ?? slotWidth(r, gf)) : undefined;
     const feat: Feature = {
       kind,
       from: [...from].sort(),
@@ -660,7 +667,19 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
   // 7. The check: the material between the part and its box, every bit of it explained by a shape (a test leaves some
   // out to see the check name them).
   const kept = features.filter((f) => !opts.leaveOut?.includes(f.kind));
-  const unexplained = check(P, grid, kept, cellsOf, byId, reach);
+  const { unexplained, undercuts } = check(P, grid, kept, cellsOf, byId, reach);
+  // Undercuts: room no straight tool along any axis reaches, under the part, next to a milled shape a side-cutting tool
+  // (a T-slot cutter) comes in through; made of the faces left there.
+  for (const u of undercuts) {
+    const near = (p: Vec) => [0, 1, 2].every((k) => p[k] >= u.box[k] - u.pad && p[k] <= u.box[k + 3] + u.pad);
+    const fs = unowned.filter((id) => {
+      const f = byId.get(id)!;
+      const inA = f.tris.reduce((t, x) => t + (near([0, 1, 2].map((k) => (P[x * 9 + k] + P[x * 9 + 3 + k] + P[x * 9 + 6 + k]) / 3) as Vec) ? triArea(P, x) : 0), 0);
+      return inA >= 0.5 * f.area;
+    });
+    for (const id of fs) unowned.splice(unowned.indexOf(id), 1);
+    kept.push({ kind: 'undercut', from: u.from, faces: fs, box: snap(u.box, faces, P, u.pad + 0.05) });
+  }
   return { features: kept, unexplained, unowned };
 }
 
@@ -690,7 +709,7 @@ function boxOf(Rt: Mat3, lo: Vec, hi: Vec): Box6 {
  * A box's sides put on the exact faces near them (a wall's plane, a cylinder's centre ± radius, a tilted face's ends):
  * micron sizes.
  */
-function snap(b: Box6, fs: ExactFace[], P: ArrayLike<number>): Box6 {
+function snap(b: Box6, fs: ExactFace[], P: ArrayLike<number>, tol = 0.06): Box6 {
   const exact: number[][] = [[], [], []];
   for (const f of fs) {
     if (f.kind === 'plane' && axisOf(f.n) >= 0) exact[axisOf(f.n)].push(f.at[axisOf(f.n)]);
@@ -702,7 +721,7 @@ function snap(b: Box6, fs: ExactFace[], P: ArrayLike<number>): Box6 {
       }
   }
   return b.map((v, i) => {
-    const near = exact[i % 3].filter((x) => Math.abs(x - v) < 0.06).sort((p, q) => Math.abs(p - v) - Math.abs(q - v))[0];
+    const near = exact[i % 3].filter((x) => Math.abs(x - v) < tol).sort((p, q) => Math.abs(p - v) - Math.abs(q - v))[0];
     return r3(near ?? v);
   }) as Box6;
 }
@@ -712,6 +731,25 @@ function touches(r: Rec) {
   const e = extentOf(r.B);
   const o = extentOf(r.own);
   return { xlo: o.lo[0] < e.lo[0] + 0.02, xhi: o.hi[0] > e.hi[0] - 0.02, ylo: o.lo[1] < e.lo[1] + 0.02, yhi: o.hi[1] > e.hi[1] - 0.02 };
+}
+
+/** A notch open at one end between two facing walls (of its shape's faces fs), as long as it is wide (a keyway): its width. */
+function keyway(r: Rec, fs: ExactFace[]): number | undefined {
+  if (r.through) return undefined;
+  const t = touches(r);
+  const along = t.xlo || t.xhi ? 0 : 1;
+  const e = extentOf(r.own);
+  const w = slotWidth(r, fs, 1 - along);
+  return w !== undefined && e.hi[along] - e.lo[along] >= w - 0.01 ? w : undefined;
+}
+/** A piece's kind as named (a keyway: a slot). */
+function nameOf(r: Rec, fs: ExactFace[]): FeatureKind {
+  const k = r.kind ?? kindOf(r);
+  return k === 'notch' && keyway(r, fs) !== undefined ? 'slot' : k;
+}
+/** How much of a piece's floor is its own faces' (mm²). */
+function floorArea(r: Rec, byId: Map<number, ExactFace>): number {
+  return r.faces.map((id) => byId.get(id)!).filter((f) => f.kind === 'plane' && apply(r.R, f.n)[2] > 0.9999 && Math.abs(apply(r.R, f.at)[2] - r.h) < 0.01).reduce((t, f) => t + f.area, 0);
 }
 
 function kindOf(r: Rec): FeatureKind {
@@ -841,7 +879,7 @@ function prismCells(g: Grid, r: Rec): Int32Array {
 }
 
 /** The material between the part and its box that no shape removes: cells, joined; what is over 1 mm³. */
-function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<Feature, Uint8Array>, byId: Map<number, ExactFace>, reach: Map<number, number>): { mm3: number; box: Box6 }[] {
+function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<Feature, Uint8Array>, byId: Map<number, ExactFace>, reach: Map<number, number>): { unexplained: { mm3: number; box: Box6 }[]; undercuts: { box: Box6; pad: number; from: string[] }[] } {
   const { bb, n, st, part } = g;
   const idx = (i: number, j: number, k: number) => (k * n[1] + j) * n[0] + i;
   const done = new Uint8Array(part.length);
@@ -885,6 +923,22 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
   for (let id = 0; id < part.length; id++) if (!part[id] && !done[id]) left[id] = 1;
   const seen = new Uint8Array(part.length);
   const out: { mm3: number; box: Box6 }[] = [];
+  const undercuts: { box: Box6; pad: number; from: string[] }[] = [];
+  // Which milled shape holds each cell (the first), to find what a leftover room lies next to.
+  const milled = features.filter((f) => cellsOf.has(f));
+  const holder = new Int16Array(part.length).fill(-1);
+  milled.forEach((f, fi) => {
+    const m = cellsOf.get(f)!;
+    for (let id = 0; id < m.length; id++) if (m[id] && holder[id] < 0) holder[id] = fi;
+  });
+  /** Part over a cell toward a side (its tool would have to cut through it). */
+  const hidden = (i: number, j: number, k: number, side: string) => {
+    const a = AX.indexOf(side[0] as 'X');
+    const d = side[1] === '+' ? 1 : -1;
+    const c = [i, j, k];
+    for (c[a] += d; c[a] >= 0 && c[a] < n[a]; c[a] += d) if (part[idx(c[0], c[1], c[2])]) return true;
+    return false;
+  };
   const nb = [
     [1, 0, 0],
     [-1, 0, 0],
@@ -901,12 +955,15 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
     let deep = 0;
     const lo = [Infinity, Infinity, Infinity];
     const hi = [-Infinity, -Infinity, -Infinity];
+    const cells: number[] = [];
+    const next = new Set<number>();
     while (stack.length) {
       const id = stack.pop()!;
       const i = id % n[0];
       const j = Math.floor(id / n[0]) % n[1];
       const k = Math.floor(id / (n[0] * n[1]));
       count++;
+      cells.push(id);
       const p = cellAt(g, i, j, k);
       for (let a = 0; a < 3; a++) [lo[a], hi[a]] = [Math.min(lo[a], p[a]), Math.max(hi[a], p[a])];
       let fringe = false;
@@ -915,6 +972,7 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
         if (a < 0 || b < 0 || c < 0 || a >= n[0] || b >= n[1] || c >= n[2]) continue;
         const o = idx(a, b, c);
         if (part[o]) fringe = true;
+        if (holder[o] >= 0) next.add(holder[o]);
         if (left[o] && !seen[o]) {
           seen[o] = 1;
           stack.push(o);
@@ -923,9 +981,19 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
       if (!fringe) deep++;
     }
     const mm3 = count * st[0] * st[1] * st[2];
-    if (deep > 0 && mm3 >= 1) out.push({ mm3: r3(mm3), box: [lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]].map(r3) as Box6 });
+    if (deep === 0 || mm3 < 1) continue;
+    // Next to a milled shape and hidden from all its sides by the part over it (nine in ten of its cells): an undercut
+    // reached through that shape. Else what no shape explains.
+    const from = [...new Set([...next].flatMap((fi) => milled[fi].from))].filter((side) => {
+      let under = 0;
+      for (const id of cells) if (hidden(id % n[0], Math.floor(id / n[0]) % n[1], Math.floor(id / (n[0] * n[1])), side)) under++;
+      return under >= 0.9 * cells.length;
+    });
+    const half = st.map((v) => v / 2);
+    if (next.size && from.length) undercuts.push({ box: [lo[0] - half[0], lo[1] - half[1], lo[2] - half[2], hi[0] + half[0], hi[1] + half[1], hi[2] + half[2]] as Box6, pad: Math.max(...half), from: from.sort() });
+    else out.push({ mm3: r3(mm3), box: [lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]].map(r3) as Box6 });
   }
-  return out;
+  return { unexplained: out, undercuts };
 }
 
 function mark(done: Uint8Array, part: Uint8Array, n: number[], st: number[], bb: { min: Vec; max: Vec }, inSide: (p: Vec) => boolean, ...ranges: [number, number, number][]) {

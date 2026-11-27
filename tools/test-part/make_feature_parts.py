@@ -5,13 +5,12 @@ even if a shape intersects with the other"), each with its answer key: tests/mod
     python3 -m venv /tmp/cad && /tmp/cad/bin/pip install build123d
     /tmp/cad/bin/python tools/test-part/make_feature_parts.py        # writes tests/models/feat-<name>.{step,json}
 
-Every part sits with its box's corner at the origin (mm). The answer key lists each shape once, by the rule the
-recognizer keeps (src/lib/cam/recognize.ts):
-  - a shape is what its surfaces are: one hole however many pieces another shape cuts its wall into;
-  - shapes at one depth that run into each other are one pocket, but a slot (two facing walls across, open at an end)
-    and a hole (a cylinder) stay themselves; a deeper shape starts at the floor of the shallower one it is cut from;
-  - "from": the sides it can be reached from (a hole: the ends of its axis that open; a milled shape: the sides it
-    is seen open from); "box": what it removes, [x0, y0, z0, x1, y1, z1]; "depth": from where it starts to its floor.
+Every part sits with its box's corner at the origin (mm). The answer key lists each shape once, by the rule written
+out at the top of src/lib/cam/recognize.ts (the recognizer): one shape per set of surfaces (a hole cut in pieces is one
+hole); one pocket per depth, slots and holes themselves; a deeper shape's room its own up to the top, its depth from
+the top of the walls round it; "from": the sides a straight tool cuts all of it from (a hole: the ends that open; an
+undercut: the shape a side-cutting tool comes in through); "box": what it removes, [x0, y0, z0, x1, y1, z1].
+Keys are written from that rule and the drawing, before the recognizer is run on a new part.
 """
 
 import json
@@ -151,6 +150,86 @@ def slope_hole():
     ]
 
 
+def slot_cross_holes():
+    # A slot across Y; a Ø6 along X through its room (two pieces of wall, one hole) and one under its floor; a Ø5 down
+    # from the slot's floor through that lower one (its wall in two pieces too).
+    part = Box(60, 30, 20, align=LO) - Pos(25, -1, 10) * Box(10, 32, 11, align=LO)
+    part = part - xhole(15, 15, 6, -1, 61) - xhole(15, 6, 6, -1, 61) - zhole(30, 15, 5, -1, 11)
+    return part, [
+        {"kind": "slot", "from": ["Y+", "Y-", "Z+"], "box": [25, 0, 10, 35, 30, 20], "depth": 10, "width": 10},
+        hole("X", [15, 15], 6, 60, ["X+", "X-"], True),
+        hole("X", [15, 6], 6, 60, ["X+", "X-"], True),
+        hole("Z", [30, 15], 5, 10, ["Z+", "Z-"], True),
+    ]
+
+
+def overlap_holes():
+    # A Ø10 and a Ø6 that run into each other (each wall broken open its whole length); a Ø6 whose top half the
+    # pocket's wall cuts (whole round below the pocket's floor).
+    part = Box(40, 30, 10, align=LO) - zhole(10, 15, 10, -1, 11) - zhole(16, 15, 6, -1, 11)
+    part = part - pocket(26, 5, 36, 25, 5, 11, 2) - zhole(25, 15, 6, -1, 11)
+    return part, [
+        {**hole("Z", [10, 15], 10, 10, ["Z+", "Z-"], True), "open": True},
+        {**hole("Z", [16, 15], 6, 10, ["Z+", "Z-"], True), "open": True},
+        hole("Z", [25, 15], 6, 10, ["Z+", "Z-"], True),
+        {"kind": "pocket", "from": ["Z+"], "box": [26, 5, 5, 36, 25, 10], "depth": 5, "corner": 2},
+    ]
+
+
+def nested_pockets():
+    # A pocket 6 deep; one inside it 6 deeper (from its floor); one at its X+ end 10 deep from the top (its walls rise
+    # to the top but where it runs into the first).
+    part = Box(50, 40, 20, align=LO) - pocket(5, 5, 45, 35, 14, 21, 4) - pocket(15, 12, 35, 28, 8, 15, 3)
+    part = part - pocket(40, 15, 48, 25, 10, 21, 2)
+    return part, [
+        {"kind": "pocket", "from": ["Z+"], "box": [5, 5, 14, 45, 35, 20], "depth": 6, "corner": 4},
+        {"kind": "pocket", "from": ["Z+"], "box": [15, 12, 8, 35, 28, 14], "depth": 6, "corner": 3},
+        {"kind": "pocket", "from": ["Z+"], "box": [40, 15, 10, 48, 25, 20], "depth": 10, "corner": 2},
+    ]
+
+
+def rib_pockets():
+    # Two pockets 8 deep side by side; the rib between them 3 lower than the top: each pocket its own room up to the
+    # top, the rib's top a pocket 3 deep of its own.
+    part = Box(60, 30, 20, align=LO) - pocket(5, 5, 55, 25, 17, 21, 0) - pocket(5, 5, 28, 25, 12, 21, 0)
+    part = part - pocket(32, 5, 55, 25, 12, 21, 0)
+    return part, [
+        {"kind": "pocket", "from": ["Z+"], "box": [5, 5, 12, 28, 25, 20], "depth": 8},
+        {"kind": "pocket", "from": ["Z+"], "box": [32, 5, 12, 55, 25, 20], "depth": 8},
+        {"kind": "pocket", "from": ["Z+"], "box": [28, 5, 17, 32, 25, 20], "depth": 3},
+    ]
+
+
+def open_slots():
+    # Two keyways open at the X+ end: one with a round end (cut from the top only), one square-ended (from the end too).
+    keyway = Pos(34, 11, 15) * Box(27, 8, 6, align=LO) + Pos(34, 15, 15) * Cylinder(4, 6, align=HOLE)
+    part = Box(60, 30, 20, align=LO) - keyway - Pos(40, 21, 15) * Box(21, 6, 6, align=LO)
+    return part, [
+        {"kind": "slot", "from": ["Z+"], "box": [30, 11, 15, 60, 19, 20], "depth": 5, "width": 8, "corner": 4},
+        {"kind": "slot", "from": ["X+", "Z+"], "box": [40, 21, 15, 60, 27, 20], "depth": 5, "width": 6},
+    ]
+
+
+def chamfer_slot():
+    # The top edges chamfered 1 mm, then a slot across Y that cuts two of the chamfers in two: still four edges.
+    part = chamfer(Box(60, 30, 20, align=LO).edges().group_by(Axis.Z)[-1], 1) - Pos(20, -1, 14) * Box(10, 32, 7, align=LO)
+    return part, [
+        {"kind": "chamfer", "from": ["X+", "X-", "Y+", "Y-", "Z+"], "size": 1, "angle": 45, "count": 4},
+        {"kind": "slot", "from": ["Y+", "Y-", "Z+"], "box": [20, 0, 14, 30, 30, 20], "depth": 6, "width": 10},
+    ]
+
+
+def blind_t_slot():
+    # A T-slot closed at both ends: its neck a pocket from the top, its two wings under the top no straight tool along
+    # any axis reaches (a T-slot cutter through the neck): undercuts.
+    part = Box(60, 30, 20, align=LO) - Pos(10, 12, 8) * Box(40, 6, 13, align=LO) - Pos(10, 8, 8) * Box(40, 14, 6, align=LO)
+    return part, [
+        {"kind": "pocket", "from": ["Z+"], "box": [10, 12, 8, 50, 18, 20], "depth": 12},
+        {"kind": "undercut", "from": ["Z+"], "box": [10, 8, 8, 50, 12, 14]},
+        {"kind": "undercut", "from": ["Z+"], "box": [10, 18, 8, 50, 22, 14]},
+    ]
+
+
 PARTS = {
     "pocket-hole": (pocket_part, (50, 40, 20)),
     "counterbore-break": (counterbore_break, (30, 20, 15)),
@@ -161,6 +240,13 @@ PARTS = {
     "chamfer-holes": (chamfer_holes, (40, 30, 15)),
     "countersinks": (countersinks, (40, 20, 12)),
     "slope-hole": (slope_hole, (40, 30, 20)),
+    "slot-cross-holes": (slot_cross_holes, (60, 30, 20)),
+    "overlap-holes": (overlap_holes, (40, 30, 10)),
+    "nested-pockets": (nested_pockets, (50, 40, 20)),
+    "rib-pockets": (rib_pockets, (60, 30, 20)),
+    "open-slots": (open_slots, (60, 30, 20)),
+    "chamfer-slot": (chamfer_slot, (60, 30, 20)),
+    "blind-t-slot": (blind_t_slot, (60, 30, 20)),
 }
 
 for name, (make, size) in PARTS.items():

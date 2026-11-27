@@ -1,0 +1,72 @@
+{
+ "size": [
+  40,
+  30,
+  10
+ ],
+ "features": [
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    10,
+    15
+   ],
+   "d": 10,
+   "depth": 10,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ],
+   "open": true
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    16,
+    15
+   ],
+   "d": 6,
+   "depth": 10,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ],
+   "open": true
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    25,
+    15
+   ],
+   "d": 6,
+   "depth": 10,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "pocket",
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    26,
+    5,
+    5,
+    36,
+    25,
+    10
+   ],
+   "depth": 5,
+   "corner": 2
+  }
+ ]
+}

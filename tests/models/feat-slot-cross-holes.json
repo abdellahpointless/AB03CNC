@@ -1,0 +1,72 @@
+{
+ "size": [
+  60,
+  30,
+  20
+ ],
+ "features": [
+  {
+   "kind": "slot",
+   "from": [
+    "Y+",
+    "Y-",
+    "Z+"
+   ],
+   "box": [
+    25,
+    0,
+    10,
+    35,
+    30,
+    20
+   ],
+   "depth": 10,
+   "width": 10
+  },
+  {
+   "kind": "hole",
+   "axis": "X",
+   "at": [
+    15,
+    15
+   ],
+   "d": 6,
+   "depth": 60,
+   "through": true,
+   "from": [
+    "X+",
+    "X-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "X",
+   "at": [
+    15,
+    6
+   ],
+   "d": 6,
+   "depth": 60,
+   "through": true,
+   "from": [
+    "X+",
+    "X-"
+   ]
+  },
+  {
+   "kind": "hole",
+   "axis": "Z",
+   "at": [
+    30,
+    15
+   ],
+   "d": 5,
+   "depth": 10,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  }
+ ]
+}
