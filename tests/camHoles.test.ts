@@ -130,8 +130,8 @@ describe('a program with holes', () => {
 });
 
 // You (2026-11-27, an engineer's program for two Ø1 holes): the plastics peck 4 mm; a hole gets the drill of its own Ø,
-// else the nearest smaller one down to 0.1 mm under it, as the engineers drill (its tool says both sizes, in yellow), never
-// a smaller drill and
+// else the nearest smaller one down to 0.05 mm under it or a bigger one up to 0.12 over it (its tool says both sizes, in
+// yellow), never a smaller drill and
 // then a mill to size.
 describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
   const drillOf = (mat: 'ALU' | 'POM', d: number) => catalog(mat, haasTools).find((t) => t.type === 'SB' && Math.abs(t.diameter - d) < 1e-6)!;
@@ -160,8 +160,8 @@ describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
     expect(drilling([deep(d3, 3.03, true)], undefined, 'ALU', DEFAULT_LIMITS, 2, 0, () => 0)[0].sizes).toBeUndefined();
   });
 
-  it('drills a Ø3.03 hole with the Ø3 and mills nothing in it after; Ø6.5 with the Ø6.4; Ø6.6 (no drill within 0.1) is milled', () => {
-    const r = camProgram({ tris: plateWithHoles(40, 30, 12, [{ c: [10, 9], d: 3.03 }, { c: [28, 9], d: 6.5 }, { c: [20, 22], d: 6.6 }]), material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, noNest: true });
+  it('drills a Ø3.03 hole with the Ø3 and mills nothing in it after; Ø6.45 with the Ø6.4; Ø6.5 (0.1 over the Ø6.4) is milled', () => {
+    const r = camProgram({ tris: plateWithHoles(40, 30, 12, [{ c: [10, 9], d: 3.03 }, { c: [28, 9], d: 6.45 }, { c: [20, 22], d: 6.5 }]), material: 'ALU', tools: [], brand: 'HAAS', raw: [44, 34, 19], orient: { side: 'Z+', spin: false }, noNest: true });
     const ops = r.setups[0].ops;
     const d3 = ops.find((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 3) < 1e-6)!;
     expect(d3.sizes).toEqual([{ d: 3.03, used: 3 }]);
@@ -172,9 +172,9 @@ describe('the peck and the drill for a hole (you, 2026-11-27)', () => {
       const s = opSegments(o.lines);
       for (let i = 0; i < s.length; i += 3) if (s[i + 2] < -0.05) expect(Math.hypot(s[i] - hx, s[i + 1] - hy), o.name).toBeGreaterThan(1.5 - o.tool.diameter / 2 - 1e-6);
     }
-    expect(ops.find((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 6.4) < 1e-6)?.sizes).toEqual([{ d: 6.5, used: 6.4 }]);
-    // The Ø6.6 is milled (the Ø6.4 is 0.2 under it, the Ø7 0.4 over): no drill op has two holes of different Ø.
-    expect(ops.filter((o) => o.kind === 'drill').flatMap((o) => o.sizes ?? []).map((x) => x.d)).not.toContain(6.6);
+    expect(ops.find((o) => o.kind === 'drill' && Math.abs(o.tool.diameter - 6.4) < 1e-6)?.sizes).toEqual([{ d: 6.45, used: 6.4 }]);
+    // The Ø6.5 is milled (the Ø6.4 is 0.1 under it, the Ø7 0.5 over).
+    expect(ops.filter((o) => o.kind === 'drill').flatMap((o) => o.sizes ?? []).map((x) => x.d)).not.toContain(6.5);
     expect(r.check.match).toBeGreaterThanOrEqual(0.99);
     expect(r.check.collisions).toBe(0);
   }, 900_000);

@@ -584,9 +584,9 @@ const CHIP_FRIENDLY = new Set(['ALU', 'MS', 'FH', 'EPO', 'RESOPAL']);
 /** You (an engineer's program, 2026-11-27): the plastics peck 4 mm (4 x Ø at most); the others the engineers' own pecks. */
 const PLASTICS = new Set(['POM', 'PEEK', 'PCGF']);
 export const peckOf = (q: number, d: number, mat: string) => (PLASTICS.has(mat) ? Math.max(q, Math.min(4, 4 * d)) : q);
-/** You: a drill up to this much smaller than the hole drills it, as the engineers drill (Ø5.4 for Ø5.5, Ø3.5 for Ø3.6), its
- * tool marked; smaller and the hole is milled. */
-export const DRILL_UNDER = 0.1;
+/** You: a drill up to this much smaller than the hole drills it (a Ø2.95 for a Ø3), its tool marked; smaller and the hole
+ * is milled. A bigger one up to 0.12 mm over it, as the engineers drill (Ø3.2 holes with Ø3.3; you: for now). */
+export const DRILL_UNDER = 0.05;
 /** How far a hole's Ø read from the model's facets can be off (a drawn Ø2 reads Ø2.01): within it, the drill's own Ø. */
 export const HOLE_READ = 0.015;
 /** The cycle for a hole `deep` mm from where its material starts, by a drill of Ø `d`. */
@@ -2359,7 +2359,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       return `${axis}:${c.map((v, k) => (k === axis ? 0 : Math.round(v * 20))).join(',')}:${Math.round(h.r * 40)}`;
     };
     const drills = usable(tools, ['SB']);
-    // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: as the engineers, never drilled small
+    // The drill of that Ø, else the nearest: smaller by DRILL_UNDER at most (you: never drilled small
     // and milled to size), bigger by 0.12 at most (the shop: Ø3.2 holes with Ø3.3); its tool says so (sizes). Long
     // enough that its holder (Ø50 from the typed length) stays above the stock's top down to zEnd.
     const stockTop = Math.max(sb.hi[2], 0);
