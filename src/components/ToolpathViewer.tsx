@@ -5,7 +5,7 @@ import { IconArrowBarToDown as ArrowDownToLine, IconPlayerPause as Pause, IconPl
 import { Popover } from 'radix-ui';
 import { parseToolpath, speedsFor, type Move, type Vec } from '../lib/toolpath';
 import { hitInstant, toolAt } from '../lib/playback';
-import { SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
+import { setupMarkers, SPEEDS, usePlayback, type PlayGate } from '../lib/usePlayback';
 import { partLook } from '../lib/partLook';
 import { analyseProgram, calesKey, DEFAULT_JAW_HEIGHT, JAW_KEY, readJawHeight, spacerAt, viseSpans, type Collision, type SetupInfo } from '../lib/setups';
 import { WEAK_COLORS, WEAK_MM, type Jump, type Measurement, type ModelState, type ModelView, type SolidState } from './Toolpath3D';
@@ -130,19 +130,18 @@ export default function ToolpathViewer({
   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
   const { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, clockSeconds } = usePlayback(path, setups, gate);
   // Setup markers above the slider: one that starts too close to the one before goes a row up.
-  const markerRows = useMemo(() => {
-    let last = -Infinity;
-    let lastUp = true;
-    return setups.slice(1).map((x) => {
-      if (!x.moves) return false;
-      const f = x.moves[0] / Math.max(1, path.moves.length);
-      // shortcut: a marker is about 9 % of a desktop slider wide; measure the labels if they ever grow.
-      const up = f - last < 0.09 && !lastUp;
-      last = f;
-      lastUp = up;
-      return up;
-    });
-  }, [setups, path]);
+  // With no room on either row it joins the marker before it. How much room there is: the slider's width.
+  const track = useRef<HTMLDivElement>(null);
+  const [trackWidth, setTrackWidth] = useState(0);
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setTrackWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [total]);
+  const markers = useMemo(() => setupMarkers(setups, path.moves.length, trackWidth), [setups, path, trackWidth]);
+  const twoRows = markers.some((m) => m.up);
   const hitText = (c: Collision) => t(c.what === 'holder' ? 'toolpath.holderJawHit' : c.what === 'holderPart' ? 'toolpath.holderPartHit' : c.what === 'cale' ? 'toolpath.caleHit' : c.what === 'spacer' ? 'toolpath.spacerHit' : 'toolpath.jawHit', { t: c.tool ?? '?', mm: mm(c.depth) });
   // Setups whose written turn and position disagree: an error first, then a caution once inspected.
   const conflicts = setups.filter((x) => x.conflict);
@@ -1222,32 +1221,30 @@ export default function ToolpathViewer({
             <button onClick={jumpEnd} className="btn-icon w-8 h-8" aria-label={t('toolpath.end')} title={t('toolpath.end')}>
               <SkipForward size={14} />
             </button>
-            <div className={`order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative ${markerRows.some((r) => r) ? 'sm:pt-14' : 'sm:pt-7'}`}>
+            <div ref={track} className={`order-first basis-full sm:order-none sm:basis-0 flex-1 min-w-0 relative ${twoRows ? 'sm:pt-14' : 'sm:pt-7'}`}>
               {/* Where the part turns, with its new cales: a click goes there and plays the turn. */}
               {multi &&
-                setups.slice(1).map((s, i) => {
-                  if (!s.moves) return null;
-                  const f = s.moves[0] / total;
-                  // A marker that would cover the one before it goes on the row above, with a longer tick.
-                  const up = markerRows[i];
+                markers.map(({ setup: s, f, up, more }) => {
+                  // A marker on the row above has a longer tick; one that took in the setups right after it shows only "+n" for them.
                   return (
                     <button
                       key={s.index}
                       onClick={() => jumpFlip(s)}
                       aria-label={t('toolpath.jumpTo', { n: s.index + 1 })}
                       title={t('toolpath.jumpTo', { n: s.index + 1 })}
-                      className={`no-glass hidden sm:inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:w-px after:bg-[var(--border-strong)] ${up || !markerRows.some((r) => r) ? 'top-0' : 'top-7'} ${up ? 'after:h-8' : 'after:h-1.5'}`}
+                      className={`no-glass hidden sm:inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[#0E1421] px-2 h-6 text-[11px] font-mono text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--text-primary)] whitespace-nowrap after:absolute after:left-1/2 after:top-full after:w-px after:bg-[var(--border-strong)] ${up || !twoRows ? 'top-0' : 'top-7'} ${up ? 'after:h-8' : 'after:h-1.5'}`}
                       // The app's button style makes every button relative: placed here, over it.
                       style={{ position: 'absolute', left: `calc(${f * 100}% + ${(0.5 - f) * 16}px)` }}
                     >
                       <span className="font-bold text-[var(--text-primary)]">{s.index + 1}</span>
-                      {s.rotation && (
+                      {more > 0 && <span>+{more}</span>}
+                      {!more && s.rotation && (
                         <span className="inline-flex items-center gap-0.5">
                           <RotateCw size={10} aria-hidden="true" />
                           {s.rotation.deg}° {s.rotation.axis}
                         </span>
                       )}
-                      {s.support !== null && <span>▭{fmtNumber(s.support)}</span>}
+                      {!more && s.support !== null && <span>▭{fmtNumber(s.support)}</span>}
                     </button>
                   );
                 })}

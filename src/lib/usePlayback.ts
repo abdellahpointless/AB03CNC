@@ -15,6 +15,32 @@ export const SPEEDS = [5, 10, 50, 250];
 /** end: the move playback stops before (one tool's run, played alone); none: the program's end. */
 export type PlayGate = { wait: () => boolean; mode3d: () => boolean; end?: () => number | null };
 
+/**
+ * The setup markers above the slider (width: the slider's, in px), each where its setup starts (f: share of
+ * the moves). One that would touch the last marker on the slider row goes a row up; with both rows taken it
+ * joins the marker before it, which then shows "+n" for it (still reached from the tabs and the slider).
+ */
+export function setupMarkers(setups: SetupInfo[], moves: number, width: number): { setup: SetupInfo; f: number; up: boolean; more: number }[] {
+  const out: { setup: SetupInfo; f: number; up: boolean; more: number }[] = [];
+  // shortcut: half a label's width from its characters (11 px mono, an icon as one), room kept for "+9"; measure the labels if they change.
+  const half = (s: SetupInfo) => {
+    const label = `${s.index + 1}${s.rotation ? ` R${s.rotation.deg}° ${s.rotation.axis}` : ''}${s.support !== null ? ` R${s.support}` : ''}`;
+    return (18 + 7 * Math.max(label.length, `${s.index + 1} +9`.length)) / 2;
+  };
+  const right = [-Infinity, -Infinity];
+  for (const setup of setups.slice(1)) {
+    if (!setup.moves) continue;
+    const f = setup.moves[0] / Math.max(1, moves);
+    const row = [0, 1].find((r) => f * width - half(setup) >= right[r] + 4);
+    if (row === undefined) out[out.length - 1].more++;
+    else {
+      right[row] = f * width + half(setup);
+      out.push({ setup, f, up: row === 1, more: 0 });
+    }
+  }
+  return out;
+}
+
 export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRefObject<PlayGate>, initialSpeed = 2) {
   const total = path.moves.length;
   // Open at the start of the program: the raw part, before the first move.
