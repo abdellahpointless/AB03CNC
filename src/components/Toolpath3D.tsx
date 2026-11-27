@@ -13,6 +13,7 @@ import { addLights } from '../lib/lights';
 import type { PartLook } from '../lib/partLook';
 import type { Piece } from '../lib/modelCompare';
 import type { ModelError } from '../lib/modelLimits';
+import { fmtNumber } from '../i18n/format';
 
 /*
  * 3D view of one setup: the vise (or modular fixture), the parallels, the part as a solid that
@@ -233,7 +234,7 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
   const runs: number[] = setup.jawTopZ !== null ? viseSpans(setup).map(([x0]) => x0) : [cb.min[0] - 2];
   const length = PARALLEL_LENGTH;
   const end = runs[runs.length - 1] + length;
-  const text = `${fmtMm(setup.support ?? restZ - floorZ)} MM`;
+  const text = `${fmtNumber(setup.support ?? restZ - floorZ, 1)} MM`;
   const g = buildParallels(runs, length, cales, floorZ, text);
   // Their height as a tag over the right end, shown while they are changed.
   const tag = label(`▭ ${text}`, '#FFD27A');
@@ -249,8 +250,6 @@ function buildCales(setup: SetupInfo | null): THREE.Group | null {
 
 /** The measure's vise planes: hit by a click from either side, never drawn. */
 const PLANE = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, visible: false });
-
-const fmtMm = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
 /** A curved arrow around a turning axis (three.js frame) showing which way the part turns. */
 function turnArrow(axis: THREE.Vector3, angle: number, radius: number, text: string): THREE.Group {
