@@ -2185,11 +2185,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
     };
     // Over a jaw: beside the faces it holds (Y), wholly.
     const overJaw = (h: { c: P2; r: number }, e: { lo: P2; hi: P2 } | null) => !!e && (h.c[1] - h.r > e.hi[1] || h.c[1] + h.r < e.lo[1]);
+    // How deep the jaws may go under the stock this clamping still cuts beside the faces they hold (deepest sets it).
+    let cutGrip = Infinity;
     const deepest = () => {
       let jaw = -1.3;
       // The faces the jaws would hold: the stock's from its bottom up (the loop below keeps them the same).
       const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
-      const nearVise = nearOf(e3 ?? sb);
+      // Beside those faces only where the jaws stand along X (from the stop, both vises for a long part): past their
+      // end the tools cut down beside the part (the jaws kept off where they stand), no limit to the grip.
+      const f3 = e3 ?? { lo: [sb.lo[0], sb.lo[1]], hi: [sb.hi[0], sb.hi[1]] };
+      const spans: [number, number][] = [[f3.lo[0] - 60, f3.lo[0] + VISE.width], ...(f3.hi[0] - f3.lo[0] > VISE.width + OVERHANG ? [[f3.lo[0] + VISE.width + VISE.gap, f3.lo[0] + 2 * VISE.width + VISE.gap] as [number, number]] : [])];
+      const nearHeld: Region = union([
+        ...spans.flatMap(([a, b]) => [...rect(a, f3.lo[1] - 60, b, f3.lo[1] + reachR), ...rect(a, f3.hi[1] - reachR, b, f3.hi[1] + 60)]),
+        ...rect(f3.lo[0] - 60, f3.lo[1] - 60, f3.lo[0] + reachR, f3.hi[1] + 60),
+      ]);
       // A hole still to drill that comes out of the part over a jaw: the jaw tops 1 mm under the drill's point, 0.3 x its
       // Ø and 0.5 mm past where it comes out (your part, 2026-11-27: a Ø3.2 hole over the moving jaw, the jaws on a tab).
       for (const h of f.holes) {
@@ -2204,11 +2213,15 @@ function planFor(input: CamInput, vertical: number): CamResult {
       for (let z = -0.5; z > Math.max(sb.lo[2], -H); z -= 1) shade.push({ z, r: union(shade.at(-1)?.r ?? [], slice(P, z)) });
       const over = (z: number) => shade.filter((s) => s.z > z + 0.5).at(-1)?.r ?? [];
       // From the part's bottom: the stock under it is never cut here, the jaws may grip it (a review finding).
-      for (let z = Math.max(sb.lo[2], -H) + 0.05; z < jaw + 1; z += 0.25)
-        if (area(intersection(opened(difference(left.at(z - 0.02, z + 0.02), offset(union(filled(slice(P, z)), over(z)), Math.max(0.05, left.skin)))), nearVise)) > 1) {
-          jaw = z - 1;
-          break;
-        }
+      const under = (near: Region) => {
+        for (let z = Math.max(sb.lo[2], -H) + 0.05; z < jaw + 1; z += 0.25)
+          if (area(intersection(opened(difference(left.at(z - 0.02, z + 0.02), offset(union(filled(slice(P, z)), over(z)), Math.max(0.05, left.skin)))), near)) > 1) return z - 1;
+        return jaw;
+      };
+      // Stock the jaws cannot stay under with a 3 mm grip (a pocket opening onto the face they hold, down its whole
+      // height): as before, from the stock's own faces (the wall left by the jaws, noted: jawWall).
+      const held3 = under(nearHeld);
+      jaw = held3 - sb.lo[2] >= GRIP_MIN ? held3 : under(nearOf(sb));
       // Its chamfers within a graver's reach (and 1 mm) of the faces it holds, outside or in: the graver's cone
       // stands beside the jaws there (the validation found one 0.95 mm into a jaw, from an inner edge).
       const reach = Math.max(4, ...usable(tools, ['ST']).map((g) => g.diameter / 2)) + 1;
@@ -2223,7 +2236,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         if (!e3 || !e || Math.abs(e.lo[1] - e3.lo[1]) > 0.2 || Math.abs(e.hi[1] - e3.hi[1]) > 0.2) break;
         same = g;
       }
-      return Math.min(jaw - sb.lo[2], same);
+      cutGrip = jaw - sb.lo[2];
+      return Math.min(cutGrip, same);
     };
     // Clamping 1: the outline cut whole, 0.5 mm under the part (clamp.ts: firstWant).
     const want = !setups.length
@@ -2309,8 +2323,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
     // In the POM nest: what sits in its pocket (the pocket is made round it, and the part is put by it).
     const band = extent(left.at(base + stepGap, jawTop - (onJaw !== undefined ? Math.max(0.6, 2 * left.skin) : 0)));
-    // Below the jaw tops the tools keep off the faces the jaws really hold (also the stop's).
-    const nearVise = nearOf(band ?? sb);
+    // Below the jaw tops: the stock out of the jaws' and the stop's reach (the jaws themselves are kept off where they stand, below).
+    const nearVise = nearOf(sb);
     // The part's own outline over that height, for the faces of the band.
     const nz = Math.max(2, Math.ceil(jawTop - base) + 1);
     const zs = Array.from({ length: nz }, (_, i) => base + stepGap + 0.05 + ((jawTop - base - stepGap - 0.1) * i) / (nz - 1));
@@ -2995,7 +3009,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       // Clamping 1 (the 0.5 mm method): the jaw tops never less than the gap under its outline cut (0.5 under the part).
       const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most && (setups.length > 0 || g <= waste - 0.5 - gap + 1e-6));
       // A later clamping never deeper than the stock it still cuts beside the faces it holds allows (deepest).
-      const deeper = grips.filter((g) => g > grip && (!setups.length || g <= want + 1e-6)).sort((p, q) => p - q);
+      const deeper = grips.filter((g) => g > grip && (!setups.length || g <= cutGrip + 1e-6)).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
       const other = (lost ? [...grips.filter((g) => g < grip).sort((p, q) => q - p), ...deeper] : deeper).find((g) => {
