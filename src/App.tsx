@@ -422,7 +422,8 @@ function Workspace() {
                   <Flag country={currentRegion().id} className="w-6 h-4 rounded-[3px] block ring-1 ring-[var(--border-subtle)] group-hover:ring-[var(--blue-500)] transition" />
                 </a>
               </div>
-              <span className="text-xs sm:text-[12px] text-[var(--text-secondary)] font-normal hidden sm:block truncate">
+              {/* From 1280 px only: narrower, it was cut ('…Tool Rema…') and took room from the controls. */}
+              <span className="text-xs sm:text-[12px] text-[var(--text-secondary)] font-normal hidden xl:block truncate">
                 {t('header.subtitle')}
               </span>
             </div>
