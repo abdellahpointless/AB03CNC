@@ -1036,9 +1036,12 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
         : live.paths;
 
 
+  // Parallels asked for the next make, drawn so in the 3D view (a preview, as `previews`): clamping 1's from its panel.
+  const askedCale = (i: number) => (i === 0 ? (clamp1 !== null && clamp1 !== result?.setups[0]?.cale ? clamp1 : undefined) : later[i] && 'cale' in later[i] ? (later[i] as { cale: number }).cale : undefined);
   // The clampings as the step chips and tabs show them: "2 · 180° X · 28".
   const stepName = (i: number) => {
-    const s = result?.setups[i];
+    const made = result?.setups[i];
+    const s = made && { ...made, cale: askedCale(i) ?? made.cale };
     if (!s) return { n: i + 1, turn: setupNodes.find((x) => x.i === i)?.side ?? '', rest: '' };
     // Every turn the note writes (a flip, then a quarter turn for a step: "180° X + 90° Z").
     const turn = writtenTurns(s.notes.join(' ')).join(' + ');
@@ -1051,7 +1054,7 @@ export default function CamAi({ onSend, onExit }: { onSend: (code: string, fileN
     if (s.notes.some((x) => /POM-NEST/.test(x))) return t('camAi.sim.nest');
     if (s.notes.some((x) => /SUR L'ETAU/.test(x))) return t('camAi.sim.onJaw');
     // Asked for the next make: drawn so in the 3D view (a preview), and said so here.
-    const asked = later[i] && 'cale' in later[i] ? (later[i] as { cale: number }).cale : undefined;
+    const asked = askedCale(i);
     if (asked !== undefined) return `${asked === 0 ? t('camAi.sim.onTable') : t('camAi.sim.parallels', { mm: fmt(asked, 0) })} · ${t('camAi.hold.preview')}`;
     return s.cale === 0 ? t('camAi.sim.onTable') : t('camAi.sim.parallels', { mm: fmt(s.cale, 0) });
   };
