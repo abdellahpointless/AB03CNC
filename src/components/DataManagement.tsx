@@ -16,7 +16,7 @@ interface LogLine {
 
 function LogView({ lines }: { lines: LogLine[] }) {
   const endRef = useRef<HTMLDivElement>(null);
-  React.useEffect(() => endRef.current?.scrollIntoView({ block: 'nearest' }), [lines.length]);
+  React.useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest' }); }, [lines.length]);
   if (!lines.length) return null;
   const color: Record<LogKind, string> = {
     info: 'text-[var(--text-secondary)]',
