@@ -241,7 +241,7 @@ export interface CamSetup {
   /** The lowest of what is left of the part here (setup frame Z). */
   bottom?: number;
   /** What the vise check was made with (its cuts aside): to check it again when an operation is edited (editProgram). */
-  vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number; floor: number };
+  vise?: { material: string; length: number; width: number; height: number; grip: number; thin: number; contact: Contact | null; squeeze: number; left: number; limits: Limits; screws?: number; floor: number; span?: number };
 }
 
 export interface Zone {
@@ -1175,7 +1175,14 @@ function contactOf(left: Left, bottom: number, grip: number, twoVises: boolean, 
   const x0 = e.lo[0] - spacerX;
   const spans = (len: number): [number, number][] => [[x0, x0 + len], ...(twoVises ? [[x0 + VISE.width + VISE.gap, x0 + VISE.width + VISE.gap + len] as [number, number]] : [])];
   const along = (r: Region, y0: number, y1: number, len: number) => spans(len).reduce((t, [a, b]) => t + area(intersection(r, rect(a, y0, b, y1))) / (y1 - y0), 0);
-  const jaws = Math.min(along(band, e.lo[1], e.lo[1] + strip, VISE.width), along(band, e.hi[1] - strip, e.hi[1], VISE.width));
+  // Each jaw's contact over the band's height (the face's area against it over that height), not its outline: a face a
+  // cut broke into teeth (a counterbore through its edge: you, 2026-11-27) is held by the teeth only.
+  const top = bottom + grip - (onJaw ? gap : 0);
+  const dz = Math.max(0.25, 2 * left.above);
+  const zs: number[] = [];
+  for (let z = bottom + dz / 2; z < top; z += dz) zs.push(z);
+  const held = (y0: number, y1: number) => (zs.length ? zs.reduce((t, z) => t + along(left.at(z, z), y0, y1, VISE.width), 0) / zs.length : along(band, y0, y1, VISE.width));
+  const jaws = Math.min(held(e.lo[1], e.lo[1] + strip), held(e.hi[1] - strip, e.hi[1]));
   const width = e.hi[1] - e.lo[1];
   const w = Math.min(6, width / 6);
   const floor = left.at(bottom, bottom + strip);
@@ -1693,7 +1700,7 @@ export function editProgram(input: CamInput, r: CamResult, edits: Record<string,
     if (!touched || !s.vise) return touched ? { ...s, ops } : s;
     const v = s.vise;
     const loads = ops.map((op) => loadOf(op, v.material, v.left, v.width, v.limits));
-    const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze });
+    const physics = v.screws !== undefined ? checkNest({ material: v.material, loads, screws: v.screws }) : checkSetup({ material: v.material, length: v.length, width: v.width, height: v.height, grip: v.grip, thin: v.thin, contact: v.contact!, loads, squeeze: v.squeeze, span: v.span });
     return { ...s, ops, physics };
   });
   return checked(input, { ...r, setups, notes: [...r.notes.filter((n) => n.key !== 'orderLocked'), ...orderNotes], code: post(input, setups, r.size, r.raw) });
@@ -2156,14 +2163,40 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // (the stock's Y faces) or the stop's (X-). Stock farther in, beside the part but out of the jaws' way (the study's
     // part: slivers in an end pocket 18 mm from the jaws, a strip at its free end), is cut below the jaw tops by a mill
     // small enough, the jaws kept off, and limits no grip.
+    // The faces held, not the whole stock: a waste block over the part, wider than what the jaws hold, put the stock
+    // beside a fin or a foot out of their reach on paper, and the jaws gripped over it (your test parts, 2026-11-27).
     const reachR = Math.max(1.5, (mills[mills.length - 1]?.diameter ?? 2) / 2 + 1);
-    const nearVise: Region = union([
-      ...rect(sb.lo[0] - 60, sb.lo[1] - 60, sb.hi[0] + 60, sb.lo[1] + reachR),
-      ...rect(sb.lo[0] - 60, sb.hi[1] - reachR, sb.hi[0] + 60, sb.hi[1] + 60),
-      ...rect(sb.lo[0] - 60, sb.lo[1] - 60, sb.lo[0] + reachR, sb.hi[1] + 60),
-    ]);
+    const nearOf = (b: { lo: ArrayLike<number>; hi: ArrayLike<number> }): Region =>
+      union([
+        ...rect(b.lo[0] - 60, b.lo[1] - 60, b.hi[0] + 60, b.lo[1] + reachR),
+        ...rect(b.lo[0] - 60, b.hi[1] - reachR, b.hi[0] + 60, b.hi[1] + 60),
+        ...rect(b.lo[0] - 60, b.lo[1] - 60, b.lo[0] + reachR, b.hi[1] + 60),
+      ]);
+    // Where a hole open all the way down leaves the part: the first height under it with no part round it (1 mm), as
+    // the drill finds it (beside a step that is over the stock's bottom, maybe over a jaw); undefined: it does not.
+    const exitOf = (h: Hole): number | undefined => {
+      const at = (s: Region, rr: number) => [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]].some(([dx, dy]) => inside(s, [h.c[0] + dx * rr, h.c[1] + dy * rr]) !== 0);
+      for (let z = h.bottom - 0.25; z > -H + 0.05; z -= 0.5) {
+        const s = slice(P, z);
+        if (at(s, h.r * 0.9)) return undefined;
+        if (!at(s, h.r + 1)) return z;
+      }
+      return -H;
+    };
+    // Over a jaw: beside the faces it holds (Y), wholly.
+    const overJaw = (h: { c: P2; r: number }, e: { lo: P2; hi: P2 } | null) => !!e && (h.c[1] - h.r > e.hi[1] || h.c[1] + h.r < e.lo[1]);
     const deepest = () => {
       let jaw = -1.3;
+      // The faces the jaws would hold: the stock's from its bottom up (the loop below keeps them the same).
+      const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
+      const nearVise = nearOf(e3 ?? sb);
+      // A hole still to drill that comes out of the part over a jaw: the jaw tops 1 mm under the drill's point, 0.3 x its
+      // Ø and 0.5 mm past where it comes out (your part, 2026-11-27: a Ø3.2 hole over the moving jaw, the jaws on a tab).
+      for (const h of f.holes) {
+        if (drilled.get(holeKey(R, h)) !== undefined || !overJaw(h, e3)) continue;
+        const out = h.through ? h.bottom : exitOf(h);
+        if (out !== undefined) jaw = Math.min(jaw, out - (0.6 * h.r + 0.5) - 1);
+      }
       // What stands over a level seen from the top: the part's slices above it, every 1 mm, its openings left
       // open (stock under one is reached through it). Stock beside the part but under that is not this
       // clamping's to cut: a later one takes it.
@@ -2176,7 +2209,6 @@ function planFor(input: CamInput, vertical: number): CamResult {
           jaw = z - 1;
           break;
         }
-      const e3 = extent(left.at(sb.lo[2], sb.lo[2] + 3));
       // Its chamfers within a graver's reach (and 1 mm) of the faces it holds, outside or in: the graver's cone
       // stands beside the jaws there (the validation found one 0.95 mm into a jaw, from an inner edge).
       const reach = Math.max(4, ...usable(tools, ['ST']).map((g) => g.diameter / 2)) + 1;
@@ -2277,6 +2309,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // the whole stock: after the first clamping, what stands above the jaws is wider than what they hold.
     // In the POM nest: what sits in its pocket (the pocket is made round it, and the part is put by it).
     const band = extent(left.at(base + stepGap, jawTop - (onJaw !== undefined ? Math.max(0.6, 2 * left.skin) : 0)));
+    // Below the jaw tops the tools keep off the faces the jaws really hold (also the stop's).
+    const nearVise = nearOf(band ?? sb);
     // The part's own outline over that height, for the faces of the band.
     const nz = Math.max(2, Math.ceil(jawTop - base) + 1);
     const zs = Array.from({ length: nz }, (_, i) => base + stepGap + 0.05 + ((jawTop - base - stepGap - 0.1) * i) / (nz - 1));
@@ -2396,6 +2430,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     // done: down to where the hole is finished by the drill. A plain blind hole to the drill's tip (you, Beta 2: the
     // engineers leave the point at a flat bottom, Pb361ad9d, Pfae5765f); else to where its full Ø ends.
     const toDrill: { h: Hole; tool: CamTool; z: number; pin?: boolean; done: number }[] = [];
+    let drillAtJaws = false;
     // The parallels stand under the held Y faces, 0.3 mm in, as wide as the app's reader puts them
     // (setups.ts placeCales), where the underside lies flat on them; else the reader may move them in.
     const caleW = parallelWidth(hold[1]);
@@ -2449,7 +2484,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
         };
         let z = h.bottom - 0.25;
         while (z > -H + 0.05 && open(z)) z -= 0.5;
-        if (z <= -H + 0.05) h = { ...h, bottom: -H, through: true };
+        // Through: where it leaves the part (beside a step it can be over the stock's bottom), not that bottom.
+        if (z <= -H + 0.05) h = { ...h, bottom: exitOf(h) ?? -H, through: true };
         else if (z < h.bottom - 0.5) {
           let [lo, hi] = [z, z + 0.5];
           while (hi - lo > 0.02) {
@@ -2507,6 +2543,13 @@ function planFor(input: CamInput, vertical: number): CamResult {
           if (!cale && !nested) z = Math.max(z, floor + 0.5);
           rest = z + 0.3 * d.diameter - h.bottom;
           rest = rest < 0.05 ? 0 : rest;
+        }
+        // Coming out over a jaw (the grip could not stay under it, 3 mm the least): never into it, 1 mm over its top; the
+        // grip is refused for it (drillAtJaws, below).
+        if (h.through && !nested && overJaw(h, band) && z < jawTop + 1) {
+          z = jawTop + 1;
+          rest = Math.max(rest, z + 0.3 * d.diameter - h.bottom);
+          drillAtJaws = true;
         }
         toDrill.push({ h, tool: d, z, pin: pinOf(h) !== undefined && Math.abs(d.diameter - pinOf(h)!) < 0.005, done: !h.through && !seat ? z : z + 0.3 * d.diameter });
         keepHoles.push(h);
@@ -2931,7 +2974,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
       contact = c.contact;
       // How far from the stop each cut works (the parallels' end): past a spacer, that much further.
       const loads = ops.map((op) => loadOf(op, mat, sb.lo[0] - spacerX, c.width || hold[1], limits));
-      return checkSetup({ material: mat, length: hold[0], width: c.width || hold[1], height: sb.hi[2] - base, grip: g, thin, contact: c.contact, loads, squeeze });
+      return checkSetup({ material: mat, length: hold[0], width: c.width || hold[1], height: sb.hi[2] - base, grip: g, thin, contact: c.contact, loads, squeeze, span: sb.hi[0] - sb.lo[0] });
     };
     const nest = nested ? nestFor(held.lo, held.hi, sb.lo[2], nestDepth) : undefined;
     const physics = nest
@@ -2947,11 +2990,12 @@ function planFor(input: CamInput, vertical: number): CamResult {
       notes.length = was.notes;
       return addSetup(si, undefined, cap);
     }
-    if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok)) {
+    if (!nested && fixed === undefined && (physics.feed < 1 || !physics.ok || drillAtJaws)) {
       // The designer's parallels stay: only lighter mills at their grip.
       // Clamping 1 (the 0.5 mm method): the jaw tops never less than the gap under its outline cut (0.5 under the part).
       const grips = theirs || onJaw !== undefined ? [] : CALE_HEIGHTS.map((c) => JAW - c).filter((g) => g >= 3 && g !== grip && g <= stockH - 1 && g <= most && (setups.length > 0 || g <= waste - 0.5 - gap + 1e-6));
-      const deeper = grips.filter((g) => g > grip).sort((p, q) => p - q);
+      // A later clamping never deeper than the stock it still cuts beside the faces it holds allows (deepest).
+      const deeper = grips.filter((g) => g > grip && (!setups.length || g <= want + 1e-6)).sort((p, q) => p - q);
       // A deep band that loses its contact (it reaches material narrower or wider than the faces held): shallower first.
       const lost = physics.issues.some((i) => i.key === 'jawContact' || i.key === 'restContact' || i.key === 'stopContact');
       const other = (lost ? [...grips.filter((g) => g < grip).sort((p, q) => q - p), ...deeper] : deeper).find((g) => {
@@ -2979,8 +3023,17 @@ function planFor(input: CamInput, vertical: number): CamResult {
         }
       }
       // No grip holds it as it lies: turned a quarter, the jaws on its other pair of faces (the long faces are
-      // preferred, but not over a clamping that holds), once; never against the operator's layout.
-      if (!theirs && !turnAsked && !quartered.has(si) && !(first >= 0 && SIDES[si].d[thin] !== 0)) {
+      // preferred, but not over a clamping that holds), once; never against the operator's layout: their first
+      // clamping, a turn they set. The side after it too (you, 2026-11-27: a face a counterbore broke into teeth is
+      // no face to grip, turn it about Z first), before the POM nest.
+      // The operator's second side only where the jaws then touch more of it (else the nest, after: your part held by a
+      // tab's 3.5 mm ends when turned).
+      const pairSecond = first >= 0 && SIDES[si].d[thin] !== 0;
+      const jawsOf = (l: Left) => contactOf(l, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).contact.jaws;
+      // Turned, the jaws close across what is now along them: never across a thin wall under a wider body (a 2 mm fin
+      // under a 40 mm base; the nest holds it on its top instead), a third of the stock's width there at the least.
+      const turnedBetter = () => !!band && band.hi[0] - band.lo[0] >= (sb.hi[0] - sb.lo[0]) / 3 && jawsOf({ ...left, at: (a, b) => left.at(a, b).map((poly) => poly.map(([x, y]) => [-y, x] as P2)) }) > jawsOf(left) + 0.5;
+      if (!theirs && !turnAsked && !framed && !quartered.has(si) && !(first >= 0 && si === first) && (!pairSecond || turnedBetter())) {
         quartered.add(si);
         feats[si] = featuresOf(side, false, mul(SPIN, feats[si].R));
         drilled.clear();
@@ -3016,6 +3069,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       physics.issues.push({ key: 'faceAtJaws' });
       physics.ok = false;
     }
+    if (!nest && drillAtJaws) {
+      physics.issues.push({ key: 'drillAtJaws' });
+      physics.ok = false;
+    }
     // No cut within 0.5 mm of the vise floor (the table the parallels, or the part, stand on): the simulation has none.
     const viseFloor = nested ? floor - NEST.floor : floor;
     const done = ops.map((op, i) => slowed(op, physics.opFeed[i])).map((op) => ({ ...op, lines: keepAbove(op.lines, viseFloor + 0.5) }));
@@ -3027,7 +3084,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     corners.push(...myCorners.map((w) => ({ R, t, ...w })));
     const viseIn = nest
       ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
-      : { material: mat, length: hold[0], width: contactOf(left, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: sb.hi[2] - base, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor };
+      : { material: mat, length: hold[0], width: contactOf(left, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: sb.hi[2] - base, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor, span: sb.hi[0] - sb.lo[0] };
     setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).

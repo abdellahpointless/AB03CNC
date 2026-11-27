@@ -617,6 +617,7 @@ const cam: Translation<typeof en> = {
       restContact: 'iki paralelin üzerine oturmaz',
       stopContact: 'dayamaya değmez',
       faceAtJaws: '3 mm sıkıldığında üst yüzeyi çenelerin 0,5 mm’den az üstünde kalır',
+      drillAtJaws: 'bir geçiş deliği bir çenenin üstünden çıkıyor: bu bağlamada sonuna kadar delinemez',
       nest: 'yuvada',
     },
     zonesTitle: 'Hassasiyetin önemli olduğu yerler',

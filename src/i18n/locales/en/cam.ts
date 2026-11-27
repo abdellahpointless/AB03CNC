@@ -614,6 +614,7 @@ const cam = {
       restContact: 'does not sit on both parallels',
       stopContact: 'does not touch the stop',
       faceAtJaws: 'gripped 3 mm, its top face stands less than 0.5 mm above the jaws',
+      drillAtJaws: 'a through hole comes out over a jaw: it cannot be drilled through so',
       nest: 'in the nest',
     },
     zonesTitle: 'Where precision matters',

@@ -20,6 +20,10 @@ t-stem              36 x 36 x 31. Flange 36 x 36 x 6; a square stem 8 x 8 standi
 angled-and-fillets  40 x 30 x 20. Block with R3 vertical edges; its top slopes down 30° from horizontal over the last
                     10 mm of the X+ end (the end 14.23 high); Ø6.6 through with a Ø11 x 6.5 counterbore from the top at
                     (8, 15); a pocket 10 (X) x 16 (Y) x 5 deep with R2 corners at X 16..26, Y 7..23.
+teeth               20 x 10 x 16. Block whose bottom (Z-) slopes up 30° to both X ends from a 4 mm flat (X 8..12); a
+                    Ø8 counterbore from the Y+ face (Y 4..10) at (X 10, Z 3.5) breaks through that flat, leaving two
+                    0.06 mm teeth; Ø3.2 through from it to the Y- face. Y+ first, the next clamping's jaws would hold the
+                    Z faces (one of them the teeth): turned a quarter about Z, they hold the X faces.
 
 Plan them with camProgram(tris from stepTriangles(src/lib/step.ts), orient: { side, spin: false }) for each first side.
 """
@@ -28,7 +32,7 @@ import math
 import sys
 from pathlib import Path
 
-from build123d import Align, Axis, Box, Cone, Cylinder, Keep, Plane, Pos, Unit, export_step, fillet
+from build123d import Align, Axis, Box, Cone, Cylinder, Keep, Plane, Pos, Rot, Unit, export_step, fillet
 
 LO = (Align.MIN, Align.MIN, Align.MIN)
 HOLE = (Align.CENTER, Align.CENTER, Align.MIN)
@@ -82,12 +86,26 @@ def angled_and_fillets():
     return part, 40 * 30 * 20 - 4 * (9 - math.pi * 9 / 4) * 20 - wedge - cbore - (160 - 4 * (4 - math.pi)) * 5
 
 
+def teeth():
+    part = Box(20, 10, 16, align=LO)
+    s, c = math.sin(math.radians(30)), math.cos(math.radians(30))
+    part = part.split(Plane(origin=(8, 0, 0), z_dir=(-s, 0, -c)), keep=Keep.BOTTOM)
+    part = part.split(Plane(origin=(12, 0, 0), z_dir=(s, 0, -c)), keep=Keep.BOTTOM)
+    part -= Pos(10, 4, 3.5) * Rot(-90, 0, 0) * Cylinder(4, 7, align=HOLE)
+    part -= Pos(10, -1, 3.5) * Rot(-90, 0, 0) * Cylinder(1.6, 6, align=HOLE)
+    wedges = 2 * 8 * 8 * math.tan(math.radians(30)) / 2 * 10
+    # The counterbore's disc less the 0.5 mm segment under the flat, 6 deep; the through hole 4 long.
+    seg = 16 * math.acos(3.5 / 4) - 3.5 * math.sqrt(16 - 3.5**2)
+    return part, 20 * 10 * 16 - wedges - (math.pi * 16 - seg) * 6 - math.pi * 1.6**2 * 4
+
+
 PARTS = {
     "fin": (fin, (40, 30, 28)),
     "foot-under-body": (foot_under_body, (30, 24, 18)),
     "side-tab": (side_tab, (52, 30, 8)),
     "t-stem": (t_stem, (36, 36, 31)),
     "angled-and-fillets": (angled_and_fillets, (40, 30, 20)),
+    "teeth": (teeth, (20, 10, 16)),
 }
 
 for name, (make, size) in PARTS.items():

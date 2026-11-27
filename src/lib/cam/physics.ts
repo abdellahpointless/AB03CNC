@@ -101,6 +101,11 @@ export interface SetupLoad {
   /** Where the jaws, the parallels and the stop really touch it (see contactOf in program.ts). */
   contact: Contact;
   loads: OpLoad[];
+  /**
+   * The stock's length along the jaws when it is longer than what they hold: their contact is judged against it (a part
+   * held by a short band under a long body turns under the cut: your test part's 2 mm fin under a 40 mm base).
+   */
+  span?: number;
 }
 
 export interface Contact {
@@ -124,6 +129,8 @@ export type PhysicsIssue =
   | { key: 'stopContact' }
   /** So thin that, gripped 3 mm, its top face stands less than 0.5 mm above the jaws (the face mill and the graver run there). */
   | { key: 'faceAtJaws' }
+  /** A through hole comes out over a jaw that the grip could not keep under it: drilled through, it would go into it. */
+  | { key: 'drillAtJaws' }
   /** Held in the POM nest (the last way): the pocket holds it all round, the set screws keep it down. */
   | { key: 'nest'; screws: number };
 
@@ -210,7 +217,7 @@ export function checkSetup(l: SetupLoad): SetupCheck {
   });
   // 3-2-1: on both parallels, against the fixed jaw over a length, against the stop.
   const along = Math.min(l.length, VISE.width);
-  if (l.contact.jaws < Math.min(20, along * 0.3)) issues.push({ key: 'jawContact', mm: Math.round(l.contact.jaws) });
+  if (l.contact.jaws < Math.min(20, Math.min(Math.max(l.length, l.span ?? 0), VISE.width) * 0.3)) issues.push({ key: 'jawContact', mm: Math.round(l.contact.jaws) });
   if (Math.min(...l.contact.rest) < Math.min(10, along * 0.3)) issues.push({ key: 'restContact' });
   if (!l.contact.stop) issues.push({ key: 'stopContact' });
   const pressure = use / area;
