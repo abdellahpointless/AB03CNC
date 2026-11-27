@@ -324,6 +324,46 @@ High confidence assumptions. Treat as premises.
 
 ---
 
+### A041: Later clampings grip under the stock they still cut
+
+- **Type:** stated
+- **Assumption:** The jaws of a later clamping stay 1 mm under the stock it still cuts beside the faces they hold (measured from those faces, where the jaws stand along X), as deep as that allows (the shop's deep grip). Where 3 mm cannot stay under it (a pocket opening onto the held face down its height), as before: the wall the jaws leave is noted. A through hole that comes out beside the held faces keeps the jaw tops 1 mm under the drill's point, else that grip is refused (drillAtJaws).
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Grip choice in later clampings (deepest, vise retry)
+
+---
+
+### A042: Turn about Z off a broken face
+
+- **Type:** stated
+- **Assumption:** A face a counterbore broke into teeth is no face to grip: the clamping after the first turns a quarter about Z when the jaws then touch more of the part (never against a turn the operator set), never to close across a thin wall under a wider body (a 2 mm fin under a 40 mm base). The jaws' contact is judged against the stock's length along them.
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Later clampings, physics (jawContact)
+
+---
+
+### A043: No good holding: error and another first side
+
+- **Type:** stated
+- **Assumption:** When a clamping has no good way of holding the part with the side the operator put up first (only the POM nest, or the vise does not hold it), the program is blocked with an error and CAM AI suggests the first side that holds every clamping in the vise (the opposite one tried first); one click lays the part so.
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Result verdict (holdOther)
+
+---
+
+### A044: Flat slopes: ball end mill from the top
+
+- **Type:** stated
+- **Assumption:** A flat slope a clamping sees from above is cut there with a ball end mill (HAAS-1: the Ø6 one, T37), roughed down to it and finished to a fine scallop, never by a clamping on the side cutting it as a wall.
+- **Source:** Owner, 2026-11-27
+- **Validated:** 2026-11-27
+- **Context:** Planner (slopes.ts)
+
+---
+
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
@@ -441,3 +481,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: Q021 answered and Q022 changed by the owner: bigger drills up to 0.12 mm as the engineers (for now), smaller ones up to 0.05 mm (A036).
 - 2026-11-27: A038 and A039 from the owner (moving a tool's work to another clamping; a quarter turn about Z). The simulation now draws the POM nest as a block on its parallels (it read the nest's walls as spacer plates and ran the parallels up to the part).
 - 2026-11-27: A040 from the owner (parts as STEP files, never PDF); step 1 of the shape engine (exact faces from the STEP file) built on it.
+- 2026-11-27: A041-A044 from the owner after the test parts (later grips under the stock still to cut, a quarter turn off a broken face, no good holding is an error with another first side suggested, slopes by a ball end mill from the top).

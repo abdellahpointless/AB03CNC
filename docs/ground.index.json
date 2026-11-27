@@ -1001,6 +1001,86 @@
           "reason": "Owner said"
         }
       ]
+    },
+    {
+      "id": "A041",
+      "title": "Later clampings grip under the stock they still cut",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "The jaws of a later clamping stay 1 mm under the stock it still cuts beside the faces they hold (measured from those faces, where the jaws stand along X), as deep as that allows (the shop's deep grip). Where 3 mm cannot stay under it (a pocket opening onto the held face down its height), as before: the wall the jaws leave is noted. A through hole that comes out beside the held faces keeps the jaw tops 1 mm under the drill's point, else that grip is refused (drillAtJaws).",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Grip choice in later clampings (deepest, vise retry)",
+      "created": "2026-11-27T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner said"
+        }
+      ]
+    },
+    {
+      "id": "A042",
+      "title": "Turn about Z off a broken face",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A face a counterbore broke into teeth is no face to grip: the clamping after the first turns a quarter about Z when the jaws then touch more of the part (never against a turn the operator set), never to close across a thin wall under a wider body (a 2 mm fin under a 40 mm base). The jaws' contact is judged against the stock's length along them.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Later clampings, physics (jawContact)",
+      "created": "2026-11-27T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner said"
+        }
+      ]
+    },
+    {
+      "id": "A043",
+      "title": "No good holding: error and another first side",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "When a clamping has no good way of holding the part with the side the operator put up first (only the POM nest, or the vise does not hold it), the program is blocked with an error and CAM AI suggests the first side that holds every clamping in the vise (the opposite one tried first); one click lays the part so.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Result verdict (holdOther)",
+      "created": "2026-11-27T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner said"
+        }
+      ]
+    },
+    {
+      "id": "A044",
+      "title": "Flat slopes: ball end mill from the top",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "A flat slope a clamping sees from above is cut there with a ball end mill (HAAS-1: the Ø6 one, T37), roughed down to it and finished to a fine scallop, never by a clamping on the side cutting it as a wall.",
+      "source": "Owner, 2026-11-27",
+      "validated": "2026-11-27",
+      "context": "Planner (slopes.ts)",
+      "created": "2026-11-27T23:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-27T23:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Owner said"
+        }
+      ]
     }
   ],
   "archived": [
