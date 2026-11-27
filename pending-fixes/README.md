@@ -1,7 +1,10 @@
-# Pending fixes (not applied)
+# Night fixes (applied 2026-11-27, not deployed)
 
-Bugs found by the night hunt of 2026-11-26/27, each with a saved patch the owner decides on.
-To apply one: `git am pending-fixes/<id>.patch` on the development branch, then the tests. Nothing here is applied or deployed.
+Bugs found by the night hunt of 2026-11-26/27, each with a saved patch.
+On 2026-11-27 every patch was applied to the development branch except:
+H6-7 (held: the owner's decision on O numbers), and H4-10, H4-11, H4-26 (the same fixes as H5-7, H5-9, H5-2, which are applied).
+Where patches overlapped, the Turkish words of H5-9 (tezgah, şifre, Takım eşleştirici, 3B, paralel) were kept in the lines they added.
+Nothing here is deployed. The patches stay as the record of each fix.
 
 ## Applying
 
