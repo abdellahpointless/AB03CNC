@@ -25,6 +25,8 @@ export interface Move {
   /** Hole bottom for drilling cycles. */
   depth?: number;
   seconds: number;
+  /** Seconds into the program when the move starts: every move, tool change, dwell and machine move before it. */
+  at?: number;
   length: number;
   /** Setup (clamping) the move belongs to: a new setup starts at every G52. */
   setup: number;
@@ -227,7 +229,9 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       max[k] = Math.max(max[k], p[k]);
     }
   };
+  let elapsed = 0;
   const addTime = (s: number) => {
+    elapsed += s;
     if (tool !== null) tools.get(tool)!.seconds += s;
     else extraSeconds += s;
   };
@@ -360,8 +364,8 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       // Across at the current height, then to the R plane at rapid, as the control does: drawn, so
       // a check sees what that way down goes through (an R plane inside the stock is a crash).
       const approach = dist(from, top) + Math.abs(from[2] - cycleR);
-      moves.push({ kind: 'rapid', tool, line: i, points: from[2] === cycleR ? [from, top] : [from, top, atR], seconds: rapidTime(approach), length: approach, setup , reach, dia, op, label });
-      moves.push({ kind: 'drill', tool, line: i, points: [atR], depth: cycleZ, seconds: seconds - rapidTime(approach), length: depth, setup , reach, dia, op, label });
+      moves.push({ kind: 'rapid', tool, line: i, points: from[2] === cycleR ? [from, top] : [from, top, atR], seconds: rapidTime(approach), at: elapsed, length: approach, setup , reach, dia, op, label });
+      moves.push({ kind: 'drill', tool, line: i, points: [atR], depth: cycleZ, seconds: seconds - rapidTime(approach), at: elapsed + rapidTime(approach), length: depth, setup , reach, dia, op, label });
       addTime(seconds);
       pos = [x, y, back];
       return;
@@ -429,7 +433,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       }
       const length = Math.hypot(r * Math.abs(sweep), end[wa] - from[wa]);
       const seconds = feedTime(length);
-      moves.push({ kind: 'feed', tool, line: i, points, seconds, length, setup, comp: compOf() , reach, dia, op, label });
+      moves.push({ kind: 'feed', tool, line: i, points, seconds, at: elapsed, length, setup, comp: compOf() , reach, dia, op, label });
       compDone();
       addTime(seconds);
     } else {
@@ -437,7 +441,7 @@ export function parseToolpath(code: string, speeds: MachineSpeeds): Toolpath {
       const seconds = motion === 0 ? rapidTime(length) : feedTime(length);
       grow(from);
       grow(end);
-      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, length, setup, comp: compOf() , reach, dia, op, label });
+      moves.push({ kind: motion === 0 ? 'rapid' : 'feed', tool, line: i, points: [from, end], seconds, at: elapsed, length, setup, comp: compOf() , reach, dia, op, label });
       compDone();
       addTime(seconds);
     }

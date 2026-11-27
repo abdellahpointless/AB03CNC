@@ -1,4 +1,4 @@
-import type { Move, Vec } from './toolpath';
+import type { Move, Toolpath, Vec } from './toolpath';
 
 /*
  * Where the tool is at any instant of the program, so it glides along its path instead of hopping
@@ -98,4 +98,16 @@ export function hitInstant(moves: Move[], move: number, point: Vec): number {
   }
   // Inside the move (its very end would already be the next move).
   return move + Math.min(at, 0.999);
+}
+
+/**
+ * The program's clock at instant `pos` (0: the start): the tool changes, dwells and machine moves
+ * before each move count too, so the end reads the whole program's time.
+ */
+export function clockAt(path: Toolpath, pos: number): number {
+  const n = path.moves.length;
+  if (pos <= 0 || !n) return 0;
+  if (pos >= n) return path.totalSeconds;
+  const k = Math.floor(pos);
+  return (path.moves[k].at ?? 0) + (pos - k) * path.moves[k].seconds;
 }

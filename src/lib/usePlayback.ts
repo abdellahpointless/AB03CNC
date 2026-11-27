@@ -4,6 +4,7 @@
  * first move while the part turns.
  */
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { clockAt } from './playback';
 import type { Toolpath } from './toolpath';
 import { turnMs, type SetupInfo } from './setups';
 
@@ -36,6 +37,8 @@ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRe
   const at = clock.current;
   const atMove = Math.min(Math.floor(at), total - 1);
   const elapsed = total ? (atMove > 0 ? timeline[atMove - 1] : 0) + Math.min(1, at - atMove) * path.moves[atMove].seconds : 0;
+  // That is the moves' own time (a track of the moves); the program's clock also counts tool changes, dwells and machine moves.
+  const clockSeconds = clockAt(path, at);
   // First move of each setup after the first: playback stops there while the part turns.
   const setupStarts = useMemo(() => setups.slice(1).map((x) => x.moves?.[0] ?? -1).filter((x) => x > 0), [setups]);
   useEffect(() => {
@@ -103,5 +106,5 @@ export function usePlayback(path: Toolpath, setups: SetupInfo[], gate: MutableRe
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, speed]);
-  return { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, elapsed };
+  return { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, elapsed, clockSeconds };
 }

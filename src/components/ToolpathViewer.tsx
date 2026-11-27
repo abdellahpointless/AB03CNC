@@ -130,7 +130,7 @@ export default function ToolpathViewer({
   );
   // Playing through (lib/usePlayback): the clock waits for the part in details mode; the 3D view turns it between setups.
   const gate = useRef<PlayGate>({ wait: () => false, mode3d: () => true });
-  const { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, elapsed } = usePlayback(path, setups, gate);
+  const { total, clock, step, setStep, seek, turning, setTurning, playing, setPlaying, speed, setSpeed, timeline, clockSeconds } = usePlayback(path, setups, gate);
   // Setup markers above the slider: one that starts too close to the one before goes a row up.
   const markerRows = useMemo(() => {
     let last = -Infinity;
@@ -1274,7 +1274,7 @@ export default function ToolpathViewer({
               />
             </div>
             <span className="font-mono text-xs text-[var(--text-secondary)] sm:w-28 text-right">
-              {fmtClock(elapsed)} / {fmtClock(path.totalSeconds)}
+              {fmtClock(clockSeconds)} / {fmtClock(path.totalSeconds)}
             </span>
             <div className="ml-auto sm:ml-0 inline-flex rounded-full border border-[var(--border-subtle)] p-0.5" role="radiogroup" aria-label={t('toolpath.speed')}>
               {SPEEDS.map((s, i) => (
