@@ -557,8 +557,8 @@ const cam: Translation<typeof en> = {
       moved: 'T{{tool}}, {{n}}. bağlamada yer değiştirdi',
       edited: 'Bir işlem elle değiştirildi',
     },
-    noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı tezgaha ekleyin.',
-    swapHint: 'CAM AI seçtiğiniz takımla programı yeniden yapar.',
+    noStandIn: 'Şablonlarda yerine geçecek takım yok: bu takımı makineye ekleyin.',
+    swapHint: 'Yerine tezgahtaki bir takımı kullanmak için takım listesinde takımı seçip Takımı değiştir’e basın (veya takıma sağ tıklayın).',
     rightClickSwap: 'Takımı değiştirmek için sağ tıklayın',
     toolName: '{{name}} · Ø {{d}} mm · boy {{l}} mm',
     tools: {

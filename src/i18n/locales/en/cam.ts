@@ -555,7 +555,7 @@ const cam = {
       edited: 'An operation changed by hand',
     },
     noStandIn: 'No stand-in in the templates: add this tool to the machine.',
-    swapHint: 'CAM AI makes the program again with the tool you pick.',
+    swapHint: 'To use a machine tool instead, pick the tool in the tool list and choose Swap tool (or right-click it).',
     rightClickSwap: 'Right-click to change the tool',
     toolName: '{{name}} · Ø {{d}} mm · length {{l}} mm',
     tools: {
