@@ -53,9 +53,12 @@ export function reportPeople(data: MachinesReport, rows: ReportRow[]): ReportPer
     if (!map.has(k)) map.set(k, { username: u, done: 0, problems: 0, notDone: 0 });
     return map.get(k)!;
   };
-  for (const p of data.people) Object.assign(get(p.username), { done: p.done, problems: p.problems });
-  for (const r of rows)
-    if (r.kind === 'MISSED')
-      for (const u of r.notDoneBy.split(',').map((s) => s.trim()).filter(Boolean)) if (!data.hidden.includes(u.toLowerCase())) get(u).notDone++;
+  const shown = (u: string) => !data.hidden.includes(u.toLowerCase());
+  for (const p of data.people) get(p.username).done = p.done;
+  for (const r of rows) {
+    // Problems from the same rows as the summary and the list, so a problem reported with the machine's button counts too.
+    if (r.kind === 'PROBLEM' && shown(r.by)) get(r.by).problems++;
+    if (r.kind === 'MISSED') for (const u of r.notDoneBy.split(',').map((s) => s.trim()).filter(Boolean)) if (shown(u)) get(u).notDone++;
+  }
   return [...map.values()].sort((a, b) => b.done - a.done || a.notDone - b.notDone);
 }
