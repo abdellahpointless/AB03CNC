@@ -208,6 +208,8 @@ const cam = {
       close: 'Close the program',
       locked_one: '{{count}} tool into the vise',
       locked_other: '{{count}} tools into the vise',
+      lockedCales_one: '{{count}} tool into a parallel',
+      lockedCales_other: '{{count}} tools into a parallel',
       lockedHelp: 'A tool goes into the vise or a parallel: Download and Send stay locked until it is moved clear.',
       noHits: 'No tool reaches the vise',
       changed_one: '{{count}} change by hand',

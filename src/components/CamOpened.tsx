@@ -25,7 +25,7 @@ import type { OpEdit } from '../lib/cam/opEdit';
 import type { MeasureMode } from '../lib/measure';
 import type { Measurement } from '../lib/measure3d';
 import { fmtNumber as fmt } from '../i18n/format';
-import CamSim, { COLORS, type SimFocus } from './CamSim';
+import CamSim, { COLORS, hitTools, type SimFocus } from './CamSim';
 import type { ModelState } from './Toolpath3D';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -56,6 +56,8 @@ export default function CamOpened({
   const runs = useMemo(() => runsOf(code), [code]);
   const hits = program.setups.reduce((n, s) => n + s.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer').length, 0);
   const cales = program.setups.reduce((n, s) => n + s.collisions.filter((c) => c.what === 'cale').length, 0);
+  // Said in tools, as the simulation's badge counts them (the points that hit are far more).
+  const tools = hitTools(program.setups);
   const [match, setMatch] = useState<number | null>(null);
   const locked = hits > 0 || cales > 0;
   // Each run's clamping and time, from the moves of its lines.
@@ -122,7 +124,7 @@ export default function CamOpened({
         </span>
         <span className={`h-7 shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 rounded-[8px] border text-xs font-medium ${locked ? 'border-[#f87171]/45 bg-[#f87171]/12 text-[#f87171]' : 'border-[#4ade80]/40 bg-[#4ade80]/10 text-[var(--green-text,#1fb257)]'}`} role="status">
           {locked ? <AlertTriangle size={14} aria-hidden /> : <CheckCircle2 size={14} aria-hidden />}
-          {locked ? t('camAi.open.locked', { count: hits + cales }) : match !== null ? t('camAi.ws.checked', { pct: fmt(match * 100, 1) }) : t('camAi.open.noHits')}
+          {locked ? [tools.vise ? t('camAi.open.locked', { count: tools.vise }) : '', tools.cales ? t('camAi.open.lockedCales', { count: tools.cales }) : ''].filter(Boolean).join(' · ') : match !== null ? t('camAi.ws.checked', { pct: fmt(match * 100, 1) }) : t('camAi.open.noHits')}
         </span>
         {changes > 0 && <span className="text-xs text-[var(--blue-text)] whitespace-nowrap">{t('camAi.open.changed', { count: changes })}</span>}
         <span className="flex-1" />

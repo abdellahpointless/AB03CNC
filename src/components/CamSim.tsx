@@ -166,8 +166,7 @@ export default function CamSim({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [made, program, made ? JSON.stringify(previews[made.index] ?? null) : '']);
   const range: [number, number] = sel?.moves ?? [0, Math.max(0, total - 1)];
-  const hard = (x: SetupInfo) => x.collisions.filter((c) => c.what !== 'cale' && c.what !== 'spacer');
-  const hits = setups.reduce((n, x) => n + hard(x).length, 0);
+  const hits = hitTools(setups).vise;
 
   // A tool or clamping asked for by the page: there, paused (Play goes on from there).
   useEffect(() => {
@@ -470,4 +469,16 @@ export default function CamSim({
       </div>
     </div>
   );
+}
+
+/** The tools whose paths hit the vise (jaws, stop, a holder) and those into a parallel, each counted once: not its points. */
+export function hitTools(setups: SetupInfo[]): { vise: number; cales: number } {
+  const vise = new Set<number | null>();
+  const cales = new Set<number | null>();
+  for (const s of setups)
+    for (const c of s.collisions) {
+      if (c.what === 'cale') cales.add(c.tool);
+      else if (c.what !== 'spacer') vise.add(c.tool);
+    }
+  return { vise: vise.size, cales: cales.size };
 }

@@ -211,6 +211,8 @@ const cam: Translation<typeof en> = {
       close: 'Programı kapat',
       locked_one: '{{count}} takım mengeneye giriyor',
       locked_other: '{{count}} takım mengeneye giriyor',
+      lockedCales_one: '{{count}} takım paralele giriyor',
+      lockedCales_other: '{{count}} takım paralele giriyor',
       lockedHelp: 'Bir takım mengeneye veya bir paralele giriyor: uzaklaştırılana kadar İndir ve Gönder kilitli kalır.',
       noHits: 'Hiçbir takım mengeneye ulaşmıyor',
       changed_one: '{{count}} elle değişiklik',
