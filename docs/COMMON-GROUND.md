@@ -376,6 +376,14 @@ High confidence assumptions. Treat as premises.
 
 Medium confidence. Use but flag if contradicted.
 
+### A047: The sizes that name a shape
+
+- **Type:** assumed
+- **Assumption:** A round hole over Ø20 is a bore (blind and not as deep as wide: a round pocket); a closed pocket between facing walls is a slot when twice as long as wide with round ends, or three times as long and 10 mm wide at most; a pocket 2 mm deep at most and a tenth of its narrowest width is a face recess; a boss or a wall 3 mm thick at most and four times as long is a rib; an outside round over R5 on an outline is the profile's arc (curved), not an edge round; walls leaning up to 30° off upright from a floor are the pocket's draft.
+- **Source:** CAM AI, for the owner's list of geometries (2026-11-28); the owner may set other sizes
+- **Validated:** 2026-11-28
+- **Context:** Shape engine (recognize.ts)
+
 ### A046: How shapes that meet are told apart
 
 - **Type:** inferred
@@ -499,3 +507,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A040 from the owner (parts as STEP files, never PDF); step 1 of the shape engine (exact faces from the STEP file) built on it.
 - 2026-11-27: A041-A044 from the owner after the test parts (later grips under the stock still to cut, a quarter turn off a broken face, no good holding is an error with another first side suggested, slopes by a ball end mill from the top).
 - 2026-11-28: A045 from the owner (step 2 of the shape engine); A046 the rule CAM AI wrote for shapes that meet, with 24 test parts and their answer keys.
+- 2026-11-28: the owner's list of geometries to detect; A047 the sizes CAM AI chose to name them (bores, slots, recesses, ribs, arcs, drafts). Threads are not in STEP geometry.

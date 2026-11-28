@@ -6,47 +6,21 @@
  ],
  "features": [
   {
-   "kind": "pocket",
-   "from": [
-    "Z+"
-   ],
-   "box": [
-    10,
-    12,
-    8,
-    50,
-    18,
-    20
-   ],
-   "depth": 12
-  },
-  {
-   "kind": "undercut",
+   "kind": "tslot",
    "from": [
     "Z+"
    ],
    "box": [
     10,
     8,
-    8,
-    50,
-    12,
-    14
-   ]
-  },
-  {
-   "kind": "undercut",
-   "from": [
-    "Z+"
-   ],
-   "box": [
-    10,
-    18,
     8,
     50,
     22,
-    14
-   ]
+    20
+   ],
+   "depth": 12,
+   "width": 6,
+   "wide": 14
   }
  ]
 }

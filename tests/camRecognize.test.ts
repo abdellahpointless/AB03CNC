@@ -80,13 +80,13 @@ function turnKey(R: [V, V, V], w: Want): Want {
     out.axis = AX[k2] as Feature['axis'];
     out.at = others(k2).map((i) => q[i]) as [number, number];
   }
-  if (w.dir && w.on) {
+  if (w.dir) {
     // Toward its upper end: Z up first, then Y, then X.
     const d = turn(R, w.dir);
     const k = [2, 1, 0].find((i) => Math.abs(d[i]) > 1e-3)!;
     out.dir = (d[k] > 0 ? d : d.map((v) => -v)) as V;
-    out.on = turn(R, w.on);
   }
+  if (w.on) out.on = turn(R, w.on);
   if (w.box) {
     const pts = [0, 1, 2, 3, 4, 5, 6, 7].map((b) => turn(R, [w.box![b & 1 ? 3 : 0], w.box![b & 2 ? 4 : 1], w.box![b & 4 ? 5 : 2]]));
     out.box = [0, 1, 2, 0, 1, 2].map((k, i) => (i < 3 ? Math.min(...pts.map((p) => p[k])) : Math.max(...pts.map((p) => p[k])))) as Feature['box'];

@@ -121,7 +121,7 @@ KEYS = {
         zh([32, 20], 3.3, 10),
         # Behind the fin from every side but the top: the step round it is cut from Z+ only.
         {"kind": "step", "from": ["Z+"], "box": [0, 0, 10, 40, 30, 28], "depth": 18},
-        {"kind": "boss", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18},
+        {"kind": "rib", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18, "width": 2},
     ],
     "foot-under-body": [
         zh([15, 12], 4.5, 15.75),
@@ -133,7 +133,7 @@ KEYS = {
     ],
     "side-tab": [
         {"kind": "step", "from": ["X+"], "box": [40, 0, 0, 52, 30, 8], "depth": 12},
-        {"kind": "boss", "from": ["X+"], "box": [40, 10, 2.75, 52, 20, 5.25], "height": 12},
+        {"kind": "rib", "from": ["X+"], "box": [40, 10, 2.75, 52, 20, 5.25], "height": 12, "width": 2.5},
     ],
     "t-stem": [
         *[zh([x, y], 4.5, 6) for x, y in ((5, 5), (31, 5), (5, 31), (31, 31))],

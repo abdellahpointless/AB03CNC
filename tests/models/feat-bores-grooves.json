@@ -1,0 +1,73 @@
+{
+ "size": [
+  70,
+  40,
+  30
+ ],
+ "features": [
+  {
+   "kind": "bore",
+   "axis": "Z",
+   "at": [
+    20,
+    20
+   ],
+   "d": 30,
+   "depth": 30,
+   "through": true,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "groove",
+   "axis": "Z",
+   "at": [
+    20,
+    20
+   ],
+   "d": 34,
+   "width": 3,
+   "from": [
+    "Z+",
+    "Z-"
+   ]
+  },
+  {
+   "kind": "groove",
+   "axis": "Z",
+   "at": [
+    20,
+    20
+   ],
+   "d": 38,
+   "width": 2,
+   "depth": 2,
+   "from": [
+    "Z+"
+   ]
+  },
+  {
+   "kind": "pocket",
+   "axis": "Z",
+   "at": [
+    52,
+    20
+   ],
+   "d": 24,
+   "depth": 5,
+   "from": [
+    "Z+"
+   ],
+   "box": [
+    40,
+    8,
+    25,
+    64,
+    32,
+    30
+   ]
+  }
+ ]
+}

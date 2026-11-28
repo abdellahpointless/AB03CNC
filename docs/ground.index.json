@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-28T01:00:00Z",
-  "next_id": 47,
+  "last_updated": "2026-11-28T12:00:00Z",
+  "next_id": 48,
   "assumptions": [
     {
       "id": "A001",
@@ -1119,6 +1119,26 @@
           "from_tier": null,
           "to_tier": "WORKING",
           "reason": "Written with the test parts"
+        }
+      ]
+    },
+    {
+      "id": "A047",
+      "title": "The sizes that name a shape",
+      "type": "assumed",
+      "tier": "WORKING",
+      "assumption": "Bore over Ø20 (blind and shallower than wide: round pocket); closed slot: 2x long with round ends or 3x and 10 wide at most; recess: 2 mm deep at most and a tenth of its width; rib: 3 thick at most, 4x as long; outline arc over R5 is curved; walls leaning up to 30° from a floor are a draft.",
+      "source": "CAM AI, for the owner's list of geometries",
+      "validated": "2026-11-28",
+      "context": "Shape engine (recognize.ts)",
+      "created": "2026-11-28T12:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-28T12:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "WORKING",
+          "reason": "Chosen to name the owner's list; to confirm"
         }
       ]
     }

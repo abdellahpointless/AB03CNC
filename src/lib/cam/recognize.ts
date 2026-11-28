@@ -19,6 +19,16 @@
  *    fillet, the sides its faces look toward; "box": what it removes, in the model's frame; "depth": as above;
  *  - nothing left over: what no shape explains is named (`unexplained`), never cleaned up.
  *
+ * Names (the shop's list, 2026-11-28; the sizes that split them are CAM AI's, A047): a round hole over Ø20 a bore, or
+ * blind and not as deep as wide a round pocket; a wider ring inside a hole a groove, round a pin under its head a
+ * groove, a ring round a core on a face a groove; a cone round all the way a taper (hollow) or a cone (standing); a
+ * ball's face a sphere (hollow) or a dome; a closed pocket between facing walls twice as long as wide with round ends,
+ * or three times and 10 wide at most, a slot; 2 mm deep at most and a tenth of its width a recess; a profile whose
+ * mouth is narrower than inside a T-slot, with leaning walls a dovetail; a boss in a closed pocket an island, 3 thick
+ * at most and four times as long (or a wall that thin between two shapes) a rib; walls leaning back from the floor a
+ * draft (`angle`); walled by arcs that are no corner radius or a spline `curved`. Threads are not in a STEP model's
+ * geometry (cosmetic): a tapped hole reads as its hole.
+ *
  * Read only: the planner does not use it yet (step 3).
  */
 import type { Vec } from '../toolpath';
@@ -27,7 +37,37 @@ import { SIDES, upTurn } from './features';
 import { exactFaces, type ExactFace } from './faces';
 import { area, bounds, components, difference, inside, intersection, offset, rect, turnTris, union, type P2, type Region } from './geom';
 
-export type FeatureKind = 'hole' | 'counterbore' | 'countersink' | 'pocket' | 'slot' | 'step' | 'notch' | 'window' | 'outline' | 'boss' | 'undercut' | 'chamfer' | 'round' | 'fillet' | 'slope' | 'surface';
+export type FeatureKind =
+  | 'hole'
+  | 'bore'
+  | 'counterbore'
+  | 'countersink'
+  | 'taper'
+  | 'groove'
+  | 'pocket'
+  | 'recess'
+  | 'slot'
+  | 'tslot'
+  | 'dovetail'
+  | 'step'
+  | 'notch'
+  | 'window'
+  | 'outline'
+  | 'boss'
+  | 'island'
+  | 'rib'
+  | 'cone'
+  | 'dome'
+  | 'sphere'
+  | 'undercut'
+  | 'chamfer'
+  | 'round'
+  | 'fillet'
+  | 'slope'
+  | 'surface';
+
+/** Over this Ø (mm) a round hole is milled, not drilled: a bore, or (blind, not as deep as wide) a round pocket. */
+export const BORE_D = 20;
 
 export type Box6 = [number, number, number, number, number, number];
 
@@ -45,19 +85,27 @@ export interface Feature {
   /** A hole at an angle (no axis): its direction (unit, toward its upper end) and the middle of its axis. */
   dir?: [number, number, number];
   on?: [number, number, number];
-  /** Ø (a hole, counterbore, boss; a countersink's at the face). */
+  /** Ø (a hole, counterbore, boss; a countersink's at the face; a taper's or a cone's wide end; a groove's bottom). */
   d?: number;
+  /** A taper's or a cone's narrow end Ø. */
+  d2?: number;
   depth?: number;
   through?: boolean;
   /** Broken open by another shape or a face (a counterbore through a face's edge: two teeth). */
   open?: boolean;
   /** A blind hole's drill point (included angle, °). */
   point?: number;
-  /** A countersink's included angle; a chamfer's or a slope's off the faces it joins (°). */
+  /** A countersink's, a taper's or a cone's included angle; a chamfer's or a slope's off the faces it joins; a pocket's
+   * walls' draft, a dovetail's off square (°). */
   angle?: number;
   /** A pocket's inside corner radius (the smallest). */
   corner?: number;
+  /** A slot's width (a T-slot's or dovetail's at its mouth); a rib's thickness; a groove's along its axis. */
   width?: number;
+  /** A T-slot's or dovetail's width inside, under its mouth. */
+  wide?: number;
+  /** Walled by more than straight lines and corner radii (arcs, a spline): a curved profile. */
+  curved?: boolean;
   /** A boss: how far it stands up from the floor. */
   height?: number;
   /** A chamfer's leg. */
@@ -78,6 +126,8 @@ export interface Recognition {
 
 const AX = ['X', 'Y', 'Z'] as const;
 const EPS = 0.02;
+/** A convex round this size or under on an outline is an edge's (a corner radius); bigger, the outline's own arc. */
+const EDGE_R = 5;
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const dot = (a: Vec, b: Vec) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cornerOf = (P: ArrayLike<number>, t: number, c: number): Vec => [P[t * 9 + c * 3], P[t * 9 + c * 3 + 1], P[t * 9 + c * 3 + 2]];
@@ -268,6 +318,16 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     else stacks.push([b]);
   }
   const holeDiscs: { k: number; c: P2; r: number; lo: number; hi: number }[] = [];
+  /** A cone round its axis all the way: a taper, its flat bottom at a closed narrow end its own. */
+  const taper = (x: ConeOn, sides: string[]) => {
+    const [i, j] = others(x.k);
+    const narrowAt = x.rLo < x.rHi ? x.lo : x.hi;
+    const flat = faces.filter((f) => f.kind === 'plane' && axisOf(f.n) === x.k && Math.abs(f.at[x.k] - narrowAt) < 0.01 && f.tris.every((t) => [0, 1, 2].every((q) => Math.hypot(cornerOf(P, t, q)[i] - x.c[0], cornerOf(P, t, q)[j] - x.c[1]) <= Math.min(x.rLo, x.rHi) + 0.01)));
+    const own = [x.face, ...flat.map((f) => f.id)];
+    features.push({ kind: 'taper', axis: AX[x.k], at: [r3(x.c[0]), r3(x.c[1])], d: r3(2 * Math.max(x.rLo, x.rHi)), d2: r3(2 * Math.min(x.rLo, x.rHi)), angle: r3(2 * x.half), depth: r3(x.hi - x.lo), from: sides, faces: own });
+    own.forEach((id) => holeFaces.add(id));
+    holeDiscs.push({ k: x.k, c: x.c, r: Math.max(x.rLo, x.rHi), lo: x.lo, hi: x.hi });
+  };
   for (const st of stacks) {
     const { k, c } = st[0];
     const [i, j] = others(k);
@@ -292,24 +352,51 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     // Its flat bottom: a face square to the axis inside it at its closed end.
     const flat = faces.filter((f) => f.kind === 'plane' && axisOf(f.n) === k && ((!openLo && Math.abs(f.at[k] - inner.lo) < 0.01) || (!openHi && Math.abs(f.at[k] - inner.hi) < 0.01)) && f.tris.every((t) => [0, 1, 2].every((q) => Math.hypot(cornerOf(P, t, q)[i] - c[0], cornerOf(P, t, q)[j] - c[1]) <= inner.r + 0.01)));
     const own = [...inner.faces, ...(tip ? [tip.face] : []), ...flat.map((f) => f.id)];
-    features.push({
-      kind: 'hole',
-      axis: AX[k],
-      at: [r3(c[0]), r3(c[1])],
-      d: r3(2 * inner.r),
-      depth: r3(inner.hi - inner.lo),
-      through: openHi && openLo,
-      from: sides,
-      faces: own,
-      ...(inner.span < 355 ? { open: true } : {}),
-      ...(tip ? { point: r3(2 * tip.half) } : {}),
-    });
+    const ax = { axis: AX[k], at: [r3(c[0]), r3(c[1])] as [number, number], d: r3(2 * inner.r), depth: r3(inner.hi - inner.lo) };
+    const big = 2 * inner.r > BORE_D;
+    if (big && !(openHi && openLo) && inner.hi - inner.lo < 2 * inner.r && !tip) {
+      // A round pocket: from its open end, its box what it removes.
+      const lo3: Vec = [0, 0, 0];
+      const hi3: Vec = [0, 0, 0];
+      [lo3[k], hi3[k]] = [inner.lo, inner.hi];
+      [lo3[i], hi3[i], lo3[j], hi3[j]] = [c[0] - inner.r, c[0] + inner.r, c[1] - inner.r, c[1] + inner.r];
+      features.push({ kind: 'pocket', ...ax, from: sides, faces: own, box: [...lo3, ...hi3].map(r3) as Box6, ...(inner.span < 355 ? { open: true } : {}) });
+    } else
+      features.push({
+        kind: big ? 'bore' : 'hole',
+        ...ax,
+        through: openHi && openLo,
+        from: sides,
+        faces: own,
+        ...(inner.span < 355 ? { open: true } : {}),
+        ...(tip ? { point: r3(2 * tip.half) } : {}),
+      });
     own.forEach((x) => holeFaces.add(x));
     holeDiscs.push({ k, c, r: inner.r, lo: inner.lo, hi: inner.hi });
     // Wider bores on it: counterbores, each from the end it opens to; its floor the flat ring at its bottom.
     for (const cb of st.slice(1)) {
       const up = Math.abs(cb.hi - hi) < 0.02;
+      // Not at an open end: a groove inside it (a circlip's), reached through the hole.
+      if (!((up && openHi) || (Math.abs(cb.lo - lo) < 0.02 && openLo))) {
+        // Its two flat sides: rings square to the axis at its ends, inside it.
+        const sidesOf = faces.filter((f) => f.kind === 'plane' && axisOf(f.n) === k && (Math.abs(f.at[k] - cb.lo) < 0.01 || Math.abs(f.at[k] - cb.hi) < 0.01) && f.tris.every((t) => [0, 1, 2].every((q) => Math.hypot(cornerOf(P, t, q)[i] - c[0], cornerOf(P, t, q)[j] - c[1]) <= cb.r + 0.01)));
+        const own = [...cb.faces, ...sidesOf.map((f) => f.id)];
+        features.push({ kind: 'groove', axis: AX[k], at: [r3(c[0]), r3(c[1])], d: r3(2 * cb.r), width: r3(cb.hi - cb.lo), from: sides, faces: own });
+        own.forEach((x) => holeFaces.add(x));
+        holeDiscs.push({ k, c, r: cb.r, lo: cb.lo, hi: cb.hi });
+        continue;
+      }
       const end = up ? cb.lo : cb.hi;
+      // A round core standing inside it (between it and the hole): a face groove round the hole, not a counterbore.
+      const core = faces.filter((f) => f.kind === 'cylinder' && !f.concave && axisOf(f.n) === k && Math.hypot(f.at[i] - c[0], f.at[j] - c[1]) < 0.01 && f.r! > inner.r + 0.01 && f.r! < cb.r - 0.01);
+      if (core.length) {
+        const ring = faces.filter((f) => f.kind === 'plane' && axisOf(f.n) === k && Math.abs(f.at[k] - end) < 0.01 && f.tris.every((t) => [0, 1, 2].every((q) => Math.hypot(cornerOf(P, t, q)[i] - c[0], cornerOf(P, t, q)[j] - c[1]) <= cb.r + 0.01)));
+        const own = [...cb.faces, ...core.map((f) => f.id), ...ring.map((f) => f.id)];
+        features.push({ kind: 'groove', axis: AX[k], at: [r3(c[0]), r3(c[1])], d: r3(2 * cb.r), width: r3(cb.r - Math.max(...core.map((f) => f.r!))), depth: r3(cb.hi - cb.lo), from: [`${AX[k]}${up ? '+' : '-'}`], faces: own });
+        own.forEach((x) => holeFaces.add(x));
+        holeDiscs.push({ k, c, r: cb.r, lo: cb.lo, hi: cb.hi });
+        continue;
+      }
       const floor = faces.filter((f) => f.kind === 'plane' && axisOf(f.n) === k && Math.abs(f.at[k] - end) < 0.01 && f.tris.every((t) => [0, 1, 2].every((q) => Math.hypot(cornerOf(P, t, q)[i] - c[0], cornerOf(P, t, q)[j] - c[1]) <= cb.r + 0.01)));
       features.push({ kind: 'counterbore', axis: AX[k], at: [r3(c[0]), r3(c[1])], d: r3(2 * cb.r), depth: r3(cb.hi - cb.lo), from: [`${AX[k]}${up ? '+' : '-'}`], faces: [...cb.faces, ...floor.map((f) => f.id)], ...(cb.span < 355 ? { open: true } : {}) });
       [...cb.faces, ...floor.map((f) => f.id)].forEach((x) => holeFaces.add(x));
@@ -320,11 +407,41 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       if (x === tip) continue;
       const atHi = Math.abs(x.hi - hi) < 0.02 && openHi;
       const atLo = Math.abs(x.lo - lo) < 0.02 && openLo;
-      if (!atHi && !atLo) continue;
+      if (!atHi && !atLo) {
+        if (coverage(arcsOf(P, byId.get(x.face)!)) > 200) taper(x, sides);
+        continue;
+      }
       features.push({ kind: 'countersink', axis: AX[k], at: [r3(c[0]), r3(c[1])], d: r3(2 * (atHi ? x.rHi : x.rLo)), angle: r3(2 * x.half), from: [`${AX[k]}${atHi ? '+' : '-'}`], faces: [x.face] });
       holeFaces.add(x.face);
       holeDiscs.push({ k, c, r: Math.max(x.rHi, x.rLo), lo: x.lo, hi: x.hi });
     }
+  }
+
+  // Cones on no hole, round all the way: a taper (a conical recess or bore), from the ends it opens to; its flat bottom.
+  const used = new Set(features.flatMap((f) => f.faces));
+  for (const x of cones) {
+    if (used.has(x.face) || holeFaces.has(x.face) || coverage(arcsOf(P, byId.get(x.face)!)) <= 200) continue;
+    const [i, j] = others(x.k);
+    const pt = (v: number): Vec => {
+      const p: Vec = [0, 0, 0];
+      [p[x.k], p[i], p[j]] = [v, x.c[0], x.c[1]];
+      return p;
+    };
+    taper(x, [...(!solidAt(P, pt(x.hi + 0.05)) ? [`${AX[x.k]}+`] : []), ...(!solidAt(P, pt(x.lo - 0.05)) ? [`${AX[x.k]}-`] : [])].sort());
+  }
+
+  // A ball's recess (a hollow sphere's face): its room is its own, as a hole's is.
+  for (const f of faces) {
+    if (f.kind !== 'other' || holeFaces.has(f.id)) continue;
+    const b = fitSphere(P, f);
+    if (!b?.hollow) continue;
+    const m = meanNormal(P, f);
+    const k = [0, 1, 2].sort((x, y) => Math.abs(m[y]) - Math.abs(m[x]))[0];
+    const along = f.tris.flatMap((t) => [0, 1, 2].map((c) => cornerOf(P, t, c)[k]));
+    const [i, j] = others(k);
+    features.push({ kind: 'sphere', d: r3(2 * b.r), on: b.c.map(r3) as Vec, depth: r3(Math.max(...along) - Math.min(...along)), from: [`${AX[k]}${m[k] > 0 ? '+' : '-'}`], faces: [f.id] });
+    holeFaces.add(f.id);
+    holeDiscs.push({ k, c: [b.c[i], b.c[j]], r: b.r, lo: Math.min(...along), hi: Math.max(...along) });
   }
 
   // Holes at an angle (along no axis): each its own, Ø and length along its axis between the middles of its ends; no
@@ -399,15 +516,17 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       return { c: [a[0], a[1]] as P2, r: d.r, lo: Math.min(a[2], b[2]), hi: Math.max(a[2], b[2]), D: circle([a[0], a[1]], d.r) };
     });
     const allDiscs = discs.length ? union(discs.flatMap((d) => d.D)) : [];
-    // The fillets in this frame: curved faces hollow toward the air, looking up, from their foot (a floor height) up.
-    const fillets = faces.filter((f) => f.kind !== 'plane' && (f.kind === 'other' ? hollow(T, f) : !!f.concave) && f.tris.every((t) => normalZ(T, t) > -1e-3)).map((f) => {
+    // The fillets in this frame: curved faces hollow toward the air, looking up, from their foot (a floor height) up;
+    // and a pocket's drafted walls (flat, leaning back, looking up). A slope's foot is on no floor.
+    const fillets = faces.filter((f) => (f.kind === 'plane' ? apply(R, f.n)[2] > 1e-3 && apply(R, f.n)[2] <= 0.5 : f.kind === 'other' ? hollow(T, f) : !!f.concave) && f.tris.every((t) => normalZ(T, t) > -1e-3)).map((f) => {
       const z = f.tris.flatMap((t) => [0, 1, 2].map((c) => T[t * 9 + c * 3 + 2]));
-      return { f, lo: Math.min(...z), hi: Math.max(...z) };
+      return { f, lo: Math.min(...z), hi: Math.max(...z), wall: f.kind === 'plane' };
     });
     const pieces: { h: number; K: Region; disc: boolean; open: Region }[] = [];
     levels.forEach((h, li) => {
       const above = li === 0 ? top : levels[li - 1];
-      const skip = new Set(fillets.filter((x) => Math.abs(x.lo - h) < 0.01 && x.hi <= above + 0.01).flatMap((x) => x.f.tris));
+      // A drafted wall (30° off upright at most) leans back from its floor however high it runs; a fillet stays under the next floor.
+      const skip = new Set(fillets.filter((x) => Math.abs(x.lo - h) < 0.01 && (x.wall || x.hi <= above + 0.01)).flatMap((x) => x.f.tris));
       const A = clean(difference(B, shadow(T, h + EPS, skip)));
       // A piece all inside holes' discs is those holes'.
       for (const K of components(A)) if (area(K) > 0.05) pieces.push({ h, K, disc: !!discs.length && area(difference(K, allDiscs)) < 0.05 + 0.01 * area(K), open: A });
@@ -569,6 +688,7 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     return [s.name, m] as const;
   });
   const cellsOf = new Map<Feature, Uint8Array>();
+  const recOf = new Map<Feature, Rec>();
   const cellMm3 = grid.st[0] * grid.st[1] * grid.st[2];
   const rank: FeatureKind[] = ['pocket', 'slot', 'notch', 'step', 'window', 'outline'];
   for (const g of groups) {
@@ -580,7 +700,7 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     const { r, kind: k0 } = named.filter((x) => !x.r.through && x.r.faces.length).sort((a, b) => rank.indexOf(a.kind) - rank.indexOf(b.kind) || b.floor - a.floor)[0] ?? named.filter((x) => x.r.faces.length)[0] ?? named[0];
     // Made only of an edge's faces (a chamfer's, a round's): that edge's shape (6), not a milled one.
     const narrowTilt = (f: ExactFace) => f.kind === 'plane' && axisOf(f.n) < 0 && narrow(P, f);
-    if (gf.length && gf.every((f) => narrowTilt(f) || f.kind === 'cone' || (f.kind === 'cylinder' && !f.concave))) {
+    if (gf.length && gf.every((f) => narrowTilt(f) || f.kind === 'cone' || (f.kind === 'cylinder' && !f.concave && f.r! <= EDGE_R))) {
       // Its room past the edge (beside a tab the edge's chamfer runs out at) is the shape's it was cut from.
       for (const x of g.recs) {
         let p = x.parent;
@@ -614,37 +734,119 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     const zs = gf.flatMap((f) => f.tris.flatMap((t) => [0, 1, 2].map((c) => T[t * 9 + c * 3 + 2])));
     const [z0, z1] = r.through ? (zs.length ? [Math.max(r.h, Math.min(...zs)), Math.min(r.top, Math.max(...zs))] : [r.h, r.top]) : [r.h, wallTop(r)];
     const corner = mineFaces.filter((f) => f.kind === 'cylinder' && f.concave && axisOf(apply(r.R, f.n)) === 2 && (f.span ?? 360) <= 181).map((f) => f.r!);
-    const width = kind === 'slot' ? (r.width ?? keyway(r, gf) ?? slotWidth(r, gf)) : undefined;
-    const feat: Feature = {
-      kind,
-      from: [...from].sort(),
-      faces: fs,
-      box: snap(boxOf(Rt, [e.lo[0], e.lo[1], z0], [e.hi[0], e.hi[1], z1]), gf, P),
-      ...(kind === 'slope' ? { angle } : r.through ? { through: true } : { depth: r3(z1 - r.h) }),
-      ...(corner.length && kind !== 'slope' ? { corner: r3(Math.min(...corner)) } : {}),
-      ...(width !== undefined ? { width } : {}),
-    };
+    let width = kind === 'slot' ? (r.width ?? keyway(r, gf) ?? slotWidth(r, gf)) : undefined;
+    const minCorner = corner.length ? Math.min(...corner) : 0;
+    // A closed pocket between two facing walls, twice as long as wide with round ends, or three times and 10 mm wide at
+    // most: a closed slot.
+    if (kind === 'pocket')
+      for (const a of [0, 1]) {
+        const w = slotWidth(r, gf, a);
+        const len = e.hi[1 - a] - e.lo[1 - a];
+        if (w !== undefined && ((minCorner >= w / 2 - 0.01 && len >= 2 * w - 0.01) || (w <= 10 && len >= 3 * w - 0.01))) [kind, width] = ['slot', w];
+      }
+    // Shallow (2 mm at most, a tenth of its narrowest at most): a face recess.
+    if (kind === 'pocket' && z1 - r.h <= Math.min(2, (Math.min(e.hi[0] - e.lo[0], e.hi[1] - e.lo[1])) / 10) + 1e-6) kind = 'recess';
+    // A profile through the part whose mouth (where it opens on one face) is narrower than it is inside: a T-slot,
+    // or with leaning walls a dovetail; reached from its ends, and from its mouth with their cutter.
+    let mouth: { width: number; wide: number; depth: number; side: string } | undefined;
+    if (r.through && (kind === 'notch' || kind === 'slot')) mouth = mouthOf(r, gf);
+    let draft: number | undefined;
+    if (mouth && mouth.wide > mouth.width + 0.1) {
+      const lean = gf.filter((f) => f.kind === 'plane' && axisOf(f.n) < 0);
+      const k = AX.indexOf(mouth.side[0] as 'X');
+      kind = lean.length ? 'dovetail' : 'tslot';
+      if (lean.length) draft = r3((Math.asin(Math.min(1, Math.max(...lean.map((f) => Math.abs(f.n[k]))))) * 180) / Math.PI);
+      from.add(mouth.side);
+    } else mouth = undefined;
+    // A pocket's walls leaning back from its floor: their draft.
+    const leaning = gf.filter((f) => f.kind === 'plane' && axisOf(f.n) < 0 && apply(r.R, f.n)[2] > 1e-3 && Math.min(...f.tris.flatMap((t) => [0, 1, 2].map((c) => T[t * 9 + c * 3 + 2]))) < r.h + 0.01);
+    if (!mouth && leaning.length && kind !== 'slope') draft = r3((Math.asin(Math.max(...leaning.map((f) => apply(r.R, f.n)[2]))) * 180) / Math.PI);
+    // Walled by an arc that is no corner radius, or a spline: a curved profile.
+    const outer = r.own.filter((l) => signedArea(l) > 0);
+    const [inOut, inIn] = [insideFn(offset(outer, 0.05)), insideFn(offset(outer, -0.05))];
+    const curved = gf.some((f) => {
+      if (f.kind === 'plane' || f.kind === 'cone') return false;
+      if (!f.tris.every((t) => Math.abs(normalZ(T, t)) < 0.1 && inOut(centroidXY(T, t)) && !inIn(centroidXY(T, t)))) return false;
+      // A small outside round (a tab's corner) is an edge's, not the profile's.
+      return f.kind === 'other' || (f.concave ? f.r! > minCorner + 0.01 || (f.span ?? 0) > 181 : f.r! > EDGE_R);
+    });
+    // A ring round an island, walled by two round walls on one axis: a face groove (an O-ring's).
+    const ring = kind === 'pocket' && r.own.length === 2 ? faceGroove(r, gf, P) : undefined;
+    if (ring) kind = 'groove';
+    const feat: Feature = ring
+      ? { kind, ...ring, depth: r3(z1 - r.h), from: [...from].sort(), faces: fs }
+      : {
+          kind,
+          from: [...from].sort(),
+          faces: fs,
+          box: snap(boxOf(Rt, [e.lo[0], e.lo[1], mouth ? r.h : z0], [e.hi[0], e.hi[1], z1]), gf, P),
+          ...(kind === 'slope' ? { angle } : mouth ? { depth: mouth.depth } : r.through ? { through: true } : { depth: r3(z1 - r.h) }),
+          ...(corner.length && kind !== 'slope' ? { corner: r3(minCorner) } : {}),
+          ...(mouth ? { width: mouth.width, wide: mouth.wide } : width !== undefined ? { width } : {}),
+          ...(draft !== undefined ? { angle: draft } : {}),
+          ...(curved ? { curved: true } : {}),
+        };
     features.push(feat);
     cellsOf.set(feat, g.mask);
+    recOf.set(feat, r);
     // Bosses: the part standing up from its floor, by itself (inside it, or a tab out of a wall flush with the top:
-    // less than half its edge on the part's outline), from the floor to its own top.
+    // less than half its edge on the part's outline), from the floor to its own top; the room over it is this shape's.
+    // Inside a closed pocket, an island; thin (3 mm at most, four times as long), a rib; a cone or a dome by its wall.
     const near = offset(r.own, 0.05);
-    for (const isl of components(clean(difference(r.B, r.open)))) {
+    for (const isl of ring ? [] : components(clean(difference(r.B, r.open)))) {
       if (area(isl) > 0.5 * area(r.B) || area(intersection(offset(isl, 0.05), near)) < 0.01) continue;
       const per = isl.reduce((t, l) => t + l.reduce((u, p, i) => u + Math.hypot(l[(i + 1) % l.length][0] - p[0], l[(i + 1) % l.length][1] - p[1]), 0), 0);
       if (per - perimeterOff(isl, r.B) >= 0.5 * per) continue;
       const inI = insideFn(isl);
       const inI5 = insideFn(offset(isl, 0.05));
-      const topI = Math.max(...faces.filter((f) => f.kind === 'plane' && apply(r.R, f.n)[2] > 0.9999).filter((f) => f.tris.some((t) => inI(centroidXY(T, t)))).map((f) => apply(r.R, f.at)[2]), r.h);
+      // Its top: its flat top's height, else (a dome, a cone's point) its highest point.
+      const tops = faces.filter((f) => f.kind === 'plane' && apply(r.R, f.n)[2] > 0.9999 && apply(r.R, f.at)[2] > r.h + 0.01).filter((f) => f.tris.some((t) => inI(centroidXY(T, t)))).map((f) => apply(r.R, f.at)[2]);
+      const topI = tops.length ? Math.max(...tops, r.h) : Math.max(r.h, ...faces.flatMap((f) => f.tris.filter((t) => inI(centroidXY(T, t))).flatMap((t) => [0, 1, 2].map((c) => T[t * 9 + c * 3 + 2]))));
       const ie = extentOf(isl);
+      const round = (f: ExactFace) => coverage(arcsOf(P, f)) >= 355;
       // Its faces (not its edges' chamfers: those are chamfers of their own).
-      const bossFaces = faces.filter((f) => !holeFaces.has(f.id) && f.kind !== 'cone' && !(f.kind === 'plane' && axisOf(f.n) < 0 && narrow(P, f)) && f.tris.some((t) => inI5(centroidXY(T, t)) && centroidZ(T, t) > r.h + 0.01 && centroidZ(T, t) <= topI + 0.01)).map((f) => f.id);
+      const bossFaces = faces.filter((f) => !holeFaces.has(f.id) && !(f.kind === 'cone' && !round(f)) && !(f.kind === 'plane' && axisOf(f.n) < 0 && narrow(P, f)) && f.tris.some((t) => inI5(centroidXY(T, t)) && centroidZ(T, t) > r.h + 0.01 && centroidZ(T, t) <= topI + 0.01)).map((f) => f.id);
+      const bf = bossFaces.map((id) => byId.get(id)!);
       // Round all the way (its wall's pieces on one axis together): its Ø.
-      const outs = bossFaces.map((id) => byId.get(id)!).filter((f) => f.kind === 'cylinder' && !f.concave);
+      const outs = bf.filter((f) => f.kind === 'cylinder' && !f.concave);
       const cyl = outs.find((f) => coverage(outs.filter((o) => Math.abs(o.r! - f.r!) < 0.005 && dist2(o) === dist2(f)).flatMap((o) => arcsOf(P, o))) >= 355);
-      features.push({ kind: 'boss', from: [r.side], faces: bossFaces, box: snap(boxOf(Rt, [ie.lo[0], ie.lo[1], r.h], [ie.hi[0], ie.hi[1], topI]), bossFaces.map((id) => byId.get(id)!), P), height: r3(topI - r.h), ...(cyl ? { d: r3(2 * cyl.r!) } : {}) });
+      const cone = bf.find((f) => f.kind === 'cone' && !f.concave && round(f));
+      const ball = bf.map((f) => (f.kind === 'other' ? fitSphere(P, f) : undefined)).find((b) => b && !b.hollow);
+      const [thin, long] = [Math.min(ie.hi[0] - ie.lo[0], ie.hi[1] - ie.lo[1]), Math.max(ie.hi[0] - ie.lo[0], ie.hi[1] - ie.lo[1])];
+      const enclosed = perimeterOff(isl, r.B) >= per - 1e-6 && ['pocket', 'slot', 'recess'].includes(kind);
+      const bk: FeatureKind = thin <= 3 && long >= 4 * thin ? 'rib' : cone ? 'cone' : ball ? 'dome' : enclosed ? 'island' : 'boss';
+      const coneD = cone ? cone.tris.flatMap((t) => [0, 1, 2].map((c) => 2 * radialOf(cornerOf(P, t, c), cone))) : [];
+      features.push({
+        kind: bk,
+        from: [r.side],
+        faces: bossFaces,
+        box: snap(boxOf(Rt, [ie.lo[0], ie.lo[1], r.h], [ie.hi[0], ie.hi[1], topI]), bf, P),
+        height: r3(topI - r.h),
+        ...(bk === 'rib' ? { width: r3(thin) } : {}),
+        ...(bk === 'cone' ? { d: r3(Math.max(...coneD)), d2: r3(Math.min(...coneD)), angle: r3(2 * (cone!.half ?? 0)) } : bk === 'dome' ? { d: r3(2 * ball!.r) } : cyl && bk !== 'rib' ? { d: r3(2 * cyl.r!) } : {}),
+      });
+      // The room over it, open to above (a dome's, a cone's: no flat top for a floor of their own) is this shape's; a
+      // groove under a pin's head is not.
+      const ka = axisOf(apply(Rt, [0, 0, 1]));
+      const up = apply(Rt, [0, 0, 1])[ka] > 0 ? 1 : -1;
+      for (const id of prismCells(grid, { ...r, own: isl })) {
+        const c = [id % grid.n[0], Math.floor(id / grid.n[0]) % grid.n[1], Math.floor(id / (grid.n[0] * grid.n[1]))];
+        let open = true;
+        for (c[ka] += up; open && c[ka] >= 0 && c[ka] < grid.n[ka]; c[ka] += up) if (grid.part[(c[2] * grid.n[1] + c[1]) * grid.n[0] + c[0]]) open = false;
+        if (open) g.mask[id] = 1;
+      }
     }
   }
+
+  // Ribs between two milled shapes seen from one side: the wall between them 3 mm thick or less, four times as long.
+  const rooms = [...recOf].filter(([f]) => ['pocket', 'slot', 'recess', 'step', 'notch'].includes(f.kind));
+  for (let a = 0; a < rooms.length; a++)
+    for (let b = a + 1; b < rooms.length; b++) {
+      const [ra, rb] = [rooms[a][1], rooms[b][1]];
+      if (ra.side !== rb.side) continue;
+      const rib = ribBetween(ra, rb, [rooms[a][0].faces, rooms[b][0].faces], byId);
+      if (rib) features.push({ kind: 'rib', from: [ra.side], faces: [], box: snap(boxOf(transpose(ra.R), rib.lo, rib.hi), faces, P), height: r3(rib.hi[2] - rib.lo[2]), width: rib.t });
+    }
 
   // 6. What is left: the edges' chamfers, rounds and fillets, slopes, 3D surfaces; the box's own faces are the stock's.
   const owned = new Set(features.flatMap((f) => f.faces));
@@ -679,6 +881,14 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       const size = (f.hi ?? 0) - (f.lo ?? 0);
       edges.push({ kind: 'chamfer', key: `${f.id}`, f, angle: r3(f.half ?? 0), size: r3(size), from: lookTo(P, f) });
       reach.set(f.id, size * Math.sin(((f.half ?? 45) * Math.PI) / 180));
+    } else if (fitSphere(P, f)) {
+      // A ball's face standing up on no floor of its own (a dome is a boss's): a dome, from the side it looks to.
+      const b = fitSphere(P, f)!;
+      const m = meanNormal(P, f);
+      const k = [0, 1, 2].sort((x, y) => Math.abs(m[y]) - Math.abs(m[x]))[0];
+      const along = pts.map((p) => p[k]);
+      features.push({ kind: 'dome', d: r3(2 * b.r), on: b.c.map(r3) as Vec, depth: r3(Math.max(...along) - Math.min(...along)), from: [`${AX[k]}${m[k] > 0 ? '+' : '-'}`], faces: [f.id] });
+      reach.set(f.id, -1);
     } else {
       edges.push({ kind: 'surface', key: `${f.id}`, f, from: lookTo(P, f) });
       reach.set(f.id, Math.max(...[0, 1, 2].map((k) => Math.max(...pts.map((p) => p[k])) - Math.min(...pts.map((p) => p[k])))));
@@ -711,15 +921,49 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
   const { unexplained, undercuts } = check(P, grid, kept, cellsOf, byId, reach);
   // Undercuts: room no straight tool along any axis reaches, under the part, next to a milled shape a side-cutting tool
   // (a T-slot cutter) comes in through; made of the faces left there.
+  const wings = new Map<Feature, { u: (typeof undercuts)[number]; faces: number[] }[]>();
   for (const u of undercuts) {
     const near = (p: Vec) => [0, 1, 2].every((k) => p[k] >= u.box[k] - u.pad && p[k] <= u.box[k + 3] + u.pad);
+    const bx = snap(u.box, faces, P, u.pad + 0.05);
+    // Round a pin, under its head: a groove round it.
+    const pin = faces.find((f) => f.kind === 'cylinder' && !f.concave && axisOf(f.n) >= 0 && coverage(arcsOf(P, f)) >= 355 && f.tris.every((t) => near([0, 1, 2].map((k) => (P[t * 9 + k] + P[t * 9 + 3 + k] + P[t * 9 + 6 + k]) / 3) as Vec)));
+    if (pin) {
+      const k = axisOf(pin.n);
+      const [i, j] = others(k);
+      kept.push({ kind: 'groove', axis: AX[k], at: [r3(pin.at[i]), r3(pin.at[j])], d: r3(2 * pin.r!), width: r3(bx[k + 3] - bx[k]), from: u.from, faces: [pin.id] });
+      continue;
+    }
     const fs = unowned.filter((id) => {
       const f = byId.get(id)!;
       const inA = f.tris.reduce((t, x) => t + (near([0, 1, 2].map((k) => (P[x * 9 + k] + P[x * 9 + 3 + k] + P[x * 9 + 6 + k]) / 3) as Vec) ? triArea(P, x) : 0), 0);
       return inA >= 0.5 * f.area;
     });
     for (const id of fs) unowned.splice(unowned.indexOf(id), 1);
-    kept.push({ kind: 'undercut', from: u.from, faces: fs, box: snap(u.box, faces, P, u.pad + 0.05) });
+    // A wing at the floor of the one slot it opens into: that slot is a T-slot (or a dovetail), the wing its own.
+    const s0 = u.near.length === 1 && ['slot', 'pocket'].includes(u.near[0].kind) ? u.near[0] : undefined;
+    const k = s0 ? AX.indexOf(s0.from[0][0] as 'X') : -1;
+    const floor = s0 ? (s0.from[0][1] === '+' ? s0.box![k] : s0.box![k + 3]) : 0;
+    if (s0 && Math.abs((s0.from[0][1] === '+' ? bx[k] : bx[k + 3]) - floor) < 0.05) (wings.get(s0) ?? wings.set(s0, []).get(s0)!).push({ u: { ...u, box: bx }, faces: fs });
+    else kept.push({ kind: 'undercut', from: u.from, faces: fs, box: bx });
+  }
+  for (const [s0, ws] of wings) {
+    const box = ws.reduce((b, w) => [0, 1, 2, 3, 4, 5].map((q) => (q < 3 ? Math.min(b[q], w.u.box[q]) : Math.max(b[q], w.u.box[q]))) as Box6, s0.box!);
+    const fs = [...s0.faces, ...ws.flatMap((w) => w.faces)];
+    const k = AX.indexOf(s0.from[0][0] as 'X');
+    // Across: the axis it grew along under its mouth.
+    const across = [0, 1, 2].filter((q) => q !== k).sort((p, q) => box[q + 3] - box[q] - (s0.box![q + 3] - s0.box![q]) - (box[p + 3] - box[p] - (s0.box![p + 3] - s0.box![p])))[0];
+    const lean = fs.map((id) => byId.get(id)!).filter((f) => f.kind === 'plane' && axisOf(f.n) < 0);
+    kept.splice(kept.indexOf(s0), 1);
+    kept.push({
+      kind: lean.length ? 'dovetail' : 'tslot',
+      from: s0.from,
+      faces: fs,
+      box,
+      depth: s0.depth,
+      width: r3(s0.box![across + 3] - s0.box![across]),
+      wide: r3(box[across + 3] - box[across]),
+      ...(lean.length ? { angle: r3((Math.asin(Math.min(1, Math.max(...lean.map((f) => Math.abs(f.n[k]))))) * 180) / Math.PI) } : {}),
+    });
   }
   return { features: kept, unexplained, unowned };
 }
@@ -755,6 +999,13 @@ function snap(b: Box6, fs: ExactFace[], P: ArrayLike<number>, tol = 0.06): Box6 
   for (const f of fs) {
     if (f.kind === 'plane' && axisOf(f.n) >= 0) exact[axisOf(f.n)].push(f.at[axisOf(f.n)]);
     else if (f.kind === 'cylinder' && axisOf(f.n) >= 0) for (const k of others(axisOf(f.n))) exact[k].push(f.at[k] - f.r!, f.at[k] + f.r!);
+    else if (f.kind === 'cone' && axisOf(f.n) >= 0) {
+      const rad = Math.max(...f.tris.flatMap((t) => [0, 1, 2].map((c) => radialOf(cornerOf(P, t, c), f))));
+      for (const k of others(axisOf(f.n))) exact[k].push(f.at[k] - rad, f.at[k] + rad);
+    } else if (f.kind === 'other') {
+      const b = fitSphere(P, f);
+      if (b) for (let k = 0; k < 3; k++) exact[k].push(b.c[k] - b.r, b.c[k] + b.r);
+    }
     else if (f.kind === 'plane')
       for (let k = 0; k < 3; k++) {
         const v = f.tris.flatMap((t) => [0, 1, 2].map((c) => P[t * 9 + c * 3 + k]));
@@ -925,7 +1176,7 @@ function prismCells(g: Grid, r: Rec): Int32Array {
 }
 
 /** The material between the part and its box that no shape removes: cells, joined; what is over 1 mm³. */
-function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<Feature, Uint8Array>, byId: Map<number, ExactFace>, reach: Map<number, number>): { unexplained: { mm3: number; box: Box6 }[]; undercuts: { box: Box6; pad: number; from: string[] }[] } {
+function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<Feature, Uint8Array>, byId: Map<number, ExactFace>, reach: Map<number, number>): { unexplained: { mm3: number; box: Box6 }[]; undercuts: { box: Box6; pad: number; from: string[]; near: Feature[] }[] } {
   const { bb, n, st, part } = g;
   const idx = (i: number, j: number, k: number) => (k * n[1] + j) * n[0] + i;
   const done = new Uint8Array(part.length);
@@ -937,7 +1188,11 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
   // Holes, counterbores, countersinks: round their axis over their length; the edges' shapes: near their face.
   for (const f of features) {
     const fs = f.faces.map((id) => byId.get(id)!).filter(Boolean);
-    if (f.dir) {
+    if (f.kind === 'sphere' && f.on) {
+      // A ball's recess: inside its sphere.
+      const [c, rad] = [f.on, f.d! / 2];
+      mark(done, part, n, st, bb, (p) => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) <= rad + 1e-6, ...([0, 1, 2].map((k) => [k, c[k] - rad, c[k] + rad]) as [number, number, number][]));
+    } else if (f.dir) {
       // A hole at an angle: round its axis between its ends.
       const d = f.dir;
       for (const h of fs) {
@@ -954,7 +1209,7 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
         const ends = [lo, hi].map((t) => [0, 1, 2].map((k) => o[k] + (t - dot(o, d)) * d[k]));
         mark(done, part, n, st, bb, (p) => dot(p, d) >= lo - 1e-6 && dot(p, d) <= hi + 1e-6 && radial(p) <= rad + 1e-6, ...([0, 1, 2].map((k) => [k, Math.min(ends[0][k], ends[1][k]) - rad, Math.max(ends[0][k], ends[1][k]) + rad]) as [number, number, number][]));
       }
-    } else if (f.kind === 'hole' || f.kind === 'counterbore' || f.kind === 'countersink') {
+    } else if (f.axis && f.at && !cellsOf.has(f)) {
       const k = AX.indexOf(f.axis!);
       const [i2, j2] = others(k);
       for (const h of fs) {
@@ -986,7 +1241,7 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
   for (let id = 0; id < part.length; id++) if (!part[id] && !done[id]) left[id] = 1;
   const seen = new Uint8Array(part.length);
   const out: { mm3: number; box: Box6 }[] = [];
-  const undercuts: { box: Box6; pad: number; from: string[] }[] = [];
+  const undercuts: { box: Box6; pad: number; from: string[]; near: Feature[] }[] = [];
   // Which milled shape holds each cell (the first), to find what a leftover room lies next to.
   const milled = features.filter((f) => cellsOf.has(f));
   const holder = new Int16Array(part.length).fill(-1);
@@ -1054,7 +1309,7 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
     });
     const from = shut ? [...new Set([...next].flatMap((fi) => milled[fi].from))] : [];
     const half = st.map((v) => v / 2);
-    if (from.length) undercuts.push({ box: [lo[0] - half[0], lo[1] - half[1], lo[2] - half[2], hi[0] + half[0], hi[1] + half[1], hi[2] + half[2]] as Box6, pad: Math.max(...half), from: from.sort() });
+    if (from.length) undercuts.push({ box: [lo[0] - half[0], lo[1] - half[1], lo[2] - half[2], hi[0] + half[0], hi[1] + half[1], hi[2] + half[2]] as Box6, pad: Math.max(...half), from: from.sort(), near: [...next].map((fi) => milled[fi]) });
     else out.push({ mm3: r3(mm3), box: [lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]].map(r3) as Box6 });
   }
   return { unexplained: out, undercuts };
@@ -1269,3 +1524,140 @@ function lineGap(a: ExactFace, b: ExactFace): number {
   const t = dot(q, a.n);
   return Math.hypot(q[0] - t * a.n[0], q[1] - t * a.n[1], q[2] - t * a.n[2]);
 }
+
+/** A face that is part of a ball (fitted to its corners within 2 µm + 0.5 %): its centre, radius, and whether it is
+ * hollow toward the air (a recess) or not (a dome). */
+function fitSphere(P: ArrayLike<number>, f: ExactFace): { c: Vec; r: number; hollow: boolean } | undefined {
+  const pts = f.tris.flatMap((t) => [0, 1, 2].map((c) => cornerOf(P, t, c)));
+  if (pts.length < 12) return undefined;
+  // x² + y² + z² + D x + E y + F z + G = 0, least squares: the normal equations, solved by elimination.
+  const A = [0, 0, 0, 0].map(() => [0, 0, 0, 0, 0]);
+  for (const p of pts) {
+    const row = [p[0], p[1], p[2], 1];
+    const rhs = -(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+    for (let a = 0; a < 4; a++) {
+      for (let b = 0; b < 4; b++) A[a][b] += row[a] * row[b];
+      A[a][4] += row[a] * rhs;
+    }
+  }
+  for (let a = 0; a < 4; a++) {
+    const piv = [a, 1, 2, 3].filter((q) => q >= a).sort((p, q) => Math.abs(A[q][a]) - Math.abs(A[p][a]))[0];
+    [A[a], A[piv]] = [A[piv], A[a]];
+    if (Math.abs(A[a][a]) < 1e-12) return undefined;
+    for (let q = 0; q < 4; q++) {
+      if (q === a) continue;
+      const m = A[q][a] / A[a][a];
+      for (let b = a; b < 5; b++) A[q][b] -= m * A[a][b];
+    }
+  }
+  const [D, E, F, G] = [0, 1, 2, 3].map((a) => A[a][4] / A[a][a]);
+  const c: Vec = [-D / 2, -E / 2, -F / 2];
+  const r2 = dot(c, c) - G;
+  if (!(r2 > 0)) return undefined;
+  const r = Math.sqrt(r2);
+  if (pts.some((p) => Math.abs(Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) - r) > 0.002 + 0.005 * r)) return undefined;
+  const m = meanNormal(P, f);
+  const mid = pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length, s[2] + p[2] / pts.length] as Vec, [0, 0, 0] as Vec);
+  return { c, r, hollow: dot(m, [c[0] - mid[0], c[1] - mid[1], c[2] - mid[2]]) > 0 };
+}
+/** A face's normals, area-weighted and summed (out of the part), as a unit vector. */
+function meanNormal(P: ArrayLike<number>, f: ExactFace): Vec {
+  const s: Vec = [0, 0, 0];
+  for (const t of f.tris) {
+    const [p, q, w] = [0, 1, 2].map((c) => cornerOf(P, t, c));
+    const u: Vec = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+    const v: Vec = [w[0] - p[0], w[1] - p[1], w[2] - p[2]];
+    s[0] += u[1] * v[2] - u[2] * v[1];
+    s[1] += u[2] * v[0] - u[0] * v[2];
+    s[2] += u[0] * v[1] - u[1] * v[0];
+  }
+  const l = Math.hypot(...s) || 1;
+  return [s[0] / l, s[1] / l, s[2] / l];
+}
+/** How far a point is from a cylinder's or cone's axis. */
+function radialOf(p: Vec, f: ExactFace): number {
+  const q: Vec = [p[0] - f.at[0], p[1] - f.at[1], p[2] - f.at[2]];
+  const t = dot(q, f.n);
+  return Math.hypot(q[0] - t * f.n[0], q[1] - t * f.n[1], q[2] - t * f.n[2]);
+}
+
+/**
+ * A profile through the part (a through piece seen from its end) that opens on one face of the part: how wide its mouth
+ * is there, how wide it is at its widest, how deep from the mouth, and the side the mouth looks to.
+ */
+function mouthOf(r: Rec, gf: ExactFace[]): { width: number; wide: number; depth: number; side: string } | undefined {
+  const t = touches(r);
+  const on = (Object.keys(t) as (keyof typeof t)[]).filter((k) => t[k]);
+  if (on.length !== 1) return undefined;
+  const e = extentOf(r.B);
+  const o = extentOf(r.own);
+  const a = on[0][0] === 'x' ? 0 : 1;
+  const at = on[0].endsWith('lo') ? e.lo[a] : e.hi[a];
+  const along = r.own.flat().filter((p) => Math.abs(p[a] - at) < 0.02).map((p) => p[1 - a]);
+  if (along.length < 2) return undefined;
+  const d: Vec = [0, 0, 0];
+  d[a] = on[0].endsWith('lo') ? -1 : 1;
+  const m = apply(transpose(r.R), d);
+  const k = axisOf(m);
+  // Each width's ends put on the faces' own corners near them (cleaning the outline rounds sharp corners off).
+  const xs = gf.flatMap((f) => f.tris.flatMap((t) => [0, 1, 2].map((c) => r.T[t * 9 + c * 3 + 1 - a])));
+  const at2 = (v: number) => xs.filter((x) => Math.abs(x - v) < 0.05).sort((p, q) => Math.abs(p - v) - Math.abs(q - v))[0] ?? v;
+  return { width: r3(at2(Math.max(...along)) - at2(Math.min(...along))), wide: r3(at2(o.hi[1 - a]) - at2(o.lo[1 - a])), depth: r3(o.hi[a] - o.lo[a]), side: `${AX[k]}${m[k] > 0 ? '+' : '-'}` };
+}
+
+/** A ring-shaped pocket between a round wall and a round island on one axis (a face groove): where, Ø and width. */
+function faceGroove(r: Rec, gf: ExactFace[], P: ArrayLike<number>): { axis: 'X' | 'Y' | 'Z'; at: [number, number]; d: number; width: number } | undefined {
+  const k = axisOf(apply(transpose(r.R), [0, 0, 1]));
+  const cyl = gf.filter((f) => f.kind === 'cylinder' && axisOf(f.n) === k);
+  const whole = (fs: ExactFace[]) => coverage(fs.flatMap((f) => arcsOf(P, f))) >= 355;
+  const outer = cyl.filter((f) => f.concave);
+  const inner = cyl.filter((f) => !f.concave);
+  const o = outer.find((f) => whole(outer.filter((x) => dist2(x) === dist2(f) && Math.abs(x.r! - f.r!) < 0.005)));
+  const i = o && inner.find((f) => dist2(f) === dist2(o) && f.r! < o.r! && whole(inner.filter((x) => dist2(x) === dist2(f) && Math.abs(x.r! - f.r!) < 0.005)));
+  if (!o || !i) return undefined;
+  const [a, b] = others(k);
+  return { axis: AX[k], at: [r3(o.at[a]), r3(o.at[b])], d: r3(2 * o.r!), width: r3(o.r! - i.r!) };
+}
+
+/** The wall between two pieces seen from one side, if it is a rib: 3 mm thick or less and four times as long. */
+function ribBetween(a: Rec, b: Rec, fs: [number[], number[]], byId: Map<number, ExactFace>): { lo: Vec; hi: Vec; t: number } | undefined {
+  const meet = (d: number) => area(intersection(offset(a.own, d / 2), offset(b.own, d / 2)));
+  if (meet(3) < 0.01) return undefined;
+  let [lo, hi] = [0, 3];
+  for (let i = 0; i < 10; i++) {
+    const m = (lo + hi) / 2;
+    if (meet(m) > 1e-4) hi = m;
+    else lo = m;
+  }
+  if (hi < 0.05) return undefined;
+  const gap = clean(difference(intersection(offset(a.own, hi / 2 + 0.05), offset(b.own, hi / 2 + 0.05)), union([...a.own, ...b.own])));
+  if (!gap.length) return undefined;
+  const g = extentOf(gap);
+  const len = Math.max(g.hi[0] - g.lo[0], g.hi[1] - g.lo[1]);
+  if (len < 4 * hi) return undefined;
+  const mid: P2 = [(g.lo[0] + g.hi[0]) / 2, (g.lo[1] + g.hi[1]) / 2];
+  const top = heightAt(a.T, mid[0], mid[1]);
+  const floor = Math.max(a.h, b.h);
+  if (!(top > floor + 0.01)) return undefined;
+  // Its sides on the pieces' two facing flat walls (its thickness their gap), its ends where both run; else what lies
+  // between the pieces, inside the part.
+  const thin = g.hi[0] - g.lo[0] < g.hi[1] - g.lo[1] ? 0 : 1;
+  const wall = (r: Rec, ids: number[]) => ids.map((id) => byId.get(id)!).filter((f) => f.kind === 'plane' && axisOf(apply(r.R, f.n)) === thin).map((f) => {
+    const xs = f.tris.flatMap((t) => [0, 1, 2].map((c) => r.T[t * 9 + c * 3 + 1 - thin]));
+    return { at: apply(r.R, f.at)[thin], lo: Math.min(...xs), hi: Math.max(...xs) };
+  });
+  const pair = wall(a, fs[0]).flatMap((p) => wall(b, fs[1]).map((q) => ({ p, q }))).find(({ p, q }) => Math.abs(Math.abs(p.at - q.at) - hi) < 0.02 && Math.min(p.at, q.at) < mid[thin] && Math.max(p.at, q.at) > mid[thin]);
+  const e = extentOf(r3B(a.B, gap));
+  const lo3: Vec = [e.lo[0], e.lo[1], floor];
+  const hi3: Vec = [e.hi[0], e.hi[1], top];
+  if (pair) {
+    [lo3[thin], hi3[thin]] = [Math.min(pair.p.at, pair.q.at), Math.max(pair.p.at, pair.q.at)];
+    [lo3[1 - thin], hi3[1 - thin]] = [Math.max(pair.p.lo, pair.q.lo), Math.min(pair.p.hi, pair.q.hi)];
+    return { lo: lo3, hi: hi3, t: r3(Math.abs(pair.p.at - pair.q.at)) };
+  }
+  [lo3[thin], hi3[thin]] = [mid[thin] - hi / 2, mid[thin] + hi / 2];
+  return { lo: lo3, hi: hi3, t: r3(hi) };
+}
+
+/** A region clipped to a piece's box (inside the part's bounds). */
+const r3B = (B: Region, r: Region): Region => intersection(r, B);

@@ -51,7 +51,7 @@
    "depth": 18
   },
   {
-   "kind": "boss",
+   "kind": "rib",
    "from": [
     "Z+"
    ],
@@ -63,7 +63,8 @@
     26,
     28
    ],
-   "height": 18
+   "height": 18,
+   "width": 2
   }
  ]
 }

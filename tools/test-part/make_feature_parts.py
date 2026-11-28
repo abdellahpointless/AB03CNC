@@ -18,7 +18,7 @@ import math
 import sys
 from pathlib import Path
 
-from build123d import Align, Axis, Box, Cone, Cylinder, Keep, Plane, Pos, Rot, Unit, chamfer, export_step, fillet
+from build123d import Align, Axis, Box, Cone, Cylinder, Keep, Plane, Polyline, Pos, Rectangle, Rot, SlotOverall, Sphere, Spline, Unit, chamfer, export_step, extrude, fillet, loft, make_face
 
 LO = (Align.MIN, Align.MIN, Align.MIN)
 HOLE = (Align.CENTER, Align.CENTER, Align.MIN)
@@ -104,7 +104,7 @@ def boss_part():
     part = part + Pos(25, 25, 12) * Cylinder(6, 5, align=HOLE) - zhole(25, 25, 5, -1, 18)
     return part, [
         {"kind": "pocket", "from": ["Z+"], "box": [5, 5, 12, 45, 45, 20], "depth": 8, "corner": 5},
-        {"kind": "boss", "from": ["Z+"], "box": [19, 19, 12, 31, 31, 17], "height": 5, "d": 12},
+        {"kind": "island", "from": ["Z+"], "box": [19, 19, 12, 31, 31, 17], "height": 5, "d": 12},
         hole("Z", [25, 25], 5, 17, ["Z+", "Z-"], True),
     ]
 
@@ -207,6 +207,8 @@ def open_slots():
     return part, [
         {"kind": "slot", "from": ["Z+"], "box": [30, 11, 15, 60, 19, 20], "depth": 5, "width": 8, "corner": 4},
         {"kind": "slot", "from": ["X+", "Z+"], "box": [40, 21, 15, 60, 27, 20], "depth": 5, "width": 6},
+        # The 2 mm wall left between the two, as long as the square one, 5 high: a rib.
+        {"kind": "rib", "from": ["Z+"], "box": [40, 19, 15, 60, 21, 20], "height": 5, "width": 2},
     ]
 
 
@@ -220,13 +222,11 @@ def chamfer_slot():
 
 
 def blind_t_slot():
-    # A T-slot closed at both ends: its neck a pocket from the top, its two wings under the top no straight tool along
-    # any axis reaches (a T-slot cutter through the neck): undercuts.
+    # A T-slot closed at both ends: its neck a slot from the top, its two wings under the top no straight tool along any
+    # axis reaches (a T-slot cutter through the neck): one T-slot, 6 wide at its mouth, 14 inside.
     part = Box(60, 30, 20, align=LO) - Pos(10, 12, 8) * Box(40, 6, 13, align=LO) - Pos(10, 8, 8) * Box(40, 14, 6, align=LO)
     return part, [
-        {"kind": "pocket", "from": ["Z+"], "box": [10, 12, 8, 50, 18, 20], "depth": 12},
-        {"kind": "undercut", "from": ["Z+"], "box": [10, 8, 8, 50, 12, 14]},
-        {"kind": "undercut", "from": ["Z+"], "box": [10, 18, 8, 50, 22, 14]},
+        {"kind": "tslot", "from": ["Z+"], "box": [10, 8, 8, 50, 22, 20], "depth": 12, "width": 6, "wide": 14},
     ]
 
 
@@ -251,7 +251,76 @@ def fin_wide():
     part = Box(80, 60, 10, align=LO) + Pos(4, 4, 10) * Box(2, 22, 18, align=LO)
     return part, [
         {"kind": "step", "from": ["Z+"], "box": [0, 0, 10, 80, 60, 28], "depth": 18},
-        {"kind": "boss", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18},
+        {"kind": "rib", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18, "width": 2},
+    ]
+
+
+def bores_grooves():
+    # A Ø30 bore through (over 20: milled, a bore) with a circlip's groove Ø34 x 3 inside it and an O-ring's groove on
+    # the top round it (Ø38, 2 wide, 2 deep); a round pocket Ø24 x 5 (wider than deep: a pocket, not a hole).
+    part = Box(70, 40, 30, align=LO) - zhole(20, 20, 30, -1, 31) - zhole(20, 20, 34, 12, 15)
+    part = part - (zhole(20, 20, 38, 28, 31) - zhole(20, 20, 34, 27, 32)) - zhole(52, 20, 24, 25, 31)
+    return part, [
+        {"kind": "bore", "axis": "Z", "at": [20, 20], "d": 30, "depth": 30, "through": True, "from": ["Z+", "Z-"]},
+        {"kind": "groove", "axis": "Z", "at": [20, 20], "d": 34, "width": 3, "from": ["Z+", "Z-"]},
+        {"kind": "groove", "axis": "Z", "at": [20, 20], "d": 38, "width": 2, "depth": 2, "from": ["Z+"]},
+        {"kind": "pocket", "axis": "Z", "at": [52, 20], "d": 24, "depth": 5, "from": ["Z+"], "box": [40, 8, 25, 64, 32, 30]},
+    ]
+
+
+def cones_balls():
+    # A conical recess Ø12 to Ø4 (flat bottom) 8 deep; a ball's recess R6; in two pockets, a dome R5 and a cone pin Ø10
+    # to Ø4, 6 high.
+    half = math.degrees(math.atan(4 / 8))
+    part = Box(80, 40, 20, align=LO) - Pos(12, 20, 12) * Cone(2, 6 + 0.5 * math.tan(math.radians(half)), 8.5, align=HOLE)
+    part = part - Pos(30, 20, 20) * Sphere(6)
+    part = part - pocket(42, 12, 58, 28, 12, 21, 0) + Pos(50, 20, 12) * Sphere(5).split(Plane.XY, keep=Keep.TOP)
+    part = part - pocket(62, 12, 78, 28, 12, 21, 0) + Pos(70, 20, 12) * Cone(5, 2, 6, align=HOLE)
+    return part, [
+        {"kind": "taper", "axis": "Z", "at": [12, 20], "d": 12, "d2": 4, "angle": round(2 * half, 3), "depth": 8, "from": ["Z+"]},
+        {"kind": "sphere", "d": 12, "on": [30, 20, 20], "depth": 6, "from": ["Z+"]},
+        {"kind": "pocket", "from": ["Z+"], "box": [42, 12, 12, 58, 28, 20], "depth": 8},
+        {"kind": "dome", "from": ["Z+"], "box": [45, 15, 12, 55, 25, 17], "height": 5, "d": 10},
+        {"kind": "pocket", "from": ["Z+"], "box": [62, 12, 12, 78, 28, 20], "depth": 8},
+        {"kind": "cone", "from": ["Z+"], "box": [65, 15, 12, 75, 25, 18], "height": 6, "d": 10, "d2": 4, "angle": round(2 * math.degrees(math.atan(3 / 6)), 3)},
+    ]
+
+
+SPLINE = [(10, 38), (18, 44), (28, 41), (27, 33), (16, 32)]
+
+
+def pockets_more():
+    # A pocket with walls drafted 10° (30 x 20 at the top, 8 deep); a face recess 0.5 deep; a closed slot 30 x 8 with
+    # round ends; a window through whose outline is a spline (a curved profile).
+    t = math.tan(math.radians(10))
+    lo = Pos(20, 15, 12) * Rectangle(30 - 16 * t, 20 - 16 * t)
+    hi = Pos(20, 15, 21) * Rectangle(30 + 2 * t, 20 + 2 * t)
+    part = Box(80, 50, 20, align=LO) - loft([lo, hi]) - Pos(45, 5, 19.5) * Box(20, 12, 1, align=LO)
+    part = part - Pos(60, 34, 15) * extrude(SlotOverall(30, 8), 6)
+    window = Pos(0, 0, -1) * extrude(make_face(Spline(*SPLINE, periodic=True)), 22)
+    part = part - window
+    b = window.bounding_box()
+    return part, [
+        {"kind": "pocket", "from": ["Z+"], "box": [5, 5, 12, 35, 25, 20], "depth": 8, "angle": 10},
+        {"kind": "recess", "from": ["Z+"], "box": [45, 5, 19.5, 65, 17, 20], "depth": 0.5},
+        {"kind": "slot", "from": ["Z+"], "box": [45, 30, 15, 75, 38, 20], "depth": 5, "width": 8, "corner": 4},
+        {"kind": "window", "from": ["Z+", "Z-"], "box": [round(b.min.X, 3), round(b.min.Y, 3), 0, round(b.max.X, 3), round(b.max.Y, 3), 20], "through": True, "curved": True},
+    ]
+
+
+def tslot_dovetail():
+    # A T-slot and a dovetail through along Y; a pin in a pocket with a groove round it (under its head).
+    part = Box(80, 40, 30, align=LO) - Pos(12, -1, 22) * Box(4, 42, 9, align=LO) - Pos(8, -1, 16) * Box(12, 42, 6, align=LO)
+    # The dovetail: 18 wide at its floor (Z 22), its walls leaning in 4 per 8 to 10 wide at the top (run on 0.5 past).
+    tail = Plane.XZ * make_face(Polyline((31, 22), (49, 22), (44.75, 30.5), (35.25, 30.5), close=True))
+    part = part - Pos(0, 41, 0) * extrude(tail, 42)
+    part = part - pocket(58, 10, 78, 30, 18, 31, 0) + zhole(68, 20, 10, 18, 30) - (zhole(68, 20, 12, 22, 24) - zhole(68, 20, 7, 21, 25))
+    return part, [
+        {"kind": "tslot", "from": ["Y+", "Y-", "Z+"], "box": [8, 0, 16, 20, 40, 30], "depth": 14, "width": 4, "wide": 12},
+        {"kind": "dovetail", "from": ["Y+", "Y-", "Z+"], "box": [31, 0, 22, 49, 40, 30], "depth": 8, "width": 10, "wide": 18, "angle": round(math.degrees(math.atan(4 / 8)), 3)},
+        {"kind": "pocket", "from": ["Z+"], "box": [58, 10, 18, 78, 30, 30], "depth": 12},
+        {"kind": "island", "from": ["Z+"], "box": [63, 15, 18, 73, 25, 30], "height": 12, "d": 10},
+        {"kind": "groove", "axis": "Z", "at": [68, 20], "d": 7, "width": 2, "from": ["Z+"]},
     ]
 
 
@@ -274,6 +343,10 @@ PARTS = {
     "blind-t-slot": (blind_t_slot, (60, 30, 20)),
     "tilted-holes": (tilted_holes, (40, 30, 20)),
     "fin-wide": (fin_wide, (80, 60, 28)),
+    "bores-grooves": (bores_grooves, (70, 40, 30)),
+    "cones-balls": (cones_balls, (80, 40, 20)),
+    "pockets-more": (pockets_more, (80, 50, 20)),
+    "tslot-dovetail": (tslot_dovetail, (80, 40, 30)),
 }
 
 for name, (make, size) in PARTS.items():
