@@ -362,11 +362,27 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-27
 - **Context:** Planner (slopes.ts)
 
+### A045: Shapes found every time, overlaps too
+
+- **Type:** stated
+- **Assumption:** From a STEP model the shape engine finds every shape, each once, with its sizes and the sides it is reached from, also where shapes run into each other; what no shape explains is named, never cleaned up. Holes (through, blind with a point or flat, counterbores, countersinks of any angle), pockets, slots, steps, notches, windows, outlines, bosses, undercuts, chamfers, rounds, fillets and slopes.
+- **Source:** Owner, 2026-11-27 ("perfectly detected every time, even if a shape intersects with the other")
+- **Validated:** 2026-11-27
+- **Context:** Shape engine (recognize.ts), step 2
+
 ---
 
 ## WORKING
 
 Medium confidence. Use but flag if contradicted.
+
+### A046: How shapes that meet are told apart
+
+- **Type:** inferred
+- **Assumption:** A shape is its surfaces (a hole cut in pieces by a slot is one hole; a hole another runs into stays a hole, "open" if its wall never closes). Shapes at one depth that run into each other are one pocket, but slots (and keyways open at one end) and holes stay themselves. A deeper shape's room is its own up to the top; its depth runs from the top of the walls round it (a pocket in another: from that one's floor). A shape seen from several sides is one; a side's partial view of others is theirs. "From": the sides a straight tool along that axis cuts all of it from; a T-slot's hidden wings are undercuts reached through its neck; a hole at an angle has none.
+- **Source:** CAM AI, written down with the 23 test parts (tools/test-part/make_feature_parts.py) before step 3 uses it
+- **Validated:** 2026-11-28
+- **Context:** Shape engine (recognize.ts); the owner may want other names or splits (a T-slot open at its ends is one profile from its ends today)
 
 ### A027: Orders that lock
 
@@ -482,3 +498,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A038 and A039 from the owner (moving a tool's work to another clamping; a quarter turn about Z). The simulation now draws the POM nest as a block on its parallels (it read the nest's walls as spacer plates and ran the parallels up to the part).
 - 2026-11-27: A040 from the owner (parts as STEP files, never PDF); step 1 of the shape engine (exact faces from the STEP file) built on it.
 - 2026-11-27: A041-A044 from the owner after the test parts (later grips under the stock still to cut, a quarter turn off a broken face, no good holding is an error with another first side suggested, slopes by a ball end mill from the top).
+- 2026-11-28: A045 from the owner (step 2 of the shape engine); A046 the rule CAM AI wrote for shapes that meet, with 23 test parts and their answer keys.
