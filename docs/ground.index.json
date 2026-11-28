@@ -2,8 +2,8 @@
   "version": "1.0",
   "project_name": "CNC Process Pro",
   "created": "2026-11-25T17:00:00Z",
-  "last_updated": "2026-11-28T16:00:00Z",
-  "next_id": 49,
+  "last_updated": "2026-11-28T20:00:00Z",
+  "next_id": 50,
   "assumptions": [
     {
       "id": "A001",
@@ -1126,9 +1126,9 @@
       "id": "A047",
       "title": "The sizes that name a shape",
       "type": "assumed",
-      "tier": "WORKING",
+      "tier": "ESTABLISHED",
       "assumption": "Bore over Ø20 (blind and shallower than wide: round pocket); closed slot: 2x long with round ends or 3x and 10 wide at most; recess: 2 mm deep at most and a tenth of its width; rib: 3 thick at most, 4x as long; outline arc over R5 is curved; walls leaning up to 30° from a floor are a draft.",
-      "source": "CAM AI, for the owner's list of geometries",
+      "source": "CAM AI, for the owner's list of geometries; confirmed by the owner",
       "validated": "2026-11-28",
       "context": "Shape engine (recognize.ts)",
       "created": "2026-11-28T12:00:00Z",
@@ -1139,6 +1139,13 @@
           "from_tier": null,
           "to_tier": "WORKING",
           "reason": "Chosen to name the owner's list; to confirm"
+        },
+        {
+          "date": "2026-11-28T20:00:00Z",
+          "action": "promoted",
+          "from_tier": "WORKING",
+          "to_tier": "ESTABLISHED",
+          "reason": "Confirmed by the owner"
         }
       ]
     },
@@ -1147,7 +1154,7 @@
       "title": "Planning from the shapes (phase 3)",
       "type": "inferred",
       "tier": "WORKING",
-      "assumption": "STEP models: each shape checked against the simulated program, an uncut one named; holes from the shapes; first side by shapes reached, later near-ties by shapes made whole; ball recesses, domes, cone pins by a ball end mill where one fits; T-slots, dovetails, inner grooves, tapers, non-90° countersinks named, not cut.",
+      "assumption": "STEP models: each shape checked against the simulated program, an uncut one named; holes from the shapes; first side by shapes reached, later near-ties by shapes made whole; ball recesses, domes, cone pins by a ball end mill (in a tight pocket as far as it goes); T-slots, dovetails, inner grooves, tapers named, not cut; non-90° countersinks: A049.",
       "source": "CAM AI, phase 3 asked by the owner",
       "validated": "2026-11-28",
       "context": "Planner (program.ts, features.ts)",
@@ -1159,6 +1166,26 @@
           "from_tier": null,
           "to_tier": "WORKING",
           "reason": "Phase 3 built"
+        }
+      ]
+    },
+    {
+      "id": "A049",
+      "title": "The owner's tool rules for the shapes",
+      "type": "stated",
+      "tier": "ESTABLISHED",
+      "assumption": "Non-90° countersinks with the 90° tool to their face Ø; no circlip groove cutter asked for; domes and cone pins in a tight pocket as far as the ball goes, the rest left; no ball end mill asked for in aluminium (one an admin adds is used); T-slots, threads, angled holes left for now.",
+      "source": "The owner",
+      "validated": "2026-11-28",
+      "context": "Planner (program.ts)",
+      "created": "2026-11-28T20:00:00Z",
+      "history": [
+        {
+          "date": "2026-11-28T20:00:00Z",
+          "action": "created",
+          "from_tier": null,
+          "to_tier": "ESTABLISHED",
+          "reason": "Stated by the owner"
         }
       ]
     }

@@ -50,11 +50,26 @@ describe('phase 3: holes from the shapes, a ball end mill for round 3D shapes', 
     expect(r.check.match).toBeGreaterThan(0.999);
     expect(shapeNotes(r)).toEqual([]);
   }, 180_000);
-  it('3.4: the ball’s recess cut by a ball end mill, nothing cut that the part has; the cone pin no ball fits round, and the taper, named', async () => {
+  it('3.4: the ball’s recess cut by a ball end mill, nothing cut that the part has; round the cone pin in its tight pocket as far as the ball goes, the rest (and the taper) named', async () => {
     // POM: HAAS-1's ball end mills are the plastics' (its aluminium tools have none).
     const r = await plan('feat-cones-balls', 'POM');
     expect(r.setups.flatMap((s) => s.ops).some((o) => o.purpose === 'slope' && o.name.startsWith('KUGEL'))).toBe(true);
     expect(r.check.pieces.filter((p) => p.kind === 'cut')).toEqual([]);
     expect(shapeNotes(r).map((n) => n.shape).sort()).toEqual(['cone', 'taper']);
+  }, 180_000);
+});
+
+describe('the owner’s tool rules (2026-11-28)', () => {
+  it('countersinks of 60° and 100°: made with the 90° graver, the difference accepted, nothing named', async () => {
+    const r = await plan('feat-countersinks', 'POM');
+    expect(r.setups.flatMap((s) => s.ops).some((o) => o.name === 'FASE')).toBe(true);
+    expect(r.setups.some((s) => s.sunk?.length)).toBe(true);
+    expect(r.check.pieces).toEqual([]);
+    expect(shapeNotes(r)).toEqual([]);
+  }, 180_000);
+  it('aluminium: no ball end mill asked for, no ball shape cut (the admin adds one to have them)', async () => {
+    const r = await plan('feat-cones-balls', 'ALU');
+    expect(r.setups.flatMap((s) => s.ops).some((o) => o.name.startsWith('KUGEL'))).toBe(false);
+    expect(r.missing.some((m) => m.category === 'fraise boule')).toBe(false);
   }, 180_000);
 });

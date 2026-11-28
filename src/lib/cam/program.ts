@@ -16,7 +16,7 @@ import { area, bounds, difference, inside, intersection, offset, rect, simplify,
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
 import { GOUGE_MM3 } from './limits';
 import { arcs, shopStyle, shorten } from './style';
-import { catalog, cutData, DEFAULT_LIMITS, knowledge, MILLS, toolComment, usable, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
+import { catalog, cutData, DEFAULT_LIMITS, FAMILY, knowledge, MILLS, toolComment, usable, type CamMaterial, type CamNote, type CamTool, type Cut, type CutEdit, type Limits, type Need } from './tools';
 import type { ToolDb } from './toolDb';
 import type { OpKind } from './learn';
 import type { PartType } from './partType';
@@ -234,6 +234,8 @@ export interface CamSetup {
   sloped?: number[];
   /** The model's round 3D shapes (their index in its shapes) its ball end mill made: never again later. */
   balled?: number[];
+  /** The model's countersinks of another angle (their index in its shapes) its 90° graver made: never again later. */
+  sunk?: number[];
   /** The parallels the designer may choose here (the jaws grip 3 mm or more, under the part's top, never all of it). */
   cales: number[];
   /** CAM AI's own parallels, when the designer's are used instead. */
@@ -292,6 +294,8 @@ export interface Corner {
   z: number;
   above: number;
   region: Region;
+  /** Cut as well as left on purpose there (a countersink of another angle made with the 90° tool, the owner). */
+  cut?: boolean;
 }
 
 const TABLE_Z = -57;
@@ -1175,7 +1179,7 @@ function distToTri2(c: ArrayLike<number>, P: ArrayLike<number>, q: number): numb
   );
 }
 
-function ballShapes(tool: CamTool, items: { kind: 'sphere' | 'dome' | 'cone'; c: Vec; R: number; r2?: number; top: number; low: number }[], mat: string, limits: Limits, clear: number): CamOp {
+function ballShapes(tool: CamTool, items: { kind: 'sphere' | 'dome' | 'cone'; c: Vec; R: number; r2?: number; top: number; low: number; room: number }[], mat: string, limits: Limits, clear: number): CamOp {
   const cut = cutData(tool, 'ball', mat, limits);
   const r = tool.diameter / 2;
   const lines: string[] = [];
@@ -1221,11 +1225,11 @@ function ballShapes(tool: CamTool, items: { kind: 'sphere' | 'dome' | 'cone'; c:
     for (const stock of [0.3, 0]) {
       if (x.kind === 'dome') {
         const rho0 = x.R + r + stock;
-        // Down to where the tip is 0.01 over the foot.
+        // Down to where the tip is 0.01 over the foot, or the ball 0.1 off what stands round it.
         const lowest = Math.acos(Math.min(1, Math.max(-1, (x.low + r + 0.01 - x.c[2]) / rho0)));
         const step = (2 * Math.sqrt(2 * r * 0.01)) / (x.R + r);
         start(x.c[0], x.c[1], x.c[2] + rho0 - r);
-        for (let phi = step; phi <= lowest + 1e-9; phi += step) circle(x.c, rho0 * Math.sin(phi), x.c[2] + rho0 * Math.cos(phi) - r);
+        for (let phi = step; phi <= lowest + 1e-9 && rho0 * Math.sin(phi) + r <= x.room - 0.1; phi += step) circle(x.c, rho0 * Math.sin(phi), x.c[2] + rho0 * Math.cos(phi) - r);
       } else {
         // A cone narrowing up: its surface leans in by `half`; the ball's centre r out along its normal.
         const h = x.top - x.low;
@@ -1233,12 +1237,15 @@ function ballShapes(tool: CamTool, items: { kind: 'sphere' | 'dome' | 'cone'; c:
         const dz = 2 * Math.sqrt(2 * r * 0.01) * Math.cos(half);
         const zs: number[] = [];
         for (let z = x.top; z >= x.low + r * (1 - Math.sin(half)) + 0.01 - 1e-9; z -= dz) zs.push(z);
-        zs.forEach((z, q) => {
+        let first = true;
+        for (const z of zs) {
           const rho = x.R - ((z - x.low) * (x.R - (x.r2 ?? 0))) / h + (r + stock) * Math.cos(half);
+          if (rho + r > x.room - 0.1) break;
           const tip = z + (r + stock) * Math.sin(half) - r;
-          if (!q) start(x.c[0] + rho, x.c[1], tip);
+          if (first) start(x.c[0] + rho, x.c[1], tip);
+          first = false;
           circle(x.c, rho, tip);
-        });
+        }
       }
       lines.push(`G00 Z${n3(clear)}`);
     }
@@ -1570,14 +1577,14 @@ export function checkProgram(tris: ArrayLike<number>, code: string, brand?: stri
     // A corner's region grown by a sample, where the two grids never quite agree.
     const e = Math.max(...g.step);
     const grown = corners?.map((c) => ({ ...c, region: offset(c.region, e) }));
-    const accepted = grown?.length
-      ? (p: Vec) =>
-          grown.some((c) => {
-            const q = apply(c.M, p).map((v, k) => v + c.b[k]);
-            return q[2] > c.z - e && q[2] < c.above + e && inside(c.region, [q[0], q[1]]) !== 0;
-          })
-      : undefined;
-    diff = differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }, 2, accepted);
+    const within = (cs: NonNullable<typeof grown>) => (p: Vec) =>
+      cs.some((c) => {
+        const q = apply(c.M, p).map((v, k) => v + c.b[k]);
+        return q[2] > c.z - e && q[2] < c.above + e && inside(c.region, [q[0], q[1]]) !== 0;
+      });
+    const accepted = grown?.length ? within(grown) : undefined;
+    const cutOk = grown?.some((c) => c.cut) ? within(grown.filter((c) => c.cut)) : undefined;
+    diff = differences({ g, occ: voxelize(tris, pose.R, pose.t, g) }, 2, accepted, cutOk);
   } else if (sim) {
     const laid = layModel(tris, sim, an.setups);
     diff = 'mismatch' in laid ? null : differences(laid);
@@ -2151,7 +2158,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // The walls left inside held faces where the jaws or the stop keep the tools off, in their setup's frame.
   const walls: { R: Mat3; t: Vec; z: number; above: number; region: Region }[] = [];
   // The inside corners left at a mill's radius on purpose (CORNER_R), in their setup's frame: no clamping more for them.
-  const corners: { R: Mat3; t: Vec; z: number; above: number; region: Region }[] = [];
+  const corners: { R: Mat3; t: Vec; z: number; above: number; region: Region; cut?: boolean }[] = [];
   const needOnce = (n: Need) => {
     if (!missing.some((m) => m.category === n.category && Math.abs(m.diameter - n.diameter) < 0.01)) missing.push(n);
     else {
@@ -3149,8 +3156,10 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (found.length) {
         const low = Math.min(...found.map((x) => x.lo));
         const ball = usable(tools, ['KF']).find((b) => b.length >= stockTop - low + 2);
-        if (!ball) needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: found.length } });
-        else {
+        // Aluminium (the owner): no ball end mill asked for; one an admin adds to the tool database is used.
+        if (!ball) {
+          if (FAMILY[mat as CamMaterial] !== 'ALU') needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: found.length } });
+        } else {
           ops.push(ballFinish(ball, found, P, mat, limits, plane, maxAp));
           sloped = found.map((x) => x.id);
         }
@@ -3193,19 +3202,18 @@ function planFor(input: CamInput, vertical: number): CamResult {
       if (items.length) {
         const low = Math.min(...items.map((x) => x.low));
         const balls = usable(tools, ['KF']).filter((b) => b.length >= stockTop - low + 2).sort((p, q) => q.diameter - p.diameter);
-        // A ball fits a recess no larger than it; round a dome or a cone, its widest pass (and the 0.3 mm one) clear of
-        // what stands round it by 0.1 mm. The largest ball that fits the most of them; one no ball fits is left (named).
-        const fits = (b: CamTool, x: BallItem) => {
-          const r = b.diameter / 2;
-          if (x.kind === 'sphere') return r <= x.R + 0.02;
-          return ballReach(x, r) + 0.1 <= x.room;
-        };
-        const ball = balls.map((b) => ({ b, n: items.filter((x) => fits(b, x)).length })).filter((x) => x.n).sort((p, q) => q.n - p.n)[0]?.b;
-        if (!balls.length) needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: items.length } });
-        else if (ball) {
-          const mine = items.filter((x) => fits(ball, x));
+        // A recess: the largest ball no larger than it (none: left, named). A dome or a cone: the largest ball whose widest
+        // pass (the 0.3 mm one) stays 0.1 mm clear of what stands round it; none: the smallest, as far down as it goes
+        // clear, the rest left (the owner, 2026-11-28: in a tight pocket, what the ball can do; the check names the rest).
+        const pick = (x: BallItem) => (x.kind === 'sphere' ? balls.find((b) => b.diameter / 2 <= x.R + 0.02) : balls.find((b) => x.R + b.diameter + 0.4 <= x.room) ?? balls[balls.length - 1]);
+        // Aluminium (the owner): no ball end mill asked for; one an admin adds to the tool database is used.
+        if (!balls.length && FAMILY[mat as CamMaterial] !== 'ALU') needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: items.length } });
+        // One operation a ball, the largest first.
+        for (const ball of balls) {
+          const mine = items.filter((x) => pick(x) === ball);
+          if (!mine.length) continue;
           ops.push(ballShapes(ball, mine, mat, limits, plane));
-          balled = mine.map((x) => x.i);
+          balled = [...(balled ?? []), ...mine.map((x) => x.i)];
         }
       }
     }
@@ -3213,15 +3221,44 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const cutBefore = new Set(setups.flatMap((x) => x.chamfered ?? []));
     const fresh = f.chamfers.filter((c) => c.tris.some((k) => !cutBefore.has(k)));
     let chamfered: number[] | undefined;
-    if (fresh.length) {
+    // The owner (2026-11-28): a countersink of another angle than 90° is made with the 90° tool, to its Ø at the face.
+    // A STEP model's, this clamping facing it, once: the graver round the hole as for a 90° one (its tip 0.3 under, 0.3
+    // in), the difference to the model's cone accepted (left or cut) by the check.
+    let sunk: number[] | undefined;
+    const sinks: { i: number; c: P2; d: number; dh: number; top: number; deep: number }[] = [];
+    if (shapes && exact) {
+      const done = new Set(setups.flatMap((x) => x.sunk ?? []));
+      const byId = new Map(exact.map((e) => [e.id, e]));
+      shapes.forEach((sh, i) => {
+        if (sh.kind !== 'countersink' || Math.abs((sh.angle ?? 90) - 90) <= 1 || done.has(i) || sh.from[0] !== side.name || sh.d === undefined) return;
+        const cone = byId.get(sh.faces[0]);
+        const hole = shapes.find((x) => (x.kind === 'hole' || x.kind === 'bore') && x.axis === sh.axis && x.at && sh.at && Math.hypot(x.at[0] - sh.at[0], x.at[1] - sh.at[1]) < 0.01);
+        if (!cone || !hole?.d) return;
+        const zs = cone.tris.flatMap((q) => [P[q * 9 + 2], P[q * 9 + 5], P[q * 9 + 8]]);
+        const c = apply(R, cone.at);
+        const deep = Math.max((sh.d - hole.d) / 2, (sh.d - hole.d) / 2 / Math.tan((((sh.angle ?? 90) / 2) * Math.PI) / 180));
+        sinks.push({ i, c: [c[0] + t[0], c[1] + t[1]], d: sh.d, dh: hole.d, top: Math.max(...zs), deep });
+      });
+    }
+    if (fresh.length || sinks.length) {
       const graver = usable(tools, ['ST']).find((t) => t.template?.shape === 'G45' || !t.template);
       // Only the chamfers the graver reaches with its holder above the stock's top.
       const reachable = fresh.filter((c) => !graver || graver.length >= stockTop - (c.lo - top - 0.3) + 2);
       const paths = graver ? chamferPaths(P, reachable.map((c) => ({ lo: c.lo - top, hi: c.hi - top })), graver.diameter / 2, jawLimit) : [];
-      if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: fresh.length } });
+      // The countersinks its cone takes (no wider than it), above the jaws.
+      const takes = graver ? sinks.filter((k) => (k.d - k.dh) / 2 + 0.3 <= graver.diameter / 2 && k.top - k.deep > jawLimit && graver.length >= stockTop - (k.top - k.deep - 0.3) + 2) : [];
+      for (const k of takes) {
+        const z = k.top - (k.d - k.dh) / 2 - 0.3;
+        const rho = k.dh / 2 - 0.3;
+        const m = Math.max(24, Math.ceil((2 * Math.PI) / (2 * Math.acos(Math.max(-1, 1 - 0.005 / Math.max(rho, 0.01))))));
+        paths.push({ z, top: k.top, pts: Array.from({ length: m + 1 }, (_, q) => [k.c[0] + rho * Math.cos((2 * Math.PI * q) / m), k.c[1] + rho * Math.sin((2 * Math.PI * q) / m)] as P2) });
+        corners.push({ R, t, z: k.top - k.deep - 0.3, above: k.top + 0.3, region: [circle(k.c, k.d / 2 + 0.3)], cut: true });
+      }
+      if (!graver) needOnce({ category: 'chanfrein', diameter: 4, minLength: 25, why: { key: 'chamfer', count: fresh.length + sinks.length } });
       else if (paths.length) {
         ops.push(chamfering(graver, paths, mat, limits, plane));
         chamfered = cutTris(P, reachable.flatMap((c) => c.tris), paths, graver.diameter / 2 + 0.5);
+        if (takes.length) sunk = takes.map((k) => k.i);
       }
     }
     // 5. A top plate's lettering on this face: the graver along its grooves (engraving()).
@@ -3395,7 +3432,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const viseIn = nest
       ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
       : { material: mat, length: hold[0], width: contactOf(left, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: sb.hi[2] - base, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor, span: sb.hi[0] - sb.lo[0] };
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), ...(sloped && done.some((o) => o.purpose === 'slope') ? { sloped } : {}), ...(balled && done.some((o) => o.purpose === 'slope') ? { balled } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), ...(sloped && done.some((o) => o.purpose === 'slope') ? { sloped } : {}), ...(balled && done.some((o) => o.purpose === 'slope') ? { balled } : {}), ...(sunk && done.some((o) => o.name === 'FASE') ? { sunk } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);
@@ -3457,7 +3494,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     ? corners.map((w) => {
         const M = mul(w.R, transpose(setups[0].R));
         const Mt = apply(M, setups[0].t);
-        return { M, b: [0, 1, 2].map((k) => w.t[k] - Mt[k]) as Vec, z: w.z, above: w.above, region: w.region };
+        return { M, b: [0, 1, 2].map((k) => w.t[k] - Mt[k]) as Vec, z: w.z, above: w.above, region: w.region, ...(w.cut ? { cut: true } : {}) };
       })
     : [];
   const short = [...drilled.values()].filter((rest) => rest > 0).length;

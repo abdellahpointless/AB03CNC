@@ -370,6 +370,22 @@ High confidence assumptions. Treat as premises.
 - **Validated:** 2026-11-27
 - **Context:** Shape engine (recognize.ts), step 2
 
+### A047: The sizes that name a shape
+
+- **Type:** assumed
+- **Assumption:** A round hole over Ø20 is a bore (blind and not as deep as wide: a round pocket); a closed pocket between facing walls is a slot when twice as long as wide with round ends, or three times as long and 10 mm wide at most; a pocket 2 mm deep at most and a tenth of its narrowest width is a face recess; a boss or a wall 3 mm thick at most and four times as long is a rib; an outside round over R5 on an outline is the profile's arc (curved), not an edge round; walls leaning up to 30° off upright from a floor are the pocket's draft.
+- **Source:** CAM AI, for the owner's list of geometries (2026-11-28); confirmed by the owner (2026-11-28)
+- **Validated:** 2026-11-28
+- **Context:** Shape engine (recognize.ts)
+
+### A049: The owner's tool rules for the shapes
+
+- **Type:** stated
+- **Assumption:** A countersink of another angle than 90° is made with the 90° tool, to its Ø at the face (the difference to the model accepted). No groove cutter for circlip grooves is asked for (the shop has none). A dome or a cone pin in a tight pocket is cut as far down as the ball end mill goes clear of what stands round it; the rest is left. In aluminium no ball end mill is asked for and no ball shape cut, unless an admin adds one to the tool database. T-slots, threads and holes at an angle are left for now (named, not cut).
+- **Source:** The owner (2026-11-28)
+- **Validated:** 2026-11-28
+- **Context:** Planner (program.ts)
+
 ---
 
 ## WORKING
@@ -379,18 +395,10 @@ Medium confidence. Use but flag if contradicted.
 ### A048: Planning from the shapes (phase 3)
 
 - **Type:** inferred
-- **Assumption:** For a STEP model: every shape is checked against the simulated program and one left uncut is named (3.1); holes, bores, counterbores and round pockets are drilled or milled as the shapes say (a hole a slot cuts in two is one hole, a slot's round end is no hole) (3.2); the first side is the one most shapes are reached from, and of later sides that reach about as much (within a tenth), the one that makes the most shapes whole (3.3); a ball's recess, a dome and a cone pin are cut by a ball end mill where one fits (a recess no larger than the ball; round a dome or a cone, clear of what stands round it) (3.4). T-slots and dovetails (the cutters' widths are not in the tool data), grooves inside holes, tapers and countersinks of other than 90° are named, not cut.
+- **Assumption:** For a STEP model: every shape is checked against the simulated program and one left uncut is named (3.1); holes, bores, counterbores and round pockets are drilled or milled as the shapes say (a hole a slot cuts in two is one hole, a slot's round end is no hole) (3.2); the first side is the one most shapes are reached from, and of later sides that reach about as much (within a tenth), the one that makes the most shapes whole (3.3); a ball's recess, a dome and a cone pin are cut by a ball end mill (a recess: the largest ball no larger than it; a dome or a cone: the largest ball whose passes stay clear of what stands round it, else the smallest as far as it goes) (3.4). T-slots and dovetails (the cutters' widths are not in the tool data), grooves inside holes and tapers are named, not cut; countersinks of other angles: A049.
 - **Source:** CAM AI, phase 3 asked by the owner (2026-11-28)
 - **Validated:** 2026-11-28
 - **Context:** Planner (program.ts, features.ts)
-
-### A047: The sizes that name a shape
-
-- **Type:** assumed
-- **Assumption:** A round hole over Ø20 is a bore (blind and not as deep as wide: a round pocket); a closed pocket between facing walls is a slot when twice as long as wide with round ends, or three times as long and 10 mm wide at most; a pocket 2 mm deep at most and a tenth of its narrowest width is a face recess; a boss or a wall 3 mm thick at most and four times as long is a rib; an outside round over R5 on an outline is the profile's arc (curved), not an edge round; walls leaning up to 30° off upright from a floor are the pocket's draft.
-- **Source:** CAM AI, for the owner's list of geometries (2026-11-28); the owner may set other sizes
-- **Validated:** 2026-11-28
-- **Context:** Shape engine (recognize.ts)
 
 ### A046: How shapes that meet are told apart
 
@@ -517,3 +525,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-28: A045 from the owner (step 2 of the shape engine); A046 the rule CAM AI wrote for shapes that meet, with 24 test parts and their answer keys.
 - 2026-11-28: the owner's list of geometries to detect; A047 the sizes CAM AI chose to name them (bores, slots, recesses, ribs, arcs, drafts). Threads are not in STEP geometry.
 - 2026-11-28: phase 3 (3.1 to 3.4) built: A048.
+- 2026-11-28: A047 confirmed by the owner (ESTABLISHED); A049 from the owner (countersinks with the 90° tool, no circlip groove cutter, partial ball passes in tight pockets, no ball in aluminium, T-slots, threads and angled holes left for now).
