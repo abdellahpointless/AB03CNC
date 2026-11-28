@@ -122,8 +122,8 @@ describe('shape engine (step 2): the check names what is not explained', () => {
     const { tris, faces } = await load(name);
     return recognizeFaces(tris, faces, undefined, { leaveOut: out }).unexplained.reduce((t, u) => t + u.mm3, 0);
   };
-  // The check counts cells (0.25 to 0.3 mm here): within 5%.
-  const near = (v: number, want: number) => expect(Math.abs(v - want), `${v} mm3 for ${want}`).toBeLessThan(0.05 * want);
+  // The check counts cells (0.25 to 0.3 mm here): within 5%, a thin shape (a 1 mm chamfer, four cells across) 20%.
+  const near = (v: number, want: number, within = 0.05) => expect(Math.abs(v - want), `${v} mm3 for ${want}`).toBeLessThan(within * want);
   it('a pocket left out: its room, 20 x 20 x 10 less its R2 corners', async () => {
     near(await left('feat-step-pocket', ['pocket'])(), 4000 - 4 * (4 - Math.PI) * 10);
   }, 60_000);
@@ -134,7 +134,12 @@ describe('shape engine (step 2): the check names what is not explained', () => {
     // The X slot's strip, 10 wide and 10 deep right across; the Y slot's, 8 wide and 6 deep, but where the X slot is.
     near(await left('feat-slot-pocket', ['slot'])(), 60 * 10 * 10 + 8 * 30 * 6);
   }, 60_000);
+  it('the step under a body left out: named, not taken for an undercut (open from below)', async () => {
+    // Under the body round the foot, 8 high, less the notch's column through it (its room is the notch's).
+    near(await left('step-foot-under-body', ['step'])(), (30 * 24 - 16 * 12) * 8 - (Math.PI * 16) / 2 * 8);
+  }, 60_000);
   it('the chamfers left out: four 1 mm top edges, less where the Ø6 hole cuts one', async () => {
-    near(await left('feat-chamfer-holes', ['chamfer'])(), 0.5 * (2 * 40 + 2 * 30) - 0.5 * 6);
+    // Four edges' triangles, less the four corners where two meet (a third of a cube each) and the Ø6 hole's 6 mm.
+    near(await left('feat-chamfer-holes', ['chamfer'])(), 0.5 * (2 * 40 + 2 * 30) - 4 / 3 - 0.5 * 6, 0.2);
   }, 60_000);
 });

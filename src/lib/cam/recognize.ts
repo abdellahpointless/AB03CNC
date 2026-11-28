@@ -562,13 +562,14 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
     if (taken.has(fid)) continue;
     for (const x of by) if (groupOf.has(x.r) && x.a >= 0.1 * byId.get(fid)!.area && !x.r.faces.includes(fid)) x.r.faces.push(fid);
   }
-  // From every side whose pieces' rooms hold all of it (a cell or two, or one in 200, aside: the grid's own).
+  // From every side whose pieces' rooms hold all of it (the grid's own error aside: two cells, or 1 mm³).
   const seenFrom = SIDES.map((s) => {
     const m = new Uint8Array(grid.part.length);
     for (const r of split) if (r.side === s.name) for (const id of r.cells!) m[id] = 1;
     return [s.name, m] as const;
   });
   const cellsOf = new Map<Feature, Uint8Array>();
+  const cellMm3 = grid.st[0] * grid.st[1] * grid.st[2];
   const rank: FeatureKind[] = ['pocket', 'slot', 'notch', 'step', 'window', 'outline'];
   for (const g of groups) {
     // Named from the side it has a floor on (a pocket before a slot before a step...).
@@ -588,11 +589,12 @@ export function recognizeFaces(P: ArrayLike<number>, faceOf: ArrayLike<number>, 
       }
       continue;
     }
-    const from = new Set(g.recs.map((x) => x.side));
+    // Its sides: only those whose rooms hold all of it (a view merged in as nine tenths the same lends it none).
+    const from = new Set<string>();
     for (const [side, m] of seenFrom) {
       let missing = 0;
       for (let id = 0; id < m.length; id++) if (g.mask[id] && !m[id]) missing++;
-      if (missing <= Math.max(2, 0.005 * g.count)) from.add(side);
+      if (missing <= Math.max(2, 1 / cellMm3)) from.add(side);
     }
     let kind = k0;
     // Walled only by tilted flat faces: a slope, whichever side it is seen from.
@@ -870,8 +872,7 @@ function makeGrid(P: ArrayLike<number>, bb: { min: Vec; max: Vec }): Grid {
     const j1 = Math.min(n[1] - 1, Math.floor((Math.max(a[1], b[1], c[1]) - bb.min[1]) / st[1] - 0.5) + 1);
     for (let j = j0; j <= j1; j++)
       for (let i = i0; i <= i1; i++) {
-        // A hair off the cell's middle, more than a float's error (a column down a shared edge counts it twice).
-        const [x, y] = [bb.min[0] + (i + 0.5) * st[0] + 1.13e-4, bb.min[1] + (j + 0.5) * st[1] + 1.71e-4];
+        const [x, y] = [bb.min[0] + (i + 0.5 + OFF[0]) * st[0], bb.min[1] + (j + 0.5 + OFF[1]) * st[1]];
         const u = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / den;
         const v = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / den;
         if (u >= 0 && v >= 0 && u + v <= 1) cols[j * n[0] + i].push(u * a[2] + v * b[2] + (1 - u - v) * c[2]);
@@ -881,13 +882,18 @@ function makeGrid(P: ArrayLike<number>, bb: { min: Vec; max: Vec }): Grid {
     h.sort((p, q) => p - q);
     for (let m = 0; m + 1 < h.length; m += 2)
       for (let k = 0; k < n[2]; k++) {
-        const z = bb.min[2] + (k + 0.5) * st[2];
+        const z = bb.min[2] + (k + 0.5 + OFF[2]) * st[2];
         if (z > h[m] && z < h[m + 1]) part[k * n[0] * n[1] + col] = 1;
       }
   });
   return { bb, n, st, part };
 }
-const cellAt = (g: Grid, i: number, j: number, k: number): Vec => [g.bb.min[0] + (i + 0.5) * g.st[0], g.bb.min[1] + (j + 0.5) * g.st[1], g.bb.min[2] + (k + 0.5) * g.st[2]];
+/**
+ * The cells' points sit a little off their middles: never on a wall or a floor at a round size (a layer of cells on a
+ * slot's floor would be in its room seen from above and out of it seen from its end), nor down a shared edge.
+ */
+const OFF = [0.0123, 0.0171, 0.0137];
+const cellAt = (g: Grid, i: number, j: number, k: number): Vec => [g.bb.min[0] + (i + 0.5 + OFF[0]) * g.st[0], g.bb.min[1] + (j + 0.5 + OFF[1]) * g.st[1], g.bb.min[2] + (k + 0.5 + OFF[2]) * g.st[2]];
 
 /** The empty cells a piece's room holds: over its own outline, from its floor to its side's top. */
 function prismCells(g: Grid, r: Rec): Int32Array {
@@ -895,8 +901,9 @@ function prismCells(g: Grid, r: Rec): Int32Array {
   const [a, b] = others(k);
   const e = extentOf(r.own);
   const bx = boxOf(transpose(r.R), [e.lo[0], e.lo[1], r.h], [e.hi[0], e.hi[1], r.top]);
-  const lim = [0, 1, 2].map((q) => [Math.max(0, Math.floor((bx[q] - g.bb.min[q]) / g.st[q] - 0.5)), Math.min(g.n[q] - 1, Math.ceil((bx[q + 3] - g.bb.min[q]) / g.st[q] - 0.5))]);
-  const inOwn = insideFn(r.own);
+  const lim = [0, 1, 2].map((q) => [Math.max(0, Math.floor((bx[q] - g.bb.min[q]) / g.st[q] - 0.5) - 1), Math.min(g.n[q] - 1, Math.ceil((bx[q + 3] - g.bb.min[q]) / g.st[q] - 0.5) + 1)]);
+  // Grown by 2 µm: a column a hair off a facet of a rounded wall is neither the part's nor out of every room otherwise.
+  const inOwn = insideFn(offset(r.own, 0.002));
   const out: number[] = [];
   const ijk = [0, 0, 0];
   for (let u = lim[a][0]; u <= lim[a][1]; u++)
@@ -1038,15 +1045,16 @@ function check(P: ArrayLike<number>, g: Grid, features: Feature[], cellsOf: Map<
     }
     const mm3 = count * st[0] * st[1] * st[2];
     if (deep === 0 || mm3 < 1) continue;
-    // Next to a milled shape and hidden from all its sides by the part over it (nine in ten of its cells): an undercut
-    // reached through that shape. Else what no shape explains.
-    const from = [...new Set([...next].flatMap((fi) => milled[fi].from))].filter((side) => {
+    // Next to a milled shape, and no straight tool along any axis reaches it (the part in the way from all six sides,
+    // for nine in ten of its cells): an undercut, reached through that shape. Else what no shape explains.
+    const shut = ['X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-'].every((side) => {
       let under = 0;
       for (const id of cells) if (hidden(id % n[0], Math.floor(id / n[0]) % n[1], Math.floor(id / (n[0] * n[1])), side)) under++;
       return under >= 0.9 * cells.length;
     });
+    const from = shut ? [...new Set([...next].flatMap((fi) => milled[fi].from))] : [];
     const half = st.map((v) => v / 2);
-    if (next.size && from.length) undercuts.push({ box: [lo[0] - half[0], lo[1] - half[1], lo[2] - half[2], hi[0] + half[0], hi[1] + half[1], hi[2] + half[2]] as Box6, pad: Math.max(...half), from: from.sort() });
+    if (from.length) undercuts.push({ box: [lo[0] - half[0], lo[1] - half[1], lo[2] - half[2], hi[0] + half[0], hi[1] + half[1], hi[2] + half[2]] as Box6, pad: Math.max(...half), from: from.sort() });
     else out.push({ mm3: r3(mm3), box: [lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]].map(r3) as Box6 });
   }
   return { unexplained: out, undercuts };
@@ -1058,13 +1066,13 @@ function mark(done: Uint8Array, part: Uint8Array, n: number[], st: number[], bb:
     [0, n[1] - 1],
     [0, n[2] - 1],
   ];
-  for (const [k, lo, hi] of ranges) lim[k] = [Math.max(lim[k][0], Math.floor((lo - bb.min[k]) / st[k] - 0.5)), Math.min(lim[k][1], Math.ceil((hi - bb.min[k]) / st[k] - 0.5))];
+  for (const [k, lo, hi] of ranges) lim[k] = [Math.max(lim[k][0], Math.floor((lo - bb.min[k]) / st[k] - 0.5) - 1), Math.min(lim[k][1], Math.ceil((hi - bb.min[k]) / st[k] - 0.5) + 1)];
   for (let k = lim[2][0]; k <= lim[2][1]; k++)
     for (let j = lim[1][0]; j <= lim[1][1]; j++)
       for (let i = lim[0][0]; i <= lim[0][1]; i++) {
         const id = (k * n[1] + j) * n[0] + i;
         if (part[id] || done[id]) continue;
-        if (inSide([bb.min[0] + (i + 0.5) * st[0], bb.min[1] + (j + 0.5) * st[1], bb.min[2] + (k + 0.5) * st[2]])) done[id] = 1;
+        if (inSide([bb.min[0] + (i + 0.5 + OFF[0]) * st[0], bb.min[1] + (j + 0.5 + OFF[1]) * st[1], bb.min[2] + (k + 0.5 + OFF[2]) * st[2]])) done[id] = 1;
       }
 }
 

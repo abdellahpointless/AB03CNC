@@ -245,6 +245,16 @@ def tilted_holes():
     ]
 
 
+def fin_wide():
+    # The fin of step-fin on a base twice as wide: the room behind it from Y+ (2 x 4 x 18) is under 0.2 % of the step
+    # round it, still not reached from there.
+    part = Box(80, 60, 10, align=LO) + Pos(4, 4, 10) * Box(2, 22, 18, align=LO)
+    return part, [
+        {"kind": "step", "from": ["Z+"], "box": [0, 0, 10, 80, 60, 28], "depth": 18},
+        {"kind": "boss", "from": ["Z+"], "box": [4, 4, 10, 6, 26, 28], "height": 18},
+    ]
+
+
 PARTS = {
     "pocket-hole": (pocket_part, (50, 40, 20)),
     "counterbore-break": (counterbore_break, (30, 20, 15)),
@@ -263,6 +273,7 @@ PARTS = {
     "chamfer-slot": (chamfer_slot, (60, 30, 20)),
     "blind-t-slot": (blind_t_slot, (60, 30, 20)),
     "tilted-holes": (tilted_holes, (40, 30, 20)),
+    "fin-wide": (fin_wide, (80, 60, 28)),
 }
 
 for name, (make, size) in PARTS.items():
