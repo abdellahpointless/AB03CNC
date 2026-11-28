@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import type { FeatureKind } from '../lib/cam/recognize';
 import type { CutEdit } from '../lib/cam/tools';
 import { editInRange, type OpEdit } from '../lib/cam/opEdit';
 import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CheckCircle2, IconClock as Clock, IconDownload as Download, IconRepeat as Repeat, IconRotate as RotateCcw, IconTrash as Trash2 } from '@tabler/icons-react';
@@ -240,7 +241,7 @@ export function ProgramPanel({
       ))}
       {(() => {
         // The notes, but the one the verdict at the top already says.
-        const notes = result.notes.map(({ key, ...v }) => t(`camAi.note.${key}`, v)).filter((n) => n !== text);
+        const notes = result.notes.map(({ key, ...v }) => t(`camAi.note.${key}`, { ...v, ...(v.shape ? { shape: t(`camAi.kind.${v.shape as FeatureKind}`) } : {}) })).filter((n) => n !== text);
         return (
           notes.length > 0 && (
             <ul className="text-xs text-[var(--text-secondary)] list-disc pl-4 space-y-0.5">

@@ -379,7 +379,10 @@ export interface Need {
 
 /** What CAM AI did not program (camAi.note.* on the page). */
 export interface CamNote {
-  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall' | 'holeShort' | 'clampRefused' | 'clampAsk' | 'clampSeam' | 'clampNest' | 'stopRefused' | 'floorHit' | 'jawRefused' | 'temporaryTool' | 'sideEmpty' | 'spacerRefused' | 'orderLocked' | 'stepRefused' | 'stepHold' | 'moveRefused' | 'holdOther';
+  key: 'undercut' | 'notSimulated' | 'surface' | 'jawWall' | 'holeShort' | 'clampRefused' | 'clampAsk' | 'clampSeam' | 'clampNest' | 'stopRefused' | 'floorHit' | 'jawRefused' | 'temporaryTool' | 'sideEmpty' | 'spacerRefused' | 'orderLocked' | 'stepRefused' | 'stepHold' | 'moveRefused' | 'holdOther' | 'shapeLeft' | 'shapeNoReach';
+  /** shapeLeft, shapeNoReach: the shape (recognize.ts FeatureKind) the program leaves material in, and its sizes (mm). */
+  shape?: string;
+  size?: string;
   side?: string;
   /** The clamping (1, 2, ...) and the designer's parallels (mm) a clamp note is about. */
   setup?: number;

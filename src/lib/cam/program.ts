@@ -10,6 +10,7 @@ import { CALE_HEIGHTS } from '../cales';
 import { turnPhrase } from '../fixTurns';
 import { engravings, SIDES, sideFeatures, SPIN, upTurn, type Hole, type SideFeatures } from './features';
 import { exactFaces, faceEdges } from './faces';
+import { recognizeFaces, type Feature } from './recognize';
 import { slopePasses, slopesOf, type Slope } from './slopes';
 import { area, bounds, difference, inside, intersection, offset, rect, simplify, slice, turnTris, union, type P2, type Region } from './geom';
 import { clearLevel, filled, swept, thinParts, trim, wallRings, type Ring } from './clear';
@@ -1761,7 +1762,60 @@ function checked(input: CamInput, r: CamResult): CamResult & { check: CamCheck }
   }
   // Through-cuts over a parallel stop on it (the part's bottom rests there): checked again.
   if (check.cales) check = again((code = overParallels(code, input.speeds ?? speedsFor(input.brand))));
-  return { ...r, code, check };
+  // A STEP model's shapes (recognize.ts), each checked: the material the program leaves in one is named on it.
+  // The general undercut note goes where they name what it is.
+  const shapes = shapeNotes(input, r.pose, check.pieces);
+  const drop = (n: CamNote) => n.key === 'shapeLeft' || n.key === 'shapeNoReach' || (shapes.length > 0 && n.key === 'undercut');
+  return { ...r, notes: [...r.notes.filter((n) => !drop(n)), ...shapes], code, check };
+}
+
+/** A STEP model's shapes, once per model (its faces' array). */
+const shapesOf = new WeakMap<Int32Array, Feature[]>();
+function modelShapes(input: CamInput): Feature[] | undefined {
+  const f = input.faces;
+  if (!f || f.length !== input.tris.length / 9) return undefined;
+  return shapesOf.get(f) ?? shapesOf.set(f, recognizeFaces(input.tris, f).features).get(f)!;
+}
+
+/**
+ * Phase 3's check (A045): each of the model's shapes against the simulated part. The material left (the check's pieces,
+ * in the program's frame: pose) goes to the shape whose box holds most of it; a shape left with 1 mm³ or more is named,
+ * as one no straight tool along an axis reaches when it has no side (a hole at an angle).
+ */
+export function shapeNotes(input: CamInput, pose: CamResult['pose'], pieces: Piece[]): CamNote[] {
+  const shapes = modelShapes(input);
+  if (!shapes || !pose) return [];
+  const Rt = transpose(pose.R);
+  const boxes = shapes.map((f) => {
+    if (f.box) return { lo: f.box.slice(0, 3) as Vec, hi: f.box.slice(3) as Vec };
+    const pts = f.faces.flatMap((id) => [...Array(input.tris.length / 9).keys()].filter((t) => input.faces![t] === id)).flatMap((t) => [0, 1, 2].map((c) => [0, 1, 2].map((k) => input.tris[t * 9 + c * 3 + k]) as Vec));
+    return pts.length ? { lo: [0, 1, 2].map((k) => Math.min(...pts.map((p) => p[k]))) as Vec, hi: [0, 1, 2].map((k) => Math.max(...pts.map((p) => p[k]))) as Vec } : null;
+  });
+  const left = new Map<number, number>();
+  for (const p of pieces) {
+    if (p.kind !== 'left') continue;
+    // Its box back in the model's frame.
+    const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((b) => apply(Rt, [0, 1, 2].map((k) => ((b >> k) & 1 ? p.max[k] : p.min[k]) - pose.t[k]) as Vec));
+    const lo = [0, 1, 2].map((k) => Math.min(...corners.map((c) => c[k])));
+    const hi = [0, 1, 2].map((k) => Math.max(...corners.map((c) => c[k])));
+    let best = -1;
+    let most = 0;
+    boxes.forEach((b, i) => {
+      if (!b) return;
+      const v = [0, 1, 2].reduce((t, k) => t * Math.max(0, Math.min(hi[k], b.hi[k]) - Math.max(lo[k], b.lo[k])), 1);
+      if (v > most) [best, most] = [i, v];
+    });
+    if (best >= 0) left.set(best, (left.get(best) ?? 0) + p.mm3);
+  }
+  const r1 = (v: number) => Math.round(v * 10) / 10;
+  return [...left]
+    .filter(([, mm3]) => mm3 >= 1)
+    .map(([i, mm3]) => {
+      const f = shapes[i];
+      const b = boxes[i]!;
+      const size = f.d !== undefined ? `Ø${r1(f.d)}${f.depth !== undefined ? ` × ${r1(f.depth)}` : ''}` : [0, 1, 2].map((k) => r1(b.hi[k] - b.lo[k])).join(' × ');
+      return { key: f.from.length ? ('shapeLeft' as const) : ('shapeNoReach' as const), shape: f.kind, size, side: f.from.join(' '), mm3: Math.round(mm3) };
+    });
 }
 
 /**
