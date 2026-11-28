@@ -1108,7 +1108,7 @@
       "type": "inferred",
       "tier": "WORKING",
       "assumption": "A shape is its surfaces; one pocket per depth, slots and holes themselves; a deeper shape's room its own up to the top, its depth from the top of the walls round it; one shape however many sides see it; from: the sides a straight tool cuts all of it from (undercuts through the shape they open into; a hole at an angle: none).",
-      "source": "CAM AI, with the 23 test parts (tools/test-part/make_feature_parts.py)",
+      "source": "CAM AI, with the 24 test parts (tools/test-part)",
       "validated": "2026-11-28",
       "context": "Shape engine (recognize.ts)",
       "created": "2026-11-28T01:00:00Z",
