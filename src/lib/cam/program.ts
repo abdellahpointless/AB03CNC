@@ -232,6 +232,8 @@ export interface CamSetup {
   chamfered?: number[];
   /** The exact faces (ids) its ball end mill finished as slopes: never again in a later clamping. */
   sloped?: number[];
+  /** The model's round 3D shapes (their index in its shapes) its ball end mill made: never again later. */
+  balled?: number[];
   /** The parallels the designer may choose here (the jaws grip 3 mm or more, under the part's top, never all of it). */
   cales: number[];
   /** CAM AI's own parallels, when the designer's are used instead. */
@@ -1137,6 +1139,113 @@ function ballFinish(tool: CamTool, slopes: Slope[], P: Float32Array, mat: string
   return { kind: 'finish', purpose: 'slope', name: `SCHLICHTEN_KUGEL_R${mm(r)}`, tool, cut, lines };
 }
 
+/**
+ * A ball end mill round a STEP model's round 3D shapes, in a clamping's frame (phase 3, 3.4). A ball's recess (c its
+ * centre, R its radius, top where it opens): levels down its axis, at each the circles from the middle out to where the
+ * ball touches the wall, then the wall finished in fine levels (0.01 mm scallop); one plunge when the ball is its size.
+ * A dome or a cone pin (top and foot, c the dome's centre): finished round from the top to as low as the ball's tip
+ * stays over the foot, at 0.3 mm stock then on size.
+ */
+/** How far from a dome's or a cone's axis a ball of radius r goes (its 0.3 mm stock pass's edge). */
+function ballReach(x: { kind: 'sphere' | 'dome' | 'cone'; c: Vec; R: number; r2?: number; top: number; low: number }, r: number): number {
+  if (x.kind === 'dome') {
+    const rho0 = x.R + r + 0.3;
+    const lowest = Math.acos(Math.min(1, Math.max(-1, (x.low + r + 0.01 - x.c[2]) / rho0)));
+    return rho0 * Math.sin(Math.min(lowest, Math.PI / 2)) + r;
+  }
+  const h = x.top - x.low;
+  const half = Math.atan((x.R - (x.r2 ?? 0)) / h);
+  const z = x.low + r * (1 - Math.sin(half)) + 0.01;
+  return x.R - ((z - x.low) * (x.R - (x.r2 ?? 0))) / h + (r + 0.3) * Math.cos(half) + r;
+}
+
+/** Seen from above: how far a point (x, y) is from triangle q of P (0 inside it). */
+function distToTri2(c: ArrayLike<number>, P: ArrayLike<number>, q: number): number {
+  const v = [0, 1, 2].map((k) => [P[q * 9 + k * 3], P[q * 9 + k * 3 + 1]] as P2);
+  const cross = (a: P2, b: P2) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const s = [cross(v[0], v[1]), cross(v[1], v[2]), cross(v[2], v[0])];
+  if (s.every((x) => x >= 0) || s.every((x) => x <= 0)) return 0;
+  return Math.min(
+    ...[0, 1, 2].map((k) => {
+      const [a, b] = [v[k], v[(k + 1) % 3]];
+      const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+      const u = Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(c[0] - a[0] - u * dx, c[1] - a[1] - u * dy);
+    }),
+  );
+}
+
+function ballShapes(tool: CamTool, items: { kind: 'sphere' | 'dome' | 'cone'; c: Vec; R: number; r2?: number; top: number; low: number }[], mat: string, limits: Limits, clear: number): CamOp {
+  const cut = cutData(tool, 'ball', mat, limits);
+  const r = tool.diameter / 2;
+  const lines: string[] = [];
+  const at = (x: number, y: number) => `X${n3(x)} Y${n3(y)}`;
+  const circle = (c: Vec, rho: number, z: number) => {
+    // Chords within 5 µm of the circle.
+    const m = rho < 0.01 ? 1 : Math.max(12, Math.ceil((2 * Math.PI) / (2 * Math.acos(Math.max(-1, 1 - 0.005 / rho)))));
+    for (let q = 0; q <= m; q++) lines.push(`G01 ${at(c[0] + rho * Math.cos((2 * Math.PI * q) / m), c[1] + rho * Math.sin((2 * Math.PI * q) / m))} Z${n3(z)}`);
+  };
+  const start = (x: number, y: number, z: number) => {
+    if (!lines.length) lines.push(`G00 G90 ${at(x, y)} S${cut.s} M03`);
+    lines.push(`G00 Z${n3(clear)}`, `G00 ${at(x, y)}`, `G00 Z${n3(z + 1)}`, `G01 Z${n3(z)} F${cut.fz}.`, `G01 ${at(x, y)} F${cut.f}.`);
+  };
+  for (const x of items) {
+    if (x.kind === 'sphere') {
+      const rho0 = Math.max(0, x.R - r);
+      const deep = x.c[2] - x.R;
+      if (rho0 < 0.02) {
+        // The ball its size: one plunge to the recess's bottom.
+        start(x.c[0], x.c[1], x.top);
+        lines.push(`G01 Z${n3(deep)} F${cut.fz}.`, `G00 Z${n3(clear)}`);
+        continue;
+      }
+      // The wall's highest tangent point: where the recess opens (top), or the ball's centre level if over it.
+      const phiMax = Math.acos(Math.min(1, Math.max(0, (x.c[2] - x.top) / x.R)));
+      const ap = Math.min(cut.ap, r);
+      // Roughing: levels a depth apart, each its circles from the middle out to the ball touching the wall (0.2 mm off).
+      for (let tip = x.top - ap; tip > deep + 0.2 - 1e-9; tip -= ap) {
+        const zc = tip + r;
+        const out = Math.sqrt(Math.max(0, (rho0 - 0.2) ** 2 - Math.min(0, zc - x.c[2]) ** 2));
+        start(x.c[0], x.c[1], tip);
+        for (let rho = Math.min(r, out); rho <= out + 1e-9; rho += r) circle(x.c, Math.min(rho, out), tip);
+        if (out > 0) circle(x.c, out, tip);
+      }
+      // Finishing: the ball's centre on the sphere R - r round the centre, from the top tangent point down, its tip at the
+      // bottom last.
+      const step = (2 * Math.sqrt(2 * r * 0.01)) / x.R;
+      start(x.c[0] + rho0 * Math.sin(phiMax), x.c[1], x.c[2] - rho0 * Math.cos(phiMax) - r);
+      for (let phi = phiMax; phi > 1e-9; phi -= step) circle(x.c, rho0 * Math.sin(phi), x.c[2] - rho0 * Math.cos(phi) - r);
+      lines.push(`G01 ${at(x.c[0], x.c[1])} Z${n3(deep)}`, `G00 Z${n3(clear)}`);
+      continue;
+    }
+    for (const stock of [0.3, 0]) {
+      if (x.kind === 'dome') {
+        const rho0 = x.R + r + stock;
+        // Down to where the tip is 0.01 over the foot.
+        const lowest = Math.acos(Math.min(1, Math.max(-1, (x.low + r + 0.01 - x.c[2]) / rho0)));
+        const step = (2 * Math.sqrt(2 * r * 0.01)) / (x.R + r);
+        start(x.c[0], x.c[1], x.c[2] + rho0 - r);
+        for (let phi = step; phi <= lowest + 1e-9; phi += step) circle(x.c, rho0 * Math.sin(phi), x.c[2] + rho0 * Math.cos(phi) - r);
+      } else {
+        // A cone narrowing up: its surface leans in by `half`; the ball's centre r out along its normal.
+        const h = x.top - x.low;
+        const half = Math.atan((x.R - (x.r2 ?? 0)) / h);
+        const dz = 2 * Math.sqrt(2 * r * 0.01) * Math.cos(half);
+        const zs: number[] = [];
+        for (let z = x.top; z >= x.low + r * (1 - Math.sin(half)) + 0.01 - 1e-9; z -= dz) zs.push(z);
+        zs.forEach((z, q) => {
+          const rho = x.R - ((z - x.low) * (x.R - (x.r2 ?? 0))) / h + (r + stock) * Math.cos(half);
+          const tip = z + (r + stock) * Math.sin(half) - r;
+          if (!q) start(x.c[0] + rho, x.c[1], tip);
+          circle(x.c, rho, tip);
+        });
+      }
+      lines.push(`G00 Z${n3(clear)}`);
+    }
+  }
+  return { kind: 'finish', purpose: 'slope', name: `KUGEL_R${mm(r)}`, tool, cut, lines };
+}
+
 /** The outline of a region (min and max X, Y). */
 function extent(r: Region): { lo: P2; hi: P2 } | null {
   const pts = r.flat();
@@ -1798,12 +1907,14 @@ export function shapeNotes(input: CamInput, pose: CamResult['pose'], pieces: Pie
     const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((b) => apply(Rt, [0, 1, 2].map((k) => ((b >> k) & 1 ? p.max[k] : p.min[k]) - pose.t[k]) as Vec));
     const lo = [0, 1, 2].map((k) => Math.min(...corners.map((c) => c[k])));
     const hi = [0, 1, 2].map((k) => Math.max(...corners.map((c) => c[k])));
+    // The shape holding most of it; of two holding it alike (a groove inside a bore's box), the smaller: the one it is.
     let best = -1;
     let most = 0;
+    const size = (i: number) => [0, 1, 2].reduce((t, k) => t * (boxes[i]!.hi[k] - boxes[i]!.lo[k]), 1);
     boxes.forEach((b, i) => {
       if (!b) return;
       const v = [0, 1, 2].reduce((t, k) => t * Math.max(0, Math.min(hi[k], b.hi[k]) - Math.max(lo[k], b.lo[k])), 1);
-      if (v > most) [best, most] = [i, v];
+      if (v > most * 1.01 || (v >= most * 0.99 && v > 0 && best >= 0 && size(i) < size(best))) [best, most] = [i, Math.max(v, most)];
     });
     if (best >= 0) left.set(best, (left.get(best) ?? 0) + p.mm3);
   }
@@ -2087,7 +2198,9 @@ function planFor(input: CamInput, vertical: number): CamResult {
   const exact = input.faces && input.faces.length === tris.length / 9 ? exactFaces(tris, input.faces) : undefined;
   // Which of them meet in inside corners (a slope next to a wall is left: the ball would cut into the wall).
   const edges = exact && input.faces ? faceEdges(tris, input.faces) : [];
-  const featuresOf = (side: (typeof SIDES)[number], spin = false, turn?: Mat3) => sideFeatures(tris, side, spin, turn, exact);
+  // Its shapes (recognize.ts): its holes taken from them (phase 3).
+  const shapes = exact ? modelShapes(input) : undefined;
+  const featuresOf = (side: (typeof SIDES)[number], spin = false, turn?: Mat3) => sideFeatures(tris, side, spin, turn, exact, shapes);
   const feats = SIDES.map((s, si) => featuresOf(s, spun(si)));
   // The operator's turn of clamping 1 (its side up the one asked, orient), used as given.
   const frame0 = frameAt(input, 0);
@@ -2096,7 +2209,8 @@ function planFor(input: CamInput, vertical: number): CamResult {
   input.live?.({ kind: 'stage', stage: 'stock' });
   // The busiest face first (most floors and holes; you: the 0.5 mm method, after the turn only the face mill).
   const [a, bSide] = [sideOf(thin, 1), sideOf(thin, -1)];
-  const busy = (si: number) => feats[si].floors.length + feats[si].holes.length;
+  // A STEP model's: the shapes reached from it (phase 3).
+  const busy = (si: number) => (shapes ? shapes.filter((x) => x.from.includes(SIDES[si].name)).length : feats[si].floors.length + feats[si].holes.length);
   // The operator's pick for setup 2 (any other side than the first), else the first's opposite.
   const second = input.second ? SIDES.findIndex((x) => x.name === input.second) : -1;
   // A top plate's white face up first whatever else (never faced: all the Z stock is on the other side, under the part
@@ -2132,17 +2246,20 @@ function planFor(input: CamInput, vertical: number): CamResult {
   // second clampings, Y180 in 31): the second side is the first one turned 180° about X.
   const [s1, s2] = chosen;
   if (SIDES[s2].d.every((v, k) => v === -SIDES[s1].d[k])) feats[s2] = featuresOf(SIDES[s2], false, mul([1, 0, 0, 0, -1, 0, 0, 0, -1], feats[s1].R));
+  // Then the side that reaches most of what is left; of sides within a tenth of it, a STEP model's the one that cuts
+  // whole the most shapes no side taken reaches whole (phase 3: a shape made in one clamping).
+  const whole = (si: number) => (shapes ?? []).filter((x) => x.from.includes(SIDES[si].name) && !chosen.some((c) => x.from.includes(SIDES[c].name))).length;
   for (;;) {
-    let best = -1;
-    let gain = 0;
-    for (let si = 0; si < 6; si++) {
-      if (chosen.includes(si)) continue;
+    const gains = SIDES.map((_, si) => {
+      if (chosen.includes(si)) return 0;
       let g = 0;
       for (let i = 0; i < occ.length; i++) if (reach[si][i] && !covered[i] && !occ[i]) g++;
-      if (g > gain) [best, gain] = [si, g];
-    }
-    if (best < 0 || gain * cell < 2) break;
-    take(best);
+      return g;
+    });
+    const most = Math.max(...gains);
+    if (most * cell < 2) break;
+    const near = gains.map((g, si) => ({ si, g, w: whole(si) })).filter((x) => x.g >= 0.9 * most);
+    take(near.sort((p, q) => q.w - p.w || q.g - p.g)[0].si);
   }
   let left = 0;
   for (let i = 0; i < occ.length; i++) if (!occ[i] && !covered[i]) left++;
@@ -3039,6 +3156,59 @@ function planFor(input: CamInput, vertical: number): CamResult {
         }
       }
     }
+    // 4c. Phase 3: a STEP model's round 3D shapes this clamping faces (a ball's recess, a dome, a cone pin), by a ball
+    // end mill: the recess roughed and finished in levels round its centre (one plunge when the ball is its size), a dome
+    // or a cone finished round its axis down to its foot (the end mills' levels left it in steps). Above the jaws, once.
+    let balled: number[] | undefined;
+    if (shapes) {
+      const doneBall = new Set(setups.flatMap((x) => x.balled ?? []));
+      // Shapes are in the model's own frame; the planner's model is centred on its box (c0).
+      const toFrame = (p: Vec): Vec => apply(R, [p[0] + c0[0], p[1] + c0[1], p[2] + c0[2]]).map((v, k) => v + t[k]) as Vec;
+      type BallItem = { i: number; kind: 'sphere' | 'dome' | 'cone'; c: Vec; R: number; r2?: number; top: number; low: number; room: number };
+      // How far from a dome's or a cone's axis the ball may go: to the nearest of the part over its foot (a wall, another
+      // boss) that is not the shape itself. A recess is open over itself: no limit.
+      const roomOf = (sh: (typeof shapes)[number], c: Vec, low: number) => {
+        const own = new Set(sh.faces);
+        let room = Infinity;
+        for (let q = 0; q < P.length / 9; q++) {
+          if (own.has(input.faces![q]) || Math.max(P[q * 9 + 2], P[q * 9 + 5], P[q * 9 + 8]) <= low + 0.01) continue;
+          room = Math.min(room, distToTri2(c, P, q));
+        }
+        return room;
+      };
+      const items = shapes.flatMap((sh, i): BallItem[] => {
+        if (doneBall.has(i) || sh.from[0] !== side.name || !['sphere', 'dome', 'cone'].includes(sh.kind) || sh.d === undefined) return [];
+        const b = sh.box ? [0, 1, 2, 3, 4, 5, 6, 7].map((q) => toFrame([0, 1, 2].map((k) => sh.box![(q >> k) & 1 ? k + 3 : k]) as Vec)) : [];
+        const lo = b.length ? [0, 1, 2].map((k) => Math.min(...b.map((p) => p[k]))) : [];
+        const hi = b.length ? [0, 1, 2].map((k) => Math.max(...b.map((p) => p[k]))) : [];
+        if (sh.kind === 'sphere' && sh.on) {
+          const c = toFrame(sh.on);
+          return [{ i, kind: 'sphere' as const, c, R: sh.d / 2, top: c[2] - sh.d / 2 + (sh.depth ?? sh.d / 2), low: c[2] - sh.d / 2, room: Infinity }];
+        }
+        if (!b.length) return [];
+        const c: Vec = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, hi[2] - sh.d / 2];
+        const room = roomOf(sh, c, lo[2]);
+        return sh.kind === 'dome' ? [{ i, kind: 'dome' as const, c, R: sh.d / 2, top: hi[2], low: lo[2], room }] : [{ i, kind: 'cone' as const, c, R: sh.d / 2, r2: (sh.d2 ?? 0) / 2, top: hi[2], low: lo[2], room }];
+      }).filter((x) => x.low > jawLimit + 1);
+      if (items.length) {
+        const low = Math.min(...items.map((x) => x.low));
+        const balls = usable(tools, ['KF']).filter((b) => b.length >= stockTop - low + 2).sort((p, q) => q.diameter - p.diameter);
+        // A ball fits a recess no larger than it; round a dome or a cone, its widest pass (and the 0.3 mm one) clear of
+        // what stands round it by 0.1 mm. The largest ball that fits the most of them; one no ball fits is left (named).
+        const fits = (b: CamTool, x: BallItem) => {
+          const r = b.diameter / 2;
+          if (x.kind === 'sphere') return r <= x.R + 0.02;
+          return ballReach(x, r) + 0.1 <= x.room;
+        };
+        const ball = balls.map((b) => ({ b, n: items.filter((x) => fits(b, x)).length })).filter((x) => x.n).sort((p, q) => q.n - p.n)[0]?.b;
+        if (!balls.length) needOnce({ category: 'fraise boule', diameter: 6, minLength: Math.ceil(stockTop - low + 2), why: { key: 'slope', count: items.length } });
+        else if (ball) {
+          const mine = items.filter((x) => fits(ball, x));
+          ops.push(ballShapes(ball, mine, mat, limits, plane));
+          balled = mine.map((x) => x.i);
+        }
+      }
+    }
     // You (Beta 2): a chamfer is cut once. A 45° face is a chamfer from two sides; one a clamping before cut is done.
     const cutBefore = new Set(setups.flatMap((x) => x.chamfered ?? []));
     const fresh = f.chamfers.filter((c) => c.tris.some((k) => !cutBefore.has(k)));
@@ -3225,7 +3395,7 @@ function planFor(input: CamInput, vertical: number): CamResult {
     const viseIn = nest
       ? { material: mat, length: hold[0], width: hold[1], height: stockH, grip, thin, contact: null, squeeze, left: sb.lo[0], limits, screws: nest.screws.length, floor: viseFloor }
       : { material: mat, length: hold[0], width: contactOf(left, base + stepGap, grip - stepGap, twoVises, spacerX, onJaw !== undefined).width || hold[1], height: sb.hi[2] - base, grip, thin, contact, squeeze, left: sb.lo[0] - spacerX, limits, floor: viseFloor, span: sb.hi[0] - sb.lo[0] };
-    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), ...(sloped && done.some((o) => o.purpose === 'slope') ? { sloped } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
+    setups.push({ side: side.name, R, t, notes: setupNotes, shift, cale, grip, physics, vise: viseIn, ...(nest ? { nest } : {}), zones, box: [sb.lo[0], sb.lo[1], sb.hi[0], sb.hi[1]], held: [held.lo[0], held.lo[1], held.hi[0], held.hi[1]], contact, ops: done, ...(chamfered && done.some((o) => o.name === 'FASE') ? { chamfered } : {}), ...(sloped && done.some((o) => o.purpose === 'slope') ? { sloped } : {}), ...(balled && done.some((o) => o.purpose === 'slope') ? { balled } : {}), cales, ledges, ...(onJaw !== undefined ? { onJaw } : {}), ...(step ? { step: step.d } : {}), steps: setups.length && !nested ? ledges.flatMap((d) => { const fit = stepFit(left, sb, -d); return fit ? [{ depth: d, cale: fit.cale }] : []; }) : [], bottom: sb.lo[2], ...((theirs || (onJaw !== undefined && jawAsked !== undefined)) && ownCales.has(setups.length) ? { own: ownCales.get(setups.length) } : {}) });
     if (input.live) {
       // Back to the model (centred): p = Rᵀ (p' - t).
       const Rt = transpose(R);

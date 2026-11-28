@@ -3,6 +3,7 @@ import { ALL, apply, mul, transpose, type Mat3 } from '../orient';
 import { area, bounds, difference, intersection, offset, slice, turnTris, union, type P2, type Region } from './geom';
 import { filled } from './clear';
 import { exactCylinders, type ExactFace } from './faces';
+import type { Feature } from './recognize';
 
 /*
  * What CAM AI finds on a part's model, seen from each side it can be machined from (the tool comes
@@ -160,7 +161,7 @@ export function cylinders(P: Float32Array): { c: [number, number]; r: number; lo
 }
 
 /** The part seen from one side: everything a setup with that side up can machine. */
-export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false, turn?: Mat3, exact?: ExactFace[]): SideFeatures {
+export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[number], spin = false, turn?: Mat3, exact?: ExactFace[], shapes?: Feature[]): SideFeatures {
   const R = turn ?? (spin ? mul(SPIN, upTurn(side.d)) : upTurn(side.d));
   const P = turnTris(tris, R);
   const { min, max } = bounds(P);
@@ -200,8 +201,10 @@ export function sideFeatures(tris: ArrayLike<number>, side: (typeof SIDES)[numbe
   const disk = (c: [number, number], r: number): P2[][] => [Array.from({ length: 32 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 16), c[1] + r * Math.sin((i * Math.PI) / 16)] as P2)];
   const open = (h: { c: [number, number]; r: number; hi: number }) =>
     [...above.filter((z) => z > h.hi + 0.06).map((z) => z - 0.01), ...(h.hi + 0.05 < max[2] ? [h.hi + 0.05] : [])].every((z) => area(intersection(cut(z), disk(h.c, h.r - 0.05))) < 0.01);
-  // A STEP model's holes from its exact cylinders (faces.ts), else fitted to the triangles.
-  const holes: Hole[] = (exact ? exactCylinders(exact, R) : cylinders(P))
+  // A STEP model's holes from its shapes (recognize.ts: a hole cut in two by a slot is one, a slot's round end is
+  // none, a groove inside a hole no hole of its own), else from its exact cylinders (faces.ts), else fitted to the
+  // triangles.
+  const holes: Hole[] = (exact && shapes ? shapeHoles(shapes, exact, R) : exact ? exactCylinders(exact, R) : cylinders(P))
     .filter((h) => h.concave && open(h))
     .map((h) => ({ c: h.c, r: h.r, top: h.hi, bottom: h.lo, through: h.lo <= min[2] + 0.01, closed: h.closed }));
   return {
@@ -241,3 +244,24 @@ export function engravings(P: Float32Array, top: number, floors: number[]): { de
   return out;
 }
 
+/**
+ * The round holes of a model's shapes along one setup's Z (R: model -> setup frame): holes, bores, counterbores and round
+ * pockets, each its axis centre, radius and extent along Z (its cylinder walls'), in the frame; closed unless broken open.
+ */
+export function shapeHoles(shapes: Feature[], exact: ExactFace[], R: Mat3): { c: [number, number]; r: number; lo: number; hi: number; concave: boolean; closed: boolean; err: number }[] {
+  const byId = new Map(exact.map((f) => [f.id, f]));
+  const out: { c: [number, number]; r: number; lo: number; hi: number; concave: boolean; closed: boolean; err: number }[] = [];
+  for (const f of shapes) {
+    if (!f.axis || !f.at || f.d === undefined || !['hole', 'bore', 'counterbore', 'pocket'].includes(f.kind)) continue;
+    const k = 'XYZ'.indexOf(f.axis);
+    const z = apply(R, [0, 1, 2].map((i) => (i === k ? 1 : 0)) as Vec);
+    if (Math.abs(Math.abs(z[2]) - 1) > 1e-6) continue;
+    const walls = f.faces.map((id) => byId.get(id)).filter((x): x is ExactFace => !!x && x.kind === 'cylinder' && Math.abs(x.r! - f.d! / 2) < 0.01);
+    if (!walls.length) continue;
+    // Each wall's ends along its own axis (lo, hi: from its point `at`), in the frame.
+    const zs = walls.flatMap((w) => [apply(R, w.at)[2] + (w.lo ?? 0) * apply(R, w.n)[2], apply(R, w.at)[2] + (w.hi ?? 0) * apply(R, w.n)[2]]);
+    const c = apply(R, walls[0].at);
+    out.push({ c: [c[0], c[1]], r: f.d / 2, lo: Math.min(...zs), hi: Math.max(...zs), concave: true, closed: !f.open, err: 0 });
+  }
+  return out;
+}

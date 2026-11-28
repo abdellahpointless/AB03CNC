@@ -376,6 +376,14 @@ High confidence assumptions. Treat as premises.
 
 Medium confidence. Use but flag if contradicted.
 
+### A048: Planning from the shapes (phase 3)
+
+- **Type:** inferred
+- **Assumption:** For a STEP model: every shape is checked against the simulated program and one left uncut is named (3.1); holes, bores, counterbores and round pockets are drilled or milled as the shapes say (a hole a slot cuts in two is one hole, a slot's round end is no hole) (3.2); the first side is the one most shapes are reached from, and of later sides that reach about as much (within a tenth), the one that makes the most shapes whole (3.3); a ball's recess, a dome and a cone pin are cut by a ball end mill where one fits (a recess no larger than the ball; round a dome or a cone, clear of what stands round it) (3.4). T-slots and dovetails (the cutters' widths are not in the tool data), grooves inside holes, tapers and countersinks of other than 90° are named, not cut.
+- **Source:** CAM AI, phase 3 asked by the owner (2026-11-28)
+- **Validated:** 2026-11-28
+- **Context:** Planner (program.ts, features.ts)
+
 ### A047: The sizes that name a shape
 
 - **Type:** assumed
@@ -508,3 +516,4 @@ Set aside by the owner: Q004 (Pfae5765f's turned part, ignored for now).
 - 2026-11-27: A041-A044 from the owner after the test parts (later grips under the stock still to cut, a quarter turn off a broken face, no good holding is an error with another first side suggested, slopes by a ball end mill from the top).
 - 2026-11-28: A045 from the owner (step 2 of the shape engine); A046 the rule CAM AI wrote for shapes that meet, with 24 test parts and their answer keys.
 - 2026-11-28: the owner's list of geometries to detect; A047 the sizes CAM AI chose to name them (bores, slots, recesses, ribs, arcs, drafts). Threads are not in STEP geometry.
+- 2026-11-28: phase 3 (3.1 to 3.4) built: A048.
